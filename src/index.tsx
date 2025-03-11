@@ -492,7 +492,7 @@ export function App() {
 			});
 			
 			// Make actual API call to ai.blawby.com
-			const apiEndpoint = `https://ai.blawby.com/api/chat?teamId=${encodeURIComponent(teamId)}`;
+			const apiEndpoint = `https://ai.blawby.com/api/chatbot?teamId=${encodeURIComponent(teamId)}`;
 			
 			// Set loading to false as we'll start receiving the response
 			setIsLoading(false);
