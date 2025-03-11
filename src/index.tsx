@@ -91,9 +91,24 @@ export function App() {
 			const positionParam = urlParams.get('position');
 			const teamIdParam = urlParams.get('teamId');
 			
-			console.log('URL search params:', window.location.search);
-			console.log('Parsed position:', positionParam);
-			console.log('Parsed teamId:', teamIdParam);
+			// Add a visible debug element to the DOM
+			const debugEl = document.createElement('div');
+			debugEl.style.padding = '10px';
+			debugEl.style.background = '#f0f0f0';
+			debugEl.style.border = '1px solid #ccc';
+			debugEl.style.position = 'fixed';
+			debugEl.style.top = '0';
+			debugEl.style.left = '0';
+			debugEl.style.zIndex = '9999';
+			debugEl.style.fontSize = '12px';
+			debugEl.style.fontFamily = 'monospace';
+			debugEl.innerHTML = `
+				<strong>URL Debug:</strong><br>
+				Search: ${window.location.search}<br>
+				Position: ${positionParam || 'not set'}<br>
+				TeamId: ${teamIdParam || 'not set'}<br>
+			`;
+			document.body.appendChild(debugEl);
 			
 			// Set position based on URL parameter
 			if (positionParam === 'widget' || positionParam === 'inline') {
