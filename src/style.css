@@ -485,6 +485,13 @@ body {
 	display: flex;
 	justify-content: space-between;
 	width: 100%;
+	align-items: center;
+}
+
+/* Left side controls */
+.input-left-controls {
+	display: flex;
+	align-items: center;
 }
 
 .file-menu-trigger {
@@ -498,6 +505,7 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	margin-right: 0.25rem;
 }
 
 .file-menu-trigger:hover {
@@ -1840,4 +1848,335 @@ kbd {
 	position: relative;
 	display: block;
 	flex: 1;
+}
+
+/* Scheduling Components Styles */
+
+/* Schedule Button */
+.schedule-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: transparent;
+	border: 1px solid var(--accent-color);
+	border-radius: 20px;
+	padding: 6px 12px;
+	height: 32px;
+	cursor: pointer;
+	color: var(--accent-color);
+	margin-left: 0.5rem;
+	transition: all 0.2s ease;
+}
+
+.schedule-button:hover {
+	background-color: var(--hover-color);
+}
+
+.schedule-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.calendar-icon {
+	width: 16px;
+	height: 16px;
+	margin-right: 6px;
+}
+
+.schedule-button-text {
+	font-size: 14px;
+	font-weight: 500;
+}
+
+/* Date Selector */
+.date-selector {
+	background-color: var(--message-bg-ai);
+	border-radius: 8px;
+	padding: 16px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	max-width: 320px;
+	animation: fadeSlideIn 0.3s ease forwards;
+}
+
+.date-selector-title {
+	margin-bottom: 12px;
+	text-align: center;
+}
+
+.date-selector-title h3 {
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--text-color);
+}
+
+.date-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-bottom: 16px;
+}
+
+.date-row {
+	display: flex;
+	gap: 8px;
+	justify-content: space-between;
+}
+
+.date-button {
+	flex: 1;
+	background-color: var(--bg-color);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	padding: 10px 0;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-width: 70px;
+}
+
+.date-button:hover,
+.date-button.hovered {
+	background-color: var(--hover-color);
+	border-color: var(--accent-color);
+	transform: translateY(-2px);
+}
+
+.date-button.today {
+	border-color: var(--accent-color);
+	background-color: rgba(var(--accent-color-rgb), 0.1);
+}
+
+.date-button-text {
+	font-weight: 500;
+	font-size: 14px;
+}
+
+.today-indicator {
+	font-size: 10px;
+	color: var(--accent-color);
+	margin-top: 4px;
+}
+
+.date-selector-footer {
+	display: flex;
+	justify-content: center;
+}
+
+.more-dates-button {
+	background-color: transparent;
+	border: 1px solid var(--border-color);
+	color: var(--accent-color);
+	cursor: pointer;
+	font-size: 14px;
+	padding: 8px 16px;
+	border-radius: 16px;
+	transition: all 0.2s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	margin-top: 8px;
+}
+
+.more-dates-button:hover {
+	background-color: var(--hover-color);
+	text-decoration: underline;
+	border-color: var(--accent-color);
+}
+
+.more-dates-icon {
+	margin-right: 6px;
+}
+
+/* Time of Day Selector */
+.time-of-day-selector {
+	background-color: var(--message-bg-ai);
+	border-radius: 8px;
+	padding: 16px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	max-width: 320px;
+	animation: fadeSlideIn 0.3s ease forwards;
+}
+
+.time-selector-title {
+	margin-bottom: 12px;
+	text-align: center;
+}
+
+.time-selector-title h3 {
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--text-color);
+}
+
+.time-of-day-options {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.time-of-day-button {
+	display: flex;
+	align-items: center;
+	background-color: var(--bg-color);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	padding: 12px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	width: 100%;
+	text-align: left;
+}
+
+.time-of-day-button:hover,
+.time-of-day-button.hovered {
+	background-color: var(--hover-color);
+	border-color: var(--accent-color);
+	transform: translateY(-2px);
+}
+
+.time-of-day-icon {
+	margin-right: 12px;
+	color: var(--accent-color);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.time-of-day-info {
+	flex: 1;
+}
+
+.time-of-day-label {
+	font-weight: 600;
+	font-size: 14px;
+	margin-bottom: 4px;
+}
+
+.time-of-day-description {
+	font-size: 12px;
+	color: var(--accent-color);
+}
+
+/* Time Slot Selector */
+.time-slot-selector {
+	background-color: var(--message-bg-ai);
+	border-radius: 8px;
+	padding: 16px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	max-width: 320px;
+	animation: fadeSlideIn 0.3s ease forwards;
+}
+
+.time-slot-title {
+	margin-bottom: 16px;
+	text-align: center;
+}
+
+.time-slot-title h3 {
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--text-color);
+	margin-bottom: 4px;
+}
+
+.time-slot-subtitle {
+	font-size: 14px;
+	color: var(--accent-color);
+}
+
+.time-slots-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 8px;
+	max-height: 300px;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.time-slots-grid::-webkit-scrollbar {
+	width: 6px;
+}
+
+.time-slots-grid::-webkit-scrollbar-thumb {
+	background-color: var(--border-color);
+	border-radius: 3px;
+}
+
+.time-slots-grid::-webkit-scrollbar-track {
+	background-color: transparent;
+}
+
+.time-slot-button {
+	background-color: var(--bg-color);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	padding: 10px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	font-size: 14px;
+	font-weight: 500;
+	text-align: center;
+}
+
+.time-slot-button:hover,
+.time-slot-button.hovered {
+	background-color: var(--hover-color);
+	border-color: var(--accent-color);
+	transform: translateY(-2px);
+}
+
+/* Schedule Confirmation */
+.schedule-confirmation {
+	display: flex;
+	align-items: center;
+	background-color: rgba(var(--accent-color-rgb), 0.1);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	padding: 12px;
+	margin: 8px 0;
+	animation: fadeIn 0.3s ease forwards;
+}
+
+.schedule-confirmation-icon {
+	margin-right: 12px;
+	color: var(--accent-color);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.confirmation-calendar-icon {
+	color: var(--accent-color);
+}
+
+.schedule-confirmation-details {
+	flex: 1;
+}
+
+.schedule-confirmation-title {
+	font-weight: 600;
+	font-size: 14px;
+	margin-bottom: 4px;
+	display: flex;
+	align-items: center;
+}
+
+.schedule-confirmation-date {
+	font-size: 14px;
+	margin-bottom: 2px;
+}
+
+.schedule-confirmation-time {
+	font-size: 14px;
+	color: var(--accent-color);
+}
+
+/* Scheduling Container */
+.scheduling-container {
+	margin: 12px 0;
+	animation: fadeIn 0.3s ease forwards;
 }

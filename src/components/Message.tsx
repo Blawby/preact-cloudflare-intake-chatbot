@@ -2,6 +2,28 @@ import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
 import { marked } from 'marked';
 import LazyMedia from './LazyMedia';
+import createLazyComponent from '../utils/LazyComponent';
+
+// Lazy load scheduling components
+const LazyDateSelector = createLazyComponent(
+	() => import('./scheduling/DateSelector'),
+	'DateSelector'
+);
+
+const LazyTimeOfDaySelector = createLazyComponent(
+	() => import('./scheduling/TimeOfDaySelector'),
+	'TimeOfDaySelector'
+);
+
+const LazyTimeSlotSelector = createLazyComponent(
+	() => import('./scheduling/TimeSlotSelector'),
+	'TimeSlotSelector'
+);
+
+const LazyScheduleConfirmation = createLazyComponent(
+	() => import('./scheduling/ScheduleConfirmation'),
+	'ScheduleConfirmation'
+);
 
 // Set options for marked
 marked.setOptions({
@@ -16,10 +38,23 @@ interface FileAttachment {
 	url: string;
 }
 
+// Add scheduling-related data interface
+interface SchedulingData {
+	type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
+	selectedDate?: Date;
+	timeOfDay?: 'morning' | 'afternoon' | 'evening';
+	scheduledDateTime?: Date;
+}
+
 interface MessageProps {
 	content: string;
 	isUser: boolean;
 	files?: FileAttachment[];
+	scheduling?: SchedulingData;
+	onDateSelect?: (date: Date) => void;
+	onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon' | 'evening') => void;
+	onTimeSlotSelect?: (timeSlot: Date) => void;
+	onRequestMoreDates?: () => void;
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -127,7 +162,7 @@ const ImagePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => 
 	);
 };
 
-const Message: FunctionComponent<MessageProps> = memo(({ content, isUser, files = [] }) => {
+const Message: FunctionComponent<MessageProps> = memo(({ content, isUser, files = [], scheduling, onDateSelect, onTimeOfDaySelect, onTimeSlotSelect, onRequestMoreDates }) => {
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
 	const audioFiles = files.filter(file => file.type.startsWith('audio/'));
 	const videoFiles = files.filter(file => file.type.startsWith('video/'));
@@ -146,6 +181,51 @@ const Message: FunctionComponent<MessageProps> = memo(({ content, isUser, files 
 	return (
 		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
 			<div class="message-content">
+				{/* Render message content first */}
+				{content && (
+					<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
+				)}
+				
+				{/* Then display scheduling components */}
+				{scheduling && (
+					<div class="scheduling-container">
+						{scheduling.type === 'date-selection' && onDateSelect && onRequestMoreDates && (
+							<LazyDateSelector
+								onDateSelect={onDateSelect}
+								onRequestMoreDates={onRequestMoreDates}
+								startDate={scheduling.selectedDate}
+							/>
+						)}
+						
+						{scheduling.type === 'time-of-day-selection' && scheduling.selectedDate && onTimeOfDaySelect && (
+							<LazyTimeOfDaySelector
+								selectedDate={scheduling.selectedDate}
+								onTimeOfDaySelect={onTimeOfDaySelect}
+							/>
+						)}
+						
+						{scheduling.type === 'time-slot-selection' && scheduling.selectedDate && 
+						 scheduling.timeOfDay && onTimeSlotSelect && (
+							<LazyTimeSlotSelector
+								selectedDate={scheduling.selectedDate}
+								timeOfDay={scheduling.timeOfDay}
+								onTimeSlotSelect={onTimeSlotSelect}
+							/>
+						)}
+						
+						{scheduling.type === 'confirmation' && scheduling.scheduledDateTime && (
+							<LazyScheduleConfirmation
+								scheduledDateTime={scheduling.scheduledDateTime}
+							/>
+						)}
+					</div>
+				)}
+				
+				{/* Display files */}
+				{imageFiles.map(file => (
+					<ImagePreview key={file.url} file={file} />
+				))}
+				
 				{otherFiles.map((file, index) => (
 					<FilePreview key={index} file={file} />
 				))}
@@ -172,9 +252,6 @@ const Message: FunctionComponent<MessageProps> = memo(({ content, isUser, files 
 				{imageFiles.map((file, index) => (
 					<ImagePreview key={index} file={file} />
 				))}
-				{content && (
-					<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
-				)}
 			</div>
 		</div>
 	);

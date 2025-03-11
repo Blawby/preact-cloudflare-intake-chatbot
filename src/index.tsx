@@ -9,6 +9,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
+import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import './style.css';
 
 // Create lazy-loaded components
@@ -33,6 +34,12 @@ const LazyCameraModal = createLazyComponent(
 	'CameraModal'
 );
 
+// Lazy-load scheduling components
+const LazyScheduleButton = createLazyComponent(
+	() => import('./components/scheduling/ScheduleButton'),
+	'ScheduleButton'
+);
+
 // Define position type
 type ChatPosition = 'widget' | 'inline';
 
@@ -43,10 +50,19 @@ interface FileAttachment {
 	url: string;
 }
 
+// Add scheduling interface
+interface SchedulingData {
+	type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
+	selectedDate?: Date;
+	timeOfDay?: 'morning' | 'afternoon' | 'evening';
+	scheduledDateTime?: Date;
+}
+
 interface ChatMessage {
 	content: string;
 	isUser: boolean;
 	files?: FileAttachment[];
+	scheduling?: SchedulingData;
 }
 
 const ANIMATION_DURATION = 300;
@@ -236,137 +252,238 @@ export function App() {
 		setMessages((prev) => [...prev, newMessage]);
 	};
 
+	// Add scheduling handlers
+	const handleScheduleStart = () => {
+		// Send user's scheduling request message
+		const schedulingMessage: ChatMessage = {
+			content: "I'd like to schedule something with you.",
+			isUser: true
+		};
+		
+		setMessages([...messages, schedulingMessage]);
+		setInputValue('');
+		setIsLoading(true);
+		
+		// Use our scheduling utility to create the AI response
+		setTimeout(() => {
+			const aiResponse = createSchedulingResponse('initial');
+			setMessages(prev => [...prev, aiResponse]);
+			setIsLoading(false);
+		}, 800);
+	};
+	
+	const handleDateSelect = (date: Date) => {
+		// Send user's selected date as a message
+		const formattedDate = new Intl.DateTimeFormat('en-US', {
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric'
+		}).format(date);
+		
+		const dateSelectionMessage: ChatMessage = {
+			content: `I'd like to schedule on ${formattedDate}.`,
+			isUser: true
+		};
+		
+		setMessages(prev => [...prev, dateSelectionMessage]);
+		setIsLoading(true);
+		
+		// Simulate AI response with time of day options
+		setTimeout(() => {
+			const aiResponse: ChatMessage = {
+				content: `Great! What time on ${formattedDate} works best for you?`,
+				isUser: false,
+				scheduling: {
+					type: 'time-of-day-selection',
+					selectedDate: date
+				}
+			};
+			
+			setMessages(prev => [...prev, aiResponse]);
+			setIsLoading(false);
+		}, 800);
+	};
+	
+	const handleTimeOfDaySelect = (timeOfDay: 'morning' | 'afternoon' | 'evening') => {
+		// Get the most recent selected date from messages
+		const lastDateSelection = [...messages]
+			.reverse()
+			.find(msg => msg.scheduling?.selectedDate)?.scheduling?.selectedDate;
+			
+		if (!lastDateSelection) return;
+		
+		// Map time of day to human-readable string
+		const timeOfDayLabel = {
+			morning: 'Morning (8:00 AM - 12:00 PM)',
+			afternoon: 'Afternoon (12:00 PM - 5:00 PM)',
+			evening: 'Evening (5:00 PM - 9:00 PM)'
+		}[timeOfDay];
+		
+		// Format the date
+		const formattedDate = new Intl.DateTimeFormat('en-US', {
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric'
+		}).format(lastDateSelection);
+		
+		// Send user's time of day selection as a message
+		const timeSelectionMessage: ChatMessage = {
+			content: `I prefer ${timeOfDayLabel} on ${formattedDate}.`,
+			isUser: true
+		};
+		
+		setMessages(prev => [...prev, timeSelectionMessage]);
+		setIsLoading(true);
+		
+		// Simulate AI response with specific time slots
+		setTimeout(() => {
+			const aiResponse: ChatMessage = {
+				content: `Great! Here are the available time slots for ${formattedDate} in the ${timeOfDay}:`,
+				isUser: false,
+				scheduling: {
+					type: 'time-slot-selection',
+					selectedDate: lastDateSelection,
+					timeOfDay
+				}
+			};
+			
+			setMessages(prev => [...prev, aiResponse]);
+			setIsLoading(false);
+		}, 800);
+	};
+	
+	const handleTimeSlotSelect = (timeSlot: Date) => {
+		// Format the time
+		const formattedTime = new Intl.DateTimeFormat('en-US', {
+			hour: 'numeric',
+			minute: 'numeric',
+			hour12: true
+		}).format(timeSlot);
+		
+		// Format the full date
+		const formattedDate = new Intl.DateTimeFormat('en-US', {
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric'
+		}).format(timeSlot);
+		
+		// Send user's time slot selection as a message
+		const timeSlotSelectionMessage: ChatMessage = {
+			content: `I'd like to schedule for ${formattedTime} on ${formattedDate}.`,
+			isUser: true
+		};
+		
+		setMessages(prev => [...prev, timeSlotSelectionMessage]);
+		setIsLoading(true);
+		
+		// Simulate AI confirmation response
+		setTimeout(() => {
+			const aiResponse: ChatMessage = {
+				content: `Perfect! I've scheduled our appointment for ${formattedTime} on ${formattedDate}. Is there anything specific you'd like to discuss during our meeting?`,
+				isUser: false,
+				scheduling: {
+					type: 'confirmation',
+					scheduledDateTime: timeSlot
+				}
+			};
+			
+			setMessages(prev => [...prev, aiResponse]);
+			setIsLoading(false);
+		}, 800);
+	};
+	
+	const handleRequestMoreDates = () => {
+		// Send user's request for more dates as a message
+		const moreDatesMessage: ChatMessage = {
+			content: "I need to see more date options.",
+			isUser: true
+		};
+		
+		setMessages(prev => [...prev, moreDatesMessage]);
+		setIsLoading(true);
+		
+		// Find the most recent date-selection message
+		const latestDateSelectionMsg = [...messages]
+			.reverse()
+			.find(msg => msg.scheduling?.type === 'date-selection');
+			
+		// Calculate new start date - add 9 days to the previous start date
+		let startDate = new Date();
+		if (latestDateSelectionMsg?.scheduling?.selectedDate) {
+			startDate = new Date(latestDateSelectionMsg.scheduling.selectedDate);
+			startDate.setDate(startDate.getDate() + 9); // Add 9 days
+		}
+		
+		// Simulate AI response with more dates
+		setTimeout(() => {
+			const aiResponse: ChatMessage = {
+				content: "Here are some additional dates to choose from:",
+				isUser: false,
+				scheduling: {
+					type: 'date-selection',
+					selectedDate: startDate
+				}
+			};
+			
+			setMessages(prev => [...prev, aiResponse]);
+			setIsLoading(false);
+		}, 800);
+	};
+
 	// Make real API calls to ai.blawby.com with SSE support
 	const sendMessageToAPI = async (message: string, attachments: FileAttachment[] = []) => {
 		setIsLoading(true);
 		
+		// In a real implementation, this would be a call to your AI service API
 		try {
-			const apiUrl = teamId 
-				? `https://ai.blawby.com/api/chatbot/${teamId}` 
-				: 'https://ai.blawby.com/api/chatbot';
-			
-			const requestData = {
-				messages: messages.map(msg => ({
-					role: msg.isUser ? 'user' : 'assistant',
-					content: msg.content
-				})).concat({
-					role: 'user',
-					content: message
-				})
+			// Create user message
+			const userMessage: ChatMessage = {
+				content: message,
+				isUser: true,
+				files: attachments
 			};
 			
-			// Add a placeholder message for the AI's response that we'll update
-			const placeholderMessage: ChatMessage = {
-				content: '',
-				isUser: false
-			};
+			setMessages(prev => [...prev, userMessage]);
+			setInputValue('');
+			setPreviewFiles([]);
 			
-			setMessages(prev => [...prev, placeholderMessage]);
+			// Check if this is a scheduled message (could come from API in real implementation)
+			const hasSchedulingIntent = detectSchedulingIntent(message);
 			
-			// Make the API call
-			const response = await fetch(apiUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Accept': 'text/event-stream'
-				},
-				body: JSON.stringify(requestData)
-			});
+			// This simulates the AI detecting scheduling intent and responding
+			if (hasSchedulingIntent) {
+				setTimeout(() => {
+					// Create a scheduling response using our utility
+					const aiResponse = createSchedulingResponse('initial');
+					setMessages(prev => [...prev, aiResponse]);
+					setIsLoading(false);
+				}, 1000);
+				
+				return;
+			}
 			
-			if (!response.ok) {
-				throw new Error(`API error: ${response.status}`);
-			}
-
-			// Get the response as a stream
-			const reader = response.body?.getReader();
-			if (!reader) {
-				throw new Error('ReadableStream not supported.');
-			}
-
-			const decoder = new TextDecoder();
-			let buffer = '';
-			let accumulatedContent = '';
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				// Decode the chunk and add to buffer
-				buffer += decoder.decode(value, { stream: true });
-
-				// Process complete lines from buffer
-				const lines = buffer.split('\n');
-				// Keep the last incomplete line in the buffer
-				buffer = lines.pop() || '';
-
-				for (const line of lines) {
-					const trimmedLine = line.trim();
-					if (!trimmedLine.startsWith('data:')) continue;
-
-					const data = trimmedLine.slice(5); // Remove 'data:' prefix
-					if (!data || data === '[DONE]') continue;
-
-					try {
-						const parsed = JSON.parse(data);
-						if (parsed.response !== undefined) {
-							// Add the new piece of text
-							accumulatedContent += parsed.response;
-							
-							// Update the message immediately for real-time effect
-							setMessages(prevMessages => {
-								const newMessages = [...prevMessages];
-								if (newMessages.length > 0) {
-									newMessages[newMessages.length - 1] = {
-										...newMessages[newMessages.length - 1],
-										content: accumulatedContent
-									};
-								}
-								return newMessages;
-							});
-						}
-					} catch (e) {
-						console.error('Error parsing SSE data:', e);
-					}
-				}
-			}
-
-			// Process any remaining content in the buffer
-			if (buffer.trim()) {
-				const trimmedBuffer = buffer.trim();
-				if (trimmedBuffer.startsWith('data:')) {
-					const data = trimmedBuffer.slice(5);
-					if (data && data !== '[DONE]') {
-						try {
-							const parsed = JSON.parse(data);
-							if (parsed.response !== undefined) {
-								accumulatedContent += parsed.response;
-								setMessages(prevMessages => {
-									const newMessages = [...prevMessages];
-									if (newMessages.length > 0) {
-										newMessages[newMessages.length - 1] = {
-											...newMessages[newMessages.length - 1],
-											content: accumulatedContent
-										};
-									}
-									return newMessages;
-								});
-							}
-						} catch (e) {
-							console.error('Error parsing final SSE data:', e);
-						}
-					}
-				}
-			}
+			// Simulate normal AI response for non-scheduling messages
+			setTimeout(() => {
+				const aiResponse: ChatMessage = {
+					content: `This is a simulated response to: "${message}"`,
+					isUser: false
+				};
+				
+				setMessages(prev => [...prev, aiResponse]);
+				setIsLoading(false);
+			}, 1000);
+			
 		} catch (error) {
 			console.error('Error sending message:', error);
-			
-			// Show error to user
-			setMessages(prev => [...prev, {
-				content: "Sorry, there was an error communicating with the server. Please try again.",
-				isUser: false
-			}]);
-		} finally {
 			setIsLoading(false);
+			
+			// Add error message
+			const errorMessage: ChatMessage = {
+				content: "Sorry, there was an error processing your request. Please try again.",
+				isUser: false
+			};
+			
+			setMessages(prev => [...prev, errorMessage]);
 		}
 	};
 
@@ -660,7 +777,14 @@ export function App() {
 									<h1>What can I help with?</h1>
 								</div>
 							)}
-							<VirtualMessageList messages={messages} isLoading={isLoading} />
+							<VirtualMessageList 
+								messages={messages}
+								isLoading={isLoading}
+								onDateSelect={handleDateSelect}
+								onTimeOfDaySelect={handleTimeOfDaySelect}
+								onTimeSlotSelect={handleTimeSlotSelect}
+								onRequestMoreDates={handleRequestMoreDates}
+							/>
 							<div className="input-area" role="form" aria-label="Message composition">
 								<div className="input-container">
 									{previewFiles.length > 0 && (
@@ -724,11 +848,18 @@ export function App() {
 									<div className="input-controls-row">
 										<div className="input-controls">
 											{!isRecording && (
-												<LazyFileMenu
-													onPhotoSelect={handlePhotoSelect}
-													onCameraCapture={handleCameraCapture}
-													onFileSelect={handleFileSelect}
-												/>
+												<div className="input-left-controls">
+													<LazyFileMenu
+														onPhotoSelect={handlePhotoSelect}
+														onCameraCapture={handleCameraCapture}
+														onFileSelect={handleFileSelect}
+													/>
+													
+													<LazyScheduleButton
+														onClick={handleScheduleStart}
+														disabled={isLoading}
+													/>
+												</div>
 											)}
 											
 											<div className="send-controls">

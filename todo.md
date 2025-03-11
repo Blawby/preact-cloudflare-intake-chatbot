@@ -116,23 +116,47 @@
   - Created configuration for toggling features ✅
   - Disabled voice recording via feature flag ✅
   - Implemented conditional UI rendering ✅
+- Added comprehensive scheduling functionality ✅
+  - Implemented date selection with 3x3 grid UI ✅
+  - Created time-of-day and time slot selectors ✅
+  - Added scheduling confirmation cards with timezone support ✅
+  - Enabled user-initiated scheduling via Schedule button ✅
+  - Added AI-initiated scheduling with intent detection ✅
+  - Created utilities for managing scheduling conversation flows ✅
 
 ## Next Immediate Tasks (Priority Order)
-1. Integration with ai.blawby.com
-   - Add teamId extraction from URL parameters
-   - Update API endpoints to use teamId from URL
-   - Implement business details fetching from API
-   - Set up postMessage communication with parent frame
-   - Add state change notifications (open/closed status)
-   - Ensure proper iframe embedding behavior
+1. Integration with ai.blawby.com ✅
+   - Add teamId extraction from URL parameters ✅
+   - Update API endpoints to use teamId from URL ✅
+   - Implement business details fetching from API ✅
+   - Set up postMessage communication with parent frame ✅
+   - Add state change notifications (open/closed status) ✅
+   - Ensure proper iframe embedding behavior ✅
 
-2. Accessibility improvements
+2. Add scheduling functionality
+   - Add "Schedule" button with icon next to the plus button ✅
+   - Implement date selection workflow with 3x3 grid (9 days) UI ✅
+   - Add "Show More Dates" button to extend selection beyond initial 9 days ✅
+   - Create time selection with morning/afternoon/evening quick options ✅
+   - Implement 30-minute increment time slots after time-of-day selection ✅
+   - Add calendar icons next to scheduled dates in message history ✅
+   - Create visual confirmation card with date, time, and timezone information ✅
+   - Ensure all selections are sent as text messages in chat ✅
+   - Implement automatic timezone detection and display ✅
+   - Style components to match existing UI theme ✅
+   - Support AI-initiated scheduling flows ✅
+     - Add scheduling intent detection from user messages ✅
+     - Create utility for generating scheduling responses ✅
+     - Enable AI to proactively suggest scheduling ✅
+     - Integrate with conversation flow seamlessly ✅
+
+3. Accessibility improvements
    - Add keyboard navigation support
    - Improve screen reader compatibility
    - Add ARIA attributes to interactive elements
    - Implement focus management
 
-3. Testing and QA
+4. Testing and QA
    - Test iframe embedding scenarios
    - Verify API connectivity with team contexts
    - Test cross-origin communication

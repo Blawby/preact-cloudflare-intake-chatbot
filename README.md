@@ -42,12 +42,34 @@ Try it yourself:
 - **Media Attachments** — Send images, videos, and documents (not in original ChatGPT)
 - **Audio Recording** — Record and send audio messages with waveform visualization
 - **Camera Integration** — Capture and send photos directly from your device
+- **Scheduling System** — Comprehensive appointment scheduling with date/time selection
 - **Drag-and-Drop** — Full-screen file dropping with intuitive visual feedback
 - **Flexible Positioning** — Widget mode (collapsible sidebar) or inline mode for different use cases
 - **Parent Frame Communication** — Seamless integration with parent websites via postMessage API
 - **Accessibility** — ARIA-compliant with keyboard navigation and screen reader support
 - **iOS-style Scrollbars** — Elegant auto-hiding scrollbars with smooth animations
 - **SSR Compatible** — Server-side rendering support for better SEO and performance
+
+## 🗓️ Scheduling System
+
+The chat interface includes a comprehensive appointment scheduling system with three ways to initiate scheduling:
+
+1. **User-initiated via button** - Users can click the "Schedule" button next to the file attachment button
+2. **User-initiated via text** - The AI detects when users ask to schedule something in their messages
+3. **AI-initiated** - The AI can proactively suggest scheduling when appropriate
+
+### Scheduling Features
+
+- **Intuitive Date Selection** - 3×3 grid of dates with option to show more dates
+- **Time Selection Workflow** 
+  - Morning/Afternoon/Evening quick selection
+  - 30-minute time slots within selected period
+- **Timezone Awareness** - Automatic detection and display of user's timezone
+- **Confirmation Cards** - Visual confirmation of scheduled appointments in the chat
+- **Natural Conversation Flow** - All selections appear as natural text messages
+- **Multiple Entry Points** - Start scheduling via button, text request, or AI suggestion
+
+This scheduling system is built with components that match the application's design language, offering a seamless experience for booking appointments, meetings, or any time-based events.
 
 ## 🧩 Why Preact?
 

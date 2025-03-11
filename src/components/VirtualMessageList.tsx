@@ -12,22 +12,42 @@ interface FileAttachment {
     url: string;
 }
 
+// Add scheduling interface
+interface SchedulingData {
+    type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
+    selectedDate?: Date;
+    timeOfDay?: 'morning' | 'afternoon' | 'evening';
+    scheduledDateTime?: Date;
+}
+
 interface ChatMessage {
     content: string;
     isUser: boolean;
     files?: FileAttachment[];
+    scheduling?: SchedulingData;
 }
 
 interface VirtualMessageListProps {
     messages: ChatMessage[];
     isLoading?: boolean;
+    onDateSelect?: (date: Date) => void;
+    onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon' | 'evening') => void;
+    onTimeSlotSelect?: (timeSlot: Date) => void;
+    onRequestMoreDates?: () => void;
 }
 
 const BATCH_SIZE = 20;
 const SCROLL_THRESHOLD = 100;
 const DEBOUNCE_DELAY = 150;
 
-const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({ messages, isLoading }) => {
+const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({ 
+    messages, 
+    isLoading,
+    onDateSelect,
+    onTimeOfDaySelect,
+    onTimeSlotSelect,
+    onRequestMoreDates
+}) => {
     const listRef = useRef<HTMLDivElement>(null);
     const [startIndex, setStartIndex] = useState(Math.max(0, messages.length - BATCH_SIZE));
     const [endIndex, setEndIndex] = useState(messages.length);
@@ -114,8 +134,24 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({ messag
                         content={message.content}
                         isUser={message.isUser}
                         files={message.files}
+                        scheduling={message.scheduling}
+                        onDateSelect={onDateSelect}
+                        onTimeOfDaySelect={onTimeOfDaySelect}
+                        onTimeSlotSelect={onTimeSlotSelect}
+                        onRequestMoreDates={onRequestMoreDates}
                     />
                 ))}
+                {isLoading && (
+                    <div class="message message-ai">
+                        <div class="message-content">
+                            <div class="loading-indicator">
+                                <span class="dot"></span>
+                                <span class="dot"></span>
+                                <span class="dot"></span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </ErrorBoundary>
         </div>
     );
