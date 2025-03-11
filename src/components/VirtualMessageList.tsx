@@ -25,6 +25,7 @@ interface ChatMessage {
     isUser: boolean;
     files?: FileAttachment[];
     scheduling?: SchedulingData;
+    id?: string;
 }
 
 interface VirtualMessageListProps {
@@ -139,19 +140,9 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         onTimeOfDaySelect={onTimeOfDaySelect}
                         onTimeSlotSelect={onTimeSlotSelect}
                         onRequestMoreDates={onRequestMoreDates}
+                        isLoading={isLoading && index === visibleMessages.length - 1 && !message.isUser && !message.content}
                     />
                 ))}
-                {isLoading && (
-                    <div class="message message-ai">
-                        <div class="message-content">
-                            <div class="loading-indicator">
-                                <span class="dot"></span>
-                                <span class="dot"></span>
-                                <span class="dot"></span>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </ErrorBoundary>
         </div>
     );

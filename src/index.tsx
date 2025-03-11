@@ -63,6 +63,7 @@ interface ChatMessage {
 	isUser: boolean;
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
+	id?: string;
 }
 
 const ANIMATION_DURATION = 300;
@@ -89,6 +90,10 @@ export function App() {
 			const urlParams = new URLSearchParams(window.location.search);
 			const positionParam = urlParams.get('position');
 			const teamIdParam = urlParams.get('teamId');
+			
+			console.log('URL search params:', window.location.search);
+			console.log('Parsed position:', positionParam);
+			console.log('Parsed teamId:', teamIdParam);
 			
 			// Set position based on URL parameter
 			if (positionParam === 'widget' || positionParam === 'inline') {
@@ -447,16 +452,32 @@ export function App() {
 			setInputValue('');
 			setPreviewFiles([]);
 			
+			// Add a placeholder AI message immediately that will be updated
+			const placeholderId = Date.now().toString();
+			const placeholderMessage: ChatMessage = {
+				content: '',
+				isUser: false,
+				id: placeholderId
+			};
+			
+			setMessages(prev => [...prev, placeholderMessage]);
+			
 			// Check if this is a scheduled message (could come from API in real implementation)
 			const hasSchedulingIntent = detectSchedulingIntent(message);
 			
 			// This simulates the AI detecting scheduling intent and responding
 			if (hasSchedulingIntent) {
+				// Start typing after a short delay
 				setTimeout(() => {
+					setIsLoading(false); // Remove loading indicator once typing begins
+					
 					// Create a scheduling response using our utility
 					const aiResponse = createSchedulingResponse('initial');
-					setMessages(prev => [...prev, aiResponse]);
-					setIsLoading(false);
+					
+					// Replace the placeholder message with the actual response
+					setMessages(prev => prev.map(msg => 
+						msg.id === placeholderId ? { ...aiResponse, id: placeholderId } : msg
+					));
 				}, 1000);
 				
 				return;
@@ -464,13 +485,18 @@ export function App() {
 			
 			// Simulate normal AI response for non-scheduling messages
 			setTimeout(() => {
+				setIsLoading(false); // Remove loading indicator once typing begins
+				
 				const aiResponse: ChatMessage = {
 					content: `This is a simulated response to: "${message}"`,
-					isUser: false
+					isUser: false,
+					id: placeholderId
 				};
 				
-				setMessages(prev => [...prev, aiResponse]);
-				setIsLoading(false);
+				// Replace the placeholder message with the actual response
+				setMessages(prev => prev.map(msg => 
+					msg.id === placeholderId ? aiResponse : msg
+				));
 			}, 1000);
 			
 		} catch (error) {
@@ -491,26 +517,13 @@ export function App() {
 	const handleSubmit = () => {
 		if (!inputValue.trim() && previewFiles.length === 0) return;
 
-		// Send files first if any
-		if (previewFiles.length > 0) {
-			const fileMessage: ChatMessage = {
-				content: '',
-				isUser: true,
-				files: previewFiles
-			};
-			setMessages(prev => [...prev, fileMessage]);
-		}
-
-		// Send text message if any
-		if (inputValue.trim()) {
-			const textMessage: ChatMessage = {
-				content: inputValue.trim(),
-				isUser: true
-			};
-			setMessages(prev => [...prev, textMessage]);
-		}
-
-		// Reset input
+		const placeholderId = Date.now().toString();
+		const attachments = [...previewFiles];
+		
+		// Send message to API
+		sendMessageToAPI(inputValue.trim(), attachments);
+		
+		// Reset input and focus
 		setInputValue('');
 		setPreviewFiles([]);
 		
@@ -518,10 +531,8 @@ export function App() {
 		const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
 		if (textarea) {
 			textarea.style.height = '24px'; // Reset to minimum height
+			textarea.focus();
 		}
-		
-		// Send message to API
-		sendMessageToAPI(inputValue.trim(), previewFiles);
 	};
 
 	const handleKeyPress = (e: KeyboardEvent) => {

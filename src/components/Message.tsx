@@ -55,6 +55,7 @@ interface MessageProps {
 	onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon' | 'evening') => void;
 	onTimeSlotSelect?: (timeSlot: Date) => void;
 	onRequestMoreDates?: () => void;
+	isLoading?: boolean;
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -162,7 +163,17 @@ const ImagePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => 
 	);
 };
 
-const Message: FunctionComponent<MessageProps> = memo(({ content, isUser, files = [], scheduling, onDateSelect, onTimeOfDaySelect, onTimeSlotSelect, onRequestMoreDates }) => {
+const Message: FunctionComponent<MessageProps> = memo(({ 
+	content, 
+	isUser, 
+	files = [], 
+	scheduling, 
+	onDateSelect, 
+	onTimeOfDaySelect, 
+	onTimeSlotSelect, 
+	onRequestMoreDates,
+	isLoading
+}) => {
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
 	const audioFiles = files.filter(file => file.type.startsWith('audio/'));
 	const videoFiles = files.filter(file => file.type.startsWith('video/'));
@@ -181,9 +192,18 @@ const Message: FunctionComponent<MessageProps> = memo(({ content, isUser, files 
 	return (
 		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
 			<div class="message-content">
-				{/* Render message content first */}
-				{content && (
-					<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
+				{/* Show loading indicator if this message is loading */}
+				{isLoading ? (
+					<div class="loading-indicator">
+						<span class="dot"></span>
+						<span class="dot"></span>
+						<span class="dot"></span>
+					</div>
+				) : (
+					/* Render message content first */
+					content && (
+						<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
+					)
 				)}
 				
 				{/* Then display scheduling components */}
