@@ -91,25 +91,6 @@ export function App() {
 			const positionParam = urlParams.get('position');
 			const teamIdParam = urlParams.get('teamId');
 			
-			// Add a visible debug element to the DOM
-			const debugEl = document.createElement('div');
-			debugEl.style.padding = '10px';
-			debugEl.style.background = '#f0f0f0';
-			debugEl.style.border = '1px solid #ccc';
-			debugEl.style.position = 'fixed';
-			debugEl.style.top = '0';
-			debugEl.style.left = '0';
-			debugEl.style.zIndex = '9999';
-			debugEl.style.fontSize = '12px';
-			debugEl.style.fontFamily = 'monospace';
-			debugEl.innerHTML = `
-				<strong>URL Debug:</strong><br>
-				Search: ${window.location.search}<br>
-				Position: ${positionParam || 'not set'}<br>
-				TeamId: ${teamIdParam || 'not set'}<br>
-			`;
-			document.body.appendChild(debugEl);
-			
 			// Set position based on URL parameter
 			if (positionParam === 'widget' || positionParam === 'inline') {
 				setPosition(positionParam);
@@ -498,21 +479,87 @@ export function App() {
 				return;
 			}
 			
-			// Simulate normal AI response for non-scheduling messages
-			setTimeout(() => {
-				setIsLoading(false); // Remove loading indicator once typing begins
+			// Create message history from existing messages
+			const messageHistory = messages.map(msg => ({
+				role: msg.isUser ? 'user' : 'assistant',
+				content: msg.content
+			}));
+			
+			// Add current message
+			messageHistory.push({
+				role: 'user',
+				content: message
+			});
+			
+			// Make actual API call to ai.blawby.com
+			const apiEndpoint = `https://ai.blawby.com/api/chat?teamId=${encodeURIComponent(teamId)}`;
+			
+			// Set loading to false as we'll start receiving the response
+			setIsLoading(false);
+			
+			try {
+				const response = await fetch(apiEndpoint, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						messages: messageHistory
+					})
+				});
 				
-				const aiResponse: ChatMessage = {
-					content: `This is a simulated response to: "${message}"`,
-					isUser: false,
-					id: placeholderId
-				};
+				if (!response.ok) {
+					throw new Error(`API response error: ${response.status}`);
+				}
 				
-				// Replace the placeholder message with the actual response
+				// Check if the response supports streaming
+				if (response.body) {
+					const reader = response.body.getReader();
+					let aiResponseText = '';
+					
+					while (true) {
+						const { done, value } = await reader.read();
+						
+						if (done) {
+							break;
+						}
+						
+						// Decode and append new text
+						const text = new TextDecoder().decode(value);
+						aiResponseText += text;
+						
+						// Update the placeholder message with the current text
+						setMessages(prev => prev.map(msg => 
+							msg.id === placeholderId ? { 
+								...msg, 
+								content: aiResponseText 
+							} : msg
+						));
+					}
+				} else {
+					// Fallback for non-streaming responses
+					const data = await response.json();
+					const aiResponseText = data.message || data.content || data.response || '';
+					
+					// Update the placeholder message with the response
+					setMessages(prev => prev.map(msg => 
+						msg.id === placeholderId ? { 
+							...msg, 
+							content: aiResponseText 
+						} : msg
+					));
+				}
+			} catch (error) {
+				console.error('Error fetching from AI API:', error);
+				
+				// Update placeholder with error message
 				setMessages(prev => prev.map(msg => 
-					msg.id === placeholderId ? aiResponse : msg
+					msg.id === placeholderId ? { 
+						...msg, 
+						content: "Sorry, there was an error connecting to our AI service. Please try again later." 
+					} : msg
 				));
-			}, 1000);
+			}
 			
 		} catch (error) {
 			console.error('Error sending message:', error);
