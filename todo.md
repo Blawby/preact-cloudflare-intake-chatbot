@@ -137,7 +137,7 @@
    - Add "Schedule" button with icon next to the plus button ✅
    - Implement date selection workflow with 3x3 grid (9 days) UI ✅
    - Add "Show More Dates" button to extend selection beyond initial 9 days ✅
-   - Create time selection with morning/afternoon/evening quick options ✅
+   - Create time selection with morning/afternoon quick options ✅
    - Implement 30-minute increment time slots after time-of-day selection ✅
    - Add calendar icons next to scheduled dates in message history ✅
    - Create visual confirmation card with date, time, and timezone information ✅

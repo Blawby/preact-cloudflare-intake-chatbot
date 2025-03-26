@@ -9,7 +9,7 @@ import {
 interface TimeSlotSelectorProps {
   onTimeSlotSelect: (timeSlot: Date) => void;
   selectedDate: Date;
-  timeOfDay: 'morning' | 'afternoon' | 'evening';
+  timeOfDay: 'morning' | 'afternoon';
 }
 
 /**
@@ -38,7 +38,6 @@ const TimeSlotSelector: FunctionalComponent<TimeSlotSelectorProps> = ({
     switch (timeOfDay) {
       case 'morning': return 'Morning';
       case 'afternoon': return 'Afternoon';
-      case 'evening': return 'Evening';
       default: return '';
     }
   }, [timeOfDay]);
@@ -49,7 +48,7 @@ const TimeSlotSelector: FunctionalComponent<TimeSlotSelectorProps> = ({
   return (
     <div class="time-slot-selector">
       <div class="time-slot-title">
-        <h3>Select a time</h3>
+        <h3>Select a consultation time</h3>
         <div class="time-slot-subtitle">
           {formattedDate}, {timeOfDayLabel} ({timezone})
         </div>

@@ -10,6 +10,9 @@
 export const detectSchedulingIntent = (message: string): boolean => {
   const schedulingKeywords = [
     'schedule',
+    'consultation',
+    'contact',
+    'call',
     'appointment',
     'meeting',
     'book',
@@ -35,7 +38,7 @@ export const createSchedulingResponse = (
   stage: 'initial' | 'date-selection' | 'time-of-day' | 'time-slot' | 'confirmation',
   params: {
     selectedDate?: Date;
-    timeOfDay?: 'morning' | 'afternoon' | 'evening';
+    timeOfDay?: 'morning' | 'afternoon';
     scheduledDateTime?: Date;
   } = {}
 ) => {
@@ -44,7 +47,7 @@ export const createSchedulingResponse = (
   switch (stage) {
     case 'initial':
       return {
-        content: "I'd be happy to help you schedule something. What day works best for you?",
+        content: "I'd be happy to help you request a consultation. What day would you like to be contacted?",
         isUser: false,
         scheduling: {
           type: 'date-selection',
@@ -55,7 +58,7 @@ export const createSchedulingResponse = (
     case 'date-selection':
       if (!selectedDate) throw new Error('Selected date is required for date-selection stage');
       return {
-        content: `Great! What time on ${formatDate(selectedDate)} works best for you?`,
+        content: `Great! What time on ${formatDate(selectedDate)} would be best for your consultation?`,
         isUser: false,
         scheduling: {
           type: 'time-of-day-selection',
@@ -67,7 +70,7 @@ export const createSchedulingResponse = (
       if (!selectedDate || !timeOfDay) 
         throw new Error('Selected date and time of day are required for time-of-day stage');
       return {
-        content: `Great! Here are the available time slots for ${formatDate(selectedDate)} in the ${timeOfDay}:`,
+        content: `Please select a specific time when you'll be available for your consultation on ${formatDate(selectedDate)}:`,
         isUser: false,
         scheduling: {
           type: 'time-slot-selection',
@@ -80,7 +83,7 @@ export const createSchedulingResponse = (
       if (!scheduledDateTime) 
         throw new Error('Scheduled date time is required for confirmation stage');
       return {
-        content: `Perfect! I've scheduled our appointment for ${formatDateTime(scheduledDateTime)}. Is there anything specific you'd like to discuss during our meeting?`,
+        content: `Thank you! Your consultation request has been submitted for ${formatDateTime(scheduledDateTime)}. A team member will contact you at this time. Is there anything specific you'd like to discuss during your consultation?`,
         isUser: false,
         scheduling: {
           type: 'confirmation',
@@ -90,7 +93,7 @@ export const createSchedulingResponse = (
       
     default:
       return {
-        content: "I'd be happy to help you schedule something. What day works best for you?",
+        content: "I'd be happy to help you request a consultation. What day would you like to be contacted?",
         isUser: false,
         scheduling: {
           type: 'date-selection',

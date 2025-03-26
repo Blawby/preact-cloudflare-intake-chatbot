@@ -25,13 +25,13 @@ const ScheduleButton: FunctionalComponent<ScheduleButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       class="schedule-button"
-      aria-label="Schedule"
-      title="Schedule"
+      aria-label="Request Consultation"
+      title="Request Consultation"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <CalendarIcon isHovered={isHovered} />
-      <span class="schedule-button-text">Schedule</span>
+      <span class="schedule-button-text">Consultation</span>
     </button>
   );
 };

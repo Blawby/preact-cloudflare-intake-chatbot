@@ -72,12 +72,12 @@ export const getDateGrid = (startDate: Date = new Date(), days: number = 9): Dat
 /**
  * Get time slots for a specific part of day
  * @param date Base date
- * @param partOfDay 'morning' | 'afternoon' | 'evening'
+ * @param partOfDay 'morning' | 'afternoon' 
  * @returns Array of Date objects representing time slots
  */
 export const getTimeSlots = (
   date: Date, 
-  partOfDay: 'morning' | 'afternoon' | 'evening'
+  partOfDay: 'morning' | 'afternoon'
 ): Date[] => {
   const slots: Date[] = [];
   const slotDate = new Date(date);
@@ -89,9 +89,6 @@ export const getTimeSlots = (
   if (partOfDay === 'afternoon') {
     startHour = 12;
     endHour = 17;
-  } else if (partOfDay === 'evening') {
-    startHour = 17;
-    endHour = 21;
   }
   
   // Create slots in 30-minute increments

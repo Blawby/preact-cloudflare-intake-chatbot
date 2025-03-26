@@ -16,7 +16,7 @@ interface FileAttachment {
 interface SchedulingData {
     type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
     selectedDate?: Date;
-    timeOfDay?: 'morning' | 'afternoon' | 'evening';
+    timeOfDay?: 'morning' | 'afternoon';
     scheduledDateTime?: Date;
 }
 
@@ -32,7 +32,7 @@ interface VirtualMessageListProps {
     messages: ChatMessage[];
     isLoading?: boolean;
     onDateSelect?: (date: Date) => void;
-    onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon' | 'evening') => void;
+    onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
     onTimeSlotSelect?: (timeSlot: Date) => void;
     onRequestMoreDates?: () => void;
 }

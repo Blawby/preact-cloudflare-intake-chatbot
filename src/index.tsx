@@ -54,7 +54,7 @@ interface FileAttachment {
 interface SchedulingData {
 	type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
 	selectedDate?: Date;
-	timeOfDay?: 'morning' | 'afternoon' | 'evening';
+	timeOfDay?: 'morning' | 'afternoon';
 	scheduledDateTime?: Date;
 }
 
@@ -152,20 +152,9 @@ export function App() {
 		const target = e.currentTarget as HTMLTextAreaElement;
 		setInputValue(target.value);
 		
-		// More reliable auto-expand logic
-		// Set to 0 first to force a recalculation of scrollHeight
-		target.style.height = '0';
-		// Add a small buffer to the scrollHeight to avoid text cutting off
-		const newHeight = Math.max(24, target.scrollHeight + 2);
-		target.style.height = `${newHeight}px`;
-		
-		// Force the browser to recalculate layout
-		setTimeout(() => {
-			// Double check the height after browser layout is updated
-			if (target.scrollHeight > parseInt(target.style.height)) {
-				target.style.height = `${target.scrollHeight + 2}px`;
-			}
-		}, 0);
+		// Simple approach: reset height then set to scrollHeight
+		target.style.height = '24px'; // Reset to default height first
+		target.style.height = `${Math.max(24, target.scrollHeight)}px`;
 	}, []);
 
 	// Simple resize handler for window size changes
@@ -257,7 +246,7 @@ export function App() {
 	const handleScheduleStart = () => {
 		// Send user's scheduling request message
 		const schedulingMessage: ChatMessage = {
-			content: "I'd like to schedule something with you.",
+			content: "I'd like to request a consultation.",
 			isUser: true
 		};
 		
@@ -282,7 +271,7 @@ export function App() {
 		}).format(date);
 		
 		const dateSelectionMessage: ChatMessage = {
-			content: `I'd like to schedule on ${formattedDate}.`,
+			content: `I'd like to be contacted on ${formattedDate} for my consultation.`,
 			isUser: true
 		};
 		
@@ -292,7 +281,7 @@ export function App() {
 		// Simulate AI response with time of day options
 		setTimeout(() => {
 			const aiResponse: ChatMessage = {
-				content: `Great! What time on ${formattedDate} works best for you?`,
+				content: `Great! What time on ${formattedDate} would be best for your consultation?`,
 				isUser: false,
 				scheduling: {
 					type: 'time-of-day-selection',
@@ -305,7 +294,7 @@ export function App() {
 		}, 800);
 	};
 	
-	const handleTimeOfDaySelect = (timeOfDay: 'morning' | 'afternoon' | 'evening') => {
+	const handleTimeOfDaySelect = (timeOfDay: 'morning' | 'afternoon') => {
 		// Get the most recent selected date from messages
 		const lastDateSelection = [...messages]
 			.reverse()
@@ -316,8 +305,7 @@ export function App() {
 		// Map time of day to human-readable string
 		const timeOfDayLabel = {
 			morning: 'Morning (8:00 AM - 12:00 PM)',
-			afternoon: 'Afternoon (12:00 PM - 5:00 PM)',
-			evening: 'Evening (5:00 PM - 9:00 PM)'
+			afternoon: 'Afternoon (12:00 PM - 5:00 PM)'
 		}[timeOfDay];
 		
 		// Format the date
@@ -329,7 +317,7 @@ export function App() {
 		
 		// Send user's time of day selection as a message
 		const timeSelectionMessage: ChatMessage = {
-			content: `I prefer ${timeOfDayLabel} on ${formattedDate}.`,
+			content: `I prefer to be contacted in the ${timeOfDayLabel} on ${formattedDate}.`,
 			isUser: true
 		};
 		
@@ -339,7 +327,7 @@ export function App() {
 		// Simulate AI response with specific time slots
 		setTimeout(() => {
 			const aiResponse: ChatMessage = {
-				content: `Great! Here are the available time slots for ${formattedDate} in the ${timeOfDay}:`,
+				content: `Great! Please select a specific time when you'll be available for your consultation on ${formattedDate}:`,
 				isUser: false,
 				scheduling: {
 					type: 'time-slot-selection',
@@ -370,7 +358,7 @@ export function App() {
 		
 		// Send user's time slot selection as a message
 		const timeSlotSelectionMessage: ChatMessage = {
-			content: `I'd like to schedule for ${formattedTime} on ${formattedDate}.`,
+			content: `I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`,
 			isUser: true
 		};
 		
@@ -380,7 +368,7 @@ export function App() {
 		// Simulate AI confirmation response
 		setTimeout(() => {
 			const aiResponse: ChatMessage = {
-				content: `Perfect! I've scheduled our appointment for ${formattedTime} on ${formattedDate}. Is there anything specific you'd like to discuss during our meeting?`,
+				content: `Thank you! Your consultation request has been submitted for ${formattedTime} on ${formattedDate}. A team member will contact you at this time. Is there anything specific you'd like to discuss during your consultation?`,
 				isUser: false,
 				scheduling: {
 					type: 'confirmation',
@@ -589,10 +577,9 @@ export function App() {
 		setInputValue('');
 		setPreviewFiles([]);
 		
-		// Properly reset textarea height after sending message
+		// Just focus the textarea
 		const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
 		if (textarea) {
-			textarea.style.height = '24px'; // Reset to minimum height
 			textarea.focus();
 		}
 	};

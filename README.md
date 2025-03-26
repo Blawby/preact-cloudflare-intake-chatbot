@@ -52,24 +52,24 @@ Try it yourself:
 
 ## 🗓️ Scheduling System
 
-The chat interface includes a comprehensive appointment scheduling system with three ways to initiate scheduling:
+The chat interface includes a comprehensive consultation request system with three ways to initiate a request:
 
-1. **User-initiated via button** - Users can click the "Schedule" button next to the file attachment button
-2. **User-initiated via text** - The AI detects when users ask to schedule something in their messages
-3. **AI-initiated** - The AI can proactively suggest scheduling when appropriate
+1. **User-initiated via button** - Users can click the "Consultation" button next to the file attachment button
+2. **User-initiated via text** - The AI detects when users ask to request a consultation in their messages
+3. **AI-initiated** - The AI can proactively suggest a consultation when appropriate
 
 ### Scheduling Features
 
 - **Intuitive Date Selection** - 3×3 grid of dates with option to show more dates
 - **Time Selection Workflow** 
-  - Morning/Afternoon/Evening quick selection
+  - Morning/Afternoon quick selection
   - 30-minute time slots within selected period
 - **Timezone Awareness** - Automatic detection and display of user's timezone
-- **Confirmation Cards** - Visual confirmation of scheduled appointments in the chat
+- **Confirmation Cards** - Visual confirmation of consultation requests in the chat
 - **Natural Conversation Flow** - All selections appear as natural text messages
-- **Multiple Entry Points** - Start scheduling via button, text request, or AI suggestion
+- **Multiple Entry Points** - Start consultation request via button, text request, or AI suggestion
 
-This scheduling system is built with components that match the application's design language, offering a seamless experience for booking appointments, meetings, or any time-based events.
+This scheduling system is built with components that match the application's design language, offering a seamless experience for requesting consultations, appointments, or any time-based contact from your team.
 
 ## 🧩 Why Preact?
 
