@@ -834,7 +834,54 @@ export function App() {
 						<main className="chat-main">
 							{messages.length === 0 && (
 								<div className="welcome-message">
-									<h1>What can I help with?</h1>
+									<div className="welcome-card">
+										<div className="welcome-icon">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+												<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+												<path d="M9 15h6"></path>
+												<path d="M11 9h1"></path>
+												<path d="M12 9v3"></path>
+												<path d="M8 9h.01"></path>
+												<path d="M16 9h.01"></path>
+											</svg>
+										</div>
+										<h2>Legal AI Assistant</h2>
+										<p>I'm an AI assistant designed to help you get started with your case.</p>
+										<div className="welcome-actions">
+											<p>How can I help today?</p>
+											<div className="welcome-buttons">
+												<button 
+													className="welcome-action-button primary" 
+													onClick={handleScheduleStart}
+												>
+													Request a consultation
+												</button>
+												<button 
+													className="welcome-action-button" 
+													onClick={() => {
+														const servicesMessage: ChatMessage = {
+															content: "Tell me about your firm's services",
+															isUser: true
+														};
+														setMessages([servicesMessage]);
+														setIsLoading(true);
+														
+														// Simulate AI response
+														setTimeout(() => {
+															const aiResponse: ChatMessage = {
+																content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
+																isUser: false
+															};
+															setMessages(prev => [...prev, aiResponse]);
+															setIsLoading(false);
+														}, 1000);
+													}}
+												>
+													Learn about our services
+												</button>
+											</div>
+										</div>
+									</div>
 								</div>
 							)}
 							<VirtualMessageList 
