@@ -6,6 +6,10 @@ compatibility_flags = ["nodejs_compat"]
 [ai]
 binding = "AI"
 
+[[ai.models]]
+binding = "llama"
+model = "@cf/meta/llama-3.1-8b-instruct"
+
 # Fresh resources for AI chatbot
 [[kv_namespaces]]
 binding = "CHAT_SESSIONS"

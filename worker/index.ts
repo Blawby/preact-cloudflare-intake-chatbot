@@ -207,7 +207,7 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
         : 'You are a helpful legal assistant for Blawby AI. Provide clear, professional, and accurate legal information. Always remind users that you are an AI assistant and recommend consulting with a qualified attorney for specific legal advice.';
 
       // Generate AI response
-      const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
+      const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
         messages: [
           { 
             role: 'system', 
