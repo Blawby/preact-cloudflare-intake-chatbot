@@ -479,8 +479,8 @@ export function App() {
 				content: message
 			});
 			
-			// Make actual API call to ai.blawby.com
-			const apiEndpoint = `https://ai.blawby.com/api/chatbot?teamId=${encodeURIComponent(teamId)}`;
+			// Make actual API call to local backend
+			const apiEndpoint = `/api/chat`;
 			
 			// Set loading to false as we'll start receiving the response
 			setIsLoading(false);
@@ -492,7 +492,8 @@ export function App() {
 						'Content-Type': 'application/json'
 					},
 					body: JSON.stringify({
-						messages: messageHistory
+						messages: messageHistory,
+						teamId: teamId
 					})
 				});
 				
@@ -500,43 +501,22 @@ export function App() {
 					throw new Error(`API response error: ${response.status}`);
 				}
 				
-				// Check if the response supports streaming
-				if (response.body) {
-					const reader = response.body.getReader();
-					let aiResponseText = '';
-					
-					while (true) {
-						const { done, value } = await reader.read();
-						
-						if (done) {
-							break;
-						}
-						
-						// Decode and append new text
-						const text = new TextDecoder().decode(value);
-						aiResponseText += text;
-						
-						// Update the placeholder message with the current text
-						setMessages(prev => prev.map(msg => 
-							msg.id === placeholderId ? { 
-								...msg, 
-								content: aiResponseText 
-							} : msg
-						));
-					}
-				} else {
-					// Fallback for non-streaming responses
-					const data = await response.json();
-					const aiResponseText = data.message || data.content || data.response || '';
-					
-					// Update the placeholder message with the response
-					setMessages(prev => prev.map(msg => 
-						msg.id === placeholderId ? { 
-							...msg, 
-							content: aiResponseText 
-						} : msg
-					));
-				}
+				// Handle JSON response (non-streaming)
+				const data = await response.json();
+				console.log('API Response:', data); // Debug log
+				console.log('API Response type:', typeof data); // Debug log
+				console.log('API Response keys:', Object.keys(data)); // Debug log
+				const aiResponseText = data.response || data.message || data.content || '';
+				console.log('Extracted text:', aiResponseText); // Debug log
+				console.log('Extracted text type:', typeof aiResponseText); // Debug log
+				
+				// Update the placeholder message with the response
+				setMessages(prev => prev.map(msg => 
+					msg.id === placeholderId ? { 
+						...msg, 
+						content: aiResponseText 
+					} : msg
+				));
 			} catch (error) {
 				console.error('Error fetching from AI API:', error);
 				

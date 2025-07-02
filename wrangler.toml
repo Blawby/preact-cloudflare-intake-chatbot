@@ -1,0 +1,31 @@
+name = "blawby-ai-chatbot"
+main = "worker/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[ai]
+binding = "AI"
+
+[[ai.models]]
+binding = "llama"
+model = "@cf/meta/llama-3-8b-instruct"
+
+# Fresh resources for AI chatbot
+[[kv_namespaces]]
+binding = "CHAT_SESSIONS"
+id = "9ca96bd55b2d4455bad3fe0cda914f14"  # BLAWBY_AI_CHAT_SESSIONS
+preview_id = "e7bbadb101d44a828fb3ef34528b3540"  # BLAWBY_AI_CHAT_SESSIONS_preview
+experimental_remote = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "blawby-ai-chatbot"
+database_id = "47496061-cc87-44dd-8fe1-699760a9311d"  # blawby-ai-chatbot
+experimental_remote = true
+
+# Domain configuration for ai.blawby.com
+[env.production]
+name = "blawby-ai-chatbot"
+routes = [
+  { pattern = "ai.blawby.com/api/*", zone_name = "blawby.com" }
+] 

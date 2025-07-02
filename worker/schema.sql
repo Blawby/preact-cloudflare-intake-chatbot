@@ -1,0 +1,64 @@
+-- Blawby AI Chatbot Database Schema
+
+-- Teams table
+CREATE TABLE teams (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  domain TEXT,
+  config JSON,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Conversations table
+CREATE TABLE conversations (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  user_info JSON,
+  status TEXT DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
+-- Messages table
+CREATE TABLE messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  is_user BOOLEAN NOT NULL,
+  metadata JSON,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);
+
+-- Services table
+CREATE TABLE services (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  requires_payment BOOLEAN DEFAULT FALSE,
+  payment_amount INTEGER,
+  intake_form JSON,
+  active BOOLEAN DEFAULT TRUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
+-- Appointments table
+CREATE TABLE appointments (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  scheduled_date DATETIME NOT NULL,
+  status TEXT DEFAULT 'pending',
+  payment_status TEXT DEFAULT 'pending',
+  payment_id TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);
+
+-- Insert default team
+INSERT INTO teams (id, name, config) VALUES 
+('test-team', 'Test Law Firm', '{"aiModel": "llama", "requiresPayment": false}'); 
