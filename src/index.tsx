@@ -91,6 +91,16 @@ export function App() {
 			const positionParam = urlParams.get('position');
 			const teamIdParam = urlParams.get('teamId');
 			
+			// Check if we're on the root domain with no parameters - redirect to inline demo
+			if (window.location.hostname === 'ai.blawby.com' && 
+				window.location.pathname === '/' && 
+				!positionParam && 
+				!teamIdParam) {
+				// Redirect to inline demo
+				window.location.href = 'https://ai.blawby.com/?position=inline&teamId=demo';
+				return;
+			}
+			
 			// Set position based on URL parameter
 			if (positionParam === 'widget' || positionParam === 'inline') {
 				setPosition(positionParam);

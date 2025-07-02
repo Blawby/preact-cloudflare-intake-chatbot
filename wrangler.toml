@@ -16,7 +16,7 @@ experimental_remote = true
 [[d1_databases]]
 binding = "DB"
 database_name = "blawby-ai-chatbot"
-database_id = "47496061-cc87-44dd-8fe1-699760a9311d"  # blawby-ai-chatbot
+database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf"  # blawby-ai-chatbot
 experimental_remote = true
 
 # Domain configuration for ai.blawby.com
@@ -30,5 +30,5 @@ kv_namespaces = [
   { binding = "CHAT_SESSIONS", id = "9ca96bd55b2d4455bad3fe0cda914f14", preview_id = "e7bbadb101d44a828fb3ef34528b3540", experimental_remote = true }
 ]
 d1_databases = [
-  { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "47496061-cc87-44dd-8fe1-699760a9311d", experimental_remote = true }
+  { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf", experimental_remote = true }
 ] 
