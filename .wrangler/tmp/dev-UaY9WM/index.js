@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-v4NyC9/checked-fetch.js
+// .wrangler/tmp/bundle-NjqvUd/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -189,7 +189,7 @@ async function handleChat(request, env, corsHeaders) {
         teamConfig = mockTeams.find((team) => team.id === body.teamId);
       }
       const systemPrompt = teamConfig ? `You are a helpful legal assistant for ${teamConfig.name}. Provide clear, professional, and accurate legal information. Always remind users that you are an AI assistant and recommend consulting with a qualified attorney for specific legal advice.${teamConfig.config.requiresPayment ? ` Consultation fee: $${teamConfig.config.consultationFee}.` : " Free consultation available."}` : "You are a helpful legal assistant for Blawby AI. Provide clear, professional, and accurate legal information. Always remind users that you are an AI assistant and recommend consulting with a qualified attorney for specific legal advice.";
-      const response = await env.AI.run("@cf/meta/llama-3-8b-instruct", {
+      const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
         messages: [
           {
             role: "system",
@@ -330,7 +330,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-v4NyC9/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-NjqvUd/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -362,7 +362,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-v4NyC9/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-NjqvUd/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

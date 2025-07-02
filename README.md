@@ -2,6 +2,7 @@
 
 A full-featured, open-source **ChatGPT-like legal assistant** built with Preact and powered by Cloudflare Workers AI, D1, and KV. This project is designed for easy self-hosting, extensibility, and privacy-first deployments.
 
+**Live Demo:** [ai.blawby.com](https://ai.blawby.com)  
 **Repo:** [github.com/pcl-labs/preact-cloudflare-intake-chatbot](https://github.com/pcl-labs/preact-cloudflare-intake-chatbot)
 
 ---
@@ -17,6 +18,7 @@ A full-featured, open-source **ChatGPT-like legal assistant** built with Preact 
 - **Team-specific configuration**
 - **API-first**: Easily connect your own frontend or use the included Preact UI
 - **Open source, privacy-first, and self-hostable**
+- **Production-ready** with custom domain support
 
 ---
 
@@ -145,10 +147,27 @@ Each team has different consultation fees and specialties. The AI responses are 
 
 ### Deploy the Worker
 ```bash
+# Deploy to default environment
 wrangler deploy
+
+# Deploy to production environment (if configured)
+wrangler deploy --env production
 ```
 - Your API will be live at `https://<your-worker>.<your-account>.workers.dev/`
 - You can map a custom domain via Cloudflare dashboard or `wrangler.toml`
+
+### Custom Domain Setup
+1. **Configure DNS**: In your Cloudflare DNS settings, create a CNAME record pointing to your Worker
+2. **Set Proxy Status**: Ensure the DNS record is set to **Proxied** (orange cloud), not "DNS only"
+3. **Configure Routes**: Add custom domain routes in your `wrangler.toml`:
+   ```toml
+   [env.production]
+   name = "your-worker-name"
+   routes = [
+     { pattern = "your-domain.com/api/*", zone_name = "your-domain.com" }
+   ]
+   ```
+4. **Deploy**: Run `wrangler deploy --env production`
 
 ### Deploy the Frontend
 - Build the frontend:
@@ -156,6 +175,22 @@ wrangler deploy
   npm run build
   ```
 - Deploy to your preferred static host (Cloudflare Pages, Vercel, Netlify, etc.)
+
+---
+
+## 🔧 Production Status
+
+✅ **Backend**: Cloudflare Worker deployed and operational  
+✅ **AI Integration**: Llama 3.1 8B model working  
+✅ **Custom Domain**: [ai.blawby.com](https://ai.blawby.com) live  
+✅ **API Endpoints**: All endpoints responding correctly  
+✅ **Team Configuration**: Multiple teams with different pricing  
+✅ **Database**: D1 and KV bindings configured  
+
+**Live API Endpoints:**
+- Health: `https://ai.blawby.com/api/health`
+- Teams: `https://ai.blawby.com/api/teams`
+- Chat: `https://ai.blawby.com/api/chat`
 
 ---
 
