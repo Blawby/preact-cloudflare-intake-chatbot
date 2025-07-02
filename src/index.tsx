@@ -492,9 +492,6 @@ export function App() {
 			// Make actual API call to local backend
 			const apiEndpoint = `/api/chat`;
 			
-			// Set loading to false as we'll start receiving the response
-			setIsLoading(false);
-			
 			try {
 				const response = await fetch(apiEndpoint, {
 					method: 'POST',
@@ -527,6 +524,9 @@ export function App() {
 						content: aiResponseText 
 					} : msg
 				));
+				
+				// Set loading to false after response is received
+				setIsLoading(false);
 			} catch (error) {
 				console.error('Error fetching from AI API:', error);
 				

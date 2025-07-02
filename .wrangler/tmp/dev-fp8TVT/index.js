@@ -188,7 +188,7 @@ async function handleChat(request, env, corsHeaders) {
         ];
         teamConfig = mockTeams.find((team) => team.id === body.teamId);
       }
-      const systemPrompt = teamConfig ? `You are a helpful legal assistant for ${teamConfig.name}. Provide clear, professional, and accurate legal information. Always remind users that you are an AI assistant and recommend consulting with a qualified attorney for specific legal advice.${teamConfig.config.requiresPayment ? ` Consultation fee: $${teamConfig.config.consultationFee}.` : " Free consultation available."}` : "You are a helpful legal assistant for Blawby AI. Provide clear, professional, and accurate legal information. Always remind users that you are an AI assistant and recommend consulting with a qualified attorney for specific legal advice.";
+      const systemPrompt = teamConfig ? `You are a concise legal assistant for ${teamConfig.name}. Keep responses brief (2-3 sentences max) and actionable. Focus on immediate next steps. Always remind users you're an AI assistant and recommend consulting a qualified attorney.${teamConfig.config.requiresPayment ? ` Consultation fee: $${teamConfig.config.consultationFee}.` : " Free consultation available."}` : "You are a concise legal assistant for Blawby AI. Keep responses brief (2-3 sentences max) and actionable. Focus on immediate next steps. Always remind users you're an AI assistant and recommend consulting a qualified attorney.";
       const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
         messages: [
           {
@@ -197,7 +197,11 @@ async function handleChat(request, env, corsHeaders) {
           },
           ...body.messages
         ],
-        stream: false
+        stream: false,
+        max_tokens: 150,
+        // Limit response length
+        temperature: 0.7
+        // Slightly more focused
       });
       return new Response(JSON.stringify({
         response: response.response,
