@@ -25,17 +25,17 @@
 @media (prefers-color-scheme: dark) {
 	:root {
 		/* Dark theme colors */
-		--bg-color: #1a1a1a;
-		--bg-color-rgb: 26, 26, 26;
+		--bg-color: #030712;
+		--bg-color-rgb: 3, 7, 18;
 		--text-color: #ffffff;
-		--message-bg-user: #2a2a2a;
-		--message-bg-ai: #1e1e1e;
-		--border-color: #2f2f2f;
-		--input-bg: #303030;
-		--hover-color: #2a2a2a;
-		--accent-color: #aaaaaa;
-		--skeleton-start: rgba(70, 70, 70, 0.1);
-		--skeleton-end: rgba(90, 90, 90, 0.3);
+		--message-bg-user: #111827;
+		--message-bg-ai: #0a0f1a;
+		--border-color: #10131a;
+		--input-bg: #0a0f1a;
+		--hover-color: #111827;
+		--accent-color: #64748b;
+		--skeleton-start: rgba(10, 15, 26, 0.1);
+		--skeleton-end: rgba(10, 15, 26, 0.3);
 	}
 }
 
@@ -56,7 +56,7 @@ body {
 #app {
 	height: 100vh;
 	width: 100vw;
-	max-width: 100%;
+	max-width: none;
 	margin: 0;
 }
 
@@ -303,8 +303,6 @@ body {
 	overflow-y: auto;
 	padding: 1rem;
 	scroll-behavior: smooth;
-	max-width: 768px;
-	margin: 0 auto;
 	width: 100%;
 	scrollbar-width: thin;
 	scrollbar-color: transparent transparent;
@@ -349,9 +347,7 @@ body {
 .input-container {
 	display: flex;
 	flex-direction: column;
-	max-width: 768px;
 	width: 100%;
-	margin: 0 auto;
 	position: relative;
 	background-color: var(--input-bg);
 	border: 1px solid var(--border-color);

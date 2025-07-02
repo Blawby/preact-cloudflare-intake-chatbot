@@ -35,6 +35,7 @@ interface VirtualMessageListProps {
     onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
     onTimeSlotSelect?: (timeSlot: Date) => void;
     onRequestMoreDates?: () => void;
+    position?: 'widget' | 'inline';
 }
 
 const BATCH_SIZE = 20;
@@ -47,7 +48,8 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     onDateSelect,
     onTimeOfDaySelect,
     onTimeSlotSelect,
-    onRequestMoreDates
+    onRequestMoreDates,
+    position = 'widget'
 }) => {
     const listRef = useRef<HTMLDivElement>(null);
     const [startIndex, setStartIndex] = useState(Math.max(0, messages.length - BATCH_SIZE));
@@ -118,7 +120,14 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     const visibleMessages = messages.slice(startIndex, endIndex);
 
     return (
-        <div class="message-list" ref={listRef}>
+        <div 
+            class="message-list" 
+            ref={listRef}
+            style={{
+                maxWidth: position === 'inline' ? 'none' : '768px',
+                margin: position === 'inline' ? '0' : '0 auto'
+            }}
+        >
             {startIndex > 0 && (
                 <div class="load-more-trigger">
                     <div class="loading-indicator">

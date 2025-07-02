@@ -881,9 +881,13 @@ export function App() {
 								onTimeOfDaySelect={handleTimeOfDaySelect}
 								onTimeSlotSelect={handleTimeSlotSelect}
 								onRequestMoreDates={handleRequestMoreDates}
+								position={position}
 							/>
 							<div className="input-area" role="form" aria-label="Message composition">
-								<div className="input-container">
+								<div className="input-container" style={{
+									maxWidth: position === 'inline' ? 'none' : '768px',
+									margin: position === 'inline' ? '0' : '0 auto'
+								}}>
 									{previewFiles.length > 0 && (
 										<div className="input-preview" role="list" aria-label="File attachments">
 											{previewFiles.map((file, index) => (
