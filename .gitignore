@@ -40,6 +40,10 @@ coverage
 .env.test.local
 .env.production.local
 
+# Cloudflare configuration (contains sensitive IDs)
+wrangler.toml
+.wrangler/
+
 # Misc
 .cache
 .parcel-cache

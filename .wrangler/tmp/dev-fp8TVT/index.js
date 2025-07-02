@@ -92,7 +92,7 @@ var worker_default = {
         <div class="url">/api/health</div>
         <div class="description">Health check endpoint to verify API status</div>
         <div class="example">
-curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/health"
+curl -X GET "https://your-worker.your-account.workers.dev/api/health"
         </div>
     </div>
 
@@ -101,7 +101,7 @@ curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/health"
         <div class="url">/api/teams</div>
         <div class="description">Retrieve available law firm teams and their configurations</div>
         <div class="example">
-curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams"
+curl -X GET "https://your-worker.your-account.workers.dev/api/teams"
         </div>
     </div>
 
@@ -110,7 +110,7 @@ curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams"
         <div class="url">/api/chat</div>
         <div class="description">Send messages to the AI legal assistant and receive responses</div>
         <div class="example">
-curl -X POST "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/chat" \\
+curl -X POST "https://your-worker.your-account.workers.dev/api/chat" \\
   -H "Content-Type: application/json" \\
   -d '{
     "messages": [
@@ -125,7 +125,7 @@ curl -X POST "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/chat" \\
     <h2>\u{1F527} API Status</h2>
     <div class="status ok">\u2705 API is operational</div>
     <div class="status ok">\u2705 AI Model: Llama 3.1 8B</div>
-    <div class="status ok">\u2705 Database: D1 (blawby-ai-chatbot)</div>
+    <div class="status ok">\u2705 Database: D1 (your-ai-chatbot)</div>
     <div class="status ok">\u2705 KV Storage: Chat Sessions</div>
 
     <h2>\u{1F4DA} Documentation</h2>

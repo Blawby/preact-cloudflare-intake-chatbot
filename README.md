@@ -47,17 +47,20 @@ npm install
 ```
 
 ### 3. Configure Cloudflare (Backend)
-- Copy `wrangler.toml` and update with your own D1, KV, and (optionally) R2 resource IDs.
+- Copy `wrangler.template.toml` to `wrangler.toml` and update with your own resource IDs:
+  ```bash
+  cp wrangler.template.toml wrangler.toml
+  ```
 - Create resources if needed:
   ```bash
-  wrangler d1 create blawby-ai-chatbot
-  wrangler kv namespace create "BLAWBY_AI_CHAT_SESSIONS"
-  wrangler kv namespace create "BLAWBY_AI_CHAT_SESSIONS" --preview
-  # (Optional) wrangler r2 bucket create blawby-ai-files
+  wrangler d1 create your-ai-chatbot
+  wrangler kv namespace create "YOUR_AI_CHAT_SESSIONS"
+  wrangler kv namespace create "YOUR_AI_CHAT_SESSIONS" --preview
+  # (Optional) wrangler r2 bucket create your-ai-files
   ```
 - Apply the schema:
   ```bash
-  wrangler d1 execute blawby-ai-chatbot --file worker/schema.sql
+  wrangler d1 execute your-ai-chatbot --file worker/schema.sql
   ```
 - Log in to Cloudflare:
   ```bash
@@ -73,7 +76,7 @@ npm install
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "blawby-ai-chatbot"
+database_name = "your-ai-chatbot"
 database_id = "your-d1-database-id"
 experimental_remote = true
 
@@ -191,6 +194,22 @@ wrangler deploy --env production
 - Health: `https://ai.blawby.com/api/health`
 - Teams: `https://ai.blawby.com/api/teams`
 - Chat: `https://ai.blawby.com/api/chat`
+
+---
+
+## 🔒 Security Notes
+
+**⚠️ Important:** This repository contains sensitive configuration files that should not be committed to version control:
+
+- `wrangler.toml` - Contains your Cloudflare resource IDs and account information
+- `.wrangler/` - Contains local development state and cached data
+
+These files are automatically ignored by `.gitignore`. Always use `wrangler.template.toml` as a starting point and never commit your actual `wrangler.toml` file.
+
+### Project Structure (For Reference Only)
+- **Frontend**: `blawby-ai-chatbot-frontend` → `ai.blawby.com`
+- **Backend**: `blawby-ai-chatbot` → API endpoints
+- **Original**: `preact-chat-gpt-interface` → `chat.blawby.com` (separate project)
 
 ---
 
