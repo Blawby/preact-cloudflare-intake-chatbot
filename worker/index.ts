@@ -393,7 +393,12 @@ async function handleForms(request: Request, env: Env, corsHeaders: Record<strin
           };
         }
         if (teamConfig) {
-          await sendEmailNotifications(body, formId, teamConfig, env);
+          try {
+            await sendEmailNotifications(body, formId, teamConfig, env);
+          } catch (error) {
+            console.warn('Email notifications failed:', error.message);
+            // Continue without email - form submission still succeeds
+          }
         } else {
           console.warn(`Team with ID ${body.teamId} not found for form submission ${formId}`);
         }
@@ -473,6 +478,12 @@ async function sendEmailNotifications(
   teamConfig: any,
   env: Env
 ): Promise<void> {
+  // Skip email if no API key is configured
+  if (!env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not configured, skipping email notifications');
+    return;
+  }
+  
   try {
     // Get team owner email (you'll need to add this to your teams table)
     const teamOwnerEmail = teamConfig?.config?.ownerEmail || 'admin@blawby.com';
