@@ -10,6 +10,7 @@ import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
+import { getChatEndpoint } from './config/api';
 import './style.css';
 
 // Create lazy-loaded components
@@ -489,8 +490,8 @@ export function App() {
 				content: message
 			});
 			
-			// Make actual API call to local backend
-			const apiEndpoint = `/api/chat`;
+			// Make actual API call using configuration
+			const apiEndpoint = getChatEndpoint();
 			
 			try {
 				const response = await fetch(apiEndpoint, {

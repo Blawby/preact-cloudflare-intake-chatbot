@@ -131,7 +131,19 @@ curl -X POST http://localhost:8787/api/chat \
 ### Frontend Testing
 - Open [http://localhost:5173](http://localhost:5173) in your browser
 - Use the chat UI, file upload, and scheduling features
-- The frontend will call the backend API for chat and team info
+- The frontend will call the deployed API at `https://blawby-ai-chatbot.paulchrisluke.workers.dev`
+
+### Quick Development Setup
+Use the development script to start both frontend and backend:
+```bash
+./scripts/dev.sh
+```
+
+This will start:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:8787
+
+To switch between local and deployed API, edit `src/config/api.ts` and change `API_MODE` to `'local'` or `'deployed'`.
 
 ### 🎯 Demo URLs
 

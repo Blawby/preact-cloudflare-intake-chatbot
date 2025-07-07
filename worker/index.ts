@@ -94,7 +94,7 @@ export default {
         <div class="url">/api/health</div>
         <div class="description">Health check endpoint to verify API status</div>
         <div class="example">
-curl -X GET "https://your-worker.your-account.workers.dev/api/health"
+curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/health"
         </div>
     </div>
 
@@ -103,7 +103,7 @@ curl -X GET "https://your-worker.your-account.workers.dev/api/health"
         <div class="url">/api/teams</div>
         <div class="description">Retrieve available law firm teams and their configurations</div>
         <div class="example">
-curl -X GET "https://your-worker.your-account.workers.dev/api/teams"
+curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams"
         </div>
     </div>
 
@@ -112,7 +112,7 @@ curl -X GET "https://your-worker.your-account.workers.dev/api/teams"
         <div class="url">/api/chat</div>
         <div class="description">Send messages to the AI legal assistant and receive responses</div>
         <div class="example">
-curl -X POST "https://your-worker.your-account.workers.dev/api/chat" \\
+curl -X POST "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/chat" \\
   -H "Content-Type: application/json" \\
   -d '{
     "messages": [
