@@ -10,7 +10,15 @@ import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
-import { getChatEndpoint } from './config/api';
+import { getChatEndpoint, getFormsEndpoint } from './config/api';
+import { detectIntent, getIntentResponse } from './utils/intentDetection';
+import { 
+  FormState, 
+  processFormStep, 
+  startConversationalForm, 
+  extractContactInfo,
+  formatFormData 
+} from './utils/conversationalForm';
 import './style.css';
 
 // Create lazy-loaded components
@@ -81,6 +89,11 @@ export function App() {
 	const messageListRef = useRef<HTMLDivElement>(null);
 	const [isRecording, setIsRecording] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
+	const [formState, setFormState] = useState<FormState>({
+		step: 'idle',
+		data: {},
+		isActive: false
+	});
 
 	// Track drag counter for better handling of nested elements
 	const dragCounter = useRef(0);
@@ -457,6 +470,34 @@ export function App() {
 			
 			setMessages(prev => [...prev, placeholderMessage]);
 			
+			// Check if we're in an active form collection state
+			if (formState.isActive) {
+				// Process form step
+				const extractedInfo = extractContactInfo(message);
+				const { newState, response, shouldSubmit } = processFormStep(formState, message, extractedInfo);
+				
+				setFormState(newState);
+				
+				// Update the placeholder message with form response
+				setTimeout(() => {
+					setIsLoading(false);
+					setMessages(prev => prev.map(msg => 
+						msg.id === placeholderId ? { 
+							...msg, 
+							content: response,
+							id: placeholderId 
+						} : msg
+					));
+					
+					// Submit form if complete
+					if (shouldSubmit && newState.data.email && newState.data.phone && newState.data.caseDetails) {
+						submitContactForm(newState.data);
+					}
+				}, 1000);
+				
+				return;
+			}
+			
 			// Check if this is a scheduled message (could come from API in real implementation)
 			const hasSchedulingIntent = detectSchedulingIntent(message);
 			
@@ -518,6 +559,11 @@ export function App() {
 				console.log('Extracted text:', aiResponseText); // Debug log
 				console.log('Extracted text type:', typeof aiResponseText); // Debug log
 				
+				// Check if we should start a form
+				if (data.shouldStartForm && !formState.isActive) {
+					setFormState(startConversationalForm());
+				}
+				
 				// Update the placeholder message with the response
 				setMessages(prev => prev.map(msg => 
 					msg.id === placeholderId ? { 
@@ -547,6 +593,52 @@ export function App() {
 			// Add error message
 			const errorMessage: ChatMessage = {
 				content: "Sorry, there was an error processing your request. Please try again.",
+				isUser: false
+			};
+			
+			setMessages(prev => [...prev, errorMessage]);
+		}
+	};
+
+	// Submit contact form to API
+	const submitContactForm = async (formData: any) => {
+		try {
+			const formPayload = formatFormData(formData, teamId);
+			const response = await fetch(getFormsEndpoint(), {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(formPayload)
+			});
+
+			if (response.ok) {
+				const result = await response.json();
+				console.log('Form submitted successfully:', result);
+				
+				// Add confirmation message
+				const confirmationMessage: ChatMessage = {
+					content: "✅ Your information has been submitted successfully! A lawyer will review your case and contact you within 24 hours. Thank you for choosing our firm.",
+					isUser: false
+				};
+				
+				setMessages(prev => [...prev, confirmationMessage]);
+				
+				// Reset form state
+				setFormState({
+					step: 'idle',
+					data: {},
+					isActive: false
+				});
+			} else {
+				throw new Error('Form submission failed');
+			}
+		} catch (error) {
+			console.error('Error submitting form:', error);
+			
+			// Add error message
+			const errorMessage: ChatMessage = {
+				content: "Sorry, there was an error submitting your information. Please try again or contact us directly.",
 				isUser: false
 			};
 			

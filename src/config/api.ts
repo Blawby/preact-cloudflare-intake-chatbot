@@ -26,6 +26,11 @@ export const getChatEndpoint = () => {
   return `${config.baseUrl}${config.chatEndpoint}`;
 };
 
+export const getFormsEndpoint = () => {
+  const config = getApiConfig();
+  return `${config.baseUrl}/api/forms`;
+};
+
 export const getTeamsEndpoint = () => {
   const config = getApiConfig();
   return `${config.baseUrl}${config.teamsEndpoint}`;

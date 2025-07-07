@@ -160,7 +160,47 @@ Each team has different consultation fees and specialties. The AI responses are 
 
 ## 🌐 Deployment
 
-### Deploy the Worker
+### GitHub Actions (Recommended)
+
+The project includes GitHub Actions for automated deployment. Set up these secrets in your GitHub repository:
+
+- `CLOUDFLARE_API_TOKEN` - Your Cloudflare API token
+- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID  
+- `CLOUDFLARE_PAGES_PROJECT_NAME` - Your Cloudflare Pages project name
+
+The workflow will automatically:
+1. Type check and lint the code
+2. Build the frontend
+3. Deploy the backend worker
+4. Sync team configurations to the database
+5. Deploy the frontend to Cloudflare Pages
+
+### Environment Variables
+
+Copy `env.example` to `.env` and update with your actual values:
+
+```bash
+cp env.example .env
+```
+
+**Required Environment Variables:**
+
+**Cloudflare Configuration:**
+- `CLOUDFLARE_API_TOKEN` - Your Cloudflare API token
+- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
+
+**Email Configuration:**
+- `RESEND_API_KEY` - Your Resend API key for email notifications
+
+**Frontend Configuration:**
+- `VITE_API_BASE_URL` - Your deployed worker URL
+
+**GitHub Actions (if using automated deployment):**
+- `CLOUDFLARE_PAGES_PROJECT_NAME` - Your Cloudflare Pages project name
+
+### Manual Deployment
+
+#### Deploy the Worker
 ```bash
 # Deploy to default environment
 wrangler deploy
@@ -171,7 +211,7 @@ wrangler deploy --env production
 - Your API will be live at `https://<your-worker>.<your-account>.workers.dev/`
 - You can map a custom domain via Cloudflare dashboard or `wrangler.toml`
 
-### Custom Domain Setup
+#### Custom Domain Setup
 1. **Configure DNS**: In your Cloudflare DNS settings, create a CNAME record pointing to your Worker
 2. **Set Proxy Status**: Ensure the DNS record is set to **Proxied** (orange cloud), not "DNS only"
 3. **Configure Routes**: Add custom domain routes in your `wrangler.toml`:
@@ -184,7 +224,7 @@ wrangler deploy --env production
    ```
 4. **Deploy**: Run `wrangler deploy --env production`
 
-### Deploy the Frontend
+#### Deploy the Frontend
 - Build the frontend:
   ```bash
   npm run build
@@ -250,3 +290,56 @@ MIT License. See [LICENSE](./LICENSE).
 ## 📝 Maintainers
 - [@pcl-labs](https://github.com/pcl-labs)
 - [@paulchrisluke](https://github.com/paulchrisluke)
+
+## Team Management (teams.json)
+
+You can manage all law firm teams and their configuration in a single JSON file:
+
+```
+[
+  {
+    "id": "demo",
+    "name": "Demo Law Firm",
+    "config": {
+      "aiModel": "llama",
+      "consultationFee": 0,
+      "requiresPayment": false,
+      "ownerEmail": "paulchrisluke@gmail.com",
+      "availableServices": ["general-consultation", "legal-advice"],
+      "domain": "demo.blawby.com",
+      "description": "Demo law firm for testing purposes"
+    }
+  }
+]
+```
+
+### Team Configuration Options
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique team identifier |
+| `name` | string | Display name for the law firm |
+| `config.aiModel` | string | AI model to use (e.g., "llama") |
+| `config.consultationFee` | number | Consultation fee in dollars |
+| `config.requiresPayment` | boolean | Whether payment is required |
+| `config.ownerEmail` | string | Email for lead notifications |
+| `config.availableServices` | string[] | Array of practice areas |
+| `config.domain` | string | Custom domain for the team |
+| `config.description` | string | Team description |
+| `config.paymentLink` | string | Payment link URL (e.g. Stripe Checkout) |
+
+- Edit `teams.json` to add or update teams.
+- The `ownerEmail` field is used for lead notification emails.
+
+### Syncing Teams to D1
+
+Use the provided script to upsert (insert or update) all teams in the JSON to your production D1 database:
+
+```sh
+node sync-teams.js
+```
+
+- This script is **DRY for upsert** (insert/update) only. It does **not** delete teams from the database if you remove them from the JSON. (No full REST: no delete.)
+- To remove a team, you must delete it manually from the D1 database.
+
+---

@@ -4,6 +4,7 @@ export interface Env {
   AI: any;
   DB: D1Database;
   CHAT_SESSIONS: KVNamespace;
+  RESEND_API_KEY: string;
 }
 
 interface ChatMessage {
@@ -15,6 +16,14 @@ interface ChatRequest {
   messages: ChatMessage[];
   teamId?: string;
   sessionId?: string;
+}
+
+interface ContactFormSubmission {
+  email: string;
+  phoneNumber: string;
+  caseDetails: string;
+  teamId: string;
+  conversationId?: string;
 }
 
 export default {
@@ -42,6 +51,10 @@ export default {
       
       if (path.startsWith('/api/teams')) {
         return handleTeams(request, env, corsHeaders);
+      }
+
+      if (path.startsWith('/api/forms')) {
+        return handleForms(request, env, corsHeaders);
       }
 
       // Health check
@@ -193,40 +206,101 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
       // Get team configuration if teamId is provided
       let teamConfig = null;
       if (body.teamId) {
-        // In a real implementation, this would query the database
-        const mockTeams = [
-          { id: 'test-team', name: 'Test Law Firm', config: { consultationFee: 150, requiresPayment: true } },
-          { id: 'family-law-team', name: 'Family Law Specialists', config: { consultationFee: 200, requiresPayment: true } },
-          { id: 'criminal-defense-team', name: 'Criminal Defense Attorneys', config: { consultationFee: 300, requiresPayment: true } },
-          { id: 'demo', name: 'Demo Law Firm', config: { consultationFee: 0, requiresPayment: false } }
-        ];
-        teamConfig = mockTeams.find(team => team.id === body.teamId);
+        // Query the database for the team config
+        const teamRow = await env.DB.prepare(`SELECT id, name, config FROM teams WHERE id = ?`).bind(body.teamId).first();
+        if (teamRow) {
+          let configObj = {};
+          try {
+            configObj = JSON.parse(teamRow.config);
+          } catch (e) {
+            console.warn('Failed to parse team config JSON:', e);
+          }
+          teamConfig = {
+            id: teamRow.id,
+            name: teamRow.name,
+            config: configObj
+          };
+        }
       }
 
-      // Create team-specific system prompt
+      // Enhanced intent detection
+      const lastUserMessage = body.messages[body.messages.length - 1]?.content || '';
+      const lowerMessage = lastUserMessage.toLowerCase();
+      
+      let detectedIntent = 'general_inquiry';
+      
+      // Check for urgent legal help / consultation requests
+      if (lowerMessage.includes('lawyer') || lowerMessage.includes('attorney') || lowerMessage.includes('legal help') || 
+          lowerMessage.includes('asap') || lowerMessage.includes('urgent') || lowerMessage.includes('emergency') ||
+          lowerMessage.includes('need help') || lowerMessage.includes('talk to') || lowerMessage.includes('speak with')) {
+        detectedIntent = 'schedule_consultation';
+      } else if (lowerMessage.includes('schedule') || lowerMessage.includes('appointment') || lowerMessage.includes('consultation')) {
+        detectedIntent = 'schedule_consultation';
+      } else if (lowerMessage.includes('services') || lowerMessage.includes('practice areas') || lowerMessage.includes('specialties') ||
+                 lowerMessage.includes('what do you do') || lowerMessage.includes('types of cases')) {
+        detectedIntent = 'learn_services';
+      } else if (lowerMessage.includes('contact form') || lowerMessage.includes('fill out form') || lowerMessage.includes('submit form') ||
+                 lowerMessage.includes('application') || lowerMessage.includes('apply for')) {
+        detectedIntent = 'contact_form';
+      }
+
+      // Create team-specific system prompt with intent awareness
       const systemPrompt = teamConfig 
         ? `You are a concise legal assistant for ${teamConfig.name}. Keep responses brief (2-3 sentences max) and actionable. Focus on immediate next steps. Always remind users you're an AI assistant and recommend consulting a qualified attorney.${teamConfig.config.requiresPayment ? ` Consultation fee: $${teamConfig.config.consultationFee}.` : ' Free consultation available.'}`
         : 'You are a concise legal assistant for Blawby AI. Keep responses brief (2-3 sentences max) and actionable. Focus on immediate next steps. Always remind users you\'re an AI assistant and recommend consulting a qualified attorney.';
 
-      // Generate AI response
-      const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-        messages: [
-          { 
-            role: 'system', 
-            content: systemPrompt
-          },
-          ...body.messages
-        ],
-        stream: false,
-        max_tokens: 150, // Limit response length
-        temperature: 0.7 // Slightly more focused
-      });
+      // Generate intent-aware response - ALWAYS encourage form completion
+      let aiResponse;
+      
+      if (detectedIntent === 'schedule_consultation') {
+        // Urgent consultation requests
+        aiResponse = {
+          response: `I understand you need immediate legal assistance. Let me connect you with one of our attorneys right away. What's your email address?`,
+          intent: detectedIntent,
+          shouldStartForm: true
+        };
+      } else if (detectedIntent === 'learn_services') {
+        // Service inquiries - provide info then collect contact
+        aiResponse = {
+          response: `Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. For personalized legal advice, I'd recommend speaking directly with one of our attorneys. Let me help you get in touch with them. What's your email address?`,
+          intent: detectedIntent,
+          shouldStartForm: true
+        };
+      } else if (detectedIntent === 'contact_form') {
+        // Direct form requests
+        aiResponse = {
+          response: `Perfect! I can help you with our contact form. I'll need your email address, phone number, and some details about your case. Let's start with your email address.`,
+          intent: detectedIntent,
+          shouldStartForm: true
+        };
+      } else {
+        // General inquiries - encourage form completion
+        aiResponse = {
+          response: `I understand you need legal assistance. To provide you with the best help, I'd like to connect you with one of our qualified attorneys. What's your email address so they can get back to you?`,
+          intent: detectedIntent,
+          shouldStartForm: true
+        };
+      }
 
-      return new Response(JSON.stringify({ 
-        response: response.response,
+      // Include payment info if payment is required
+      const responseData: any = {
+        response: aiResponse.response,
+        intent: aiResponse.intent,
+        shouldStartForm: aiResponse.shouldStartForm,
         timestamp: new Date().toISOString(),
         sessionId: body.sessionId || null
-      }), {
+      };
+
+      // Add payment information if team requires payment
+      if (teamConfig && teamConfig.config?.requiresPayment) {
+        responseData.payment = {
+          required: true,
+          amount: teamConfig.config.consultationFee,
+          paymentLink: teamConfig.config.paymentLink || null
+        };
+      }
+
+      return new Response(JSON.stringify(responseData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     } catch (error) {
@@ -247,53 +321,130 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
   });
 }
 
+async function handleForms(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method === 'POST') {
+    try {
+      const body = await request.json() as ContactFormSubmission;
+      
+      // Validate required fields
+      if (!body.email || !body.phoneNumber || !body.caseDetails || !body.teamId) {
+        return new Response(JSON.stringify({ 
+          error: 'Missing required fields: email, phoneNumber, caseDetails, teamId' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(body.email)) {
+        return new Response(JSON.stringify({ 
+          error: 'Invalid email format' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Validate phone number
+      const phoneDigits = body.phoneNumber.replace(/\D/g, '');
+      if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+        return new Response(JSON.stringify({ 
+          error: 'Invalid phone number format' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Generate unique ID for the form submission
+      const formId = crypto.randomUUID();
+      
+      // Insert form submission into database
+      const result = await env.DB.prepare(`
+        INSERT INTO contact_forms (
+          id, conversation_id, team_id, phone_number, email, case_details, status
+        ) VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      `).bind(
+        formId,
+        body.conversationId || null,
+        body.teamId,
+        body.phoneNumber,
+        body.email,
+        body.caseDetails
+      ).run();
+
+      if (result.success) {
+        // Get team configuration to send notifications
+        const teamRow = await env.DB.prepare(`SELECT id, name, config FROM teams WHERE id = ?`).bind(body.teamId).first();
+        let teamConfig = null;
+        if (teamRow) {
+          let configObj = {};
+          try {
+            configObj = JSON.parse(teamRow.config);
+          } catch (e) {
+            console.warn('Failed to parse team config JSON:', e);
+          }
+          teamConfig = {
+            id: teamRow.id,
+            name: teamRow.name,
+            config: configObj
+          };
+        }
+        if (teamConfig) {
+          await sendEmailNotifications(body, formId, teamConfig, env);
+        } else {
+          console.warn(`Team with ID ${body.teamId} not found for form submission ${formId}`);
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          formId,
+          message: 'Form submitted successfully. A lawyer will contact you within 24 hours.',
+          timestamp: new Date().toISOString()
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } else {
+        throw new Error('Database insertion failed');
+      }
+    } catch (error) {
+      console.error('Form submission error:', error);
+      return new Response(JSON.stringify({ 
+        error: 'Failed to submit form',
+        details: error.message
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
 async function handleTeams(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method === 'GET') {
     try {
-      // Mock team data for now - will be replaced with database queries
-      const teams = [
-        { 
-          id: 'test-team', 
-          name: 'Test Law Firm', 
-          config: { 
-            aiModel: 'llama',
-            consultationFee: 150,
-            requiresPayment: true,
-            availableServices: ['family-law', 'criminal-defense', 'civil-litigation']
-          } 
-        },
-        { 
-          id: 'family-law-team', 
-          name: 'Family Law Specialists', 
-          config: { 
-            aiModel: 'llama',
-            consultationFee: 200,
-            requiresPayment: true,
-            availableServices: ['divorce', 'child-custody', 'adoption', 'prenuptial-agreements']
-          } 
-        },
-        { 
-          id: 'criminal-defense-team', 
-          name: 'Criminal Defense Attorneys', 
-          config: { 
-            aiModel: 'llama',
-            consultationFee: 300,
-            requiresPayment: true,
-            availableServices: ['dui-defense', 'drug-charges', 'assault', 'white-collar-crime']
-          } 
-        },
-        { 
-          id: 'demo', 
-          name: 'Demo Law Firm', 
-          config: { 
-            aiModel: 'llama',
-            consultationFee: 0,
-            requiresPayment: false,
-            availableServices: ['general-consultation', 'legal-advice']
-          } 
+      // Load all teams from the database
+      const rows = await env.DB.prepare('SELECT id, name, config FROM teams').all();
+      const teams = rows.results.map((row: any) => {
+        let configObj = {};
+        try {
+          configObj = JSON.parse(row.config);
+        } catch (e) {
+          console.warn('Failed to parse team config JSON:', e);
         }
-      ];
-
+        return {
+          id: row.id,
+          name: row.name,
+          config: configObj
+        };
+      });
       return new Response(JSON.stringify(teams), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -313,4 +464,83 @@ async function handleTeams(request: Request, env: Env, corsHeaders: Record<strin
     status: 405,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   });
+} 
+
+// Send email notifications via Resend
+async function sendEmailNotifications(
+  formData: ContactFormSubmission, 
+  formId: string, 
+  teamConfig: any,
+  env: Env
+): Promise<void> {
+  try {
+    // Get team owner email (you'll need to add this to your teams table)
+    const teamOwnerEmail = teamConfig?.config?.ownerEmail || 'admin@blawby.com';
+    
+    // Send confirmation email to client
+    const clientEmailResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'noreply@blawby.com',
+        to: formData.email,
+        subject: 'Thank you for contacting our law firm',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Thank you for contacting ${teamConfig?.name || 'our law firm'}</h2>
+            <p>We have received your inquiry and a lawyer will review your case details.</p>
+            <p><strong>Reference ID:</strong> ${formId}</p>
+            <p><strong>Case Details:</strong> ${formData.caseDetails}</p>
+            <p>You can expect to hear from us within 24 hours.</p>
+            <p>If you have any urgent questions, please don't hesitate to reach out.</p>
+            <br>
+            <p>Best regards,<br>${teamConfig?.name || 'The Legal Team'}</p>
+          </div>
+        `
+      })
+    });
+
+    if (!clientEmailResponse.ok) {
+      console.error('Failed to send client email:', await clientEmailResponse.text());
+    }
+
+    // Send notification email to team owner
+    const ownerEmailResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'noreply@blawby.com',
+        to: teamOwnerEmail,
+        subject: `New Lead: ${formData.email} - ${teamConfig?.name || 'Law Firm'}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>New Lead Received</h2>
+            <p><strong>Form ID:</strong> ${formId}</p>
+            <p><strong>Client Email:</strong> ${formData.email}</p>
+            <p><strong>Client Phone:</strong> ${formData.phoneNumber}</p>
+            <p><strong>Case Details:</strong> ${formData.caseDetails}</p>
+            <p><strong>Team:</strong> ${teamConfig?.name || 'Unknown'}</p>
+            <p><strong>Submitted:</strong> ${new Date().toISOString()}</p>
+            <br>
+            <p>Please review and contact the client within 24 hours.</p>
+          </div>
+        `
+      })
+    });
+
+    if (!ownerEmailResponse.ok) {
+      console.error('Failed to send owner email:', await ownerEmailResponse.text());
+    }
+
+    console.log('Email notifications sent successfully');
+  } catch (error) {
+    console.error('Error sending email notifications:', error);
+    // Don't throw - email failure shouldn't break form submission
+  }
 } 
