@@ -10,7 +10,7 @@ import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
-import { getChatEndpoint, getFormsEndpoint } from './config/api';
+import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint } from './config/api';
 import { detectIntent, getIntentResponse } from './utils/intentDetection';
 import { 
   FormState, 
@@ -616,9 +616,39 @@ export function App() {
 				const result = await response.json();
 				console.log('Form submitted successfully:', result);
 				
+				// Fetch team configuration to check payment requirements
+				let teamConfig = null;
+				try {
+					const teamsResponse = await fetch(getTeamsEndpoint());
+					if (teamsResponse.ok) {
+						const teams = await teamsResponse.json();
+						teamConfig = teams.find((team: any) => team.id === teamId);
+					}
+				} catch (error) {
+					console.warn('Failed to fetch team config:', error);
+				}
+				
+				// Create confirmation message based on payment requirements
+				let confirmationContent = "";
+				
+				if (teamConfig?.config?.requiresPayment) {
+					const fee = teamConfig.config.consultationFee;
+					const paymentLink = teamConfig.config.paymentLink;
+					
+					confirmationContent = `✅ Thank you! Your information has been submitted successfully.\n\n` +
+						`💰 **Consultation Fee**: $${fee}\n\n` +
+						`To schedule your consultation with our lawyer, please complete the payment first. ` +
+						`This helps us prioritize your case and ensures we can provide you with the best legal assistance.\n\n` +
+						`🔗 **Payment Link**: ${paymentLink}\n\n` +
+						`Once payment is completed, a lawyer will review your case and contact you within 24 hours. ` +
+						`Thank you for choosing ${teamConfig.name}!`;
+				} else {
+					confirmationContent = `✅ Your information has been submitted successfully! A lawyer will review your case and contact you within 24 hours. Thank you for choosing our firm.`;
+				}
+				
 				// Add confirmation message
 				const confirmationMessage: ChatMessage = {
-					content: "✅ Your information has been submitted successfully! A lawyer will review your case and contact you within 24 hours. Thank you for choosing our firm.",
+					content: confirmationContent,
 					isUser: false
 				};
 				

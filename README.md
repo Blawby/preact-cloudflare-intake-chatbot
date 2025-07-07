@@ -149,12 +149,28 @@ To switch between local and deployed API, edit `src/config/api.ts` and change `A
 
 Test the chatbot with different team configurations:
 
-- **Demo Team (Free)**: `http://localhost:5173/?teamId=demo`
-- **Test Law Firm ($150)**: `http://localhost:5173/?teamId=test-team`
-- **Family Law Specialists ($200)**: `http://localhost:5173/?teamId=family-law-team`
-- **Criminal Defense ($300)**: `http://localhost:5173/?teamId=criminal-defense-team`
+- **Blawby Demo (Free)**: `http://localhost:5173/?teamId=demo`
+- **North Carolina Legal Services ($75)**: `http://localhost:5173/?teamId=north-carolina-legal-services`
 
 Each team has different consultation fees and specialties. The AI responses are tailored to each team's configuration.
+
+### 💳 Payment Integration
+
+The chatbot supports team-specific payment requirements:
+
+- **Payment Configuration**: Teams can be configured with `requiresPayment: true/false` and `consultationFee`
+- **Payment Links**: Teams can specify payment links (e.g., Stripe Checkout URLs)
+- **Conversational Flow**: After form submission, users are conversationally informed about payment requirements
+- **Payment Explanation**: For teams requiring payment, users receive a clear explanation of fees and payment links
+
+**Payment Flow:**
+1. User submits contact form with email, phone, and case details
+2. System checks team payment requirements
+3. If payment required: Shows fee amount and payment link with explanation
+4. If no payment required: Shows standard confirmation message
+5. Form data is stored in database and email notifications are sent
+
+**Note**: This system uses payment links (no webhook integration). Payment verification must be handled externally.
 
 ---
 
@@ -295,11 +311,11 @@ MIT License. See [LICENSE](./LICENSE).
 
 You can manage all law firm teams and their configuration in a single JSON file:
 
-```
+```json
 [
   {
     "id": "demo",
-    "name": "Demo Law Firm",
+    "name": "Blawby Demo",
     "config": {
       "aiModel": "llama",
       "consultationFee": 0,
@@ -307,7 +323,29 @@ You can manage all law firm teams and their configuration in a single JSON file:
       "ownerEmail": "paulchrisluke@gmail.com",
       "availableServices": ["general-consultation", "legal-advice"],
       "domain": "demo.blawby.com",
-      "description": "Demo law firm for testing purposes"
+      "description": "Demo law firm for testing purposes",
+      "paymentLink": null
+    }
+  },
+  {
+    "id": "north-carolina-legal-services",
+    "name": "North Carolina Legal Services",
+    "config": {
+      "aiModel": "llama",
+      "consultationFee": 75,
+      "requiresPayment": true,
+      "ownerEmail": "paulchrisluke@gmail.com",
+      "availableServices": [
+        "Family Law",
+        "Small Business and Nonprofits",
+        "Employment Law",
+        "Tenant Rights Law",
+        "Probate and Estate Planning",
+        "Special Education and IEP Advocacy"
+      ],
+      "domain": "northcarolinalegalservices.blawby.com",
+      "description": "Affordable, comprehensive legal services for North Carolina",
+      "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500"
     }
   }
 ]
@@ -320,26 +358,34 @@ You can manage all law firm teams and their configuration in a single JSON file:
 | `id` | string | Unique team identifier |
 | `name` | string | Display name for the law firm |
 | `config.aiModel` | string | AI model to use (e.g., "llama") |
-| `config.consultationFee` | number | Consultation fee in dollars |
-| `config.requiresPayment` | boolean | Whether payment is required |
+| `config.consultationFee` | number | Consultation fee in dollars (0 for free) |
+| `config.requiresPayment` | boolean | Whether payment is required before consultation |
 | `config.ownerEmail` | string | Email for lead notifications |
 | `config.availableServices` | string[] | Array of practice areas |
 | `config.domain` | string | Custom domain for the team |
 | `config.description` | string | Team description |
-| `config.paymentLink` | string | Payment link URL (e.g. Stripe Checkout) |
+| `config.paymentLink` | string | Payment link URL (e.g. Stripe Checkout) - required if `requiresPayment: true` |
+
+### Payment Configuration
+
+- **Free Consultations**: Set `requiresPayment: false` and `consultationFee: 0`
+- **Paid Consultations**: Set `requiresPayment: true`, specify `consultationFee`, and provide `paymentLink`
+- **Payment Links**: Should point to your payment processor (Stripe, PayPal, etc.)
+- **Email Notifications**: Both client and team owner receive emails upon form submission
 
 - Edit `teams.json` to add or update teams.
 - The `ownerEmail` field is used for lead notification emails.
 
 ### Syncing Teams to D1
 
-Use the provided script to upsert (insert or update) all teams in the JSON to your production D1 database:
+Use the provided script to sync (insert/update/delete) all teams in the JSON to your production D1 database:
 
 ```sh
 node sync-teams.js
 ```
 
-- This script is **DRY for upsert** (insert/update) only. It does **not** delete teams from the database if you remove them from the JSON. (No full REST: no delete.)
-- To remove a team, you must delete it manually from the D1 database.
+- This script performs **full DRY REST sync** - it will delete teams from the database that are not present in the JSON
+- The D1 database will always match your `teams.json` file exactly
+- Teams are upserted (inserted or updated) based on their `id`
 
 ---
