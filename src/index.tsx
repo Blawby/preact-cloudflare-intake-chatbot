@@ -1055,6 +1055,8 @@ export function App() {
 					// Store answer to current AI question
 					const currentService = caseState.data.caseType;
 					const currentIndex = caseState.currentQuestionIndex || 0;
+					
+					// Get the current question from the team config
 					const currentQuestion = teamConfig.serviceQuestions?.[currentService || '']?.[currentIndex];
 					
 					// Store the answer
@@ -1080,7 +1082,7 @@ export function App() {
 						
 						setTimeout(() => {
 							const aiResponse: ChatMessage = {
-								content: aiResult.message,
+								content: aiResult.message + (aiResult.question ? `\n\n${aiResult.question}` : ''),
 								isUser: false
 							};
 							setMessages(prev => [...prev, aiResponse]);
