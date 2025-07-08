@@ -532,7 +532,7 @@ async function calculateCaseQuality(
 
   // 2. Required Fields (20% weight)
   const hasService = !!service;
-  const hasDescription = !!description && description.length > 10;
+  const hasDescription = !!description && description.length > 50; // Require more detailed description
   const hasAnswers = answeredQuestions > 0;
   breakdown.requiredFields = ((hasService ? 1 : 0) + (hasDescription ? 1 : 0) + (hasAnswers ? 1 : 0)) / 3 * 100;
 
@@ -552,11 +552,13 @@ async function calculateCaseQuality(
   if (totalAnswers > 0) {
     const clarityScores = Object.values(answers).map(answer => {
       const length = answer.length;
-      const hasDetails = answer.toLowerCase().includes('because') || answer.toLowerCase().includes('when') || answer.toLowerCase().includes('where');
-      const isSpecific = !answer.toLowerCase().includes('i don\'t know') && !answer.toLowerCase().includes('not sure');
-      return (length > 10 ? 1 : 0) + (hasDetails ? 1 : 0) + (isSpecific ? 1 : 0);
+      const hasDetails = answer.toLowerCase().includes('because') || answer.toLowerCase().includes('when') || answer.toLowerCase().includes('where') || answer.toLowerCase().includes('since') || answer.toLowerCase().includes('due to');
+      const isSpecific = !answer.toLowerCase().includes('i don\'t know') && !answer.toLowerCase().includes('not sure') && !answer.toLowerCase().includes('already told you') && !answer.toLowerCase().includes('enough');
+      const hasSubstance = length > 20; // Require longer, more substantive answers
+      const hasContext = answer.toLowerCase().includes('children') || answer.toLowerCase().includes('money') || answer.toLowerCase().includes('court') || answer.toLowerCase().includes('legal') || answer.toLowerCase().includes('document');
+      return (hasSubstance ? 1 : 0) + (hasDetails ? 1 : 0) + (isSpecific ? 1 : 0) + (hasContext ? 1 : 0);
     });
-    clarityScore = (clarityScores.reduce((a, b) => a + b, 0) / (totalAnswers * 3)) * 100;
+    clarityScore = (clarityScores.reduce((a, b) => a + b, 0) / (totalAnswers * 4)) * 100; // 4 criteria instead of 3
   }
   breakdown.clarity = clarityScore;
 
@@ -605,15 +607,15 @@ async function calculateCaseQuality(
     suggestions.push('Complete all follow-up questions to improve your case readiness.');
   }
   if (breakdown.requiredFields < 100) {
-    if (!description || description.length <= 10) {
-      suggestions.push('Provide a detailed description of your situation.');
+    if (!description || description.length <= 50) {
+      suggestions.push('Provide a detailed description of your situation (at least 50 characters).');
     }
   }
   if (breakdown.evidence === 0) {
     suggestions.push('Consider uploading photos, documents, or other evidence related to your case.');
   }
   if (breakdown.clarity < 70) {
-    suggestions.push('Provide more specific details about what happened and when.');
+    suggestions.push('Provide more specific details about what happened, when, and why. Include relevant context like dates, amounts, and specific events.');
   }
   if (breakdown.urgency === 0) {
     suggestions.push('Specify how urgent your matter is to help prioritize your case.');
@@ -932,14 +934,19 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               .map(([question, answer]) => `**${question}**\n${answer}`)
               .join('\n\n');
             
-            const analysisPrompt = `You are a legal case analyst. Analyze the following case information and provide:
+            const analysisPrompt = `You are a rigorous legal case analyst. Your job is to ensure we have COMPREHENSIVE information before connecting a client with a lawyer. Analyze the following case information and provide:
 
 1. A professional summary of the case
 2. Assessment of whether we have sufficient information for a qualified legal lead
 3. Any missing critical information that should be gathered
 4. Recommended next steps
 
-IMPORTANT: Only ask follow-up questions if there is genuinely missing critical information. If the client has already provided comprehensive details about their situation, do not ask generic questions like "Can you provide more details" or "What is the current status" if those details are already clear from their responses.
+CRITICAL REQUIREMENTS FOR READY-FOR-LAWYER STATUS:
+- Client must provide detailed, specific information about their situation
+- Must include timeline of events, specific facts, and clear objectives
+- Must demonstrate understanding of their legal needs
+- Must provide sufficient context for a lawyer to provide meaningful advice
+- Vague, minimal, or incomplete responses are NOT sufficient
 
 Case Information:
 - Practice Area: ${body.service}
@@ -958,14 +965,14 @@ Please provide a structured analysis in JSON format with the following fields:
   "readyForLawyer": true/false
 }
 
-Guidelines:
-- If the client has clearly explained their situation and the key facts are present, set readyForLawyer to true
-- Only ask follow-up questions for genuinely missing critical information
-- Avoid asking questions about information already provided
-- Focus on actionable next steps rather than redundant information gathering
-- Consider urgency level when determining if more information is needed
-- If the client has provided a detailed description with specific facts, amounts, and timeline, they likely have sufficient information
-- Only ask for missing critical details that would significantly impact legal strategy`;
+STRICT GUIDELINES:
+- Set readyForLawyer to true ONLY if the client has provided comprehensive, detailed information
+- If the client gave vague responses like "I already told you enough" or minimal details, set readyForLawyer to false
+- Always ask follow-up questions if the client hasn't provided specific facts, timeline, or clear objectives
+- For family law cases, require specific details about children, dates, amounts, and current situation
+- For urgent cases, still require detailed information before connecting to lawyer
+- If the client's description is brief or lacks specificity, ask for more details
+- Focus on gathering actionable information that a lawyer would need to provide proper advice`;
 
             const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
               messages: [
@@ -996,9 +1003,11 @@ Guidelines:
               };
             }
 
-            if (analysis.readyForLawyer && analysis.sufficientInfo) {
-              // Case is ready for lawyer connection
-              const completeAnalysisQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
+            // Calculate quality score first
+            const completeAnalysisQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
+            
+            // Only mark as ready for lawyer if AI says yes AND quality score is 90% or above
+            if (analysis.readyForLawyer && analysis.sufficientInfo && completeAnalysisQualityScore.score >= 90) {
               
               // Create comprehensive case summary
               let caseSummary = `**Case Analysis Complete**\n\n${analysis.summary}\n\n**Case Summary:**\n- **Type:** ${body.service}\n- **Urgency:** ${body.urgency}\n- **Description:** ${body.description}`;
@@ -1027,12 +1036,19 @@ Guidelines:
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               });
             } else {
-              // Need more information
-              const followUpMessage = analysis.followUpQuestions && analysis.followUpQuestions.length > 0
-                ? `\n\nI need to gather a bit more information to better assist you:\n\n${analysis.followUpQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
-                : '\n\nI need to gather a bit more information to better assist you.';
+              // Need more information - either AI said no OR quality score is below 90%
+              let followUpMessage = '';
+              
+              if (completeAnalysisQualityScore.score < 90) {
+                followUpMessage = `\n\nYour case quality score is currently ${completeAnalysisQualityScore.score}%. To connect you with a lawyer, we need to reach at least 90%. Let me ask a few more questions to gather the information needed:`;
+              } else if (analysis.followUpQuestions && analysis.followUpQuestions.length > 0) {
+                followUpMessage = `\n\nI need to gather a bit more information to better assist you:\n\n${analysis.followUpQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
+              } else {
+                followUpMessage = '\n\nI need to gather a bit more information to better assist you.';
+              }
 
-              const followUpQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
+              // Use the already calculated quality score
+              const followUpQualityScore = completeAnalysisQualityScore;
 
               return new Response(JSON.stringify({
                 step: 'ai-questions',
@@ -1050,34 +1066,57 @@ Guidelines:
             }
           } catch (aiError) {
             console.error('AI analysis error:', aiError);
-            // Fallback to complete if AI fails
+            // Fallback to complete if AI fails, but still check quality score
             const fallbackQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
             
-            // Create fallback case summary
-            let caseSummary = `**Case Summary:**\n- **Type:** ${body.service}\n- **Urgency:** ${body.urgency}\n- **Description:** ${body.description}`;
-            
-            if (body.answers && Object.keys(body.answers).length > 0) {
-              caseSummary += '\n\n**Additional Details:**';
-              Object.entries(body.answers).forEach(([question, answer]) => {
-                caseSummary += `\n- **${question}** ${answer}`;
+            // Only proceed to complete if quality score is 90% or above
+            if (fallbackQualityScore.score >= 90) {
+              // Create fallback case summary
+              let caseSummary = `**Case Summary:**\n- **Type:** ${body.service}\n- **Urgency:** ${body.urgency}\n- **Description:** ${body.description}`;
+              
+              if (body.answers && Object.keys(body.answers).length > 0) {
+                caseSummary += '\n\n**Additional Details:**';
+                Object.entries(body.answers).forEach(([question, answer]) => {
+                  caseSummary += `\n- **${question}** ${answer}`;
+                });
+              }
+              
+              caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
+              
+              return new Response(JSON.stringify({
+                step: 'complete',
+                message: caseSummary,
+                caseData: {
+                  service: body.service,
+                  description: body.description,
+                  urgency: body.urgency,
+                  answers: body.answers
+                },
+                qualityScore: fallbackQualityScore
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            } else {
+              // Quality score too low, ask for more information
+              const fallbackMessage = `Your case quality score is currently ${fallbackQualityScore.score}%. To connect you with a lawyer, we need to reach at least 90%. Let me ask a few more questions to gather the information needed:\n\n1. Can you provide more specific details about your situation?\n2. What is the timeline of events that led to this legal issue?\n3. What specific outcome are you hoping to achieve?`;
+              
+              return new Response(JSON.stringify({
+                step: 'ai-questions',
+                currentQuestionIndex: 0,
+                question: 'Can you provide more specific details about your situation?',
+                totalQuestions: 3,
+                message: `**Case Analysis**\n\nBased on the information provided, this appears to be a ${body.service} case.${fallbackMessage}`,
+                questions: [
+                  'Can you provide more specific details about your situation?',
+                  'What is the timeline of events that led to this legal issue?',
+                  'What specific outcome are you hoping to achieve?'
+                ],
+                urgency: body.urgency,
+                qualityScore: fallbackQualityScore
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               });
             }
-            
-            caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
-            
-            return new Response(JSON.stringify({
-              step: 'complete',
-              message: caseSummary,
-              caseData: {
-                service: body.service,
-                description: body.description,
-                urgency: body.urgency,
-                answers: body.answers
-              },
-              qualityScore: fallbackQualityScore
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
           }
 
         default:
