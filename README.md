@@ -154,6 +154,24 @@ Test the chatbot with different team configurations:
 
 Each team has different consultation fees and specialties. The AI responses are tailored to each team's configuration.
 
+### 🎯 Create Case Flow
+
+The chatbot includes a structured case creation flow that guides users through legal assessment:
+
+- **Case Type Identification**: Asks users to specify their legal matter type (Family Law, Business Law, Employment, etc.)
+- **Case Description**: Gathers detailed description of the situation and desired outcomes
+- **Urgency Assessment**: Determines how quickly the matter needs attention
+- **Case Summary**: Provides a structured summary of the case details
+- **Lawyer Connection**: Seamlessly transitions to contact form for attorney connection
+
+**Create Case Flow:**
+1. User clicks "Create Case" button
+2. System asks for legal matter type
+3. User provides case description
+4. System assesses urgency level
+5. Case summary is presented with structured details
+6. User is connected to contact form for lawyer referral
+
 ### 💳 Payment Integration
 
 The chatbot supports team-specific payment requirements:
