@@ -608,6 +608,60 @@ export function App() {
 				return;
 			}
 			
+			// Check if user typed a service name directly
+			const availableServices = teamConfig.availableServices || [];
+			const isServiceName = availableServices.some(service => 
+				message.toLowerCase().trim() === service.toLowerCase() ||
+				message.toLowerCase().trim() === service.toLowerCase().replace(/-/g, ' ')
+			);
+			
+			// Also check for "General Inquiry"
+			const isGeneralInquiry = message.toLowerCase().trim() === 'general inquiry';
+			
+			if ((isServiceName || isGeneralInquiry) && !caseState.isActive) {
+				// Start case creation flow with the typed service
+				setCaseState({
+					step: 'gathering-info',
+					data: {},
+					isActive: true
+				});
+				
+				// Process the service selection
+				setTimeout(async () => {
+					try {
+						const result = await handleCaseCreationAPI('service-selection', { service: message });
+						
+						setCaseState(prev => ({
+							...prev,
+							data: { ...prev.data, caseType: message },
+							step: result.step,
+							currentQuestionIndex: result.currentQuestionIndex || 0
+						}));
+						
+						setIsLoading(false);
+						setMessages(prev => prev.map(msg => 
+							msg.id === placeholderId ? { 
+								...msg, 
+								content: result.message,
+								id: placeholderId 
+							} : msg
+						));
+					} catch (error) {
+						console.error('Service selection error:', error);
+						setIsLoading(false);
+						setMessages(prev => prev.map(msg => 
+							msg.id === placeholderId ? { 
+								...msg, 
+								content: "I apologize, but I encountered an error processing your service selection. Please try again.",
+								id: placeholderId 
+							} : msg
+						));
+					}
+				}, 1000);
+				
+				return;
+			}
+			
 			// Check if this is a scheduled message (could come from API in real implementation)
 			const hasSchedulingIntent = detectSchedulingIntent(message);
 			
