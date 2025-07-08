@@ -2320,6 +2320,34 @@ kbd {
 	padding: 0.75rem 1rem;
 }
 
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+	.sticky-quality-score-container {
+		padding: 0.5rem 1rem;
+	}
+
+	.sticky-quality-score-content {
+		gap: 0.75rem;
+	}
+
+	.sticky-quality-score-left {
+		gap: 0.75rem;
+	}
+
+	.sticky-quality-score-value {
+		font-size: 1.125rem;
+	}
+
+	.sticky-quality-score-progress {
+		max-width: 6rem;
+	}
+
+	.sticky-quality-score-details-content {
+		width: 18rem;
+		right: -0.5rem;
+	}
+}
+
 .sticky-quality-score-content {
 	display: flex;
 	align-items: center;
