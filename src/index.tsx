@@ -103,7 +103,7 @@ export function App() {
 
 	// State for case creation flow
 	const [caseState, setCaseState] = useState<{
-		step: 'idle' | 'gathering-info' | 'ai-questions' | 'case-details' | 'ready-for-lawyer';
+		step: 'idle' | 'gathering-info' | 'ai-questions' | 'case-details' | 'ai-analysis' | 'ready-for-lawyer';
 		data: {
 			caseType?: string;
 			description?: string;
@@ -1106,11 +1106,11 @@ export function App() {
 					break;
 
 				case 'case-details':
-					// Store description and ask for urgency
+					// Store description and move to AI analysis
 					setCaseState(prev => ({
 						...prev,
 						data: { ...prev.data, description: message },
-						step: 'urgency-selection'
+						step: 'ai-analysis'
 					}));
 					
 					// Call API for case details step
@@ -1122,15 +1122,39 @@ export function App() {
 					setTimeout(() => {
 						const aiResponse: ChatMessage = {
 							content: detailsResult.message,
+							isUser: false
+						};
+						setMessages(prev => [...prev, aiResponse]);
+					}, 800);
+					break;
+
+				case 'ai-analysis':
+					// AI analysis step - this is handled automatically by the API
+					// The API will either return more questions or move to urgency selection
+					const analysisResult = await handleCaseCreationAPI('ai-analysis', {
+						service: caseState.data.caseType,
+						description: caseState.data.description,
+						answers: caseState.data.aiAnswers
+					});
+					
+					setCaseState(prev => ({
+						...prev,
+						step: analysisResult.step,
+						currentQuestionIndex: analysisResult.currentQuestionIndex || 0
+					}));
+					
+					setTimeout(() => {
+						const aiResponse: ChatMessage = {
+							content: analysisResult.message,
 							isUser: false,
-							caseCreation: {
+							caseCreation: analysisResult.step === 'urgency-selection' ? {
 								type: 'urgency-selection',
 								availableServices: []
-							}
-					};
-					setMessages(prev => [...prev, aiResponse]);
-				}, 800);
-				break;
+							} : undefined
+						};
+						setMessages(prev => [...prev, aiResponse]);
+					}, 800);
+					break;
 
 				case 'urgency-selection':
 					// Store urgency and provide case summary

@@ -29,7 +29,7 @@ interface ContactFormSubmission {
 interface CaseCreationRequest {
   teamId: string;
   service: string;
-  step: 'service-selection' | 'ai-questions' | 'case-details' | 'urgency-selection';
+  step: 'service-selection' | 'ai-questions' | 'case-details' | 'ai-analysis' | 'urgency-selection';
   currentQuestionIndex?: number;
   answers?: Record<string, string>;
   description?: string;
@@ -660,17 +660,125 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           }
 
         case 'case-details':
+          // Move to AI analysis step instead of directly to urgency
           return new Response(JSON.stringify({
-            step: 'urgency-selection',
-            message: `Thank you for sharing those details. I understand your situation involves ${body.service} and you've described: "${body.description}"\n\nHow urgent is this matter?`,
-            urgencyOptions: [
-              { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
-              { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
-              { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
-            ]
+            step: 'ai-analysis',
+            message: `Thank you for sharing those details. Let me analyze your case to better understand your situation and determine what additional information might be needed.`,
+            caseData: {
+              service: body.service,
+              description: body.description,
+              answers: body.answers
+            }
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
+
+        case 'ai-analysis':
+          // Use AI to analyze the case and provide insights
+          try {
+            const caseSummary = Object.entries(body.answers || {})
+              .map(([question, answer]) => `**${question}**\n${answer}`)
+              .join('\n\n');
+            
+            const analysisPrompt = `You are a legal case analyst. Analyze the following case information and provide:
+
+1. A professional summary of the case
+2. Assessment of whether we have sufficient information for a qualified legal lead
+3. Any missing critical information that should be gathered
+4. Recommended next steps
+
+Case Information:
+- Practice Area: ${body.service}
+- Client Description: ${body.description}
+- Detailed Responses:
+${caseSummary}
+
+Please provide a structured analysis in JSON format with the following fields:
+{
+  "summary": "Professional case summary",
+  "sufficientInfo": true/false,
+  "missingInfo": ["list of missing critical information"],
+  "recommendations": ["list of recommended next steps"],
+  "followUpQuestions": ["specific questions to ask if needed"],
+  "readyForLawyer": true/false
+}`;
+
+            const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+              messages: [
+                { role: 'system', content: 'You are a professional legal case analyst. Provide clear, structured analysis in JSON format.' },
+                { role: 'user', content: analysisPrompt }
+              ]
+            });
+
+            let analysis;
+            try {
+              // Try to parse the AI response as JSON
+              const responseText = aiResponse.response || '';
+              const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                analysis = JSON.parse(jsonMatch[0]);
+              } else {
+                throw new Error('No JSON found in response');
+              }
+            } catch (parseError) {
+              // Fallback analysis if JSON parsing fails
+              analysis = {
+                summary: `Based on the information provided, this appears to be a ${body.service} case involving ${body.description}.`,
+                sufficientInfo: false,
+                missingInfo: ['More specific details about the situation', 'Timeline of events', 'Current status'],
+                recommendations: ['Gather more specific information', 'Clarify timeline and current status'],
+                followUpQuestions: ['Can you provide more specific details about what happened?', 'What is the current status of this situation?'],
+                readyForLawyer: false
+              };
+            }
+
+            if (analysis.readyForLawyer && analysis.sufficientInfo) {
+              // Case is ready for lawyer connection
+              return new Response(JSON.stringify({
+                step: 'urgency-selection',
+                message: `**Case Analysis Complete**\n\n${analysis.summary}\n\nBased on my analysis, I have sufficient information to connect you with a qualified attorney. How urgent is this matter?`,
+                urgencyOptions: [
+                  { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
+                  { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
+                  { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
+                ],
+                analysis: analysis
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            } else {
+              // Need more information
+              const followUpMessage = analysis.followUpQuestions && analysis.followUpQuestions.length > 0
+                ? `\n\nI need to gather a bit more information to better assist you:\n\n${analysis.followUpQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
+                : '\n\nI need to gather a bit more information to better assist you.';
+
+              return new Response(JSON.stringify({
+                step: 'ai-questions',
+                currentQuestionIndex: 0,
+                question: analysis.followUpQuestions?.[0] || 'Can you provide more specific details about your situation?',
+                totalQuestions: analysis.followUpQuestions?.length || 1,
+                message: `**Case Analysis**\n\n${analysis.summary}${followUpMessage}`,
+                questions: analysis.followUpQuestions || ['Can you provide more specific details about your situation?'],
+                analysis: analysis
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+          } catch (aiError) {
+            console.error('AI analysis error:', aiError);
+            // Fallback to urgency selection if AI fails
+            return new Response(JSON.stringify({
+              step: 'urgency-selection',
+              message: `Thank you for sharing those details. I understand your situation involves ${body.service} and you've described: "${body.description}"\n\nHow urgent is this matter?`,
+              urgencyOptions: [
+                { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
+                { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
+                { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
+              ]
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
 
         case 'urgency-selection':
           // Create comprehensive case summary
