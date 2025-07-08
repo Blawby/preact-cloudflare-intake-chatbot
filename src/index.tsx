@@ -67,11 +67,17 @@ interface SchedulingData {
 	scheduledDateTime?: Date;
 }
 
+interface CaseCreationData {
+	type: 'service-selection';
+	availableServices: string[];
+}
+
 interface ChatMessage {
 	content: string;
 	isUser: boolean;
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
+	caseCreation?: CaseCreationData;
 	id?: string;
 }
 
@@ -117,10 +123,12 @@ export function App() {
 		name: string;
 		profileImage: string | null;
 		introMessage: string | null;
+		availableServices: string[];
 	}>({
 		name: 'Legal AI Assistant',
 		profileImage: null,
-		introMessage: null
+		introMessage: null,
+		availableServices: []
 	});
 
 	// Track drag counter for better handling of nested elements
@@ -248,7 +256,8 @@ export function App() {
 					setTeamConfig({
 						name: team.name || 'Legal AI Assistant',
 						profileImage: team.config.profileImage || null,
-						introMessage: team.config.introMessage || null
+						introMessage: team.config.introMessage || null,
+						availableServices: team.config.availableServices || []
 					});
 				}
 			}
@@ -335,9 +344,18 @@ export function App() {
 		
 		// Start case creation flow
 		setTimeout(() => {
+			const services = teamConfig.availableServices || [];
+			const serviceOptions = services.length > 0 
+				? services.map(service => `• ${service}`).join('\n')
+				: '• Family Law\n• Business Law\n• Employment Law\n• Real Estate\n• Criminal Law\n• Other';
+			
 			const aiResponse: ChatMessage = {
-				content: "I'm here to help you create a case and assess your legal situation. Let me ask you a few questions to better understand your needs and provide the most relevant assistance.\n\nWhat type of legal matter are you dealing with? (e.g., Family Law, Business Law, Employment, Real Estate, Criminal, etc.)",
-				isUser: false
+				content: `I'm here to help you create a case and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
+				isUser: false,
+				caseCreation: {
+					type: 'service-selection',
+					availableServices: services
+				}
 			};
 			setMessages(prev => [...prev, aiResponse]);
 			setIsLoading(false);
@@ -788,6 +806,19 @@ export function App() {
 		}
 	};
 
+	// Handle service selection from buttons
+	const handleServiceSelect = (service: string) => {
+		// Add user message
+		const userMessage: ChatMessage = {
+			content: service,
+			isUser: true
+		};
+		setMessages(prev => [...prev, userMessage]);
+		
+		// Process the service selection
+		handleCaseCreationStep(service, []);
+	};
+
 	// Handle case creation flow steps
 	const handleCaseCreationStep = (message: string, attachments: FileAttachment[] = []) => {
 		// Add user message
@@ -1200,6 +1231,7 @@ export function App() {
 								onTimeOfDaySelect={handleTimeOfDaySelect}
 								onTimeSlotSelect={handleTimeSlotSelect}
 								onRequestMoreDates={handleRequestMoreDates}
+								onServiceSelect={handleServiceSelect}
 								position={position}
 							/>
 							<div className="input-area" role="form" aria-label="Message composition">

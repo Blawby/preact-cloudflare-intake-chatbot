@@ -20,11 +20,18 @@ interface SchedulingData {
     scheduledDateTime?: Date;
 }
 
+// Add case creation interface
+interface CaseCreationData {
+    type: 'service-selection';
+    availableServices: string[];
+}
+
 interface ChatMessage {
     content: string;
     isUser: boolean;
     files?: FileAttachment[];
     scheduling?: SchedulingData;
+    caseCreation?: CaseCreationData;
     id?: string;
 }
 
@@ -35,6 +42,7 @@ interface VirtualMessageListProps {
     onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
     onTimeSlotSelect?: (timeSlot: Date) => void;
     onRequestMoreDates?: () => void;
+    onServiceSelect?: (service: string) => void;
     position?: 'widget' | 'inline';
 }
 
@@ -49,6 +57,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     onTimeOfDaySelect,
     onTimeSlotSelect,
     onRequestMoreDates,
+    onServiceSelect,
     position = 'widget'
 }) => {
     const listRef = useRef<HTMLDivElement>(null);
@@ -145,10 +154,12 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         isUser={message.isUser}
                         files={message.files}
                         scheduling={message.scheduling}
+                        caseCreation={message.caseCreation}
                         onDateSelect={onDateSelect}
                         onTimeOfDaySelect={onTimeOfDaySelect}
                         onTimeSlotSelect={onTimeSlotSelect}
                         onRequestMoreDates={onRequestMoreDates}
+                        onServiceSelect={onServiceSelect}
                         isLoading={isLoading && index === visibleMessages.length - 1 && !message.isUser && !message.content}
                     />
                 ))}

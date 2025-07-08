@@ -46,15 +46,23 @@ interface SchedulingData {
 	scheduledDateTime?: Date;
 }
 
+// Add case creation-related data interface
+interface CaseCreationData {
+	type: 'service-selection';
+	availableServices: string[];
+}
+
 interface MessageProps {
 	content: string;
 	isUser: boolean;
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
+	caseCreation?: CaseCreationData;
 	onDateSelect?: (date: Date) => void;
 	onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
 	onTimeSlotSelect?: (timeSlot: Date) => void;
 	onRequestMoreDates?: () => void;
+	onServiceSelect?: (service: string) => void;
 	isLoading?: boolean;
 }
 
@@ -163,15 +171,45 @@ const ImagePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => 
 	);
 };
 
+// Service selection buttons component
+const ServiceSelectionButtons: FunctionComponent<{ 
+	services: string[]; 
+	onServiceSelect: (service: string) => void;
+}> = ({ services, onServiceSelect }) => {
+	return (
+		<div class="service-selection-container">
+			<div class="service-buttons">
+				{services.map((service, index) => (
+					<button
+						key={index}
+						class="service-button"
+						onClick={() => onServiceSelect(service)}
+					>
+						{service}
+					</button>
+				))}
+				<button
+					class="service-button general-inquiry"
+					onClick={() => onServiceSelect('General Inquiry')}
+				>
+					General Inquiry
+				</button>
+			</div>
+		</div>
+	);
+};
+
 const Message: FunctionComponent<MessageProps> = memo(({ 
 	content, 
 	isUser, 
 	files = [], 
 	scheduling, 
+	caseCreation,
 	onDateSelect, 
 	onTimeOfDaySelect, 
 	onTimeSlotSelect, 
 	onRequestMoreDates,
+	onServiceSelect,
 	isLoading
 }) => {
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
@@ -239,6 +277,14 @@ const Message: FunctionComponent<MessageProps> = memo(({
 							/>
 						)}
 					</div>
+				)}
+				
+				{/* Display case creation components */}
+				{caseCreation && caseCreation.type === 'service-selection' && onServiceSelect && (
+					<ServiceSelectionButtons
+						services={caseCreation.availableServices}
+						onServiceSelect={onServiceSelect}
+					/>
 				)}
 				
 				{/* Display files */}
