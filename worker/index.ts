@@ -613,7 +613,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               currentQuestionIndex: 0,
               question: serviceQuestions[0],
               totalQuestions: serviceQuestions.length,
-              message: `Thank you for selecting ${body.service}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.`,
+              message: `Thank you for selecting ${body.service}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.\n\n${serviceQuestions[0]}`,
               questions: serviceQuestions
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
