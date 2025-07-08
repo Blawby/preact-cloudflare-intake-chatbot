@@ -6,6 +6,7 @@ import LoadingIndicator from './components/LoadingIndicator';
 // import MediaControls from './components/MediaControls';
 import VirtualMessageList from './components/VirtualMessageList';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import StickyQualityScore from './components/StickyQualityScore';
 import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
@@ -68,8 +69,11 @@ interface SchedulingData {
 }
 
 interface CaseCreationData {
-	type: 'service-selection' | 'urgency-selection';
+	type: 'service-selection' | 'urgency-selection' | 'ai-questions';
 	availableServices: string[];
+	question?: string;
+	totalQuestions?: number;
+	currentQuestionIndex?: number;
 }
 
 interface ChatMessage {
@@ -78,22 +82,6 @@ interface ChatMessage {
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
 	caseCreation?: CaseCreationData;
-	qualityScore?: {
-		score: number;
-		breakdown: {
-			followUpCompletion: number;
-			requiredFields: number;
-			evidence: number;
-			clarity: number;
-			urgency: number;
-			consistency: number;
-			aiConfidence: number;
-		};
-		suggestions: string[];
-		readyForLawyer: boolean;
-		badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
-		color: 'red' | 'yellow' | 'green' | 'blue';
-	};
 	id?: string;
 }
 
@@ -135,6 +123,41 @@ export function App() {
 		data: {},
 		isActive: false,
 		currentQuestionIndex: 0
+	});
+
+	// State for sticky quality score
+	const [stickyQualityScore, setStickyQualityScore] = useState<{
+		score: number;
+		breakdown: {
+			followUpCompletion: number;
+			requiredFields: number;
+			evidence: number;
+			clarity: number;
+			urgency: number;
+			consistency: number;
+			aiConfidence: number;
+		};
+		suggestions: string[];
+		readyForLawyer: boolean;
+		badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
+		color: 'red' | 'yellow' | 'green' | 'blue';
+		isVisible: boolean;
+	}>({
+		score: 0,
+		breakdown: {
+			followUpCompletion: 0,
+			requiredFields: 0,
+			evidence: 0,
+			clarity: 0,
+			urgency: 0,
+			consistency: 0,
+			aiConfidence: 0
+		},
+		suggestions: [],
+		readyForLawyer: false,
+		badge: 'Poor',
+		color: 'red',
+		isVisible: false
 	});
 
 	// State for team configuration
@@ -893,6 +916,15 @@ export function App() {
 		setMessages(prev => [...prev, userMessage]);
 		
 		try {
+			// Ensure case state is properly initialized
+			if (!caseState.isActive) {
+				setCaseState({
+					step: 'gathering-info',
+					data: {},
+					isActive: true
+				});
+			}
+			
 			// Call API for service selection
 			const result = await handleCaseCreationAPI('service-selection', { service });
 			
@@ -903,10 +935,22 @@ export function App() {
 				currentQuestionIndex: result.currentQuestionIndex || 0
 			}));
 			
+			// Update sticky quality score if available
+			if (result.qualityScore) {
+				setStickyQualityScore({
+					...result.qualityScore,
+					isVisible: true
+				});
+			}
+			
 			setTimeout(() => {
 				const aiResponse: ChatMessage = {
 					content: result.message,
-					isUser: false
+					isUser: false,
+					caseCreation: result.step === 'urgency-selection' ? {
+						type: 'urgency-selection',
+						availableServices: []
+					} : undefined
 				};
 				setMessages(prev => [...prev, aiResponse]);
 			}, 800);
@@ -936,22 +980,29 @@ export function App() {
 			// Call API for urgency selection
 			const result = await handleCaseCreationAPI('urgency-selection', {
 				service: caseState.data.caseType,
-				description: caseState.data.description,
-				urgency: urgency,
-				answers: caseState.data.aiAnswers
-			});
-			
-			const finalCaseData = {
-				...caseState.data,
 				urgency: urgency
-			};
+			});
 			
 			setCaseState(prev => ({
 				...prev,
-				data: finalCaseData,
-				step: 'idle',
-				isActive: false
+				data: { ...prev.data, urgency: urgency },
+				step: result.step,
+				currentQuestionIndex: result.currentQuestionIndex || 0
 			}));
+			
+			// If we're moving to AI questions, we need to handle the first question
+			if (result.step === 'ai-questions' && result.question) {
+				// The AI response will include the question, so we don't need to add it separately
+				// The user will see the question in the AI message and can respond in the chat input
+			}
+			
+			// Update sticky quality score if available
+			if (result.qualityScore) {
+				setStickyQualityScore({
+					...result.qualityScore,
+					isVisible: true
+				});
+			}
 			
 			setTimeout(() => {
 				const aiResponse: ChatMessage = {
@@ -959,27 +1010,6 @@ export function App() {
 					isUser: false
 				};
 				setMessages(prev => [...prev, aiResponse]);
-				
-				// Start contact form flow
-				setTimeout(() => {
-					const contactResponse: ChatMessage = {
-						content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
-						isUser: false
-					};
-					setMessages(prev => [...prev, contactResponse]);
-					
-					// Start contact form
-					setFormState({
-						step: 'contact',
-						data: { 
-							caseType: finalCaseData.caseType, 
-							caseDescription: finalCaseData.description,
-							caseDetails: finalCaseData.aiAnswers,
-							urgency: finalCaseData.urgency
-						},
-						isActive: true
-					});
-				}, 2000);
 			}, 800);
 		} catch (error) {
 			console.error('Urgency selection error:', error);
@@ -997,27 +1027,34 @@ export function App() {
 	// API-driven case creation handler
 	const handleCaseCreationAPI = async (step: string, data: any = {}) => {
 		try {
+			const requestBody = {
+				teamId: teamId || 'demo',
+				service: data.service || caseState.data.caseType,
+				step: step,
+				currentQuestionIndex: data.currentQuestionIndex,
+				answers: data.answers,
+				description: data.description,
+				urgency: data.urgency
+			};
+			
+			console.log('Case creation API request:', requestBody);
+			
 			const response = await fetch(getCaseCreationEndpoint(), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({
-					teamId: teamId || 'demo',
-					service: data.service || caseState.data.caseType,
-					step: step,
-					currentQuestionIndex: data.currentQuestionIndex,
-					answers: data.answers,
-					description: data.description,
-					urgency: data.urgency
-				})
+				body: JSON.stringify(requestBody)
 			});
 
 			if (!response.ok) {
-				throw new Error(`API request failed: ${response.status}`);
+				const errorText = await response.text();
+				console.error('API response error:', response.status, errorText);
+				throw new Error(`API request failed: ${response.status} - ${errorText}`);
 			}
 
 			const result = await response.json();
+			console.log('Case creation API response:', result);
 			return result;
 		} catch (error) {
 			console.error('Case creation API error:', error);
@@ -1041,14 +1078,13 @@ export function App() {
 			// Process based on current step
 			switch (caseState.step) {
 				case 'gathering-info':
-					// Store case type and start AI questions
+					// Store case type and start urgency selection
 					const selectedService = message;
 					
 					setCaseState(prev => ({
 						...prev,
 						data: { ...prev.data, caseType: message },
-						step: 'ai-questions',
-						currentQuestionIndex: 0
+						step: 'urgency-selection'
 					}));
 					
 					// Call API for service selection
@@ -1058,8 +1094,8 @@ export function App() {
 						const aiResponse: ChatMessage = {
 							content: serviceResult.message,
 							isUser: false,
-							caseCreation: serviceResult.step === 'ai-questions' ? {
-								type: 'service-selection',
+							caseCreation: serviceResult.step === 'urgency-selection' ? {
+								type: 'urgency-selection',
 								availableServices: []
 							} : undefined,
 							qualityScore: serviceResult.qualityScore
@@ -1086,7 +1122,8 @@ export function App() {
 					const aiResult = await handleCaseCreationAPI('ai-questions', {
 						service: currentService,
 						currentQuestionIndex: currentIndex,
-						answers: updatedAnswers
+						answers: updatedAnswers,
+						urgency: caseState.data.urgency
 					});
 					
 					if (aiResult.step === 'ai-questions') {
@@ -1097,11 +1134,18 @@ export function App() {
 							currentQuestionIndex: aiResult.currentQuestionIndex
 						}));
 						
+						// Update sticky quality score if available
+						if (aiResult.qualityScore) {
+							setStickyQualityScore({
+								...aiResult.qualityScore,
+								isVisible: true
+							});
+						}
+						
 						setTimeout(() => {
 							const aiResponse: ChatMessage = {
 								content: aiResult.message + (aiResult.question ? `\n\n${aiResult.question}` : ''),
-								isUser: false,
-								qualityScore: aiResult.qualityScore
+								isUser: false
 							};
 							setMessages(prev => [...prev, aiResponse]);
 						}, 800);
@@ -1134,23 +1178,33 @@ export function App() {
 					// Call API for case details step
 					const detailsResult = await handleCaseCreationAPI('case-details', {
 						service: caseState.data.caseType,
-						description: message
+						description: message,
+						urgency: caseState.data.urgency,
+						answers: caseState.data.aiAnswers
 					});
 					
-											setTimeout(() => {
-							const aiResponse: ChatMessage = {
-								content: detailsResult.message,
-								isUser: false,
-								qualityScore: detailsResult.qualityScore
-							};
-							setMessages(prev => [...prev, aiResponse]);
-						
+					// Update sticky quality score if available
+					if (detailsResult.qualityScore) {
+						setStickyQualityScore({
+							...detailsResult.qualityScore,
+							isVisible: true
+						});
+					}
+					
+					setTimeout(() => {
+						const aiResponse: ChatMessage = {
+							content: detailsResult.message,
+							isUser: false
+						};
+						setMessages(prev => [...prev, aiResponse]);
+					
 						// Automatically trigger AI analysis after a short delay
 						setTimeout(async () => {
 							try {
 								const analysisResult = await handleCaseCreationAPI('ai-analysis', {
 									service: caseState.data.caseType,
 									description: message,
+									urgency: caseState.data.urgency,
 									answers: caseState.data.aiAnswers
 								});
 								
@@ -1160,16 +1214,42 @@ export function App() {
 									currentQuestionIndex: analysisResult.currentQuestionIndex || 0
 								}));
 								
+								// Update sticky quality score if available
+								if (analysisResult.qualityScore) {
+									setStickyQualityScore({
+										...analysisResult.qualityScore,
+										isVisible: true
+									});
+								}
+								
 								const analysisResponse: ChatMessage = {
 									content: analysisResult.message,
-									isUser: false,
-									caseCreation: analysisResult.step === 'urgency-selection' ? {
-										type: 'urgency-selection',
-										availableServices: []
-									} : undefined,
-									qualityScore: analysisResult.qualityScore
+									isUser: false
 								};
 								setMessages(prev => [...prev, analysisResponse]);
+								
+								// If analysis is complete, start contact form
+								if (analysisResult.step === 'complete') {
+									setTimeout(() => {
+										const contactResponse: ChatMessage = {
+											content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+											isUser: false
+										};
+										setMessages(prev => [...prev, contactResponse]);
+										
+										// Start contact form with enhanced data
+										setFormState({
+											step: 'contact',
+											data: { 
+												caseType: caseState.data.caseType, 
+												caseDescription: caseState.data.description,
+												caseDetails: caseState.data.aiAnswers,
+												urgency: caseState.data.urgency
+											},
+											isActive: true
+										});
+									}, 2000);
+								}
 							} catch (error) {
 								console.error('AI analysis error:', error);
 								const errorResponse: ChatMessage = {
@@ -1178,68 +1258,27 @@ export function App() {
 								};
 								setMessages(prev => [...prev, errorResponse]);
 								
-								// Fallback to urgency selection
-								setCaseState(prev => ({
-									...prev,
-									step: 'urgency-selection'
-								}));
+								// Fallback to contact form
+								setTimeout(() => {
+									const contactResponse: ChatMessage = {
+										content: "Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+										isUser: false
+									};
+									setMessages(prev => [...prev, contactResponse]);
+									
+									setFormState({
+										step: 'contact',
+										data: { 
+											caseType: caseState.data.caseType, 
+											caseDescription: caseState.data.description,
+											caseDetails: caseState.data.aiAnswers,
+											urgency: caseState.data.urgency
+										},
+										isActive: true
+									});
+								}, 2000);
 							}
 						}, 2000); // Wait 2 seconds before starting analysis
-					}, 800);
-					break;
-
-
-
-				case 'urgency-selection':
-					// Store urgency and provide case summary
-					const finalCaseData = {
-						...caseState.data,
-						urgency: message
-					};
-					
-					// Call API for urgency selection step
-					const urgencyResult = await handleCaseCreationAPI('urgency-selection', {
-						service: caseState.data.caseType,
-						description: caseState.data.description,
-						urgency: message,
-						answers: caseState.data.aiAnswers
-					});
-					
-					setCaseState(prev => ({
-						...prev,
-						data: finalCaseData,
-						step: 'idle',
-						isActive: false
-					}));
-					
-					setTimeout(() => {
-						const aiResponse: ChatMessage = {
-							content: urgencyResult.message,
-							isUser: false,
-							qualityScore: urgencyResult.qualityScore
-						};
-						setMessages(prev => [...prev, aiResponse]);
-						
-						// Start contact form flow
-						setTimeout(() => {
-							const contactResponse: ChatMessage = {
-								content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
-								isUser: false
-							};
-							setMessages(prev => [...prev, contactResponse]);
-							
-							// Start contact form with enhanced data
-							setFormState({
-								step: 'contact',
-								data: { 
-									caseType: finalCaseData.caseType, 
-									caseDescription: finalCaseData.description,
-									caseDetails: finalCaseData.aiAnswers,
-									urgency: finalCaseData.urgency
-								},
-								isActive: true
-							});
-						}, 2000);
 					}, 800);
 					break;
 			}
@@ -1503,7 +1542,9 @@ export function App() {
 			>
 				<ErrorBoundary>
 					{(position === 'inline' || isOpen) && (
-						<main className="chat-main">
+						<>
+							<StickyQualityScore {...stickyQualityScore} />
+							<main className="chat-main">
 							{messages.length === 0 && (
 								<div className="welcome-message">
 									<div className="welcome-card">
@@ -1703,6 +1744,7 @@ export function App() {
 								</div>
 							</div>
 						</main>
+						</>
 					)}
 				</ErrorBoundary>
 			</div>

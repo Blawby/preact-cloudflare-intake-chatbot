@@ -501,3 +501,57 @@ MIT — See [LICENSE](./LICENSE)
 ---
 
 Let me know if you'd like this exported as a cleaned-up file or reformatted in a particular style (e.g., markdown collapsibles, condensed version, etc.).
+
+## Case Creation Flow
+
+The system provides an intelligent case creation flow that guides potential clients through a structured process:
+
+### Flow Steps (Improved Order)
+
+1. **Service Selection** - Client selects their legal practice area
+2. **Urgency Assessment** - Client indicates urgency level (Very Urgent, Somewhat Urgent, Not Urgent)
+3. **AI-Powered Questions** - Practice area-specific questions to gather detailed information
+4. **Case Description** - Client provides overall situation description
+5. **AI Analysis** - Intelligent assessment of case readiness and information completeness
+6. **Completion** - Case summary and connection to attorney
+
+### Benefits of New Flow Order
+
+- **Early Urgency Context**: Understanding urgency early helps prioritize information gathering
+- **Better AI Guidance**: AI analysis happens after sufficient information is collected
+- **Reduced Redundancy**: Eliminates repetitive questions and improves user experience
+- **Quality-Driven**: Each step contributes to case quality scoring
+- **Flexible Paths**: Can skip AI questions if not needed, or loop back if more info required
+
+### API Endpoints
+
+#### Case Creation Flow
+```bash
+POST /api/case-creation
+```
+
+**Request Body:**
+```json
+{
+  "teamId": "demo",
+  "service": "Family Law",
+  "step": "service-selection|urgency-selection|ai-questions|case-details|ai-analysis|complete",
+  "currentQuestionIndex": 0,
+  "answers": {"question": "answer"},
+  "description": "Case description",
+  "urgency": "Very Urgent"
+}
+```
+
+**Response:**
+```json
+{
+  "step": "next-step",
+  "message": "Response message",
+  "question": "Next question (if applicable)",
+  "totalQuestions": 5,
+  "urgencyOptions": [...],
+  "qualityScore": {...},
+  "caseData": {...}
+}
+```

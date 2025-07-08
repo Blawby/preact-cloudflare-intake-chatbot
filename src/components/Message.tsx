@@ -3,7 +3,6 @@ import { memo } from 'preact/compat';
 import { marked } from 'marked';
 import LazyMedia from './LazyMedia';
 import createLazyComponent from '../utils/LazyComponent';
-import CaseQualityScore from './CaseQualityScore';
 
 // Lazy load scheduling components
 const LazyDateSelector = createLazyComponent(
@@ -49,8 +48,11 @@ interface SchedulingData {
 
 // Add case creation-related data interface
 interface CaseCreationData {
-	type: 'service-selection' | 'urgency-selection';
+	type: 'service-selection' | 'urgency-selection' | 'ai-questions';
 	availableServices: string[];
+	question?: string;
+	totalQuestions?: number;
+	currentQuestionIndex?: number;
 }
 
 interface MessageProps {
@@ -59,22 +61,6 @@ interface MessageProps {
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
 	caseCreation?: CaseCreationData;
-	qualityScore?: {
-		score: number;
-		breakdown: {
-			followUpCompletion: number;
-			requiredFields: number;
-			evidence: number;
-			clarity: number;
-			urgency: number;
-			consistency: number;
-			aiConfidence: number;
-		};
-		suggestions: string[];
-		readyForLawyer: boolean;
-		badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
-		color: 'red' | 'yellow' | 'green' | 'blue';
-	};
 	onDateSelect?: (date: Date) => void;
 	onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
 	onTimeSlotSelect?: (timeSlot: Date) => void;
@@ -270,7 +256,6 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	files = [], 
 	scheduling, 
 	caseCreation,
-	qualityScore,
 	onDateSelect, 
 	onTimeOfDaySelect, 
 	onTimeSlotSelect, 
@@ -359,17 +344,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					/>
 				)}
 				
-				{/* Display quality score */}
-				{qualityScore && (
-					<CaseQualityScore
-						score={qualityScore.score}
-						breakdown={qualityScore.breakdown}
-						suggestions={qualityScore.suggestions}
-						readyForLawyer={qualityScore.readyForLawyer}
-						badge={qualityScore.badge}
-						color={qualityScore.color}
-					/>
-				)}
+
 				
 				{/* Display files */}
 				{imageFiles.map(file => (

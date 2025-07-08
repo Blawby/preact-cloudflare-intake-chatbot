@@ -29,7 +29,7 @@ interface ContactFormSubmission {
 interface CaseCreationRequest {
   teamId: string;
   service: string;
-  step: 'service-selection' | 'ai-questions' | 'case-details' | 'ai-analysis' | 'urgency-selection';
+  step: 'service-selection' | 'urgency-selection' | 'ai-questions' | 'case-details' | 'ai-analysis' | 'complete';
   currentQuestionIndex?: number;
   answers?: Record<string, string>;
   description?: string;
@@ -827,30 +827,48 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
       // Handle different steps
       switch (body.step) {
         case 'service-selection':
+          // Calculate initial quality score
+          const serviceQualityScore = await calculateCaseQuality(body.service, '', {}, undefined, teamConfig);
+          
+          return new Response(JSON.stringify({
+            step: 'urgency-selection',
+            message: `Thank you for selecting ${body.service}. To better understand your situation and provide appropriate assistance, I'd like to know how urgent this matter is.`,
+            urgencyOptions: [
+              { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
+              { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
+              { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
+            ],
+            qualityScore: serviceQualityScore
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+
+        case 'urgency-selection':
+          // Check if there are service-specific questions to ask
           const serviceQuestions = teamConfig.serviceQuestions?.[body.service] || [];
+          const urgencyQualityScore = await calculateCaseQuality(body.service, '', {}, body.urgency, teamConfig);
+          
           if (serviceQuestions.length > 0) {
-            // Calculate initial quality score
-            const serviceQualityScore = await calculateCaseQuality(body.service, '', {}, undefined, teamConfig);
-            
+            // Move to AI questions with urgency context
             return new Response(JSON.stringify({
               step: 'ai-questions',
               currentQuestionIndex: 0,
               question: serviceQuestions[0],
               totalQuestions: serviceQuestions.length,
-              message: `Thank you for selecting ${body.service}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.\n\n${serviceQuestions[0]}`,
+              message: `Thank you for indicating this is ${body.urgency.toLowerCase()}. Given the urgency, let me ask you some specific questions to quickly assess your situation and provide targeted assistance.\n\n${serviceQuestions[0]}`,
               questions: serviceQuestions,
-              qualityScore: serviceQualityScore
+              urgency: body.urgency,
+              qualityScore: urgencyQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           } else {
-            // Calculate initial quality score
-            const serviceQualityScore = await calculateCaseQuality(body.service, '', {}, undefined, teamConfig);
-            
+            // No specific questions, move to case details
             return new Response(JSON.stringify({
               step: 'case-details',
-              message: `Thank you for sharing that you're dealing with a ${body.service} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
-              qualityScore: serviceQualityScore
+              message: `Thank you for indicating this is ${body.urgency.toLowerCase()}. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
+              urgency: body.urgency,
+              qualityScore: urgencyQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -863,7 +881,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           
           if (nextIndex < questions.length) {
             // More questions to ask
-            const aiQuestionsQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, undefined, teamConfig);
+            const aiQuestionsQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, body.urgency, teamConfig);
             
             return new Response(JSON.stringify({
               step: 'ai-questions',
@@ -872,6 +890,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               totalQuestions: questions.length,
               message: `Thank you for that information.`,
               questions: questions,
+              urgency: body.urgency,
               qualityScore: aiQuestionsQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -882,12 +901,13 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               .map(([question, answer]) => `**${question}**\n${answer}`)
               .join('\n\n');
             
-            const aiQuestionsQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, undefined, teamConfig);
+            const aiQuestionsQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, body.urgency, teamConfig);
             
             return new Response(JSON.stringify({
               step: 'case-details',
               message: `Thank you for providing those details. Based on your responses:\n\n${answersSummary}\n\nNow, could you please provide a brief overall description of your situation? What happened and what are you hoping to achieve?`,
               answers: body.answers,
+              urgency: body.urgency,
               qualityScore: aiQuestionsQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -895,8 +915,8 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           }
 
         case 'case-details':
-          // Move to AI analysis step instead of directly to urgency
-          const caseDetailsQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, undefined, teamConfig);
+          // Move to AI analysis step
+          const caseDetailsQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
           
           return new Response(JSON.stringify({
             step: 'ai-analysis',
@@ -904,7 +924,8 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
             caseData: {
               service: body.service,
               description: body.description,
-              answers: body.answers
+              answers: body.answers,
+              urgency: body.urgency
             },
             qualityScore: caseDetailsQualityScore
           }), {
@@ -929,6 +950,7 @@ IMPORTANT: Only ask follow-up questions if there is genuinely missing critical i
 
 Case Information:
 - Practice Area: ${body.service}
+- Urgency: ${body.urgency}
 - Client Description: ${body.description}
 - Detailed Responses:
 ${caseSummary}
@@ -947,7 +969,10 @@ Guidelines:
 - If the client has clearly explained their situation and the key facts are present, set readyForLawyer to true
 - Only ask follow-up questions for genuinely missing critical information
 - Avoid asking questions about information already provided
-- Focus on actionable next steps rather than redundant information gathering`;
+- Focus on actionable next steps rather than redundant information gathering
+- Consider urgency level when determining if more information is needed
+- If the client has provided a detailed description with specific facts, amounts, and timeline, they likely have sufficient information
+- Only ask for missing critical details that would significantly impact legal strategy`;
 
             const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
               messages: [
@@ -973,25 +998,38 @@ Guidelines:
                 sufficientInfo: false,
                 missingInfo: ['More specific details about the situation', 'Timeline of events', 'Current status'],
                 recommendations: ['Gather more specific information', 'Clarify timeline and current status'],
-                followUpQuestions: ['Can you provide more specific details about what happened?', 'What is the current status of this situation?'],
+                followUpQuestions: ['Can you provide more specific details about your situation?', 'What is the current status of this situation?'],
                 readyForLawyer: false
               };
             }
 
             if (analysis.readyForLawyer && analysis.sufficientInfo) {
               // Case is ready for lawyer connection
-              const analysisQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, undefined, teamConfig);
+              const completeAnalysisQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
+              
+              // Create comprehensive case summary
+              let caseSummary = `**Case Analysis Complete**\n\n${analysis.summary}\n\n**Case Summary:**\n- **Type:** ${body.service}\n- **Urgency:** ${body.urgency}\n- **Description:** ${body.description}`;
+              
+              if (body.answers && Object.keys(body.answers).length > 0) {
+                caseSummary += '\n\n**Additional Details:**';
+                Object.entries(body.answers).forEach(([question, answer]) => {
+                  caseSummary += `\n- **${question}** ${answer}`;
+                });
+              }
+              
+              caseSummary += `\n\nBased on my analysis, I have sufficient information to connect you with a qualified attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
               
               return new Response(JSON.stringify({
-                step: 'urgency-selection',
-                message: `**Case Analysis Complete**\n\n${analysis.summary}\n\nBased on my analysis, I have sufficient information to connect you with a qualified attorney. How urgent is this matter?`,
-                urgencyOptions: [
-                  { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
-                  { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
-                  { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
-                ],
+                step: 'complete',
+                message: caseSummary,
+                caseData: {
+                  service: body.service,
+                  description: body.description,
+                  urgency: body.urgency,
+                  answers: body.answers
+                },
                 analysis: analysis,
-                qualityScore: analysisQualityScore
+                qualityScore: completeAnalysisQualityScore
               }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               });
@@ -1001,7 +1039,7 @@ Guidelines:
                 ? `\n\nI need to gather a bit more information to better assist you:\n\n${analysis.followUpQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
                 : '\n\nI need to gather a bit more information to better assist you.';
 
-              const analysisQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, undefined, teamConfig);
+              const followUpQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
 
               return new Response(JSON.stringify({
                 step: 'ai-questions',
@@ -1011,59 +1049,43 @@ Guidelines:
                 message: `**Case Analysis**\n\n${analysis.summary}${followUpMessage}`,
                 questions: analysis.followUpQuestions || ['Can you provide more specific details about your situation?'],
                 analysis: analysis,
-                qualityScore: analysisQualityScore
+                urgency: body.urgency,
+                qualityScore: followUpQualityScore
               }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               });
             }
           } catch (aiError) {
             console.error('AI analysis error:', aiError);
-            // Fallback to urgency selection if AI fails
-            const fallbackQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, undefined, teamConfig);
+            // Fallback to complete if AI fails
+            const fallbackQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
+            
+            // Create fallback case summary
+            let caseSummary = `**Case Summary:**\n- **Type:** ${body.service}\n- **Urgency:** ${body.urgency}\n- **Description:** ${body.description}`;
+            
+            if (body.answers && Object.keys(body.answers).length > 0) {
+              caseSummary += '\n\n**Additional Details:**';
+              Object.entries(body.answers).forEach(([question, answer]) => {
+                caseSummary += `\n- **${question}** ${answer}`;
+              });
+            }
+            
+            caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
             
             return new Response(JSON.stringify({
-              step: 'urgency-selection',
-              message: `Thank you for sharing those details. I understand your situation involves ${body.service} and you've described: "${body.description}"\n\nHow urgent is this matter?`,
-              urgencyOptions: [
-                { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
-                { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
-                { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
-              ],
+              step: 'complete',
+              message: caseSummary,
+              caseData: {
+                service: body.service,
+                description: body.description,
+                urgency: body.urgency,
+                answers: body.answers
+              },
               qualityScore: fallbackQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           }
-
-        case 'urgency-selection':
-          // Create comprehensive case summary
-          let caseSummary = `**Case Summary:**\n- **Type:** ${body.service}\n- **Description:** ${body.description}\n- **Urgency:** ${body.urgency}`;
-          
-          if (body.answers && Object.keys(body.answers).length > 0) {
-            caseSummary += '\n\n**Additional Details:**';
-            Object.entries(body.answers).forEach(([question, answer]) => {
-              caseSummary += `\n- **${question}** ${answer}`;
-            });
-          }
-          
-          caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
-          
-          // Calculate final quality score with urgency
-          const finalQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
-          
-          return new Response(JSON.stringify({
-            step: 'complete',
-            message: caseSummary,
-            caseData: {
-              service: body.service,
-              description: body.description,
-              urgency: body.urgency,
-              answers: body.answers
-            },
-            qualityScore: finalQualityScore
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
 
         default:
           return new Response(JSON.stringify({ 
