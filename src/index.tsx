@@ -258,13 +258,14 @@ export function App() {
 				const teams = await response.json();
 				const team = teams.find((t: any) => t.id === teamId);
 				if (team?.config) {
-					setTeamConfig({
+					const config = {
 						name: team.name || 'Legal AI Assistant',
 						profileImage: team.config.profileImage || null,
 						introMessage: team.config.introMessage || null,
 						availableServices: team.config.availableServices || [],
 						serviceQuestions: team.config.serviceQuestions || {}
-					});
+					};
+					setTeamConfig(config);
 				}
 			}
 		} catch (error) {
@@ -821,20 +822,32 @@ export function App() {
 		};
 		setMessages(prev => [...prev, userMessage]);
 		
-		// Process the service selection directly without calling handleCaseCreationStep
-		// Store case type and ask for description
+		// Check for AI questions for this service
+		const serviceQuestions = teamConfig.serviceQuestions?.[service] || [];
+		
 		setCaseState(prev => ({
 			...prev,
 			data: { ...prev.data, caseType: service },
-			step: 'case-details'
+			step: serviceQuestions.length > 0 ? 'ai-questions' : 'case-details',
+			currentQuestionIndex: 0
 		}));
 		
 		setTimeout(() => {
-			const aiResponse: ChatMessage = {
-				content: `Thank you for sharing that you're dealing with a ${service.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
-				isUser: false
-			};
-			setMessages(prev => [...prev, aiResponse]);
+			if (serviceQuestions.length > 0) {
+				// Start with AI questions
+				const aiResponse: ChatMessage = {
+					content: `Thank you for selecting ${service}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.\n\n**${serviceQuestions[0]}**`,
+					isUser: false
+				};
+				setMessages(prev => [...prev, aiResponse]);
+			} else {
+				// Fallback to generic description request
+				const aiResponse: ChatMessage = {
+					content: `Thank you for sharing that you're dealing with a ${service.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
+					isUser: false
+				};
+				setMessages(prev => [...prev, aiResponse]);
+			}
 		}, 800);
 	};
 
