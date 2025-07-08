@@ -538,7 +538,7 @@ async function calculateCaseQuality(
 
   // 3. Evidence (15% weight)
   // Check if user mentioned documents, photos, or evidence
-  const evidenceKeywords = ['photo', 'document', 'evidence', 'proof', 'picture', 'image', 'file', 'upload'];
+  const evidenceKeywords = ['photo', 'document', 'evidence', 'proof', 'picture', 'image', 'file', 'upload', 'csv', 'pdf', 'contract', 'agreement', 'letter', 'notice', 'cease', 'desist'];
   const hasEvidence = evidenceKeywords.some(keyword => 
     description.toLowerCase().includes(keyword) || 
     Object.values(answers).some(answer => answer.toLowerCase().includes(keyword))
@@ -554,11 +554,12 @@ async function calculateCaseQuality(
       const length = answer.length;
       const hasDetails = answer.toLowerCase().includes('because') || answer.toLowerCase().includes('when') || answer.toLowerCase().includes('where') || answer.toLowerCase().includes('since') || answer.toLowerCase().includes('due to');
       const isSpecific = !answer.toLowerCase().includes('i don\'t know') && !answer.toLowerCase().includes('not sure') && !answer.toLowerCase().includes('already told you') && !answer.toLowerCase().includes('enough');
-      const hasSubstance = length > 20; // Require longer, more substantive answers
-      const hasContext = answer.toLowerCase().includes('children') || answer.toLowerCase().includes('money') || answer.toLowerCase().includes('court') || answer.toLowerCase().includes('legal') || answer.toLowerCase().includes('document');
-      return (hasSubstance ? 1 : 0) + (hasDetails ? 1 : 0) + (isSpecific ? 1 : 0) + (hasContext ? 1 : 0);
+      const hasSubstance = length > 10; // Reduced from 20 to 10 for brief but valuable responses
+      const hasContext = answer.toLowerCase().includes('children') || answer.toLowerCase().includes('money') || answer.toLowerCase().includes('court') || answer.toLowerCase().includes('legal') || answer.toLowerCase().includes('document') || answer.toLowerCase().includes('cease') || answer.toLowerCase().includes('desist') || answer.toLowerCase().includes('kfc') || answer.toLowerCase().includes('business') || answer.toLowerCase().includes('people') || answer.toLowerCase().includes('csv');
+      const hasLegalRelevance = answer.toLowerCase().includes('cease') || answer.toLowerCase().includes('desist') || answer.toLowerCase().includes('trademark') || answer.toLowerCase().includes('copyright') || answer.toLowerCase().includes('contract') || answer.toLowerCase().includes('employment') || answer.toLowerCase().includes('child support') || answer.toLowerCase().includes('custody') || answer.toLowerCase().includes('divorce');
+      return (hasSubstance ? 1 : 0) + (hasDetails ? 1 : 0) + (isSpecific ? 1 : 0) + (hasContext ? 1 : 0) + (hasLegalRelevance ? 2 : 0); // Legal relevance gets double weight
     });
-    clarityScore = (clarityScores.reduce((a, b) => a + b, 0) / (totalAnswers * 4)) * 100; // 4 criteria instead of 3
+    clarityScore = (clarityScores.reduce((a, b) => a + b, 0) / (totalAnswers * 6)) * 100; // 6 total possible points
   }
   breakdown.clarity = clarityScore;
 
@@ -934,19 +935,18 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               .map(([question, answer]) => `**${question}**\n${answer}`)
               .join('\n\n');
             
-            const analysisPrompt = `You are a rigorous legal case analyst. Your job is to ensure we have COMPREHENSIVE information before connecting a client with a lawyer. Analyze the following case information and provide:
+            const analysisPrompt = `You are an intelligent legal case analyst. Your job is to assess whether we have sufficient information to connect a client with a lawyer. Analyze the following case information and provide:
 
 1. A professional summary of the case
 2. Assessment of whether we have sufficient information for a qualified legal lead
 3. Any missing critical information that should be gathered
 4. Recommended next steps
 
-CRITICAL REQUIREMENTS FOR READY-FOR-LAWYER STATUS:
-- Client must provide detailed, specific information about their situation
-- Must include timeline of events, specific facts, and clear objectives
-- Must demonstrate understanding of their legal needs
-- Must provide sufficient context for a lawyer to provide meaningful advice
-- Vague, minimal, or incomplete responses are NOT sufficient
+IMPORTANT: Be intelligent about recognizing when the client has provided valuable information, even if their responses are brief or frustrated. Look for:
+- Specific legal issues mentioned (e.g., "cease and desist", "trademark infringement", "child support")
+- Clear facts about their situation (e.g., "100 people", "KFC business", "homeless")
+- Documents or evidence mentioned (e.g., "unified_payments.csv", "court papers")
+- Specific outcomes they want (e.g., "avoid legal trouble", "get child support")
 
 Case Information:
 - Practice Area: ${body.service}
@@ -965,14 +965,14 @@ Please provide a structured analysis in JSON format with the following fields:
   "readyForLawyer": true/false
 }
 
-STRICT GUIDELINES:
-- Set readyForLawyer to true ONLY if the client has provided comprehensive, detailed information
-- If the client gave vague responses like "I already told you enough" or minimal details, set readyForLawyer to false
-- Always ask follow-up questions if the client hasn't provided specific facts, timeline, or clear objectives
-- For family law cases, require specific details about children, dates, amounts, and current situation
-- For urgent cases, still require detailed information before connecting to lawyer
-- If the client's description is brief or lacks specificity, ask for more details
-- Focus on gathering actionable information that a lawyer would need to provide proper advice`;
+INTELLIGENT GUIDELINES:
+- Set readyForLawyer to true if the client has provided enough information for a lawyer to understand their situation and provide meaningful advice
+- Recognize that brief but specific responses can contain valuable information
+- Don't ask redundant questions if the client has already provided the information
+- For business cases: If they mention specific legal issues (cease and desist, contracts, etc.), that's often sufficient
+- For family law: If they mention children, legal issues, and current situation, that's often sufficient
+- Focus on whether a lawyer could provide meaningful advice with the current information
+- Avoid asking generic questions if the client has already explained their situation`;
 
             const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
               messages: [
