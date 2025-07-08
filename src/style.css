@@ -2315,8 +2315,7 @@ kbd {
 }
 
 .sticky-quality-score-container {
-	max-width: 1200px;
-	margin: 0 auto;
+	width: 100%;
 	padding: 0.75rem 1rem;
 }
 
