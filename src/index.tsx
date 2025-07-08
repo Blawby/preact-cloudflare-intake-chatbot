@@ -10,7 +10,7 @@ import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
-import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint } from './config/api';
+import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getCaseCreationEndpoint } from './config/api';
 import { detectIntent, getIntentResponse } from './utils/intentDetection';
 import { 
   FormState, 
@@ -787,7 +787,7 @@ export function App() {
 	};
 
 	// Update handleSubmit to use the new API function
-	const handleSubmit = () => {
+	const handleSubmit = async () => {
 		if (!inputValue.trim() && previewFiles.length === 0) return;
 
 		const message = inputValue.trim();
@@ -795,7 +795,7 @@ export function App() {
 		
 		// Handle case creation flow
 		if (caseState.isActive) {
-			handleCaseCreationStep(message, attachments);
+			await handleCaseCreationStep(message, attachments);
 			return;
 		}
 
@@ -814,7 +814,7 @@ export function App() {
 	};
 
 	// Handle service selection from buttons
-	const handleServiceSelect = (service: string) => {
+	const handleServiceSelect = async (service: string) => {
 		// Add user message
 		const userMessage: ChatMessage = {
 			content: service,
@@ -822,37 +822,39 @@ export function App() {
 		};
 		setMessages(prev => [...prev, userMessage]);
 		
-		// Check for AI questions for this service
-		const serviceQuestions = teamConfig.serviceQuestions?.[service] || [];
-		
-		setCaseState(prev => ({
-			...prev,
-			data: { ...prev.data, caseType: service },
-			step: serviceQuestions.length > 0 ? 'ai-questions' : 'case-details',
-			currentQuestionIndex: 0
-		}));
-		
-		setTimeout(() => {
-			if (serviceQuestions.length > 0) {
-				// Start with AI questions
+		try {
+			// Call API for service selection
+			const result = await handleCaseCreationAPI('service-selection', { service });
+			
+			setCaseState(prev => ({
+				...prev,
+				data: { ...prev.data, caseType: service },
+				step: result.step,
+				currentQuestionIndex: result.currentQuestionIndex || 0
+			}));
+			
+			setTimeout(() => {
 				const aiResponse: ChatMessage = {
-					content: `Thank you for selecting ${service}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.\n\n**${serviceQuestions[0]}**`,
+					content: result.message,
 					isUser: false
 				};
 				setMessages(prev => [...prev, aiResponse]);
-			} else {
-				// Fallback to generic description request
-				const aiResponse: ChatMessage = {
-					content: `Thank you for sharing that you're dealing with a ${service.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
+			}, 800);
+		} catch (error) {
+			console.error('Service selection error:', error);
+			// Fallback to error message
+			setTimeout(() => {
+				const errorResponse: ChatMessage = {
+					content: "I apologize, but I encountered an error processing your service selection. Please try again.",
 					isUser: false
 				};
-				setMessages(prev => [...prev, aiResponse]);
-			}
-		}, 800);
+				setMessages(prev => [...prev, errorResponse]);
+			}, 800);
+		}
 	};
 
 	// Handle urgency selection from buttons
-	const handleUrgencySelect = (urgency: string) => {
+	const handleUrgencySelect = async (urgency: string) => {
 		// Add user message
 		const userMessage: ChatMessage = {
 			content: urgency,
@@ -860,48 +862,101 @@ export function App() {
 		};
 		setMessages(prev => [...prev, userMessage]);
 		
-		// Process the urgency selection directly
-		const finalCaseData = {
-			...caseState.data,
-			urgency: urgency
-		};
-		
-		setCaseState(prev => ({
-			...prev,
-			data: finalCaseData,
-			step: 'idle',
-			isActive: false
-		}));
-		
-		setTimeout(() => {
-			const caseSummary = `**Case Summary:**\n- **Type:** ${finalCaseData.caseType?.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}\n- **Description:** ${finalCaseData.description}\n- **Urgency:** ${finalCaseData.urgency}\n\nBased on your case details, I can help connect you with an attorney who specializes in ${finalCaseData.caseType?.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}. Would you like me to start the process of connecting you with a lawyer?`;
+		try {
+			// Call API for urgency selection
+			const result = await handleCaseCreationAPI('urgency-selection', {
+				service: caseState.data.caseType,
+				description: caseState.data.description,
+				urgency: urgency,
+				answers: caseState.data.aiAnswers
+			});
 			
-			const aiResponse: ChatMessage = {
-				content: caseSummary,
-				isUser: false
+			const finalCaseData = {
+				...caseState.data,
+				urgency: urgency
 			};
-			setMessages(prev => [...prev, aiResponse]);
 			
-			// Start contact form flow
+			setCaseState(prev => ({
+				...prev,
+				data: finalCaseData,
+				step: 'idle',
+				isActive: false
+			}));
+			
 			setTimeout(() => {
-				const contactResponse: ChatMessage = {
-					content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+				const aiResponse: ChatMessage = {
+					content: result.message,
 					isUser: false
 				};
-				setMessages(prev => [...prev, contactResponse]);
+				setMessages(prev => [...prev, aiResponse]);
 				
-				// Start contact form
-				setFormState({
-					step: 'contact',
-					data: { caseType: finalCaseData.caseType, caseDescription: finalCaseData.description },
-					isActive: true
-				});
-			}, 2000);
-		}, 800);
+				// Start contact form flow
+				setTimeout(() => {
+					const contactResponse: ChatMessage = {
+						content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+						isUser: false
+					};
+					setMessages(prev => [...prev, contactResponse]);
+					
+					// Start contact form
+					setFormState({
+						step: 'contact',
+						data: { 
+							caseType: finalCaseData.caseType, 
+							caseDescription: finalCaseData.description,
+							caseDetails: finalCaseData.aiAnswers,
+							urgency: finalCaseData.urgency
+						},
+						isActive: true
+					});
+				}, 2000);
+			}, 800);
+		} catch (error) {
+			console.error('Urgency selection error:', error);
+			// Fallback to error message
+			setTimeout(() => {
+				const errorResponse: ChatMessage = {
+					content: "I apologize, but I encountered an error processing your urgency selection. Please try again.",
+					isUser: false
+				};
+				setMessages(prev => [...prev, errorResponse]);
+			}, 800);
+		}
+	};
+
+	// API-driven case creation handler
+	const handleCaseCreationAPI = async (step: string, data: any = {}) => {
+		try {
+			const response = await fetch(getCaseCreationEndpoint(), {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					teamId: teamId || 'demo',
+					service: data.service || caseState.data.caseType,
+					step: step,
+					currentQuestionIndex: data.currentQuestionIndex,
+					answers: data.answers,
+					description: data.description,
+					urgency: data.urgency
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`API request failed: ${response.status}`);
+			}
+
+			const result = await response.json();
+			return result;
+		} catch (error) {
+			console.error('Case creation API error:', error);
+			throw error;
+		}
 	};
 
 	// Handle case creation flow steps
-	const handleCaseCreationStep = (message: string, attachments: FileAttachment[] = []) => {
+	const handleCaseCreationStep = async (message: string, attachments: FileAttachment[] = []) => {
 		// Add user message
 		const userMessage: ChatMessage = {
 			content: message,
@@ -912,168 +967,177 @@ export function App() {
 		setInputValue('');
 		setPreviewFiles([]);
 
-		// Process based on current step
-		switch (caseState.step) {
-			case 'gathering-info':
-				// Store case type and start AI questions
-				const selectedService = message;
-				const serviceQuestions = teamConfig.serviceQuestions?.[selectedService] || [];
-				
-				setCaseState(prev => ({
-					...prev,
-					data: { ...prev.data, caseType: message },
-					step: serviceQuestions.length > 0 ? 'ai-questions' : 'case-details',
-					currentQuestionIndex: 0
-				}));
-				
-				setTimeout(() => {
-					if (serviceQuestions.length > 0) {
-						// Start with AI questions
+		try {
+			// Process based on current step
+			switch (caseState.step) {
+				case 'gathering-info':
+					// Store case type and start AI questions
+					const selectedService = message;
+					
+					setCaseState(prev => ({
+						...prev,
+						data: { ...prev.data, caseType: message },
+						step: 'ai-questions',
+						currentQuestionIndex: 0
+					}));
+					
+					// Call API for service selection
+					const serviceResult = await handleCaseCreationAPI('service-selection', { service: selectedService });
+					
+					setTimeout(() => {
 						const aiResponse: ChatMessage = {
-							content: `Thank you for selecting ${selectedService}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.\n\n**${serviceQuestions[0]}**`,
-							isUser: false
+							content: serviceResult.message,
+							isUser: false,
+							caseCreation: serviceResult.step === 'ai-questions' ? {
+								type: 'service-selection',
+								availableServices: []
+							} : undefined
 						};
 						setMessages(prev => [...prev, aiResponse]);
+					}, 800);
+					break;
+
+				case 'ai-questions':
+					// Store answer to current AI question
+					const currentService = caseState.data.caseType;
+					const currentIndex = caseState.currentQuestionIndex || 0;
+					const currentQuestion = teamConfig.serviceQuestions?.[currentService || '']?.[currentIndex];
+					
+					// Store the answer
+					const updatedAnswers = {
+						...caseState.data.aiAnswers,
+						[currentQuestion]: message
+					};
+					
+					// Call API for AI questions step
+					const aiResult = await handleCaseCreationAPI('ai-questions', {
+						service: currentService,
+						currentQuestionIndex: currentIndex,
+						answers: updatedAnswers
+					});
+					
+					if (aiResult.step === 'ai-questions') {
+						// More questions to ask
+						setCaseState(prev => ({
+							...prev,
+							data: { ...prev.data, aiAnswers: updatedAnswers },
+							currentQuestionIndex: aiResult.currentQuestionIndex
+						}));
+						
+						setTimeout(() => {
+							const aiResponse: ChatMessage = {
+								content: aiResult.message,
+								isUser: false
+							};
+							setMessages(prev => [...prev, aiResponse]);
+						}, 800);
 					} else {
-						// Fallback to generic description request
-						const aiResponse: ChatMessage = {
-							content: `Thank you for sharing that you're dealing with a ${message} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
-							isUser: false
-						};
-						setMessages(prev => [...prev, aiResponse]);
-					}
-				}, 800);
-				break;
-
-			case 'ai-questions':
-				// Store answer to current AI question
-				const currentService = caseState.data.caseType;
-				const questions = teamConfig.serviceQuestions?.[currentService || ''] || [];
-				const currentIndex = caseState.currentQuestionIndex || 0;
-				const currentQuestion = questions[currentIndex];
-				
-				// Store the answer
-				const updatedAnswers = {
-					...caseState.data.aiAnswers,
-					[currentQuestion]: message
-				};
-				
-				const nextIndex = currentIndex + 1;
-				
-				if (nextIndex < questions.length) {
-					// More questions to ask
-					setCaseState(prev => ({
-						...prev,
-						data: { ...prev.data, aiAnswers: updatedAnswers },
-						currentQuestionIndex: nextIndex
-					}));
-					
-					setTimeout(() => {
-						const aiResponse: ChatMessage = {
-							content: `Thank you for that information.\n\n**${questions[nextIndex]}**`,
-							isUser: false
-						};
-						setMessages(prev => [...prev, aiResponse]);
-					}, 800);
-				} else {
-					// All questions answered, move to case details
-					setCaseState(prev => ({
-						...prev,
-						data: { ...prev.data, aiAnswers: updatedAnswers },
-						step: 'case-details'
-					}));
-					
-					setTimeout(() => {
-						// Create a summary of AI answers
-						const answersSummary = Object.entries(updatedAnswers)
-							.map(([question, answer]) => `**${question}**\n${answer}`)
-							.join('\n\n');
+						// All questions answered, move to case details
+						setCaseState(prev => ({
+							...prev,
+							data: { ...prev.data, aiAnswers: updatedAnswers },
+							step: 'case-details'
+						}));
 						
-						const aiResponse: ChatMessage = {
-							content: `Thank you for providing those details. Based on your responses:\n\n${answersSummary}\n\nNow, could you please provide a brief overall description of your situation? What happened and what are you hoping to achieve?`,
-							isUser: false
-						};
-						setMessages(prev => [...prev, aiResponse]);
-					}, 800);
-				}
-				break;
+						setTimeout(() => {
+							const aiResponse: ChatMessage = {
+								content: aiResult.message,
+								isUser: false
+							};
+							setMessages(prev => [...prev, aiResponse]);
+						}, 800);
+					}
+					break;
 
-			case 'case-details':
-				// Store description and ask for urgency
-				setCaseState(prev => ({
-					...prev,
-					data: { ...prev.data, description: message },
-					step: 'ready-for-lawyer'
-				}));
-				
-				setTimeout(() => {
-					const aiResponse: ChatMessage = {
-						content: `Thank you for sharing those details. I understand your situation involves ${caseState.data.caseType?.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} and you've described: "${message}"\n\nHow urgent is this matter?`,
-						isUser: false,
-						caseCreation: {
-							type: 'urgency-selection',
-							availableServices: []
-						}
+				case 'case-details':
+					// Store description and ask for urgency
+					setCaseState(prev => ({
+						...prev,
+						data: { ...prev.data, description: message },
+						step: 'urgency-selection'
+					}));
+					
+					// Call API for case details step
+					const detailsResult = await handleCaseCreationAPI('case-details', {
+						service: caseState.data.caseType,
+						description: message
+					});
+					
+					setTimeout(() => {
+						const aiResponse: ChatMessage = {
+							content: detailsResult.message,
+							isUser: false,
+							caseCreation: {
+								type: 'urgency-selection',
+								availableServices: []
+							}
 					};
 					setMessages(prev => [...prev, aiResponse]);
 				}, 800);
 				break;
 
-			case 'ready-for-lawyer':
-				// Store urgency and provide case summary
-				const finalCaseData = {
-					...caseState.data,
-					urgency: message
-				};
-				
-				setCaseState(prev => ({
-					...prev,
-					data: finalCaseData,
-					step: 'idle',
-					isActive: false
-				}));
-				
-				setTimeout(() => {
-					// Create comprehensive case summary including AI answers
-					let caseSummary = `**Case Summary:**\n- **Type:** ${finalCaseData.caseType}\n- **Description:** ${finalCaseData.description}\n- **Urgency:** ${finalCaseData.urgency}`;
-					
-					if (finalCaseData.aiAnswers && Object.keys(finalCaseData.aiAnswers).length > 0) {
-						caseSummary += '\n\n**Additional Details:**';
-						Object.entries(finalCaseData.aiAnswers).forEach(([question, answer]) => {
-							caseSummary += `\n- **${question}** ${answer}`;
-						});
-					}
-					
-					caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${finalCaseData.caseType}. Would you like me to start the process of connecting you with a lawyer?`;
-					
-					const aiResponse: ChatMessage = {
-						content: caseSummary,
-						isUser: false
+				case 'urgency-selection':
+					// Store urgency and provide case summary
+					const finalCaseData = {
+						...caseState.data,
+						urgency: message
 					};
-					setMessages(prev => [...prev, aiResponse]);
 					
-					// Start contact form flow
+					// Call API for urgency selection step
+					const urgencyResult = await handleCaseCreationAPI('urgency-selection', {
+						service: caseState.data.caseType,
+						description: caseState.data.description,
+						urgency: message,
+						answers: caseState.data.aiAnswers
+					});
+					
+					setCaseState(prev => ({
+						...prev,
+						data: finalCaseData,
+						step: 'idle',
+						isActive: false
+					}));
+					
 					setTimeout(() => {
-						const contactResponse: ChatMessage = {
-							content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+						const aiResponse: ChatMessage = {
+							content: urgencyResult.message,
 							isUser: false
 						};
-						setMessages(prev => [...prev, contactResponse]);
+						setMessages(prev => [...prev, aiResponse]);
 						
-						// Start contact form with enhanced data
-						setFormState({
-							step: 'contact',
-							data: { 
-								caseType: finalCaseData.caseType, 
-								caseDescription: finalCaseData.description,
-								caseDetails: finalCaseData.aiAnswers,
-								urgency: finalCaseData.urgency
-							},
-							isActive: true
-						});
-					}, 2000);
-				}, 800);
-				break;
+						// Start contact form flow
+						setTimeout(() => {
+							const contactResponse: ChatMessage = {
+								content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+								isUser: false
+							};
+							setMessages(prev => [...prev, contactResponse]);
+							
+							// Start contact form with enhanced data
+							setFormState({
+								step: 'contact',
+								data: { 
+									caseType: finalCaseData.caseType, 
+									caseDescription: finalCaseData.description,
+									caseDetails: finalCaseData.aiAnswers,
+									urgency: finalCaseData.urgency
+								},
+								isActive: true
+							});
+						}, 2000);
+					}, 800);
+					break;
+			}
+		} catch (error) {
+			console.error('Case creation step error:', error);
+			// Fallback to error message
+			setTimeout(() => {
+				const errorResponse: ChatMessage = {
+					content: "I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.",
+					isUser: false
+				};
+				setMessages(prev => [...prev, errorResponse]);
+			}, 800);
 		}
 	};
 

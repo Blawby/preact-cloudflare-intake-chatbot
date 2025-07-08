@@ -26,6 +26,16 @@ interface ContactFormSubmission {
   conversationId?: string;
 }
 
+interface CaseCreationRequest {
+  teamId: string;
+  service: string;
+  step: 'service-selection' | 'ai-questions' | 'case-details' | 'urgency-selection';
+  currentQuestionIndex?: number;
+  answers?: Record<string, string>;
+  description?: string;
+  urgency?: string;
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -55,6 +65,10 @@ export default {
 
       if (path.startsWith('/api/forms')) {
         return handleForms(request, env, corsHeaders);
+      }
+
+      if (path.startsWith('/api/case-creation')) {
+        return handleCaseCreation(request, env, corsHeaders);
       }
 
       // Health check
@@ -554,4 +568,158 @@ async function sendEmailNotifications(
     console.error('Error sending email notifications:', error);
     // Don't throw - email failure shouldn't break form submission
   }
+}
+
+async function handleCaseCreation(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method === 'POST') {
+    try {
+      const body = await request.json() as CaseCreationRequest;
+      
+      // Validate input
+      if (!body.teamId || !body.service || !body.step) {
+        return new Response(JSON.stringify({ 
+          error: 'Invalid request: teamId, service, and step are required' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get team configuration
+      const teamRow = await env.DB.prepare(`SELECT id, name, config FROM teams WHERE id = ?`).bind(body.teamId).first();
+      if (!teamRow) {
+        return new Response(JSON.stringify({ 
+          error: 'Team not found' 
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      let teamConfig = {};
+      try {
+        teamConfig = JSON.parse(teamRow.config);
+      } catch (e) {
+        console.warn('Failed to parse team config JSON:', e);
+      }
+
+      // Handle different steps
+      switch (body.step) {
+        case 'service-selection':
+          const serviceQuestions = teamConfig.serviceQuestions?.[body.service] || [];
+          if (serviceQuestions.length > 0) {
+            return new Response(JSON.stringify({
+              step: 'ai-questions',
+              currentQuestionIndex: 0,
+              question: serviceQuestions[0],
+              totalQuestions: serviceQuestions.length,
+              message: `Thank you for selecting ${body.service}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.`,
+              questions: serviceQuestions
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            return new Response(JSON.stringify({
+              step: 'case-details',
+              message: `Thank you for sharing that you're dealing with a ${body.service} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+        case 'ai-questions':
+          const questions = teamConfig.serviceQuestions?.[body.service] || [];
+          const currentIndex = body.currentQuestionIndex || 0;
+          const nextIndex = currentIndex + 1;
+          
+          if (nextIndex < questions.length) {
+            // More questions to ask
+            return new Response(JSON.stringify({
+              step: 'ai-questions',
+              currentQuestionIndex: nextIndex,
+              question: questions[nextIndex],
+              totalQuestions: questions.length,
+              message: `Thank you for that information.`,
+              questions: questions
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            // All questions answered, move to case details
+            const answersSummary = Object.entries(body.answers || {})
+              .map(([question, answer]) => `**${question}**\n${answer}`)
+              .join('\n\n');
+            
+            return new Response(JSON.stringify({
+              step: 'case-details',
+              message: `Thank you for providing those details. Based on your responses:\n\n${answersSummary}\n\nNow, could you please provide a brief overall description of your situation? What happened and what are you hoping to achieve?`,
+              answers: body.answers
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+        case 'case-details':
+          return new Response(JSON.stringify({
+            step: 'urgency-selection',
+            message: `Thank you for sharing those details. I understand your situation involves ${body.service} and you've described: "${body.description}"\n\nHow urgent is this matter?`,
+            urgencyOptions: [
+              { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
+              { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
+              { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
+            ]
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+
+        case 'urgency-selection':
+          // Create comprehensive case summary
+          let caseSummary = `**Case Summary:**\n- **Type:** ${body.service}\n- **Description:** ${body.description}\n- **Urgency:** ${body.urgency}`;
+          
+          if (body.answers && Object.keys(body.answers).length > 0) {
+            caseSummary += '\n\n**Additional Details:**';
+            Object.entries(body.answers).forEach(([question, answer]) => {
+              caseSummary += `\n- **${question}** ${answer}`;
+            });
+          }
+          
+          caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
+          
+          return new Response(JSON.stringify({
+            step: 'complete',
+            message: caseSummary,
+            caseData: {
+              service: body.service,
+              description: body.description,
+              urgency: body.urgency,
+              answers: body.answers
+            }
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+
+        default:
+          return new Response(JSON.stringify({ 
+            error: 'Invalid step' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+      }
+    } catch (error) {
+      console.error('Case creation error:', error);
+      return new Response(JSON.stringify({ 
+        error: 'Failed to process case creation',
+        details: error.message
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
 } 
