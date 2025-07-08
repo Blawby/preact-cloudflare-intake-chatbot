@@ -95,6 +95,23 @@ export function App() {
 		isActive: false
 	});
 
+	// State for case creation flow
+	const [caseState, setCaseState] = useState<{
+		step: 'idle' | 'gathering-info' | 'case-details' | 'ready-for-lawyer';
+		data: {
+			caseType?: string;
+			description?: string;
+			urgency?: string;
+			location?: string;
+			additionalInfo?: string;
+		};
+		isActive: boolean;
+	}>({
+		step: 'idle',
+		data: {},
+		isActive: false
+	});
+
 	// State for team configuration
 	const [teamConfig, setTeamConfig] = useState<{
 		name: string;
@@ -302,6 +319,36 @@ export function App() {
 		};
 
 		setMessages((prev) => [...prev, newMessage]);
+	};
+
+	// Add case creation handlers
+	const handleCreateCaseStart = () => {
+		// Send user's case creation request message
+		const caseMessage: ChatMessage = {
+			content: "I'd like to create a case and get help with my legal concern.",
+			isUser: true
+		};
+		
+		setMessages([...messages, caseMessage]);
+		setInputValue('');
+		setIsLoading(true);
+		
+		// Start case creation flow
+		setTimeout(() => {
+			const aiResponse: ChatMessage = {
+				content: "I'm here to help you create a case and assess your legal situation. Let me ask you a few questions to better understand your needs and provide the most relevant assistance.\n\nWhat type of legal matter are you dealing with? (e.g., Family Law, Business Law, Employment, Real Estate, Criminal, etc.)",
+				isUser: false
+			};
+			setMessages(prev => [...prev, aiResponse]);
+			setIsLoading(false);
+			
+			// Start case creation flow
+			setCaseState({
+				step: 'gathering-info',
+				data: {},
+				isActive: true
+			});
+		}, 1000);
 	};
 
 	// Add scheduling handlers
@@ -718,11 +765,17 @@ export function App() {
 	const handleSubmit = () => {
 		if (!inputValue.trim() && previewFiles.length === 0) return;
 
-		const placeholderId = Date.now().toString();
+		const message = inputValue.trim();
 		const attachments = [...previewFiles];
 		
+		// Handle case creation flow
+		if (caseState.isActive) {
+			handleCaseCreationStep(message, attachments);
+			return;
+		}
+
 		// Send message to API
-		sendMessageToAPI(inputValue.trim(), attachments);
+		sendMessageToAPI(message, attachments);
 		
 		// Reset input and focus
 		setInputValue('');
@@ -732,6 +785,97 @@ export function App() {
 		const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
 		if (textarea) {
 			textarea.focus();
+		}
+	};
+
+	// Handle case creation flow steps
+	const handleCaseCreationStep = (message: string, attachments: FileAttachment[] = []) => {
+		// Add user message
+		const userMessage: ChatMessage = {
+			content: message,
+			isUser: true,
+			files: attachments
+		};
+		setMessages(prev => [...prev, userMessage]);
+		setInputValue('');
+		setPreviewFiles([]);
+
+		// Process based on current step
+		switch (caseState.step) {
+			case 'gathering-info':
+				// Store case type and ask for description
+				setCaseState(prev => ({
+					...prev,
+					data: { ...prev.data, caseType: message },
+					step: 'case-details'
+				}));
+				
+				setTimeout(() => {
+					const aiResponse: ChatMessage = {
+						content: `Thank you for sharing that you're dealing with a ${message} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
+						isUser: false
+					};
+					setMessages(prev => [...prev, aiResponse]);
+				}, 800);
+				break;
+
+			case 'case-details':
+				// Store description and ask for urgency
+				setCaseState(prev => ({
+					...prev,
+					data: { ...prev.data, description: message },
+					step: 'ready-for-lawyer'
+				}));
+				
+				setTimeout(() => {
+					const aiResponse: ChatMessage = {
+						content: `Thank you for sharing those details. I understand your situation involves ${caseState.data.caseType} and you've described: "${message}"\n\nHow urgent is this matter? (e.g., Very urgent - immediate action needed, Somewhat urgent - within a few weeks, Not urgent - can wait a month or more)`,
+						isUser: false
+					};
+					setMessages(prev => [...prev, aiResponse]);
+				}, 800);
+				break;
+
+			case 'ready-for-lawyer':
+				// Store urgency and provide case summary
+				const finalCaseData = {
+					...caseState.data,
+					urgency: message
+				};
+				
+				setCaseState(prev => ({
+					...prev,
+					data: finalCaseData,
+					step: 'idle',
+					isActive: false
+				}));
+				
+				setTimeout(() => {
+					const caseSummary = `**Case Summary:**\n- **Type:** ${finalCaseData.caseType}\n- **Description:** ${finalCaseData.description}\n- **Urgency:** ${finalCaseData.urgency}\n\nBased on your case details, I can help connect you with an attorney who specializes in ${finalCaseData.caseType}. Would you like me to start the process of connecting you with a lawyer?`;
+					
+					const aiResponse: ChatMessage = {
+						content: caseSummary,
+						isUser: false
+					};
+					setMessages(prev => [...prev, aiResponse]);
+					
+					// Start contact form flow
+					setTimeout(() => {
+						const contactResponse: ChatMessage = {
+							content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+							isUser: false
+						};
+						setMessages(prev => [...prev, contactResponse]);
+						
+						// Start contact form
+						setFormState({
+							step: 'contact',
+							data: { caseType: finalCaseData.caseType, caseDescription: finalCaseData.description },
+							isActive: true
+						});
+					}, 2000);
+				}, 800);
+				break;
 		}
 	};
 
@@ -1011,6 +1155,12 @@ export function App() {
 											<div className="welcome-buttons">
 												<button 
 													className="welcome-action-button primary" 
+													onClick={handleCreateCaseStart}
+												>
+													Create Case
+												</button>
+												<button 
+													className="welcome-action-button" 
 													onClick={handleScheduleStart}
 												>
 													Request a consultation
