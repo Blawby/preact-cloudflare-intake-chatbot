@@ -49,7 +49,6 @@ interface CaseQualityScore {
   };
   suggestions: string[];
   readyForLawyer: boolean;
-  badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
   color: 'red' | 'yellow' | 'green' | 'blue';
 }
 
@@ -620,21 +619,16 @@ async function calculateCaseQuality(
     suggestions.push('Specify how urgent your matter is to help prioritize your case.');
   }
 
-  // Determine badge and color
-  let badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
+  // Determine color based on score
   let color: 'red' | 'yellow' | 'green' | 'blue';
   
   if (score >= 90) {
-    badge = 'Excellent';
     color = 'blue';
   } else if (score >= 75) {
-    badge = 'Good';
     color = 'green';
   } else if (score >= 50) {
-    badge = 'Fair';
     color = 'yellow';
   } else {
-    badge = 'Poor';
     color = 'red';
   }
 
@@ -643,7 +637,6 @@ async function calculateCaseQuality(
     breakdown,
     suggestions,
     readyForLawyer: score >= 75,
-    badge,
     color
   };
 }
@@ -881,7 +874,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           
           if (nextIndex < questions.length) {
             // More questions to ask
-            const aiQuestionsQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, body.urgency, teamConfig);
+            const nextQuestionQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, body.urgency, teamConfig);
             
             return new Response(JSON.stringify({
               step: 'ai-questions',
@@ -891,7 +884,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               message: `Thank you for that information.`,
               questions: questions,
               urgency: body.urgency,
-              qualityScore: aiQuestionsQualityScore
+              qualityScore: nextQuestionQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
