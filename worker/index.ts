@@ -942,22 +942,22 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
 3. Any missing critical information that should be gathered
 4. Recommended next steps
 
-IMPORTANT: Be intelligent about recognizing when the client has provided valuable information, even if their responses are brief or frustrated. Look for:
-- Specific legal issues mentioned (e.g., "cease and desist", "trademark infringement", "child support")
-- Clear facts about their situation (e.g., "100 people", "KFC business", "homeless")
-- Documents or evidence mentioned (e.g., "unified_payments.csv", "court papers")
-- Specific outcomes they want (e.g., "avoid legal trouble", "get child support")
+CRITICAL INTELLIGENCE RULES:
+- If the client description contains frustration or complaints about repetitive questioning (e.g., "why do you keep asking me this", "i just gave you all details"), IGNORE that description and focus on the detailed responses they provided earlier
+- The detailed responses contain the actual case information - use those for analysis
+- Be intelligent about recognizing when the client has provided valuable information, even if their responses are brief
+- Look for specific legal issues, facts, documents, and desired outcomes in their detailed responses
 
 Case Information:
 - Practice Area: ${body.service}
 - Urgency: ${body.urgency}
-- Client Description: ${body.description}
+- Client Description: ${body.description} (Note: If this contains frustration about repetitive questions, focus on the detailed responses below)
 - Detailed Responses:
 ${caseSummary}
 
 Please provide a structured analysis in JSON format with the following fields:
 {
-  "summary": "Professional case summary",
+  "summary": "Professional case summary based on the detailed responses",
   "sufficientInfo": true/false,
   "missingInfo": ["list of missing critical information"],
   "recommendations": ["list of recommended next steps"],
@@ -966,13 +966,9 @@ Please provide a structured analysis in JSON format with the following fields:
 }
 
 INTELLIGENT GUIDELINES:
-- Set readyForLawyer to true if the client has provided enough information for a lawyer to understand their situation and provide meaningful advice
-- Recognize that brief but specific responses can contain valuable information
-- Don't ask redundant questions if the client has already provided the information
-- For business cases: If they mention specific legal issues (cease and desist, contracts, etc.), that's often sufficient
-- For family law: If they mention children, legal issues, and current situation, that's often sufficient
-- Focus on whether a lawyer could provide meaningful advice with the current information
-- Avoid asking generic questions if the client has already explained their situation`;
+- Set readyForLawyer to true if the detailed responses contain enough information for a lawyer to understand their situation and provide meaningful advice
+- Focus on whether a lawyer could provide meaningful advice with the information in the detailed responses
+- If the client has provided comprehensive answers to all the structured questions, they likely have sufficient information`;
 
             const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
               messages: [
@@ -1039,73 +1035,23 @@ INTELLIGENT GUIDELINES:
               // Need more information - either AI said no OR quality score is below 90%
               let followUpMessage = '';
               let newQuestions = [];
-              
-              // Generate new questions based on what's missing, avoiding duplicates
-              const existingQuestions = Object.keys(body.answers || {});
-              const existingQuestionsLower = existingQuestions.map(q => q.toLowerCase());
-              
-              if (completeAnalysisQualityScore.score < 90) {
-                followUpMessage = `\n\nYour case quality score is currently ${completeAnalysisQualityScore.score}%. To connect you with a lawyer, we need to reach at least 90%. Let me ask a few more specific questions:`;
-                
-                // Generate new questions that haven't been asked before
-                if (body.service === 'Employment Law') {
-                  if (!existingQuestionsLower.some(q => q.includes('discrimination') || q.includes('harassment'))) {
-                    newQuestions.push('What specific type of discrimination or harassment did you experience?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('evidence') || q.includes('document'))) {
-                    newQuestions.push('Do you have any emails, texts, or other documentation related to this issue?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('witness') || q.includes('coworker'))) {
-                    newQuestions.push('Are there any witnesses or coworkers who can support your case?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('timeline') || q.includes('when'))) {
-                    newQuestions.push('When exactly did this discrimination start and what were the key events?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('damage') || q.includes('loss'))) {
-                    newQuestions.push('What damages or losses have you suffered as a result of this discrimination?');
-                  }
-                } else if (body.service === 'Family Law') {
-                  if (!existingQuestionsLower.some(q => q.includes('children') || q.includes('kid'))) {
-                    newQuestions.push('How many children are involved and what are their ages?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('income') || q.includes('salary'))) {
-                    newQuestions.push('What is your current income and employment situation?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('custody') || q.includes('visitation'))) {
-                    newQuestions.push('What type of custody or visitation arrangement are you seeking?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('safety') || q.includes('abuse'))) {
-                    newQuestions.push('Are there any safety concerns or allegations of abuse involved?');
-                  }
-                } else if (body.service === 'Small Business and Nonprofits') {
-                  if (!existingQuestionsLower.some(q => q.includes('business') || q.includes('entity'))) {
-                    newQuestions.push('What type of business entity are you operating (LLC, Corporation, etc.)?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('contract') || q.includes('agreement'))) {
-                    newQuestions.push('Do you have any contracts or agreements related to this legal issue?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('financial') || q.includes('money'))) {
-                    newQuestions.push('What are the financial implications of this legal issue?');
-                  }
-                  if (!existingQuestionsLower.some(q => q.includes('timeline') || q.includes('deadline'))) {
-                    newQuestions.push('What is the timeline or deadline for resolving this issue?');
-                  }
-                }
-                
-                // If no specific questions generated, use generic ones
-                if (newQuestions.length === 0) {
-                  newQuestions = [
-                    'Can you provide more specific details about the timeline of events?',
-                    'What specific outcome are you hoping to achieve?',
-                    'Do you have any documentation or evidence to support your case?'
-                  ];
-                }
+              // Use only config-driven questions
+              const configQuestions = teamConfig.serviceQuestions?.[body.service] || [];
+              const answeredQuestions = Object.keys(body.answers || {});
+              // Only ask questions that haven't been answered
+              newQuestions = configQuestions.filter(q => !answeredQuestions.includes(q));
+              if (newQuestions.length > 0) {
+                followUpMessage = `\n\nYour case quality score is currently ${completeAnalysisQualityScore.score}%. To connect you with a lawyer, we need to reach at least 90%. Let me ask a few more questions to gather the information needed:`;
               } else if (analysis.followUpQuestions && analysis.followUpQuestions.length > 0) {
-                followUpMessage = `\n\nI need to gather a bit more information to better assist you:`;
-                newQuestions = analysis.followUpQuestions;
+                // If AI suggests more, but all config questions are answered, ask for a freeform description
+                followUpMessage = `\n\nI need to gather a bit more information to better assist you. Please provide any additional details about your situation that you haven't already shared.`;
+                newQuestions = [
+                  'Please provide any additional details about your situation that you haven\'t already shared.'
+                ];
               } else {
+                // As a last resort, ask for a freeform description
                 followUpMessage = '\n\nI need to gather a bit more information to better assist you.';
-                newQuestions = ['Can you provide more specific details about your situation?'];
+                newQuestions = ['Please provide any additional details about your situation that you haven\'t already shared.'];
               }
 
               // Use the already calculated quality score
@@ -1114,8 +1060,8 @@ INTELLIGENT GUIDELINES:
               return new Response(JSON.stringify({
                 step: 'ai-questions',
                 currentQuestionIndex: 0,
-                question: newQuestions[0] || 'Can you provide more specific details about your situation?',
-                totalQuestions: newQuestions.length || 1,
+                question: newQuestions[0],
+                totalQuestions: newQuestions.length,
                 message: `**Case Analysis**\n\n${analysis.summary}${followUpMessage}`,
                 questions: newQuestions,
                 analysis: analysis,
