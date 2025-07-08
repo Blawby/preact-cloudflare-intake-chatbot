@@ -1038,13 +1038,74 @@ INTELLIGENT GUIDELINES:
             } else {
               // Need more information - either AI said no OR quality score is below 90%
               let followUpMessage = '';
+              let newQuestions = [];
+              
+              // Generate new questions based on what's missing, avoiding duplicates
+              const existingQuestions = Object.keys(body.answers || {});
+              const existingQuestionsLower = existingQuestions.map(q => q.toLowerCase());
               
               if (completeAnalysisQualityScore.score < 90) {
-                followUpMessage = `\n\nYour case quality score is currently ${completeAnalysisQualityScore.score}%. To connect you with a lawyer, we need to reach at least 90%. Let me ask a few more questions to gather the information needed:`;
+                followUpMessage = `\n\nYour case quality score is currently ${completeAnalysisQualityScore.score}%. To connect you with a lawyer, we need to reach at least 90%. Let me ask a few more specific questions:`;
+                
+                // Generate new questions that haven't been asked before
+                if (body.service === 'Employment Law') {
+                  if (!existingQuestionsLower.some(q => q.includes('discrimination') || q.includes('harassment'))) {
+                    newQuestions.push('What specific type of discrimination or harassment did you experience?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('evidence') || q.includes('document'))) {
+                    newQuestions.push('Do you have any emails, texts, or other documentation related to this issue?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('witness') || q.includes('coworker'))) {
+                    newQuestions.push('Are there any witnesses or coworkers who can support your case?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('timeline') || q.includes('when'))) {
+                    newQuestions.push('When exactly did this discrimination start and what were the key events?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('damage') || q.includes('loss'))) {
+                    newQuestions.push('What damages or losses have you suffered as a result of this discrimination?');
+                  }
+                } else if (body.service === 'Family Law') {
+                  if (!existingQuestionsLower.some(q => q.includes('children') || q.includes('kid'))) {
+                    newQuestions.push('How many children are involved and what are their ages?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('income') || q.includes('salary'))) {
+                    newQuestions.push('What is your current income and employment situation?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('custody') || q.includes('visitation'))) {
+                    newQuestions.push('What type of custody or visitation arrangement are you seeking?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('safety') || q.includes('abuse'))) {
+                    newQuestions.push('Are there any safety concerns or allegations of abuse involved?');
+                  }
+                } else if (body.service === 'Small Business and Nonprofits') {
+                  if (!existingQuestionsLower.some(q => q.includes('business') || q.includes('entity'))) {
+                    newQuestions.push('What type of business entity are you operating (LLC, Corporation, etc.)?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('contract') || q.includes('agreement'))) {
+                    newQuestions.push('Do you have any contracts or agreements related to this legal issue?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('financial') || q.includes('money'))) {
+                    newQuestions.push('What are the financial implications of this legal issue?');
+                  }
+                  if (!existingQuestionsLower.some(q => q.includes('timeline') || q.includes('deadline'))) {
+                    newQuestions.push('What is the timeline or deadline for resolving this issue?');
+                  }
+                }
+                
+                // If no specific questions generated, use generic ones
+                if (newQuestions.length === 0) {
+                  newQuestions = [
+                    'Can you provide more specific details about the timeline of events?',
+                    'What specific outcome are you hoping to achieve?',
+                    'Do you have any documentation or evidence to support your case?'
+                  ];
+                }
               } else if (analysis.followUpQuestions && analysis.followUpQuestions.length > 0) {
-                followUpMessage = `\n\nI need to gather a bit more information to better assist you:\n\n${analysis.followUpQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
+                followUpMessage = `\n\nI need to gather a bit more information to better assist you:`;
+                newQuestions = analysis.followUpQuestions;
               } else {
                 followUpMessage = '\n\nI need to gather a bit more information to better assist you.';
+                newQuestions = ['Can you provide more specific details about your situation?'];
               }
 
               // Use the already calculated quality score
@@ -1053,10 +1114,10 @@ INTELLIGENT GUIDELINES:
               return new Response(JSON.stringify({
                 step: 'ai-questions',
                 currentQuestionIndex: 0,
-                question: analysis.followUpQuestions?.[0] || 'Can you provide more specific details about your situation?',
-                totalQuestions: analysis.followUpQuestions?.length || 1,
+                question: newQuestions[0] || 'Can you provide more specific details about your situation?',
+                totalQuestions: newQuestions.length || 1,
                 message: `**Case Analysis**\n\n${analysis.summary}${followUpMessage}`,
-                questions: analysis.followUpQuestions || ['Can you provide more specific details about your situation?'],
+                questions: newQuestions,
                 analysis: analysis,
                 urgency: body.urgency,
                 qualityScore: followUpQualityScore
@@ -1098,19 +1159,86 @@ INTELLIGENT GUIDELINES:
               });
             } else {
               // Quality score too low, ask for more information
-              const fallbackMessage = `Your case quality score is currently ${fallbackQualityScore.score}%. To connect you with a lawyer, we need to reach at least 90%. Let me ask a few more questions to gather the information needed:\n\n1. Can you provide more specific details about your situation?\n2. What is the timeline of events that led to this legal issue?\n3. What specific outcome are you hoping to achieve?`;
+              // Generate new questions based on what's missing, avoiding duplicates
+              const existingQuestions = Object.keys(body.answers || {});
+              const existingQuestionsLower = existingQuestions.map(q => q.toLowerCase());
+              let newQuestions = [];
+              
+              if (body.service === 'Employment Law') {
+                if (!existingQuestionsLower.some(q => q.includes('discrimination') || q.includes('harassment'))) {
+                  newQuestions.push('What specific type of discrimination or harassment did you experience?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('evidence') || q.includes('document'))) {
+                  newQuestions.push('Do you have any emails, texts, or other documentation related to this issue?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('witness') || q.includes('coworker'))) {
+                  newQuestions.push('Are there any witnesses or coworkers who can support your case?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('timeline') || q.includes('when'))) {
+                  newQuestions.push('When exactly did this discrimination start and what were the key events?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('damage') || q.includes('loss'))) {
+                  newQuestions.push('What damages or losses have you suffered as a result of this discrimination?');
+                }
+              } else if (body.service === 'Family Law') {
+                if (!existingQuestionsLower.some(q => q.includes('children') || q.includes('kid'))) {
+                  newQuestions.push('How many children are involved and what are their ages?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('income') || q.includes('salary'))) {
+                  newQuestions.push('What is your current income and employment situation?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('custody') || q.includes('visitation'))) {
+                  newQuestions.push('What type of custody or visitation arrangement are you seeking?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('safety') || q.includes('abuse'))) {
+                  newQuestions.push('Are there any safety concerns or allegations of abuse involved?');
+                }
+              } else if (body.service === 'Small Business and Nonprofits') {
+                if (!existingQuestionsLower.some(q => q.includes('business') || q.includes('entity'))) {
+                  newQuestions.push('What type of business entity are you operating (LLC, Corporation, etc.)?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('contract') || q.includes('agreement'))) {
+                  newQuestions.push('Do you have any contracts or agreements related to this legal issue?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('financial') || q.includes('money'))) {
+                  newQuestions.push('What are the financial implications of this legal issue?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('timeline') || q.includes('deadline'))) {
+                  newQuestions.push('What is the timeline or deadline for resolving this issue?');
+                }
+              }
+              
+              // If no specific questions generated, use generic ones that haven't been asked
+              if (newQuestions.length === 0) {
+                if (!existingQuestionsLower.some(q => q.includes('timeline') || q.includes('when'))) {
+                  newQuestions.push('What is the timeline of events that led to this legal issue?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('outcome') || q.includes('goal'))) {
+                  newQuestions.push('What specific outcome are you hoping to achieve?');
+                }
+                if (!existingQuestionsLower.some(q => q.includes('evidence') || q.includes('document'))) {
+                  newQuestions.push('Do you have any documentation or evidence to support your case?');
+                }
+              }
+              
+              // If still no questions, use very generic ones
+              if (newQuestions.length === 0) {
+                newQuestions = [
+                  'Can you provide more specific details about your situation?',
+                  'What is the timeline of events that led to this legal issue?',
+                  'What specific outcome are you hoping to achieve?'
+                ];
+              }
+              
+              const fallbackMessage = `Your case quality score is currently ${fallbackQualityScore.score}%. To connect you with a lawyer, we need to reach at least 90%. Let me ask a few more specific questions:`;
               
               return new Response(JSON.stringify({
                 step: 'ai-questions',
                 currentQuestionIndex: 0,
-                question: 'Can you provide more specific details about your situation?',
-                totalQuestions: 3,
+                question: newQuestions[0] || 'Can you provide more specific details about your situation?',
+                totalQuestions: newQuestions.length || 1,
                 message: `**Case Analysis**\n\nBased on the information provided, this appears to be a ${body.service} case.${fallbackMessage}`,
-                questions: [
-                  'Can you provide more specific details about your situation?',
-                  'What is the timeline of events that led to this legal issue?',
-                  'What specific outcome are you hoping to achieve?'
-                ],
+                questions: newQuestions,
                 urgency: body.urgency,
                 qualityScore: fallbackQualityScore
               }), {
