@@ -1125,36 +1125,50 @@ export function App() {
 							isUser: false
 						};
 						setMessages(prev => [...prev, aiResponse]);
+						
+						// Automatically trigger AI analysis after a short delay
+						setTimeout(async () => {
+							try {
+								const analysisResult = await handleCaseCreationAPI('ai-analysis', {
+									service: caseState.data.caseType,
+									description: message,
+									answers: caseState.data.aiAnswers
+								});
+								
+								setCaseState(prev => ({
+									...prev,
+									step: analysisResult.step,
+									currentQuestionIndex: analysisResult.currentQuestionIndex || 0
+								}));
+								
+								const analysisResponse: ChatMessage = {
+									content: analysisResult.message,
+									isUser: false,
+									caseCreation: analysisResult.step === 'urgency-selection' ? {
+										type: 'urgency-selection',
+										availableServices: []
+									} : undefined
+								};
+								setMessages(prev => [...prev, analysisResponse]);
+							} catch (error) {
+								console.error('AI analysis error:', error);
+								const errorResponse: ChatMessage = {
+									content: "I apologize, but I encountered an error analyzing your case. Let me proceed with connecting you to an attorney.",
+									isUser: false
+								};
+								setMessages(prev => [...prev, errorResponse]);
+								
+								// Fallback to urgency selection
+								setCaseState(prev => ({
+									...prev,
+									step: 'urgency-selection'
+								}));
+							}
+						}, 2000); // Wait 2 seconds before starting analysis
 					}, 800);
 					break;
 
-				case 'ai-analysis':
-					// AI analysis step - this is handled automatically by the API
-					// The API will either return more questions or move to urgency selection
-					const analysisResult = await handleCaseCreationAPI('ai-analysis', {
-						service: caseState.data.caseType,
-						description: caseState.data.description,
-						answers: caseState.data.aiAnswers
-					});
-					
-					setCaseState(prev => ({
-						...prev,
-						step: analysisResult.step,
-						currentQuestionIndex: analysisResult.currentQuestionIndex || 0
-					}));
-					
-					setTimeout(() => {
-						const aiResponse: ChatMessage = {
-							content: analysisResult.message,
-							isUser: false,
-							caseCreation: analysisResult.step === 'urgency-selection' ? {
-								type: 'urgency-selection',
-								availableServices: []
-							} : undefined
-						};
-						setMessages(prev => [...prev, aiResponse]);
-					}, 800);
-					break;
+
 
 				case 'urgency-selection':
 					// Store urgency and provide case summary
