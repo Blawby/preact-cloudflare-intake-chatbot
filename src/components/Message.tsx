@@ -48,7 +48,7 @@ interface SchedulingData {
 
 // Add case creation-related data interface
 interface CaseCreationData {
-	type: 'service-selection';
+	type: 'service-selection' | 'urgency-selection';
 	availableServices: string[];
 }
 
@@ -63,6 +63,7 @@ interface MessageProps {
 	onTimeSlotSelect?: (timeSlot: Date) => void;
 	onRequestMoreDates?: () => void;
 	onServiceSelect?: (service: string) => void;
+	onUrgencySelect?: (urgency: string) => void;
 	isLoading?: boolean;
 }
 
@@ -176,24 +177,71 @@ const ServiceSelectionButtons: FunctionComponent<{
 	services: string[]; 
 	onServiceSelect: (service: string) => void;
 }> = ({ services, onServiceSelect }) => {
+	// Format service names for display
+	const formatServiceName = (service: string) => {
+		return service
+			.split('-')
+			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
+	};
+
 	return (
 		<div class="service-selection-container">
 			<div class="service-buttons">
 				{services.map((service, index) => (
 					<button
 						key={index}
-						class="welcome-action-button"
+						class="time-slot-button"
 						onClick={() => onServiceSelect(service)}
 					>
-						{service}
+						{formatServiceName(service)}
 					</button>
 				))}
 				<button
-					class="welcome-action-button primary"
+					class="time-slot-button"
 					onClick={() => onServiceSelect('General Inquiry')}
 				>
 					General Inquiry
 				</button>
+			</div>
+		</div>
+	);
+};
+
+// Urgency selection buttons component
+const UrgencySelectionButtons: FunctionComponent<{ 
+	onUrgencySelect: (urgency: string) => void;
+}> = ({ onUrgencySelect }) => {
+	const urgencyOptions = [
+		{
+			label: 'Very Urgent',
+			description: 'Immediate action needed'
+		},
+		{
+			label: 'Somewhat Urgent',
+			description: 'Within a few weeks'
+		},
+		{
+			label: 'Not Urgent',
+			description: 'Can wait a month or more'
+		}
+	];
+
+	return (
+		<div class="service-selection-container">
+			<div class="service-buttons">
+				{urgencyOptions.map((option, index) => (
+					<button
+						key={index}
+						class="time-slot-button"
+						onClick={() => onUrgencySelect(option.label)}
+					>
+						<div>
+							<div style="font-weight: 600; margin-bottom: 2px;">{option.label}</div>
+							<div style="font-size: 12px; color: var(--accent-color);">{option.description}</div>
+						</div>
+					</button>
+				))}
 			</div>
 		</div>
 	);
@@ -210,6 +258,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	onTimeSlotSelect, 
 	onRequestMoreDates,
 	onServiceSelect,
+	onUrgencySelect,
 	isLoading
 }) => {
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
@@ -284,6 +333,11 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					<ServiceSelectionButtons
 						services={caseCreation.availableServices}
 						onServiceSelect={onServiceSelect}
+					/>
+				)}
+				{caseCreation && caseCreation.type === 'urgency-selection' && onUrgencySelect && (
+					<UrgencySelectionButtons
+						onUrgencySelect={onUrgencySelect}
 					/>
 				)}
 				

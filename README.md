@@ -1,194 +1,137 @@
+Here’s a cleaned-up version of your README with redundancy removed, sections reorganized slightly for clarity, and improved brevity while preserving all critical details:
+
+---
+
 # Preact Cloudflare Intake Chatbot
 
-A full-featured, open-source **ChatGPT-like legal assistant** built with Preact and powered by Cloudflare Workers AI, D1, and KV. This project is designed for easy self-hosting, extensibility, and privacy-first deployments.
+A full-featured, open-source **ChatGPT-like legal assistant**, built with Preact and powered by Cloudflare Workers AI, D1, and KV. Designed for self-hosting, extensibility, and privacy-first deployments.
 
-**Live Demo:** [ai.blawby.com](https://ai.blawby.com)  
-**Repo:** [github.com/pcl-labs/preact-cloudflare-intake-chatbot](https://github.com/pcl-labs/preact-cloudflare-intake-chatbot)
+**Live Demo:** [ai.blawby.com](https://ai.blawby.com)
+**Repo:** [GitHub](https://github.com/pcl-labs/preact-cloudflare-intake-chatbot)
 
 ---
 
 ## ✨ Features
 
-- **Preact-based** chat UI (tiny, fast, accessible)
-- **Cloudflare Workers AI** backend (Llama 3.1 8B, etc.)
-- **D1 Database** for conversations, teams, appointments
-- **KV Namespace** for session management
-- **R2 Storage** for file uploads (planned)
-- **Scheduling and payment integration**
-- **Team-specific configuration**
-- **API-first**: Easily connect your own frontend or use the included Preact UI
-- **Open source, privacy-first, and self-hostable**
-- **Production-ready** with custom domain support
+* Lightweight **Preact** chat UI
+* **Cloudflare Workers AI** backend (Llama 3.1 8B)
+* **D1 Database** for chat data and team configs
+* **KV Namespace** for sessions
+* **R2 Storage** for file uploads (planned)
+* **Team-based configuration** with scheduling and payment
+* **API-first design** with optional bundled UI
+* **Self-hostable**, **privacy-first**, **production-ready**
 
 ---
 
 ## 🏗️ Architecture
 
-- **Frontend**: Preact SPA (src/) — embeddable, widget/inline, media & scheduling support
-- **Backend**: Cloudflare Worker (worker/) — REST API, AI, D1, KV, R2
-- **Database**: Cloudflare D1 (schema in `worker/schema.sql`)
-- **Session/Cache**: Cloudflare KV
-- **File Storage**: Cloudflare R2 (optional)
+* **Frontend**: Preact SPA (`src/`) — embeddable widget with media & scheduling
+* **Backend**: Cloudflare Worker (`worker/`) — REST API, AI, D1, KV, R2
+* **Storage**: Cloudflare D1 (DB), KV (session/cache), R2 (uploads)
 
 ---
 
-## 🚀 Getting Started (Local Development)
+## 🚀 Getting Started
 
 ### 1. Prerequisites
-- [Node.js](https://nodejs.org/) (v18+ recommended)
-- [Cloudflare account](https://dash.cloudflare.com/) (for backend)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm install -g wrangler`)
+
+* Node.js v18+
+* Cloudflare account
+* Wrangler CLI: `npm install -g wrangler`
 
 ### 2. Clone & Install
+
 ```bash
 git clone https://github.com/pcl-labs/preact-cloudflare-intake-chatbot.git
 cd preact-cloudflare-intake-chatbot
 npm install
 ```
 
-### 3. Configure Cloudflare (Backend)
-- Copy `wrangler.template.toml` to `wrangler.toml` and update with your own resource IDs:
-  ```bash
-  cp wrangler.template.toml wrangler.toml
-  ```
-- Create resources if needed:
-  ```bash
-  wrangler d1 create your-ai-chatbot
-  wrangler kv namespace create "YOUR_AI_CHAT_SESSIONS"
-  wrangler kv namespace create "YOUR_AI_CHAT_SESSIONS" --preview
-  # (Optional) wrangler r2 bucket create your-ai-files
-  ```
-- Apply the schema:
-  ```bash
-  wrangler d1 execute your-ai-chatbot --file worker/schema.sql
-  ```
-- Log in to Cloudflare:
-  ```bash
-  wrangler login
-  ```
+### 3. Configure Cloudflare
 
-### 4. Use Cloudflare Remote Bindings for Local Dev (D1/KV/R2)
+```bash
+cp wrangler.template.toml wrangler.toml
+wrangler d1 create your-ai-chatbot
+wrangler kv namespace create "YOUR_AI_CHAT_SESSIONS"
+wrangler kv namespace create "YOUR_AI_CHAT_SESSIONS" --preview
+# Optional: wrangler r2 bucket create your-ai-files
+wrangler d1 execute your-ai-chatbot --file worker/schema.sql
+wrangler login
+```
 
-> **New!** Cloudflare now supports remote bindings for local development. This allows your local Worker to connect to your real, deployed D1, KV, and R2 resources, so you can test against production-like data and services without deploying every time. ([Changelog](https://developers.cloudflare.com/changelog/2025-06-18-remote-bindings-beta/))
+### 4. Enable Remote Bindings (Local Dev)
 
-- In your `wrangler.toml`, add `experimental_remote = true` to each D1, KV, or R2 binding:
+Add `experimental_remote = true` to your `wrangler.toml` bindings:
 
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "your-ai-chatbot"
-database_id = "your-d1-database-id"
+...
 experimental_remote = true
 
 [[kv_namespaces]]
 binding = "CHAT_SESSIONS"
-id = "your-kv-namespace-id"
-preview_id = "your-kv-preview-id"
+...
 experimental_remote = true
 ```
 
-- Start your Worker with remote bindings:
+Start the backend:
 
 ```bash
 wrangler dev --x-remote-bindings
 ```
 
-- Your Worker will now use the real D1, KV, and R2 resources from your Cloudflare account during local development.
+### 5. Run Frontend
 
----
-
-### 5. Run the Backend Locally
-```bash
-wrangler dev --x-remote-bindings
-```
-- The Worker API will be available at [http://localhost:8787](http://localhost:8787)
-- Test endpoints:
-  - `GET /api/health`
-  - `GET /api/teams`
-  - `POST /api/chat`
-
-### 6. Run the Frontend Locally
 ```bash
 npm run dev
 ```
-- The frontend will be available at [http://localhost:5173](http://localhost:5173)
-- By default, the frontend expects the API at `/api/` (proxy or CORS may be needed for local dev)
+
+* Frontend: [http://localhost:5173](http://localhost:5173)
+* Backend API: [http://localhost:8787](http://localhost:8787)
 
 ---
 
 ## 🧪 Testing
 
-### API Testing
-You can use `curl` or any API client (e.g. Postman) to test the backend:
+### API
+
 ```bash
-curl -X GET http://localhost:8787/api/health
-curl -X GET http://localhost:8787/api/teams
+curl http://localhost:8787/api/health
+curl http://localhost:8787/api/teams
 curl -X POST http://localhost:8787/api/chat \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Hello!"}]}'
 ```
 
-### Frontend Testing
-- Open [http://localhost:5173](http://localhost:5173) in your browser
-- Use the chat UI, file upload, and scheduling features
-- The frontend will call the deployed API at `https://blawby-ai-chatbot.paulchrisluke.workers.dev`
+### Frontend
 
-### Quick Development Setup
-Use the development script to start both frontend and backend:
+Visit [http://localhost:5173](http://localhost:5173) and test the UI.
+
+Use the dev script for full-stack setup:
+
 ```bash
 ./scripts/dev.sh
 ```
 
-This will start:
-- Frontend: http://localhost:5173
-- Backend: http://localhost:8787
+---
 
-To switch between local and deployed API, edit `src/config/api.ts` and change `API_MODE` to `'local'` or `'deployed'`.
+## 💳 Payment Integration
 
-### 🎯 Demo URLs
+* Each team can define:
 
-Test the chatbot with different team configurations:
+  * `requiresPayment` (bool)
+  * `consultationFee` (in USD)
+  * `paymentLink` (e.g., Stripe URL)
+* Payment flow:
 
-- **Blawby Demo (Free)**: `http://localhost:5173/?teamId=demo`
-- **North Carolina Legal Services ($75)**: `http://localhost:5173/?teamId=north-carolina-legal-services`
+  1. User submits form
+  2. System checks `requiresPayment`
+  3. If true: user is shown `consultationFee` and `paymentLink`
+  4. Form data is stored; email is sent
 
-Each team has different consultation fees and specialties. The AI responses are tailored to each team's configuration.
-
-### 🎯 Create Case Flow
-
-The chatbot includes a structured case creation flow that guides users through legal assessment:
-
-- **Case Type Identification**: Asks users to specify their legal matter type (Family Law, Business Law, Employment, etc.)
-- **Case Description**: Gathers detailed description of the situation and desired outcomes
-- **Urgency Assessment**: Determines how quickly the matter needs attention
-- **Case Summary**: Provides a structured summary of the case details
-- **Lawyer Connection**: Seamlessly transitions to contact form for attorney connection
-
-**Create Case Flow:**
-1. User clicks "Create Case" button
-2. System asks for legal matter type
-3. User provides case description
-4. System assesses urgency level
-5. Case summary is presented with structured details
-6. User is connected to contact form for lawyer referral
-
-### 💳 Payment Integration
-
-The chatbot supports team-specific payment requirements:
-
-- **Payment Configuration**: Teams can be configured with `requiresPayment: true/false` and `consultationFee`
-- **Payment Links**: Teams can specify payment links (e.g., Stripe Checkout URLs)
-- **Conversational Flow**: After form submission, users are conversationally informed about payment requirements
-- **Payment Explanation**: For teams requiring payment, users receive a clear explanation of fees and payment links
-
-**Payment Flow:**
-1. User submits contact form with email, phone, and case details
-2. System checks team payment requirements
-3. If payment required: Shows fee amount and payment link with explanation
-4. If no payment required: Shows standard confirmation message
-5. Form data is stored in database and email notifications are sent
-
-**Note**: This system uses payment links (no webhook integration). Payment verification must be handled externally.
+*Note: No payment verification—handled externally via link.*
 
 ---
 
@@ -196,254 +139,218 @@ The chatbot supports team-specific payment requirements:
 
 ### GitHub Actions (Recommended)
 
-The project includes GitHub Actions for automated deployment. Set up these secrets in your GitHub repository:
+Set GitHub repo secrets:
 
-- `CLOUDFLARE_API_TOKEN` - Your Cloudflare API token
-- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID  
-- `CLOUDFLARE_PAGES_PROJECT_NAME` - Your Cloudflare Pages project name
+* `CLOUDFLARE_API_TOKEN`
+* `CLOUDFLARE_ACCOUNT_ID`
+* `CLOUDFLARE_PAGES_PROJECT_NAME`
 
-The workflow will automatically:
-1. Type check and lint the code
-2. Build the frontend
-3. Deploy the backend worker
-4. Sync team configurations to the database
-5. Deploy the frontend to Cloudflare Pages
+Actions will:
 
-### Environment Variables
+1. Lint & type-check
+2. Build frontend
+3. Deploy backend & frontend
+4. Sync team config to D1
 
-Copy `env.example` to `.env` and update with your actual values:
+### Environment Setup
 
 ```bash
 cp env.example .env
 ```
 
-**Required Environment Variables:**
+Required variables:
 
-**Cloudflare Configuration:**
-- `CLOUDFLARE_API_TOKEN` - Your Cloudflare API token
-- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
-
-**Email Configuration:**
-- `RESEND_API_KEY` - Your Resend API key for email notifications
-
-**Frontend Configuration:**
-- `VITE_API_BASE_URL` - Your deployed worker URL
-
-**GitHub Actions (if using automated deployment):**
-- `CLOUDFLARE_PAGES_PROJECT_NAME` - Your Cloudflare Pages project name
+* `CLOUDFLARE_API_TOKEN`
+* `CLOUDFLARE_ACCOUNT_ID`
+* `RESEND_API_KEY`
+* `VITE_API_BASE_URL`
 
 ### Manual Deployment
 
-#### Deploy the Worker
-```bash
-# Deploy to default environment
-wrangler deploy
+#### Backend
 
-# Deploy to production environment (if configured)
+```bash
+wrangler deploy
+# or for prod:
 wrangler deploy --env production
 ```
-- Your API will be live at `https://<your-worker>.<your-account>.workers.dev/`
-- You can map a custom domain via Cloudflare dashboard or `wrangler.toml`
 
-#### Custom Domain Setup
-1. **Configure DNS**: In your Cloudflare DNS settings, create a CNAME record pointing to your Worker
-2. **Set Proxy Status**: Ensure the DNS record is set to **Proxied** (orange cloud), not "DNS only"
-3. **Configure Routes**: Add custom domain routes in your `wrangler.toml`:
-   ```toml
-   [env.production]
-   name = "your-worker-name"
-   routes = [
-     { pattern = "your-domain.com/api/*", zone_name = "your-domain.com" }
-   ]
-   ```
-4. **Deploy**: Run `wrangler deploy --env production`
+To use a custom domain:
 
-#### Deploy the Frontend
-- Build the frontend:
-  ```bash
-  npm run build
-  ```
-- Deploy to your preferred static host (Cloudflare Pages, Vercel, Netlify, etc.)
+```toml
+[env.production]
+routes = [
+  { pattern = "yourdomain.com/api/*", zone_name = "yourdomain.com" }
+]
+```
 
----
+#### Frontend
 
-## 🔧 Production Status
-
-✅ **Backend**: Cloudflare Worker deployed and operational  
-✅ **AI Integration**: Llama 3.1 8B model working  
-✅ **Custom Domain**: [ai.blawby.com](https://ai.blawby.com) live  
-✅ **API Endpoints**: All endpoints responding correctly  
-✅ **Team Configuration**: Multiple teams with different pricing  
-✅ **Database**: D1 and KV bindings configured  
-
-**Live API Endpoints:**
-- Health: `https://ai.blawby.com/api/health`
-- Teams: `https://ai.blawby.com/api/teams`
-- Chat: `https://ai.blawby.com/api/chat`
+```bash
+npm run build
+# Deploy to Cloudflare Pages, Netlify, Vercel, etc.
+```
 
 ---
 
 ## 🔒 Security Notes
 
-**⚠️ Important:** This repository contains sensitive configuration files that should not be committed to version control:
+* Do **not** commit:
 
-- `wrangler.toml` - Contains your Cloudflare resource IDs and account information
-- `.wrangler/` - Contains local development state and cached data
-
-These files are automatically ignored by `.gitignore`. Always use `wrangler.template.toml` as a starting point and never commit your actual `wrangler.toml` file.
-
-### Project Structure (For Reference Only)
-- **Frontend**: `blawby-ai-chatbot-frontend` → `ai.blawby.com`
-- **Backend**: `blawby-ai-chatbot` → API endpoints
-- **Original**: `preact-chat-gpt-interface` → `chat.blawby.com` (separate project)
+  * `wrangler.toml`
+  * `.wrangler/`
+* Always use `wrangler.template.toml` as a base
 
 ---
 
-## 📚 Documentation & Community
-- [Project Plan & Architecture](./intake_form_chatbot_plan.md)
-- [Cloudflare Workers AI Docs](https://developers.cloudflare.com/workers-ai/)
-- [Preact Docs](https://preactjs.com/)
-- [D1 Database Docs](https://developers.cloudflare.com/d1/)
-- [KV Docs](https://developers.cloudflare.com/kv/)
-- [Cloudflare Remote Bindings Changelog](https://developers.cloudflare.com/changelog/2025-06-18-remote-bindings-beta/)
+## 🔧 Production Status
+
+| Component      | Status                                   |
+| -------------- | ---------------------------------------- |
+| Backend        | ✅ Live                                   |
+| AI Integration | ✅ Llama 3.1 8B                           |
+| Custom Domain  | ✅ [ai.blawby.com](https://ai.blawby.com) |
+| Team Configs   | ✅ Multiple teams supported               |
+| D1 + KV        | ✅ Configured                             |
+
+**API Endpoints**
+
+* `/api/health`
+* `/api/teams`
+* `/api/chat`
+
+---
+
+## 🧠 Team Configuration (`teams.json`)
+
+Manage law firm team configs via JSON:
+
+```json
+{
+  "id": "demo",
+  "name": "Blawby Demo",
+  "config": {
+    "consultationFee": 0,
+    "requiresPayment": false,
+    "paymentLink": null,
+    "introMessage": "Hello! I'm your AI legal assistant.",
+    ...
+  }
+}
+```
+
+| Field             | Type    | Description                       |
+| ----------------- | ------- | --------------------------------- |
+| `id`              | string  | Unique team ID                    |
+| `name`            | string  | Display name                      |
+| `consultationFee` | number  | Fee in USD                        |
+| `requiresPayment` | boolean | Require payment before intake     |
+| `paymentLink`     | string  | Link to payment page              |
+| `introMessage`    | string  | Optional welcome message          |
+| `profileImage`    | string  | Optional logo URL                 |
+| `availableServices` | array  | List of practice areas            |
+| `serviceQuestions` | object | Practice area-specific questions  |
+| ...               |         | Other branding and service config |
+
+To sync teams:
+
+```bash
+node sync-teams.js
+```
+
+* Full sync: removes entries not in the JSON
+* Uses `id` to upsert records
+
+---
+
+## 🤖 AI-Powered Follow-Up Questions
+
+The chatbot now includes **practice area-specific follow-up questions** that are automatically triggered when a user selects a service. This creates a more intelligent and targeted intake process.
+
+### How It Works
+
+1. **Service Selection**: User clicks on a practice area (e.g., "Family Law")
+2. **AI Questions**: System asks 3-5 targeted questions specific to that practice area
+3. **Enhanced Intake**: Answers are collected and included in the final case summary
+4. **Better Matching**: Attorneys receive more detailed case information
+
+### Configuration
+
+Add `serviceQuestions` to your team config:
+
+```json
+{
+  "id": "family-law-firm",
+  "config": {
+    "availableServices": ["Family Law", "Divorce", "Custody"],
+    "serviceQuestions": {
+      "Family Law": [
+        "What specific family law issue are you dealing with?",
+        "Are there any children involved in this situation?",
+        "Have you already filed any legal documents?",
+        "What is your current living situation?"
+      ],
+      "Divorce": [
+        "How long have you been married?",
+        "Do you have any children together?",
+        "Have you discussed divorce with your spouse?",
+        "What are the main issues you need to resolve?"
+      ]
+    }
+  }
+}
+```
+
+### Question Flow
+
+1. **Service Selection** → User picks practice area
+2. **AI Questions** → System asks targeted questions one by one
+3. **Answer Collection** → Each answer is stored with the question
+4. **Summary** → All answers are compiled into a comprehensive case summary
+5. **Contact Form** → Enhanced data is passed to the contact form
+
+### Benefits
+
+* **More Relevant**: Questions are tailored to specific practice areas
+* **Better Data**: Attorneys receive detailed, structured information
+* **Improved Matching**: Better attorney-client pairing based on case details
+* **Professional**: Creates a more sophisticated intake experience
+
+### Fallback
+
+If no `serviceQuestions` are configured for a service, the system falls back to the generic case description flow.
+
+---
+
+## 📚 Resources
+
+* [Architecture Plan](./intake_form_chatbot_plan.md)
+* [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/)
+* [Preact](https://preactjs.com/)
+* [D1](https://developers.cloudflare.com/d1/)
+* [KV](https://developers.cloudflare.com/kv/)
+* [Remote Bindings Changelog](https://developers.cloudflare.com/changelog/2025-06-18-remote-bindings-beta/)
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please open issues or pull requests on [github.com/pcl-labs/preact-cloudflare-intake-chatbot](https://github.com/pcl-labs/preact-cloudflare-intake-chatbot).
+Contributions welcome via issues and PRs:
+[github.com/pcl-labs/preact-cloudflare-intake-chatbot](https://github.com/pcl-labs/preact-cloudflare-intake-chatbot)
 
 ---
 
-## 🛡️ License
+## 🛡 License
 
-MIT License. See [LICENSE](./LICENSE).
+MIT — See [LICENSE](./LICENSE)
+
+---
+
+## 🧑‍💻 Maintainers
+
+* [@pcl-labs](https://github.com/pcl-labs)
+* [@paulchrisluke](https://github.com/paulchrisluke)
 
 ---
 
-## 📝 Maintainers
-- [@pcl-labs](https://github.com/pcl-labs)
-- [@paulchrisluke](https://github.com/paulchrisluke)
-
-## Team Management (teams.json)
-
-You can manage all law firm teams and their configuration in a single JSON file:
-
-```json
-[
-  {
-    "id": "demo",
-    "name": "Blawby Demo",
-    "config": {
-      "aiModel": "llama",
-      "consultationFee": 0,
-      "requiresPayment": false,
-      "ownerEmail": "paulchrisluke@gmail.com",
-      "availableServices": ["general-consultation", "legal-advice"],
-      "domain": "demo.blawby.com",
-      "description": "Demo law firm for testing purposes",
-      "paymentLink": null,
-      "brandColor": "#2563eb",
-      "accentColor": "#3b82f6",
-      "introMessage": "Hello! I'm your AI legal assistant. I'm here to help you get started with your legal questions and can assist with general consultation and legal advice. How can I help you today?",
-      "profileImage": "https://api.cloudflare.com/client/v4/accounts/fa3dc6c06433f6b0ea78d95bce23ad91/images/v1/27bc2bf2-8582-4ed1-e77c-45d7a3215b00"
-    }
-  },
-  {
-    "id": "north-carolina-legal-services",
-    "name": "North Carolina Legal Services",
-    "config": {
-      "aiModel": "llama",
-      "consultationFee": 75,
-      "requiresPayment": true,
-      "ownerEmail": "paulchrisluke@gmail.com",
-      "availableServices": [
-        "Family Law",
-        "Small Business and Nonprofits",
-        "Employment Law",
-        "Tenant Rights Law",
-        "Probate and Estate Planning",
-        "Special Education and IEP Advocacy"
-      ],
-      "domain": "northcarolinalegalservices.blawby.com",
-      "description": "Affordable, comprehensive legal services for North Carolina",
-      "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500",
-      "brandColor": "#059669",
-      "accentColor": "#10b981",
-      "introMessage": "Welcome to North Carolina Legal Services! I'm here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you schedule a consultation with our experienced attorneys. How can I assist you today?",
-      "profileImage": null
-    }
-  }
-]
-```
-
-### Team Configuration Options
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Unique team identifier |
-| `name` | string | Display name for the law firm |
-| `config.aiModel` | string | AI model to use (e.g., "llama") |
-| `config.consultationFee` | number | Consultation fee in dollars (0 for free) |
-| `config.requiresPayment` | boolean | Whether payment is required before consultation |
-| `config.ownerEmail` | string | Email for lead notifications |
-| `config.availableServices` | string[] | Array of practice areas |
-| `config.domain` | string | Custom domain for the team |
-| `config.description` | string | Team description |
-| `config.paymentLink` | string | Payment link URL (e.g. Stripe Checkout) - required if `requiresPayment: true` |
-| `config.brandColor` | string | Primary brand color in hex format (e.g., "#2563eb") |
-| `config.accentColor` | string | Secondary accent color in hex format (e.g., "#3b82f6") |
-| `config.introMessage` | string | Custom welcome message displayed when chat starts (optional) |
-| `config.profileImage` | string | URL to team's profile/logo image (optional, defaults to Blawby logo) |
-
-### Payment Configuration
-
-Teams can configure payment requirements and links:
-
-- **Free consultations**: Set `consultationFee: 0` and `requiresPayment: false`
-- **Paid consultations**: Set `consultationFee` to the amount in dollars and `requiresPayment: true`
-- **Payment links**: Provide a `paymentLink` URL (e.g., Stripe Checkout) for paid teams
-
-### Intro Message Configuration
-
-Teams can customize the initial welcome message displayed when users start a chat:
-
-- **Custom intro**: Set `introMessage` to display a personalized welcome message
-- **Default fallback**: If no `introMessage` is provided, a generic friendly message is shown
-- **Branding opportunity**: Use this to introduce your firm, mention practice areas, and set expectations
-
-Example intro messages:
-- "Welcome to [Firm Name]! I'm here to help with [practice areas]. How can I assist you today?"
-- "Hello! I'm your AI legal assistant at [Firm Name]. I can answer questions and help schedule consultations."
-
-### Profile Image Configuration
-
-Teams can set their own profile/logo image for branding:
-
-- **Custom logo**: Set `profileImage` to a URL pointing to your team's logo
-- **Default fallback**: If no `profileImage` is provided or set to `null`, the Blawby logo is used
-- **Image requirements**: Use high-quality images (recommended: 200x200px or larger, PNG/JPG)
-- **Local files**: Place images in the `public/` directory and reference with `/filename.png`
-- **External URLs**: Use direct URLs to publicly accessible images
-
-Example profile image configurations:
-- Local file: `"profileImage": "/team-logo.png"`
-- External URL: `"profileImage": "https://yourdomain.com/logo.png"`
-- No image: `"profileImage": null` (uses default Blawby logo)
-
-- Edit `teams.json` to add or update teams.
-- The `ownerEmail` field is used for lead notification emails.
-
-### Syncing Teams to D1
-
-Use the provided script to sync (insert/update/delete) all teams in the JSON to your production D1 database:
-
-```sh
-node sync-teams.js
-```
-
-- This script performs **full DRY REST sync** - it will delete teams from the database that are not present in the JSON
-- The D1 database will always match your `teams.json` file exactly
-- Teams are upserted (inserted or updated) based on their `id`
-
----
+Let me know if you'd like this exported as a cleaned-up file or reformatted in a particular style (e.g., markdown collapsibles, condensed version, etc.).

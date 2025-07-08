@@ -43,6 +43,7 @@ interface VirtualMessageListProps {
     onTimeSlotSelect?: (timeSlot: Date) => void;
     onRequestMoreDates?: () => void;
     onServiceSelect?: (service: string) => void;
+    onUrgencySelect?: (urgency: string) => void;
     position?: 'widget' | 'inline';
 }
 
@@ -58,6 +59,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     onTimeSlotSelect,
     onRequestMoreDates,
     onServiceSelect,
+    onUrgencySelect,
     position = 'widget'
 }) => {
     const listRef = useRef<HTMLDivElement>(null);
@@ -160,6 +162,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         onTimeSlotSelect={onTimeSlotSelect}
                         onRequestMoreDates={onRequestMoreDates}
                         onServiceSelect={onServiceSelect}
+                        onUrgencySelect={onUrgencySelect}
                         isLoading={isLoading && index === visibleMessages.length - 1 && !message.isUser && !message.content}
                     />
                 ))}

@@ -68,7 +68,7 @@ interface SchedulingData {
 }
 
 interface CaseCreationData {
-	type: 'service-selection';
+	type: 'service-selection' | 'urgency-selection';
 	availableServices: string[];
 }
 
@@ -103,19 +103,22 @@ export function App() {
 
 	// State for case creation flow
 	const [caseState, setCaseState] = useState<{
-		step: 'idle' | 'gathering-info' | 'case-details' | 'ready-for-lawyer';
+		step: 'idle' | 'gathering-info' | 'ai-questions' | 'case-details' | 'ready-for-lawyer';
 		data: {
 			caseType?: string;
 			description?: string;
 			urgency?: string;
 			location?: string;
 			additionalInfo?: string;
+			aiAnswers?: Record<string, string>;
 		};
 		isActive: boolean;
+		currentQuestionIndex?: number;
 	}>({
 		step: 'idle',
 		data: {},
-		isActive: false
+		isActive: false,
+		currentQuestionIndex: 0
 	});
 
 	// State for team configuration
@@ -124,11 +127,13 @@ export function App() {
 		profileImage: string | null;
 		introMessage: string | null;
 		availableServices: string[];
+		serviceQuestions?: Record<string, string[]>;
 	}>({
 		name: 'Legal AI Assistant',
 		profileImage: null,
 		introMessage: null,
-		availableServices: []
+		availableServices: [],
+		serviceQuestions: {}
 	});
 
 	// Track drag counter for better handling of nested elements
@@ -257,7 +262,8 @@ export function App() {
 						name: team.name || 'Legal AI Assistant',
 						profileImage: team.config.profileImage || null,
 						introMessage: team.config.introMessage || null,
-						availableServices: team.config.availableServices || []
+						availableServices: team.config.availableServices || [],
+						serviceQuestions: team.config.serviceQuestions || {}
 					});
 				}
 			}
@@ -815,8 +821,70 @@ export function App() {
 		};
 		setMessages(prev => [...prev, userMessage]);
 		
-		// Process the service selection
-		handleCaseCreationStep(service, []);
+		// Process the service selection directly without calling handleCaseCreationStep
+		// Store case type and ask for description
+		setCaseState(prev => ({
+			...prev,
+			data: { ...prev.data, caseType: service },
+			step: 'case-details'
+		}));
+		
+		setTimeout(() => {
+			const aiResponse: ChatMessage = {
+				content: `Thank you for sharing that you're dealing with a ${service.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
+				isUser: false
+			};
+			setMessages(prev => [...prev, aiResponse]);
+		}, 800);
+	};
+
+	// Handle urgency selection from buttons
+	const handleUrgencySelect = (urgency: string) => {
+		// Add user message
+		const userMessage: ChatMessage = {
+			content: urgency,
+			isUser: true
+		};
+		setMessages(prev => [...prev, userMessage]);
+		
+		// Process the urgency selection directly
+		const finalCaseData = {
+			...caseState.data,
+			urgency: urgency
+		};
+		
+		setCaseState(prev => ({
+			...prev,
+			data: finalCaseData,
+			step: 'idle',
+			isActive: false
+		}));
+		
+		setTimeout(() => {
+			const caseSummary = `**Case Summary:**\n- **Type:** ${finalCaseData.caseType?.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}\n- **Description:** ${finalCaseData.description}\n- **Urgency:** ${finalCaseData.urgency}\n\nBased on your case details, I can help connect you with an attorney who specializes in ${finalCaseData.caseType?.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}. Would you like me to start the process of connecting you with a lawyer?`;
+			
+			const aiResponse: ChatMessage = {
+				content: caseSummary,
+				isUser: false
+			};
+			setMessages(prev => [...prev, aiResponse]);
+			
+			// Start contact form flow
+			setTimeout(() => {
+				const contactResponse: ChatMessage = {
+					content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+					isUser: false
+				};
+				setMessages(prev => [...prev, contactResponse]);
+				
+				// Start contact form
+				setFormState({
+					step: 'contact',
+					data: { caseType: finalCaseData.caseType, caseDescription: finalCaseData.description },
+					isActive: true
+				});
+			}, 2000);
+		}, 800);
 	};
 
 	// Handle case creation flow steps
@@ -834,20 +902,87 @@ export function App() {
 		// Process based on current step
 		switch (caseState.step) {
 			case 'gathering-info':
-				// Store case type and ask for description
+				// Store case type and start AI questions
+				const selectedService = message;
+				const serviceQuestions = teamConfig.serviceQuestions?.[selectedService] || [];
+				
 				setCaseState(prev => ({
 					...prev,
 					data: { ...prev.data, caseType: message },
-					step: 'case-details'
+					step: serviceQuestions.length > 0 ? 'ai-questions' : 'case-details',
+					currentQuestionIndex: 0
 				}));
 				
 				setTimeout(() => {
-					const aiResponse: ChatMessage = {
-						content: `Thank you for sharing that you're dealing with a ${message} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
-						isUser: false
-					};
-					setMessages(prev => [...prev, aiResponse]);
+					if (serviceQuestions.length > 0) {
+						// Start with AI questions
+						const aiResponse: ChatMessage = {
+							content: `Thank you for selecting ${selectedService}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.\n\n**${serviceQuestions[0]}**`,
+							isUser: false
+						};
+						setMessages(prev => [...prev, aiResponse]);
+					} else {
+						// Fallback to generic description request
+						const aiResponse: ChatMessage = {
+							content: `Thank you for sharing that you're dealing with a ${message} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
+							isUser: false
+						};
+						setMessages(prev => [...prev, aiResponse]);
+					}
 				}, 800);
+				break;
+
+			case 'ai-questions':
+				// Store answer to current AI question
+				const currentService = caseState.data.caseType;
+				const questions = teamConfig.serviceQuestions?.[currentService || ''] || [];
+				const currentIndex = caseState.currentQuestionIndex || 0;
+				const currentQuestion = questions[currentIndex];
+				
+				// Store the answer
+				const updatedAnswers = {
+					...caseState.data.aiAnswers,
+					[currentQuestion]: message
+				};
+				
+				const nextIndex = currentIndex + 1;
+				
+				if (nextIndex < questions.length) {
+					// More questions to ask
+					setCaseState(prev => ({
+						...prev,
+						data: { ...prev.data, aiAnswers: updatedAnswers },
+						currentQuestionIndex: nextIndex
+					}));
+					
+					setTimeout(() => {
+						const aiResponse: ChatMessage = {
+							content: `Thank you for that information.\n\n**${questions[nextIndex]}**`,
+							isUser: false
+						};
+						setMessages(prev => [...prev, aiResponse]);
+					}, 800);
+				} else {
+					// All questions answered, move to case details
+					setCaseState(prev => ({
+						...prev,
+						data: { ...prev.data, aiAnswers: updatedAnswers },
+						step: 'case-details'
+					}));
+					
+					setTimeout(() => {
+						// Create a summary of AI answers
+						const answersSummary = Object.entries(updatedAnswers)
+							.map(([question, answer]) => `**${question}**\n${answer}`)
+							.join('\n\n');
+						
+						const aiResponse: ChatMessage = {
+							content: `Thank you for providing those details. Based on your responses:\n\n${answersSummary}\n\nNow, could you please provide a brief overall description of your situation? What happened and what are you hoping to achieve?`,
+							isUser: false
+						};
+						setMessages(prev => [...prev, aiResponse]);
+					}, 800);
+				}
 				break;
 
 			case 'case-details':
@@ -860,8 +995,12 @@ export function App() {
 				
 				setTimeout(() => {
 					const aiResponse: ChatMessage = {
-						content: `Thank you for sharing those details. I understand your situation involves ${caseState.data.caseType} and you've described: "${message}"\n\nHow urgent is this matter? (e.g., Very urgent - immediate action needed, Somewhat urgent - within a few weeks, Not urgent - can wait a month or more)`,
-						isUser: false
+						content: `Thank you for sharing those details. I understand your situation involves ${caseState.data.caseType?.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} and you've described: "${message}"\n\nHow urgent is this matter?`,
+						isUser: false,
+						caseCreation: {
+							type: 'urgency-selection',
+							availableServices: []
+						}
 					};
 					setMessages(prev => [...prev, aiResponse]);
 				}, 800);
@@ -882,7 +1021,17 @@ export function App() {
 				}));
 				
 				setTimeout(() => {
-					const caseSummary = `**Case Summary:**\n- **Type:** ${finalCaseData.caseType}\n- **Description:** ${finalCaseData.description}\n- **Urgency:** ${finalCaseData.urgency}\n\nBased on your case details, I can help connect you with an attorney who specializes in ${finalCaseData.caseType}. Would you like me to start the process of connecting you with a lawyer?`;
+					// Create comprehensive case summary including AI answers
+					let caseSummary = `**Case Summary:**\n- **Type:** ${finalCaseData.caseType}\n- **Description:** ${finalCaseData.description}\n- **Urgency:** ${finalCaseData.urgency}`;
+					
+					if (finalCaseData.aiAnswers && Object.keys(finalCaseData.aiAnswers).length > 0) {
+						caseSummary += '\n\n**Additional Details:**';
+						Object.entries(finalCaseData.aiAnswers).forEach(([question, answer]) => {
+							caseSummary += `\n- **${question}** ${answer}`;
+						});
+					}
+					
+					caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${finalCaseData.caseType}. Would you like me to start the process of connecting you with a lawyer?`;
 					
 					const aiResponse: ChatMessage = {
 						content: caseSummary,
@@ -898,10 +1047,15 @@ export function App() {
 						};
 						setMessages(prev => [...prev, contactResponse]);
 						
-						// Start contact form
+						// Start contact form with enhanced data
 						setFormState({
 							step: 'contact',
-							data: { caseType: finalCaseData.caseType, caseDescription: finalCaseData.description },
+							data: { 
+								caseType: finalCaseData.caseType, 
+								caseDescription: finalCaseData.description,
+								caseDetails: finalCaseData.aiAnswers,
+								urgency: finalCaseData.urgency
+							},
 							isActive: true
 						});
 					}, 2000);
@@ -1232,6 +1386,7 @@ export function App() {
 								onTimeSlotSelect={handleTimeSlotSelect}
 								onRequestMoreDates={handleRequestMoreDates}
 								onServiceSelect={handleServiceSelect}
+								onUrgencySelect={handleUrgencySelect}
 								position={position}
 							/>
 							<div className="input-area" role="form" aria-label="Message composition">
