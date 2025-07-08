@@ -1,16 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    path {
-      fill: #0ea5e9;
-    }
-    @media (prefers-color-scheme: dark) {
-      path {
-        fill: #38bdf8;
-      }
-    }
-  </style>
-  <rect width="32" height="32" rx="6" fill="currentColor" />
-  <path d="M24 12.5C24 14.985 21.985 17 19.5 17H17.5L13 21V17H12.5C10.015 17 8 14.985 8 12.5V8.5C8 6.015 10.015 4 12.5 4H19.5C21.985 4 24 6.015 24 8.5V12.5Z" />
-  <path d="M13 25C13 27.209 14.791 29 17 29H17.5L21 27V24H17C14.791 24 13 25.791 13 28V25Z" />
+  <defs>
+    <pattern id="favicon-pattern" patternUnits="userSpaceOnUse" width="32" height="32">
+      <image href="https://api.cloudflare.com/client/v4/accounts/fa3dc6c06433f6b0ea78d95bce23ad91/images/v1/ae609b77-9a3c-4ef9-c667-17d8b7ce7d00" width="32" height="32" preserveAspectRatio="xMidYMid slice"/>
+    </pattern>
+  </defs>
+  <rect width="32" height="32" fill="url(#favicon-pattern)" rx="6"/>
 </svg> 

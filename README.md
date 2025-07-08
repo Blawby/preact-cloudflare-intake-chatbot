@@ -324,7 +324,11 @@ You can manage all law firm teams and their configuration in a single JSON file:
       "availableServices": ["general-consultation", "legal-advice"],
       "domain": "demo.blawby.com",
       "description": "Demo law firm for testing purposes",
-      "paymentLink": null
+      "paymentLink": null,
+      "brandColor": "#2563eb",
+      "accentColor": "#3b82f6",
+      "introMessage": "Hello! I'm your AI legal assistant. I'm here to help you get started with your legal questions and can assist with general consultation and legal advice. How can I help you today?",
+      "profileImage": "https://api.cloudflare.com/client/v4/accounts/fa3dc6c06433f6b0ea78d95bce23ad91/images/v1/27bc2bf2-8582-4ed1-e77c-45d7a3215b00"
     }
   },
   {
@@ -345,7 +349,11 @@ You can manage all law firm teams and their configuration in a single JSON file:
       ],
       "domain": "northcarolinalegalservices.blawby.com",
       "description": "Affordable, comprehensive legal services for North Carolina",
-      "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500"
+      "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500",
+      "brandColor": "#059669",
+      "accentColor": "#10b981",
+      "introMessage": "Welcome to North Carolina Legal Services! I'm here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you schedule a consultation with our experienced attorneys. How can I assist you today?",
+      "profileImage": null
     }
   }
 ]
@@ -365,13 +373,45 @@ You can manage all law firm teams and their configuration in a single JSON file:
 | `config.domain` | string | Custom domain for the team |
 | `config.description` | string | Team description |
 | `config.paymentLink` | string | Payment link URL (e.g. Stripe Checkout) - required if `requiresPayment: true` |
+| `config.brandColor` | string | Primary brand color in hex format (e.g., "#2563eb") |
+| `config.accentColor` | string | Secondary accent color in hex format (e.g., "#3b82f6") |
+| `config.introMessage` | string | Custom welcome message displayed when chat starts (optional) |
+| `config.profileImage` | string | URL to team's profile/logo image (optional, defaults to Blawby logo) |
 
 ### Payment Configuration
 
-- **Free Consultations**: Set `requiresPayment: false` and `consultationFee: 0`
-- **Paid Consultations**: Set `requiresPayment: true`, specify `consultationFee`, and provide `paymentLink`
-- **Payment Links**: Should point to your payment processor (Stripe, PayPal, etc.)
-- **Email Notifications**: Both client and team owner receive emails upon form submission
+Teams can configure payment requirements and links:
+
+- **Free consultations**: Set `consultationFee: 0` and `requiresPayment: false`
+- **Paid consultations**: Set `consultationFee` to the amount in dollars and `requiresPayment: true`
+- **Payment links**: Provide a `paymentLink` URL (e.g., Stripe Checkout) for paid teams
+
+### Intro Message Configuration
+
+Teams can customize the initial welcome message displayed when users start a chat:
+
+- **Custom intro**: Set `introMessage` to display a personalized welcome message
+- **Default fallback**: If no `introMessage` is provided, a generic friendly message is shown
+- **Branding opportunity**: Use this to introduce your firm, mention practice areas, and set expectations
+
+Example intro messages:
+- "Welcome to [Firm Name]! I'm here to help with [practice areas]. How can I assist you today?"
+- "Hello! I'm your AI legal assistant at [Firm Name]. I can answer questions and help schedule consultations."
+
+### Profile Image Configuration
+
+Teams can set their own profile/logo image for branding:
+
+- **Custom logo**: Set `profileImage` to a URL pointing to your team's logo
+- **Default fallback**: If no `profileImage` is provided or set to `null`, the Blawby logo is used
+- **Image requirements**: Use high-quality images (recommended: 200x200px or larger, PNG/JPG)
+- **Local files**: Place images in the `public/` directory and reference with `/filename.png`
+- **External URLs**: Use direct URLs to publicly accessible images
+
+Example profile image configurations:
+- Local file: `"profileImage": "/team-logo.png"`
+- External URL: `"profileImage": "https://yourdomain.com/logo.png"`
+- No image: `"profileImage": null` (uses default Blawby logo)
 
 - Edit `teams.json` to add or update teams.
 - The `ownerEmail` field is used for lead notification emails.

@@ -95,6 +95,17 @@ export function App() {
 		isActive: false
 	});
 
+	// State for team configuration
+	const [teamConfig, setTeamConfig] = useState<{
+		name: string;
+		profileImage: string | null;
+		introMessage: string | null;
+	}>({
+		name: 'Legal AI Assistant',
+		profileImage: null,
+		introMessage: null
+	});
+
 	// Track drag counter for better handling of nested elements
 	const dragCounter = useRef(0);
 
@@ -206,6 +217,33 @@ export function App() {
 			textarea.style.height = `${newHeight}px`;
 		}
 	}, []);
+
+	// Fetch team configuration
+	const fetchTeamConfig = async () => {
+		if (!teamId) return;
+		
+		try {
+			const response = await fetch(getTeamsEndpoint());
+			if (response.ok) {
+				const teams = await response.json();
+				const team = teams.find((t: any) => t.id === teamId);
+				if (team?.config) {
+					setTeamConfig({
+						name: team.name || 'Legal AI Assistant',
+						profileImage: team.config.profileImage || null,
+						introMessage: team.config.introMessage || null
+					});
+				}
+			}
+		} catch (error) {
+			console.warn('Failed to fetch team config:', error);
+		}
+	};
+
+	// Fetch team config on mount and when teamId changes
+	useEffect(() => {
+		fetchTeamConfig();
+	}, [teamId]);
 
 	const handlePhotoSelect = async (files: File[]) => {
 		const fileAttachments: FileAttachment[] = await Promise.all(
@@ -949,17 +987,25 @@ export function App() {
 								<div className="welcome-message">
 									<div className="welcome-card">
 										<div className="welcome-icon">
-											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-												<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-												<path d="M9 15h6"></path>
-												<path d="M11 9h1"></path>
-												<path d="M12 9v3"></path>
-												<path d="M8 9h.01"></path>
-												<path d="M16 9h.01"></path>
-											</svg>
+											{teamConfig.profileImage ? (
+												<img 
+													src={teamConfig.profileImage} 
+													alt={`${teamConfig.name} logo`}
+													className="team-profile-image"
+												/>
+											) : (
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+													<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+													<path d="M9 15h6"></path>
+													<path d="M11 9h1"></path>
+													<path d="M12 9v3"></path>
+													<path d="M8 9h.01"></path>
+													<path d="M16 9h.01"></path>
+												</svg>
+											)}
 										</div>
-										<h2>Legal AI Assistant</h2>
-										<p>I'm an AI assistant designed to help you get started with your case.</p>
+										<h2>{teamConfig.name}</h2>
+										<p>{teamConfig.introMessage || "I'm an AI assistant designed to help you get started with your case."}</p>
 										<div className="welcome-actions">
 											<p>How can I help today?</p>
 											<div className="welcome-buttons">
