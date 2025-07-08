@@ -78,6 +78,22 @@ interface ChatMessage {
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
 	caseCreation?: CaseCreationData;
+	qualityScore?: {
+		score: number;
+		breakdown: {
+			followUpCompletion: number;
+			requiredFields: number;
+			evidence: number;
+			clarity: number;
+			urgency: number;
+			consistency: number;
+			aiConfidence: number;
+		};
+		suggestions: string[];
+		readyForLawyer: boolean;
+		badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
+		color: 'red' | 'yellow' | 'green' | 'blue';
+	};
 	id?: string;
 }
 
@@ -1045,7 +1061,8 @@ export function App() {
 							caseCreation: serviceResult.step === 'ai-questions' ? {
 								type: 'service-selection',
 								availableServices: []
-							} : undefined
+							} : undefined,
+							qualityScore: serviceResult.qualityScore
 						};
 						setMessages(prev => [...prev, aiResponse]);
 					}, 800);
@@ -1083,7 +1100,8 @@ export function App() {
 						setTimeout(() => {
 							const aiResponse: ChatMessage = {
 								content: aiResult.message + (aiResult.question ? `\n\n${aiResult.question}` : ''),
-								isUser: false
+								isUser: false,
+								qualityScore: aiResult.qualityScore
 							};
 							setMessages(prev => [...prev, aiResponse]);
 						}, 800);
@@ -1119,12 +1137,13 @@ export function App() {
 						description: message
 					});
 					
-					setTimeout(() => {
-						const aiResponse: ChatMessage = {
-							content: detailsResult.message,
-							isUser: false
-						};
-						setMessages(prev => [...prev, aiResponse]);
+											setTimeout(() => {
+							const aiResponse: ChatMessage = {
+								content: detailsResult.message,
+								isUser: false,
+								qualityScore: detailsResult.qualityScore
+							};
+							setMessages(prev => [...prev, aiResponse]);
 						
 						// Automatically trigger AI analysis after a short delay
 						setTimeout(async () => {
@@ -1147,7 +1166,8 @@ export function App() {
 									caseCreation: analysisResult.step === 'urgency-selection' ? {
 										type: 'urgency-selection',
 										availableServices: []
-									} : undefined
+									} : undefined,
+									qualityScore: analysisResult.qualityScore
 								};
 								setMessages(prev => [...prev, analysisResponse]);
 							} catch (error) {
@@ -1195,7 +1215,8 @@ export function App() {
 					setTimeout(() => {
 						const aiResponse: ChatMessage = {
 							content: urgencyResult.message,
-							isUser: false
+							isUser: false,
+							qualityScore: urgencyResult.qualityScore
 						};
 						setMessages(prev => [...prev, aiResponse]);
 						

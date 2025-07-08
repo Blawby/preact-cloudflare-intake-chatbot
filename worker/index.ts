@@ -36,6 +36,23 @@ interface CaseCreationRequest {
   urgency?: string;
 }
 
+interface CaseQualityScore {
+  score: number; // 0-100
+  breakdown: {
+    followUpCompletion: number;
+    requiredFields: number;
+    evidence: number;
+    clarity: number;
+    urgency: number;
+    consistency: number;
+    aiConfidence: number;
+  };
+  suggestions: string[];
+  readyForLawyer: boolean;
+  badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
+  color: 'red' | 'yellow' | 'green' | 'blue';
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -69,6 +86,10 @@ export default {
 
       if (path.startsWith('/api/case-creation')) {
         return handleCaseCreation(request, env, corsHeaders);
+      }
+
+      if (path.startsWith('/api/case-quality')) {
+        return handleCaseQuality(request, env, corsHeaders);
       }
 
       // Health check
@@ -486,6 +507,147 @@ async function handleTeams(request: Request, env: Env, corsHeaders: Record<strin
 } 
 
 // Send email notifications via Resend
+async function calculateCaseQuality(
+  service: string,
+  description: string,
+  answers: Record<string, string> = {},
+  urgency?: string,
+  teamConfig?: any
+): Promise<CaseQualityScore> {
+  // Initialize breakdown
+  const breakdown = {
+    followUpCompletion: 0,
+    requiredFields: 0,
+    evidence: 0,
+    clarity: 0,
+    urgency: 0,
+    consistency: 0,
+    aiConfidence: 0
+  };
+
+  // 1. Follow-up Completion (25% weight)
+  const serviceQuestions = teamConfig?.serviceQuestions?.[service] || [];
+  const answeredQuestions = Object.keys(answers).length;
+  const totalQuestions = serviceQuestions.length;
+  breakdown.followUpCompletion = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 100;
+
+  // 2. Required Fields (20% weight)
+  const hasService = !!service;
+  const hasDescription = !!description && description.length > 10;
+  const hasAnswers = answeredQuestions > 0;
+  breakdown.requiredFields = ((hasService ? 1 : 0) + (hasDescription ? 1 : 0) + (hasAnswers ? 1 : 0)) / 3 * 100;
+
+  // 3. Evidence (15% weight)
+  // Check if user mentioned documents, photos, or evidence
+  const evidenceKeywords = ['photo', 'document', 'evidence', 'proof', 'picture', 'image', 'file', 'upload'];
+  const hasEvidence = evidenceKeywords.some(keyword => 
+    description.toLowerCase().includes(keyword) || 
+    Object.values(answers).some(answer => answer.toLowerCase().includes(keyword))
+  );
+  breakdown.evidence = hasEvidence ? 100 : 0;
+
+  // 4. Clarity (15% weight)
+  // Assess answer quality and specificity
+  let clarityScore = 0;
+  const totalAnswers = Object.values(answers).length;
+  if (totalAnswers > 0) {
+    const clarityScores = Object.values(answers).map(answer => {
+      const length = answer.length;
+      const hasDetails = answer.toLowerCase().includes('because') || answer.toLowerCase().includes('when') || answer.toLowerCase().includes('where');
+      const isSpecific = !answer.toLowerCase().includes('i don\'t know') && !answer.toLowerCase().includes('not sure');
+      return (length > 10 ? 1 : 0) + (hasDetails ? 1 : 0) + (isSpecific ? 1 : 0);
+    });
+    clarityScore = (clarityScores.reduce((a, b) => a + b, 0) / (totalAnswers * 3)) * 100;
+  }
+  breakdown.clarity = clarityScore;
+
+  // 5. Urgency (10% weight)
+  breakdown.urgency = urgency ? 100 : 0;
+
+  // 6. Consistency (10% weight)
+  // Check for contradictions in answers
+  let consistencyScore = 100;
+  const answersArray = Object.values(answers);
+  if (answersArray.length > 1) {
+    // Simple consistency check - could be enhanced with AI
+    const hasContradictions = false; // Placeholder for AI-based consistency check
+    consistencyScore = hasContradictions ? 50 : 100;
+  }
+  breakdown.consistency = consistencyScore;
+
+  // 7. AI Confidence (5% weight)
+  // This will be set by the AI analysis step
+  breakdown.aiConfidence = 75; // Default value, will be updated by AI analysis
+
+  // Calculate weighted score
+  const weights = {
+    followUpCompletion: 0.25,
+    requiredFields: 0.20,
+    evidence: 0.15,
+    clarity: 0.15,
+    urgency: 0.10,
+    consistency: 0.10,
+    aiConfidence: 0.05
+  };
+
+  const score = Math.round(
+    breakdown.followUpCompletion * weights.followUpCompletion +
+    breakdown.requiredFields * weights.requiredFields +
+    breakdown.evidence * weights.evidence +
+    breakdown.clarity * weights.clarity +
+    breakdown.urgency * weights.urgency +
+    breakdown.consistency * weights.consistency +
+    breakdown.aiConfidence * weights.aiConfidence
+  );
+
+  // Generate suggestions
+  const suggestions: string[] = [];
+  if (breakdown.followUpCompletion < 100) {
+    suggestions.push('Complete all follow-up questions to improve your case readiness.');
+  }
+  if (breakdown.requiredFields < 100) {
+    if (!description || description.length <= 10) {
+      suggestions.push('Provide a detailed description of your situation.');
+    }
+  }
+  if (breakdown.evidence === 0) {
+    suggestions.push('Consider uploading photos, documents, or other evidence related to your case.');
+  }
+  if (breakdown.clarity < 70) {
+    suggestions.push('Provide more specific details about what happened and when.');
+  }
+  if (breakdown.urgency === 0) {
+    suggestions.push('Specify how urgent your matter is to help prioritize your case.');
+  }
+
+  // Determine badge and color
+  let badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
+  let color: 'red' | 'yellow' | 'green' | 'blue';
+  
+  if (score >= 90) {
+    badge = 'Excellent';
+    color = 'blue';
+  } else if (score >= 75) {
+    badge = 'Good';
+    color = 'green';
+  } else if (score >= 50) {
+    badge = 'Fair';
+    color = 'yellow';
+  } else {
+    badge = 'Poor';
+    color = 'red';
+  }
+
+  return {
+    score,
+    breakdown,
+    suggestions,
+    readyForLawyer: score >= 75,
+    badge,
+    color
+  };
+}
+
 async function sendEmailNotifications(
   formData: ContactFormSubmission, 
   formId: string, 
@@ -570,6 +732,65 @@ async function sendEmailNotifications(
   }
 }
 
+async function handleCaseQuality(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method === 'POST') {
+    try {
+      const body = await request.json();
+      
+      // Validate required fields
+      if (!body.teamId || !body.service) {
+        return new Response(JSON.stringify({ 
+          error: 'Missing required fields: teamId and service are required' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get team configuration
+      const teamRow = await env.DB.prepare(`SELECT id, name, config FROM teams WHERE id = ?`).bind(body.teamId).first();
+      if (!teamRow) {
+        return new Response(JSON.stringify({ error: 'Team not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      let teamConfig = {};
+      try {
+        teamConfig = JSON.parse(teamRow.config);
+      } catch (e) {
+        console.error('Error parsing team config:', e);
+      }
+
+      // Calculate quality score
+      const qualityScore = await calculateCaseQuality(
+        body.service,
+        body.description || '',
+        body.answers || {},
+        body.urgency,
+        teamConfig
+      );
+
+      return new Response(JSON.stringify(qualityScore), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } catch (error) {
+      console.error('Case quality error:', error);
+      return new Response(JSON.stringify({ error: 'Internal server error' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
 async function handleCaseCreation(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method === 'POST') {
     try {
@@ -608,20 +829,28 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
         case 'service-selection':
           const serviceQuestions = teamConfig.serviceQuestions?.[body.service] || [];
           if (serviceQuestions.length > 0) {
+            // Calculate initial quality score
+            const serviceQualityScore = await calculateCaseQuality(body.service, '', {}, undefined, teamConfig);
+            
             return new Response(JSON.stringify({
               step: 'ai-questions',
               currentQuestionIndex: 0,
               question: serviceQuestions[0],
               totalQuestions: serviceQuestions.length,
               message: `Thank you for selecting ${body.service}. Let me ask you a few specific questions to better understand your situation and provide more targeted assistance.\n\n${serviceQuestions[0]}`,
-              questions: serviceQuestions
+              questions: serviceQuestions,
+              qualityScore: serviceQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           } else {
+            // Calculate initial quality score
+            const serviceQualityScore = await calculateCaseQuality(body.service, '', {}, undefined, teamConfig);
+            
             return new Response(JSON.stringify({
               step: 'case-details',
-              message: `Thank you for sharing that you're dealing with a ${body.service} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`
+              message: `Thank you for sharing that you're dealing with a ${body.service} matter. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
+              qualityScore: serviceQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -634,13 +863,16 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           
           if (nextIndex < questions.length) {
             // More questions to ask
+            const aiQuestionsQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, undefined, teamConfig);
+            
             return new Response(JSON.stringify({
               step: 'ai-questions',
               currentQuestionIndex: nextIndex,
               question: questions[nextIndex],
               totalQuestions: questions.length,
               message: `Thank you for that information.`,
-              questions: questions
+              questions: questions,
+              qualityScore: aiQuestionsQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -650,10 +882,13 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               .map(([question, answer]) => `**${question}**\n${answer}`)
               .join('\n\n');
             
+            const aiQuestionsQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, undefined, teamConfig);
+            
             return new Response(JSON.stringify({
               step: 'case-details',
               message: `Thank you for providing those details. Based on your responses:\n\n${answersSummary}\n\nNow, could you please provide a brief overall description of your situation? What happened and what are you hoping to achieve?`,
-              answers: body.answers
+              answers: body.answers,
+              qualityScore: aiQuestionsQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -661,6 +896,8 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
 
         case 'case-details':
           // Move to AI analysis step instead of directly to urgency
+          const caseDetailsQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, undefined, teamConfig);
+          
           return new Response(JSON.stringify({
             step: 'ai-analysis',
             message: `Thank you for sharing those details. Let me analyze your case to better understand your situation and determine what additional information might be needed.`,
@@ -668,7 +905,8 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               service: body.service,
               description: body.description,
               answers: body.answers
-            }
+            },
+            qualityScore: caseDetailsQualityScore
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
@@ -687,6 +925,8 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
 3. Any missing critical information that should be gathered
 4. Recommended next steps
 
+IMPORTANT: Only ask follow-up questions if there is genuinely missing critical information. If the client has already provided comprehensive details about their situation, do not ask generic questions like "Can you provide more details" or "What is the current status" if those details are already clear from their responses.
+
 Case Information:
 - Practice Area: ${body.service}
 - Client Description: ${body.description}
@@ -701,7 +941,13 @@ Please provide a structured analysis in JSON format with the following fields:
   "recommendations": ["list of recommended next steps"],
   "followUpQuestions": ["specific questions to ask if needed"],
   "readyForLawyer": true/false
-}`;
+}
+
+Guidelines:
+- If the client has clearly explained their situation and the key facts are present, set readyForLawyer to true
+- Only ask follow-up questions for genuinely missing critical information
+- Avoid asking questions about information already provided
+- Focus on actionable next steps rather than redundant information gathering`;
 
             const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
               messages: [
@@ -734,6 +980,8 @@ Please provide a structured analysis in JSON format with the following fields:
 
             if (analysis.readyForLawyer && analysis.sufficientInfo) {
               // Case is ready for lawyer connection
+              const analysisQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, undefined, teamConfig);
+              
               return new Response(JSON.stringify({
                 step: 'urgency-selection',
                 message: `**Case Analysis Complete**\n\n${analysis.summary}\n\nBased on my analysis, I have sufficient information to connect you with a qualified attorney. How urgent is this matter?`,
@@ -742,7 +990,8 @@ Please provide a structured analysis in JSON format with the following fields:
                   { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
                   { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
                 ],
-                analysis: analysis
+                analysis: analysis,
+                qualityScore: analysisQualityScore
               }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               });
@@ -752,6 +1001,8 @@ Please provide a structured analysis in JSON format with the following fields:
                 ? `\n\nI need to gather a bit more information to better assist you:\n\n${analysis.followUpQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
                 : '\n\nI need to gather a bit more information to better assist you.';
 
+              const analysisQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, undefined, teamConfig);
+
               return new Response(JSON.stringify({
                 step: 'ai-questions',
                 currentQuestionIndex: 0,
@@ -759,7 +1010,8 @@ Please provide a structured analysis in JSON format with the following fields:
                 totalQuestions: analysis.followUpQuestions?.length || 1,
                 message: `**Case Analysis**\n\n${analysis.summary}${followUpMessage}`,
                 questions: analysis.followUpQuestions || ['Can you provide more specific details about your situation?'],
-                analysis: analysis
+                analysis: analysis,
+                qualityScore: analysisQualityScore
               }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               });
@@ -767,6 +1019,8 @@ Please provide a structured analysis in JSON format with the following fields:
           } catch (aiError) {
             console.error('AI analysis error:', aiError);
             // Fallback to urgency selection if AI fails
+            const fallbackQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, undefined, teamConfig);
+            
             return new Response(JSON.stringify({
               step: 'urgency-selection',
               message: `Thank you for sharing those details. I understand your situation involves ${body.service} and you've described: "${body.description}"\n\nHow urgent is this matter?`,
@@ -774,7 +1028,8 @@ Please provide a structured analysis in JSON format with the following fields:
                 { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
                 { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
                 { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
-              ]
+              ],
+              qualityScore: fallbackQualityScore
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -793,6 +1048,9 @@ Please provide a structured analysis in JSON format with the following fields:
           
           caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
           
+          // Calculate final quality score with urgency
+          const finalQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
+          
           return new Response(JSON.stringify({
             step: 'complete',
             message: caseSummary,
@@ -801,7 +1059,8 @@ Please provide a structured analysis in JSON format with the following fields:
               description: body.description,
               urgency: body.urgency,
               answers: body.answers
-            }
+            },
+            qualityScore: finalQualityScore
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });

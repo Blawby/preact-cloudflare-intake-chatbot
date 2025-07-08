@@ -2290,3 +2290,278 @@ kbd {
 	gap: 8px;
 	max-width: 400px;
 }
+
+/* Case Quality Score Styles */
+.case-quality-score {
+	background: var(--bg-color);
+	border: 1px solid var(--border-color);
+	border-radius: 12px;
+	padding: 16px;
+	margin-bottom: 16px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.case-quality-score h3 {
+	margin: 0 0 12px 0;
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--text-color);
+}
+
+.case-quality-score h4 {
+	margin: 0 0 8px 0;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-color);
+}
+
+/* Badge styles */
+.case-quality-score .px-3 {
+	padding-left: 12px;
+	padding-right: 12px;
+}
+
+.case-quality-score .py-1 {
+	padding-top: 4px;
+	padding-bottom: 4px;
+}
+
+.case-quality-score .rounded-full {
+	border-radius: 9999px;
+}
+
+.case-quality-score .text-sm {
+	font-size: 12px;
+}
+
+.case-quality-score .font-medium {
+	font-weight: 500;
+}
+
+.case-quality-score .border {
+	border-width: 1px;
+	border-style: solid;
+}
+
+/* Color classes for badges */
+.case-quality-score .bg-red-100 {
+	background-color: #fee2e2;
+}
+
+.case-quality-score .text-red-800 {
+	color: #991b1b;
+}
+
+.case-quality-score .border-red-200 {
+	border-color: #fecaca;
+}
+
+.case-quality-score .bg-yellow-100 {
+	background-color: #fef3c7;
+}
+
+.case-quality-score .text-yellow-800 {
+	color: #92400e;
+}
+
+.case-quality-score .border-yellow-200 {
+	border-color: #fde68a;
+}
+
+.case-quality-score .bg-green-100 {
+	background-color: #dcfce7;
+}
+
+.case-quality-score .text-green-800 {
+	color: #166534;
+}
+
+.case-quality-score .border-green-200 {
+	border-color: #bbf7d0;
+}
+
+.case-quality-score .bg-blue-100 {
+	background-color: #dbeafe;
+}
+
+.case-quality-score .text-blue-800 {
+	color: #1e40af;
+}
+
+.case-quality-score .border-blue-200 {
+	border-color: #bfdbfe;
+}
+
+.case-quality-score .bg-gray-100 {
+	background-color: #f3f4f6;
+}
+
+.case-quality-score .text-gray-800 {
+	color: #1f2937;
+}
+
+.case-quality-score .border-gray-200 {
+	border-color: #e5e7eb;
+}
+
+/* Progress bar styles */
+.case-quality-score .w-full {
+	width: 100%;
+}
+
+.case-quality-score .bg-gray-200 {
+	background-color: #e5e7eb;
+}
+
+.case-quality-score .h-3 {
+	height: 12px;
+}
+
+.case-quality-score .transition-all {
+	transition-property: all;
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	transition-duration: 500ms;
+}
+
+.case-quality-score .duration-500 {
+	transition-duration: 500ms;
+}
+
+/* Progress bar colors */
+.case-quality-score .bg-red-500 {
+	background-color: #ef4444;
+}
+
+.case-quality-score .bg-yellow-500 {
+	background-color: #eab308;
+}
+
+.case-quality-score .bg-green-500 {
+	background-color: #22c55e;
+}
+
+.case-quality-score .bg-blue-500 {
+	background-color: #3b82f6;
+}
+
+.case-quality-score .bg-gray-500 {
+	background-color: #6b7280;
+}
+
+/* Text styles */
+.case-quality-score .text-2xl {
+	font-size: 24px;
+}
+
+.case-quality-score .font-bold {
+	font-weight: 700;
+}
+
+.case-quality-score .text-gray-900 {
+	color: #111827;
+}
+
+.case-quality-score .text-green-600 {
+	color: #16a34a;
+}
+
+.case-quality-score .text-yellow-600 {
+	color: #ca8a04;
+}
+
+.case-quality-score .text-xs {
+	font-size: 12px;
+}
+
+.case-quality-score .text-gray-600 {
+	color: #4b5563;
+}
+
+.case-quality-score .text-gray-500 {
+	color: #6b7280;
+}
+
+.case-quality-score .text-blue-500 {
+	color: #3b82f6;
+}
+
+/* Layout utilities */
+.case-quality-score .flex {
+	display: flex;
+}
+
+.case-quality-score .items-center {
+	align-items: center;
+}
+
+.case-quality-score .justify-between {
+	justify-content: space-between;
+}
+
+.case-quality-score .justify-end {
+	justify-content: flex-end;
+}
+
+.case-quality-score .space-x-2>*+* {
+	margin-left: 8px;
+}
+
+.case-quality-score .space-y-2>*+* {
+	margin-top: 8px;
+}
+
+.case-quality-score .space-y-1>*+* {
+	margin-top: 4px;
+}
+
+.case-quality-score .mb-3 {
+	margin-bottom: 12px;
+}
+
+.case-quality-score .mb-4 {
+	margin-bottom: 16px;
+}
+
+.case-quality-score .mb-2 {
+	margin-bottom: 8px;
+}
+
+.case-quality-score .mr-1 {
+	margin-right: 4px;
+}
+
+.case-quality-score .w-16 {
+	width: 64px;
+}
+
+.case-quality-score .w-8 {
+	width: 32px;
+}
+
+.case-quality-score .h-1\.5 {
+	height: 6px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+	.case-quality-score {
+		background: var(--message-bg-ai);
+		border-color: var(--border-color);
+	}
+
+	.case-quality-score .text-gray-900 {
+		color: var(--text-color);
+	}
+
+	.case-quality-score .text-gray-600 {
+		color: var(--accent-color);
+	}
+
+	.case-quality-score .text-gray-500 {
+		color: var(--accent-color);
+	}
+
+	.case-quality-score .bg-gray-200 {
+		background-color: var(--border-color);
+	}
+}

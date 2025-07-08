@@ -32,6 +32,22 @@ interface ChatMessage {
     files?: FileAttachment[];
     scheduling?: SchedulingData;
     caseCreation?: CaseCreationData;
+    qualityScore?: {
+        score: number;
+        breakdown: {
+            followUpCompletion: number;
+            requiredFields: number;
+            evidence: number;
+            clarity: number;
+            urgency: number;
+            consistency: number;
+            aiConfidence: number;
+        };
+        suggestions: string[];
+        readyForLawyer: boolean;
+        badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
+        color: 'red' | 'yellow' | 'green' | 'blue';
+    };
     id?: string;
 }
 
@@ -157,6 +173,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         files={message.files}
                         scheduling={message.scheduling}
                         caseCreation={message.caseCreation}
+                        qualityScore={message.qualityScore}
                         onDateSelect={onDateSelect}
                         onTimeOfDaySelect={onTimeOfDaySelect}
                         onTimeSlotSelect={onTimeSlotSelect}

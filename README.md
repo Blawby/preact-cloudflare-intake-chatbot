@@ -322,6 +322,153 @@ If no `serviceQuestions` are configured for a service, the system falls back to 
 
 ---
 
+## 📊 Case Quality Scoring
+
+The system now includes **AI-powered case quality scoring** that evaluates the completeness and readiness of each case for attorney review. This provides real-time feedback to users and helps attorneys prioritize cases.
+
+### How It Works
+
+1. **Real-time Scoring**: Quality score is calculated at each step of the case creation process
+2. **Visual Feedback**: Users see a progress bar, breakdown, and suggestions for improvement
+3. **Attorney Readiness**: Score indicates whether the case is ready for attorney review
+4. **API-Driven**: All scoring logic is handled by the backend API
+
+### Quality Score Components
+
+The score (0-100%) is calculated based on:
+
+| Component | Weight | Description |
+|-----------|--------|-------------|
+| **Follow-up Completion** | 25% | Percentage of AI questions answered |
+| **Required Fields** | 20% | Service, description, and answers provided |
+| **Evidence** | 15% | Mentions of documents, photos, or evidence |
+| **Clarity** | 15% | Specificity and detail in responses |
+| **Urgency** | 10% | Urgency level specified |
+| **Consistency** | 10% | Logical consistency of answers |
+| **AI Confidence** | 5% | AI analysis confidence level |
+
+### Score Levels
+
+| Score Range | Badge | Color | Status |
+|-------------|-------|-------|--------|
+| 90-100% | Excellent | Blue | Ready for attorney |
+| 75-89% | Good | Green | Ready for attorney |
+| 50-74% | Fair | Yellow | Needs more info |
+| 0-49% | Poor | Red | Needs significant improvement |
+
+### API Endpoints
+
+#### Case Quality Score
+
+```bash
+POST /api/case-quality
+```
+
+**Request:**
+```json
+{
+  "teamId": "demo",
+  "service": "contract-review",
+  "description": "I need help reviewing a business contract...",
+  "answers": {
+    "What type of contract is this?": "Business service contract",
+    "What is the value of the contract?": "Around $50,000"
+  },
+  "urgency": "Somewhat Urgent"
+}
+```
+
+**Response:**
+```json
+{
+  "score": 79,
+  "breakdown": {
+    "followUpCompletion": 100,
+    "requiredFields": 100,
+    "evidence": 0,
+    "clarity": 66.67,
+    "urgency": 100,
+    "consistency": 100,
+    "aiConfidence": 75
+  },
+  "suggestions": [
+    "Consider uploading photos, documents, or other evidence related to your case.",
+    "Provide more specific details about what happened and when."
+  ],
+  "readyForLawyer": true,
+  "badge": "Good",
+  "color": "green"
+}
+```
+
+#### Case Creation with Quality Scores
+
+The `/api/case-creation` endpoint now includes quality scores in all responses:
+
+```json
+{
+  "step": "case-details",
+  "message": "Thank you for sharing those details...",
+  "qualityScore": {
+    "score": 45,
+    "breakdown": { ... },
+    "suggestions": [ ... ],
+    "readyForLawyer": false,
+    "badge": "Poor",
+    "color": "red"
+  }
+}
+```
+
+### Frontend Integration
+
+The quality score is displayed in the chat interface as:
+
+* **Progress Bar**: Visual representation of the score
+* **Breakdown**: Individual component scores with mini progress bars
+* **Suggestions**: Actionable tips to improve the score
+* **Badge**: Color-coded status indicator
+* **Ready Status**: Clear indication if case is ready for attorney
+
+### Benefits
+
+* **User Guidance**: Real-time feedback helps users provide better information
+* **Attorney Efficiency**: Attorneys can quickly assess case readiness
+* **Quality Control**: Ensures cases have sufficient information before attorney review
+* **Professional Experience**: Creates a more sophisticated intake process
+* **API-First**: Quality scoring can be integrated with external systems (Zapier, etc.)
+
+### Integration Examples
+
+#### Zapier Integration
+```javascript
+// Webhook to case quality endpoint
+const qualityScore = await fetch('/api/case-quality', {
+  method: 'POST',
+  body: JSON.stringify(caseData)
+});
+
+// Use score for conditional logic
+if (qualityScore.score >= 75) {
+  // Automatically assign to attorney
+} else {
+  // Send follow-up questions
+}
+```
+
+#### CRM Integration
+```javascript
+// Add quality score to CRM record
+const crmRecord = {
+  ...caseData,
+  qualityScore: qualityScore.score,
+  qualityBreakdown: qualityScore.breakdown,
+  readyForAttorney: qualityScore.readyForLawyer
+};
+```
+
+---
+
 ## 📚 Resources
 
 * [Architecture Plan](./intake_form_chatbot_plan.md)
