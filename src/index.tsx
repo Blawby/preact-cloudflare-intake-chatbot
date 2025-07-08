@@ -139,7 +139,6 @@ export function App() {
 		};
 		suggestions: string[];
 		readyForLawyer: boolean;
-		badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
 		color: 'red' | 'yellow' | 'green' | 'blue';
 		isVisible: boolean;
 	}>({
@@ -155,7 +154,6 @@ export function App() {
 		},
 		suggestions: [],
 		readyForLawyer: false,
-		badge: 'Poor',
 		color: 'red',
 		isVisible: false
 	});

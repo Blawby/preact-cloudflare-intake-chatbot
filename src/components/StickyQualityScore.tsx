@@ -13,22 +13,11 @@ interface StickyQualityScoreProps {
   };
   suggestions: string[];
   readyForLawyer: boolean;
-  badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
   color: 'red' | 'yellow' | 'green' | 'blue';
   isVisible: boolean;
 }
 
-const StickyQualityScore = ({ score, breakdown, suggestions, readyForLawyer, badge, color, isVisible }: StickyQualityScoreProps) => {
-  const getColorClasses = (color: string) => {
-    switch (color) {
-      case 'red': return 'sticky-score-badge-red';
-      case 'yellow': return 'sticky-score-badge-yellow';
-      case 'green': return 'sticky-score-badge-green';
-      case 'blue': return 'sticky-score-badge-blue';
-      default: return 'sticky-score-badge-gray';
-    }
-  };
-
+const StickyQualityScore = ({ score, breakdown, suggestions, readyForLawyer, color, isVisible }: StickyQualityScoreProps) => {
   const getProgressColor = (color: string) => {
     switch (color) {
       case 'red': return 'sticky-score-progress-red';
@@ -45,13 +34,10 @@ const StickyQualityScore = ({ score, breakdown, suggestions, readyForLawyer, bad
     <div className="sticky-quality-score">
       <div className="sticky-quality-score-container">
         <div className="sticky-quality-score-content">
-          {/* Score and Badge */}
+          {/* Score */}
           <div className="sticky-quality-score-left">
             <div className="sticky-quality-score-main">
               <span className="sticky-quality-score-value">{score}%</span>
-              <div className={`sticky-quality-score-badge ${getColorClasses(color)}`}>
-                {badge}
-              </div>
             </div>
             
             {/* Progress Bar */}

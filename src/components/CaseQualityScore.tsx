@@ -13,21 +13,10 @@ interface CaseQualityScoreProps {
   };
   suggestions: string[];
   readyForLawyer: boolean;
-  badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
   color: 'red' | 'yellow' | 'green' | 'blue';
 }
 
-const CaseQualityScore = ({ score, breakdown, suggestions, readyForLawyer, badge, color }: CaseQualityScoreProps) => {
-  const getColorClasses = (color: string) => {
-    switch (color) {
-      case 'red': return 'bg-red-100 text-red-800 border-red-200';
-      case 'yellow': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'green': return 'bg-green-100 text-green-800 border-green-200';
-      case 'blue': return 'bg-blue-100 text-blue-800 border-blue-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
+const CaseQualityScore = ({ score, breakdown, suggestions, readyForLawyer, color }: CaseQualityScoreProps) => {
   const getProgressColor = (color: string) => {
     switch (color) {
       case 'red': return 'bg-red-500';
@@ -55,9 +44,6 @@ const CaseQualityScore = ({ score, breakdown, suggestions, readyForLawyer, badge
     <div className="case-quality-score bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-gray-900">Case Quality Score</h3>
-        <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getColorClasses(color)}`}>
-          {badge}
-        </div>
       </div>
 
       {/* Main Score Display */}

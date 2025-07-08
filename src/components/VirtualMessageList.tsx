@@ -45,7 +45,6 @@ interface ChatMessage {
         };
         suggestions: string[];
         readyForLawyer: boolean;
-        badge: 'Poor' | 'Fair' | 'Good' | 'Excellent';
         color: 'red' | 'yellow' | 'green' | 'blue';
     };
     id?: string;
