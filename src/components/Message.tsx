@@ -182,14 +182,14 @@ const ServiceSelectionButtons: FunctionComponent<{
 				{services.map((service, index) => (
 					<button
 						key={index}
-						class="service-button"
+						class="welcome-action-button"
 						onClick={() => onServiceSelect(service)}
 					>
 						{service}
 					</button>
 				))}
 				<button
-					class="service-button general-inquiry"
+					class="welcome-action-button primary"
 					onClick={() => onServiceSelect('General Inquiry')}
 				>
 					General Inquiry
