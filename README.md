@@ -2,7 +2,7 @@ Here’s a cleaned-up version of your README with redundancy removed, sections r
 
 ---
 
-# Preact Cloudflare Intake Chatbot
+# 🤖 Preact Cloudflare Intake Chatbot
 
 A full-featured, open-source **ChatGPT-like legal assistant**, built with Preact and powered by Cloudflare Workers AI, D1, and KV. Designed for self-hosting, extensibility, and privacy-first deployments.
 

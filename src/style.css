@@ -37,6 +37,11 @@
 		--skeleton-start: rgba(10, 15, 26, 0.1);
 		--skeleton-end: rgba(10, 15, 26, 0.3);
 	}
+
+	.disclaimer-text {
+		background-color: var(--bg-color);
+		border-top-color: var(--border-color);
+	}
 }
 
 * {
@@ -71,6 +76,7 @@ body {
 	-webkit-overflow-scrolling: touch;
 	scroll-behavior: smooth;
 	transition: all 0.3s ease-in-out;
+	overflow: hidden; /* Prevent body scroll when input is focused */
 }
 
 /* Inline mode styling - always full width and height, no animations */
@@ -91,6 +97,15 @@ body {
 	/* Ensure immediate rendering without any animation delay */
 	opacity: 1;
 	transform: none;
+}
+
+/* Ensure input area works properly in inline mode */
+.chat-container.inline .input-area {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 1001;
 }
 
 /* Widget positioning */
@@ -206,6 +221,24 @@ body {
 	.chat-container.widget.closed::before {
 		display: none;
 	}
+
+	/* Mobile adjustments for sticky input */
+	.input-area {
+		padding-bottom: 1rem;
+		padding-left: 0.75rem;
+		padding-right: 0.75rem;
+		bottom: 28px; /* Slightly less space on mobile */
+	}
+
+	.message-list {
+		padding-bottom: 140px; /* Account for input area and disclaimer on mobile */
+	}
+
+	.disclaimer-text {
+		font-size: 0.7rem;
+		padding: 0.4rem 0.75rem;
+		height: 28px; /* Slightly smaller height on mobile */
+	}
 }
 
 .drag-overlay {
@@ -302,6 +335,7 @@ body {
 	flex: 1;
 	overflow-y: auto;
 	padding: 1rem;
+	padding-bottom: 160px; /* Add padding to account for sticky input area and disclaimer */
 	scroll-behavior: smooth;
 	width: 100%;
 	scrollbar-width: thin;
@@ -334,7 +368,7 @@ body {
 }
 
 .input-area {
-	padding-bottom: 1.5rem;
+	padding-bottom: 2rem;
 	padding-left: 1rem;
 	padding-right: 1rem;
 	background-color: var(--bg-color);
@@ -342,6 +376,31 @@ body {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
+	position: fixed;
+	bottom: 32px; /* Move input area up to make room for disclaimer */
+	left: 0;
+	right: 0;
+	z-index: 1000;
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+}
+
+.disclaimer-text {
+	font-size: 0.75rem;
+	color: var(--accent-color);
+	text-align: center;
+	padding: 0.5rem 1rem;
+	background-color: var(--bg-color);
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 1001; /* Higher z-index than input area */
+	opacity: 0.8;
+	height: 32px; /* Fixed height for the disclaimer */
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .input-container {
