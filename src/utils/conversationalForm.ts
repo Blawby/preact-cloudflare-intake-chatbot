@@ -4,6 +4,9 @@ export interface FormData {
   email?: string;
   phone?: string;
   caseDetails?: string;
+  caseType?: string;
+  caseDescription?: string;
+  urgency?: string;
 }
 
 export type FormStep = 'idle' | 'collecting_email' | 'collecting_phone' | 'collecting_case_details' | 'complete';
@@ -69,8 +72,18 @@ export function processFormStep(
     case 'collecting_phone':
       if (extractedInfo.phone && validatePhone(extractedInfo.phone)) {
         newState.data.phone = extractedInfo.phone;
-        newState.step = 'collecting_case_details';
-        response = `Perfect! I have your phone: ${extractedInfo.phone}. Now, can you tell me more about your legal situation? What type of case or legal issue are you dealing with?`;
+        
+        // Check if we already have case details from case creation flow
+        if (currentState.data.caseDescription && currentState.data.caseDescription !== '') {
+          // Skip case details collection if we already have comprehensive case info
+          newState.step = 'complete';
+          response = `Perfect! I have your phone: ${extractedInfo.phone}. I have all your contact information now. Let me update your case summary with your contact details and submit everything to our legal team.`;
+          shouldSubmit = true;
+        } else {
+          // No existing case details, collect them
+          newState.step = 'collecting_case_details';
+          response = `Perfect! I have your phone: ${extractedInfo.phone}. Now, can you tell me more about your legal situation? What type of case or legal issue are you dealing with?`;
+        }
       } else if (userMessage.toLowerCase().includes('phone')) {
         response = "Please provide your phone number. For example: (555) 123-4567 or 555-123-4567";
       } else {
@@ -124,6 +137,6 @@ export function formatFormData(formData: FormData, teamId: string, conversationI
     conversationId,
     phoneNumber: formData.phone,
     email: formData.email,
-    caseDetails: formData.caseDetails
+    caseDetails: formData.caseDescription || formData.caseDetails || 'Case details provided through consultation'
   };
 } 

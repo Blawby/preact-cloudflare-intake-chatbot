@@ -902,22 +902,31 @@ export function App() {
 					console.warn('Failed to fetch team config:', error);
 				}
 				
-				// Create confirmation message based on payment requirements
+				// Create confirmation message based on payment requirements and case creation status
 				let confirmationContent = "";
 				
-				if (teamConfig?.config?.requiresPayment) {
-					const fee = teamConfig.config.consultationFee;
-					const paymentLink = teamConfig.config.paymentLink;
-					
-					confirmationContent = `✅ Thank you! Your information has been submitted successfully.\n\n` +
-						`💰 **Consultation Fee**: $${fee}\n\n` +
-						`To schedule your consultation with our lawyer, please complete the payment first. ` +
-						`This helps us prioritize your case and ensures we can provide you with the best legal assistance.\n\n` +
-						`🔗 **Payment Link**: ${paymentLink}\n\n` +
-						`Once payment is completed, a lawyer will review your case and contact you within 24 hours. ` +
-						`Thank you for choosing ${teamConfig.name}!`;
+				// Check if this came from case creation flow
+				const hasCase = formData.caseDescription && formData.caseDescription !== '';
+				
+				if (hasCase) {
+					// Show case canvas focus message
+					confirmationContent = `✅ Perfect! Your complete case information has been submitted successfully and updated below.`;
 				} else {
-					confirmationContent = `✅ Your information has been submitted successfully! A lawyer will review your case and contact you within 24 hours. Thank you for choosing our firm.`;
+					// Regular form submission
+					if (teamConfig?.config?.requiresPayment) {
+						const fee = teamConfig.config.consultationFee;
+						const paymentLink = teamConfig.config.paymentLink;
+						
+						confirmationContent = `✅ Thank you! Your information has been submitted successfully.\n\n` +
+							`💰 **Consultation Fee**: $${fee}\n\n` +
+							`To schedule your consultation with our lawyer, please complete the payment first. ` +
+							`This helps us prioritize your case and ensures we can provide you with the best legal assistance.\n\n` +
+							`🔗 **Payment Link**: ${paymentLink}\n\n` +
+							`Once payment is completed, a lawyer will review your case and contact you within 24 hours. ` +
+							`Thank you for choosing ${teamConfig.name}!`;
+					} else {
+						confirmationContent = `✅ Your information has been submitted successfully! A lawyer will review your case and contact you within 24 hours. Thank you for choosing our firm.`;
+					}
 				}
 				
 				// Update the loading message with confirmation
@@ -932,6 +941,69 @@ export function App() {
 							: msg
 					));
 				}, 300);
+				
+				// Show updated case canvas with contact information (only if from case creation)
+				if (hasCase) {
+					setTimeout(() => {
+						// Find the last message with a case canvas to get the case data
+						setMessages(prev => {
+							let lastCaseCanvas = null;
+							for (let i = prev.length - 1; i >= 0; i--) {
+								if (prev[i].caseCanvas) {
+									lastCaseCanvas = prev[i].caseCanvas;
+									break;
+								}
+							}
+							
+							if (lastCaseCanvas) {
+								// Create updated case summary with contact information
+								const updatedCaseSummary = lastCaseCanvas.caseSummary + 
+									`\n\n## 📞 Contact Information\n` +
+									`- **Email**: ${formData.email}\n` +
+									`- **Phone**: ${formData.phone}\n` +
+									`- **Status**: ✅ Ready for Attorney Review\n` +
+									`- **Submitted**: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+								
+								// Show the updated case canvas as a new message
+								const updatedCaseMessage: ChatMessage = {
+									content: "Here's your complete case information with contact details:",
+									isUser: false,
+									caseCanvas: {
+										...lastCaseCanvas,
+										caseSummary: updatedCaseSummary
+									}
+								};
+								return [...prev, updatedCaseMessage];
+							}
+							return prev;
+						});
+						
+						// Add payment/next steps message after case canvas
+						setTimeout(() => {
+							let nextStepsMessage = "";
+							
+							if (teamConfig?.config?.requiresPayment) {
+								const fee = teamConfig.config.consultationFee;
+								const paymentLink = teamConfig.config.paymentLink;
+								
+								nextStepsMessage = `💰 **Consultation Fee**: $${fee}\n\n` +
+									`To schedule your consultation with our lawyer, please complete the payment first. ` +
+									`This helps us prioritize your case and ensures we can provide you with the best legal assistance.\n\n` +
+									`🔗 **Payment Link**: ${paymentLink}\n\n` +
+									`Once payment is completed, a lawyer will review your case and contact you within 24 hours. ` +
+									`Thank you for choosing ${teamConfig.name}!`;
+							} else {
+								nextStepsMessage = `A lawyer will review your complete case information and contact you within 24 hours. Thank you for choosing our firm!`;
+							}
+							
+							const nextStepsMsg: ChatMessage = {
+								content: nextStepsMessage,
+								isUser: false
+							};
+							setMessages(prev => [...prev, nextStepsMsg]);
+						}, 500);
+					}, 1000);
+				}
 				
 				// Reset form state
 				setFormState({
@@ -1354,14 +1426,9 @@ export function App() {
 									// If case is ready and no improvement needed, auto-start contact form
 									if (reviewResult.readyForNextStep) {
 										setTimeout(() => {
-											const contactResponse: ChatMessage = {
-												content: "Thanks so much for sharing all that with me. What's the best way for an attorney to reach out to you?",
-												isUser: false
-											};
-											setMessages(prev => [...prev, contactResponse]);
-											
+											// Directly start the contact form without asking
 											setFormState({
-												step: 'contact',
+												step: 'collecting_email',
 												data: { 
 													caseType: caseState.data.caseType, 
 													caseDescription: reviewResult.caseSummary || 'Case details provided through Q&A',
@@ -1375,6 +1442,13 @@ export function App() {
 												...prev,
 												isActive: false
 											}));
+											
+											// Add initial form prompt
+											const formStartMessage: ChatMessage = {
+												content: "Perfect! To connect you with the right attorney, I'll need some contact information. What's your email address?",
+												isUser: false
+											};
+											setMessages(prev => [...prev, formStartMessage]);
 										}, 2000);
 									}
 								} catch (error) {
@@ -1479,14 +1553,9 @@ export function App() {
 								
 								// Auto-start contact form
 								setTimeout(() => {
-									const contactResponse: ChatMessage = {
-										content: "Perfect! What's the best way for one of our family law attorneys to reach out to you?",
-										isUser: false
-									};
-									setMessages(prev => [...prev, contactResponse]);
-									
+									// Directly start the contact form without asking
 									setFormState({
-										step: 'contact',
+										step: 'collecting_email',
 										data: { 
 											caseType: caseState.data.caseType, 
 											caseDescription: finalReviewResult.caseSummary || 'Comprehensive case details provided',
@@ -1500,6 +1569,13 @@ export function App() {
 										...prev,
 										isActive: false
 									}));
+									
+									// Add initial form prompt
+									const formStartMessage: ChatMessage = {
+										content: "Perfect! To connect you with the right attorney, I'll need some contact information. What's your email address?",
+										isUser: false
+									};
+									setMessages(prev => [...prev, formStartMessage]);
 								}, 2000);
 								
 							} catch (error) {
