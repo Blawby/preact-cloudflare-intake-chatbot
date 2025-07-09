@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState, useCallback } from 'preact/hooks';
 import Message from './Message';
+import LoadingIndicator from './LoadingIndicator';
 import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -32,6 +33,28 @@ interface ChatMessage {
     files?: FileAttachment[];
     scheduling?: SchedulingData;
     caseCreation?: CaseCreationData;
+    caseCanvas?: {
+        service: string;
+        caseSummary: string;
+        qualityScore?: {
+            score: number;
+            badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+            color: 'blue' | 'green' | 'yellow' | 'red';
+            inferredUrgency: string;
+            breakdown: {
+                followUpCompletion: number;
+                requiredFields: number;
+                evidence: number;
+                clarity: number;
+                urgency: number;
+                consistency: number;
+                aiConfidence: number;
+            };
+            suggestions: string[];
+        };
+        answers?: Record<string, string>;
+        isExpanded?: boolean;
+    };
     qualityScore?: {
         score: number;
         breakdown: {
@@ -47,12 +70,12 @@ interface ChatMessage {
         readyForLawyer: boolean;
         color: 'red' | 'yellow' | 'green' | 'blue';
     };
+    isLoading?: boolean;
     id?: string;
 }
 
 interface VirtualMessageListProps {
     messages: ChatMessage[];
-    isLoading?: boolean;
     onDateSelect?: (date: Date) => void;
     onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
     onTimeSlotSelect?: (timeSlot: Date) => void;
@@ -68,7 +91,6 @@ const DEBOUNCE_DELAY = 150;
 
 const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({ 
     messages, 
-    isLoading,
     onDateSelect,
     onTimeOfDaySelect,
     onTimeSlotSelect,
@@ -156,11 +178,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         >
             {startIndex > 0 && (
                 <div class="load-more-trigger">
-                    <div class="loading-indicator">
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                    </div>
+                    <LoadingIndicator />
                 </div>
             )}
             <ErrorBoundary>
@@ -172,6 +190,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         files={message.files}
                         scheduling={message.scheduling}
                         caseCreation={message.caseCreation}
+                        caseCanvas={message.caseCanvas}
                         qualityScore={message.qualityScore}
                         onDateSelect={onDateSelect}
                         onTimeOfDaySelect={onTimeOfDaySelect}
@@ -179,7 +198,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         onRequestMoreDates={onRequestMoreDates}
                         onServiceSelect={onServiceSelect}
                         onUrgencySelect={onUrgencySelect}
-                        isLoading={isLoading && index === visibleMessages.length - 1 && !message.isUser && !message.content}
+                        isLoading={message.isLoading}
                     />
                 ))}
             </ErrorBoundary>

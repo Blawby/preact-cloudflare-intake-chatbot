@@ -115,11 +115,7 @@ export function getFormStartPrompt(): string {
   return "I'd be happy to help you get in touch with one of our lawyers! To get started, I'll need some basic information from you. What's your email address?";
 }
 
-// Check if a message indicates form completion intent
-export function shouldStartForm(intent: string): boolean {
-  const formIntents = ['contact_form', 'schedule_consultation'];
-  return formIntents.includes(intent);
-}
+
 
 // Format form data for submission
 export function formatFormData(formData: FormData, teamId: string, conversationId?: string) {

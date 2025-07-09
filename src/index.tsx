@@ -6,13 +6,11 @@ import LoadingIndicator from './components/LoadingIndicator';
 // import MediaControls from './components/MediaControls';
 import VirtualMessageList from './components/VirtualMessageList';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import StickyQualityScore from './components/StickyQualityScore';
 import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getCaseCreationEndpoint } from './config/api';
-import { detectIntent, getIntentResponse } from './utils/intentDetection';
 import { 
   FormState, 
   processFormStep, 
@@ -82,6 +80,29 @@ interface ChatMessage {
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
 	caseCreation?: CaseCreationData;
+	caseCanvas?: {
+		service: string;
+		caseSummary: string;
+		qualityScore?: {
+			score: number;
+			badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+			color: 'blue' | 'green' | 'yellow' | 'red';
+			inferredUrgency: string;
+			breakdown: {
+				followUpCompletion: number;
+				requiredFields: number;
+				evidence: number;
+				clarity: number;
+				urgency: number;
+				consistency: number;
+				aiConfidence: number;
+			};
+			suggestions: string[];
+		};
+		answers?: Record<string, string>;
+		isExpanded?: boolean;
+	};
+	isLoading?: boolean;
 	id?: string;
 }
 
@@ -91,7 +112,7 @@ const RESIZE_DEBOUNCE_DELAY = 100;
 export function App() {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [inputValue, setInputValue] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
+	// Global loading state removed - using per-message loading instead
 	const [previewFiles, setPreviewFiles] = useState<FileAttachment[]>([]);
 	const [position, setPosition] = useState<ChatPosition>('widget');
 	const [isOpen, setIsOpen] = useState(position === 'inline' ? true : false);
@@ -107,7 +128,7 @@ export function App() {
 
 	// State for case creation flow
 	const [caseState, setCaseState] = useState<{
-		step: 'idle' | 'gathering-info' | 'ai-questions' | 'case-details' | 'ai-analysis' | 'ready-for-lawyer';
+		step: 'idle' | 'gathering-info' | 'ai-questions' | 'case-review' | 'case-details' | 'ai-analysis' | 'ready-for-lawyer';
 		data: {
 			caseType?: string;
 			description?: string;
@@ -115,6 +136,9 @@ export function App() {
 			location?: string;
 			additionalInfo?: string;
 			aiAnswers?: Record<string, string>;
+			caseSummary?: string;
+			followUpQuestions?: string[];
+			currentFollowUpIndex?: number;
 		};
 		isActive: boolean;
 		currentQuestionIndex?: number;
@@ -123,39 +147,6 @@ export function App() {
 		data: {},
 		isActive: false,
 		currentQuestionIndex: 0
-	});
-
-	// State for sticky quality score
-	const [stickyQualityScore, setStickyQualityScore] = useState<{
-		score: number;
-		breakdown: {
-			followUpCompletion: number;
-			requiredFields: number;
-			evidence: number;
-			clarity: number;
-			urgency: number;
-			consistency: number;
-			aiConfidence: number;
-		};
-		suggestions: string[];
-		readyForLawyer: boolean;
-		color: 'red' | 'yellow' | 'green' | 'blue';
-		isVisible: boolean;
-	}>({
-		score: 0,
-		breakdown: {
-			followUpCompletion: 0,
-			requiredFields: 0,
-			evidence: 0,
-			clarity: 0,
-			urgency: 0,
-			consistency: 0,
-			aiConfidence: 0
-		},
-		suggestions: [],
-		readyForLawyer: false,
-		color: 'red',
-		isVisible: false
 	});
 
 	// State for team configuration
@@ -384,7 +375,16 @@ export function App() {
 		
 		setMessages([...messages, caseMessage]);
 		setInputValue('');
-		setIsLoading(true);
+		
+		// Add placeholder message with loading indicator (ChatGPT style)
+		const loadingMessageId = crypto.randomUUID();
+		const loadingMessage: ChatMessage = {
+			content: "Let me set up your case creation process...",
+			isUser: false,
+			isLoading: true,
+			id: loadingMessageId
+		};
+		setMessages(prev => [...prev, loadingMessage]);
 		
 		// Start case creation flow
 		setTimeout(() => {
@@ -393,16 +393,20 @@ export function App() {
 				? services.map(service => `• ${service}`).join('\n')
 				: '• Family Law\n• Business Law\n• Employment Law\n• Real Estate\n• Criminal Law\n• Other';
 			
-			const aiResponse: ChatMessage = {
-				content: `I'm here to help you create a case and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
-				isUser: false,
-				caseCreation: {
-					type: 'service-selection',
-					availableServices: services
-				}
-			};
-			setMessages(prev => [...prev, aiResponse]);
-			setIsLoading(false);
+			// Update the loading message with actual content
+			setMessages(prev => prev.map(msg => 
+				msg.id === loadingMessageId 
+					? {
+						...msg,
+						content: `I'm here to help you create a case and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
+						isLoading: false,
+						caseCreation: {
+							type: 'service-selection',
+							availableServices: services
+						}
+					}
+					: msg
+			));
 			
 			// Start case creation flow
 			setCaseState({
@@ -423,13 +427,31 @@ export function App() {
 		
 		setMessages([...messages, schedulingMessage]);
 		setInputValue('');
-		setIsLoading(true);
+		
+		// Add placeholder message with loading indicator (ChatGPT style)
+		const loadingMessageId = crypto.randomUUID();
+		const loadingMessage: ChatMessage = {
+			content: "Let me help you schedule a consultation...",
+			isUser: false,
+			isLoading: true,
+			id: loadingMessageId
+		};
+		setMessages(prev => [...prev, loadingMessage]);
 		
 		// Use our scheduling utility to create the AI response
 		setTimeout(() => {
 			const aiResponse = createSchedulingResponse('initial');
-			setMessages(prev => [...prev, aiResponse]);
-			setIsLoading(false);
+			// Update the loading message with actual content
+			setMessages(prev => prev.map(msg => 
+				msg.id === loadingMessageId 
+					? {
+						...msg,
+						content: aiResponse.content,
+						isLoading: false,
+						scheduling: aiResponse.scheduling
+					}
+					: msg
+			));
 		}, 800);
 	};
 	
@@ -447,21 +469,33 @@ export function App() {
 		};
 		
 		setMessages(prev => [...prev, dateSelectionMessage]);
-		setIsLoading(true);
+		
+		// Add placeholder message with loading indicator (ChatGPT style)
+		const loadingMessageId = crypto.randomUUID();
+		const loadingMessage: ChatMessage = {
+			content: "Perfect! Let me check time slots for that date...",
+			isUser: false,
+			isLoading: true,
+			id: loadingMessageId
+		};
+		setMessages(prev => [...prev, loadingMessage]);
 		
 		// Simulate AI response with time of day options
 		setTimeout(() => {
-			const aiResponse: ChatMessage = {
-				content: `Great! What time on ${formattedDate} would be best for your consultation?`,
-				isUser: false,
-				scheduling: {
-					type: 'time-of-day-selection',
-					selectedDate: date
-				}
-			};
-			
-			setMessages(prev => [...prev, aiResponse]);
-			setIsLoading(false);
+			// Update the loading message with actual content
+			setMessages(prev => prev.map(msg => 
+				msg.id === loadingMessageId 
+					? {
+						...msg,
+						content: `Great! What time on ${formattedDate} would be best for your consultation?`,
+						isLoading: false,
+						scheduling: {
+							type: 'time-of-day-selection',
+							selectedDate: date
+						}
+					}
+					: msg
+			));
 		}, 800);
 	};
 	
@@ -493,22 +527,34 @@ export function App() {
 		};
 		
 		setMessages(prev => [...prev, timeSelectionMessage]);
-		setIsLoading(true);
+		
+		// Add placeholder message with loading indicator (ChatGPT style)
+		const loadingMessageId = crypto.randomUUID();
+		const loadingMessage: ChatMessage = {
+			content: "Great! Let me show you the available time slots...",
+			isUser: false,
+			isLoading: true,
+			id: loadingMessageId
+		};
+		setMessages(prev => [...prev, loadingMessage]);
 		
 		// Simulate AI response with specific time slots
 		setTimeout(() => {
-			const aiResponse: ChatMessage = {
-				content: `Great! Please select a specific time when you'll be available for your consultation on ${formattedDate}:`,
-				isUser: false,
-				scheduling: {
-					type: 'time-slot-selection',
-					selectedDate: lastDateSelection,
-					timeOfDay
-				}
-			};
-			
-			setMessages(prev => [...prev, aiResponse]);
-			setIsLoading(false);
+			// Update the loading message with actual content
+			setMessages(prev => prev.map(msg => 
+				msg.id === loadingMessageId 
+					? {
+						...msg,
+						content: `Great! Please select a specific time when you'll be available for your consultation on ${formattedDate}:`,
+						isLoading: false,
+						scheduling: {
+							type: 'time-slot-selection',
+							selectedDate: lastDateSelection,
+							timeOfDay
+						}
+					}
+					: msg
+			));
 		}, 800);
 	};
 	
@@ -534,21 +580,33 @@ export function App() {
 		};
 		
 		setMessages(prev => [...prev, timeSlotSelectionMessage]);
-		setIsLoading(true);
+		
+		// Add placeholder message with loading indicator (ChatGPT style)
+		const loadingMessageId = crypto.randomUUID();
+		const loadingMessage: ChatMessage = {
+			content: "Perfect! Let me confirm your consultation request...",
+			isUser: false,
+			isLoading: true,
+			id: loadingMessageId
+		};
+		setMessages(prev => [...prev, loadingMessage]);
 		
 		// Simulate AI confirmation response
 		setTimeout(() => {
-			const aiResponse: ChatMessage = {
-				content: `Thank you! Your consultation request has been submitted for ${formattedTime} on ${formattedDate}. A team member will contact you at this time. Is there anything specific you'd like to discuss during your consultation?`,
-				isUser: false,
-				scheduling: {
-					type: 'confirmation',
-					scheduledDateTime: timeSlot
-				}
-			};
-			
-			setMessages(prev => [...prev, aiResponse]);
-			setIsLoading(false);
+			// Update the loading message with actual content
+			setMessages(prev => prev.map(msg => 
+				msg.id === loadingMessageId 
+					? {
+						...msg,
+						content: `Thank you! Your consultation request has been submitted for ${formattedTime} on ${formattedDate}. A team member will contact you at this time. Is there anything specific you'd like to discuss during your consultation?`,
+						isLoading: false,
+						scheduling: {
+							type: 'confirmation',
+							scheduledDateTime: timeSlot
+						}
+					}
+					: msg
+			));
 		}, 800);
 	};
 	
@@ -560,7 +618,16 @@ export function App() {
 		};
 		
 		setMessages(prev => [...prev, moreDatesMessage]);
-		setIsLoading(true);
+		
+		// Add placeholder message with loading indicator (ChatGPT style)
+		const loadingMessageId = crypto.randomUUID();
+		const loadingMessage: ChatMessage = {
+			content: "Let me find more available dates for you...",
+			isUser: false,
+			isLoading: true,
+			id: loadingMessageId
+		};
+		setMessages(prev => [...prev, loadingMessage]);
 		
 		// Find the most recent date-selection message
 		const latestDateSelectionMsg = [...messages]
@@ -576,23 +643,25 @@ export function App() {
 		
 		// Simulate AI response with more dates
 		setTimeout(() => {
-			const aiResponse: ChatMessage = {
-				content: "Here are some additional dates to choose from:",
-				isUser: false,
-				scheduling: {
-					type: 'date-selection',
-					selectedDate: startDate
-				}
-			};
-			
-			setMessages(prev => [...prev, aiResponse]);
-			setIsLoading(false);
+			// Update the loading message with actual content
+			setMessages(prev => prev.map(msg => 
+				msg.id === loadingMessageId 
+					? {
+						...msg,
+						content: "Here are some additional dates to choose from:",
+						isLoading: false,
+						scheduling: {
+							type: 'date-selection',
+							selectedDate: startDate
+						}
+					}
+					: msg
+			));
 		}, 800);
 	};
 
 	// Make real API calls to ai.blawby.com with SSE support
 	const sendMessageToAPI = async (message: string, attachments: FileAttachment[] = []) => {
-		setIsLoading(true);
 		
 		// In a real implementation, this would be a call to your AI service API
 		try {
@@ -610,8 +679,9 @@ export function App() {
 			// Add a placeholder AI message immediately that will be updated
 			const placeholderId = Date.now().toString();
 			const placeholderMessage: ChatMessage = {
-				content: '',
+				content: 'Thinking...',
 				isUser: false,
+				isLoading: true,
 				id: placeholderId
 			};
 			
@@ -627,11 +697,11 @@ export function App() {
 				
 				// Update the placeholder message with form response
 				setTimeout(() => {
-					setIsLoading(false);
 					setMessages(prev => prev.map(msg => 
 						msg.id === placeholderId ? { 
 							...msg, 
 							content: response,
+							isLoading: false,
 							id: placeholderId 
 						} : msg
 					));
@@ -675,21 +745,21 @@ export function App() {
 							currentQuestionIndex: result.currentQuestionIndex || 0
 						}));
 						
-						setIsLoading(false);
 						setMessages(prev => prev.map(msg => 
 							msg.id === placeholderId ? { 
 								...msg, 
 								content: result.message,
+								isLoading: false,
 								id: placeholderId 
 							} : msg
 						));
 					} catch (error) {
 						console.error('Service selection error:', error);
-						setIsLoading(false);
 						setMessages(prev => prev.map(msg => 
 							msg.id === placeholderId ? { 
 								...msg, 
 								content: "I apologize, but I encountered an error processing your service selection. Please try again.",
+								isLoading: false,
 								id: placeholderId 
 							} : msg
 						));
@@ -706,14 +776,12 @@ export function App() {
 			if (hasSchedulingIntent) {
 				// Start typing after a short delay
 				setTimeout(() => {
-					setIsLoading(false); // Remove loading indicator once typing begins
-					
 					// Create a scheduling response using our utility
 					const aiResponse = createSchedulingResponse('initial');
 					
 					// Replace the placeholder message with the actual response
 					setMessages(prev => prev.map(msg => 
-						msg.id === placeholderId ? { ...aiResponse, id: placeholderId } : msg
+						msg.id === placeholderId ? { ...aiResponse, isLoading: false, id: placeholderId } : msg
 					));
 				}, 1000);
 				
@@ -760,21 +828,15 @@ export function App() {
 				console.log('Extracted text:', aiResponseText); // Debug log
 				console.log('Extracted text type:', typeof aiResponseText); // Debug log
 				
-				// Check if we should start a form
-				if (data.shouldStartForm && !formState.isActive) {
-					setFormState(startConversationalForm());
-				}
-				
 				// Update the placeholder message with the response
 				setMessages(prev => prev.map(msg => 
 					msg.id === placeholderId ? { 
 						...msg, 
-						content: aiResponseText 
+						content: aiResponseText,
+						isLoading: false 
 					} : msg
 				));
 				
-				// Set loading to false after response is received
-				setIsLoading(false);
 			} catch (error) {
 				console.error('Error fetching from AI API:', error);
 				
@@ -782,28 +844,39 @@ export function App() {
 				setMessages(prev => prev.map(msg => 
 					msg.id === placeholderId ? { 
 						...msg, 
-						content: "Sorry, there was an error connecting to our AI service. Please try again later." 
+						content: "Sorry, there was an error connecting to our AI service. Please try again later.",
+						isLoading: false 
 					} : msg
 				));
 			}
 			
 		} catch (error) {
 			console.error('Error sending message:', error);
-			setIsLoading(false);
 			
-			// Add error message
-			const errorMessage: ChatMessage = {
-				content: "Sorry, there was an error processing your request. Please try again.",
-				isUser: false
-			};
-			
-			setMessages(prev => [...prev, errorMessage]);
+			// Update placeholder with error message
+			setMessages(prev => prev.map(msg => 
+				msg.id === placeholderId ? { 
+					...msg, 
+					content: "Sorry, there was an error processing your request. Please try again.",
+					isLoading: false 
+				} : msg
+			));
 		}
 	};
 
 	// Submit contact form to API
 	const submitContactForm = async (formData: any) => {
 		try {
+			// Add placeholder message with loading indicator (ChatGPT style)
+			const loadingMessageId = crypto.randomUUID();
+			const loadingMessage: ChatMessage = {
+				content: "Thank you! Let me submit your information to our legal team...",
+				isUser: false,
+				isLoading: true,
+				id: loadingMessageId
+			};
+			setMessages(prev => [...prev, loadingMessage]);
+			
 			const formPayload = formatFormData(formData, teamId);
 			const response = await fetch(getFormsEndpoint(), {
 				method: 'POST',
@@ -847,13 +920,18 @@ export function App() {
 					confirmationContent = `✅ Your information has been submitted successfully! A lawyer will review your case and contact you within 24 hours. Thank you for choosing our firm.`;
 				}
 				
-				// Add confirmation message
-				const confirmationMessage: ChatMessage = {
-					content: confirmationContent,
-					isUser: false
-				};
-				
-				setMessages(prev => [...prev, confirmationMessage]);
+				// Update the loading message with confirmation
+				setTimeout(() => {
+					setMessages(prev => prev.map(msg => 
+						msg.id === loadingMessageId 
+							? {
+								...msg,
+								content: confirmationContent,
+								isLoading: false
+							}
+							: msg
+					));
+				}, 300);
 				
 				// Reset form state
 				setFormState({
@@ -867,13 +945,18 @@ export function App() {
 		} catch (error) {
 			console.error('Error submitting form:', error);
 			
-			// Add error message
-			const errorMessage: ChatMessage = {
-				content: "Sorry, there was an error submitting your information. Please try again or contact us directly.",
-				isUser: false
-			};
-			
-			setMessages(prev => [...prev, errorMessage]);
+			// Update loading message with error content
+			setTimeout(() => {
+				setMessages(prev => prev.map(msg => 
+					msg.id === loadingMessageId 
+						? {
+							...msg,
+							content: "Sorry, there was an error submitting your information. Please try again or contact us directly.",
+							isLoading: false
+						}
+						: msg
+				));
+			}, 300);
 		}
 	};
 
@@ -883,6 +966,12 @@ export function App() {
 
 		const message = inputValue.trim();
 		const attachments = [...previewFiles];
+		
+		// Handle form flow first (higher priority than case creation)
+		if (formState.isActive) {
+			sendMessageToAPI(message, attachments);
+			return;
+		}
 		
 		// Handle case creation flow
 		if (caseState.isActive) {
@@ -923,45 +1012,56 @@ export function App() {
 				});
 			}
 			
+			// Add placeholder message with loading indicator (ChatGPT style)
+			const loadingMessageId = crypto.randomUUID();
+			const loadingMessage: ChatMessage = {
+				content: `Great choice! Let me get the right questions for ${service}...`,
+				isUser: false,
+				isLoading: true,
+				id: loadingMessageId
+			};
+			setMessages(prev => [...prev, loadingMessage]);
+			
 			// Call API for service selection
 			const result = await handleCaseCreationAPI('service-selection', { service });
 			
 			setCaseState(prev => ({
 				...prev,
 				data: { ...prev.data, caseType: service },
-				step: result.step,
-				currentQuestionIndex: result.currentQuestionIndex || 0
+				step: result.step === 'questions' ? 'ai-questions' : 'case-details',
+				currentQuestionIndex: result.currentQuestion ? result.currentQuestion - 1 : 0
 			}));
 			
-			// Update sticky quality score if available
-			if (result.qualityScore) {
-				setStickyQualityScore({
-					...result.qualityScore,
-					isVisible: true
-				});
-			}
-			
+			// Update the loading message with actual content
 			setTimeout(() => {
-				const aiResponse: ChatMessage = {
-					content: result.message,
-					isUser: false,
-					caseCreation: result.step === 'urgency-selection' ? {
-						type: 'urgency-selection',
-						availableServices: []
-					} : undefined
-				};
-				setMessages(prev => [...prev, aiResponse]);
-			}, 800);
+				setMessages(prev => prev.map(msg => 
+					msg.id === loadingMessageId 
+						? {
+							...msg,
+							content: result.message,
+							isLoading: false,
+							caseCreation: result.step === 'urgency-selection' ? {
+								type: 'urgency-selection',
+								availableServices: []
+							} : undefined
+						}
+						: msg
+				));
+			}, 300);
 		} catch (error) {
 			console.error('Service selection error:', error);
-			// Fallback to error message
+			// Update loading message with error content
 			setTimeout(() => {
-				const errorResponse: ChatMessage = {
-					content: "I apologize, but I encountered an error processing your service selection. Please try again.",
-					isUser: false
-				};
-				setMessages(prev => [...prev, errorResponse]);
-			}, 800);
+				setMessages(prev => prev.map(msg => 
+					msg.id === loadingMessageId 
+						? {
+							...msg,
+							content: "I apologize, but I encountered an error processing your service selection. Please try again.",
+							isLoading: false
+						}
+						: msg
+				));
+			}, 300);
 		}
 	};
 
@@ -975,6 +1075,16 @@ export function App() {
 		setMessages(prev => [...prev, userMessage]);
 		
 		try {
+			// Add placeholder message with loading indicator (ChatGPT style)
+			const loadingMessageId = crypto.randomUUID();
+			const loadingMessage: ChatMessage = {
+				content: `Got it! Let me prepare the right questions for your ${urgency.toLowerCase()} case...`,
+				isUser: false,
+				isLoading: true,
+				id: loadingMessageId
+			};
+			setMessages(prev => [...prev, loadingMessage]);
+			
 			// Call API for urgency selection
 			const result = await handleCaseCreationAPI('urgency-selection', {
 				service: caseState.data.caseType,
@@ -994,31 +1104,32 @@ export function App() {
 				// The user will see the question in the AI message and can respond in the chat input
 			}
 			
-			// Update sticky quality score if available
-			if (result.qualityScore) {
-				setStickyQualityScore({
-					...result.qualityScore,
-					isVisible: true
-				});
-			}
-			
+			// Update the loading message with actual content
 			setTimeout(() => {
-				const aiResponse: ChatMessage = {
-					content: result.message,
-					isUser: false
-				};
-				setMessages(prev => [...prev, aiResponse]);
-			}, 800);
+				setMessages(prev => prev.map(msg => 
+					msg.id === loadingMessageId 
+						? {
+							...msg,
+							content: result.message,
+							isLoading: false
+						}
+						: msg
+				));
+			}, 300);
 		} catch (error) {
 			console.error('Urgency selection error:', error);
-			// Fallback to error message
+			// Update loading message with error content
 			setTimeout(() => {
-				const errorResponse: ChatMessage = {
-					content: "I apologize, but I encountered an error processing your urgency selection. Please try again.",
-					isUser: false
-				};
-				setMessages(prev => [...prev, errorResponse]);
-			}, 800);
+				setMessages(prev => prev.map(msg => 
+					msg.id === loadingMessageId 
+						? {
+							...msg,
+							content: "I apologize, but I encountered an error processing your urgency selection. Please try again.",
+							isLoading: false
+						}
+						: msg
+				));
+			}, 300);
 		}
 	};
 
@@ -1085,21 +1196,29 @@ export function App() {
 						step: 'urgency-selection'
 					}));
 					
-					// Call API for service selection
-					const serviceResult = await handleCaseCreationAPI('service-selection', { service: selectedService });
-					
-					setTimeout(() => {
-						const aiResponse: ChatMessage = {
-							content: serviceResult.message,
-							isUser: false,
-							caseCreation: serviceResult.step === 'urgency-selection' ? {
-								type: 'urgency-selection',
-								availableServices: []
-							} : undefined,
-							qualityScore: serviceResult.qualityScore
-						};
-						setMessages(prev => [...prev, aiResponse]);
-					}, 800);
+								// Call API for service selection
+			const serviceResult = await handleCaseCreationAPI('service-selection', { service: selectedService });
+			
+			// Update case state based on API response
+			setCaseState(prev => ({
+				...prev,
+				data: { ...prev.data, caseType: selectedService },
+				step: serviceResult.step === 'questions' ? 'ai-questions' : 'case-details',
+				currentQuestionIndex: serviceResult.currentQuestion ? serviceResult.currentQuestion - 1 : 0
+			}));
+			
+			setTimeout(() => {
+				const aiResponse: ChatMessage = {
+					content: serviceResult.message,
+					isUser: false,
+					caseCreation: serviceResult.step === 'urgency-selection' ? {
+						type: 'urgency-selection',
+						availableServices: []
+					} : undefined,
+					qualityScore: serviceResult.qualityScore
+				};
+				setMessages(prev => [...prev, aiResponse]);
+			}, 800);
 					break;
 
 				case 'ai-questions':
@@ -1107,159 +1226,261 @@ export function App() {
 					const currentService = caseState.data.caseType;
 					const currentIndex = caseState.currentQuestionIndex || 0;
 					
-					// Get the current question from the team config
-					const currentQuestion = teamConfig.serviceQuestions?.[currentService || '']?.[currentIndex];
-					
-					// Store the answer
+					// Store the answer with the question text for better context
 					const updatedAnswers = {
 						...caseState.data.aiAnswers,
-						[currentQuestion]: message
+						[`q${currentIndex + 1}`]: {
+							question: caseState.data.currentQuestion || `Question ${currentIndex + 1}`,
+							answer: message
+						}
 					};
 					
-					// Call API for AI questions step
-					const aiResult = await handleCaseCreationAPI('ai-questions', {
+					// Add placeholder message with loading indicator (ChatGPT style)
+					const loadingMessageId = crypto.randomUUID();
+					const loadingMessage: ChatMessage = {
+						content: "Let me get your next question...",
+						isUser: false,
+						isLoading: true,
+						id: loadingMessageId
+					};
+					setMessages(prev => [...prev, loadingMessage]);
+					
+					// Call API for questions step (next question)
+					const aiResult = await handleCaseCreationAPI('questions', {
 						service: currentService,
-						currentQuestionIndex: currentIndex,
+						currentQuestionIndex: currentIndex + 1,
 						answers: updatedAnswers,
 						urgency: caseState.data.urgency
 					});
 					
-					if (aiResult.step === 'ai-questions') {
+					if (aiResult.step === 'questions') {
 						// More questions to ask
 						setCaseState(prev => ({
 							...prev,
-							data: { ...prev.data, aiAnswers: updatedAnswers },
-							currentQuestionIndex: aiResult.currentQuestionIndex
+							data: { 
+								...prev.data, 
+								aiAnswers: updatedAnswers,
+								currentQuestion: aiResult.questionText || aiResult.message
+							},
+							currentQuestionIndex: aiResult.currentQuestion ? aiResult.currentQuestion - 1 : prev.currentQuestionIndex + 1
 						}));
 						
-						// Update sticky quality score if available
-						if (aiResult.qualityScore) {
-							setStickyQualityScore({
-								...aiResult.qualityScore,
-								isVisible: true
-							});
-						}
+						setTimeout(() => {
+							// Update the loading message with actual content
+							setMessages(prev => prev.map(msg => 
+								msg.id === loadingMessageId 
+									? {
+										...msg,
+										content: aiResult.message,
+										isLoading: false
+									}
+									: msg
+							));
+						}, 800);
+					} else {
+						// All questions answered, move to case review
+						setCaseState(prev => ({
+							...prev,
+							data: { ...prev.data, aiAnswers: updatedAnswers },
+							step: 'case-review'
+						}));
 						
 						setTimeout(() => {
+							// Update the loading message with actual content
+							setMessages(prev => prev.map(msg => 
+								msg.id === loadingMessageId 
+									? {
+										...msg,
+										content: aiResult.message,
+										isLoading: false
+									}
+									: msg
+							));
+							
+							// Automatically trigger case review
+							setTimeout(async () => {
+								try {
+									// Add placeholder message with loading indicator (ChatGPT style)
+									const loadingMessageId = crypto.randomUUID();
+									const loadingMessage: ChatMessage = {
+										content: "Let me review your case and create a summary...",
+										isUser: false,
+										isLoading: true,
+										id: loadingMessageId
+									};
+									setMessages(prev => [...prev, loadingMessage]);
+									
+									const reviewResult = await handleCaseCreationAPI('case-review', {
+										service: caseState.data.caseType,
+										answers: updatedAnswers,
+										description: aiResult.autoGeneratedDescription
+									});
+									
+									// Update case state with review data
+									setCaseState(prev => ({
+										...prev,
+										data: { 
+											...prev.data, 
+											caseSummary: reviewResult.caseCanvas?.caseSummary,
+											followUpQuestions: reviewResult.followUpQuestions || [],
+											currentFollowUpIndex: 0
+										},
+										step: reviewResult.needsImprovement ? 'case-review' : 'ready-for-lawyer'
+									}));
+									
+									// Update the loading message with actual content
+									setMessages(prev => prev.map(msg => 
+										msg.id === loadingMessageId 
+											? {
+												...msg,
+												content: reviewResult.message,
+												isLoading: false,
+												caseCanvas: reviewResult.caseCanvas
+											}
+											: msg
+									));
+									
+									// Add follow-up message if there is one
+									if (reviewResult.followUpMessage) {
+										setTimeout(() => {
+											const followUpResponse: ChatMessage = {
+												content: reviewResult.followUpMessage,
+												isUser: false
+											};
+											setMessages(prev => [...prev, followUpResponse]);
+										}, 1000);
+									}
+									
+									// If case is ready and no improvement needed, auto-start contact form
+									if (reviewResult.readyForNextStep) {
+										setTimeout(() => {
+											const contactResponse: ChatMessage = {
+												content: "Thanks so much for sharing all that with me. What's the best way for an attorney to reach out to you?",
+												isUser: false
+											};
+											setMessages(prev => [...prev, contactResponse]);
+											
+											setFormState({
+												step: 'contact',
+												data: { 
+													caseType: caseState.data.caseType, 
+													caseDescription: reviewResult.caseSummary || 'Case details provided through Q&A',
+													caseDetails: caseState.data.aiAnswers,
+													urgency: reviewResult.qualityScore?.inferredUrgency || 'Not Urgent'
+												},
+												isActive: true
+											});
+											
+											setCaseState(prev => ({
+												...prev,
+												isActive: false
+											}));
+										}, 2000);
+									}
+								} catch (error) {
+									console.error('Case review error:', error);
+									// Fallback to ready-for-lawyer
+									setCaseState(prev => ({
+										...prev,
+										step: 'ready-for-lawyer'
+									}));
+								}
+							}, 1000);
+						}, 800);
+					}
+					break;
+
+				case 'case-review':
+					// Handle follow-up questions to improve case quality
+					const followUpQuestions = caseState.data.followUpQuestions || [];
+					const currentFollowUpIndex = caseState.data.currentFollowUpIndex || 0;
+					
+					// Store the follow-up answer with question text
+					const followUpAnswers = {
+						...caseState.data.aiAnswers,
+						[`followup_${currentFollowUpIndex + 1}`]: {
+							question: followUpQuestions[currentFollowUpIndex] || `Follow-up question ${currentFollowUpIndex + 1}`,
+							answer: message
+						}
+					};
+					
+					// Update case state with new answer
+					setCaseState(prev => ({
+						...prev,
+						data: { 
+							...prev.data, 
+							aiAnswers: followUpAnswers,
+							currentFollowUpIndex: currentFollowUpIndex + 1
+						}
+					}));
+					
+					// Check if we have more follow-up questions
+					if (currentFollowUpIndex + 1 < followUpQuestions.length) {
+						// Ask next follow-up question
+						setTimeout(() => {
+							const nextQuestion = followUpQuestions[currentFollowUpIndex + 1];
 							const aiResponse: ChatMessage = {
-								content: aiResult.message + (aiResult.question ? `\n\n${aiResult.question}` : ''),
+								content: `**${nextQuestion}**`,
 								isUser: false
 							};
 							setMessages(prev => [...prev, aiResponse]);
 						}, 800);
 					} else {
-						// All questions answered, move to case details
-						setCaseState(prev => ({
-							...prev,
-							data: { ...prev.data, aiAnswers: updatedAnswers },
-							step: 'case-details'
-						}));
-						
-						setTimeout(() => {
-							const aiResponse: ChatMessage = {
-								content: aiResult.message,
-								isUser: false
-							};
-							setMessages(prev => [...prev, aiResponse]);
-						}, 800);
-					}
-					break;
-
-				case 'case-details':
-					// Store description and move to AI analysis
-					setCaseState(prev => ({
-						...prev,
-						data: { ...prev.data, description: message },
-						step: 'ai-analysis'
-					}));
-					
-					// Call API for case details step
-					const detailsResult = await handleCaseCreationAPI('case-details', {
-						service: caseState.data.caseType,
-						description: message,
-						urgency: caseState.data.urgency,
-						answers: caseState.data.aiAnswers
-					});
-					
-					// Update sticky quality score if available
-					if (detailsResult.qualityScore) {
-						setStickyQualityScore({
-							...detailsResult.qualityScore,
-							isVisible: true
-						});
-					}
-					
-					setTimeout(() => {
-						const aiResponse: ChatMessage = {
-							content: detailsResult.message,
-							isUser: false
-						};
-						setMessages(prev => [...prev, aiResponse]);
-					
-						// Automatically trigger AI analysis after a short delay
+						// All follow-up questions answered, re-assess case
 						setTimeout(async () => {
 							try {
-								const analysisResult = await handleCaseCreationAPI('ai-analysis', {
+								// Add placeholder message with loading indicator (ChatGPT style)
+								const loadingMessageId = crypto.randomUUID();
+								const loadingMessage: ChatMessage = {
+									content: "Thank you so much for providing those additional details. Let me update your case summary...",
+									isUser: false,
+									isLoading: true,
+									id: loadingMessageId
+								};
+								setMessages(prev => [...prev, loadingMessage]);
+								
+								const finalReviewResult = await handleCaseCreationAPI('case-review', {
 									service: caseState.data.caseType,
-									description: message,
-									urgency: caseState.data.urgency,
-									answers: caseState.data.aiAnswers
+									answers: followUpAnswers,
+									description: caseState.data.caseSummary
 								});
 								
+								// Update case state and quality score
 								setCaseState(prev => ({
 									...prev,
-									step: analysisResult.step,
-									currentQuestionIndex: analysisResult.currentQuestionIndex || 0
+									data: { 
+										...prev.data, 
+										caseSummary: finalReviewResult.caseCanvas?.caseSummary,
+										aiAnswers: followUpAnswers
+									},
+									step: 'ready-for-lawyer'
 								}));
 								
-								// Update sticky quality score if available
-								if (analysisResult.qualityScore) {
-									setStickyQualityScore({
-										...analysisResult.qualityScore,
-										isVisible: true
-									});
-								}
+								// Update the loading message with actual content
+								setMessages(prev => prev.map(msg => 
+									msg.id === loadingMessageId 
+										? {
+											...msg,
+											content: "Thank you so much for providing those additional details. Here's your updated case summary:",
+											isLoading: false,
+											caseCanvas: finalReviewResult.caseCanvas
+										}
+										: msg
+								));
 								
-								const analysisResponse: ChatMessage = {
-									content: analysisResult.message,
-									isUser: false
-								};
-								setMessages(prev => [...prev, analysisResponse]);
+								// Add completion message
+								setTimeout(() => {
+									const completionMessage: ChatMessage = {
+										content: `Your case quality score is now ${finalReviewResult.qualityScore?.score || 0}/100 - excellent! You've given us everything we need to connect you with the right attorney who can help with your situation.`,
+										isUser: false
+									};
+									setMessages(prev => [...prev, completionMessage]);
+								}, 1000);
 								
-								// If analysis is complete, start contact form
-								if (analysisResult.step === 'complete') {
-									setTimeout(() => {
-										const contactResponse: ChatMessage = {
-											content: "Great! Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
-											isUser: false
-										};
-										setMessages(prev => [...prev, contactResponse]);
-										
-										// Start contact form with enhanced data
-										setFormState({
-											step: 'contact',
-											data: { 
-												caseType: caseState.data.caseType, 
-												caseDescription: caseState.data.description,
-												caseDetails: caseState.data.aiAnswers,
-												urgency: caseState.data.urgency
-											},
-											isActive: true
-										});
-									}, 2000);
-								}
-							} catch (error) {
-								console.error('AI analysis error:', error);
-								const errorResponse: ChatMessage = {
-									content: "I apologize, but I encountered an error analyzing your case. Let me proceed with connecting you to an attorney.",
-									isUser: false
-								};
-								setMessages(prev => [...prev, errorResponse]);
-								
-								// Fallback to contact form
+								// Auto-start contact form
 								setTimeout(() => {
 									const contactResponse: ChatMessage = {
-										content: "Let me gather your contact information so we can connect you with the right attorney. Please provide your name and contact details.",
+										content: "Perfect! What's the best way for one of our family law attorneys to reach out to you?",
 										isUser: false
 									};
 									setMessages(prev => [...prev, contactResponse]);
@@ -1268,15 +1489,84 @@ export function App() {
 										step: 'contact',
 										data: { 
 											caseType: caseState.data.caseType, 
-											caseDescription: caseState.data.description,
-											caseDetails: caseState.data.aiAnswers,
-											urgency: caseState.data.urgency
+											caseDescription: finalReviewResult.caseSummary || 'Comprehensive case details provided',
+											caseDetails: followUpAnswers,
+											urgency: finalReviewResult.qualityScore?.inferredUrgency || 'Not Urgent'
 										},
 										isActive: true
 									});
+									
+									setCaseState(prev => ({
+										...prev,
+										isActive: false
+									}));
 								}, 2000);
+								
+							} catch (error) {
+								console.error('Final case review error:', error);
+								setCaseState(prev => ({
+									...prev,
+									step: 'ready-for-lawyer'
+								}));
 							}
-						}, 2000); // Wait 2 seconds before starting analysis
+						}, 800);
+					}
+					break;
+
+				case 'ready-for-lawyer':
+					// Handle additional information after case completion
+					// Add any additional information to the case
+					setCaseState(prev => ({
+						...prev,
+						data: { ...prev.data, additionalInfo: message }
+					}));
+					
+					// Re-assess case with additional information to get updated urgency
+					const finalResult = await handleCaseCreationAPI('case-details', {
+						service: caseState.data.caseType,
+						description: caseState.data.description || `${caseState.data.caseType} case with provided details and additional information: ${message}`,
+						answers: caseState.data.aiAnswers
+					});
+					
+
+					
+					setTimeout(() => {
+						const urgencyText = finalResult.qualityScore?.inferredUrgency 
+							? ` I've assessed this as ${finalResult.qualityScore.inferredUrgency.toLowerCase()}.`
+							: '';
+						
+						const aiResponse: ChatMessage = {
+							content: `Thank you for the additional information.${urgencyText} This will be included with your case details when we connect you with an attorney.`,
+							isUser: false
+						};
+						setMessages(prev => [...prev, aiResponse]);
+						
+						// Auto-start contact form
+						setTimeout(() => {
+							const contactResponse: ChatMessage = {
+								content: "Let me gather your contact information so we can connect you with the right attorney.",
+								isUser: false
+							};
+							setMessages(prev => [...prev, contactResponse]);
+							
+							setFormState({
+								step: 'contact',
+								data: { 
+									caseType: caseState.data.caseType, 
+									caseDescription: finalResult.autoGeneratedDescription || `${caseState.data.caseType} case with additional details: ${message}`,
+									caseDetails: caseState.data.aiAnswers,
+									urgency: finalResult.qualityScore?.inferredUrgency || 'Not Urgent',
+									additionalInfo: message
+								},
+								isActive: true
+							});
+							
+							// Deactivate case creation since we're now in form collection mode
+							setCaseState(prev => ({
+								...prev,
+								isActive: false
+							}));
+						}, 2000);
 					}, 800);
 					break;
 			}
@@ -1541,7 +1831,6 @@ export function App() {
 				<ErrorBoundary>
 					{(position === 'inline' || isOpen) && (
 						<>
-							<StickyQualityScore {...stickyQualityScore} />
 							<main className="chat-main">
 							{messages.length === 0 && (
 								<div className="welcome-message">
@@ -1589,16 +1878,29 @@ export function App() {
 															isUser: true
 														};
 														setMessages([servicesMessage]);
-														setIsLoading(true);
+														
+														// Add placeholder message with loading indicator (ChatGPT style)
+														const loadingMessageId = crypto.randomUUID();
+														const loadingMessage: ChatMessage = {
+															content: "Let me tell you about our services...",
+															isUser: false,
+															isLoading: true,
+															id: loadingMessageId
+														};
+														setMessages(prev => [...prev, loadingMessage]);
 														
 														// Simulate AI response
 														setTimeout(() => {
-															const aiResponse: ChatMessage = {
-																content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
-																isUser: false
-															};
-															setMessages(prev => [...prev, aiResponse]);
-															setIsLoading(false);
+															// Update the loading message with actual content
+															setMessages(prev => prev.map(msg => 
+																msg.id === loadingMessageId 
+																	? {
+																		...msg,
+																		content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
+																		isLoading: false
+																	}
+																	: msg
+															));
 														}, 1000);
 													}}
 												>
@@ -1611,7 +1913,6 @@ export function App() {
 							)}
 							<VirtualMessageList 
 								messages={messages}
-								isLoading={isLoading}
 								onDateSelect={handleDateSelect}
 								onTimeOfDaySelect={handleTimeOfDaySelect}
 								onTimeSlotSelect={handleTimeSlotSelect}
@@ -1671,7 +1972,7 @@ export function App() {
 											value={inputValue}
 											onInput={handleInputChange}
 											onKeyPress={handleKeyPress}
-											disabled={isLoading}
+											disabled={false}
 											aria-label="Message input"
 											aria-multiline="true"
 											style={{ 
@@ -1695,7 +1996,7 @@ export function App() {
 													
 													<LazyScheduleButton
 														onClick={handleScheduleStart}
-														disabled={isLoading}
+														disabled={false}
 													/>
 												</div>
 											)}
@@ -1712,7 +2013,7 @@ export function App() {
 													className="send-button"
 													type="button"
 													onClick={handleSubmit}
-													disabled={(!inputValue.trim() && previewFiles.length === 0) || isLoading}
+													disabled={(!inputValue.trim() && previewFiles.length === 0)}
 													aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
 												>
 													<svg

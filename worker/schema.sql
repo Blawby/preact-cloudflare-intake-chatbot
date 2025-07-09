@@ -33,18 +33,7 @@ CREATE TABLE messages (
   FOREIGN KEY (conversation_id) REFERENCES conversations(id)
 );
 
--- Intent tracking table
-CREATE TABLE chat_intents (
-  id TEXT PRIMARY KEY,
-  conversation_id TEXT NOT NULL,
-  message_id TEXT NOT NULL,
-  intent_type TEXT NOT NULL, -- 'schedule_consultation', 'learn_services', 'general_inquiry', 'contact_form'
-  confidence REAL NOT NULL,
-  detected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  metadata JSON,
-  FOREIGN KEY (conversation_id) REFERENCES conversations(id),
-  FOREIGN KEY (message_id) REFERENCES messages(id)
-);
+
 
 -- Contact form submissions table
 CREATE TABLE contact_forms (
@@ -87,6 +76,19 @@ CREATE TABLE appointments (
   payment_id TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);
+
+-- File uploads table
+CREATE TABLE uploaded_files (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  file_type TEXT NOT NULL,
+  file_size INTEGER NOT NULL,
+  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
 -- Insert default team

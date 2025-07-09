@@ -2,6 +2,7 @@ import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
 import { marked } from 'marked';
 import LazyMedia from './LazyMedia';
+import CaseCanvas from './CaseCanvas';
 import createLazyComponent from '../utils/LazyComponent';
 
 // Lazy load scheduling components
@@ -61,6 +62,28 @@ interface MessageProps {
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
 	caseCreation?: CaseCreationData;
+	caseCanvas?: {
+		service: string;
+		caseSummary: string;
+		qualityScore?: {
+			score: number;
+			badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+			color: 'blue' | 'green' | 'yellow' | 'red';
+			inferredUrgency: string;
+			breakdown: {
+				followUpCompletion: number;
+				requiredFields: number;
+				evidence: number;
+				clarity: number;
+				urgency: number;
+				consistency: number;
+				aiConfidence: number;
+			};
+			suggestions: string[];
+		};
+		answers?: Record<string, string>;
+		isExpanded?: boolean;
+	};
 	onDateSelect?: (date: Date) => void;
 	onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
 	onTimeSlotSelect?: (timeSlot: Date) => void;
@@ -256,6 +279,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	files = [], 
 	scheduling, 
 	caseCreation,
+	caseCanvas,
 	onDateSelect, 
 	onTimeOfDaySelect, 
 	onTimeSlotSelect, 
@@ -329,6 +353,17 @@ const Message: FunctionComponent<MessageProps> = memo(({
 							/>
 						)}
 					</div>
+				)}
+				
+				{/* Display case canvas */}
+				{caseCanvas && (
+					<CaseCanvas
+						service={caseCanvas.service}
+						caseSummary={caseCanvas.caseSummary}
+						qualityScore={caseCanvas.qualityScore}
+						answers={caseCanvas.answers}
+						isExpanded={caseCanvas.isExpanded}
+					/>
 				)}
 				
 				{/* Display case creation components */}

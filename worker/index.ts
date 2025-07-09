@@ -5,39 +5,70 @@ export interface Env {
   DB: D1Database;
   CHAT_SESSIONS: KVNamespace;
   RESEND_API_KEY: string;
+  VECTORIZE?: any;
+  FILES_BUCKET?: R2Bucket;
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+// Simplified helper functions
+async function parseJsonBody(request: Request) {
+  try {
+    return await request.json();
+  } catch {
+    throw new Error("Invalid JSON");
+  }
 }
 
-interface ChatRequest {
-  messages: ChatMessage[];
-  teamId?: string;
-  sessionId?: string;
+// Simplified AI Service
+class AIService {
+  constructor(private ai: any, private env: Env) {}
+  
+  async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
+    return this.ai.run(model, {
+      messages,
+      max_tokens: 500,
+      temperature: 0.4, // Slightly higher for more natural responses
+    });
+  }
+  
+  async searchKnowledge(query: string) {
+    if (!this.env.VECTORIZE) return [];
+    
+    try {
+      const embedding = await this.ai.run("@cf/baai/bge-small-en-v1.5", { text: query });
+      const result = await this.env.VECTORIZE.query(embedding.data[0], { topK: 3 });
+      return result.matches || [];
+    } catch (error) {
+      console.warn('Knowledge search failed:', error);
+      return [];
+    }
+  }
 }
 
-interface ContactFormSubmission {
-  email: string;
-  phoneNumber: string;
-  caseDetails: string;
-  teamId: string;
-  conversationId?: string;
+// Simplified Email Service
+class EmailService {
+  constructor(private apiKey: string) {}
+  
+  async send(email: { from: string; to: string; subject: string; text: string }) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(email),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Email failed: ${response.status}`);
+    }
+    
+    return response;
+  }
 }
 
-interface CaseCreationRequest {
-  teamId: string;
-  service: string;
-  step: 'service-selection' | 'urgency-selection' | 'ai-questions' | 'case-details' | 'ai-analysis' | 'complete';
-  currentQuestionIndex?: number;
-  answers?: Record<string, string>;
-  description?: string;
-  urgency?: string;
-}
-
-interface CaseQualityScore {
-  score: number; // 0-100
+// Enhanced case quality assessment with AI analysis
+async function assessCaseQuality(caseData: any, aiService?: AIService): Promise<{
+  score: number;
   breakdown: {
     followUpCompletion: number;
     requiredFields: number;
@@ -49,28 +80,318 @@ interface CaseQualityScore {
   };
   suggestions: string[];
   readyForLawyer: boolean;
-  color: 'red' | 'yellow' | 'green' | 'blue';
+  badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+  color: 'blue' | 'green' | 'yellow' | 'red';
+  inferredUrgency: string;
+}> {
+  const breakdown = {
+    followUpCompletion: 0,
+    requiredFields: 0,
+    evidence: 0,
+    clarity: 0,
+    urgency: 0,
+    consistency: 0,
+    aiConfidence: 0
+  };
+  
+  const suggestions: string[] = [];
+  
+  // 1. Follow-up Completion (25 points)
+  const totalQuestions = Object.keys(caseData.answers || {}).length;
+  const expectedQuestions = 3; // Typical number of practice area questions
+  if (totalQuestions > 0) {
+    breakdown.followUpCompletion = Math.min(100, (totalQuestions / expectedQuestions) * 100);
+  } else {
+    suggestions.push("Answer the practice area questions to provide more context");
+  }
+  
+  // 2. Required Fields (20 points) - Service and Description only (urgency is AI-inferred)
+  let requiredFieldsScore = 0;
+  if (caseData.service) requiredFieldsScore += 50;
+  if (caseData.description && caseData.description.length > 20) requiredFieldsScore += 50;
+  breakdown.requiredFields = requiredFieldsScore;
+  
+  if (!caseData.service) suggestions.push("Select a practice area");
+  if (!caseData.description || caseData.description.length <= 20) {
+    suggestions.push("Provide a detailed case description");
+  }
+  // Note: Urgency is now automatically inferred by AI, no need to ask users to specify it
+  
+  // 3. Evidence Detection (15 points)
+  const evidenceKeywords = [
+    'document', 'contract', 'photo', 'picture', 'receipt', 'email', 'letter',
+    'recording', 'video', 'screenshot', 'witness', 'evidence', 'proof',
+    'paperwork', 'signed', 'written', 'attachment', 'file'
+  ];
+  
+  // Extract answer text from the new question-answer structure
+  const answerTexts = Object.values(caseData.answers || {}).map(value => {
+    if (typeof value === 'object' && value !== null && 'answer' in value) {
+      return value.answer;
+    }
+    // Fallback for old format
+    return value;
+  }).filter(text => text && typeof text === 'string');
+  
+  const fullText = `${caseData.description || ''} ${answerTexts.join(' ')}`.toLowerCase();
+  const evidenceCount = evidenceKeywords.filter(keyword => fullText.includes(keyword)).length;
+  breakdown.evidence = Math.min(100, evidenceCount * 25);
+  
+  if (breakdown.evidence < 50) {
+    suggestions.push("Consider mentioning any documents, photos, or evidence you have");
+  }
+  
+  // 4. Clarity Assessment (15 points)
+  const descriptionLength = (caseData.description || '').length;
+  if (descriptionLength > 100) {
+    breakdown.clarity = Math.min(100, descriptionLength / 3); // Max at 300 characters
+  } else {
+    suggestions.push("Provide more specific details about what happened and when");
+  }
+  
+  // 5. AI-Powered Urgency Assessment (10 points)
+  let urgencyScore = 40; // Default: Not Urgent
+  let inferredUrgency = 'Not Urgent';
+  
+  // Analyze text for urgency indicators
+  const urgentKeywords = [
+    'emergency', 'urgent', 'immediately', 'asap', 'deadline', 'court date', 
+    'eviction', 'foreclosure', 'termination', 'fired', 'arrest', 'custody',
+    'threat', 'violence', 'abuse', 'harassment', 'restraining order',
+    'bankruptcy', 'lawsuit filed', 'hearing', 'trial', 'expires', 'due date'
+  ];
+  
+  const moderateKeywords = [
+    'soon', 'quickly', 'time sensitive', 'pending', 'waiting', 'delayed',
+    'problem', 'issue', 'concerned', 'worried', 'help needed', 'separated',
+    'dispute', 'conflict', 'disagreement', 'contract issue'
+  ];
+  
+  const urgentCount = urgentKeywords.filter(keyword => fullText.includes(keyword)).length;
+  const moderateCount = moderateKeywords.filter(keyword => fullText.includes(keyword)).length;
+  
+  // Specific situation-based urgency detection
+  const situationUrgency = {
+    // Housing/living situations
+    hotel: 70, motel: 70, homeless: 100, evicted: 100, 'staying with': 60,
+    // Legal proceedings
+    'court date': 100, hearing: 90, trial: 100, lawsuit: 80, 'filed against': 90,
+    // Employment emergencies  
+    fired: 80, terminated: 80, 'lost job': 70, 'need job': 50,
+    // Family emergencies
+    custody: 80, 'child support': 70, divorce: 60, separated: 50,
+    // Financial emergencies
+    bankruptcy: 90, foreclosure: 100, 'can\'t pay': 80
+  };
+  
+  let maxSituationUrgency = 0;
+  for (const [situation, score] of Object.entries(situationUrgency)) {
+    if (fullText.includes(situation)) {
+      maxSituationUrgency = Math.max(maxSituationUrgency, score);
+    }
+  }
+  
+  // Calculate urgency score
+  if (urgentCount >= 2 || maxSituationUrgency >= 90) {
+    urgencyScore = 100;
+    inferredUrgency = 'Very Urgent';
+  } else if (urgentCount >= 1 || moderateCount >= 2 || maxSituationUrgency >= 60) {
+    urgencyScore = 70;
+    inferredUrgency = 'Somewhat Urgent';
+  } else if (moderateCount >= 1 || maxSituationUrgency >= 40) {
+    urgencyScore = 50;
+    inferredUrgency = 'Somewhat Urgent';
+  }
+  
+  // Override with explicit urgency if provided
+  if (caseData.urgency) {
+    const urgencyMap = {
+      'Very Urgent': 100,
+      'Somewhat Urgent': 70,
+      'Not Urgent': 40
+    };
+    urgencyScore = urgencyMap[caseData.urgency as keyof typeof urgencyMap] || urgencyScore;
+    inferredUrgency = caseData.urgency;
+  }
+  
+  breakdown.urgency = urgencyScore;
+  
+  // 6. Consistency Check (10 points)
+  // Basic consistency - check if answers align with service type
+  if (caseData.service && totalQuestions > 0) {
+    breakdown.consistency = 80; // Assume good consistency if questions were answered
+  } else {
+    breakdown.consistency = 40;
+  }
+  
+  // 7. AI Confidence (5 points) - Enhanced with actual AI analysis
+  let aiConfidence = 60; // Default confidence
+  
+  if (aiService && caseData.description) {
+    try {
+      const analysisPrompt = `Analyze this legal case description for clarity, completeness, and actionable details. Rate confidence from 0-100:
+      
+Case Type: ${caseData.service || 'Unknown'}
+Description: ${caseData.description}
+Answers: ${JSON.stringify(caseData.answers || {})}
+
+Focus on: legal merit, factual clarity, timeline specificity, and evidence mentioned.
+Respond with just a number 0-100.`;
+
+      const aiResult = await aiService.runLLM([
+        { role: 'system', content: 'You are a legal case analyst. Provide only numeric confidence ratings.' },
+        { role: 'user', content: analysisPrompt }
+      ]);
+      
+      const confidenceMatch = aiResult.response.match(/\d+/);
+      if (confidenceMatch) {
+        aiConfidence = Math.min(100, Math.max(0, parseInt(confidenceMatch[0])));
+      }
+    } catch (error) {
+      console.warn('AI confidence analysis failed:', error);
+    }
+  }
+  
+  breakdown.aiConfidence = aiConfidence;
+  
+  // Calculate overall score
+  const weights = {
+    followUpCompletion: 0.25,
+    requiredFields: 0.20,
+    evidence: 0.15,
+    clarity: 0.15,
+    urgency: 0.10,
+    consistency: 0.10,
+    aiConfidence: 0.05
+  };
+  
+  const score = Math.round(
+    breakdown.followUpCompletion * weights.followUpCompletion +
+    breakdown.requiredFields * weights.requiredFields +
+    breakdown.evidence * weights.evidence +
+    breakdown.clarity * weights.clarity +
+    breakdown.urgency * weights.urgency +
+    breakdown.consistency * weights.consistency +
+    breakdown.aiConfidence * weights.aiConfidence
+  );
+  
+  // Determine badge and color
+  let badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+  let color: 'blue' | 'green' | 'yellow' | 'red';
+  
+  if (score >= 90) {
+    badge = 'Excellent';
+    color = 'blue';
+  } else if (score >= 75) {
+    badge = 'Good';
+    color = 'green';
+  } else if (score >= 50) {
+    badge = 'Fair';
+    color = 'yellow';
+  } else {
+    badge = 'Poor';
+    color = 'red';
+  }
+  
+  // Enhanced suggestions based on AI analysis
+  if (aiService && score < 80) {
+    try {
+      const suggestionPrompt = `Based on this legal case, provide 2-3 specific suggestions to improve the case quality:
+      
+Case Type: ${caseData.service || 'Unknown'}
+Description: ${caseData.description}
+Current Score: ${score}/100
+
+Provide practical, actionable suggestions for better case preparation.`;
+
+      const aiResult = await aiService.runLLM([
+        { role: 'system', content: 'You are a legal assistant. Provide concise, actionable suggestions.' },
+        { role: 'user', content: suggestionPrompt }
+      ]);
+      
+      // Extract suggestions from AI response
+      const aiSuggestions = aiResult.response
+        .split('\n')
+        .filter(line => line.trim() && (line.includes('•') || line.includes('-') || line.includes('1.') || line.includes('2.') || line.includes('3.')))
+        .map(line => line.replace(/^[\s\-\•\d\.]+/, '').trim())
+        .filter(suggestion => suggestion.length > 10);
+      
+      if (aiSuggestions.length > 0) {
+        suggestions.push(...aiSuggestions.slice(0, 2)); // Add top 2 AI suggestions
+      }
+    } catch (error) {
+      console.warn('AI suggestions failed:', error);
+    }
+  }
+  
+  // Remove duplicates and limit suggestions
+  const uniqueSuggestions = Array.from(new Set(suggestions)).slice(0, 4);
+  
+  return {
+    score,
+    breakdown,
+    suggestions: uniqueSuggestions,
+    readyForLawyer: score >= 70,
+    badge,
+    color,
+    inferredUrgency
+  };
 }
 
+
+
+// Simplified interfaces
+interface ChatRequest {
+  messages: Array<{ role: string; content: string }>;
+  teamId?: string;
+  sessionId?: string;
+}
+
+interface ContactForm {
+  email: string;
+  phoneNumber: string;
+  caseDetails: string;
+  teamId: string;
+  urgency?: string;
+}
+
+interface CaseCreationRequest {
+  teamId: string;
+  service?: string;
+  step: 'service-selection' | 'questions' | 'case-review' | 'case-details' | 'complete';
+  currentQuestionIndex?: number;
+  answers?: Record<string, string | { question: string; answer: string }>;
+  description?: string;
+  urgency?: string;
+  sessionId?: string;
+}
+
+interface TeamConfig {
+  requiresPayment?: boolean;
+  consultationFee?: number;
+  ownerEmail?: string;
+  serviceQuestions?: Record<string, string[]>;
+  availableServices?: string[];
+}
+
+// Main worker handler
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // CORS headers
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
-    // Handle preflight requests
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
 
     try {
-      // API routes
+      // Route handling
       if (path.startsWith('/api/chat')) {
         return handleChat(request, env, corsHeaders);
       }
@@ -87,114 +408,49 @@ export default {
         return handleCaseCreation(request, env, corsHeaders);
       }
 
-      if (path.startsWith('/api/case-quality')) {
-        return handleCaseQuality(request, env, corsHeaders);
+      if (path.startsWith('/api/scheduling')) {
+        return handleScheduling(request, env, corsHeaders);
       }
 
-      // Health check
+      if (path.startsWith('/api/files')) {
+        return handleFiles(request, env, corsHeaders);
+      }
+
+      if (path.startsWith('/api/sessions')) {
+        return handleSessions(request, env, corsHeaders);
+      }
+
       if (path === '/api/health') {
-        return new Response(JSON.stringify({ 
-          status: 'ok', 
-          timestamp: new Date().toISOString(),
-          environment: 'production'
-        }), {
+        return new Response(JSON.stringify({ status: 'ok' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      // Favicon
-      if (path === '/favicon.ico') {
-        return new Response(null, { status: 204 });
-      }
-
-      // Root route - API documentation
       if (path === '/') {
-        const html = `
+        return new Response(`
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blawby AI Chatbot API</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
-        h1 { color: #2563eb; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
-        h2 { color: #374151; margin-top: 30px; }
-        .endpoint { background: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2563eb; }
-        .method { font-weight: bold; color: #059669; }
-        .url { font-family: monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
-        .description { color: #6b7280; margin-top: 5px; }
-        .example { background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 8px; margin: 10px 0; font-family: monospace; font-size: 14px; }
-        .status { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .status.ok { background: #dcfce7; color: #166534; }
-        .status.error { background: #fee2e2; color: #991b1b; }
-    </style>
+    <style>body { font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 20px; }</style>
 </head>
 <body>
     <h1>🤖 Blawby AI Chatbot API</h1>
-    <p>Welcome to the Blawby AI Chatbot API. This service provides AI-powered legal assistance through Cloudflare Workers AI.</p>
-    
-    <h2>📋 Available Endpoints</h2>
-    
-    <div class="endpoint">
-        <div class="method">GET</div>
-        <div class="url">/api/health</div>
-        <div class="description">Health check endpoint to verify API status</div>
-        <div class="example">
-curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/health"
-        </div>
-    </div>
-
-    <div class="endpoint">
-        <div class="method">GET</div>
-        <div class="url">/api/teams</div>
-        <div class="description">Retrieve available law firm teams and their configurations</div>
-        <div class="example">
-curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams"
-        </div>
-    </div>
-
-    <div class="endpoint">
-        <div class="method">POST</div>
-        <div class="url">/api/chat</div>
-        <div class="description">Send messages to the AI legal assistant and receive responses</div>
-        <div class="example">
-curl -X POST "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/chat" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "messages": [
-      {"role": "user", "content": "Hello, I need help with a legal question about contracts."}
-    ],
-    "teamId": "test-team",
-    "sessionId": "optional-session-id"
-  }'
-        </div>
-    </div>
-
-    <h2>🔧 API Status</h2>
-    <div class="status ok">✅ API is operational</div>
-    <div class="status ok">✅ AI Model: Llama 3.1 8B</div>
-    <div class="status ok">✅ Database: D1 (your-ai-chatbot)</div>
-    <div class="status ok">✅ KV Storage: Chat Sessions</div>
-
-    <h2>📚 Documentation</h2>
-    <p>This API is designed to integrate with the Blawby AI legal assistant frontend. For more information about the project, see the <a href="https://github.com/your-repo/preact-chat-gpt-interface" target="_blank">GitHub repository</a>.</p>
-
-    <h2>🔗 Integration</h2>
-    <p>To integrate with your frontend application, use the endpoints above with proper CORS headers. The API supports cross-origin requests and returns JSON responses.</p>
-
-    <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-        <p>Blawby AI Chatbot API • Powered by Cloudflare Workers AI</p>
-    </footer>
+    <p>AI-powered legal assistance with case building</p>
+    <ul>
+        <li><strong>POST</strong> /api/chat - AI conversations</li>
+        <li><strong>GET</strong> /api/teams - Available teams</li>
+        <li><strong>POST</strong> /api/case-creation - Case building flow</li>
+        <li><strong>POST</strong> /api/forms - Contact submissions</li>
+        <li><strong>POST</strong> /api/scheduling - Appointments</li>
+    </ul>
+    <p>✅ API operational</p>
 </body>
-</html>`;
-        
-        return new Response(html, {
-          headers: { 'Content-Type': 'text/html;charset=UTF-8' }
+</html>`, {
+          headers: { 'Content-Type': 'text/html' }
         });
       }
 
-      // 404 for unknown routes
       return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -210,572 +466,591 @@ curl -X POST "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/chat" \\
   },
 };
 
+// Chat handler
 async function handleChat(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
-  if (request.method === 'POST') {
-    try {
-      const body = await request.json() as ChatRequest;
-      
-      // Validate input
-      if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
-        return new Response(JSON.stringify({ 
-          error: 'Invalid request: messages array is required and must not be empty' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
 
-      // Validate message format
-      for (const message of body.messages) {
-        if (!message.role || !message.content) {
-          return new Response(JSON.stringify({ 
-            error: 'Invalid message format: each message must have role and content' 
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-      }
-
-      // Get team configuration if teamId is provided
-      let teamConfig = null;
-      if (body.teamId) {
-        // Query the database for the team config
-        const teamRow = await env.DB.prepare(`SELECT id, name, config FROM teams WHERE id = ?`).bind(body.teamId).first();
-        if (teamRow) {
-          let configObj = {};
-          try {
-            configObj = JSON.parse(teamRow.config);
-          } catch (e) {
-            console.warn('Failed to parse team config JSON:', e);
-          }
-          teamConfig = {
-            id: teamRow.id,
-            name: teamRow.name,
-            config: configObj
-          };
-        }
-      }
-
-      // Enhanced intent detection
-      const lastUserMessage = body.messages[body.messages.length - 1]?.content || '';
-      const lowerMessage = lastUserMessage.toLowerCase();
-      
-      let detectedIntent = 'general_inquiry';
-      
-      // Check for urgent legal help / consultation requests
-      if (lowerMessage.includes('lawyer') || lowerMessage.includes('attorney') || lowerMessage.includes('legal help') || 
-          lowerMessage.includes('asap') || lowerMessage.includes('urgent') || lowerMessage.includes('emergency') ||
-          lowerMessage.includes('need help') || lowerMessage.includes('talk to') || lowerMessage.includes('speak with')) {
-        detectedIntent = 'schedule_consultation';
-      } else if (lowerMessage.includes('schedule') || lowerMessage.includes('appointment') || lowerMessage.includes('consultation')) {
-        detectedIntent = 'schedule_consultation';
-      } else if (lowerMessage.includes('services') || lowerMessage.includes('practice areas') || lowerMessage.includes('specialties') ||
-                 lowerMessage.includes('what do you do') || lowerMessage.includes('types of cases')) {
-        detectedIntent = 'learn_services';
-      } else if (lowerMessage.includes('contact form') || lowerMessage.includes('fill out form') || lowerMessage.includes('submit form') ||
-                 lowerMessage.includes('application') || lowerMessage.includes('apply for')) {
-        detectedIntent = 'contact_form';
-      }
-
-      // Create team-specific system prompt with intent awareness
-      const systemPrompt = teamConfig 
-        ? `You are a concise legal assistant for ${teamConfig.name}. Keep responses brief (2-3 sentences max) and actionable. Focus on immediate next steps. Always remind users you're an AI assistant and recommend consulting a qualified attorney.${teamConfig.config.requiresPayment ? ` Consultation fee: $${teamConfig.config.consultationFee}.` : ' Free consultation available.'}`
-        : 'You are a concise legal assistant for Blawby AI. Keep responses brief (2-3 sentences max) and actionable. Focus on immediate next steps. Always remind users you\'re an AI assistant and recommend consulting a qualified attorney.';
-
-      // Generate intent-aware response - ALWAYS encourage form completion
-      let aiResponse;
-      
-      if (detectedIntent === 'schedule_consultation') {
-        // Urgent consultation requests
-        aiResponse = {
-          response: `I understand you need immediate legal assistance. Let me connect you with one of our attorneys right away. What's your email address?`,
-          intent: detectedIntent,
-          shouldStartForm: true
-        };
-      } else if (detectedIntent === 'learn_services') {
-        // Service inquiries - provide info then collect contact
-        aiResponse = {
-          response: `Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. For personalized legal advice, I'd recommend speaking directly with one of our attorneys. Let me help you get in touch with them. What's your email address?`,
-          intent: detectedIntent,
-          shouldStartForm: true
-        };
-      } else if (detectedIntent === 'contact_form') {
-        // Direct form requests
-        aiResponse = {
-          response: `Perfect! I can help you with our contact form. I'll need your email address, phone number, and some details about your case. Let's start with your email address.`,
-          intent: detectedIntent,
-          shouldStartForm: true
-        };
-      } else {
-        // General inquiries - encourage form completion
-        aiResponse = {
-          response: `I understand you need legal assistance. To provide you with the best help, I'd like to connect you with one of our qualified attorneys. What's your email address so they can get back to you?`,
-          intent: detectedIntent,
-          shouldStartForm: true
-        };
-      }
-
-      // Include payment info if payment is required
-      const responseData: any = {
-        response: aiResponse.response,
-        intent: aiResponse.intent,
-        shouldStartForm: aiResponse.shouldStartForm,
-        timestamp: new Date().toISOString(),
-        sessionId: body.sessionId || null
-      };
-
-      // Add payment information if team requires payment
-      if (teamConfig && teamConfig.config?.requiresPayment) {
-        responseData.payment = {
-          required: true,
-          amount: teamConfig.config.consultationFee,
-          paymentLink: teamConfig.config.paymentLink || null
-        };
-      }
-
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      console.error('AI Error:', error);
-      return new Response(JSON.stringify({ 
-        error: 'AI service temporarily unavailable',
-        details: error.message
-      }), {
-        status: 500,
+  try {
+    const body = await parseJsonBody(request) as ChatRequest;
+    
+    if (!body.messages?.length) {
+      return new Response(JSON.stringify({ error: 'Messages required' }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-  }
 
-  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-    status: 405,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
+    // Get team config
+    let teamConfig: TeamConfig = {};
+    if (body.teamId) {
+      const teamRow = await env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(body.teamId).first();
+      if (teamRow) {
+        try {
+          teamConfig = JSON.parse(teamRow.config as string);
+        } catch (e) {
+          console.warn('Failed to parse team config:', e);
+        }
+      }
+    }
+
+    // Generate AI response
+    const aiService = new AIService(env.AI, env);
+      const systemPrompt = teamConfig 
+      ? `You are a warm, empathetic legal assistant helping people through difficult legal situations. Be conversational, supportive, and understanding. Use natural language and gentle transitions. Acknowledge that legal issues can be stressful. Help users feel heard and supported while organizing their legal matters. ${teamConfig.requiresPayment ? `We do have a consultation fee of $${teamConfig.consultationFee}, but we'll make sure you're prepared before connecting you with an attorney.` : 'We offer free consultations to help you understand your options.'}`
+      : 'You are a warm, empathetic legal assistant helping people through difficult legal situations. Be conversational, supportive, and understanding. Use natural language and gentle transitions. Acknowledge that legal issues can be stressful.';
+
+    const aiResult = await aiService.runLLM([
+      { role: 'system', content: systemPrompt },
+      ...body.messages.slice(-3)
+    ]);
+
+    let response = aiResult.response || "I'm here to help with your legal needs. What can I assist you with?";
+    
+    // Save conversation to session if sessionId provided
+    if (body.sessionId) {
+      try {
+        const sessionData = {
+          teamId: body.teamId,
+          messages: [...body.messages, { role: 'assistant', content: response }],
+          lastActivity: new Date().toISOString(),
+          intent: 'general', // No longer detecting intent
+          shouldStartCaseCreation: false // No longer suggesting case creation
+        };
+
+        await env.CHAT_SESSIONS.put(body.sessionId, JSON.stringify(sessionData), {
+          expirationTtl: 24 * 60 * 60 // 24 hours
+        });
+      } catch (error) {
+        console.warn('Failed to save session:', error);
+      }
+    }
+
+    return new Response(JSON.stringify({
+      response,
+      intent: 'general', // No longer detecting intent
+      shouldStartCaseCreation: false, // No longer suggesting case creation
+      timestamp: new Date().toISOString()
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Chat error:', error);
+    return new Response(JSON.stringify({ error: 'Chat service unavailable' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
 }
 
+// Case creation handler
+async function handleCaseCreation(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  try {
+    const body = await parseJsonBody(request) as CaseCreationRequest;
+    
+    if (!body.teamId || !body.step) {
+      return new Response(JSON.stringify({ error: 'Missing teamId or step' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Get team config
+    const teamRow = await env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(body.teamId).first();
+    if (!teamRow) {
+      return new Response(JSON.stringify({ error: 'Team not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    let teamConfig: TeamConfig = {};
+    try {
+      teamConfig = JSON.parse(teamRow.config as string);
+    } catch (e) {
+      console.warn('Failed to parse team config:', e);
+    }
+
+    const aiService = new AIService(env.AI, env);
+    const quality = await assessCaseQuality(body, aiService);
+
+    switch (body.step) {
+      case 'service-selection':
+        // If no service selected yet, show service options
+        if (!body.service) {
+          const services = teamConfig.availableServices || [
+            'Family Law', 
+            'Small Business and Nonprofits', 
+            'Employment Law', 
+            'Tenant Rights Law', 
+            'Probate and Estate Planning', 
+            'Special Education and IEP Advocacy'
+          ];
+          
+          const response = {
+            step: 'service-selection',
+            message: 'What type of legal matter do you need help with?',
+            services,
+            qualityScore: quality
+          };
+
+          // Save case creation state to session
+          if (body.sessionId) {
+            try {
+              const sessionData = {
+                teamId: body.teamId,
+                caseCreationState: {
+                  step: 'service-selection',
+                  data: body,
+                  timestamp: new Date().toISOString()
+                },
+                lastActivity: new Date().toISOString()
+              };
+
+              await env.CHAT_SESSIONS.put(body.sessionId, JSON.stringify(sessionData), {
+                expirationTtl: 24 * 60 * 60 // 24 hours
+              });
+            } catch (error) {
+              console.warn('Failed to save case creation session:', error);
+            }
+          }
+
+          return new Response(JSON.stringify(response), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          // Service was selected, move to questions
+          const questions = teamConfig.serviceQuestions?.[body.service] || [
+            `Tell me more about your ${body.service} situation.`,
+            'When did this issue begin?',
+            'What outcome are you hoping for?'
+          ];
+          
+          if (questions.length > 0) {
+            return new Response(JSON.stringify({
+              step: 'questions',
+              message: questions[0],
+              currentQuestion: 1,
+              totalQuestions: questions.length,
+              selectedService: body.service,
+              qualityScore: quality
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            // No questions, go straight to case details
+            return new Response(JSON.stringify({
+              step: 'case-details',
+              message: `Thank you for selecting ${body.service}. Please provide a detailed description of your situation.`,
+              selectedService: body.service,
+              qualityScore: quality
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+
+      case 'questions':
+        const questions = teamConfig.serviceQuestions?.[body.service!] || [
+          `Tell me more about your ${body.service} situation.`,
+          'When did this issue begin?',
+          'What outcome are you hoping for?'
+        ];
+        const currentIndex = body.currentQuestionIndex || 0;
+        
+        if (currentIndex < questions.length) {
+          return new Response(JSON.stringify({
+            step: 'questions',
+            message: questions[currentIndex],
+            currentQuestion: currentIndex + 1,
+            totalQuestions: questions.length,
+            selectedService: body.service,
+            qualityScore: quality,
+            questionText: questions[currentIndex] // Include the actual question text
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+                } else {
+          // All questions answered, move to case review step
+          const answers = body.answers || {};
+          const answerValues = Object.values(answers).filter(Boolean);
+          
+          // Auto-generate case description from Q&A answers
+          const autoDescription = `${body.service} case: ${answerValues.join('. ')}.`;
+          
+          // Create enhanced body for quality assessment
+          const enhancedBody = {
+            ...body,
+            description: autoDescription,
+            answers: answers
+          };
+          
+          // Get quality assessment with the auto-generated description
+          const initialQuality = await assessCaseQuality(enhancedBody, aiService);
+          
+          return new Response(JSON.stringify({
+            step: 'case-review',
+            message: `Thank you for answering those questions. Let me review your case and provide a summary.`,
+            selectedService: body.service,
+            qualityScore: initialQuality,
+            autoGeneratedDescription: autoDescription,
+            answers: answers
+          }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+        }
+
+      case 'case-review':
+        // Generate comprehensive case summary and determine next steps
+        const caseAnswers = body.answers || {};
+        const caseDescription = body.description || `${body.service} case with provided details`;
+        
+        // Extract question-answer pairs from the new data structure
+        const questionAnswerPairs = Object.entries(caseAnswers).map(([key, value]) => {
+          if (typeof value === 'object' && value !== null && 'question' in value && 'answer' in value) {
+            return `**${value.question}**: ${value.answer}`;
+          }
+          // Fallback for old format
+          return `**${key}**: ${value}`;
+        }).filter(pair => pair.includes(': ') && !pair.includes(': undefined'));
+        
+        // Create enhanced case data for assessment
+        const caseData = {
+          service: body.service,
+          description: caseDescription,
+          answers: caseAnswers,
+          urgency: body.urgency
+        };
+        
+        // Get detailed quality assessment
+        const reviewQuality = await assessCaseQuality(caseData, aiService);
+        
+                // Generate structured markdown case summary for canvas
+        let caseSummary = '';
+        if (aiService) {
+          try {
+             const summaryPrompt = `Create a clean case summary markdown for this ${body.service} matter. The client provided initial structured answers AND follow-up conversation details. Use ALL information provided:
+
+Initial Q&A and Follow-up Information:
+${questionAnswerPairs.join('\n')}
+
+Generate ONLY markdown content using the EXACT format below. Use FACTS ONLY - no empathetic language, no emotional content:
+
+# 📋 ${body.service} Case Summary
+
+## 💼 Legal Matter
+[State the specific legal issue in clear terms]
+
+## 📝 Key Details
+- **Practice Area**: ${body.service}
+- **Issue**: [what the problem is]
+- **Timeline**: [when events occurred] 
+- **Current Situation**: [current status]
+- **Evidence/Documentation**: [any documents or evidence mentioned]
+
+## 🎯 Objective
+[What the client is seeking to achieve]
+
+CRITICAL REQUIREMENTS: 
+- Use BOTH initial Q&A responses AND follow-up conversation details
+- Use only factual, objective language
+- NO "Your Responses" section - DO NOT repeat back the Q&A
+- NO internal assessments, scores, or AI analysis
+- NO quality ratings or percentages  
+- NO suggestions for improvement
+- NO "Case Assessment" section
+- This is what the CLIENT sees in their case summary
+- Keep it clean and professional
+- ONLY include the 3 sections shown above: Legal Matter, Key Details, and Objective
+
+IMPORTANT FOR FAMILY LAW CASES:
+- Be very careful about relationships and who is who
+- "im with my mom" = client is living with their own mother/grandmother
+- "they are with their mother" = children are with their mother (who is the client's spouse/partner)
+- "their mother" in context of children = the other parent (client's spouse/partner)
+- Client and spouse/partner are different people
+- Children live with spouse/partner, not with client's mother
+- Keep relationships clear and simple
+- Don't confuse multiple "mothers" in the same case
+- Synthesize ALL information into a coherent summary`;
+
+            const summaryResult = await aiService.runLLM([
+              { role: 'system', content: 'You are a legal assistant creating structured markdown case summaries. Follow the exact format requested. Use clear, professional language. Pay close attention to relationships and living arrangements. Initial Q&A responses and follow-up conversation details should both be considered to create a comprehensive summary.' },
+              { role: 'user', content: summaryPrompt }
+            ]);
+            
+            caseSummary = summaryResult.response || `# 📋 ${body.service} Case Summary\n\n## 💼 Legal Matter\n${body.service} case with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
+          } catch (error) {
+            console.warn('AI case summary failed:', error);
+            caseSummary = `# 📋 ${body.service} Case Summary\n\n## 💼 Legal Matter\n${body.service} case with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
+          }
+        }
+        
+        // Determine if case needs improvement (threshold: 75)
+        const needsImprovement = reviewQuality.score < 75;
+        
+        // Generate follow-up questions if needed
+        let followUpQuestions = [];
+        if (needsImprovement && aiService) {
+          try {
+                         const questionPrompt = `I'm helping someone with their ${body.service} situation. To make sure we have all the information needed to help them effectively, I'd like to ask a few more gentle, supportive questions.
+
+Their situation: ${caseSummary}
+Areas that could use more detail: ${reviewQuality.suggestions.join(', ')}
+
+Please suggest 2-3 conversational, empathetic follow-up questions that:
+1. Feel natural and caring, not interrogative
+2. Gather the most important missing information
+3. Use phrases like "Can you tell me more about..." or "I'd love to understand..."
+4. Acknowledge this might be difficult to discuss
+
+Write each question as if you're a supportive friend or counselor asking for clarification.`;
+
+            const questionResult = await aiService.runLLM([
+              { role: 'system', content: 'You are a legal assistant. Generate specific, actionable follow-up questions.' },
+              { role: 'user', content: questionPrompt }
+            ]);
+            
+            // Parse questions from AI response
+            const rawQuestions = questionResult.response
+              .split('\n')
+              .filter(line => line.trim() && (line.includes('?') || line.includes('1.') || line.includes('2.') || line.includes('3.')))
+              .map(line => line.replace(/^[\s\-\•\d\.]+/, '').trim())
+              .filter(q => q.length > 10 && q.includes('?'));
+            
+            followUpQuestions = rawQuestions.slice(0, 3);
+          } catch (error) {
+            console.warn('AI follow-up questions failed:', error);
+          }
+        }
+        
+        // Create empathetic intro message before canvas
+        let reviewMessage = `Thanks for sharing your situation with me. I can tell this has been really challenging, especially dealing with ${body.service.toLowerCase()} matters. I've put together a case summary based on what you've shared so far — you'll see that summary below.`;
+        
+        // Create case canvas data
+        const caseCanvasData = {
+          service: body.service,
+          caseSummary: caseSummary,
+          qualityScore: reviewQuality,
+          answers: caseAnswers,
+          isExpanded: false
+        };
+        
+        // Follow-up message if needed
+        let followUpMessage = '';
+        if (needsImprovement && followUpQuestions.length > 0) {
+          followUpMessage = `Looking at your case summary, I'd love to get a few more details to strengthen your position. ${followUpQuestions[0]}`;
+        } else {
+          followUpMessage = `Your case summary looks comprehensive! I believe we have strong information to connect you with the right attorney who can help with your ${body.service.toLowerCase()} matter.`;
+        }
+        
+        return new Response(JSON.stringify({
+          step: needsImprovement ? 'case-review' : 'complete',
+          message: reviewMessage,
+          selectedService: body.service,
+          qualityScore: reviewQuality,
+          caseCanvas: caseCanvasData,
+          followUpMessage: followUpMessage,
+          needsImprovement,
+          followUpQuestions,
+          currentFollowUpIndex: 0,
+          readyForNextStep: !needsImprovement,
+          nextActions: needsImprovement ? ['improve-case'] : ['contact', 'schedule']
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+
+      case 'case-details':
+        const serviceText = body.service ? ` regarding your ${body.service} matter` : '';
+        const nextStepMessage = quality.readyForLawyer 
+          ? `Perfect! Based on your case details${serviceText}, you're ready to speak with one of our attorneys. Would you like to schedule a consultation or submit your contact information?`
+          : `Thank you for the details${serviceText}. To better assist you, I have a few suggestions to strengthen your case before connecting with an attorney.`;
+        
+        return new Response(JSON.stringify({
+          step: 'complete',
+          message: nextStepMessage,
+          selectedService: body.service,
+          qualityScore: quality,
+          readyForNextStep: quality.readyForLawyer,
+          nextActions: quality.readyForLawyer ? ['schedule', 'contact'] : ['improve-case', 'contact']
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+
+      default:
+        return new Response(JSON.stringify({ error: 'Invalid step' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+  } catch (error) {
+    console.error('Case creation error:', error);
+    return new Response(JSON.stringify({ error: 'Case creation failed' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// Forms handler
 async function handleForms(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  try {
+    const body = await parseJsonBody(request) as ContactForm;
+    
+    if (!body.email || !body.phoneNumber || !body.caseDetails || !body.teamId) {
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      return new Response(JSON.stringify({ error: 'Invalid email format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const formId = crypto.randomUUID();
+    
+    // Store form
+    await env.DB.prepare(`
+      INSERT INTO contact_forms (id, team_id, phone_number, email, case_details, status)
+      VALUES (?, ?, ?, ?, ?, 'pending')
+    `).bind(formId, body.teamId, body.phoneNumber, body.email, body.caseDetails).run();
+
+    // Send notifications
+    if (env.RESEND_API_KEY) {
+      try {
+        await sendNotifications(body, formId, env);
+      } catch (error) {
+        console.warn('Email notification failed:', error);
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      formId,
+      message: 'Form submitted successfully. A lawyer will contact you within 24 hours.'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Form error:', error);
+    return new Response(JSON.stringify({ error: 'Form submission failed' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// Teams handler
+async function handleTeams(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method !== 'GET') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  try {
+    const rows = await env.DB.prepare('SELECT id, name, config FROM teams').all();
+    const teams = rows.results.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      config: JSON.parse(row.config || '{}')
+    }));
+
+    return new Response(JSON.stringify(teams), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    console.error('Teams error:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch teams' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// Scheduling handler
+async function handleScheduling(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method === 'POST') {
     try {
-      const body = await request.json() as ContactFormSubmission;
+      const body = await parseJsonBody(request) as {
+        teamId: string;
+        email: string;
+        phoneNumber: string;
+        preferredDate: string;
+        preferredTime: string;
+        caseType: string;
+        notes?: string;
+      };
       
-      // Validate required fields
-      if (!body.email || !body.phoneNumber || !body.caseDetails || !body.teamId) {
-        return new Response(JSON.stringify({ 
-          error: 'Missing required fields: email, phoneNumber, caseDetails, teamId' 
-        }), {
+      if (!body.teamId || !body.email || !body.preferredDate || !body.caseType) {
+        return new Response(JSON.stringify({ error: 'Missing required fields' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(body.email)) {
-        return new Response(JSON.stringify({ 
-          error: 'Invalid email format' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Validate phone number
-      const phoneDigits = body.phoneNumber.replace(/\D/g, '');
-      if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-        return new Response(JSON.stringify({ 
-          error: 'Invalid phone number format' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Generate unique ID for the form submission
-      const formId = crypto.randomUUID();
+      const appointmentId = crypto.randomUUID();
       
-      // Insert form submission into database
-      const result = await env.DB.prepare(`
-        INSERT INTO contact_forms (
-          id, conversation_id, team_id, phone_number, email, case_details, status
-        ) VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      await env.DB.prepare(`
+        INSERT INTO appointments (id, team_id, email, phone_number, preferred_date, preferred_time, case_type, notes, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
       `).bind(
-        formId,
-        body.conversationId || null,
-        body.teamId,
-        body.phoneNumber,
-        body.email,
-        body.caseDetails
+        appointmentId, body.teamId, body.email, body.phoneNumber || '',
+        body.preferredDate, body.preferredTime || '', body.caseType, body.notes || ''
       ).run();
 
-      if (result.success) {
-        // Get team configuration to send notifications
-        const teamRow = await env.DB.prepare(`SELECT id, name, config FROM teams WHERE id = ?`).bind(body.teamId).first();
-        let teamConfig = null;
-        if (teamRow) {
-          let configObj = {};
-          try {
-            configObj = JSON.parse(teamRow.config);
-          } catch (e) {
-            console.warn('Failed to parse team config JSON:', e);
-          }
-          teamConfig = {
-            id: teamRow.id,
-            name: teamRow.name,
-            config: configObj
-          };
-        }
-        if (teamConfig) {
-          try {
-            await sendEmailNotifications(body, formId, teamConfig, env);
-          } catch (error) {
-            console.warn('Email notifications failed:', error.message);
-            // Continue without email - form submission still succeeds
-          }
-        } else {
-          console.warn(`Team with ID ${body.teamId} not found for form submission ${formId}`);
-        }
-
-        return new Response(JSON.stringify({ 
-          success: true,
-          formId,
-          message: 'Form submitted successfully. A lawyer will contact you within 24 hours.',
-          timestamp: new Date().toISOString()
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      } else {
-        throw new Error('Database insertion failed');
-      }
-    } catch (error) {
-      console.error('Form submission error:', error);
-      return new Response(JSON.stringify({ 
-        error: 'Failed to submit form',
-        details: error.message
+      return new Response(JSON.stringify({
+        success: true,
+        appointmentId,
+        message: 'Appointment requested successfully. We will contact you within 24 hours.'
       }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      console.error('Scheduling error:', error);
+      return new Response(JSON.stringify({ error: 'Scheduling failed' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
   }
 
-  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-    status: 405,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
-}
-
-async function handleTeams(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method === 'GET') {
-    try {
-      // Load all teams from the database
-      const rows = await env.DB.prepare('SELECT id, name, config FROM teams').all();
-      const teams = rows.results.map((row: any) => {
-        let configObj = {};
-        try {
-          configObj = JSON.parse(row.config);
-        } catch (e) {
-          console.warn('Failed to parse team config JSON:', e);
-        }
-        return {
-          id: row.id,
-          name: row.name,
-          config: configObj
-        };
-      });
-      return new Response(JSON.stringify(teams), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      console.error('Teams Error:', error);
-      return new Response(JSON.stringify({ 
-        error: 'Failed to fetch teams',
-        details: error.message
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-    status: 405,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
-} 
-
-// Send email notifications via Resend
-async function calculateCaseQuality(
-  service: string,
-  description: string,
-  answers: Record<string, string> = {},
-  urgency?: string,
-  teamConfig?: any
-): Promise<CaseQualityScore> {
-  // Initialize breakdown
-  const breakdown = {
-    followUpCompletion: 0,
-    requiredFields: 0,
-    evidence: 0,
-    clarity: 0,
-    urgency: 0,
-    consistency: 0,
-    aiConfidence: 0
-  };
-
-  // 1. Follow-up Completion (25% weight)
-  const serviceQuestions = teamConfig?.serviceQuestions?.[service] || [];
-  const answeredQuestions = Object.keys(answers).length;
-  const totalQuestions = serviceQuestions.length;
-  breakdown.followUpCompletion = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 100;
-
-  // 2. Required Fields (20% weight)
-  const hasService = !!service;
-  const hasDescription = !!description && description.length > 10;
-  const hasAnswers = answeredQuestions > 0;
-  breakdown.requiredFields = ((hasService ? 1 : 0) + (hasDescription ? 1 : 0) + (hasAnswers ? 1 : 0)) / 3 * 100;
-
-  // 3. Evidence (15% weight)
-  // Check if user mentioned documents, photos, or evidence
-  const evidenceKeywords = ['photo', 'document', 'evidence', 'proof', 'picture', 'image', 'file', 'upload'];
-  const hasEvidence = evidenceKeywords.some(keyword => 
-    description.toLowerCase().includes(keyword) || 
-    Object.values(answers).some(answer => answer.toLowerCase().includes(keyword))
-  );
-  breakdown.evidence = hasEvidence ? 100 : 0;
-
-  // 4. Clarity (15% weight)
-  // Assess answer quality and specificity
-  let clarityScore = 0;
-  const totalAnswers = Object.values(answers).length;
-  if (totalAnswers > 0) {
-    const clarityScores = Object.values(answers).map(answer => {
-      const length = answer.length;
-      const hasDetails = answer.toLowerCase().includes('because') || answer.toLowerCase().includes('when') || answer.toLowerCase().includes('where');
-      const isSpecific = !answer.toLowerCase().includes('i don\'t know') && !answer.toLowerCase().includes('not sure');
-      return (length > 10 ? 1 : 0) + (hasDetails ? 1 : 0) + (isSpecific ? 1 : 0);
-    });
-    clarityScore = (clarityScores.reduce((a, b) => a + b, 0) / (totalAnswers * 3)) * 100;
-  }
-  breakdown.clarity = clarityScore;
-
-  // 5. Urgency (10% weight)
-  breakdown.urgency = urgency ? 100 : 0;
-
-  // 6. Consistency (10% weight)
-  // Check for contradictions in answers
-  let consistencyScore = 100;
-  const answersArray = Object.values(answers);
-  if (answersArray.length > 1) {
-    // Simple consistency check - could be enhanced with AI
-    const hasContradictions = false; // Placeholder for AI-based consistency check
-    consistencyScore = hasContradictions ? 50 : 100;
-  }
-  breakdown.consistency = consistencyScore;
-
-  // 7. AI Confidence (5% weight)
-  // This will be set by the AI analysis step
-  breakdown.aiConfidence = 75; // Default value, will be updated by AI analysis
-
-  // Calculate weighted score
-  const weights = {
-    followUpCompletion: 0.25,
-    requiredFields: 0.20,
-    evidence: 0.15,
-    clarity: 0.15,
-    urgency: 0.10,
-    consistency: 0.10,
-    aiConfidence: 0.05
-  };
-
-  const score = Math.round(
-    breakdown.followUpCompletion * weights.followUpCompletion +
-    breakdown.requiredFields * weights.requiredFields +
-    breakdown.evidence * weights.evidence +
-    breakdown.clarity * weights.clarity +
-    breakdown.urgency * weights.urgency +
-    breakdown.consistency * weights.consistency +
-    breakdown.aiConfidence * weights.aiConfidence
-  );
-
-  // Generate suggestions
-  const suggestions: string[] = [];
-  if (breakdown.followUpCompletion < 100) {
-    suggestions.push('Complete all follow-up questions to improve your case readiness.');
-  }
-  if (breakdown.requiredFields < 100) {
-    if (!description || description.length <= 10) {
-      suggestions.push('Provide a detailed description of your situation.');
-    }
-  }
-  if (breakdown.evidence === 0) {
-    suggestions.push('Consider uploading photos, documents, or other evidence related to your case.');
-  }
-  if (breakdown.clarity < 70) {
-    suggestions.push('Provide more specific details about what happened and when.');
-  }
-  if (breakdown.urgency === 0) {
-    suggestions.push('Specify how urgent your matter is to help prioritize your case.');
-  }
-
-  // Determine color based on score
-  let color: 'red' | 'yellow' | 'green' | 'blue';
-  
-  if (score >= 90) {
-    color = 'blue';
-  } else if (score >= 75) {
-    color = 'green';
-  } else if (score >= 50) {
-    color = 'yellow';
-  } else {
-    color = 'red';
-  }
-
-  return {
-    score,
-    breakdown,
-    suggestions,
-    readyForLawyer: score >= 75,
-    color
-  };
-}
-
-async function sendEmailNotifications(
-  formData: ContactFormSubmission, 
-  formId: string, 
-  teamConfig: any,
-  env: Env
-): Promise<void> {
-  // Skip email if no API key is configured
-  if (!env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY not configured, skipping email notifications');
-    return;
-  }
-  
-  try {
-    // Get team owner email (you'll need to add this to your teams table)
-    const teamOwnerEmail = teamConfig?.config?.ownerEmail || 'admin@blawby.com';
+    const timeSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
     
-    // Send confirmation email to client
-    const clientEmailResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'noreply@blawby.com',
-        to: formData.email,
-        subject: 'Thank you for contacting our law firm',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Thank you for contacting ${teamConfig?.name || 'our law firm'}</h2>
-            <p>We have received your inquiry and a lawyer will review your case details.</p>
-            <p><strong>Reference ID:</strong> ${formId}</p>
-            <p><strong>Case Details:</strong> ${formData.caseDetails}</p>
-            <p>You can expect to hear from us within 24 hours.</p>
-            <p>If you have any urgent questions, please don't hesitate to reach out.</p>
-            <br>
-            <p>Best regards,<br>${teamConfig?.name || 'The Legal Team'}</p>
-          </div>
-        `
-      })
+    return new Response(JSON.stringify({
+      availableSlots: timeSlots,
+      timezone: 'America/New_York'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-
-    if (!clientEmailResponse.ok) {
-      console.error('Failed to send client email:', await clientEmailResponse.text());
-    }
-
-    // Send notification email to team owner
-    const ownerEmailResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'noreply@blawby.com',
-        to: teamOwnerEmail,
-        subject: `New Lead: ${formData.email} - ${teamConfig?.name || 'Law Firm'}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>New Lead Received</h2>
-            <p><strong>Form ID:</strong> ${formId}</p>
-            <p><strong>Client Email:</strong> ${formData.email}</p>
-            <p><strong>Client Phone:</strong> ${formData.phoneNumber}</p>
-            <p><strong>Case Details:</strong> ${formData.caseDetails}</p>
-            <p><strong>Team:</strong> ${teamConfig?.name || 'Unknown'}</p>
-            <p><strong>Submitted:</strong> ${new Date().toISOString()}</p>
-            <br>
-            <p>Please review and contact the client within 24 hours.</p>
-          </div>
-        `
-      })
-    });
-
-    if (!ownerEmailResponse.ok) {
-      console.error('Failed to send owner email:', await ownerEmailResponse.text());
-    }
-
-    console.log('Email notifications sent successfully');
-  } catch (error) {
-    console.error('Error sending email notifications:', error);
-    // Don't throw - email failure shouldn't break form submission
-  }
-}
-
-async function handleCaseQuality(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
-  if (request.method === 'POST') {
-    try {
-      const body = await request.json();
-      
-      // Validate required fields
-      if (!body.teamId || !body.service) {
-        return new Response(JSON.stringify({ 
-          error: 'Missing required fields: teamId and service are required' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Get team configuration
-      const teamRow = await env.DB.prepare(`SELECT id, name, config FROM teams WHERE id = ?`).bind(body.teamId).first();
-      if (!teamRow) {
-        return new Response(JSON.stringify({ error: 'Team not found' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      let teamConfig = {};
-      try {
-        teamConfig = JSON.parse(teamRow.config);
-      } catch (e) {
-        console.error('Error parsing team config:', e);
-      }
-
-      // Calculate quality score
-      const qualityScore = await calculateCaseQuality(
-        body.service,
-        body.description || '',
-        body.answers || {},
-        body.urgency,
-        teamConfig
-      );
-
-      return new Response(JSON.stringify(qualityScore), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-
-    } catch (error) {
-      console.error('Case quality error:', error);
-      return new Response(JSON.stringify({ error: 'Internal server error' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
   }
 
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -784,324 +1059,290 @@ async function handleCaseQuality(request: Request, env: Env, corsHeaders: Record
   });
 }
 
-async function handleCaseCreation(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
-  if (request.method === 'POST') {
+// Session handler
+async function handleSessions(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  // Get session data
+  if (path.startsWith('/api/sessions/') && request.method === 'GET') {
     try {
-      const body = await request.json() as CaseCreationRequest;
-      
-      // Validate input
-      if (!body.teamId || !body.service || !body.step) {
-        return new Response(JSON.stringify({ 
-          error: 'Invalid request: teamId, service, and step are required' 
-        }), {
+      const sessionId = path.split('/').pop();
+      if (!sessionId) {
+        return new Response(JSON.stringify({ error: 'Session ID required' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      // Get team configuration
-      const teamRow = await env.DB.prepare(`SELECT id, name, config FROM teams WHERE id = ?`).bind(body.teamId).first();
-      if (!teamRow) {
-        return new Response(JSON.stringify({ 
-          error: 'Team not found' 
-        }), {
+      const sessionData = await env.CHAT_SESSIONS.get(sessionId);
+      if (!sessionData) {
+        return new Response(JSON.stringify({ error: 'Session not found' }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      let teamConfig = {};
-      try {
-        teamConfig = JSON.parse(teamRow.config);
-      } catch (e) {
-        console.warn('Failed to parse team config JSON:', e);
+      return new Response(sessionData, {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } catch (error) {
+      console.error('Session retrieval error:', error);
+      return new Response(JSON.stringify({ error: 'Session retrieval failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Save session data
+  if (path === '/api/sessions' && request.method === 'POST') {
+    try {
+      const body = await parseJsonBody(request) as { sessionId: string; data: any };
+      const { sessionId, data } = body;
+      
+      if (!sessionId || !data) {
+        return new Response(JSON.stringify({ error: 'Session ID and data required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
 
-      // Handle different steps
-      switch (body.step) {
-        case 'service-selection':
-          // Calculate initial quality score
-          const serviceQualityScore = await calculateCaseQuality(body.service, '', {}, undefined, teamConfig);
-          
-          return new Response(JSON.stringify({
-            step: 'urgency-selection',
-            message: `Thank you for selecting ${body.service}. To better understand your situation and provide appropriate assistance, I'd like to know how urgent this matter is.`,
-            urgencyOptions: [
-              { value: 'Very Urgent', label: 'Very Urgent - Immediate action needed' },
-              { value: 'Somewhat Urgent', label: 'Somewhat Urgent - Within a few weeks' },
-              { value: 'Not Urgent', label: 'Not Urgent - Can wait a month or more' }
-            ],
-            qualityScore: serviceQualityScore
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+      // Store session data with TTL of 24 hours
+      await env.CHAT_SESSIONS.put(sessionId, JSON.stringify(data), {
+        expirationTtl: 24 * 60 * 60 // 24 hours in seconds
+      });
 
-        case 'urgency-selection':
-          // Check if there are service-specific questions to ask
-          const serviceQuestions = teamConfig.serviceQuestions?.[body.service] || [];
-          const urgencyQualityScore = await calculateCaseQuality(body.service, '', {}, body.urgency, teamConfig);
-          
-          if (serviceQuestions.length > 0) {
-            // Move to AI questions with urgency context
-            return new Response(JSON.stringify({
-              step: 'ai-questions',
-              currentQuestionIndex: 0,
-              question: serviceQuestions[0],
-              totalQuestions: serviceQuestions.length,
-              message: `Thank you for indicating this is ${body.urgency.toLowerCase()}. Given the urgency, let me ask you some specific questions to quickly assess your situation and provide targeted assistance.\n\n${serviceQuestions[0]}`,
-              questions: serviceQuestions,
-              urgency: body.urgency,
-              qualityScore: urgencyQualityScore
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          } else {
-            // No specific questions, move to case details
-            return new Response(JSON.stringify({
-              step: 'case-details',
-              message: `Thank you for indicating this is ${body.urgency.toLowerCase()}. Now, could you please provide a brief description of your situation? What happened and what are you hoping to achieve?`,
-              urgency: body.urgency,
-              qualityScore: urgencyQualityScore
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
 
-        case 'ai-questions':
-          const questions = teamConfig.serviceQuestions?.[body.service] || [];
-          const currentIndex = body.currentQuestionIndex || 0;
-          const nextIndex = currentIndex + 1;
-          
-          if (nextIndex < questions.length) {
-            // More questions to ask
-            const nextQuestionQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, body.urgency, teamConfig);
-            
-            return new Response(JSON.stringify({
-              step: 'ai-questions',
-              currentQuestionIndex: nextIndex,
-              question: questions[nextIndex],
-              totalQuestions: questions.length,
-              message: `Thank you for that information.`,
-              questions: questions,
-              urgency: body.urgency,
-              qualityScore: nextQuestionQualityScore
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          } else {
-            // All questions answered, move to case details
-            const answersSummary = Object.entries(body.answers || {})
-              .map(([question, answer]) => `**${question}**\n${answer}`)
-              .join('\n\n');
-            
-            const aiQuestionsQualityScore = await calculateCaseQuality(body.service, '', body.answers || {}, body.urgency, teamConfig);
-            
-            return new Response(JSON.stringify({
-              step: 'case-details',
-              message: `Thank you for providing those details. Based on your responses:\n\n${answersSummary}\n\nNow, could you please provide a brief overall description of your situation? What happened and what are you hoping to achieve?`,
-              answers: body.answers,
-              urgency: body.urgency,
-              qualityScore: aiQuestionsQualityScore
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          }
+    } catch (error) {
+      console.error('Session save error:', error);
+      return new Response(JSON.stringify({ error: 'Session save failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
 
-        case 'case-details':
-          // Move to AI analysis step
-          const caseDetailsQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
-          
-          return new Response(JSON.stringify({
-            step: 'ai-analysis',
-            message: `Thank you for sharing those details. Let me analyze your case to better understand your situation and determine what additional information might be needed.`,
-            caseData: {
-              service: body.service,
-              description: body.description,
-              answers: body.answers,
-              urgency: body.urgency
-            },
-            qualityScore: caseDetailsQualityScore
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+  // Delete session data
+  if (path.startsWith('/api/sessions/') && request.method === 'DELETE') {
+    try {
+      const sessionId = path.split('/').pop();
+      if (!sessionId) {
+        return new Response(JSON.stringify({ error: 'Session ID required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
-        case 'ai-analysis':
-          // Use AI to analyze the case and provide insights
-          try {
-            const caseSummary = Object.entries(body.answers || {})
-              .map(([question, answer]) => `**${question}**\n${answer}`)
-              .join('\n\n');
-            
-            const analysisPrompt = `You are a legal case analyst. Analyze the following case information and provide:
+      await env.CHAT_SESSIONS.delete(sessionId);
 
-1. A professional summary of the case
-2. Assessment of whether we have sufficient information for a qualified legal lead
-3. Any missing critical information that should be gathered
-4. Recommended next steps
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
 
-IMPORTANT: Only ask follow-up questions if there is genuinely missing critical information. If the client has already provided comprehensive details about their situation, do not ask generic questions like "Can you provide more details" or "What is the current status" if those details are already clear from their responses.
+    } catch (error) {
+      console.error('Session deletion error:', error);
+      return new Response(JSON.stringify({ error: 'Session deletion failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
 
-Case Information:
-- Practice Area: ${body.service}
-- Urgency: ${body.urgency}
-- Client Description: ${body.description}
-- Detailed Responses:
-${caseSummary}
-
-Please provide a structured analysis in JSON format with the following fields:
-{
-  "summary": "Professional case summary",
-  "sufficientInfo": true/false,
-  "missingInfo": ["list of missing critical information"],
-  "recommendations": ["list of recommended next steps"],
-  "followUpQuestions": ["specific questions to ask if needed"],
-  "readyForLawyer": true/false
+  return new Response(JSON.stringify({ error: 'Invalid session endpoint' }), {
+    status: 404,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
 }
 
-Guidelines:
-- If the client has clearly explained their situation and the key facts are present, set readyForLawyer to true
-- Only ask follow-up questions for genuinely missing critical information
-- Avoid asking questions about information already provided
-- Focus on actionable next steps rather than redundant information gathering
-- Consider urgency level when determining if more information is needed
-- If the client has provided a detailed description with specific facts, amounts, and timeline, they likely have sufficient information
-- Only ask for missing critical details that would significantly impact legal strategy`;
+// Files handler
+async function handleFiles(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  const url = new URL(request.url);
+  const path = url.pathname;
 
-            const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-              messages: [
-                { role: 'system', content: 'You are a professional legal case analyst. Provide clear, structured analysis in JSON format.' },
-                { role: 'user', content: analysisPrompt }
-              ]
-            });
-
-            let analysis;
-            try {
-              // Try to parse the AI response as JSON
-              const responseText = aiResponse.response || '';
-              const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                analysis = JSON.parse(jsonMatch[0]);
-              } else {
-                throw new Error('No JSON found in response');
-              }
-            } catch (parseError) {
-              // Fallback analysis if JSON parsing fails
-              analysis = {
-                summary: `Based on the information provided, this appears to be a ${body.service} case involving ${body.description}.`,
-                sufficientInfo: false,
-                missingInfo: ['More specific details about the situation', 'Timeline of events', 'Current status'],
-                recommendations: ['Gather more specific information', 'Clarify timeline and current status'],
-                followUpQuestions: ['Can you provide more specific details about your situation?', 'What is the current status of this situation?'],
-                readyForLawyer: false
-              };
-            }
-
-            if (analysis.readyForLawyer && analysis.sufficientInfo) {
-              // Case is ready for lawyer connection
-              const completeAnalysisQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
-              
-              // Create comprehensive case summary
-              let caseSummary = `**Case Analysis Complete**\n\n${analysis.summary}\n\n**Case Summary:**\n- **Type:** ${body.service}\n- **Urgency:** ${body.urgency}\n- **Description:** ${body.description}`;
-              
-              if (body.answers && Object.keys(body.answers).length > 0) {
-                caseSummary += '\n\n**Additional Details:**';
-                Object.entries(body.answers).forEach(([question, answer]) => {
-                  caseSummary += `\n- **${question}** ${answer}`;
-                });
-              }
-              
-              caseSummary += `\n\nBased on my analysis, I have sufficient information to connect you with a qualified attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
-              
-              return new Response(JSON.stringify({
-                step: 'complete',
-                message: caseSummary,
-                caseData: {
-                  service: body.service,
-                  description: body.description,
-                  urgency: body.urgency,
-                  answers: body.answers
-                },
-                analysis: analysis,
-                qualityScore: completeAnalysisQualityScore
-              }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              });
-            } else {
-              // Need more information
-              const followUpMessage = analysis.followUpQuestions && analysis.followUpQuestions.length > 0
-                ? `\n\nI need to gather a bit more information to better assist you:\n\n${analysis.followUpQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
-                : '\n\nI need to gather a bit more information to better assist you.';
-
-              const followUpQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
-
-              return new Response(JSON.stringify({
-                step: 'ai-questions',
-                currentQuestionIndex: 0,
-                question: analysis.followUpQuestions?.[0] || 'Can you provide more specific details about your situation?',
-                totalQuestions: analysis.followUpQuestions?.length || 1,
-                message: `**Case Analysis**\n\n${analysis.summary}${followUpMessage}`,
-                questions: analysis.followUpQuestions || ['Can you provide more specific details about your situation?'],
-                analysis: analysis,
-                urgency: body.urgency,
-                qualityScore: followUpQualityScore
-              }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              });
-            }
-          } catch (aiError) {
-            console.error('AI analysis error:', aiError);
-            // Fallback to complete if AI fails
-            const fallbackQualityScore = await calculateCaseQuality(body.service, body.description || '', body.answers || {}, body.urgency, teamConfig);
-            
-            // Create fallback case summary
-            let caseSummary = `**Case Summary:**\n- **Type:** ${body.service}\n- **Urgency:** ${body.urgency}\n- **Description:** ${body.description}`;
-            
-            if (body.answers && Object.keys(body.answers).length > 0) {
-              caseSummary += '\n\n**Additional Details:**';
-              Object.entries(body.answers).forEach(([question, answer]) => {
-                caseSummary += `\n- **${question}** ${answer}`;
-              });
-            }
-            
-            caseSummary += `\n\nBased on your comprehensive case details, I can help connect you with an attorney who specializes in ${body.service}. Would you like me to start the process of connecting you with a lawyer?`;
-            
-            return new Response(JSON.stringify({
-              step: 'complete',
-              message: caseSummary,
-              caseData: {
-                service: body.service,
-                description: body.description,
-                urgency: body.urgency,
-                answers: body.answers
-              },
-              qualityScore: fallbackQualityScore
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          }
-
-        default:
-          return new Response(JSON.stringify({ 
-            error: 'Invalid step' 
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+  // File upload endpoint
+  if (path === '/api/files/upload' && request.method === 'POST') {
+    try {
+      if (!env.FILES_BUCKET) {
+        return new Response(JSON.stringify({ error: 'File storage not configured' }), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
-    } catch (error) {
-      console.error('Case creation error:', error);
-      return new Response(JSON.stringify({ 
-        error: 'Failed to process case creation',
-        details: error.message
+
+      const formData = await request.formData();
+      const file = formData.get('file') as File;
+      const teamId = formData.get('teamId') as string;
+      const sessionId = formData.get('sessionId') as string;
+
+      if (!file) {
+        return new Response(JSON.stringify({ error: 'No file provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Validate file type and size
+      const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf', 'text/plain', 'text/csv',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm',
+        'video/mp4', 'video/webm', 'video/ogg'
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        return new Response(JSON.stringify({ error: 'File type not allowed' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 10MB limit
+      if (file.size > 10 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'File too large. Maximum size is 10MB' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = crypto.randomUUID();
+      const fileExtension = file.name.split('.').pop() || 'bin';
+      const fileName = `${teamId}/${sessionId}/${timestamp}-${randomId}.${fileExtension}`;
+
+      // Upload to R2
+      const fileBuffer = await file.arrayBuffer();
+      await env.FILES_BUCKET.put(fileName, fileBuffer, {
+        httpMetadata: {
+          contentType: file.type,
+          contentDisposition: `attachment; filename="${file.name}"`
+        },
+        customMetadata: {
+          originalName: file.name,
+          uploadedAt: new Date().toISOString(),
+          teamId: teamId || 'unknown',
+          sessionId: sessionId || 'unknown'
+        }
+      });
+
+      // Store file metadata in database
+      const fileId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO uploaded_files (id, team_id, session_id, original_name, file_name, file_type, file_size, uploaded_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).bind(fileId, teamId, sessionId, file.name, fileName, file.type, file.size).run();
+
+      return new Response(JSON.stringify({
+        success: true,
+        fileId,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        url: `/api/files/${fileId}`
       }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } catch (error) {
+      console.error('File upload error:', error);
+      return new Response(JSON.stringify({ error: 'File upload failed' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
   }
 
-  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-    status: 405,
+  // File download endpoint
+  if (path.startsWith('/api/files/') && request.method === 'GET') {
+    try {
+      const fileId = path.split('/').pop();
+      if (!fileId) {
+        return new Response(JSON.stringify({ error: 'File ID required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get file metadata from database
+      const fileRow = await env.DB.prepare('SELECT * FROM uploaded_files WHERE id = ?').bind(fileId).first();
+      if (!fileRow) {
+        return new Response(JSON.stringify({ error: 'File not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (!env.FILES_BUCKET) {
+        return new Response(JSON.stringify({ error: 'File storage not configured' }), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get file from R2
+      const object = await env.FILES_BUCKET.get(fileRow.file_name as string);
+      if (!object) {
+        return new Response(JSON.stringify({ error: 'File not found in storage' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Return file with appropriate headers
+      return new Response(object.body, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': fileRow.file_type as string,
+          'Content-Disposition': `attachment; filename="${fileRow.original_name}"`,
+          'Content-Length': fileRow.file_size?.toString() || '0'
+        }
+      });
+
+    } catch (error) {
+      console.error('File download error:', error);
+      return new Response(JSON.stringify({ error: 'File download failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({ error: 'Invalid file endpoint' }), {
+    status: 404,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   });
+}
+
+// Simplified notification sender
+async function sendNotifications(formData: ContactForm, formId: string, env: Env) {
+  const emailService = new EmailService(env.RESEND_API_KEY);
+  
+  // Client confirmation
+  await emailService.send({
+    from: 'noreply@blawby.com',
+    to: formData.email,
+    subject: 'Thank you for contacting our law firm',
+    text: `Thank you for your inquiry. Reference ID: ${formId}. We will contact you within 24 hours.`
+  });
+
+  // Team notification
+  const teamRow = await env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(formData.teamId).first();
+  if (teamRow) {
+    const config = JSON.parse(teamRow.config as string);
+    if (config.ownerEmail) {
+      await emailService.send({
+        from: 'noreply@blawby.com',
+        to: config.ownerEmail,
+        subject: `New Lead: ${formData.email}`,
+        text: `New lead received:\n\nEmail: ${formData.email}\nPhone: ${formData.phoneNumber}\nCase: ${formData.caseDetails}\nForm ID: ${formId}`
+      });
+    }
+  }
 } 
