@@ -5,7 +5,6 @@ export interface Env {
   DB: D1Database;
   CHAT_SESSIONS: KVNamespace;
   RESEND_API_KEY: string;
-  VECTORIZE?: any;
   FILES_BUCKET?: R2Bucket;
 }
 
@@ -103,19 +102,6 @@ class AIService {
     
     return {};
   }
-  
-  async searchKnowledge(query: string) {
-    if (!this.env.VECTORIZE) return [];
-    
-    try {
-      const embedding = await this.ai.run("@cf/baai/bge-small-en-v1.5", { text: query });
-      const result = await this.env.VECTORIZE.query(embedding.data[0], { topK: 3 });
-      return result.matches || [];
-    } catch (error) {
-      console.warn('Knowledge search failed:', error);
-      return [];
-    }
-  }
 }
 
 // Optimized Email Service
@@ -151,344 +137,20 @@ class EmailService {
   }
 }
 
-// Pre-compiled keyword sets for better performance
-const EVIDENCE_KEYWORDS = new Set([
-  'document', 'contract', 'photo', 'picture', 'receipt', 'email', 'letter',
-  'recording', 'video', 'screenshot', 'witness', 'evidence', 'proof',
-  'paperwork', 'signed', 'written', 'attachment', 'file'
-]);
-
-const URGENT_KEYWORDS = new Set([
-  'emergency', 'urgent', 'immediately', 'asap', 'deadline', 'court date', 
-  'eviction', 'foreclosure', 'termination', 'fired', 'arrest', 'custody',
-  'threat', 'violence', 'abuse', 'harassment', 'restraining order',
-  'bankruptcy', 'lawsuit filed', 'hearing', 'trial', 'expires', 'due date'
-]);
-
-const MODERATE_KEYWORDS = new Set([
-  'soon', 'quickly', 'time sensitive', 'pending', 'waiting', 'delayed',
-  'problem', 'issue', 'concerned', 'worried', 'help needed', 'separated',
-  'dispute', 'conflict', 'disagreement', 'contract issue'
-]);
-
-const SITUATION_URGENCY = new Map([
-  ['hotel', 70], ['motel', 70], ['homeless', 100], ['evicted', 100], ['staying with', 60],
-  ['court date', 100], ['hearing', 90], ['trial', 100], ['lawsuit', 80], ['filed against', 90],
-  ['fired', 80], ['terminated', 80], ['lost job', 70], ['need job', 50],
-  ['custody', 80], ['child support', 70], ['divorce', 60], ['separated', 50],
-  ['bankruptcy', 90], ['foreclosure', 100], ['can\'t pay', 80]
-]);
-
-// Optimized case quality assessment with reduced AI calls
-async function assessCaseQuality(caseData: any, aiService?: AIService): Promise<{
+// Simplified case quality assessment (no AI calls)
+function assessCaseQuality(caseData: any): {
   score: number;
-  breakdown: {
-    followUpCompletion: number;
-    requiredFields: number;
-    evidence: number;
-    clarity: number;
-    urgency: number;
-    consistency: number;
-    aiConfidence: number;
-  };
-  suggestions: string[];
   readyForLawyer: boolean;
-  badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
-  color: 'blue' | 'green' | 'yellow' | 'red';
-  inferredUrgency: string;
-}> {
-  const breakdown = {
-    followUpCompletion: 0,
-    requiredFields: 0,
-    evidence: 0,
-    clarity: 0,
-    urgency: 0,
-    consistency: 0,
-    aiConfidence: 60 // Default confidence
-  };
-  
-  const suggestions: string[] = [];
-  
-  // Extract answer text efficiently
-  const answerTexts = Object.values(caseData.answers || {}).map(value => {
-    if (typeof value === 'object' && value !== null && 'answer' in value) {
-      return value.answer;
-    }
-    return value;
-  }).filter(text => text && typeof text === 'string');
-  
-  const fullText = `${caseData.description || ''} ${answerTexts.join(' ')}`.toLowerCase();
-  
-  // 1. Follow-up Completion (25 points)
-  const totalQuestions = Object.keys(caseData.answers || {}).length;
-  const expectedQuestions = 3;
-  if (totalQuestions > 0) {
-    breakdown.followUpCompletion = Math.min(100, (totalQuestions / expectedQuestions) * 100);
-  } else {
-    suggestions.push("Answer the practice area questions to provide more context");
-  }
-  
-  // 2. Required Fields (20 points)
-  let requiredFieldsScore = 0;
-  if (caseData.service) requiredFieldsScore += 50;
-  if (caseData.description && caseData.description.length > 20) requiredFieldsScore += 50;
-  breakdown.requiredFields = requiredFieldsScore;
-  
-  if (!caseData.service) suggestions.push("Select a practice area");
-  if (!caseData.description || caseData.description.length <= 20) {
-    suggestions.push("Provide a detailed case description");
-  }
-  
-  // 3. Evidence Detection (15 points) - optimized with Set
-  let evidenceCount = 0;
-  for (const keyword of EVIDENCE_KEYWORDS) {
-    if (fullText.includes(keyword)) {
-      evidenceCount++;
-    }
-  }
-  breakdown.evidence = Math.min(100, evidenceCount * 25);
-  
-  if (breakdown.evidence < 50) {
-    suggestions.push("Consider mentioning any documents, photos, or evidence you have");
-  }
-  
-  // 4. Clarity Assessment (15 points)
-  const descriptionLength = (caseData.description || '').length;
-  if (descriptionLength > 100) {
-    breakdown.clarity = Math.min(100, descriptionLength / 3);
-  } else {
-    suggestions.push("Provide more specific details about what happened and when");
-  }
-  
-  // 5. AI-Powered Urgency Assessment (10 points) - optimized with Sets
-  let urgencyScore = 40;
-  let inferredUrgency = 'Not Urgent';
-  
-  let urgentCount = 0;
-  let moderateCount = 0;
-  
-  for (const keyword of URGENT_KEYWORDS) {
-    if (fullText.includes(keyword)) urgentCount++;
-  }
-  
-  for (const keyword of MODERATE_KEYWORDS) {
-    if (fullText.includes(keyword)) moderateCount++;
-  }
-  
-  // Check situation urgency efficiently
-  let maxSituationUrgency = 0;
-  for (const [situation, score] of SITUATION_URGENCY) {
-    if (fullText.includes(situation)) {
-      maxSituationUrgency = Math.max(maxSituationUrgency, score);
-    }
-  }
-  
-  // Calculate urgency score
-  if (urgentCount >= 2 || maxSituationUrgency >= 90) {
-    urgencyScore = 100;
-    inferredUrgency = 'Very Urgent';
-  } else if (urgentCount >= 1 || moderateCount >= 2 || maxSituationUrgency >= 60) {
-    urgencyScore = 70;
-    inferredUrgency = 'Somewhat Urgent';
-  } else if (moderateCount >= 1 || maxSituationUrgency >= 40) {
-    urgencyScore = 50;
-    inferredUrgency = 'Somewhat Urgent';
-  }
-  
-  // Override with explicit urgency if provided
-  if (caseData.urgency) {
-    const urgencyMap = {
-      'Very Urgent': 100,
-      'Somewhat Urgent': 70,
-      'Not Urgent': 40
-    };
-    urgencyScore = urgencyMap[caseData.urgency as keyof typeof urgencyMap] || urgencyScore;
-    inferredUrgency = caseData.urgency;
-  }
-  
-  breakdown.urgency = urgencyScore;
-  
-  // 6. Consistency Check (10 points)
-  if (caseData.service && totalQuestions > 0) {
-    breakdown.consistency = 80;
-  } else {
-    breakdown.consistency = 40;
-  }
-  
-  // 7. AI Confidence (5 points) - only call AI if score is low
-  if (aiService && caseData.description) {
-    const tempScore = Math.round(
-      breakdown.followUpCompletion * 0.25 +
-      breakdown.requiredFields * 0.20 +
-      breakdown.evidence * 0.15 +
-      breakdown.clarity * 0.15 +
-      breakdown.urgency * 0.10 +
-      breakdown.consistency * 0.10 +
-      breakdown.aiConfidence * 0.05
-    );
-    
-    // Only call AI if score is below threshold to save resources
-    if (tempScore < 75) {
-      try {
-        const analysisPrompt = `Analyze this legal case description for clarity, completeness, and actionable details. Rate confidence from 0-100:
-        
-Case Type: ${caseData.service || 'Unknown'}
-Description: ${caseData.description}
-Answers: ${JSON.stringify(caseData.answers || {})}
-
-Focus on: legal merit, factual clarity, timeline specificity, and evidence mentioned.
-Respond with just a number 0-100.`;
-
-        const aiResult = await aiService.runLLM([
-          { role: 'system', content: 'You are a legal case analyst. Provide only numeric confidence ratings.' },
-          { role: 'user', content: analysisPrompt }
-        ]);
-        
-        const confidenceMatch = aiResult.response.match(/\d+/);
-        if (confidenceMatch) {
-          breakdown.aiConfidence = Math.min(100, Math.max(0, parseInt(confidenceMatch[0])));
-        }
-      } catch (error) {
-        console.warn('AI confidence analysis failed:', error);
-      }
-    }
-  }
-  
-  // Calculate overall score
-  const weights = {
-    followUpCompletion: 0.25,
-    requiredFields: 0.20,
-    evidence: 0.15,
-    clarity: 0.15,
-    urgency: 0.10,
-    consistency: 0.10,
-    aiConfidence: 0.05
-  };
-  
-  const score = Math.round(
-    breakdown.followUpCompletion * weights.followUpCompletion +
-    breakdown.requiredFields * weights.requiredFields +
-    breakdown.evidence * weights.evidence +
-    breakdown.clarity * weights.clarity +
-    breakdown.urgency * weights.urgency +
-    breakdown.consistency * weights.consistency +
-    breakdown.aiConfidence * weights.aiConfidence
-  );
-  
-  // Determine badge and color
-  let badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
-  let color: 'blue' | 'green' | 'yellow' | 'red';
-  
-  if (score >= 90) {
-    badge = 'Excellent';
-    color = 'blue';
-  } else if (score >= 75) {
-    badge = 'Good';
-    color = 'green';
-  } else if (score >= 50) {
-    badge = 'Fair';
-    color = 'yellow';
-  } else {
-    badge = 'Poor';
-    color = 'red';
-  }
-  
-  // Enhanced suggestions based on AI analysis - only if score is low
-  if (aiService && score < 80) {
-    try {
-      const suggestionPrompt = `Based on this legal case, provide 2-3 specific suggestions to improve the case quality:
-      
-Case Type: ${caseData.service || 'Unknown'}
-Description: ${caseData.description}
-Current Score: ${score}/100
-
-Provide practical, actionable suggestions for better case preparation.`;
-
-      const aiResult = await aiService.runLLM([
-        { role: 'system', content: 'You are a legal assistant. Provide concise, actionable suggestions.' },
-        { role: 'user', content: suggestionPrompt }
-      ]);
-      
-      // Extract suggestions from AI response
-      const aiSuggestions = aiResult.response
-        .split('\n')
-        .filter(line => line.trim() && (line.includes('•') || line.includes('-') || line.includes('1.') || line.includes('2.') || line.includes('3.')))
-        .map(line => line.replace(/^[\s\-\•\d\.]+/, '').trim())
-        .filter(suggestion => suggestion.length > 10);
-      
-      if (aiSuggestions.length > 0) {
-        suggestions.push(...aiSuggestions.slice(0, 2)); // Add top 2 AI suggestions
-      }
-    } catch (error) {
-      console.warn('AI suggestions failed:', error);
-    }
-  }
-  
-  // Remove duplicates and limit suggestions
-  const uniqueSuggestions = Array.from(new Set(suggestions)).slice(0, 4);
-  
+} {
+  const numAnswers = Object.keys(caseData.answers || {}).length;
+  const hasService = !!caseData.service;
+  const hasDescription = (caseData.description || '').length > 50;
+  const score = (hasService ? 40 : 0) + (hasDescription ? 30 : 0) + Math.min(numAnswers * 15, 30);
   return {
     score,
-    breakdown,
-    suggestions: uniqueSuggestions,
-    readyForLawyer: score >= 70,
-    badge,
-    color,
-    inferredUrgency
+    readyForLawyer: score >= 70
   };
 }
-
-// Router pattern for better performance
-const router = {
-  '/api/chat': handleChat,
-  '/api/teams': handleTeams,
-  '/api/forms': handleForms,
-  '/api/case-creation': handleCaseCreation,
-  '/api/scheduling': handleScheduling,
-  '/api/files': handleFiles,
-  '/api/sessions': handleSessions,
-  '/api/health': handleHealth,
-  '/': handleRoot
-};
-
-// Main worker handler with optimized routing
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: CORS_HEADERS });
-    }
-
-    try {
-      // Find matching route
-      let handler = null;
-      for (const [route, routeHandler] of Object.entries(router)) {
-        if (path.startsWith(route)) {
-          handler = routeHandler;
-          break;
-        }
-      }
-
-      if (handler) {
-        return handler(request, env, CORS_HEADERS);
-      }
-
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-      });
-
-    } catch (error) {
-      console.error('Worker error:', error);
-      return new Response(JSON.stringify({ error: 'Internal server error' }), {
-        status: 500,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-      });
-    }
-  },
-};
 
 // Optimized route handlers
 async function handleHealth(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
@@ -624,7 +286,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
       });
     }
 
-    const quality = await assessCaseQuality(body, aiService);
+    const quality = assessCaseQuality(body);
 
     switch (body.step) {
       case 'service-selection':
@@ -738,7 +400,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           };
           
           // Get quality assessment with the auto-generated description
-          const initialQuality = await assessCaseQuality(enhancedBody, aiService);
+          const initialQuality = assessCaseQuality(enhancedBody);
           
           return new Response(JSON.stringify({
             step: 'case-review',
@@ -775,7 +437,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
         };
         
         // Get detailed quality assessment
-        const reviewQuality = await assessCaseQuality(caseData, aiService);
+        const reviewQuality = assessCaseQuality(caseData);
         
                 // Generate structured markdown case summary for canvas
         let caseSummary = '';
@@ -848,7 +510,7 @@ IMPORTANT FOR FAMILY LAW CASES:
                          const questionPrompt = `I'm helping someone with their ${body.service} situation. To make sure we have all the information needed to help them effectively, I'd like to ask a few more gentle, supportive questions.
 
 Their situation: ${caseSummary}
-Areas that could use more detail: ${reviewQuality.suggestions.join(', ')}
+Current score: ${reviewQuality.score}/100
 
 Please suggest 2-3 conversational, empathetic follow-up questions that:
 1. Feel natural and caring, not interrogative
@@ -1402,3 +1064,38 @@ async function sendNotifications(formData: ContactForm, formId: string, env: Env
   // Wait for all emails to complete
   await Promise.allSettled(promises);
 } 
+
+export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers: CORS_HEADERS });
+  }
+
+  try {
+    if (path.startsWith('/api/chat')) return handleChat(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/teams')) return handleTeams(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/forms')) return handleForms(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/case-creation')) return handleCaseCreation(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/scheduling')) return handleScheduling(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/files')) return handleFiles(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/sessions')) return handleSessions(request, env, CORS_HEADERS);
+    if (path === '/api/health') return handleHealth(request, env, CORS_HEADERS);
+    if (path === '/') return handleRoot(request, env, CORS_HEADERS);
+
+    return new Response(JSON.stringify({ error: 'Not found' }), {
+      status: 404,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Worker error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+export default { fetch: handleRequest }; 
