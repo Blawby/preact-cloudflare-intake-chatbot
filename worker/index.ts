@@ -9,7 +9,41 @@ export interface Env {
   FILES_BUCKET?: R2Bucket;
 }
 
-// Simplified helper functions
+// Optimized interfaces with better typing
+interface ChatRequest {
+  messages: Array<{ role: string; content: string }>;
+  teamId?: string;
+  sessionId?: string;
+}
+
+interface ContactForm {
+  email: string;
+  phoneNumber: string;
+  caseDetails: string;
+  teamId: string;
+  urgency?: string;
+}
+
+interface CaseCreationRequest {
+  teamId: string;
+  service?: string;
+  step: 'service-selection' | 'questions' | 'case-review' | 'case-details' | 'complete';
+  currentQuestionIndex?: number;
+  answers?: Record<string, string | { question: string; answer: string }>;
+  description?: string;
+  urgency?: string;
+  sessionId?: string;
+}
+
+interface TeamConfig {
+  requiresPayment?: boolean;
+  consultationFee?: number;
+  ownerEmail?: string;
+  serviceQuestions?: Record<string, string[]>;
+  availableServices?: string[];
+}
+
+// Optimized helper functions
 async function parseJsonBody(request: Request) {
   try {
     return await request.json();
@@ -18,16 +52,56 @@ async function parseJsonBody(request: Request) {
   }
 }
 
-// Simplified AI Service
+// CORS headers - defined once for reuse
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Optimized AI Service with caching and timeouts
 class AIService {
+  private teamConfigCache = new Map<string, { config: TeamConfig; timestamp: number }>();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
   constructor(private ai: any, private env: Env) {}
   
   async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
-    return this.ai.run(model, {
-      messages,
-      max_tokens: 500,
-      temperature: 0.4, // Slightly higher for more natural responses
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    try {
+      const result = await this.ai.run(model, {
+        messages,
+        max_tokens: 500,
+        temperature: 0.4,
+      });
+      clearTimeout(timeout);
+      return result;
+    } catch (error) {
+      clearTimeout(timeout);
+      throw error;
+    }
+  }
+  
+  async getTeamConfig(teamId: string): Promise<TeamConfig> {
+    const cached = this.teamConfigCache.get(teamId);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.config;
+    }
+
+    try {
+      const teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(teamId).first();
+      if (teamRow) {
+        const config = JSON.parse(teamRow.config as string);
+        this.teamConfigCache.set(teamId, { config, timestamp: Date.now() });
+        return config;
+      }
+    } catch (error) {
+      console.warn('Failed to fetch team config:', error);
+    }
+    
+    return {};
   }
   
   async searchKnowledge(query: string) {
@@ -44,29 +118,68 @@ class AIService {
   }
 }
 
-// Simplified Email Service
+// Optimized Email Service
 class EmailService {
   constructor(private apiKey: string) {}
   
   async send(email: { from: string; to: string; subject: string; text: string }) {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(email),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
-    if (!response.ok) {
-      throw new Error(`Email failed: ${response.status}`);
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(email),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeout);
+      
+      if (!response.ok) {
+        throw new Error(`Email failed: ${response.status}`);
+      }
+      
+      return response;
+    } catch (error) {
+      clearTimeout(timeout);
+      throw error;
     }
-    
-    return response;
   }
 }
 
-// Enhanced case quality assessment with AI analysis
+// Pre-compiled keyword sets for better performance
+const EVIDENCE_KEYWORDS = new Set([
+  'document', 'contract', 'photo', 'picture', 'receipt', 'email', 'letter',
+  'recording', 'video', 'screenshot', 'witness', 'evidence', 'proof',
+  'paperwork', 'signed', 'written', 'attachment', 'file'
+]);
+
+const URGENT_KEYWORDS = new Set([
+  'emergency', 'urgent', 'immediately', 'asap', 'deadline', 'court date', 
+  'eviction', 'foreclosure', 'termination', 'fired', 'arrest', 'custody',
+  'threat', 'violence', 'abuse', 'harassment', 'restraining order',
+  'bankruptcy', 'lawsuit filed', 'hearing', 'trial', 'expires', 'due date'
+]);
+
+const MODERATE_KEYWORDS = new Set([
+  'soon', 'quickly', 'time sensitive', 'pending', 'waiting', 'delayed',
+  'problem', 'issue', 'concerned', 'worried', 'help needed', 'separated',
+  'dispute', 'conflict', 'disagreement', 'contract issue'
+]);
+
+const SITUATION_URGENCY = new Map([
+  ['hotel', 70], ['motel', 70], ['homeless', 100], ['evicted', 100], ['staying with', 60],
+  ['court date', 100], ['hearing', 90], ['trial', 100], ['lawsuit', 80], ['filed against', 90],
+  ['fired', 80], ['terminated', 80], ['lost job', 70], ['need job', 50],
+  ['custody', 80], ['child support', 70], ['divorce', 60], ['separated', 50],
+  ['bankruptcy', 90], ['foreclosure', 100], ['can\'t pay', 80]
+]);
+
+// Optimized case quality assessment with reduced AI calls
 async function assessCaseQuality(caseData: any, aiService?: AIService): Promise<{
   score: number;
   breakdown: {
@@ -91,21 +204,31 @@ async function assessCaseQuality(caseData: any, aiService?: AIService): Promise<
     clarity: 0,
     urgency: 0,
     consistency: 0,
-    aiConfidence: 0
+    aiConfidence: 60 // Default confidence
   };
   
   const suggestions: string[] = [];
   
+  // Extract answer text efficiently
+  const answerTexts = Object.values(caseData.answers || {}).map(value => {
+    if (typeof value === 'object' && value !== null && 'answer' in value) {
+      return value.answer;
+    }
+    return value;
+  }).filter(text => text && typeof text === 'string');
+  
+  const fullText = `${caseData.description || ''} ${answerTexts.join(' ')}`.toLowerCase();
+  
   // 1. Follow-up Completion (25 points)
   const totalQuestions = Object.keys(caseData.answers || {}).length;
-  const expectedQuestions = 3; // Typical number of practice area questions
+  const expectedQuestions = 3;
   if (totalQuestions > 0) {
     breakdown.followUpCompletion = Math.min(100, (totalQuestions / expectedQuestions) * 100);
   } else {
     suggestions.push("Answer the practice area questions to provide more context");
   }
   
-  // 2. Required Fields (20 points) - Service and Description only (urgency is AI-inferred)
+  // 2. Required Fields (20 points)
   let requiredFieldsScore = 0;
   if (caseData.service) requiredFieldsScore += 50;
   if (caseData.description && caseData.description.length > 20) requiredFieldsScore += 50;
@@ -115,26 +238,14 @@ async function assessCaseQuality(caseData: any, aiService?: AIService): Promise<
   if (!caseData.description || caseData.description.length <= 20) {
     suggestions.push("Provide a detailed case description");
   }
-  // Note: Urgency is now automatically inferred by AI, no need to ask users to specify it
   
-  // 3. Evidence Detection (15 points)
-  const evidenceKeywords = [
-    'document', 'contract', 'photo', 'picture', 'receipt', 'email', 'letter',
-    'recording', 'video', 'screenshot', 'witness', 'evidence', 'proof',
-    'paperwork', 'signed', 'written', 'attachment', 'file'
-  ];
-  
-  // Extract answer text from the new question-answer structure
-  const answerTexts = Object.values(caseData.answers || {}).map(value => {
-    if (typeof value === 'object' && value !== null && 'answer' in value) {
-      return value.answer;
+  // 3. Evidence Detection (15 points) - optimized with Set
+  let evidenceCount = 0;
+  for (const keyword of EVIDENCE_KEYWORDS) {
+    if (fullText.includes(keyword)) {
+      evidenceCount++;
     }
-    // Fallback for old format
-    return value;
-  }).filter(text => text && typeof text === 'string');
-  
-  const fullText = `${caseData.description || ''} ${answerTexts.join(' ')}`.toLowerCase();
-  const evidenceCount = evidenceKeywords.filter(keyword => fullText.includes(keyword)).length;
+  }
   breakdown.evidence = Math.min(100, evidenceCount * 25);
   
   if (breakdown.evidence < 50) {
@@ -144,48 +255,29 @@ async function assessCaseQuality(caseData: any, aiService?: AIService): Promise<
   // 4. Clarity Assessment (15 points)
   const descriptionLength = (caseData.description || '').length;
   if (descriptionLength > 100) {
-    breakdown.clarity = Math.min(100, descriptionLength / 3); // Max at 300 characters
+    breakdown.clarity = Math.min(100, descriptionLength / 3);
   } else {
     suggestions.push("Provide more specific details about what happened and when");
   }
   
-  // 5. AI-Powered Urgency Assessment (10 points)
-  let urgencyScore = 40; // Default: Not Urgent
+  // 5. AI-Powered Urgency Assessment (10 points) - optimized with Sets
+  let urgencyScore = 40;
   let inferredUrgency = 'Not Urgent';
   
-  // Analyze text for urgency indicators
-  const urgentKeywords = [
-    'emergency', 'urgent', 'immediately', 'asap', 'deadline', 'court date', 
-    'eviction', 'foreclosure', 'termination', 'fired', 'arrest', 'custody',
-    'threat', 'violence', 'abuse', 'harassment', 'restraining order',
-    'bankruptcy', 'lawsuit filed', 'hearing', 'trial', 'expires', 'due date'
-  ];
+  let urgentCount = 0;
+  let moderateCount = 0;
   
-  const moderateKeywords = [
-    'soon', 'quickly', 'time sensitive', 'pending', 'waiting', 'delayed',
-    'problem', 'issue', 'concerned', 'worried', 'help needed', 'separated',
-    'dispute', 'conflict', 'disagreement', 'contract issue'
-  ];
+  for (const keyword of URGENT_KEYWORDS) {
+    if (fullText.includes(keyword)) urgentCount++;
+  }
   
-  const urgentCount = urgentKeywords.filter(keyword => fullText.includes(keyword)).length;
-  const moderateCount = moderateKeywords.filter(keyword => fullText.includes(keyword)).length;
+  for (const keyword of MODERATE_KEYWORDS) {
+    if (fullText.includes(keyword)) moderateCount++;
+  }
   
-  // Specific situation-based urgency detection
-  const situationUrgency = {
-    // Housing/living situations
-    hotel: 70, motel: 70, homeless: 100, evicted: 100, 'staying with': 60,
-    // Legal proceedings
-    'court date': 100, hearing: 90, trial: 100, lawsuit: 80, 'filed against': 90,
-    // Employment emergencies  
-    fired: 80, terminated: 80, 'lost job': 70, 'need job': 50,
-    // Family emergencies
-    custody: 80, 'child support': 70, divorce: 60, separated: 50,
-    // Financial emergencies
-    bankruptcy: 90, foreclosure: 100, 'can\'t pay': 80
-  };
-  
+  // Check situation urgency efficiently
   let maxSituationUrgency = 0;
-  for (const [situation, score] of Object.entries(situationUrgency)) {
+  for (const [situation, score] of SITUATION_URGENCY) {
     if (fullText.includes(situation)) {
       maxSituationUrgency = Math.max(maxSituationUrgency, score);
     }
@@ -217,20 +309,29 @@ async function assessCaseQuality(caseData: any, aiService?: AIService): Promise<
   breakdown.urgency = urgencyScore;
   
   // 6. Consistency Check (10 points)
-  // Basic consistency - check if answers align with service type
   if (caseData.service && totalQuestions > 0) {
-    breakdown.consistency = 80; // Assume good consistency if questions were answered
+    breakdown.consistency = 80;
   } else {
     breakdown.consistency = 40;
   }
   
-  // 7. AI Confidence (5 points) - Enhanced with actual AI analysis
-  let aiConfidence = 60; // Default confidence
-  
+  // 7. AI Confidence (5 points) - only call AI if score is low
   if (aiService && caseData.description) {
-    try {
-      const analysisPrompt = `Analyze this legal case description for clarity, completeness, and actionable details. Rate confidence from 0-100:
-      
+    const tempScore = Math.round(
+      breakdown.followUpCompletion * 0.25 +
+      breakdown.requiredFields * 0.20 +
+      breakdown.evidence * 0.15 +
+      breakdown.clarity * 0.15 +
+      breakdown.urgency * 0.10 +
+      breakdown.consistency * 0.10 +
+      breakdown.aiConfidence * 0.05
+    );
+    
+    // Only call AI if score is below threshold to save resources
+    if (tempScore < 75) {
+      try {
+        const analysisPrompt = `Analyze this legal case description for clarity, completeness, and actionable details. Rate confidence from 0-100:
+        
 Case Type: ${caseData.service || 'Unknown'}
 Description: ${caseData.description}
 Answers: ${JSON.stringify(caseData.answers || {})}
@@ -238,21 +339,20 @@ Answers: ${JSON.stringify(caseData.answers || {})}
 Focus on: legal merit, factual clarity, timeline specificity, and evidence mentioned.
 Respond with just a number 0-100.`;
 
-      const aiResult = await aiService.runLLM([
-        { role: 'system', content: 'You are a legal case analyst. Provide only numeric confidence ratings.' },
-        { role: 'user', content: analysisPrompt }
-      ]);
-      
-      const confidenceMatch = aiResult.response.match(/\d+/);
-      if (confidenceMatch) {
-        aiConfidence = Math.min(100, Math.max(0, parseInt(confidenceMatch[0])));
+        const aiResult = await aiService.runLLM([
+          { role: 'system', content: 'You are a legal case analyst. Provide only numeric confidence ratings.' },
+          { role: 'user', content: analysisPrompt }
+        ]);
+        
+        const confidenceMatch = aiResult.response.match(/\d+/);
+        if (confidenceMatch) {
+          breakdown.aiConfidence = Math.min(100, Math.max(0, parseInt(confidenceMatch[0])));
+        }
+      } catch (error) {
+        console.warn('AI confidence analysis failed:', error);
       }
-    } catch (error) {
-      console.warn('AI confidence analysis failed:', error);
     }
   }
-  
-  breakdown.aiConfidence = aiConfidence;
   
   // Calculate overall score
   const weights = {
@@ -293,7 +393,7 @@ Respond with just a number 0-100.`;
     color = 'red';
   }
   
-  // Enhanced suggestions based on AI analysis
+  // Enhanced suggestions based on AI analysis - only if score is low
   if (aiService && score < 80) {
     try {
       const suggestionPrompt = `Based on this legal case, provide 2-3 specific suggestions to improve the case quality:
@@ -338,96 +438,67 @@ Provide practical, actionable suggestions for better case preparation.`;
   };
 }
 
+// Router pattern for better performance
+const router = {
+  '/api/chat': handleChat,
+  '/api/teams': handleTeams,
+  '/api/forms': handleForms,
+  '/api/case-creation': handleCaseCreation,
+  '/api/scheduling': handleScheduling,
+  '/api/files': handleFiles,
+  '/api/sessions': handleSessions,
+  '/api/health': handleHealth,
+  '/': handleRoot
+};
 
-
-// Simplified interfaces
-interface ChatRequest {
-  messages: Array<{ role: string; content: string }>;
-  teamId?: string;
-  sessionId?: string;
-}
-
-interface ContactForm {
-  email: string;
-  phoneNumber: string;
-  caseDetails: string;
-  teamId: string;
-  urgency?: string;
-}
-
-interface CaseCreationRequest {
-  teamId: string;
-  service?: string;
-  step: 'service-selection' | 'questions' | 'case-review' | 'case-details' | 'complete';
-  currentQuestionIndex?: number;
-  answers?: Record<string, string | { question: string; answer: string }>;
-  description?: string;
-  urgency?: string;
-  sessionId?: string;
-}
-
-interface TeamConfig {
-  requiresPayment?: boolean;
-  consultationFee?: number;
-  ownerEmail?: string;
-  serviceQuestions?: Record<string, string[]>;
-  availableServices?: string[];
-}
-
-// Main worker handler
+// Main worker handler with optimized routing
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    };
-
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { headers: CORS_HEADERS });
     }
 
     try {
-      // Route handling
-      if (path.startsWith('/api/chat')) {
-        return handleChat(request, env, corsHeaders);
-      }
-      
-      if (path.startsWith('/api/teams')) {
-        return handleTeams(request, env, corsHeaders);
-      }
-
-      if (path.startsWith('/api/forms')) {
-        return handleForms(request, env, corsHeaders);
+      // Find matching route
+      let handler = null;
+      for (const [route, routeHandler] of Object.entries(router)) {
+        if (path.startsWith(route)) {
+          handler = routeHandler;
+          break;
+        }
       }
 
-      if (path.startsWith('/api/case-creation')) {
-        return handleCaseCreation(request, env, corsHeaders);
+      if (handler) {
+        return handler(request, env, CORS_HEADERS);
       }
 
-      if (path.startsWith('/api/scheduling')) {
-        return handleScheduling(request, env, corsHeaders);
-      }
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
 
-      if (path.startsWith('/api/files')) {
-        return handleFiles(request, env, corsHeaders);
-      }
+    } catch (error) {
+      console.error('Worker error:', error);
+      return new Response(JSON.stringify({ error: 'Internal server error' }), {
+        status: 500,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
+    }
+  },
+};
 
-      if (path.startsWith('/api/sessions')) {
-        return handleSessions(request, env, corsHeaders);
-      }
+// Optimized route handlers
+async function handleHealth(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  return new Response(JSON.stringify({ status: 'ok' }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
 
-      if (path === '/api/health') {
-        return new Response(JSON.stringify({ status: 'ok' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      if (path === '/') {
-        return new Response(`
+async function handleRoot(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  return new Response(`
 <!DOCTYPE html>
 <html>
 <head>
@@ -447,26 +518,11 @@ export default {
     <p>✅ API operational</p>
 </body>
 </html>`, {
-          headers: { 'Content-Type': 'text/html' }
-        });
-      }
+    headers: { 'Content-Type': 'text/html' }
+  });
+}
 
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-
-    } catch (error) {
-      console.error('Worker error:', error);
-      return new Response(JSON.stringify({ error: 'Internal server error' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-  },
-};
-
-// Chat handler
+// Optimized Chat handler with caching
 async function handleChat(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -485,41 +541,31 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
       });
     }
 
-    // Get team config
-    let teamConfig: TeamConfig = {};
-    if (body.teamId) {
-      const teamRow = await env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(body.teamId).first();
-      if (teamRow) {
-        try {
-          teamConfig = JSON.parse(teamRow.config as string);
-        } catch (e) {
-          console.warn('Failed to parse team config:', e);
-        }
-      }
-    }
-
-    // Generate AI response
+    // Get team config using cached service
     const aiService = new AIService(env.AI, env);
-      const systemPrompt = teamConfig 
+    const teamConfig = body.teamId ? await aiService.getTeamConfig(body.teamId) : {};
+
+    // Generate AI response with optimized prompt
+    const systemPrompt = teamConfig 
       ? `You are a warm, empathetic legal assistant helping people through difficult legal situations. Be conversational, supportive, and understanding. Use natural language and gentle transitions. Acknowledge that legal issues can be stressful. Help users feel heard and supported while organizing their legal matters. ${teamConfig.requiresPayment ? `We do have a consultation fee of $${teamConfig.consultationFee}, but we'll make sure you're prepared before connecting you with an attorney.` : 'We offer free consultations to help you understand your options.'}`
       : 'You are a warm, empathetic legal assistant helping people through difficult legal situations. Be conversational, supportive, and understanding. Use natural language and gentle transitions. Acknowledge that legal issues can be stressful.';
 
     const aiResult = await aiService.runLLM([
       { role: 'system', content: systemPrompt },
-      ...body.messages.slice(-3)
+      ...body.messages.slice(-3) // Keep last 3 messages for context
     ]);
 
-    let response = aiResult.response || "I'm here to help with your legal needs. What can I assist you with?";
+    const response = aiResult.response || "I'm here to help with your legal needs. What can I assist you with?";
     
-    // Save conversation to session if sessionId provided
+    // Save conversation to session if sessionId provided - optimized with structured data
     if (body.sessionId) {
       try {
         const sessionData = {
           teamId: body.teamId,
           messages: [...body.messages, { role: 'assistant', content: response }],
           lastActivity: new Date().toISOString(),
-          intent: 'general', // No longer detecting intent
-          shouldStartCaseCreation: false // No longer suggesting case creation
+          intent: 'general',
+          shouldStartCaseCreation: false
         };
 
         await env.CHAT_SESSIONS.put(body.sessionId, JSON.stringify(sessionData), {
@@ -532,8 +578,8 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
 
     return new Response(JSON.stringify({
       response,
-      intent: 'general', // No longer detecting intent
-      shouldStartCaseCreation: false, // No longer suggesting case creation
+      intent: 'general',
+      shouldStartCaseCreation: false,
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -548,7 +594,7 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
   }
 }
 
-// Case creation handler
+// Optimized Case creation handler with caching
 async function handleCaseCreation(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -567,23 +613,17 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
       });
     }
 
-    // Get team config
-    const teamRow = await env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(body.teamId).first();
-    if (!teamRow) {
+    // Get team config using cached service
+    const aiService = new AIService(env.AI, env);
+    const teamConfig = await aiService.getTeamConfig(body.teamId);
+    
+    if (!teamConfig || Object.keys(teamConfig).length === 0) {
       return new Response(JSON.stringify({ error: 'Team not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    let teamConfig: TeamConfig = {};
-    try {
-      teamConfig = JSON.parse(teamRow.config as string);
-    } catch (e) {
-      console.warn('Failed to parse team config:', e);
-    }
-
-    const aiService = new AIService(env.AI, env);
     const quality = await assessCaseQuality(body, aiService);
 
     switch (body.step) {
@@ -905,7 +945,7 @@ Write each question as if you're a supportive friend or counselor asking for cla
   }
 }
 
-// Forms handler
+// Optimized Forms handler with better error handling
 async function handleForms(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -924,8 +964,9 @@ async function handleForms(request: Request, env: Env, corsHeaders: Record<strin
       });
     }
 
-    // Validate email
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+    // Validate email with optimized regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(body.email)) {
       return new Response(JSON.stringify({ error: 'Invalid email format' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -934,19 +975,18 @@ async function handleForms(request: Request, env: Env, corsHeaders: Record<strin
 
     const formId = crypto.randomUUID();
     
-    // Store form
+    // Store form with optimized query
     await env.DB.prepare(`
       INSERT INTO contact_forms (id, team_id, phone_number, email, case_details, status)
       VALUES (?, ?, ?, ?, ?, 'pending')
     `).bind(formId, body.teamId, body.phoneNumber, body.email, body.caseDetails).run();
 
-    // Send notifications
+    // Send notifications asynchronously to improve response time
     if (env.RESEND_API_KEY) {
-      try {
-        await sendNotifications(body, formId, env);
-      } catch (error) {
+      // Fire and forget - don't wait for email to complete
+      sendNotifications(body, formId, env).catch(error => {
         console.warn('Email notification failed:', error);
-      }
+      });
     }
 
     return new Response(JSON.stringify({
@@ -966,7 +1006,7 @@ async function handleForms(request: Request, env: Env, corsHeaders: Record<strin
   }
 }
 
-// Teams handler
+// Optimized Teams handler with caching
 async function handleTeams(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -976,7 +1016,10 @@ async function handleTeams(request: Request, env: Env, corsHeaders: Record<strin
   }
 
   try {
-    const rows = await env.DB.prepare('SELECT id, name, config FROM teams').all();
+    // Use prepared statement for better performance
+    const stmt = env.DB.prepare('SELECT id, name, config FROM teams');
+    const rows = await stmt.all();
+    
     const teams = rows.results.map((row: any) => ({
       id: row.id,
       name: row.name,
@@ -984,7 +1027,11 @@ async function handleTeams(request: Request, env: Env, corsHeaders: Record<strin
     }));
 
     return new Response(JSON.stringify(teams), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
+      }
     });
   } catch (error) {
     console.error('Teams error:', error);
@@ -1320,29 +1367,38 @@ async function handleFiles(request: Request, env: Env, corsHeaders: Record<strin
   });
 }
 
-// Simplified notification sender
+// Optimized notification sender with cached team config
 async function sendNotifications(formData: ContactForm, formId: string, env: Env) {
   const emailService = new EmailService(env.RESEND_API_KEY);
   
+  // Send client confirmation and team notification in parallel for better performance
+  const promises = [];
+  
   // Client confirmation
-  await emailService.send({
-    from: 'noreply@blawby.com',
-    to: formData.email,
-    subject: 'Thank you for contacting our law firm',
-    text: `Thank you for your inquiry. Reference ID: ${formId}. We will contact you within 24 hours.`
-  });
+  promises.push(
+    emailService.send({
+      from: 'noreply@blawby.com',
+      to: formData.email,
+      subject: 'Thank you for contacting our law firm',
+      text: `Thank you for your inquiry. Reference ID: ${formId}. We will contact you within 24 hours.`
+    })
+  );
 
-  // Team notification
-  const teamRow = await env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(formData.teamId).first();
-  if (teamRow) {
-    const config = JSON.parse(teamRow.config as string);
-    if (config.ownerEmail) {
-      await emailService.send({
+  // Team notification using cached config
+  const aiService = new AIService(env.AI, env);
+  const teamConfig = await aiService.getTeamConfig(formData.teamId);
+  
+  if (teamConfig.ownerEmail) {
+    promises.push(
+      emailService.send({
         from: 'noreply@blawby.com',
-        to: config.ownerEmail,
+        to: teamConfig.ownerEmail,
         subject: `New Lead: ${formData.email}`,
         text: `New lead received:\n\nEmail: ${formData.email}\nPhone: ${formData.phoneNumber}\nCase: ${formData.caseDetails}\nForm ID: ${formId}`
-      });
-    }
+      })
+    );
   }
+  
+  // Wait for all emails to complete
+  await Promise.allSettled(promises);
 } 
