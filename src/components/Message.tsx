@@ -110,7 +110,7 @@ const formatFileSize = (bytes: number): string => {
 
 const getFileIcon = (file: FileAttachment) => {
 	// Get file extension
-	const ext = file.name.split('.').pop()?.toLowerMatter();
+			const ext = file.name.split('.').pop()?.toLowerCase();
 	
 	// PDF icon
 	if (file.type === 'application/pdf' || ext === 'pdf') {
@@ -214,7 +214,7 @@ const ServiceSelectionButtons: FunctionComponent<{
 	const formatServiceName = (service: string) => {
 		return service
 			.split('-')
-			.map(word => word.charAt(0).toUpperMatter() + word.slice(1))
+							.map(word => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(' ');
 	};
 

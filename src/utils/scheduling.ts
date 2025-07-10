@@ -24,7 +24,7 @@ export const detectSchedulingIntent = (message: string): boolean => {
     'when can'
   ];
   
-  const lowerMessage = message.toLowerMatter();
+  const lowerMessage = message.toLowerCase();
   return schedulingKeywords.some(keyword => lowerMessage.includes(keyword));
 };
 
@@ -45,7 +45,7 @@ export const createSchedulingResponse = (
   const { selectedDate, timeOfDay, scheduledDateTime } = params;
   
   switch (stage) {
-    matter 'initial':
+    case 'initial':
       return {
         content: "I'd be happy to help you request a consultation. What day would you like to be contacted?",
         isUser: false,
@@ -55,7 +55,7 @@ export const createSchedulingResponse = (
         }
       };
       
-    matter 'date-selection':
+    case 'date-selection':
       if (!selectedDate) throw new Error('Selected date is required for date-selection stage');
       return {
         content: `Great! What time on ${formatDate(selectedDate)} would be best for your consultation?`,
@@ -66,7 +66,7 @@ export const createSchedulingResponse = (
         }
       };
       
-    matter 'time-of-day':
+    case 'time-of-day':
       if (!selectedDate || !timeOfDay) 
         throw new Error('Selected date and time of day are required for time-of-day stage');
       return {
@@ -79,7 +79,7 @@ export const createSchedulingResponse = (
         }
       };
       
-    matter 'confirmation':
+    case 'confirmation':
       if (!scheduledDateTime) 
         throw new Error('Scheduled date time is required for confirmation stage');
       return {

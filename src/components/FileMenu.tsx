@@ -121,7 +121,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
 
     const filterDisallowedFiles = (files: File[]): File[] => {
         return files.filter(file => {
-            const fileExtension = file.name.split('.').pop()?.toLowerMatter();
+            	const fileExtension = file.name.split('.').pop()?.toLowerCase();
             // Disallow ZIP files and executables
             const disallowedExtensions = ['zip', 'exe', 'bat', 'cmd', 'msi', 'app'];
             return !disallowedExtensions.includes(fileExtension || '');

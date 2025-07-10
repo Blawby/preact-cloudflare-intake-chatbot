@@ -228,13 +228,13 @@ export function App() {
 		const handleParentMessage = (event: MessageEvent) => {
 			if (event.data && event.data.type && position === 'widget') {
 				switch (event.data.type) {
-					matter 'toggleChat':
+					case 'toggleChat':
 						setIsOpen(prev => !prev);
 						break;
-					matter 'openChat':
+					case 'openChat':
 						setIsOpen(true);
 						break;
-					matter 'closeChat':
+					case 'closeChat':
 						setIsOpen(false);
 						break;
 				}
@@ -725,12 +725,12 @@ export function App() {
 			// Check if user typed a service name directly
 			const availableServices = teamConfig.availableServices || [];
 			const isServiceName = availableServices.some(service => 
-				message.toLowerMatter().trim() === service.toLowerMatter() ||
-				message.toLowerMatter().trim() === service.toLowerMatter().replace(/-/g, ' ')
+				message.toLowerCase().trim() === service.toLowerCase() ||
+				message.toLowerCase().trim() === service.toLowerCase().replace(/-/g, ' ')
 			);
 			
 			// Also check for "General Inquiry"
-			const isGeneralInquiry = message.toLowerMatter().trim() === 'general inquiry';
+			const isGeneralInquiry = message.toLowerCase().trim() === 'general inquiry';
 			
 			if ((isServiceName || isGeneralInquiry) && !matterState.isActive) {
 				// Start matter creation flow with the typed service
@@ -874,9 +874,10 @@ export function App() {
 
 	// Submit contact form to API
 	const submitContactForm = async (formData: any) => {
+		// Add placeholder message with loading indicator (ChatGPT style)
+		const loadingMessageId = crypto.randomUUID();
+		
 		try {
-			// Add placeholder message with loading indicator (ChatGPT style)
-			const loadingMessageId = crypto.randomUUID();
 			const loadingMessage: ChatMessage = {
 				content: "Thank you! Let me submit your information to our legal team...",
 				isUser: false,
@@ -1082,6 +1083,9 @@ export function App() {
 		};
 		setMessages(prev => [...prev, userMessage]);
 		
+		// Add placeholder message with loading indicator (ChatGPT style)
+		const loadingMessageId = crypto.randomUUID();
+		
 		try {
 			// Ensure matter state is properly initialized
 			if (!matterState.isActive) {
@@ -1091,9 +1095,6 @@ export function App() {
 					isActive: true
 				});
 			}
-			
-			// Add placeholder message with loading indicator (ChatGPT style)
-			const loadingMessageId = crypto.randomUUID();
 			const loadingMessage: ChatMessage = {
 				content: `Great choice! Let me get the right questions for ${service}...`,
 				isUser: false,
@@ -1158,7 +1159,7 @@ export function App() {
 			// Add placeholder message with loading indicator (ChatGPT style)
 			const loadingMessageId = crypto.randomUUID();
 			const loadingMessage: ChatMessage = {
-				content: `Got it! Let me prepare the right questions for your ${urgency.toLowerMatter()} matter...`,
+				content: `Got it! Let me prepare the right questions for your ${urgency.toLowerCase()} matter...`,
 				isUser: false,
 				isLoading: true,
 				id: loadingMessageId
@@ -1266,7 +1267,7 @@ export function App() {
 		try {
 			// Process based on current step
 			switch (matterState.step) {
-				matter 'gathering-info':
+				case 'gathering-info':
 					// Store matter type and start urgency selection
 					const selectedService = message;
 					
@@ -1301,7 +1302,7 @@ export function App() {
 			}, 800);
 					break;
 
-				matter 'ai-questions':
+				case 'ai-questions':
 					// Store answer to current AI question
 					const currentService = matterState.data.matterType;
 					const currentIndex = matterState.currentQuestionIndex || 0;
@@ -1472,7 +1473,7 @@ export function App() {
 					}
 					break;
 
-				matter 'matter-review':
+				        case 'matter-review':
 					// Handle follow-up questions to improve matter quality
 					const followUpQuestions = matterState.data.followUpQuestions || [];
 					const currentFollowUpIndex = matterState.data.currentFollowUpIndex || 0;
@@ -1597,7 +1598,7 @@ export function App() {
 					}
 					break;
 
-				matter 'ready-for-lawyer':
+				        case 'ready-for-lawyer':
 					// Handle additional information after matter completion
 					// Add any additional information to the matter
 					setMatterState(prev => ({
@@ -1616,7 +1617,7 @@ export function App() {
 					
 					setTimeout(() => {
 						const urgencyText = finalResult.qualityScore?.inferredUrgency 
-							? ` I've assessed this as ${finalResult.qualityScore.inferredUrgency.toLowerMatter()}.`
+							? ` I've assessed this as ${finalResult.qualityScore.inferredUrgency.toLowerCase()}.`
 							: '';
 						
 						const aiResponse: ChatMessage = {
@@ -1677,7 +1678,7 @@ export function App() {
 	// Add a helper function to get the appropriate file icon based on file type
 	const getFileIcon = (file: FileAttachment) => {
 		// Get file extension
-		const ext = file.name.split('.').pop()?.toLowerMatter();
+		const ext = file.name.split('.').pop()?.toLowerCase();
 		
 		// PDF icon
 		if (file.type === 'application/pdf' || ext === 'pdf') {
@@ -1783,7 +1784,7 @@ export function App() {
 		// Apply file type validation
 		const mediaFiles = [...imageFiles, ...videoFiles];
 		const safeOtherFiles = otherFiles.filter(file => {
-			const fileExtension = file.name.split('.').pop()?.toLowerMatter();
+			const fileExtension = file.name.split('.').pop()?.toLowerCase();
 			const disallowedExtensions = ['zip', 'exe', 'bat', 'cmd', 'msi', 'app'];
 			return !disallowedExtensions.includes(fileExtension || '');
 		});

@@ -60,12 +60,12 @@ export function processFormStep(
   let shouldSubmit = false;
 
   switch (currentState.step) {
-    matter 'collecting_email':
+    case 'collecting_email':
       if (extractedInfo.email && validateEmail(extractedInfo.email)) {
         newState.data.email = extractedInfo.email;
         newState.step = 'collecting_phone';
         response = `Great! I have your email: ${extractedInfo.email}. Now, what's your phone number?`;
-      } else if (userMessage.toLowerMatter().includes('email')) {
+              } else if (userMessage.toLowerCase().includes('email')) {
         // User might be asking about email format
         response = "Please provide your email address. For example: john.doe@example.com";
       } else {
@@ -73,7 +73,7 @@ export function processFormStep(
       }
       break;
 
-    matter 'collecting_phone':
+    case 'collecting_phone':
       if (extractedInfo.phone && validatePhone(extractedInfo.phone)) {
         newState.data.phone = extractedInfo.phone;
         
@@ -88,14 +88,14 @@ export function processFormStep(
           newState.step = 'collecting_matter_details';
           response = `Perfect! I have your phone: ${extractedInfo.phone}. Now, can you tell me more about your legal situation? What type of matter or legal issue are you dealing with?`;
         }
-      } else if (userMessage.toLowerMatter().includes('phone')) {
+              } else if (userMessage.toLowerCase().includes('phone')) {
         response = "Please provide your phone number. For example: (555) 123-4567 or 555-123-4567";
       } else {
         response = "I need a valid phone number to contact you. Could you please provide your phone number?";
       }
       break;
 
-    matter 'collecting_matter_details':
+    case 'collecting_matter_details':
       if (validateMatterDetails(userMessage)) {
         newState.data.matterDetails = userMessage;
         newState.step = 'complete';

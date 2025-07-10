@@ -360,8 +360,8 @@ async function handleMatterCreation(request: Request, env: Env, corsHeaders: Rec
 
     const quality = assessMatterQuality(body);
 
-    switch (body.step) {
-      matter 'service-selection':
+          switch (body.step) {
+      case 'service-selection':
         // If no service selected yet, show service options
         if (!body.service) {
           const services = teamConfig.availableServices || [
@@ -436,7 +436,7 @@ async function handleMatterCreation(request: Request, env: Env, corsHeaders: Rec
           }
         }
 
-      matter 'questions':
+      case 'questions':
         const questions = teamConfig.serviceQuestions?.[body.service!] || [
           `Tell me more about your ${body.service} situation.`,
           'When did this issue begin?',
@@ -486,7 +486,7 @@ async function handleMatterCreation(request: Request, env: Env, corsHeaders: Rec
       });
         }
 
-      matter 'matter-review':
+      case 'matter-review':
         // Generate comprehensive matter summary and determine next steps
         const matterAnswers = body.answers || {};
         const matterDescription = body.description || `${body.service} matter with provided details`;
@@ -638,7 +638,7 @@ Write each question as if you're a supportive friend or counselor asking for cla
         }
         
         // Create empathetic intro message before canvas
-        let reviewMessage = `Thanks for sharing your situation with me. I can tell this has been really challenging, especially dealing with ${body.service.toLowerMatter()} matters. I've put together a matter summary based on what you've shared so far — you'll see that summary below.`;
+        let reviewMessage = `Thanks for sharing your situation with me. I can tell this has been really challenging, especially dealing with ${body.service.toLowerCase()} matters. I've put together a matter summary based on what you've shared so far — you'll see that summary below.`;
         
         // Create matter canvas data
         const matterCanvasData = {
@@ -654,7 +654,7 @@ Write each question as if you're a supportive friend or counselor asking for cla
         if (needsImprovement && followUpQuestions.length > 0) {
           followUpMessage = `Looking at your matter summary, I'd love to get a few more details to strengthen your position. ${followUpQuestions[0]}`;
         } else {
-          followUpMessage = `Your matter summary looks comprehensive! I believe we have strong information to connect you with the right attorney who can help with your ${body.service.toLowerMatter()} matter.`;
+          followUpMessage = `Your matter summary looks comprehensive! I believe we have strong information to connect you with the right attorney who can help with your ${body.service.toLowerCase()} matter.`;
         }
         
         return new Response(JSON.stringify({
@@ -673,7 +673,7 @@ Write each question as if you're a supportive friend or counselor asking for cla
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
 
-      matter 'matter-details':
+      case 'matter-details':
         const serviceText = body.service ? ` regarding your ${body.service} matter` : '';
         const nextStepMessage = quality.readyForLawyer 
           ? `Perfect! Based on your matter details${serviceText}, you're ready to speak with one of our attorneys. Would you like to schedule a consultation or submit your contact information?`
@@ -1220,27 +1220,27 @@ async function handleExport(request: Request, env: Env, corsHeaders: Record<stri
     let params: any[] = [];
 
     switch (dataType) {
-      matter 'chat_logs':
+      case 'chat_logs':
         query = `SELECT * FROM chat_logs ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY timestamp DESC LIMIT ?`;
         params = teamId ? [teamId, limit] : [limit];
         break;
       
-      matter 'matter_questions':
+      case 'matter_questions':
         query = `SELECT * FROM matter_questions ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY created_at DESC LIMIT ?`;
         params = teamId ? [teamId, limit] : [limit];
         break;
       
-      matter 'ai_summaries':
+      case 'ai_summaries':
         query = `SELECT * FROM ai_generated_summaries ORDER BY created_at DESC LIMIT ?`;
         params = [limit];
         break;
       
-      matter 'ai_feedback':
+      case 'ai_feedback':
         query = `SELECT * FROM ai_feedback ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY created_at DESC LIMIT ?`;
         params = teamId ? [teamId, limit] : [limit];
         break;
       
-      matter 'training_pairs':
+      case 'training_pairs':
         // Export chat logs formatted as training pairs
         query = `
           SELECT 
@@ -1340,7 +1340,6 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     if (path.startsWith('/api/chat')) return handleChat(request, env, CORS_HEADERS);
     if (path.startsWith('/api/teams')) return handleTeams(request, env, CORS_HEADERS);
     if (path.startsWith('/api/forms')) return handleForms(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/matter-creation')) return handleMatterCreation(request, env, CORS_HEADERS);
     if (path.startsWith('/api/matter-creation')) return handleMatterCreation(request, env, CORS_HEADERS);
     if (path.startsWith('/api/scheduling')) return handleScheduling(request, env, CORS_HEADERS);
     if (path.startsWith('/api/files')) return handleFiles(request, env, CORS_HEADERS);
