@@ -15,10 +15,10 @@ A full-featured, open-source **ChatGPT-like legal assistant**, built with Preact
 
 * **Lightweight Preact Chat UI** - Fast, responsive interface with ~40KB gzipped bundle
 * **Cloudflare Workers AI Backend** - Llama 3.1 8B for conversational AI
-* **Intelligent Case Building** - Guided conversation flow for legal intake
+* **Intelligent Matter Building** - Guided conversation flow for legal intake
 * **Team-Based Configuration** - Multi-tenant support with custom branding
 * **Practice Area-Specific Questions** - Tailored intake forms per legal service
-* **D1 Database** - Persistent storage for conversations and case data
+* **D1 Database** - Persistent storage for conversations and matter data
 * **KV Namespace** - Session management and caching
 * **API-First Design** - RESTful endpoints for easy integration
 * **Self-Hostable** - Complete ownership of your data and infrastructure
@@ -31,9 +31,9 @@ A full-featured, open-source **ChatGPT-like legal assistant**, built with Preact
 Your chatbot follows a **structured intake process** that maximizes lead quality:
 
 1. **🤖 AI Conversation** - Natural language interaction to understand client needs
-2. **📋 Case Building** - Guided service selection and practice area-specific questions
-3. **📝 Case Details** - Comprehensive case description and situation analysis
-4. **✅ Quality Assessment** - Real-time feedback on case completeness
+2. **📋 Matter Building** - Guided service selection and practice area-specific questions
+3. **📝 Matter Details** - Comprehensive matter description and situation analysis
+4. **✅ Quality Assessment** - Real-time feedback on matter completeness
 5. **📞 Contact Collection** - Seamless transition to attorney connection
 6. **💳 Payment Processing** - Optional consultation fee collection
 7. **📅 Scheduling** - Automated appointment booking system
@@ -44,7 +44,7 @@ Your chatbot follows a **structured intake process** that maximizes lead quality
 
 * **Frontend**: Preact SPA (`src/`) — Embeddable widget with media & scheduling
 * **Backend**: Cloudflare Worker (`worker/`) — AI, D1, KV, email integration
-* **Storage**: D1 Database (conversations, teams, cases), KV (sessions, cache)
+* **Storage**: D1 Database (conversations, teams, matters), KV (sessions, cache)
 * **AI**: Cloudflare Workers AI with Llama 3.1 8B model
 * **Email**: Resend API for notifications and confirmations
 * **Optional**: R2 for file uploads (planned)
@@ -174,23 +174,23 @@ node sync-teams.js
 
 ---
 
-## 🤖 Case Creation Flow
+## 🤖 Matter Creation Flow
 
-The system provides an **intelligent case building process** that guides users through structured data collection:
+The system provides an **intelligent matter building process** that guides users through structured data collection:
 
 ### Step-by-Step Process
 
 1. **Service Selection** → User chooses practice area
 2. **Practice Area Questions** → Tailored questions for the selected service
-3. **Case Details** → Comprehensive situation description
-4. **Quality Assessment** → Real-time feedback on case completeness
+3. **Matter Details** → Comprehensive situation description
+4. **Quality Assessment** → Real-time feedback on matter completeness
 5. **Contact Collection** → Seamless transition to attorney connection
 
 ### API Endpoints
 
-#### Case Creation Flow
+#### Matter Creation Flow
 ```bash
-POST /api/case-creation
+POST /api/matter-creation
 ```
 
 **Service Selection:**
@@ -214,11 +214,11 @@ POST /api/case-creation
 }
 ```
 
-**Case Details:**
+**Matter Details:**
 ```json
 {
   "teamId": "family-law-firm",
-  "step": "case-details",
+  "step": "matter-details",
   "service": "Family Law",
   "description": "I need help with a custody modification...",
   "answers": {...}
@@ -227,7 +227,7 @@ POST /api/case-creation
 
 ### Quality Assessment
 
-Each step includes a **quality score** that helps users understand case completeness:
+Each step includes a **quality score** that helps users understand matter completeness:
 
 ```json
 {
@@ -268,8 +268,8 @@ POST /api/chat
 ```json
 {
   "response": "I can help you with contract review...",
-  "intent": "new_case",
-  "shouldStartCaseCreation": true,
+  "intent": "new_matter",
+  "shouldStartMatterCreation": true,
   "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
@@ -284,7 +284,7 @@ POST /api/forms
 {
   "email": "client@example.com",
   "phoneNumber": "555-0123",
-  "caseDetails": "Contract review needed for vendor agreement",
+  "matterDetails": "Contract review needed for vendor agreement",
   "teamId": "business-law-firm"
 }
 ```
@@ -308,7 +308,7 @@ POST /api/scheduling
   "email": "client@example.com",
   "preferredDate": "2024-01-20",
   "preferredTime": "10:00 AM",
-  "caseType": "Family Law",
+  "matterType": "Family Law",
   "notes": "Child custody consultation"
 }
 ```
@@ -355,7 +355,7 @@ routes = [
 |-----------|---------|
 | **Backend** | ✅ Production Ready |
 | **AI Integration** | ✅ Llama 3.1 8B |
-| **Case Creation** | ✅ Fully Functional |
+| **Matter Creation** | ✅ Fully Functional |
 | **Team Configuration** | ✅ Multi-tenant |
 | **Email Notifications** | ✅ Resend Integration |
 | **Scheduling** | ✅ Appointment Booking |
@@ -370,10 +370,10 @@ Based on code analysis, here are recommended enhancements:
 
 ### 🎯 High Priority
 
-1. **Enhanced Case Quality Scoring**
-   - Restore full AI-powered case analysis
+1. **Enhanced Matter Quality Scoring**
+   - Restore full AI-powered matter analysis
    - Add progress tracking with visual indicators
-   - Implement suggestion system for case improvement
+   - Implement suggestion system for matter improvement
 
 2. **File Upload Integration**
    - R2 bucket configuration for document storage
@@ -389,7 +389,7 @@ Based on code analysis, here are recommended enhancements:
 
 4. **Session Management**
    - Persistent conversation history
-   - Resume interrupted case creation flows
+   - Resume interrupted matter creation flows
    - Better session timeout handling
 
 5. **Email Template System**
@@ -398,7 +398,7 @@ Based on code analysis, here are recommended enhancements:
    - Automated follow-up sequences
 
 6. **Analytics Dashboard**
-   - Case completion rates
+   - Matter completion rates
    - Lead quality metrics
    - Team performance insights
 
@@ -412,7 +412,7 @@ Based on code analysis, here are recommended enhancements:
 8. **Advanced AI Features**
    - Document analysis with AI
    - Legal research integration
-   - Automated case categorization
+   - Automated matter categorization
 
 9. **Mobile Optimization**
    - Progressive Web App (PWA)

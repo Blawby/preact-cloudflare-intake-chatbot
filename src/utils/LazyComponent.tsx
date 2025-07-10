@@ -49,7 +49,7 @@ const LazyLoader: FunctionComponent<LazyLoaderProps> = ({
     const config = LOADER_CONFIGS[componentName as keyof typeof LOADER_CONFIGS] || LOADER_CONFIGS.default;
     
     return fallback || (
-        <div className={`lazy-skeleton-container ${componentName.toLowerCase()}-skeleton`}>
+        <div className={`lazy-skeleton-container ${componentName.toLowerMatter()}-skeleton`}>
             <SkeletonLoader 
                 height={config.height}
                 width={config.width}

@@ -2,7 +2,7 @@ import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
 import { marked } from 'marked';
 import LazyMedia from './LazyMedia';
-import CaseCanvas from './CaseCanvas';
+import MatterCanvas from './MatterCanvas';
 import FeedbackUI from './FeedbackUI';
 import createLazyComponent from '../utils/LazyComponent';
 
@@ -48,8 +48,8 @@ interface SchedulingData {
 	scheduledDateTime?: Date;
 }
 
-// Add case creation-related data interface
-interface CaseCreationData {
+// Add matter creation-related data interface
+interface MatterCreationData {
 	type: 'service-selection' | 'urgency-selection' | 'ai-questions';
 	availableServices: string[];
 	question?: string;
@@ -62,10 +62,10 @@ interface MessageProps {
 	isUser: boolean;
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
-	caseCreation?: CaseCreationData;
-	caseCanvas?: {
+	matterCreation?: MatterCreationData;
+	matterCanvas?: {
 		service: string;
-		caseSummary: string;
+		matterSummary: string;
 		qualityScore?: {
 			score: number;
 			badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
@@ -110,7 +110,7 @@ const formatFileSize = (bytes: number): string => {
 
 const getFileIcon = (file: FileAttachment) => {
 	// Get file extension
-	const ext = file.name.split('.').pop()?.toLowerCase();
+	const ext = file.name.split('.').pop()?.toLowerMatter();
 	
 	// PDF icon
 	if (file.type === 'application/pdf' || ext === 'pdf') {
@@ -214,7 +214,7 @@ const ServiceSelectionButtons: FunctionComponent<{
 	const formatServiceName = (service: string) => {
 		return service
 			.split('-')
-			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+			.map(word => word.charAt(0).toUpperMatter() + word.slice(1))
 			.join(' ');
 	};
 
@@ -285,8 +285,8 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	isUser, 
 	files = [], 
 	scheduling, 
-	caseCreation,
-	caseCanvas,
+	matterCreation,
+	matterCanvas,
 	onDateSelect, 
 	onTimeOfDaySelect, 
 	onTimeSlotSelect, 
@@ -367,25 +367,25 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					</div>
 				)}
 				
-				{/* Display case canvas */}
-				{caseCanvas && (
-					<CaseCanvas
-						service={caseCanvas.service}
-						caseSummary={caseCanvas.caseSummary}
-						qualityScore={caseCanvas.qualityScore}
-						answers={caseCanvas.answers}
-						isExpanded={caseCanvas.isExpanded}
+				{/* Display matter canvas */}
+				{matterCanvas && (
+					<MatterCanvas
+						service={matterCanvas.service}
+						matterSummary={matterCanvas.matterSummary}
+						qualityScore={matterCanvas.qualityScore}
+						answers={matterCanvas.answers}
+						isExpanded={matterCanvas.isExpanded}
 					/>
 				)}
 				
-				{/* Display case creation components */}
-				{caseCreation && caseCreation.type === 'service-selection' && onServiceSelect && (
+				{/* Display matter creation components */}
+				{matterCreation && matterCreation.type === 'service-selection' && onServiceSelect && (
 					<ServiceSelectionButtons
-						services={caseCreation.availableServices}
+						services={matterCreation.availableServices}
 						onServiceSelect={onServiceSelect}
 					/>
 				)}
-				{caseCreation && caseCreation.type === 'urgency-selection' && onUrgencySelect && (
+				{matterCreation && matterCreation.type === 'urgency-selection' && onUrgencySelect && (
 					<UrgencySelectionButtons
 						onUrgencySelect={onUrgencySelect}
 					/>

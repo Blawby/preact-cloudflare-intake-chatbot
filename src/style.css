@@ -501,7 +501,7 @@ body {
 .input-preview-item .file-ext {
 	font-size: 0.6rem;
 	color: var(--accent-color);
-	text-transform: uppercase;
+	text-transform: uppermatter;
 	font-weight: 600;
 }
 
@@ -2358,7 +2358,7 @@ kbd {
 	max-width: 400px;
 }
 
-.case-canvas {
+.matter-canvas {
 	margin: 8px 0;
 	border: 1px solid var(--border-color);
 	border-radius: 8px;
@@ -2366,7 +2366,7 @@ kbd {
 	overflow: hidden;
 }
 
-.case-canvas-header {
+.matter-canvas-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -2375,7 +2375,7 @@ kbd {
 	border-bottom: 1px solid var(--border-color);
 }
 
-.case-canvas-title {
+.matter-canvas-title {
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -2384,7 +2384,7 @@ kbd {
 	color: var(--text-color);
 }
 
-.case-canvas-toggle {
+.matter-canvas-toggle {
 	background: none;
 	border: none;
 	padding: 4px;
@@ -2394,15 +2394,15 @@ kbd {
 	transition: opacity 0.2s ease;
 }
 
-.case-canvas-toggle:hover {
+.matter-canvas-toggle:hover {
 	opacity: 1;
 }
 
-.case-canvas-content {
+.matter-canvas-content {
 	padding: 0;
 }
 
-.case-canvas-markdown {
+.matter-canvas-markdown {
 	margin: 0;
 	padding: 12px;
 	font-family: ui-monospace, 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;

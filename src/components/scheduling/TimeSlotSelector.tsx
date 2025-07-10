@@ -36,8 +36,8 @@ const TimeSlotSelector: FunctionalComponent<TimeSlotSelectorProps> = ({
   // Get time of day label
   const timeOfDayLabel = useMemo(() => {
     switch (timeOfDay) {
-      case 'morning': return 'Morning';
-      case 'afternoon': return 'Afternoon';
+      matter 'morning': return 'Morning';
+      matter 'afternoon': return 'Afternoon';
       default: return '';
     }
   }, [timeOfDay]);

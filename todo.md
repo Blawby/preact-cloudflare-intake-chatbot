@@ -168,12 +168,12 @@
      - Store user/assistant/system messages with timestamps
      - Enable training datasets with (user → assistant) pairs
      - Support auditing and response regeneration
-   - Create `case_questions` table for Q&A pairs from intake
-     - Store individual question/answer pairs from case creation
+   - Create `matter_questions` table for Q&A pairs from intake
+     - Store individual question/answer pairs from matter creation
      - Track question sources (ai-form, human-entry, followup)
      - Identify confusing or useful questions for model improvement
-   - Create `ai_generated_summaries` table for markdown case summaries
-     - Log LLM-generated case summaries with model info
+   - Create `ai_generated_summaries` table for markdown matter summaries
+     - Log LLM-generated matter summaries with model info
      - Store prompt snapshots for analysis
      - Enable summary quality tracking over time
    - Create `ai_feedback` table for user quality ratings
@@ -183,8 +183,8 @@
 
 2. Data Collection Implementation
    - Modify chat handlers to log messages to `chat_logs` table
-   - Update case creation flow to store Q&A pairs in `case_questions`
-   - Add logging for AI-generated summaries in case review step
+   - Update matter creation flow to store Q&A pairs in `matter_questions`
+   - Add logging for AI-generated summaries in matter review step
    - Implement feedback collection UI for user ratings
    - Create data export utilities for training datasets
 
@@ -197,9 +197,9 @@
 
 4. RAG Pipeline Preparation
    - Design retrieval system using stored chat logs
-   - Implement semantic search across case summaries
+   - Implement semantic search across matter summaries
    - Create context injection for continuing conversations
-   - Build knowledge base from successful case outcomes
+   - Build knowledge base from successful matter outcomes
 
 ## Future Tasks
 - Speech-to-text integration

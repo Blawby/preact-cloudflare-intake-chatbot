@@ -62,15 +62,15 @@
 
 ### 2. Enhanced Chat Features
 - [ ] **Conversational Data Collection**
-  - [ ] Name, email, phone, case type collection
+  - [ ] Name, email, phone, matter type collection
   - [ ] Natural language validation
   - [ ] Progress indicators in chat format
   - [ ] Conversation state management
   - [ ] Edit previous responses capability
 
-- [ ] **AI-Powered Case Preparation**
-  - [ ] Natural language prompts for case details
-  - [ ] File upload support for case documents
+- [ ] **AI-Powered Matter Preparation**
+  - [ ] Natural language prompts for matter details
+  - [ ] File upload support for matter documents
   - [ ] Progress tracking through conversation
   - [ ] Validation through chat responses
 
@@ -90,7 +90,7 @@
 - [x] **Team Settings**
   - [x] Consultation fee configuration
   - [x] Payment amount settings
-  - [x] Available services and case types
+  - [x] Available services and matter types
   - [ ] Scheduling preferences
   - [ ] Team-specific email templates
 

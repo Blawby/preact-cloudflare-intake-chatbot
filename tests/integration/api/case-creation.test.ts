@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-describe('Case Creation API Integration Tests', () => {
+describe('Matter Creation API Integration Tests', () => {
   beforeEach(() => {
     mockFetch.mockClear();
   });
@@ -21,7 +21,7 @@ describe('Case Creation API Integration Tests', () => {
       };
       mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/case-creation', {
+      const response = await fetch('/api/matter-creation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ describe('Case Creation API Integration Tests', () => {
       };
       mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/case-creation', {
+      const response = await fetch('/api/matter-creation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ describe('Case Creation API Integration Tests', () => {
       };
       mockFetch.mockResolvedValue(mockResponse1);
 
-      const response1 = await fetch('/api/case-creation', {
+      const response1 = await fetch('/api/matter-creation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,18 +110,18 @@ describe('Case Creation API Integration Tests', () => {
       expect(data1.currentQuestion).toBe(2);
     });
 
-    it('should complete question flow and move to case details', async () => {
+    it('should complete question flow and move to matter details', async () => {
       const mockResponse = {
         ok: true,
         status: 200,
         json: () => Promise.resolve({
-          step: 'case-details',
-          message: 'Please provide details about your case'
+          step: 'matter-details',
+          message: 'Please provide details about your matter'
         }),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/case-creation', {
+      const response = await fetch('/api/matter-creation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,12 +144,12 @@ describe('Case Creation API Integration Tests', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.step).toBe('case-details');
+      expect(data.step).toBe('matter-details');
     });
   });
 
-  describe('Case Details with Quality Scoring', () => {
-    it('should process case details and return quality score', async () => {
+  describe('Matter Details with Quality Scoring', () => {
+    it('should process matter details and return quality score', async () => {
       const mockResponse = {
         ok: true,
         status: 200,
@@ -159,19 +159,19 @@ describe('Case Creation API Integration Tests', () => {
             badge: 'Good',
             readyForLawyer: true
           },
-          message: 'Your case has been processed successfully'
+          message: 'Your matter has been processed successfully'
         }),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/case-creation', {
+      const response = await fetch('/api/matter-creation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           teamId: 'north-carolina-legal-services',
-          step: 'case-details',
+          step: 'matter-details',
           service: 'Family Law',
           description: 'Seeking divorce after 10 years of marriage. Have two children ages 8 and 12.',
           urgency: 'Somewhat Urgent',
@@ -207,7 +207,7 @@ describe('Case Creation API Integration Tests', () => {
       };
       mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/case-creation', {
+      const response = await fetch('/api/matter-creation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +229,7 @@ describe('Case Creation API Integration Tests', () => {
       };
       mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/case-creation', {
+      const response = await fetch('/api/matter-creation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -47,10 +47,10 @@ export const createMockFile = (overrides = {}) => ({
   ...overrides,
 });
 
-export const createMockCase = (overrides = {}) => ({
-  id: `case-${Date.now()}`,
+export const createMockMatter = (overrides = {}) => ({
+  id: `matter-${Date.now()}`,
   service: 'Family Law',
-  description: 'Test case description',
+  description: 'Test matter description',
   urgency: 'Somewhat Urgent',
   qualityScore: 75,
   answers: {},

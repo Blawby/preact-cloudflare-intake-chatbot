@@ -18,15 +18,15 @@ interface ChatRequest {
 interface ContactForm {
   email: string;
   phoneNumber: string;
-  caseDetails: string;
+  matterDetails: string;
   teamId: string;
   urgency?: string;
 }
 
-interface CaseCreationRequest {
+interface MatterCreationRequest {
   teamId: string;
   service?: string;
-  step: 'service-selection' | 'questions' | 'case-review' | 'case-details' | 'complete';
+  step: 'service-selection' | 'questions' | 'matter-review' | 'matter-details' | 'complete';
   currentQuestionIndex?: number;
   answers?: Record<string, string | { question: string; answer: string }>;
   description?: string;
@@ -137,14 +137,14 @@ class EmailService {
   }
 }
 
-// Simplified case quality assessment (no AI calls)
-function assessCaseQuality(caseData: any): {
+// Simplified matter quality assessment (no AI calls)
+function assessMatterQuality(matterData: any): {
   score: number;
   readyForLawyer: boolean;
 } {
-  const numAnswers = Object.keys(caseData.answers || {}).length;
-  const hasService = !!caseData.service;
-  const hasDescription = (caseData.description || '').length > 50;
+  const numAnswers = Object.keys(matterData.answers || {}).length;
+  const hasService = !!matterData.service;
+  const hasDescription = (matterData.description || '').length > 50;
   const score = (hasService ? 40 : 0) + (hasDescription ? 30 : 0) + Math.min(numAnswers * 15, 30);
   return {
     score,
@@ -171,8 +171,8 @@ async function logChatMessage(
   }
 }
 
-// Helper function to store case Q&A pairs
-async function storeCaseQuestion(
+// Helper function to store matter Q&A pairs
+async function storeMatterQuestion(
   env: Env,
   matterId: string | undefined,
   teamId: string | undefined,
@@ -183,11 +183,11 @@ async function storeCaseQuestion(
   try {
     const questionId = crypto.randomUUID();
     await env.DB.prepare(`
-      INSERT INTO case_questions (id, matter_id, team_id, question, answer, source, created_at)
+      INSERT INTO matter_questions (id, matter_id, team_id, question, answer, source, created_at)
       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     `).bind(questionId, matterId || null, teamId || null, question, answer, source).run();
   } catch (error) {
-    console.warn('Failed to store case question:', error);
+    console.warn('Failed to store matter question:', error);
   }
 }
 
@@ -227,11 +227,11 @@ async function handleRoot(request: Request, env: Env, corsHeaders: Record<string
 </head>
 <body>
     <h1>🤖 Blawby AI Chatbot API</h1>
-    <p>AI-powered legal assistance with case building</p>
+    <p>AI-powered legal assistance with matter building</p>
     <ul>
         <li><strong>POST</strong> /api/chat - AI conversations</li>
         <li><strong>GET</strong> /api/teams - Available teams</li>
-        <li><strong>POST</strong> /api/case-creation - Case building flow</li>
+        <li><strong>POST</strong> /api/matter-creation - Matter building flow</li>
         <li><strong>POST</strong> /api/forms - Contact submissions</li>
         <li><strong>POST</strong> /api/scheduling - Appointments</li>
         <li><strong>POST</strong> /api/feedback - AI feedback collection</li>
@@ -299,7 +299,7 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
           messages: [...body.messages, { role: 'assistant', content: response }],
           lastActivity: new Date().toISOString(),
           intent: 'general',
-          shouldStartCaseCreation: false
+          shouldStartMatterCreation: false
         };
 
         await env.CHAT_SESSIONS.put(body.sessionId, JSON.stringify(sessionData), {
@@ -313,7 +313,7 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
     return new Response(JSON.stringify({
       response,
       intent: 'general',
-      shouldStartCaseCreation: false,
+      shouldStartMatterCreation: false,
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -328,8 +328,8 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
   }
 }
 
-// Optimized Case creation handler with caching
-async function handleCaseCreation(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+// Optimized Matter creation handler with caching
+async function handleMatterCreation(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -338,7 +338,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
   }
 
   try {
-    const body = await parseJsonBody(request) as CaseCreationRequest;
+    const body = await parseJsonBody(request) as MatterCreationRequest;
     
     if (!body.teamId || !body.step) {
       return new Response(JSON.stringify({ error: 'Missing teamId or step' }), {
@@ -358,10 +358,10 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
       });
     }
 
-    const quality = assessCaseQuality(body);
+    const quality = assessMatterQuality(body);
 
     switch (body.step) {
-      case 'service-selection':
+      matter 'service-selection':
         // If no service selected yet, show service options
         if (!body.service) {
           const services = teamConfig.availableServices || [
@@ -380,12 +380,12 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
             qualityScore: quality
           };
 
-          // Save case creation state to session
+          // Save matter creation state to session
           if (body.sessionId) {
             try {
               const sessionData = {
                 teamId: body.teamId,
-                caseCreationState: {
+                matterCreationState: {
                   step: 'service-selection',
                   data: body,
                   timestamp: new Date().toISOString()
@@ -397,7 +397,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
                 expirationTtl: 24 * 60 * 60 // 24 hours
               });
             } catch (error) {
-              console.warn('Failed to save case creation session:', error);
+              console.warn('Failed to save matter creation session:', error);
             }
           }
 
@@ -424,9 +424,9 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           } else {
-            // No questions, go straight to case details
+            // No questions, go straight to matter details
             return new Response(JSON.stringify({
-              step: 'case-details',
+              step: 'matter-details',
               message: `Thank you for selecting ${body.service}. Please provide a detailed description of your situation.`,
               selectedService: body.service,
               qualityScore: quality
@@ -436,7 +436,7 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           }
         }
 
-      case 'questions':
+      matter 'questions':
         const questions = teamConfig.serviceQuestions?.[body.service!] || [
           `Tell me more about your ${body.service} situation.`,
           'When did this issue begin?',
@@ -457,12 +457,12 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
                 } else {
-          // All questions answered, move to case review step
+          // All questions answered, move to matter review step
           const answers = body.answers || {};
           const answerValues = Object.values(answers).filter(Boolean);
           
-          // Auto-generate case description from Q&A answers
-          const autoDescription = `${body.service} case: ${answerValues.join('. ')}.`;
+          // Auto-generate matter description from Q&A answers
+          const autoDescription = `${body.service} matter: ${answerValues.join('. ')}.`;
           
           // Create enhanced body for quality assessment
           const enhancedBody = {
@@ -472,11 +472,11 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           };
           
           // Get quality assessment with the auto-generated description
-          const initialQuality = assessCaseQuality(enhancedBody);
+          const initialQuality = assessMatterQuality(enhancedBody);
           
           return new Response(JSON.stringify({
-            step: 'case-review',
-            message: `Thank you for answering those questions. Let me review your case and provide a summary.`,
+            step: 'matter-review',
+            message: `Thank you for answering those questions. Let me review your matter and provide a summary.`,
             selectedService: body.service,
             qualityScore: initialQuality,
             autoGeneratedDescription: autoDescription,
@@ -486,13 +486,13 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
       });
         }
 
-      case 'case-review':
-        // Generate comprehensive case summary and determine next steps
-        const caseAnswers = body.answers || {};
-        const caseDescription = body.description || `${body.service} case with provided details`;
+      matter 'matter-review':
+        // Generate comprehensive matter summary and determine next steps
+        const matterAnswers = body.answers || {};
+        const matterDescription = body.description || `${body.service} matter with provided details`;
         
         // Extract question-answer pairs from the new data structure
-        const questionAnswerPairs = Object.entries(caseAnswers).map(([key, value]) => {
+        const questionAnswerPairs = Object.entries(matterAnswers).map(([key, value]) => {
           if (typeof value === 'object' && value !== null && 'question' in value && 'answer' in value) {
             return `**${value.question}**: ${value.answer}`;
           }
@@ -500,29 +500,29 @@ async function handleCaseCreation(request: Request, env: Env, corsHeaders: Recor
           return `**${key}**: ${value}`;
         }).filter(pair => pair.includes(': ') && !pair.includes(': undefined'));
         
-        // Create enhanced case data for assessment
-        const caseData = {
+        // Create enhanced matter data for assessment
+        const matterData = {
           service: body.service,
-          description: caseDescription,
-          answers: caseAnswers,
+          description: matterDescription,
+          answers: matterAnswers,
           urgency: body.urgency
         };
         
         // Get detailed quality assessment
-        const reviewQuality = assessCaseQuality(caseData);
+        const reviewQuality = assessMatterQuality(matterData);
         
-                // Generate structured markdown case summary for canvas
-        let caseSummary = '';
+                // Generate structured markdown matter summary for canvas
+        let matterSummary = '';
         if (aiService) {
           try {
-             const summaryPrompt = `Create a clean case summary markdown for this ${body.service} matter. The client provided initial structured answers AND follow-up conversation details. Use ALL information provided:
+             const summaryPrompt = `Create a clean matter summary markdown for this ${body.service} matter. The client provided initial structured answers AND follow-up conversation details. Use ALL information provided:
 
 Initial Q&A and Follow-up Information:
 ${questionAnswerPairs.join('\n')}
 
 Generate ONLY markdown content using the EXACT format below. Use FACTS ONLY - no empathetic language, no emotional content:
 
-# 📋 ${body.service} Case Summary
+# 📋 ${body.service} Matter Summary
 
 ## 💼 Legal Matter
 [State the specific legal issue in clear terms]
@@ -544,8 +544,8 @@ CRITICAL REQUIREMENTS:
 - NO internal assessments, scores, or AI analysis
 - NO quality ratings or percentages  
 - NO suggestions for improvement
-- NO "Case Assessment" section
-- This is what the CLIENT sees in their case summary
+- NO "Matter Assessment" section
+- This is what the CLIENT sees in their matter summary
 - Keep it clean and professional
 - ONLY include the 3 sections shown above: Legal Matter, Key Details, and Objective
 
@@ -557,37 +557,37 @@ IMPORTANT FOR FAMILY LAW CASES:
 - Client and spouse/partner are different people
 - Children live with spouse/partner, not with client's mother
 - Keep relationships clear and simple
-- Don't confuse multiple "mothers" in the same case
+- Don't confuse multiple "mothers" in the same matter
 - Synthesize ALL information into a coherent summary`;
 
             const summaryResult = await aiService.runLLM([
-              { role: 'system', content: 'You are a legal assistant creating structured markdown case summaries. Follow the exact format requested. Use clear, professional language. Pay close attention to relationships and living arrangements. Initial Q&A responses and follow-up conversation details should both be considered to create a comprehensive summary.' },
+              { role: 'system', content: 'You are a legal assistant creating structured markdown matter summaries. Follow the exact format requested. Use clear, professional language. Pay close attention to relationships and living arrangements. Initial Q&A responses and follow-up conversation details should both be considered to create a comprehensive summary.' },
               { role: 'user', content: summaryPrompt }
             ]);
             
-            caseSummary = summaryResult.response || `# 📋 ${body.service} Case Summary\n\n## 💼 Legal Matter\n${body.service} case with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
+            matterSummary = summaryResult.response || `# 📋 ${body.service} Matter Summary\n\n## 💼 Legal Matter\n${body.service} matter with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
             
             // Store AI-generated summary for training
-            if (caseSummary && body.sessionId) {
+            if (matterSummary && body.sessionId) {
               await storeAISummary(
                 env,
                 body.sessionId, // Using sessionId as matterId for now
-                caseSummary,
+                matterSummary,
                 '@cf/meta/llama-3.1-8b-instruct',
                 summaryPrompt
               );
             }
           } catch (error) {
-            console.warn('AI case summary failed:', error);
-            caseSummary = `# 📋 ${body.service} Case Summary\n\n## 💼 Legal Matter\n${body.service} case with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
+            console.warn('AI matter summary failed:', error);
+            matterSummary = `# 📋 ${body.service} Matter Summary\n\n## 💼 Legal Matter\n${body.service} matter with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
           }
         }
         
-        // Store case Q&A pairs for training
-        if (body.sessionId && caseAnswers) {
-          Object.entries(caseAnswers).forEach(async ([key, value]) => {
+        // Store matter Q&A pairs for training
+        if (body.sessionId && matterAnswers) {
+          Object.entries(matterAnswers).forEach(async ([key, value]) => {
             if (typeof value === 'object' && value !== null && 'question' in value && 'answer' in value) {
-              await storeCaseQuestion(
+              await storeMatterQuestion(
                 env,
                 body.sessionId, // Using sessionId as matterId for now
                 body.teamId,
@@ -599,7 +599,7 @@ IMPORTANT FOR FAMILY LAW CASES:
           });
         }
         
-        // Determine if case needs improvement (threshold: 75)
+        // Determine if matter needs improvement (threshold: 75)
         const needsImprovement = reviewQuality.score < 75;
         
         // Generate follow-up questions if needed
@@ -608,7 +608,7 @@ IMPORTANT FOR FAMILY LAW CASES:
           try {
                          const questionPrompt = `I'm helping someone with their ${body.service} situation. To make sure we have all the information needed to help them effectively, I'd like to ask a few more gentle, supportive questions.
 
-Their situation: ${caseSummary}
+Their situation: ${matterSummary}
 Current score: ${reviewQuality.score}/100
 
 Please suggest 2-3 conversational, empathetic follow-up questions that:
@@ -638,46 +638,46 @@ Write each question as if you're a supportive friend or counselor asking for cla
         }
         
         // Create empathetic intro message before canvas
-        let reviewMessage = `Thanks for sharing your situation with me. I can tell this has been really challenging, especially dealing with ${body.service.toLowerCase()} matters. I've put together a case summary based on what you've shared so far — you'll see that summary below.`;
+        let reviewMessage = `Thanks for sharing your situation with me. I can tell this has been really challenging, especially dealing with ${body.service.toLowerMatter()} matters. I've put together a matter summary based on what you've shared so far — you'll see that summary below.`;
         
-        // Create case canvas data
-        const caseCanvasData = {
+        // Create matter canvas data
+        const matterCanvasData = {
           service: body.service,
-          caseSummary: caseSummary,
+          matterSummary: matterSummary,
           qualityScore: reviewQuality,
-          answers: caseAnswers,
+          answers: matterAnswers,
           isExpanded: false
         };
         
         // Follow-up message if needed
         let followUpMessage = '';
         if (needsImprovement && followUpQuestions.length > 0) {
-          followUpMessage = `Looking at your case summary, I'd love to get a few more details to strengthen your position. ${followUpQuestions[0]}`;
+          followUpMessage = `Looking at your matter summary, I'd love to get a few more details to strengthen your position. ${followUpQuestions[0]}`;
         } else {
-          followUpMessage = `Your case summary looks comprehensive! I believe we have strong information to connect you with the right attorney who can help with your ${body.service.toLowerCase()} matter.`;
+          followUpMessage = `Your matter summary looks comprehensive! I believe we have strong information to connect you with the right attorney who can help with your ${body.service.toLowerMatter()} matter.`;
         }
         
         return new Response(JSON.stringify({
-          step: needsImprovement ? 'case-review' : 'complete',
+          step: needsImprovement ? 'matter-review' : 'complete',
           message: reviewMessage,
           selectedService: body.service,
           qualityScore: reviewQuality,
-          caseCanvas: caseCanvasData,
+          matterCanvas: matterCanvasData,
           followUpMessage: followUpMessage,
           needsImprovement,
           followUpQuestions,
           currentFollowUpIndex: 0,
           readyForNextStep: !needsImprovement,
-          nextActions: needsImprovement ? ['improve-case'] : ['contact', 'schedule']
+          nextActions: needsImprovement ? ['improve-matter'] : ['contact', 'schedule']
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
 
-      case 'case-details':
+      matter 'matter-details':
         const serviceText = body.service ? ` regarding your ${body.service} matter` : '';
         const nextStepMessage = quality.readyForLawyer 
-          ? `Perfect! Based on your case details${serviceText}, you're ready to speak with one of our attorneys. Would you like to schedule a consultation or submit your contact information?`
-          : `Thank you for the details${serviceText}. To better assist you, I have a few suggestions to strengthen your case before connecting with an attorney.`;
+          ? `Perfect! Based on your matter details${serviceText}, you're ready to speak with one of our attorneys. Would you like to schedule a consultation or submit your contact information?`
+          : `Thank you for the details${serviceText}. To better assist you, I have a few suggestions to strengthen your matter before connecting with an attorney.`;
         
         return new Response(JSON.stringify({
           step: 'complete',
@@ -685,7 +685,7 @@ Write each question as if you're a supportive friend or counselor asking for cla
           selectedService: body.service,
           qualityScore: quality,
           readyForNextStep: quality.readyForLawyer,
-          nextActions: quality.readyForLawyer ? ['schedule', 'contact'] : ['improve-case', 'contact']
+          nextActions: quality.readyForLawyer ? ['schedule', 'contact'] : ['improve-matter', 'contact']
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -698,8 +698,8 @@ Write each question as if you're a supportive friend or counselor asking for cla
     }
 
   } catch (error) {
-    console.error('Case creation error:', error);
-    return new Response(JSON.stringify({ error: 'Case creation failed' }), {
+    console.error('Matter creation error:', error);
+    return new Response(JSON.stringify({ error: 'Matter creation failed' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -718,7 +718,7 @@ async function handleForms(request: Request, env: Env, corsHeaders: Record<strin
   try {
     const body = await parseJsonBody(request) as ContactForm;
     
-    if (!body.email || !body.phoneNumber || !body.caseDetails || !body.teamId) {
+    if (!body.email || !body.phoneNumber || !body.matterDetails || !body.teamId) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -738,9 +738,9 @@ async function handleForms(request: Request, env: Env, corsHeaders: Record<strin
     
     // Store form with optimized query
     await env.DB.prepare(`
-      INSERT INTO contact_forms (id, team_id, phone_number, email, case_details, status)
+      INSERT INTO contact_forms (id, team_id, phone_number, email, matter_details, status)
       VALUES (?, ?, ?, ?, ?, 'pending')
-    `).bind(formId, body.teamId, body.phoneNumber, body.email, body.caseDetails).run();
+    `).bind(formId, body.teamId, body.phoneNumber, body.email, body.matterDetails).run();
 
     // Send notifications asynchronously to improve response time
     if (env.RESEND_API_KEY) {
@@ -813,11 +813,11 @@ async function handleScheduling(request: Request, env: Env, corsHeaders: Record<
         phoneNumber: string;
         preferredDate: string;
         preferredTime: string;
-        caseType: string;
+        matterType: string;
         notes?: string;
       };
       
-      if (!body.teamId || !body.email || !body.preferredDate || !body.caseType) {
+      if (!body.teamId || !body.email || !body.preferredDate || !body.matterType) {
         return new Response(JSON.stringify({ error: 'Missing required fields' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -827,11 +827,11 @@ async function handleScheduling(request: Request, env: Env, corsHeaders: Record<
       const appointmentId = crypto.randomUUID();
       
       await env.DB.prepare(`
-        INSERT INTO appointments (id, team_id, email, phone_number, preferred_date, preferred_time, case_type, notes, status, created_at)
+        INSERT INTO appointments (id, team_id, client_email, client_phone, preferred_date, preferred_time, matter_type, notes, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
       `).bind(
         appointmentId, body.teamId, body.email, body.phoneNumber || '',
-        body.preferredDate, body.preferredTime || '', body.caseType, body.notes || ''
+        body.preferredDate, body.preferredTime || '', body.matterType, body.notes || ''
       ).run();
 
       return new Response(JSON.stringify({
@@ -1043,7 +1043,7 @@ async function handleFiles(request: Request, env: Env, corsHeaders: Record<strin
       // Store file metadata in database
       const fileId = crypto.randomUUID();
       await env.DB.prepare(`
-        INSERT INTO uploaded_files (id, team_id, session_id, original_name, file_name, file_type, file_size, uploaded_at)
+        INSERT INTO files (id, team_id, session_id, original_name, file_name, file_type, file_size, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `).bind(fileId, teamId, sessionId, file.name, fileName, file.type, file.size).run();
 
@@ -1079,7 +1079,7 @@ async function handleFiles(request: Request, env: Env, corsHeaders: Record<strin
       }
 
       // Get file metadata from database
-      const fileRow = await env.DB.prepare('SELECT * FROM uploaded_files WHERE id = ?').bind(fileId).first();
+      const fileRow = await env.DB.prepare('SELECT * FROM files WHERE id = ?').bind(fileId).first();
       if (!fileRow) {
         return new Response(JSON.stringify({ error: 'File not found' }), {
           status: 404,
@@ -1210,7 +1210,7 @@ async function handleExport(request: Request, env: Env, corsHeaders: Record<stri
     const limit = parseInt(url.searchParams.get('limit') || '1000');
 
     if (!dataType) {
-      return new Response(JSON.stringify({ error: 'Data type required (chat_logs, case_questions, ai_summaries, ai_feedback)' }), {
+      return new Response(JSON.stringify({ error: 'Data type required (chat_logs, matter_questions, ai_summaries, ai_feedback)' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -1220,27 +1220,27 @@ async function handleExport(request: Request, env: Env, corsHeaders: Record<stri
     let params: any[] = [];
 
     switch (dataType) {
-      case 'chat_logs':
+      matter 'chat_logs':
         query = `SELECT * FROM chat_logs ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY timestamp DESC LIMIT ?`;
         params = teamId ? [teamId, limit] : [limit];
         break;
       
-      case 'case_questions':
-        query = `SELECT * FROM case_questions ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY created_at DESC LIMIT ?`;
+      matter 'matter_questions':
+        query = `SELECT * FROM matter_questions ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY created_at DESC LIMIT ?`;
         params = teamId ? [teamId, limit] : [limit];
         break;
       
-      case 'ai_summaries':
+      matter 'ai_summaries':
         query = `SELECT * FROM ai_generated_summaries ORDER BY created_at DESC LIMIT ?`;
         params = [limit];
         break;
       
-      case 'ai_feedback':
+      matter 'ai_feedback':
         query = `SELECT * FROM ai_feedback ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY created_at DESC LIMIT ?`;
         params = teamId ? [teamId, limit] : [limit];
         break;
       
-      case 'training_pairs':
+      matter 'training_pairs':
         // Export chat logs formatted as training pairs
         query = `
           SELECT 
@@ -1319,7 +1319,7 @@ async function sendNotifications(formData: ContactForm, formId: string, env: Env
         from: 'noreply@blawby.com',
         to: teamConfig.ownerEmail,
         subject: `New Lead: ${formData.email}`,
-        text: `New lead received:\n\nEmail: ${formData.email}\nPhone: ${formData.phoneNumber}\nCase: ${formData.caseDetails}\nForm ID: ${formId}`
+        text: `New lead received:\n\nEmail: ${formData.email}\nPhone: ${formData.phoneNumber}\nMatter: ${formData.matterDetails}\nForm ID: ${formId}`
       })
     );
   }
@@ -1340,7 +1340,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     if (path.startsWith('/api/chat')) return handleChat(request, env, CORS_HEADERS);
     if (path.startsWith('/api/teams')) return handleTeams(request, env, CORS_HEADERS);
     if (path.startsWith('/api/forms')) return handleForms(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/case-creation')) return handleCaseCreation(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/matter-creation')) return handleMatterCreation(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/matter-creation')) return handleMatterCreation(request, env, CORS_HEADERS);
     if (path.startsWith('/api/scheduling')) return handleScheduling(request, env, CORS_HEADERS);
     if (path.startsWith('/api/files')) return handleFiles(request, env, CORS_HEADERS);
     if (path.startsWith('/api/sessions')) return handleSessions(request, env, CORS_HEADERS);

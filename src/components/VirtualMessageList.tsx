@@ -21,8 +21,8 @@ interface SchedulingData {
     scheduledDateTime?: Date;
 }
 
-// Add case creation interface
-interface CaseCreationData {
+// Add matter creation interface
+interface MatterCreationData {
     type: 'service-selection';
     availableServices: string[];
 }
@@ -32,10 +32,10 @@ interface ChatMessage {
     isUser: boolean;
     files?: FileAttachment[];
     scheduling?: SchedulingData;
-    caseCreation?: CaseCreationData;
-    caseCanvas?: {
+    matterCreation?: MatterCreationData;
+    matterCanvas?: {
         service: string;
-        caseSummary: string;
+        matterSummary: string;
         qualityScore?: {
             score: number;
             badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
@@ -196,8 +196,8 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         isUser={message.isUser}
                         files={message.files}
                         scheduling={message.scheduling}
-                        caseCreation={message.caseCreation}
-                        caseCanvas={message.caseCanvas}
+                        matterCreation={message.matterCreation}
+                        matterCanvas={message.matterCanvas}
                         qualityScore={message.qualityScore}
                         onDateSelect={onDateSelect}
                         onTimeOfDaySelect={onTimeOfDaySelect}

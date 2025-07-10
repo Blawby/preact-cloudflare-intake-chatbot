@@ -3,13 +3,13 @@
 export interface FormData {
   email?: string;
   phone?: string;
-  caseDetails?: string;
-  caseType?: string;
-  caseDescription?: string;
+  matterDetails?: string;
+  matterType?: string;
+  matterDescription?: string;
   urgency?: string;
 }
 
-export type FormStep = 'idle' | 'collecting_email' | 'collecting_phone' | 'collecting_case_details' | 'complete';
+export type FormStep = 'idle' | 'collecting_email' | 'collecting_phone' | 'collecting_matter_details' | 'complete';
 
 export interface FormState {
   step: FormStep;
@@ -33,7 +33,7 @@ export function validatePhone(phone: string): boolean {
   return digitsOnly.length >= 10 && digitsOnly.length <= 15;
 }
 
-export function validateCaseDetails(details: string): boolean {
+export function validateMatterDetails(details: string): boolean {
   if (typeof details !== 'string') return false;
   return details.trim().length > 5; // Must be more than 5 characters
 }
@@ -60,12 +60,12 @@ export function processFormStep(
   let shouldSubmit = false;
 
   switch (currentState.step) {
-    case 'collecting_email':
+    matter 'collecting_email':
       if (extractedInfo.email && validateEmail(extractedInfo.email)) {
         newState.data.email = extractedInfo.email;
         newState.step = 'collecting_phone';
         response = `Great! I have your email: ${extractedInfo.email}. Now, what's your phone number?`;
-      } else if (userMessage.toLowerCase().includes('email')) {
+      } else if (userMessage.toLowerMatter().includes('email')) {
         // User might be asking about email format
         response = "Please provide your email address. For example: john.doe@example.com";
       } else {
@@ -73,40 +73,40 @@ export function processFormStep(
       }
       break;
 
-    case 'collecting_phone':
+    matter 'collecting_phone':
       if (extractedInfo.phone && validatePhone(extractedInfo.phone)) {
         newState.data.phone = extractedInfo.phone;
         
-        // Check if we already have case details from case creation flow
-        if (currentState.data.caseDescription && currentState.data.caseDescription !== '') {
-          // Skip case details collection if we already have comprehensive case info
+        // Check if we already have matter details from matter creation flow
+        if (currentState.data.matterDescription && currentState.data.matterDescription !== '') {
+          // Skip matter details collection if we already have comprehensive matter info
           newState.step = 'complete';
-          response = `Perfect! I have your phone: ${extractedInfo.phone}. I have all your contact information now. Let me update your case summary with your contact details and submit everything to our legal team.`;
+          response = `Perfect! I have your phone: ${extractedInfo.phone}. I have all your contact information now. Let me update your matter summary with your contact details and submit everything to our legal team.`;
           shouldSubmit = true;
         } else {
-          // No existing case details, collect them
-          newState.step = 'collecting_case_details';
-          response = `Perfect! I have your phone: ${extractedInfo.phone}. Now, can you tell me more about your legal situation? What type of case or legal issue are you dealing with?`;
+          // No existing matter details, collect them
+          newState.step = 'collecting_matter_details';
+          response = `Perfect! I have your phone: ${extractedInfo.phone}. Now, can you tell me more about your legal situation? What type of matter or legal issue are you dealing with?`;
         }
-      } else if (userMessage.toLowerCase().includes('phone')) {
+      } else if (userMessage.toLowerMatter().includes('phone')) {
         response = "Please provide your phone number. For example: (555) 123-4567 or 555-123-4567";
       } else {
         response = "I need a valid phone number to contact you. Could you please provide your phone number?";
       }
       break;
 
-    case 'collecting_case_details':
-      if (validateCaseDetails(userMessage)) {
-        newState.data.caseDetails = userMessage;
+    matter 'collecting_matter_details':
+      if (validateMatterDetails(userMessage)) {
+        newState.data.matterDetails = userMessage;
         newState.step = 'complete';
         response = `Thank you! I have all the information I need. Here's what I'll send to our team:\n\n` +
           `📧 Email: ${newState.data.email}\n` +
           `📞 Phone: ${newState.data.phone}\n` +
-          `📋 Case Details: ${userMessage}\n\n` +
-          `A lawyer will review your case and get back to you within 24 hours. Is there anything else you'd like to add?`;
+          `📋 Matter Details: ${userMessage}\n\n` +
+          `A lawyer will review your matter and get back to you within 24 hours. Is there anything else you'd like to add?`;
         shouldSubmit = true;
       } else {
-        response = "I need a bit more detail about your legal situation to help our lawyers understand your case. Could you please provide more information about what you're dealing with?";
+        response = "I need a bit more detail about your legal situation to help our lawyers understand your matter. Could you please provide more information about what you're dealing with?";
       }
       break;
 
@@ -141,6 +141,6 @@ export function formatFormData(formData: FormData, teamId: string, conversationI
     conversationId,
     phoneNumber: formData.phone,
     email: formData.email,
-    caseDetails: formData.caseDescription || formData.caseDetails || 'Case details provided through consultation'
+    matterDetails: formData.matterDescription || formData.matterDetails || 'Matter details provided through consultation'
   };
 } 

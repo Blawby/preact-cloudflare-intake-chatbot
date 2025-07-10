@@ -8,14 +8,14 @@ const API_CONFIG = {
     chatEndpoint: '/api/chat',
     teamsEndpoint: '/api/teams',
     healthEndpoint: '/api/health',
-    caseCreationEndpoint: '/api/case-creation'
+    matterCreationEndpoint: '/api/matter-creation'
   },
   deployed: {
     baseUrl: 'https://blawby-ai-chatbot.paulchrisluke.workers.dev',
     chatEndpoint: '/api/chat',
     teamsEndpoint: '/api/teams',
     healthEndpoint: '/api/health',
-    caseCreationEndpoint: '/api/case-creation'
+    matterCreationEndpoint: '/api/matter-creation'
   }
 };
 
@@ -48,7 +48,7 @@ export const getHealthEndpoint = () => {
   return `${config.baseUrl}${config.healthEndpoint}`;
 };
 
-export const getCaseCreationEndpoint = () => {
+export const getMatterCreationEndpoint = () => {
   const config = getApiConfig();
-  return `${config.baseUrl}${config.caseCreationEndpoint}`;
+  return `${config.baseUrl}${config.matterCreationEndpoint}`;
 }; 

@@ -14,7 +14,7 @@ describe('Chat API Integration Tests', () => {
       const mockResponse = {
         ok: true,
         status: 200,
-        json: () => Promise.resolve({ message: 'Hello! How can I help you with your legal case?' }),
+        json: () => Promise.resolve({ message: 'Hello! How can I help you with your legal matter?' }),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
@@ -36,12 +36,12 @@ describe('Chat API Integration Tests', () => {
       expect(typeof data.message).toBe('string');
     });
 
-    it('should handle chat with case intent', async () => {
+    it('should handle chat with matter intent', async () => {
       const mockResponse = {
         ok: true,
         status: 200,
         json: () => Promise.resolve({ 
-          message: 'I understand you need help with a business contract dispute. Let me guide you through our case creation process.' 
+          message: 'I understand you need help with a business contract dispute. Let me guide you through our matter creation process.' 
         }),
       };
       mockFetch.mockResolvedValue(mockResponse);

@@ -10,7 +10,7 @@ import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
-import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getCaseCreationEndpoint } from './config/api';
+import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getMatterCreationEndpoint } from './config/api';
 import { 
   FormState, 
   processFormStep, 
@@ -66,7 +66,7 @@ interface SchedulingData {
 	scheduledDateTime?: Date;
 }
 
-interface CaseCreationData {
+interface MatterCreationData {
 	type: 'service-selection' | 'urgency-selection' | 'ai-questions';
 	availableServices: string[];
 	question?: string;
@@ -79,10 +79,10 @@ interface ChatMessage {
 	isUser: boolean;
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
-	caseCreation?: CaseCreationData;
-	caseCanvas?: {
+	matterCreation?: MatterCreationData;
+	matterCanvas?: {
 		service: string;
-		caseSummary: string;
+		matterSummary: string;
 		qualityScore?: {
 			score: number;
 			badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
@@ -127,17 +127,17 @@ export function App() {
 		isActive: false
 	});
 
-	// State for case creation flow
-	const [caseState, setCaseState] = useState<{
-		step: 'idle' | 'gathering-info' | 'ai-questions' | 'case-review' | 'case-details' | 'ai-analysis' | 'ready-for-lawyer';
+	// State for matter creation flow
+	const [matterState, setMatterState] = useState<{
+		step: 'idle' | 'gathering-info' | 'ai-questions' | 'matter-review' | 'matter-details' | 'ai-analysis' | 'ready-for-lawyer';
 		data: {
-			caseType?: string;
+			matterType?: string;
 			description?: string;
 			urgency?: string;
 			location?: string;
 			additionalInfo?: string;
 			aiAnswers?: Record<string, string>;
-			caseSummary?: string;
+			matterSummary?: string;
 			followUpQuestions?: string[];
 			currentFollowUpIndex?: number;
 		};
@@ -228,13 +228,13 @@ export function App() {
 		const handleParentMessage = (event: MessageEvent) => {
 			if (event.data && event.data.type && position === 'widget') {
 				switch (event.data.type) {
-					case 'toggleChat':
+					matter 'toggleChat':
 						setIsOpen(prev => !prev);
 						break;
-					case 'openChat':
+					matter 'openChat':
 						setIsOpen(true);
 						break;
-					case 'closeChat':
+					matter 'closeChat':
 						setIsOpen(false);
 						break;
 				}
@@ -372,28 +372,28 @@ export function App() {
 		setMessages((prev) => [...prev, newMessage]);
 	};
 
-	// Add case creation handlers
-	const handleCreateCaseStart = () => {
-		// Send user's case creation request message
-		const caseMessage: ChatMessage = {
-			content: "I'd like to create a case and get help with my legal concern.",
+	// Add matter creation handlers
+	const handleCreateMatterStart = () => {
+		// Send user's matter creation request message
+		const matterMessage: ChatMessage = {
+			content: "I'd like to create a matter and get help with my legal concern.",
 			isUser: true
 		};
 		
-		setMessages([...messages, caseMessage]);
+		setMessages([...messages, matterMessage]);
 		setInputValue('');
 		
 		// Add placeholder message with loading indicator (ChatGPT style)
 		const loadingMessageId = crypto.randomUUID();
 		const loadingMessage: ChatMessage = {
-			content: "Let me set up your case creation process...",
+			content: "Let me set up your matter creation process...",
 			isUser: false,
 			isLoading: true,
 			id: loadingMessageId
 		};
 		setMessages(prev => [...prev, loadingMessage]);
 		
-		// Start case creation flow
+		// Start matter creation flow
 		setTimeout(() => {
 			const services = teamConfig.availableServices || [];
 			const serviceOptions = services.length > 0 
@@ -405,9 +405,9 @@ export function App() {
 				msg.id === loadingMessageId 
 					? {
 						...msg,
-						content: `I'm here to help you create a case and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
+						content: `I'm here to help you create a matter and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
 						isLoading: false,
-						caseCreation: {
+						matterCreation: {
 							type: 'service-selection',
 							availableServices: services
 						}
@@ -415,8 +415,8 @@ export function App() {
 					: msg
 			));
 			
-			// Start case creation flow
-			setCaseState({
+			// Start matter creation flow
+			setMatterState({
 				step: 'gathering-info',
 				data: {},
 				isActive: true
@@ -714,7 +714,7 @@ export function App() {
 					));
 					
 					// Submit form if complete
-					if (shouldSubmit && newState.data.email && newState.data.phone && newState.data.caseDetails) {
+					if (shouldSubmit && newState.data.email && newState.data.phone && newState.data.matterDetails) {
 						submitContactForm(newState.data);
 					}
 				}, 1000);
@@ -725,16 +725,16 @@ export function App() {
 			// Check if user typed a service name directly
 			const availableServices = teamConfig.availableServices || [];
 			const isServiceName = availableServices.some(service => 
-				message.toLowerCase().trim() === service.toLowerCase() ||
-				message.toLowerCase().trim() === service.toLowerCase().replace(/-/g, ' ')
+				message.toLowerMatter().trim() === service.toLowerMatter() ||
+				message.toLowerMatter().trim() === service.toLowerMatter().replace(/-/g, ' ')
 			);
 			
 			// Also check for "General Inquiry"
-			const isGeneralInquiry = message.toLowerCase().trim() === 'general inquiry';
+			const isGeneralInquiry = message.toLowerMatter().trim() === 'general inquiry';
 			
-			if ((isServiceName || isGeneralInquiry) && !caseState.isActive) {
-				// Start case creation flow with the typed service
-				setCaseState({
+			if ((isServiceName || isGeneralInquiry) && !matterState.isActive) {
+				// Start matter creation flow with the typed service
+				setMatterState({
 					step: 'gathering-info',
 					data: {},
 					isActive: true
@@ -743,11 +743,11 @@ export function App() {
 				// Process the service selection
 				setTimeout(async () => {
 					try {
-						const result = await handleCaseCreationAPI('service-selection', { service: message });
+						const result = await handleMatterCreationAPI('service-selection', { service: message });
 						
-						setCaseState(prev => ({
+						setMatterState(prev => ({
 							...prev,
-							data: { ...prev.data, caseType: message },
+							data: { ...prev.data, matterType: message },
 							step: result.step,
 							currentQuestionIndex: result.currentQuestionIndex || 0
 						}));
@@ -910,15 +910,15 @@ export function App() {
 					console.warn('Failed to fetch team config:', error);
 				}
 				
-				// Create confirmation message based on payment requirements and case creation status
+				// Create confirmation message based on payment requirements and matter creation status
 				let confirmationContent = "";
 				
-				// Check if this came from case creation flow
-				const hasCase = formData.caseDescription && formData.caseDescription !== '';
+				// Check if this came from matter creation flow
+				const hasMatter = formData.matterDescription && formData.matterDescription !== '';
 				
-				if (hasCase) {
-					// Show case canvas focus message
-					confirmationContent = `✅ Perfect! Your complete case information has been submitted successfully and updated below.`;
+				if (hasMatter) {
+					// Show matter canvas focus message
+					confirmationContent = `✅ Perfect! Your complete matter information has been submitted successfully and updated below.`;
 				} else {
 					// Regular form submission
 					if (teamConfig?.config?.requiresPayment) {
@@ -928,12 +928,12 @@ export function App() {
 						confirmationContent = `✅ Thank you! Your information has been submitted successfully.\n\n` +
 							`💰 **Consultation Fee**: $${fee}\n\n` +
 							`To schedule your consultation with our lawyer, please complete the payment first. ` +
-							`This helps us prioritize your case and ensures we can provide you with the best legal assistance.\n\n` +
+							`This helps us prioritize your matter and ensures we can provide you with the best legal assistance.\n\n` +
 							`🔗 **Payment Link**: ${paymentLink}\n\n` +
-							`Once payment is completed, a lawyer will review your case and contact you within 24 hours. ` +
+							`Once payment is completed, a lawyer will review your matter and contact you within 24 hours. ` +
 							`Thank you for choosing ${teamConfig.name}!`;
 					} else {
-						confirmationContent = `✅ Your information has been submitted successfully! A lawyer will review your case and contact you within 24 hours. Thank you for choosing our firm.`;
+						confirmationContent = `✅ Your information has been submitted successfully! A lawyer will review your matter and contact you within 24 hours. Thank you for choosing our firm.`;
 					}
 				}
 				
@@ -950,43 +950,43 @@ export function App() {
 					));
 				}, 300);
 				
-				// Show updated case canvas with contact information (only if from case creation)
-				if (hasCase) {
+				// Show updated matter canvas with contact information (only if from matter creation)
+				if (hasMatter) {
 					setTimeout(() => {
-						// Find the last message with a case canvas to get the case data
+						// Find the last message with a matter canvas to get the matter data
 						setMessages(prev => {
-							let lastCaseCanvas = null;
+							let lastMatterCanvas = null;
 							for (let i = prev.length - 1; i >= 0; i--) {
-								if (prev[i].caseCanvas) {
-									lastCaseCanvas = prev[i].caseCanvas;
+								if (prev[i].matterCanvas) {
+									lastMatterCanvas = prev[i].matterCanvas;
 									break;
 								}
 							}
 							
-							if (lastCaseCanvas) {
-								// Create updated case summary with contact information
-								const updatedCaseSummary = lastCaseCanvas.caseSummary + 
+							if (lastMatterCanvas) {
+								// Create updated matter summary with contact information
+								const updatedMatterSummary = lastMatterCanvas.matterSummary + 
 									`\n\n## 📞 Contact Information\n` +
 									`- **Email**: ${formData.email}\n` +
 									`- **Phone**: ${formData.phone}\n` +
 									`- **Status**: ✅ Ready for Attorney Review\n` +
 									`- **Submitted**: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
 								
-								// Show the updated case canvas as a new message
-								const updatedCaseMessage: ChatMessage = {
-									content: "Here's your complete case information with contact details:",
+								// Show the updated matter canvas as a new message
+								const updatedMatterMessage: ChatMessage = {
+									content: "Here's your complete matter information with contact details:",
 									isUser: false,
-									caseCanvas: {
-										...lastCaseCanvas,
-										caseSummary: updatedCaseSummary
+									matterCanvas: {
+										...lastMatterCanvas,
+										matterSummary: updatedMatterSummary
 									}
 								};
-								return [...prev, updatedCaseMessage];
+								return [...prev, updatedMatterMessage];
 							}
 							return prev;
 						});
 						
-						// Add payment/next steps message after case canvas
+						// Add payment/next steps message after matter canvas
 						setTimeout(() => {
 							let nextStepsMessage = "";
 							
@@ -996,12 +996,12 @@ export function App() {
 								
 								nextStepsMessage = `💰 **Consultation Fee**: $${fee}\n\n` +
 									`To schedule your consultation with our lawyer, please complete the payment first. ` +
-									`This helps us prioritize your case and ensures we can provide you with the best legal assistance.\n\n` +
+									`This helps us prioritize your matter and ensures we can provide you with the best legal assistance.\n\n` +
 									`🔗 **Payment Link**: ${paymentLink}\n\n` +
-									`Once payment is completed, a lawyer will review your case and contact you within 24 hours. ` +
+									`Once payment is completed, a lawyer will review your matter and contact you within 24 hours. ` +
 									`Thank you for choosing ${teamConfig.name}!`;
 							} else {
-								nextStepsMessage = `A lawyer will review your complete case information and contact you within 24 hours. Thank you for choosing our firm!`;
+								nextStepsMessage = `A lawyer will review your complete matter information and contact you within 24 hours. Thank you for choosing our firm!`;
 							}
 							
 							const nextStepsMsg: ChatMessage = {
@@ -1047,15 +1047,15 @@ export function App() {
 		const message = inputValue.trim();
 		const attachments = [...previewFiles];
 		
-		// Handle form flow first (higher priority than case creation)
+		// Handle form flow first (higher priority than matter creation)
 		if (formState.isActive) {
 			sendMessageToAPI(message, attachments);
 			return;
 		}
 		
-		// Handle case creation flow
-		if (caseState.isActive) {
-			await handleCaseCreationStep(message, attachments);
+		// Handle matter creation flow
+		if (matterState.isActive) {
+			await handleMatterCreationStep(message, attachments);
 			return;
 		}
 
@@ -1083,9 +1083,9 @@ export function App() {
 		setMessages(prev => [...prev, userMessage]);
 		
 		try {
-			// Ensure case state is properly initialized
-			if (!caseState.isActive) {
-				setCaseState({
+			// Ensure matter state is properly initialized
+			if (!matterState.isActive) {
+				setMatterState({
 					step: 'gathering-info',
 					data: {},
 					isActive: true
@@ -1103,12 +1103,12 @@ export function App() {
 			setMessages(prev => [...prev, loadingMessage]);
 			
 			// Call API for service selection
-			const result = await handleCaseCreationAPI('service-selection', { service });
+			const result = await handleMatterCreationAPI('service-selection', { service });
 			
-			setCaseState(prev => ({
+			setMatterState(prev => ({
 				...prev,
-				data: { ...prev.data, caseType: service },
-				step: result.step === 'questions' ? 'ai-questions' : 'case-details',
+				data: { ...prev.data, matterType: service },
+				step: result.step === 'questions' ? 'ai-questions' : 'matter-details',
 				currentQuestionIndex: result.currentQuestion ? result.currentQuestion - 1 : 0
 			}));
 			
@@ -1120,7 +1120,7 @@ export function App() {
 							...msg,
 							content: result.message,
 							isLoading: false,
-							caseCreation: result.step === 'urgency-selection' ? {
+							matterCreation: result.step === 'urgency-selection' ? {
 								type: 'urgency-selection',
 								availableServices: []
 							} : undefined
@@ -1158,7 +1158,7 @@ export function App() {
 			// Add placeholder message with loading indicator (ChatGPT style)
 			const loadingMessageId = crypto.randomUUID();
 			const loadingMessage: ChatMessage = {
-				content: `Got it! Let me prepare the right questions for your ${urgency.toLowerCase()} case...`,
+				content: `Got it! Let me prepare the right questions for your ${urgency.toLowerMatter()} matter...`,
 				isUser: false,
 				isLoading: true,
 				id: loadingMessageId
@@ -1166,12 +1166,12 @@ export function App() {
 			setMessages(prev => [...prev, loadingMessage]);
 			
 			// Call API for urgency selection
-			const result = await handleCaseCreationAPI('urgency-selection', {
-				service: caseState.data.caseType,
+			const result = await handleMatterCreationAPI('urgency-selection', {
+				service: matterState.data.matterType,
 				urgency: urgency
 			});
 			
-			setCaseState(prev => ({
+			setMatterState(prev => ({
 				...prev,
 				data: { ...prev.data, urgency: urgency },
 				step: result.step,
@@ -1213,12 +1213,12 @@ export function App() {
 		}
 	};
 
-	// API-driven case creation handler
-	const handleCaseCreationAPI = async (step: string, data: any = {}) => {
+	// API-driven matter creation handler
+	const handleMatterCreationAPI = async (step: string, data: any = {}) => {
 		try {
 			const requestBody = {
 				teamId: teamId || 'demo',
-				service: data.service || caseState.data.caseType,
+				service: data.service || matterState.data.matterType,
 				step: step,
 				currentQuestionIndex: data.currentQuestionIndex,
 				answers: data.answers,
@@ -1226,9 +1226,9 @@ export function App() {
 				urgency: data.urgency
 			};
 			
-			console.log('Case creation API request:', requestBody);
+			console.log('Matter creation API request:', requestBody);
 			
-			const response = await fetch(getCaseCreationEndpoint(), {
+			const response = await fetch(getMatterCreationEndpoint(), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -1243,16 +1243,16 @@ export function App() {
 			}
 
 			const result = await response.json();
-			console.log('Case creation API response:', result);
+			console.log('Matter creation API response:', result);
 			return result;
 		} catch (error) {
-			console.error('Case creation API error:', error);
+			console.error('Matter creation API error:', error);
 			throw error;
 		}
 	};
 
-	// Handle case creation flow steps
-	const handleCaseCreationStep = async (message: string, attachments: FileAttachment[] = []) => {
+	// Handle matter creation flow steps
+	const handleMatterCreationStep = async (message: string, attachments: FileAttachment[] = []) => {
 		// Add user message
 		const userMessage: ChatMessage = {
 			content: message,
@@ -1265,25 +1265,25 @@ export function App() {
 
 		try {
 			// Process based on current step
-			switch (caseState.step) {
-				case 'gathering-info':
-					// Store case type and start urgency selection
+			switch (matterState.step) {
+				matter 'gathering-info':
+					// Store matter type and start urgency selection
 					const selectedService = message;
 					
-					setCaseState(prev => ({
+					setMatterState(prev => ({
 						...prev,
-						data: { ...prev.data, caseType: message },
+						data: { ...prev.data, matterType: message },
 						step: 'urgency-selection'
 					}));
 					
 								// Call API for service selection
-			const serviceResult = await handleCaseCreationAPI('service-selection', { service: selectedService });
+			const serviceResult = await handleMatterCreationAPI('service-selection', { service: selectedService });
 			
-			// Update case state based on API response
-			setCaseState(prev => ({
+			// Update matter state based on API response
+			setMatterState(prev => ({
 				...prev,
-				data: { ...prev.data, caseType: selectedService },
-				step: serviceResult.step === 'questions' ? 'ai-questions' : 'case-details',
+				data: { ...prev.data, matterType: selectedService },
+				step: serviceResult.step === 'questions' ? 'ai-questions' : 'matter-details',
 				currentQuestionIndex: serviceResult.currentQuestion ? serviceResult.currentQuestion - 1 : 0
 			}));
 			
@@ -1291,7 +1291,7 @@ export function App() {
 				const aiResponse: ChatMessage = {
 					content: serviceResult.message,
 					isUser: false,
-					caseCreation: serviceResult.step === 'urgency-selection' ? {
+					matterCreation: serviceResult.step === 'urgency-selection' ? {
 						type: 'urgency-selection',
 						availableServices: []
 					} : undefined,
@@ -1301,16 +1301,16 @@ export function App() {
 			}, 800);
 					break;
 
-				case 'ai-questions':
+				matter 'ai-questions':
 					// Store answer to current AI question
-					const currentService = caseState.data.caseType;
-					const currentIndex = caseState.currentQuestionIndex || 0;
+					const currentService = matterState.data.matterType;
+					const currentIndex = matterState.currentQuestionIndex || 0;
 					
 					// Store the answer with the question text for better context
 					const updatedAnswers = {
-						...caseState.data.aiAnswers,
+						...matterState.data.aiAnswers,
 						[`q${currentIndex + 1}`]: {
-							question: caseState.data.currentQuestion || `Question ${currentIndex + 1}`,
+							question: matterState.data.currentQuestion || `Question ${currentIndex + 1}`,
 							answer: message
 						}
 					};
@@ -1326,16 +1326,16 @@ export function App() {
 					setMessages(prev => [...prev, loadingMessage]);
 					
 					// Call API for questions step (next question)
-					const aiResult = await handleCaseCreationAPI('questions', {
+					const aiResult = await handleMatterCreationAPI('questions', {
 						service: currentService,
 						currentQuestionIndex: currentIndex + 1,
 						answers: updatedAnswers,
-						urgency: caseState.data.urgency
+						urgency: matterState.data.urgency
 					});
 					
 					if (aiResult.step === 'questions') {
 						// More questions to ask
-						setCaseState(prev => ({
+						setMatterState(prev => ({
 							...prev,
 							data: { 
 								...prev.data, 
@@ -1358,11 +1358,11 @@ export function App() {
 							));
 						}, 800);
 					} else {
-						// All questions answered, move to case review
-						setCaseState(prev => ({
+						// All questions answered, move to matter review
+						setMatterState(prev => ({
 							...prev,
 							data: { ...prev.data, aiAnswers: updatedAnswers },
-							step: 'case-review'
+							step: 'matter-review'
 						}));
 						
 						setTimeout(() => {
@@ -1377,35 +1377,35 @@ export function App() {
 									: msg
 							));
 							
-							// Automatically trigger case review
+							// Automatically trigger matter review
 							setTimeout(async () => {
 								try {
 									// Add placeholder message with loading indicator (ChatGPT style)
 									const loadingMessageId = crypto.randomUUID();
 									const loadingMessage: ChatMessage = {
-										content: "Let me review your case and create a summary...",
+										content: "Let me review your matter and create a summary...",
 										isUser: false,
 										isLoading: true,
 										id: loadingMessageId
 									};
 									setMessages(prev => [...prev, loadingMessage]);
 									
-									const reviewResult = await handleCaseCreationAPI('case-review', {
-										service: caseState.data.caseType,
+									const reviewResult = await handleMatterCreationAPI('matter-review', {
+										service: matterState.data.matterType,
 										answers: updatedAnswers,
 										description: aiResult.autoGeneratedDescription
 									});
 									
-									// Update case state with review data
-									setCaseState(prev => ({
+									// Update matter state with review data
+									setMatterState(prev => ({
 										...prev,
 										data: { 
 											...prev.data, 
-											caseSummary: reviewResult.caseCanvas?.caseSummary,
+											matterSummary: reviewResult.matterCanvas?.matterSummary,
 											followUpQuestions: reviewResult.followUpQuestions || [],
 											currentFollowUpIndex: 0
 										},
-										step: reviewResult.needsImprovement ? 'case-review' : 'ready-for-lawyer'
+										step: reviewResult.needsImprovement ? 'matter-review' : 'ready-for-lawyer'
 									}));
 									
 									// Update the loading message with actual content
@@ -1415,7 +1415,7 @@ export function App() {
 												...msg,
 												content: reviewResult.message,
 												isLoading: false,
-												caseCanvas: reviewResult.caseCanvas
+												matterCanvas: reviewResult.matterCanvas
 											}
 											: msg
 									));
@@ -1431,22 +1431,22 @@ export function App() {
 										}, 1000);
 									}
 									
-									// If case is ready and no improvement needed, auto-start contact form
+									// If matter is ready and no improvement needed, auto-start contact form
 									if (reviewResult.readyForNextStep) {
 										setTimeout(() => {
 											// Directly start the contact form without asking
 											setFormState({
 												step: 'collecting_email',
 												data: { 
-													caseType: caseState.data.caseType, 
-													caseDescription: reviewResult.caseSummary || 'Case details provided through Q&A',
-													caseDetails: caseState.data.aiAnswers,
+													matterType: matterState.data.matterType, 
+													matterDescription: reviewResult.matterSummary || 'Matter details provided through Q&A',
+													matterDetails: matterState.data.aiAnswers,
 													urgency: reviewResult.qualityScore?.inferredUrgency || 'Not Urgent'
 												},
 												isActive: true
 											});
 											
-											setCaseState(prev => ({
+											setMatterState(prev => ({
 												...prev,
 												isActive: false
 											}));
@@ -1460,9 +1460,9 @@ export function App() {
 										}, 2000);
 									}
 								} catch (error) {
-									console.error('Case review error:', error);
+									console.error('Matter review error:', error);
 									// Fallback to ready-for-lawyer
-									setCaseState(prev => ({
+									setMatterState(prev => ({
 										...prev,
 										step: 'ready-for-lawyer'
 									}));
@@ -1472,22 +1472,22 @@ export function App() {
 					}
 					break;
 
-				case 'case-review':
-					// Handle follow-up questions to improve case quality
-					const followUpQuestions = caseState.data.followUpQuestions || [];
-					const currentFollowUpIndex = caseState.data.currentFollowUpIndex || 0;
+				matter 'matter-review':
+					// Handle follow-up questions to improve matter quality
+					const followUpQuestions = matterState.data.followUpQuestions || [];
+					const currentFollowUpIndex = matterState.data.currentFollowUpIndex || 0;
 					
 					// Store the follow-up answer with question text
 					const followUpAnswers = {
-						...caseState.data.aiAnswers,
+						...matterState.data.aiAnswers,
 						[`followup_${currentFollowUpIndex + 1}`]: {
 							question: followUpQuestions[currentFollowUpIndex] || `Follow-up question ${currentFollowUpIndex + 1}`,
 							answer: message
 						}
 					};
 					
-					// Update case state with new answer
-					setCaseState(prev => ({
+					// Update matter state with new answer
+					setMatterState(prev => ({
 						...prev,
 						data: { 
 							...prev.data, 
@@ -1508,31 +1508,31 @@ export function App() {
 							setMessages(prev => [...prev, aiResponse]);
 						}, 800);
 					} else {
-						// All follow-up questions answered, re-assess case
+						// All follow-up questions answered, re-assess matter
 						setTimeout(async () => {
 							try {
 								// Add placeholder message with loading indicator (ChatGPT style)
 								const loadingMessageId = crypto.randomUUID();
 								const loadingMessage: ChatMessage = {
-									content: "Thank you so much for providing those additional details. Let me update your case summary...",
+									content: "Thank you so much for providing those additional details. Let me update your matter summary...",
 									isUser: false,
 									isLoading: true,
 									id: loadingMessageId
 								};
 								setMessages(prev => [...prev, loadingMessage]);
 								
-								const finalReviewResult = await handleCaseCreationAPI('case-review', {
-									service: caseState.data.caseType,
+								const finalReviewResult = await handleMatterCreationAPI('matter-review', {
+									service: matterState.data.matterType,
 									answers: followUpAnswers,
-									description: caseState.data.caseSummary
+									description: matterState.data.matterSummary
 								});
 								
-								// Update case state and quality score
-								setCaseState(prev => ({
+								// Update matter state and quality score
+								setMatterState(prev => ({
 									...prev,
 									data: { 
 										...prev.data, 
-										caseSummary: finalReviewResult.caseCanvas?.caseSummary,
+										matterSummary: finalReviewResult.matterCanvas?.matterSummary,
 										aiAnswers: followUpAnswers
 									},
 									step: 'ready-for-lawyer'
@@ -1543,9 +1543,9 @@ export function App() {
 									msg.id === loadingMessageId 
 										? {
 											...msg,
-											content: "Thank you so much for providing those additional details. Here's your updated case summary:",
+											content: "Thank you so much for providing those additional details. Here's your updated matter summary:",
 											isLoading: false,
-											caseCanvas: finalReviewResult.caseCanvas
+											matterCanvas: finalReviewResult.matterCanvas
 										}
 										: msg
 								));
@@ -1553,7 +1553,7 @@ export function App() {
 								// Add completion message
 								setTimeout(() => {
 									const completionMessage: ChatMessage = {
-										content: `Your case quality score is now ${finalReviewResult.qualityScore?.score || 0}/100 - excellent! You've given us everything we need to connect you with the right attorney who can help with your situation.`,
+										content: `Your matter quality score is now ${finalReviewResult.qualityScore?.score || 0}/100 - excellent! You've given us everything we need to connect you with the right attorney who can help with your situation.`,
 										isUser: false
 									};
 									setMessages(prev => [...prev, completionMessage]);
@@ -1565,15 +1565,15 @@ export function App() {
 									setFormState({
 										step: 'collecting_email',
 										data: { 
-											caseType: caseState.data.caseType, 
-											caseDescription: finalReviewResult.caseSummary || 'Comprehensive case details provided',
-											caseDetails: followUpAnswers,
+											matterType: matterState.data.matterType, 
+											matterDescription: finalReviewResult.matterSummary || 'Comprehensive matter details provided',
+											matterDetails: followUpAnswers,
 											urgency: finalReviewResult.qualityScore?.inferredUrgency || 'Not Urgent'
 										},
 										isActive: true
 									});
 									
-									setCaseState(prev => ({
+									setMatterState(prev => ({
 										...prev,
 										isActive: false
 									}));
@@ -1587,8 +1587,8 @@ export function App() {
 								}, 2000);
 								
 							} catch (error) {
-								console.error('Final case review error:', error);
-								setCaseState(prev => ({
+								console.error('Final matter review error:', error);
+								setMatterState(prev => ({
 									...prev,
 									step: 'ready-for-lawyer'
 								}));
@@ -1597,30 +1597,30 @@ export function App() {
 					}
 					break;
 
-				case 'ready-for-lawyer':
-					// Handle additional information after case completion
-					// Add any additional information to the case
-					setCaseState(prev => ({
+				matter 'ready-for-lawyer':
+					// Handle additional information after matter completion
+					// Add any additional information to the matter
+					setMatterState(prev => ({
 						...prev,
 						data: { ...prev.data, additionalInfo: message }
 					}));
 					
-					// Re-assess case with additional information to get updated urgency
-					const finalResult = await handleCaseCreationAPI('case-details', {
-						service: caseState.data.caseType,
-						description: caseState.data.description || `${caseState.data.caseType} case with provided details and additional information: ${message}`,
-						answers: caseState.data.aiAnswers
+					// Re-assess matter with additional information to get updated urgency
+					const finalResult = await handleMatterCreationAPI('matter-details', {
+						service: matterState.data.matterType,
+						description: matterState.data.description || `${matterState.data.matterType} matter with provided details and additional information: ${message}`,
+						answers: matterState.data.aiAnswers
 					});
 					
 
 					
 					setTimeout(() => {
 						const urgencyText = finalResult.qualityScore?.inferredUrgency 
-							? ` I've assessed this as ${finalResult.qualityScore.inferredUrgency.toLowerCase()}.`
+							? ` I've assessed this as ${finalResult.qualityScore.inferredUrgency.toLowerMatter()}.`
 							: '';
 						
 						const aiResponse: ChatMessage = {
-							content: `Thank you for the additional information.${urgencyText} This will be included with your case details when we connect you with an attorney.`,
+							content: `Thank you for the additional information.${urgencyText} This will be included with your matter details when we connect you with an attorney.`,
 							isUser: false
 						};
 						setMessages(prev => [...prev, aiResponse]);
@@ -1636,17 +1636,17 @@ export function App() {
 							setFormState({
 								step: 'contact',
 								data: { 
-									caseType: caseState.data.caseType, 
-									caseDescription: finalResult.autoGeneratedDescription || `${caseState.data.caseType} case with additional details: ${message}`,
-									caseDetails: caseState.data.aiAnswers,
+									matterType: matterState.data.matterType, 
+									matterDescription: finalResult.autoGeneratedDescription || `${matterState.data.matterType} matter with additional details: ${message}`,
+									matterDetails: matterState.data.aiAnswers,
 									urgency: finalResult.qualityScore?.inferredUrgency || 'Not Urgent',
 									additionalInfo: message
 								},
 								isActive: true
 							});
 							
-							// Deactivate case creation since we're now in form collection mode
-							setCaseState(prev => ({
+							// Deactivate matter creation since we're now in form collection mode
+							setMatterState(prev => ({
 								...prev,
 								isActive: false
 							}));
@@ -1655,7 +1655,7 @@ export function App() {
 					break;
 			}
 		} catch (error) {
-			console.error('Case creation step error:', error);
+			console.error('Matter creation step error:', error);
 			// Fallback to error message
 			setTimeout(() => {
 				const errorResponse: ChatMessage = {
@@ -1677,7 +1677,7 @@ export function App() {
 	// Add a helper function to get the appropriate file icon based on file type
 	const getFileIcon = (file: FileAttachment) => {
 		// Get file extension
-		const ext = file.name.split('.').pop()?.toLowerCase();
+		const ext = file.name.split('.').pop()?.toLowerMatter();
 		
 		// PDF icon
 		if (file.type === 'application/pdf' || ext === 'pdf') {
@@ -1783,7 +1783,7 @@ export function App() {
 		// Apply file type validation
 		const mediaFiles = [...imageFiles, ...videoFiles];
 		const safeOtherFiles = otherFiles.filter(file => {
-			const fileExtension = file.name.split('.').pop()?.toLowerCase();
+			const fileExtension = file.name.split('.').pop()?.toLowerMatter();
 			const disallowedExtensions = ['zip', 'exe', 'bat', 'cmd', 'msi', 'app'];
 			return !disallowedExtensions.includes(fileExtension || '');
 		});
@@ -1938,15 +1938,15 @@ export function App() {
 											)}
 										</div>
 										<h2>{teamConfig.name}</h2>
-										<p>{teamConfig.introMessage || "I'm an AI assistant designed to help you get started with your case."}</p>
+										<p>{teamConfig.introMessage || "I'm an AI assistant designed to help you get started with your matter."}</p>
 										<div className="welcome-actions">
 											<p>How can I help today?</p>
 											<div className="welcome-buttons">
 												<button 
 													className="welcome-action-button primary" 
-													onClick={handleCreateCaseStart}
+													onClick={handleCreateMatterStart}
 												>
-													Create Case
+													Create Matter
 												</button>
 												<button 
 													className="welcome-action-button" 

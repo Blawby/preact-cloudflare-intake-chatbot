@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateEmail, validatePhone, validateCaseDetails } from '../../utils/conversationalForm';
+import { validateEmail, validatePhone, validateMatterDetails } from '../../utils/conversationalForm';
 
 describe('conversationalForm', () => {
   describe('validateEmail', () => {
@@ -42,7 +42,7 @@ describe('conversationalForm', () => {
       });
     });
 
-    it('should handle edge cases', () => {
+    it('should handle edge matters', () => {
       expect(validateEmail(null as any)).toBe(false);
       expect(validateEmail(undefined as any)).toBe(false);
       expect(validateEmail(123 as any)).toBe(false);
@@ -79,19 +79,19 @@ describe('conversationalForm', () => {
     });
   });
 
-  describe('validateCaseDetails', () => {
-    it('should validate case details with sufficient length', () => {
+  describe('validateMatterDetails', () => {
+    it('should validate matter details with sufficient length', () => {
       const validDetails = [
-        'This is a detailed case description with enough information.',
+        'This is a detailed matter description with enough information.',
         'I need help with a contract dispute that has been ongoing for months.',
       ];
 
       validDetails.forEach(details => {
-        expect(validateCaseDetails(details)).toBe(true);
+        expect(validateMatterDetails(details)).toBe(true);
       });
     });
 
-    it('should reject case details that are too short', () => {
+    it('should reject matter details that are too short', () => {
       const invalidDetails = [
         'Help',
         '',
@@ -102,9 +102,9 @@ describe('conversationalForm', () => {
       ];
 
       invalidDetails.forEach(details => {
-        const result = validateCaseDetails(details);
+        const result = validateMatterDetails(details);
         if (result === true) {
-          console.log(`Unexpectedly valid case details: "${details}" (length: ${details.length})`);
+          console.log(`Unexpectedly valid matter details: "${details}" (length: ${details.length})`);
         }
         expect(result).toBe(false);
       });
