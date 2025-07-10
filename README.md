@@ -423,36 +423,48 @@ Based on code analysis, here are recommended enhancements:
 
 ## 🧪 Testing
 
-### API Testing
-```bash
-# Health check
-curl http://localhost:8787/api/health
+This project uses [Vitest](https://vitest.dev/) and [@testing-library/preact](https://testing-library.com/docs/preact-testing-library/intro/) for all unit and integration tests.
 
-# Teams endpoint
-curl http://localhost:8787/api/teams
+### Test Organization
+- **Unit tests**: Located in `src/__tests__/` for components and utilities
+- **Integration tests**: Located in `tests/integration/` for API and flow tests
+- All tests use modern mocking and do not require any shell scripts
 
-# Chat endpoint
-curl -X POST http://localhost:8787/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"I need legal help"}]}'
+### Running Tests
 
-# Case creation
-curl -X POST http://localhost:8787/api/case-creation \
-  -H "Content-Type: application/json" \
-  -d '{"teamId":"demo","step":"service-selection"}'
+To run all tests:
+
+```sh
+npm test
 ```
 
-### Frontend Testing
-```bash
-# Development server
-npm run dev
+To run tests in watch mode:
 
-# Build test
-npm run build
-
-# Type checking
-npm run type-check
+```sh
+npm run test:watch
 ```
+
+To run the interactive UI:
+
+```sh
+npm run test:ui
+```
+
+To run a specific test file:
+
+```sh
+npm run test:run -- path/to/file.test.ts
+```
+
+To view coverage:
+
+```sh
+npm run test:coverage
+```
+
+### Notes
+- All legacy shell script tests have been removed in favor of this unified, maintainable test suite.
+- See the `vitest.config.ts` for configuration details.
 
 ---
 

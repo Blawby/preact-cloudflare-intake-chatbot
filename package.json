@@ -4,7 +4,12 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
-		"preview": "vite preview"
+		"preview": "vite preview",
+		"test": "vitest",
+		"test:ui": "vitest --ui",
+		"test:run": "vitest run",
+		"test:coverage": "vitest --coverage",
+		"test:watch": "vitest --watch"
 	},
 	"dependencies": {
 		"preact": "^10.25.3",
@@ -14,15 +19,21 @@
 	},
 	"devDependencies": {
 		"@preact/preset-vite": "^2.9.3",
+		"@testing-library/jest-dom": "^6.6.3",
+		"@testing-library/preact": "^3.2.4",
+		"@vitest/ui": "^3.2.4",
 		"critters": "^0.0.23",
 		"eslint": "^8.57.1",
 		"eslint-config-preact": "^1.5.0",
+		"happy-dom": "^18.0.1",
+		"jsdom": "^26.1.0",
 		"rollup-plugin-visualizer": "^5.14.0",
 		"typescript": "^5.8.2",
 		"vite": "^6.0.4",
 		"vite-plugin-compression": "^0.5.1",
 		"vite-plugin-html": "^3.2.2",
-		"vite-plugin-pwa": "^0.21.1"
+		"vite-plugin-pwa": "^0.21.1",
+		"vitest": "^3.2.4"
 	},
 	"eslintConfig": {
 		"extends": "preact"

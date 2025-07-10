@@ -20,6 +20,9 @@ export interface FormState {
 
 // Form validation
 export function validateEmail(email: string): boolean {
+  if (typeof email !== 'string') return false;
+  // Disallow consecutive dots
+  if (email.includes('..')) return false;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
@@ -31,7 +34,8 @@ export function validatePhone(phone: string): boolean {
 }
 
 export function validateCaseDetails(details: string): boolean {
-  return details.trim().length >= 10; // At least 10 characters
+  if (typeof details !== 'string') return false;
+  return details.trim().length > 5; // Must be more than 5 characters
 }
 
 // Extract contact info from message
