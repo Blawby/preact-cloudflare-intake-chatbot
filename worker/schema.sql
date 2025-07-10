@@ -91,6 +91,54 @@ CREATE TABLE uploaded_files (
   FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
+-- AI Training Data Tables --
+
+-- Chat logs table for long-term storage of chat sessions
+CREATE TABLE chat_logs (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  team_id TEXT,
+  role TEXT NOT NULL, -- 'user' | 'assistant' | 'system'
+  content TEXT NOT NULL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
+-- Case questions table for Q&A pairs from intake
+CREATE TABLE case_questions (
+  id TEXT PRIMARY KEY,
+  matter_id TEXT,
+  team_id TEXT,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  source TEXT DEFAULT 'ai-form', -- 'ai-form' | 'human-entry' | 'followup'
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
+-- AI generated summaries table for markdown case summaries
+CREATE TABLE ai_generated_summaries (
+  id TEXT PRIMARY KEY,
+  matter_id TEXT,
+  summary TEXT NOT NULL,
+  model_used TEXT,
+  prompt_snapshot TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- AI feedback table for user quality ratings and intent tags
+CREATE TABLE ai_feedback (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  team_id TEXT,
+  rating INTEGER, -- 1-5 scale
+  thumbs_up BOOLEAN,
+  comments TEXT,
+  intent TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
 -- Insert default team
 INSERT INTO teams (id, name, config) VALUES 
 ('test-team', 'Test Law Firm', '{"aiModel": "llama", "requiresPayment": false}'); 

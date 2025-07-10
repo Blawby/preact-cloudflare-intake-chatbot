@@ -152,6 +152,64 @@ function assessCaseQuality(caseData: any): {
   };
 }
 
+// Helper function to log chat messages to database
+async function logChatMessage(
+  env: Env,
+  sessionId: string,
+  teamId: string | undefined,
+  role: 'user' | 'assistant' | 'system',
+  content: string
+): Promise<void> {
+  try {
+    const messageId = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO chat_logs (id, session_id, team_id, role, content, timestamp)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `).bind(messageId, sessionId, teamId || null, role, content).run();
+  } catch (error) {
+    console.warn('Failed to log chat message:', error);
+  }
+}
+
+// Helper function to store case Q&A pairs
+async function storeCaseQuestion(
+  env: Env,
+  matterId: string | undefined,
+  teamId: string | undefined,
+  question: string,
+  answer: string,
+  source: 'ai-form' | 'human-entry' | 'followup' = 'ai-form'
+): Promise<void> {
+  try {
+    const questionId = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO case_questions (id, matter_id, team_id, question, answer, source, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(questionId, matterId || null, teamId || null, question, answer, source).run();
+  } catch (error) {
+    console.warn('Failed to store case question:', error);
+  }
+}
+
+// Helper function to store AI-generated summaries
+async function storeAISummary(
+  env: Env,
+  matterId: string | undefined,
+  summary: string,
+  modelUsed: string,
+  promptSnapshot: string
+): Promise<void> {
+  try {
+    const summaryId = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO ai_generated_summaries (id, matter_id, summary, model_used, prompt_snapshot, created_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `).bind(summaryId, matterId || null, summary, modelUsed, promptSnapshot).run();
+  } catch (error) {
+    console.warn('Failed to store AI summary:', error);
+  }
+}
+
 // Optimized route handlers
 async function handleHealth(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   return new Response(JSON.stringify({ status: 'ok' }), {
@@ -176,6 +234,8 @@ async function handleRoot(request: Request, env: Env, corsHeaders: Record<string
         <li><strong>POST</strong> /api/case-creation - Case building flow</li>
         <li><strong>POST</strong> /api/forms - Contact submissions</li>
         <li><strong>POST</strong> /api/scheduling - Appointments</li>
+        <li><strong>POST</strong> /api/feedback - AI feedback collection</li>
+        <li><strong>GET</strong> /api/export - Training data export</li>
     </ul>
     <p>✅ API operational</p>
 </body>
@@ -218,6 +278,18 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
     ]);
 
     const response = aiResult.response || "I'm here to help with your legal needs. What can I assist you with?";
+    
+    // Log chat messages to database for AI training
+    if (body.sessionId) {
+      // Log user messages (only the most recent one to avoid duplicates)
+      const lastUserMessage = body.messages[body.messages.length - 1];
+      if (lastUserMessage && lastUserMessage.role === 'user') {
+        await logChatMessage(env, body.sessionId, body.teamId, 'user', lastUserMessage.content);
+      }
+      
+      // Log assistant response
+      await logChatMessage(env, body.sessionId, body.teamId, 'assistant', response);
+    }
     
     // Save conversation to session if sessionId provided - optimized with structured data
     if (body.sessionId) {
@@ -494,10 +566,37 @@ IMPORTANT FOR FAMILY LAW CASES:
             ]);
             
             caseSummary = summaryResult.response || `# 📋 ${body.service} Case Summary\n\n## 💼 Legal Matter\n${body.service} case with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
+            
+            // Store AI-generated summary for training
+            if (caseSummary && body.sessionId) {
+              await storeAISummary(
+                env,
+                body.sessionId, // Using sessionId as matterId for now
+                caseSummary,
+                '@cf/meta/llama-3.1-8b-instruct',
+                summaryPrompt
+              );
+            }
           } catch (error) {
             console.warn('AI case summary failed:', error);
             caseSummary = `# 📋 ${body.service} Case Summary\n\n## 💼 Legal Matter\n${body.service} case with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
           }
+        }
+        
+        // Store case Q&A pairs for training
+        if (body.sessionId && caseAnswers) {
+          Object.entries(caseAnswers).forEach(async ([key, value]) => {
+            if (typeof value === 'object' && value !== null && 'question' in value && 'answer' in value) {
+              await storeCaseQuestion(
+                env,
+                body.sessionId, // Using sessionId as matterId for now
+                body.teamId,
+                value.question,
+                value.answer,
+                'ai-form'
+              );
+            }
+          });
         }
         
         // Determine if case needs improvement (threshold: 75)
@@ -1029,6 +1128,170 @@ async function handleFiles(request: Request, env: Env, corsHeaders: Record<strin
   });
 }
 
+// Feedback handler
+async function handleFeedback(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  try {
+    const body = await parseJsonBody(request) as {
+      sessionId: string;
+      teamId?: string;
+      rating?: number;
+      thumbsUp?: boolean;
+      comments?: string;
+      intent?: string;
+    };
+    
+    if (!body.sessionId) {
+      return new Response(JSON.stringify({ error: 'Session ID required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate rating if provided
+    if (body.rating !== undefined && (body.rating < 1 || body.rating > 5)) {
+      return new Response(JSON.stringify({ error: 'Rating must be between 1 and 5' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const feedbackId = crypto.randomUUID();
+    
+    await env.DB.prepare(`
+      INSERT INTO ai_feedback (id, session_id, team_id, rating, thumbs_up, comments, intent, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(
+      feedbackId,
+      body.sessionId,
+      body.teamId || null,
+      body.rating || null,
+      body.thumbsUp || null,
+      body.comments || null,
+      body.intent || null
+    ).run();
+
+    return new Response(JSON.stringify({
+      success: true,
+      feedbackId,
+      message: 'Feedback submitted successfully'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Feedback error:', error);
+    return new Response(JSON.stringify({ error: 'Feedback submission failed' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// Data export handler
+async function handleExport(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method !== 'GET') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const dataType = url.searchParams.get('type');
+    const teamId = url.searchParams.get('teamId');
+    const limit = parseInt(url.searchParams.get('limit') || '1000');
+
+    if (!dataType) {
+      return new Response(JSON.stringify({ error: 'Data type required (chat_logs, case_questions, ai_summaries, ai_feedback)' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    let query = '';
+    let params: any[] = [];
+
+    switch (dataType) {
+      case 'chat_logs':
+        query = `SELECT * FROM chat_logs ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY timestamp DESC LIMIT ?`;
+        params = teamId ? [teamId, limit] : [limit];
+        break;
+      
+      case 'case_questions':
+        query = `SELECT * FROM case_questions ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY created_at DESC LIMIT ?`;
+        params = teamId ? [teamId, limit] : [limit];
+        break;
+      
+      case 'ai_summaries':
+        query = `SELECT * FROM ai_generated_summaries ORDER BY created_at DESC LIMIT ?`;
+        params = [limit];
+        break;
+      
+      case 'ai_feedback':
+        query = `SELECT * FROM ai_feedback ${teamId ? 'WHERE team_id = ?' : ''} ORDER BY created_at DESC LIMIT ?`;
+        params = teamId ? [teamId, limit] : [limit];
+        break;
+      
+      case 'training_pairs':
+        // Export chat logs formatted as training pairs
+        query = `
+          SELECT 
+            c1.content as user_message,
+            c2.content as assistant_message,
+            c1.team_id,
+            c1.timestamp
+          FROM chat_logs c1
+          JOIN chat_logs c2 ON c1.session_id = c2.session_id
+          WHERE c1.role = 'user' 
+            AND c2.role = 'assistant'
+            AND c2.timestamp > c1.timestamp
+            ${teamId ? 'AND c1.team_id = ?' : ''}
+          ORDER BY c1.timestamp DESC
+          LIMIT ?
+        `;
+        params = teamId ? [teamId, limit] : [limit];
+        break;
+      
+      default:
+        return new Response(JSON.stringify({ error: 'Invalid data type' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    const stmt = env.DB.prepare(query);
+    const results = await stmt.bind(...params).all();
+
+    return new Response(JSON.stringify({
+      success: true,
+      dataType,
+      count: results.results.length,
+      data: results.results
+    }), {
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Content-Disposition': `attachment; filename="${dataType}_export_${new Date().toISOString().split('T')[0]}.json"`
+      }
+    });
+
+  } catch (error) {
+    console.error('Export error:', error);
+    return new Response(JSON.stringify({ error: 'Data export failed' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
 // Optimized notification sender with cached team config
 async function sendNotifications(formData: ContactForm, formId: string, env: Env) {
   const emailService = new EmailService(env.RESEND_API_KEY);
@@ -1081,6 +1344,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     if (path.startsWith('/api/scheduling')) return handleScheduling(request, env, CORS_HEADERS);
     if (path.startsWith('/api/files')) return handleFiles(request, env, CORS_HEADERS);
     if (path.startsWith('/api/sessions')) return handleSessions(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/feedback')) return handleFeedback(request, env, CORS_HEADERS);
+    if (path.startsWith('/api/export')) return handleExport(request, env, CORS_HEADERS);
     if (path === '/api/health') return handleHealth(request, env, CORS_HEADERS);
     if (path === '/') return handleRoot(request, env, CORS_HEADERS);
 

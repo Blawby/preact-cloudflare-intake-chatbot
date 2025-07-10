@@ -162,6 +162,45 @@
    - Test cross-origin communication
    - Verify proper light/dark theme behavior in iframe context
 
+## AI Training Data Storage & Analytics
+1. Database Schema Enhancements for AI Training
+   - Create `chat_logs` table for long-term storage of chat sessions
+     - Store user/assistant/system messages with timestamps
+     - Enable training datasets with (user → assistant) pairs
+     - Support auditing and response regeneration
+   - Create `case_questions` table for Q&A pairs from intake
+     - Store individual question/answer pairs from case creation
+     - Track question sources (ai-form, human-entry, followup)
+     - Identify confusing or useful questions for model improvement
+   - Create `ai_generated_summaries` table for markdown case summaries
+     - Log LLM-generated case summaries with model info
+     - Store prompt snapshots for analysis
+     - Enable summary quality tracking over time
+   - Create `ai_feedback` table for user quality ratings
+     - Store user ratings (1-5 scale) and thumbs up/down
+     - Track conversation intent and comments
+     - Enable quality scoring and model improvement
+
+2. Data Collection Implementation
+   - Modify chat handlers to log messages to `chat_logs` table
+   - Update case creation flow to store Q&A pairs in `case_questions`
+   - Add logging for AI-generated summaries in case review step
+   - Implement feedback collection UI for user ratings
+   - Create data export utilities for training datasets
+
+3. Analytics & Monitoring
+   - Build dashboard for conversation quality metrics
+   - Implement real-time quality scoring based on feedback
+   - Create reports for model performance over time
+   - Set up alerts for quality degradation or issues
+   - Enable data export for fine-tuning when Cloudflare supports it
+
+4. RAG Pipeline Preparation
+   - Design retrieval system using stored chat logs
+   - Implement semantic search across case summaries
+   - Create context injection for continuing conversations
+   - Build knowledge base from successful case outcomes
+
 ## Future Tasks
 - Speech-to-text integration
 - Text-to-speech integration
