@@ -2627,9 +2627,11 @@ kbd {
 /* Responsive adjustments */
 @media (max-width: 768px) {
 	.feedback-actions {
-		flex-direction: column;
-		align-items: flex-start;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
 		gap: 12px;
+		flex-wrap: wrap;
 	}
 
 	.feedback-submit-actions {
