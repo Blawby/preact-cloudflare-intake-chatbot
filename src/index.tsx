@@ -11,13 +11,25 @@ import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getMatterCreationEndpoint } from './config/api';
-import { 
-  FormState, 
-  processFormStep, 
-  startConversationalForm, 
+import {
+  FormState,
+  processFormStep,
+  startConversationalForm,
   extractContactInfo,
-  formatFormData 
+  formatFormData
 } from './utils/conversationalForm';
+import {
+	DocumentIcon,
+	DocumentTextIcon,
+	TableCellsIcon,
+	MusicalNoteIcon,
+	VideoCameraIcon,
+	XMarkIcon,
+	ChatBubbleLeftIcon,
+	ArrowUpIcon,
+	CloudArrowUpIcon,
+	FaceSmileIcon
+} from '@heroicons/react/24/outline';
 import './style.css';
 
 // Create lazy-loaded components
@@ -1683,57 +1695,45 @@ export function App() {
 		// PDF icon
 		if (file.type === 'application/pdf' || ext === 'pdf') {
 			return (
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-					<path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 6V9c0-.55-.45-1-1-1h-2v5h2c.55 0 1-.45 1-1zm-2-3h1v3h-1V9zm4 2h1v-1h-1V9h1V8h-2v5h1v-1zm-8 0h1c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1H9v5h1v-2zm0-2h1v1h-1V9z"/>
-				</svg>
+				<DocumentTextIcon className="w-6 h-6" />
 			);
 		}
 		
 		// Word document icon
-		if (file.type === 'application/msword' || 
+		if (file.type === 'application/msword' ||
 			file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
 			ext === 'doc' || ext === 'docx') {
 			return (
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-					<path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm10-9h-4v1h4v-1zm0 3H8v1h8v-1zm0 3H8v1h8v-1z"/>
-				</svg>
+				<DocumentIcon className="w-6 h-6" />
 			);
 		}
 		
 		// Excel spreadsheet icon
-		if (file.type === 'application/vnd.ms-excel' || 
+		if (file.type === 'application/vnd.ms-excel' ||
 			file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
 			ext === 'xls' || ext === 'xlsx' || ext === 'csv') {
 			return (
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-					<path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm7-7H8v-2h5v2zm0 4H8v-2h5v2zm2-2v-2h2v2h-2zm0 4v-2h2v2h-2z"/>
-				</svg>
+				<TableCellsIcon className="w-6 h-6" />
 			);
 		}
 		
 		// Audio file icon
 		if (file.type.startsWith('audio/')) {
 			return (
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-					<path fill="currentColor" d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6zm-2 16c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
-				</svg>
+				<MusicalNoteIcon className="w-6 h-6" />
 			);
 		}
 		
 		// Video file icon
 		if (file.type.startsWith('video/')) {
 			return (
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-					<path fill="currentColor" d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/>
-				</svg>
+				<VideoCameraIcon className="w-6 h-6" />
 			);
 		}
 		
 		// Default file icon
 		return (
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-				<path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h5v6h6v10H6z" />
-			</svg>
+			<DocumentIcon className="w-6 h-6" />
 		);
 	};
 
@@ -1866,21 +1866,7 @@ export function App() {
 					aria-modal="true"
 				>
 					<div className="drag-message">
-						<svg 
-							className="drag-message-icon" 
-							xmlns="http://www.w3.org/2000/svg" 
-							viewBox="0 0 24 24" 
-							fill="none" 
-							stroke="currentColor" 
-							stroke-width="2" 
-							stroke-linecap="round" 
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
-							<path d="M12 12v9"></path>
-							<path d="m16 16-4-4-4 4"></path>
-						</svg>
+						<CloudArrowUpIcon className="drag-message-icon w-12 h-12" aria-hidden="true" />
 						<h3 className="drag-message-title">Drop Files to Upload</h3>
 						<p className="drag-message-subtitle">We accept images, videos, and document files</p>
 					</div>
@@ -1896,13 +1882,9 @@ export function App() {
 					title={isOpen ? "Minimize chat" : "Open chat"}
 				>
 					{isOpen ? (
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-							<path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" />
-						</svg>
+						<XMarkIcon className="w-6 h-6" aria-hidden="true" />
 					) : (
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-							<path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z" />
-						</svg>
+						<ChatBubbleLeftIcon className="w-6 h-6" aria-hidden="true" />
 					)}
 				</button>
 			)}
@@ -1928,14 +1910,7 @@ export function App() {
 													className="team-profile-image"
 												/>
 											) : (
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-													<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-													<path d="M9 15h6"></path>
-													<path d="M11 9h1"></path>
-													<path d="M12 9v3"></path>
-													<path d="M8 9h.01"></path>
-													<path d="M16 9h.01"></path>
-												</svg>
+												<FaceSmileIcon className="w-12 h-12" />
 											)}
 										</div>
 										<h2>{teamConfig.name}</h2>
@@ -2044,9 +2019,7 @@ export function App() {
 														title="Remove file"
 														aria-label={`Remove ${file.name}`}
 													>
-														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-															<path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" />
-														</svg>
+														<XMarkIcon className="w-4 h-4" aria-hidden="true" />
 													</button>
 												</div>
 											))}
@@ -2104,26 +2077,7 @@ export function App() {
 													disabled={(!inputValue.trim() && previewFiles.length === 0)}
 													aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
 												>
-													<svg
-														viewBox="0 0 24 24"
-														className="send-icon"
-														xmlns="http://www.w3.org/2000/svg"
-														aria-hidden="true"
-													>
-														{(!inputValue.trim() && previewFiles.length === 0) ? (
-															// Paper plane icon when nothing to send
-															<path
-																fill="currentColor"
-																d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
-															/>
-														) : (
-															// Up arrow icon when ready to send
-															<path
-																fill="currentColor"
-																d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"
-															/>
-														)}
-													</svg>
+													<ArrowUpIcon className="send-icon w-5 h-5" aria-hidden="true" />
 												</button>
 											</div>
 										</div>

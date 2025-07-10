@@ -12,6 +12,7 @@
 		"test:watch": "vitest --watch"
 	},
 	"dependencies": {
+		"@heroicons/react": "^2.2.0",
 		"preact": "^10.25.3",
 		"preact-iso": "^2.9.1",
 		"preact-markdown": "^2.1.0",

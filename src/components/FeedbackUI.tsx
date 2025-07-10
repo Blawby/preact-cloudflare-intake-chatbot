@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useCallback } from 'preact/hooks';
+import { HandThumbUpIcon, HandThumbDownIcon } from '@heroicons/react/24/outline';
 import { memo } from 'preact/compat';
 import { getFeedbackEndpoint } from '../config/api';
 
@@ -119,9 +120,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
             aria-label="This response was helpful"
             title="This response was helpful"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M7 10v12l4-4 4 4V10M7 10l5-6 5 6M7 10H4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h3"/>
-            </svg>
+            <HandThumbUpIcon className="w-4 h-4" />
           </button>
           <button
             class={`feedback-btn ${feedback.thumbsUp === false ? 'active' : ''}`}
@@ -130,9 +129,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
             aria-label="This response was not helpful"
             title="This response was not helpful"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 14V2l-4 4-4-4v12M17 14l-5 6-5-6M17 14h3a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3"/>
-            </svg>
+            <HandThumbDownIcon className="w-4 h-4" />
           </button>
         </div>
 

@@ -5,6 +5,13 @@ import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
 import FeedbackUI from './FeedbackUI';
 import createLazyComponent from '../utils/LazyComponent';
+import {
+	DocumentIcon,
+	DocumentTextIcon,
+	TableCellsIcon,
+	MusicalNoteIcon,
+	VideoCameraIcon
+} from '@heroicons/react/24/outline';
 
 // Lazy load scheduling components
 const LazyDateSelector = createLazyComponent(
@@ -115,64 +122,45 @@ const getFileIcon = (file: FileAttachment) => {
 	// PDF icon
 	if (file.type === 'application/pdf' || ext === 'pdf') {
 		return (
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="message-file-icon">
-				<path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 6V9c0-.55-.45-1-1-1h-2v5h2c.55 0 1-.45 1-1zm-2-3h1v3h-1V9zm4 2h1v-1h-1V9h1V8h-2v5h1v-1zm-8 0h1c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1H9v5h1v-2zm0-2h1v1h-1V9z"/>
-			</svg>
+			<DocumentTextIcon className="message-file-icon" />
 		);
 	}
 	
 	// Word document icon
-	if (file.type === 'application/msword' || 
+	if (file.type === 'application/msword' ||
 		file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
 		ext === 'doc' || ext === 'docx') {
 		return (
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="message-file-icon">
-				<path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm10-9h-4v1h4v-1zm0 3H8v1h8v-1zm0 3H8v1h8v-1z"/>
-			</svg>
+			<DocumentIcon className="message-file-icon" />
 		);
 	}
 	
 	// Excel spreadsheet icon
-	if (file.type === 'application/vnd.ms-excel' || 
+	if (file.type === 'application/vnd.ms-excel' ||
 		file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
 		ext === 'xls' || ext === 'xlsx' || ext === 'csv') {
 		return (
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="message-file-icon">
-				<path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm7-7H8v-2h5v2zm0 4H8v-2h5v2zm2-2v-2h2v2h-2zm0 4v-2h2v2h-2z"/>
-			</svg>
+			<TableCellsIcon className="message-file-icon" />
 		);
 	}
 	
 	// Audio file icon
 	if (file.type.startsWith('audio/')) {
 		return (
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="message-file-icon">
-				<path fill="currentColor" d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6zm-2 16c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
-			</svg>
+			<MusicalNoteIcon className="message-file-icon" />
 		);
 	}
 	
 	// Video file icon
 	if (file.type.startsWith('video/')) {
 		return (
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="message-file-icon">
-				<path fill="currentColor" d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/>
-			</svg>
+			<VideoCameraIcon className="message-file-icon" />
 		);
 	}
 	
 	// Default file icon
 	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			class="message-file-icon"
-		>
-			<path
-				fill="currentColor"
-				d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"
-			/>
-		</svg>
+		<DocumentIcon className="message-file-icon" />
 	);
 };
 
