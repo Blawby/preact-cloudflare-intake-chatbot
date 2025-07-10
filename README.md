@@ -315,6 +315,247 @@ POST /api/scheduling
 
 ---
 
+## 🔗 Webhook Integration
+
+The system includes a comprehensive webhook system for integrating with external CRMs, case management systems, and other tools. Webhooks are automatically triggered during key events in the matter creation process.
+
+### Webhook Configuration
+
+Add webhook settings to your team configuration in `teams.json`:
+
+```json
+{
+  "id": "your-law-firm",
+  "name": "Your Law Firm",
+  "config": {
+    "webhooks": {
+      "enabled": true,
+      "url": "https://your-crm.com/webhook",
+      "secret": "your-webhook-secret",
+      "events": {
+        "matterCreation": true,
+        "matterDetails": true,
+        "contactForm": true,
+        "appointment": true
+      },
+      "retryConfig": {
+        "maxRetries": 3,
+        "retryDelay": 60
+      }
+    }
+  }
+}
+```
+
+### Webhook Events
+
+#### 1. Matter Creation (`matter_creation`)
+Triggered when a client selects a legal service.
+
+```json
+{
+  "event": "matter_creation",
+  "timestamp": "2025-01-17T23:47:26.000Z",
+  "teamId": "your-law-firm",
+  "sessionId": "abc123",
+  "matter": {
+    "service": "Family Law",
+    "qualityScore": {
+      "score": 40,
+      "readyForLawyer": false
+    },
+    "step": "service-selected",
+    "totalQuestions": 5,
+    "hasQuestions": true
+  }
+}
+```
+
+#### 2. Matter Details (`matter_details`)
+Triggered when matter review is completed with quality scores.
+
+```json
+{
+  "event": "matter_details",
+  "timestamp": "2025-01-17T23:47:26.000Z",
+  "teamId": "your-law-firm",
+  "sessionId": "abc123",
+  "matter": {
+    "service": "Family Law",
+    "description": "Child custody modification case...",
+    "summary": "# Family Law Matter Summary\n\n## Legal Matter\n...",
+    "answers": {
+      "question1": {
+        "question": "What specific family law issue?",
+        "answer": "Child custody dispute"
+      }
+    },
+    "qualityScore": {
+      "score": 85,
+      "readyForLawyer": true,
+      "needsImprovement": false,
+      "threshold": 75
+    },
+    "followUpQuestions": [],
+    "urgency": "normal",
+    "readyForNextStep": true,
+    "nextActions": ["contact", "schedule"]
+  }
+}
+```
+
+#### 3. Contact Form (`contact_form`)
+Triggered when clients submit contact information.
+
+```json
+{
+  "event": "contact_form",
+  "timestamp": "2025-01-17T23:47:26.000Z",
+  "teamId": "your-law-firm",
+  "formId": "form-uuid",
+  "contactForm": {
+    "email": "client@example.com",
+    "phoneNumber": "555-0123",
+    "matterDetails": "Need help with custody modification",
+    "urgency": "normal",
+    "status": "pending"
+  }
+}
+```
+
+#### 4. Appointment (`appointment`)
+Triggered when consultations are scheduled.
+
+```json
+{
+  "event": "appointment",
+  "timestamp": "2025-01-17T23:47:26.000Z",
+  "teamId": "your-law-firm",
+  "appointmentId": "appointment-uuid",
+  "appointment": {
+    "clientEmail": "client@example.com",
+    "clientPhone": "555-0123",
+    "preferredDate": "2025-01-20",
+    "preferredTime": "10:00 AM",
+    "matterType": "Family Law",
+    "notes": "Child custody consultation",
+    "status": "pending"
+  }
+}
+```
+
+### Webhook Security
+
+All webhooks include security headers:
+
+- **X-Webhook-Signature**: HMAC-SHA256 signature using your webhook secret
+- **X-Webhook-ID**: Unique identifier for the webhook delivery
+- **X-Webhook-Event**: Event type (matter_creation, matter_details, etc.)
+- **X-Webhook-Timestamp**: ISO timestamp of webhook delivery
+
+### Webhook Management API
+
+#### View Webhook Logs
+```bash
+GET /api/webhooks/logs?teamId=your-law-firm&limit=50&status=failed
+```
+
+#### Webhook Statistics
+```bash
+GET /api/webhooks/stats?teamId=your-law-firm
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "stats": {
+    "pending": 2,
+    "success": 45,
+    "failed": 3,
+    "retry": 1,
+    "total": 51
+  }
+}
+```
+
+#### Retry Failed Webhooks
+```bash
+POST /api/webhooks/retry
+```
+
+**Request:**
+```json
+{
+  "webhookId": "specific-webhook-id"
+}
+```
+
+Or retry all failed webhooks for a team:
+```json
+{
+  "teamId": "your-law-firm"
+}
+```
+
+#### Test Webhook Delivery
+```bash
+POST /api/webhooks/test
+```
+
+**Request:**
+```json
+{
+  "teamId": "your-law-firm",
+  "webhookType": "matter_creation",
+  "testPayload": {
+    "custom": "test data"
+  }
+}
+```
+
+### Webhook Features
+
+- **🔐 Security**: HMAC-SHA256 signature verification
+- **🔄 Retry Logic**: Exponential backoff with configurable retries
+- **📊 Logging**: Comprehensive delivery tracking in database
+- **📈 Statistics**: Real-time delivery metrics
+- **🎯 Event Filtering**: Configure which events to receive
+- **⚡ Performance**: Fire-and-forget delivery (non-blocking)
+- **🛠️ Management**: API endpoints for monitoring and retry
+
+### Webhook Verification
+
+To verify webhook authenticity in your endpoint:
+
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhook(payload, signature, secret) {
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  
+  return signature === `sha256=${expectedSignature}`;
+}
+
+// Express.js example
+app.post('/webhook', (req, res) => {
+  const signature = req.headers['x-webhook-signature'];
+  const payload = JSON.stringify(req.body);
+  
+  if (!verifyWebhook(payload, signature, 'your-webhook-secret')) {
+    return res.status(401).send('Unauthorized');
+  }
+  
+  // Process webhook...
+  res.status(200).send('OK');
+});
+```
+
+---
+
 ## 🌐 Deployment
 
 ### GitHub Actions (Recommended)
@@ -359,6 +600,7 @@ routes = [
 | **Team Configuration** | ✅ Multi-tenant |
 | **Email Notifications** | ✅ Resend Integration |
 | **Scheduling** | ✅ Appointment Booking |
+| **Webhook Integration** | ✅ Comprehensive System |
 | **File Uploads** | ⏳ Planned (R2 integration) |
 | **Payment Processing** | ⏳ External links only |
 
@@ -404,10 +646,10 @@ Based on code analysis, here are recommended enhancements:
 
 ### 🌟 Long-term Enhancements
 
-7. **CRM Integration**
+7. **Enhanced CRM Integration**
+   - ✅ Custom API webhooks (implemented)
    - Zapier webhook endpoints
    - Salesforce/HubSpot connectors
-   - Custom API webhooks
 
 8. **Advanced AI Features**
    - Document analysis with AI

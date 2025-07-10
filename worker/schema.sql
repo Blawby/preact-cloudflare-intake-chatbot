@@ -242,6 +242,26 @@ CREATE TABLE ai_feedback (
   FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
+-- Webhook logs table for tracking webhook deliveries
+CREATE TABLE webhook_logs (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  webhook_type TEXT NOT NULL, -- 'matter_creation', 'matter_details', 'contact_form', 'appointment'
+  webhook_url TEXT NOT NULL,
+  payload JSON NOT NULL,
+  status TEXT NOT NULL, -- 'pending', 'success', 'failed', 'retry'
+  http_status INTEGER,
+  response_body TEXT,
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  max_retries INTEGER DEFAULT 3,
+  next_retry_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
 -- Insert default team
 INSERT INTO teams (id, name, config) VALUES 
 ('test-team', 'Test Law Firm', '{"aiModel": "llama", "requiresPayment": false}');
