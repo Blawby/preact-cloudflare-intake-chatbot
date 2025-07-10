@@ -83,6 +83,10 @@ interface VirtualMessageListProps {
     onServiceSelect?: (service: string) => void;
     onUrgencySelect?: (urgency: string) => void;
     position?: 'widget' | 'inline';
+    // Feedback props
+    sessionId?: string;
+    teamId?: string;
+    onFeedbackSubmit?: (feedback: any) => void;
 }
 
 const BATCH_SIZE = 20;
@@ -97,7 +101,10 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     onRequestMoreDates,
     onServiceSelect,
     onUrgencySelect,
-    position = 'widget'
+    position = 'widget',
+    sessionId,
+    teamId,
+    onFeedbackSubmit
 }) => {
     const listRef = useRef<HTMLDivElement>(null);
     const [startIndex, setStartIndex] = useState(Math.max(0, messages.length - BATCH_SIZE));
@@ -199,6 +206,10 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         onServiceSelect={onServiceSelect}
                         onUrgencySelect={onUrgencySelect}
                         isLoading={message.isLoading}
+                        id={message.id}
+                        sessionId={sessionId}
+                        teamId={teamId}
+                        onFeedbackSubmit={onFeedbackSubmit}
                     />
                 ))}
             </ErrorBoundary>

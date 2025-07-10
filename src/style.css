@@ -76,7 +76,8 @@ body {
 	-webkit-overflow-scrolling: touch;
 	scroll-behavior: smooth;
 	transition: all 0.3s ease-in-out;
-	overflow: hidden; /* Prevent body scroll when input is focused */
+	overflow: hidden;
+	/* Prevent body scroll when input is focused */
 }
 
 /* Inline mode styling - always full width and height, no animations */
@@ -227,17 +228,20 @@ body {
 		padding-bottom: 1rem;
 		padding-left: 0.75rem;
 		padding-right: 0.75rem;
-		bottom: 28px; /* Slightly less space on mobile */
+		bottom: 28px;
+		/* Slightly less space on mobile */
 	}
 
 	.message-list {
-		padding-bottom: 140px; /* Account for input area and disclaimer on mobile */
+		padding-bottom: 140px;
+		/* Account for input area and disclaimer on mobile */
 	}
 
 	.disclaimer-text {
 		font-size: 0.7rem;
 		padding: 0.4rem 0.75rem;
-		height: 28px; /* Slightly smaller height on mobile */
+		height: 28px;
+		/* Slightly smaller height on mobile */
 	}
 }
 
@@ -335,7 +339,8 @@ body {
 	flex: 1;
 	overflow-y: auto;
 	padding: 1rem;
-	padding-bottom: 160px; /* Add padding to account for sticky input area and disclaimer */
+	padding-bottom: 160px;
+	/* Add padding to account for sticky input area and disclaimer */
 	scroll-behavior: smooth;
 	width: 100%;
 	scrollbar-width: thin;
@@ -377,7 +382,8 @@ body {
 	flex-direction: column;
 	width: 100%;
 	position: fixed;
-	bottom: 32px; /* Move input area up to make room for disclaimer */
+	bottom: 32px;
+	/* Move input area up to make room for disclaimer */
 	left: 0;
 	right: 0;
 	z-index: 1000;
@@ -395,9 +401,11 @@ body {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	z-index: 1001; /* Higher z-index than input area */
+	z-index: 1001;
+	/* Higher z-index than input area */
 	opacity: 0.8;
-	height: 32px; /* Fixed height for the disclaimer */
+	height: 32px;
+	/* Fixed height for the disclaimer */
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -2408,3 +2416,218 @@ kbd {
 	overflow-x: auto;
 }
 
+/* Feedback UI Styles */
+.feedback-ui {
+	margin-top: 12px;
+	padding: 8px 0;
+	border-top: 1px solid var(--border-color);
+	opacity: 0.8;
+	transition: opacity 0.2s ease;
+}
+
+.feedback-ui:hover {
+	opacity: 1;
+}
+
+.feedback-ui.submitted {
+	opacity: 0.6;
+}
+
+.feedback-actions {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.feedback-thumbs {
+	display: flex;
+	gap: 8px;
+}
+
+.feedback-btn {
+	background: none;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	padding: 6px 8px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	color: var(--text-color);
+	opacity: 0.7;
+}
+
+.feedback-btn:hover {
+	opacity: 1;
+	background: var(--hover-color);
+}
+
+.feedback-btn.active {
+	opacity: 1;
+	background: var(--accent-color);
+	color: var(--bg-color);
+	border-color: var(--accent-color);
+}
+
+.feedback-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+.feedback-rating {
+	display: flex;
+	gap: 4px;
+}
+
+.feedback-star {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 4px;
+	color: var(--border-color);
+	transition: color 0.2s ease;
+}
+
+.feedback-star:hover,
+.feedback-star.active {
+	color: #fbbf24;
+}
+
+.feedback-star svg {
+	width: 14px;
+	height: 14px;
+	fill: currentColor;
+}
+
+.feedback-expand-btn {
+	background: none;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	padding: 6px 8px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	color: var(--text-color);
+	opacity: 0.7;
+}
+
+.feedback-expand-btn:hover {
+	opacity: 1;
+	background: var(--hover-color);
+}
+
+.feedback-expand-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+.feedback-expanded {
+	margin-top: 12px;
+	animation: fadeIn 0.2s ease;
+}
+
+.feedback-comment {
+	width: 100%;
+	min-height: 60px;
+	padding: 8px 12px;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	background: var(--input-bg);
+	color: var(--text-color);
+	font-family: inherit;
+	font-size: 14px;
+	line-height: 1.4;
+	resize: vertical;
+	transition: border-color 0.2s ease;
+}
+
+.feedback-comment:focus {
+	outline: none;
+	border-color: var(--accent-color);
+}
+
+.feedback-comment::placeholder {
+	color: var(--accent-color);
+	opacity: 0.6;
+}
+
+.feedback-submit-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 8px;
+	justify-content: flex-end;
+}
+
+.feedback-submit-btn {
+	background: var(--accent-color);
+	color: var(--bg-color);
+	border: none;
+	border-radius: 6px;
+	padding: 8px 16px;
+	cursor: pointer;
+	font-size: 14px;
+	transition: all 0.2s ease;
+}
+
+.feedback-submit-btn:hover:not(:disabled) {
+	opacity: 0.9;
+	transform: translateY(-1px);
+}
+
+.feedback-submit-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.feedback-cancel-btn {
+	background: none;
+	color: var(--accent-color);
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	padding: 8px 16px;
+	cursor: pointer;
+	font-size: 14px;
+	transition: all 0.2s ease;
+}
+
+.feedback-cancel-btn:hover {
+	background: var(--hover-color);
+}
+
+.feedback-thanks {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+	color: var(--accent-color);
+	opacity: 0.8;
+}
+
+.feedback-thanks svg {
+	width: 16px;
+	height: 16px;
+	color: #10b981;
+}
+
+/* Hide feedback UI on user messages */
+.message-user .feedback-ui {
+	display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	.feedback-actions {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
+	}
+
+	.feedback-submit-actions {
+		flex-direction: column;
+		width: 100%;
+	}
+
+	.feedback-submit-btn,
+	.feedback-cancel-btn {
+		width: 100%;
+		justify-content: center;
+	}
+}

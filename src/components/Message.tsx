@@ -3,6 +3,7 @@ import { memo } from 'preact/compat';
 import { marked } from 'marked';
 import LazyMedia from './LazyMedia';
 import CaseCanvas from './CaseCanvas';
+import FeedbackUI from './FeedbackUI';
 import createLazyComponent from '../utils/LazyComponent';
 
 // Lazy load scheduling components
@@ -91,6 +92,12 @@ interface MessageProps {
 	onServiceSelect?: (service: string) => void;
 	onUrgencySelect?: (urgency: string) => void;
 	isLoading?: boolean;
+	// Feedback props
+	id?: string;
+	sessionId?: string;
+	teamId?: string;
+	showFeedback?: boolean;
+	onFeedbackSubmit?: (feedback: any) => void;
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -286,7 +293,12 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	onRequestMoreDates,
 	onServiceSelect,
 	onUrgencySelect,
-	isLoading
+	isLoading,
+	id,
+	sessionId,
+	teamId,
+	showFeedback = true,
+	onFeedbackSubmit
 }) => {
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
 	const audioFiles = files.filter(file => file.type.startsWith('audio/'));
@@ -412,6 +424,16 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				{imageFiles.map((file, index) => (
 					<ImagePreview key={index} file={file} />
 				))}
+				
+				{/* Show feedback UI only on AI messages and when not loading */}
+				{!isUser && !isLoading && showFeedback && (
+					<FeedbackUI
+						messageId={id}
+						sessionId={sessionId}
+						teamId={teamId}
+						onFeedbackSubmit={onFeedbackSubmit}
+					/>
+				)}
 			</div>
 		</div>
 	);

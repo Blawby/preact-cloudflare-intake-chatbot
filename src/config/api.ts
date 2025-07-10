@@ -33,6 +33,11 @@ export const getFormsEndpoint = () => {
   return `${config.baseUrl}/api/forms`;
 };
 
+export const getFeedbackEndpoint = () => {
+  const config = getApiConfig();
+  return `${config.baseUrl}/api/feedback`;
+};
+
 export const getTeamsEndpoint = () => {
   const config = getApiConfig();
   return `${config.baseUrl}${config.teamsEndpoint}`;

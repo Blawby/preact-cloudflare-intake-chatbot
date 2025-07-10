@@ -117,6 +117,7 @@ export function App() {
 	const [position, setPosition] = useState<ChatPosition>('widget');
 	const [isOpen, setIsOpen] = useState(position === 'inline' ? true : false);
 	const [teamId, setTeamId] = useState<string>('demo');
+	const [sessionId] = useState<string>(() => crypto.randomUUID());
 	const messageListRef = useRef<HTMLDivElement>(null);
 	const [isRecording, setIsRecording] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
@@ -166,6 +167,12 @@ export function App() {
 
 	// Track drag counter for better handling of nested elements
 	const dragCounter = useRef(0);
+
+	// Handle feedback submission
+	const handleFeedbackSubmit = useCallback((feedback: any) => {
+		console.log('Feedback submitted:', feedback);
+		// Could show a toast notification here
+	}, []);
 
 	// Parse URL parameters for configuration
 	useEffect(() => {
@@ -811,7 +818,8 @@ export function App() {
 					},
 					body: JSON.stringify({
 						messages: messageHistory,
-						teamId: teamId
+						teamId: teamId,
+						sessionId: sessionId
 					})
 				});
 				
@@ -1987,16 +1995,19 @@ export function App() {
 									</div>
 								</div>
 							)}
-							<VirtualMessageList 
-								messages={messages}
-								onDateSelect={handleDateSelect}
-								onTimeOfDaySelect={handleTimeOfDaySelect}
-								onTimeSlotSelect={handleTimeSlotSelect}
-								onRequestMoreDates={handleRequestMoreDates}
-								onServiceSelect={handleServiceSelect}
-								onUrgencySelect={handleUrgencySelect}
-								position={position}
-							/>
+												<VirtualMessageList
+						messages={messages}
+						onDateSelect={handleDateSelect}
+						onTimeOfDaySelect={handleTimeOfDaySelect}
+						onTimeSlotSelect={handleTimeSlotSelect}
+						onRequestMoreDates={handleRequestMoreDates}
+						onServiceSelect={handleServiceSelect}
+						onUrgencySelect={handleUrgencySelect}
+						position={position}
+						sessionId={sessionId}
+						teamId={teamId}
+						onFeedbackSubmit={handleFeedbackSubmit}
+					/>
 							<div className="input-area" role="form" aria-label="Message composition">
 								<div className="input-container" style={{
 									maxWidth: position === 'inline' ? 'none' : '768px',
