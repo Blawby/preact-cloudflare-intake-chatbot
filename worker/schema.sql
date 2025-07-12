@@ -1,7 +1,7 @@
 -- Blawby AI Chatbot Database Schema
 
 -- Teams table
-CREATE TABLE teams (
+CREATE TABLE IF NOT EXISTS teams (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   domain TEXT,
@@ -11,7 +11,7 @@ CREATE TABLE teams (
 );
 
 -- Conversations table
-CREATE TABLE conversations (
+CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE conversations (
 );
 
 -- Messages table
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY,
   conversation_id TEXT NOT NULL,
   matter_id TEXT, -- Optional: link to specific matter for tighter integration
@@ -38,7 +38,7 @@ CREATE TABLE messages (
 
 
 -- Contact form submissions table
-CREATE TABLE contact_forms (
+CREATE TABLE IF NOT EXISTS contact_forms (
   id TEXT PRIMARY KEY,
   conversation_id TEXT,
   team_id TEXT NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE contact_forms (
 );
 
 -- Services table
-CREATE TABLE services (
+CREATE TABLE IF NOT EXISTS services (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE services (
 );
 
 -- Appointments table
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
   id TEXT PRIMARY KEY,
   matter_id TEXT, -- Link to matter instead of just conversation
   conversation_id TEXT, -- Optional: keep conversation link for context
@@ -91,7 +91,7 @@ CREATE TABLE appointments (
 );
 
 -- Lawyers table for team member management
-CREATE TABLE lawyers (
+CREATE TABLE IF NOT EXISTS lawyers (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -109,7 +109,7 @@ CREATE TABLE lawyers (
 );
 
 -- Matters table to represent legal matters
-CREATE TABLE matters (
+CREATE TABLE IF NOT EXISTS matters (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   client_name TEXT NOT NULL,
@@ -141,7 +141,7 @@ CREATE TABLE matters (
 );
 
 -- Matter events table for matter activity logs
-CREATE TABLE matter_events (
+CREATE TABLE IF NOT EXISTS matter_events (
   id TEXT PRIMARY KEY,
   matter_id TEXT NOT NULL,
   event_type TEXT NOT NULL, -- 'note', 'call', 'email', 'meeting', 'filing', 'payment', 'status_change'
@@ -161,7 +161,7 @@ CREATE TABLE matter_events (
 );
 
 -- Files table (replaces uploaded_files) - general-purpose file management
-CREATE TABLE files (
+CREATE TABLE IF NOT EXISTS files (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   matter_id TEXT, -- Optional: link to specific matter
@@ -195,7 +195,7 @@ CREATE TABLE files (
 -- AI Training Data Tables --
 
 -- Chat logs table for long-term storage of chat sessions
-CREATE TABLE chat_logs (
+CREATE TABLE IF NOT EXISTS chat_logs (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
   team_id TEXT,
@@ -206,7 +206,7 @@ CREATE TABLE chat_logs (
 );
 
 -- Matter questions table for Q&A pairs from intake
-CREATE TABLE matter_questions (
+CREATE TABLE IF NOT EXISTS matter_questions (
   id TEXT PRIMARY KEY,
   matter_id TEXT,
   team_id TEXT,
@@ -219,7 +219,7 @@ CREATE TABLE matter_questions (
 );
 
 -- AI generated summaries table for markdown matter summaries
-CREATE TABLE ai_generated_summaries (
+CREATE TABLE IF NOT EXISTS ai_generated_summaries (
   id TEXT PRIMARY KEY,
   matter_id TEXT,
   summary TEXT NOT NULL,
@@ -230,7 +230,7 @@ CREATE TABLE ai_generated_summaries (
 );
 
 -- AI feedback table for user quality ratings and intent tags
-CREATE TABLE ai_feedback (
+CREATE TABLE IF NOT EXISTS ai_feedback (
   id TEXT PRIMARY KEY,
   session_id TEXT,
   team_id TEXT,
@@ -243,7 +243,7 @@ CREATE TABLE ai_feedback (
 );
 
 -- Webhook logs table for tracking webhook deliveries
-CREATE TABLE webhook_logs (
+CREATE TABLE IF NOT EXISTS webhook_logs (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   webhook_type TEXT NOT NULL, -- 'matter_creation', 'matter_details', 'contact_form', 'appointment'
