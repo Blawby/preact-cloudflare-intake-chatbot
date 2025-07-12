@@ -1873,227 +1873,245 @@ export function App() {
 				</div>
 			)}
 		
-
-		
 			{teamNotFound ? (
 				<TeamNotFound teamId={teamId} onRetry={handleRetryTeamConfig} />
 			) : (
-				<div 
-					className="chat-container" 
-					role="application" 
-					aria-label="Chat interface"
-					aria-expanded={true}
-				>
-					<ErrorBoundary>
-						{(
-						<>
-							<main className="chat-main">
-							{messages.length === 0 && (
-								<div className="welcome-message">
-									<div className="welcome-card">
-										<div className="welcome-icon">
-											{teamConfig.profileImage ? (
-												<img 
-													src={teamConfig.profileImage} 
-													alt={`${teamConfig.name} logo`}
-													className="team-profile-image"
-												/>
-											) : (
-												<FaceSmileIcon className="w-12 h-12" />
-											)}
-										</div>
-										<h2>{teamConfig.name}</h2>
-										<p>{teamConfig.introMessage || "I'm an AI assistant designed to help you get started with your matter."}</p>
-										<div className="welcome-actions">
-											<p>How can I help today?</p>
-											<div className="welcome-buttons">
-												<button 
-													className="welcome-action-button primary" 
-													onClick={handleCreateMatterStart}
-												>
-													Create Matter
-												</button>
-												<button 
-													className="welcome-action-button" 
-													onClick={handleScheduleStart}
-												>
-													Request a consultation
-												</button>
-												<button 
-													className="welcome-action-button" 
-													onClick={async () => {
-														const servicesMessage: ChatMessage = {
-															content: "Tell me about your firm's services",
-															isUser: true
-														};
-														setMessages([servicesMessage]);
-														
-														// Add placeholder message with loading indicator (ChatGPT style)
-														const loadingMessageId = crypto.randomUUID();
-														const loadingMessage: ChatMessage = {
-															content: "Let me tell you about our services...",
-															isUser: false,
-															isLoading: true,
-															id: loadingMessageId
-														};
-														setMessages(prev => [...prev, loadingMessage]);
-														
-														try {
-															// Call the actual API
-															const response = await sendMessageToAPI("Tell me about your firm's services");
-															
-															// Update the loading message with actual content
-															setMessages(prev => prev.map(msg => 
-																msg.id === loadingMessageId 
-																	? {
-																		...msg,
-																		content: response,
-																		isLoading: false
-																	}
-																	: msg
-															));
-														} catch (error) {
-															// Fallback to default response if API fails
-															setMessages(prev => prev.map(msg => 
-																msg.id === loadingMessageId 
-																	? {
-																		...msg,
-																		content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
-																		isLoading: false
-																	}
-																	: msg
-															));
-														}
-													}}
-												>
-													Learn about our services
-												</button>
-											</div>
-										</div>
-									</div>
-								</div>
-							)}
-												<VirtualMessageList
-						messages={messages}
-						onDateSelect={handleDateSelect}
-						onTimeOfDaySelect={handleTimeOfDaySelect}
-						onTimeSlotSelect={handleTimeSlotSelect}
-						onRequestMoreDates={handleRequestMoreDates}
-						onServiceSelect={handleServiceSelect}
-						onUrgencySelect={handleUrgencySelect}
+				<>
+					{/* Left Column */}
+					<div className="grid-left">
+						<div className="sidebar-content">
+							<h3>Left Sidebar</h3>
+							<p>This is the left column (0.25fr)</p>
+						</div>
+					</div>
 
-						sessionId={sessionId}
-						teamId={teamId}
-						onFeedbackSubmit={handleFeedbackSubmit}
-					/>
-							<div className="input-area" role="form" aria-label="Message composition">
-								<div className="input-container">
-									{previewFiles.length > 0 && (
-										<div className="input-preview" role="list" aria-label="File attachments">
-											{previewFiles.map((file, index) => (
-												<div 
-													className={`input-preview-item ${file.type.startsWith('image/') ? 'image-preview' : 'file-preview'}`}
-													key={index}
-													role="listitem"
-												>
-													{file.type.startsWith('image/') ? (
-														<>
-															<img src={file.url} alt={`Preview of ${file.name}`} />
-														</>
+					{/* Center Column - Main Chat */}
+					<div className="grid-center">
+						<div 
+							className="chat-container" 
+							role="application" 
+							aria-label="Chat interface"
+							aria-expanded={true}
+						>
+							<ErrorBoundary>
+								{(
+								<>
+									<main className="chat-main">
+									{messages.length === 0 && (
+										<div className="welcome-message">
+											<div className="welcome-card">
+												<div className="welcome-icon">
+													{teamConfig.profileImage ? (
+														<img 
+															src={teamConfig.profileImage} 
+															alt={`${teamConfig.name} logo`}
+															className="team-profile-image"
+														/>
 													) : (
-														<>
-															<div className="file-thumbnail" aria-hidden="true">
-																{getFileIcon(file)}
-															</div>
-															<div className="file-info">
-																<div className="file-name">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
-																<div className="file-ext">{file.name.split('.').pop()}</div>
-															</div>
-														</>
+														<FaceSmileIcon className="w-12 h-12" />
 													)}
-													<button
-														type="button"
-														className="input-preview-remove"
-														onClick={() => removePreviewFile(index)}
-														title="Remove file"
-														aria-label={`Remove ${file.name}`}
-													>
-														<XMarkIcon className="w-4 h-4" aria-hidden="true" />
-													</button>
 												</div>
-											))}
+												<h2>{teamConfig.name}</h2>
+												<p>{teamConfig.introMessage || "I'm an AI assistant designed to help you get started with your matter."}</p>
+												<div className="welcome-actions">
+													<p>How can I help today?</p>
+													<div className="welcome-buttons">
+														<button 
+															className="welcome-action-button primary" 
+															onClick={handleCreateMatterStart}
+														>
+															Create Matter
+														</button>
+														<button 
+															className="welcome-action-button" 
+															onClick={handleScheduleStart}
+														>
+															Request a consultation
+														</button>
+														<button 
+															className="welcome-action-button" 
+															onClick={async () => {
+																const servicesMessage: ChatMessage = {
+																	content: "Tell me about your firm's services",
+																	isUser: true
+																};
+																setMessages([servicesMessage]);
+																
+																// Add placeholder message with loading indicator (ChatGPT style)
+																const loadingMessageId = crypto.randomUUID();
+																const loadingMessage: ChatMessage = {
+																	content: "Let me tell you about our services...",
+																	isUser: false,
+																	isLoading: true,
+																	id: loadingMessageId
+																};
+																setMessages(prev => [...prev, loadingMessage]);
+																
+																try {
+																	// Call the actual API
+																	const response = await sendMessageToAPI("Tell me about your firm's services");
+																	
+																	// Update the loading message with actual content
+																	setMessages(prev => prev.map(msg => 
+																		msg.id === loadingMessageId 
+																			? {
+																				...msg,
+																				content: response,
+																				isLoading: false
+																			}
+																			: msg
+																	));
+																} catch (error) {
+																	// Fallback to default response if API fails
+																	setMessages(prev => prev.map(msg => 
+																		msg.id === loadingMessageId 
+																			? {
+																				...msg,
+																				content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
+																				isLoading: false
+																			}
+																			: msg
+																	));
+																}
+															}}
+														>
+															Learn about our services
+														</button>
+													</div>
+												</div>
+											</div>
 										</div>
 									)}
-									<div className="textarea-wrapper">
-										<textarea
-											className="message-input"
-											placeholder="Type a message..."
-											rows={1}
-											value={inputValue}
-											onInput={handleInputChange}
-											onKeyPress={handleKeyPress}
-											disabled={false}
-											aria-label="Message input"
-											aria-multiline="true"
-											style={{ 
-												minHeight: '24px',
-												width: '100%'
-											}}
-										/>
-									</div>
-									<span id="input-instructions" className="sr-only">
-										Type your message and press Enter to send. Use the buttons below to attach files or record audio.
-									</span>
-									<div className="input-controls-row">
-										<div className="input-controls">
-											{!isRecording && (
-												<div className="input-left-controls">
-													<LazyFileMenu
-														onPhotoSelect={handlePhotoSelect}
-														onCameraCapture={handleCameraCapture}
-														onFileSelect={handleFileSelect}
-													/>
-													
-													<LazyScheduleButton
-														onClick={handleScheduleStart}
-														disabled={false}
-													/>
+									<VirtualMessageList
+										messages={messages}
+										onDateSelect={handleDateSelect}
+										onTimeOfDaySelect={handleTimeOfDaySelect}
+										onTimeSlotSelect={handleTimeSlotSelect}
+										onRequestMoreDates={handleRequestMoreDates}
+										onServiceSelect={handleServiceSelect}
+										onUrgencySelect={handleUrgencySelect}
+										sessionId={sessionId}
+										teamId={teamId}
+										onFeedbackSubmit={handleFeedbackSubmit}
+									/>
+									<div className="input-area" role="form" aria-label="Message composition">
+										<div className="input-container">
+											{previewFiles.length > 0 && (
+												<div className="input-preview" role="list" aria-label="File attachments">
+													{previewFiles.map((file, index) => (
+														<div 
+															className={`input-preview-item ${file.type.startsWith('image/') ? 'image-preview' : 'file-preview'}`}
+															key={index}
+															role="listitem"
+														>
+															{file.type.startsWith('image/') ? (
+																<>
+																	<img src={file.url} alt={`Preview of ${file.name}`} />
+																</>
+															) : (
+																<>
+																	<div className="file-thumbnail" aria-hidden="true">
+																		{getFileIcon(file)}
+																	</div>
+																	<div className="file-info">
+																		<div className="file-name">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
+																		<div className="file-ext">{file.name.split('.').pop()}</div>
+																	</div>
+																</>
+															)}
+															<button
+																type="button"
+																className="input-preview-remove"
+																onClick={() => removePreviewFile(index)}
+																title="Remove file"
+																aria-label={`Remove ${file.name}`}
+															>
+																<XMarkIcon className="w-4 h-4" aria-hidden="true" />
+															</button>
+														</div>
+													))}
 												</div>
 											)}
-											
-											<div className="send-controls">
-												{features.enableAudioRecording && (
-													<LazyMediaControls
-														onMediaCapture={handleMediaCapture}
-														onRecordingStateChange={setIsRecording}
-													/>
-												)}
-												
-												<button
-													className="send-button"
-													type="button"
-													onClick={handleSubmit}
-													disabled={(!inputValue.trim() && previewFiles.length === 0)}
-													aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
-												>
-													<ArrowUpIcon className="send-icon w-5 h-5" aria-hidden="true" />
-												</button>
+											<div className="textarea-wrapper">
+												<textarea
+													className="message-input"
+													placeholder="Type a message..."
+													rows={1}
+													value={inputValue}
+													onInput={handleInputChange}
+													onKeyPress={handleKeyPress}
+													disabled={false}
+													aria-label="Message input"
+													aria-multiline="true"
+													style={{ 
+														minHeight: '24px',
+														width: '100%'
+													}}
+												/>
+											</div>
+											<span id="input-instructions" className="sr-only">
+												Type your message and press Enter to send. Use the buttons below to attach files or record audio.
+											</span>
+											<div className="input-controls-row">
+												<div className="input-controls">
+													{!isRecording && (
+														<div className="input-left-controls">
+															<LazyFileMenu
+																onPhotoSelect={handlePhotoSelect}
+																onCameraCapture={handleCameraCapture}
+																onFileSelect={handleFileSelect}
+															/>
+															
+															<LazyScheduleButton
+																onClick={handleScheduleStart}
+																disabled={false}
+															/>
+														</div>
+													)}
+													
+													<div className="send-controls">
+														{features.enableAudioRecording && (
+															<LazyMediaControls
+																onMediaCapture={handleMediaCapture}
+																onRecordingStateChange={setIsRecording}
+															/>
+														)}
+														
+														<button
+															className="send-button"
+															type="button"
+															onClick={handleSubmit}
+															disabled={(!inputValue.trim() && previewFiles.length === 0)}
+															aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
+														>
+															<ArrowUpIcon className="send-icon w-5 h-5" aria-hidden="true" />
+														</button>
+													</div>
+												</div>
 											</div>
 										</div>
 									</div>
-								</div>
-							</div>
-							<div className="disclaimer-text">
-								Blawby can make mistakes. Check for important information. 
-								<span className="keyboard-shortcuts">
-									Press Enter to send, Esc to clear, Ctrl+K to focus
-								</span>
-							</div>
-						</main>
-						</>
-					)}
-				</ErrorBoundary>
-			</div>
+									<div className="disclaimer-text">
+										Blawby can make mistakes. Check for important information. 
+										<span className="keyboard-shortcuts">
+											Press Enter to send, Esc to clear, Ctrl+K to focus
+										</span>
+									</div>
+									</main>
+								</>
+								)}
+							</ErrorBoundary>
+						</div>
+					</div>
+
+					{/* Right Column */}
+					<div className="grid-right">
+						<div className="sidebar-content">
+							<h3>Right Sidebar</h3>
+							<p>This is the right column (0.75fr)</p>
+						</div>
+					</div>
+				</>
 			)}
 		</>
 	);

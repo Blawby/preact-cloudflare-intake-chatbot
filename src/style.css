@@ -2,6 +2,58 @@
 	box-sizing: border-box;
 }
 
+/* App-wide grid layout */
+#app {
+	height: 100vh;
+	width: 100vw;
+	max-width: none;
+	margin: 0;
+	display: grid;
+	grid-template-columns: 0.25fr 2fr 0.75fr;
+	grid-template-rows: 1fr;
+	grid-column-gap: 0px;
+	grid-row-gap: 0px;
+}
+
+/* Grid column classes for content placement */
+.grid-left {
+	grid-column: 1;
+	background-color: var(--bg-color);
+	border-right: 1px solid var(--border-color);
+	overflow-y: auto;
+}
+
+.grid-center {
+	grid-column: 2;
+	background-color: var(--bg-color);
+	overflow-y: auto;
+}
+
+.grid-right {
+	grid-column: 3;
+	background-color: var(--bg-color);
+	border-left: 1px solid var(--border-color);
+	overflow-y: auto;
+}
+
+/* Sidebar content styling */
+.sidebar-content {
+	padding: 1rem;
+	color: var(--text-color);
+}
+
+.sidebar-content h3 {
+	margin-bottom: 0.5rem;
+	font-size: 1.1rem;
+	font-weight: 600;
+}
+
+.sidebar-content p {
+	font-size: 0.9rem;
+	line-height: 1.4;
+	opacity: 0.8;
+}
+
 /* Heroicons compatibility - scoped sizing utilities for SVG icons only */
 svg[class*="w-4"] {
 	width: 1rem;
@@ -99,19 +151,14 @@ body {
 	margin: 0;
 }
 
-#app {
-	height: 100vh;
-	width: 100vw;
-	max-width: none;
-	margin: 0;
-}
+/* App styles are now handled by the grid layout above */
 
 .chat-container {
 	display: flex;
 	flex-direction: column;
 	height: 100vh;
-	max-width: 1200px;
-	margin: 0 auto;
+	width: 100%;
+	margin: 0;
 	padding: 0;
 	position: relative;
 	-webkit-overflow-scrolling: touch;
@@ -138,13 +185,13 @@ body {
 	transform: none;
 }
 
-/* Ensure input area works properly */
+/* Ensure input area works properly within grid layout */
 .chat-container .input-area {
-	position: fixed;
+	position: sticky;
 	bottom: 0;
-	left: 0;
-	right: 0;
 	z-index: 1001;
+	background-color: var(--bg-color);
+	border-top: 1px solid var(--border-color);
 }
 
 
@@ -173,6 +220,36 @@ body {
 		padding: 0.4rem 0.75rem;
 		height: 28px;
 		/* Slightly smaller height on mobile */
+	}
+}
+
+/* Responsive grid layout */
+@media (max-width: 1024px) {
+	#app {
+		grid-template-columns: 1fr;
+		grid-template-rows: auto auto auto;
+	}
+
+	.grid-left,
+	.grid-center,
+	.grid-right {
+		grid-column: 1;
+		border-right: none;
+		border-left: none;
+		border-bottom: 1px solid var(--border-color);
+	}
+
+	.grid-left {
+		grid-row: 1;
+	}
+
+	.grid-center {
+		grid-row: 2;
+	}
+
+	.grid-right {
+		grid-row: 3;
+		border-bottom: none;
 	}
 }
 
