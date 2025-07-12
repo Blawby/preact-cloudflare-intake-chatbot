@@ -23,12 +23,19 @@ interface FeatureFlags {
      * When false, file upload functionality will be hidden
      */
     enableFileAttachments: boolean;
+
+    /**
+     * Enable left sidebar
+     * When false, the left column will be hidden and the layout will be 2-column
+     */
+    enableLeftSidebar: boolean;
 }
 
 const features: FeatureFlags = {
     enableAudioRecording: false, // Set to false to hide voice recording
     enableVideoRecording: false, // Not implemented yet
     enableFileAttachments: true, // File attachments are enabled
+    enableLeftSidebar: false, // Set to false to hide left sidebar for now
 };
 
 // For development environment, you can override settings

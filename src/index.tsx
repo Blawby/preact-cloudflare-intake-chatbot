@@ -1933,15 +1933,17 @@ export function App() {
 			) : (
 				<>
 					{/* Left Column */}
-					<div className="grid-left">
-						<div className="sidebar-content">
-							<h3>Left Sidebar</h3>
-							<p>This is the left column (0.25fr)</p>
+					{features.enableLeftSidebar && (
+						<div className="grid-left">
+							<div className="sidebar-content">
+								<h3>Left Sidebar</h3>
+								<p>This is the left column (0.25fr)</p>
+							</div>
 						</div>
-					</div>
+					)}
 
 					{/* Center Column - Main Chat */}
-					<div className="grid-center">
+					<div className={features.enableLeftSidebar ? "grid-center" : "grid-center-full"}>
 						<div 
 							className="chat-container" 
 							role="application" 
