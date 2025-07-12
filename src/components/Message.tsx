@@ -10,8 +10,10 @@ import {
 	DocumentTextIcon,
 	TableCellsIcon,
 	MusicalNoteIcon,
-	VideoCameraIcon
+	VideoCameraIcon,
+	ClipboardDocumentIcon
 } from '@heroicons/react/24/outline';
+import { useState } from 'preact/hooks';
 
 // Lazy load scheduling components
 const LazyDateSelector = createLazyComponent(
@@ -303,6 +305,19 @@ const Message: FunctionComponent<MessageProps> = memo(({
 		file.type.startsWith('audio/')
 	);
 
+	const [copied, setCopied] = useState(false);
+
+	const handleCopy = () => {
+		if (!content) return;
+		const tempDiv = document.createElement('div');
+		tempDiv.innerHTML = marked(content);
+		const text = tempDiv.textContent || tempDiv.innerText || '';
+		navigator.clipboard.writeText(text).then(() => {
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		});
+	};
+
 	return (
 		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
 			<div class="message-content">
@@ -420,6 +435,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						sessionId={sessionId}
 						teamId={teamId}
 						onFeedbackSubmit={onFeedbackSubmit}
+						content={content}
 					/>
 				)}
 			</div>
