@@ -217,11 +217,11 @@ export function App() {
 				}
 			}
 
-			// Set teamId if available, otherwise show team not found
+			// Set teamId if available, otherwise default to blawby-ai
 			if (teamIdParam) {
 				setTeamId(teamIdParam);
 			} else {
-				setTeamNotFound(true);
+				setTeamId('blawby-ai');
 			}
 		}
 	}, []);
@@ -303,8 +303,7 @@ export function App() {
 	// Fetch team configuration
 	const fetchTeamConfig = async () => {
 		if (!teamId) {
-			setTeamNotFound(true);
-			return;
+			return; // Don't fetch if no teamId (shouldn't happen with default)
 		}
 		
 		try {
