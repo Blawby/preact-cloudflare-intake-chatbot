@@ -63,7 +63,7 @@ const LazyScheduleButton = createLazyComponent(
 );
 
 // Define position type
-type ChatPosition = 'widget' | 'inline';
+
 
 interface FileAttachment {
 	name: string;
@@ -128,8 +128,7 @@ export function App() {
 	const [inputValue, setInputValue] = useState('');
 	// Global loading state removed - using per-message loading instead
 	const [previewFiles, setPreviewFiles] = useState<FileAttachment[]>([]);
-	const [position, setPosition] = useState<ChatPosition>('widget');
-	const [isOpen, setIsOpen] = useState(position === 'inline' ? true : false);
+
 	const [teamId, setTeamId] = useState<string>('');
 	const [sessionId] = useState<string>(() => crypto.randomUUID());
 	const [teamNotFound, setTeamNotFound] = useState<boolean>(false);
@@ -193,28 +192,15 @@ export function App() {
 	useEffect(() => {
 		if (typeof window !== 'undefined') {
 			const urlParams = new URLSearchParams(window.location.search);
-			const positionParam = urlParams.get('position');
 			const teamIdParam = urlParams.get('teamId');
 			
 			// Check if we're on the root domain with no parameters - redirect to Blawby AI
 			if (window.location.hostname === 'ai.blawby.com' && 
 				window.location.pathname === '/' && 
-				!positionParam && 
 				!teamIdParam) {
 				// Redirect to Blawby AI
-				window.location.href = 'https://ai.blawby.com/?position=inline&teamId=blawby-ai';
+				window.location.href = 'https://ai.blawby.com/?teamId=blawby-ai';
 				return;
-			}
-			
-			// Set position based on URL parameter
-			if (positionParam === 'widget' || positionParam === 'inline') {
-				setPosition(positionParam);
-				// Immediately update isOpen based on position
-				if (positionParam === 'inline') {
-					setIsOpen(true);
-				} else {
-					setIsOpen(false);
-				}
 			}
 
 			// Set teamId if available, otherwise default to blawby-ai
@@ -226,44 +212,7 @@ export function App() {
 		}
 	}, []);
 
-	// Set up postMessage communication with parent frame
-	useEffect(() => {
-		// Function to notify parent frame of state changes
-		const notifyParent = (eventType: string, data: any = {}) => {
-			if (window.parent !== window) {
-				window.parent.postMessage({
-					type: eventType,
-					...data
-				}, '*');
-			}
-		};
 
-		// Notify parent when open/closed state changes
-		notifyParent('chatStateChange', { isOpen });
-
-		// Listen for messages from parent
-		const handleParentMessage = (event: MessageEvent) => {
-			if (event.data && event.data.type && position === 'widget') {
-				switch (event.data.type) {
-					case 'toggleChat':
-						setIsOpen(prev => !prev);
-						break;
-					case 'openChat':
-						setIsOpen(true);
-						break;
-					case 'closeChat':
-						setIsOpen(false);
-						break;
-				}
-			}
-		};
-
-		window.addEventListener('message', handleParentMessage);
-		
-		return () => {
-			window.removeEventListener('message', handleParentMessage);
-		};
-	}, [isOpen, position]);
 
 	const handleInputChange = useCallback((e: Event) => {
 		const target = e.currentTarget as HTMLTextAreaElement;
@@ -862,12 +811,9 @@ export function App() {
 				
 				// Handle JSON response (non-streaming)
 				const data = await response.json();
-				console.log('API Response:', data); // Debug log
-				console.log('API Response type:', typeof data); // Debug log
-				console.log('API Response keys:', Object.keys(data)); // Debug log
+				
 				const aiResponseText = data.response || data.message || data.content || '';
-				console.log('Extracted text:', aiResponseText); // Debug log
-				console.log('Extracted text type:', typeof aiResponseText); // Debug log
+
 				
 				// Update the placeholder message with the response
 				setMessages(prev => prev.map(msg => 
@@ -1713,6 +1659,32 @@ export function App() {
 		}
 	};
 
+	// Enhanced keyboard navigation
+	const handleKeyDown = (e: KeyboardEvent) => {
+		// Escape key to clear input or close modals
+		if (e.key === 'Escape') {
+			if (inputValue.trim() || previewFiles.length > 0) {
+				setInputValue('');
+				setPreviewFiles([]);
+			}
+		}
+		
+		// Ctrl/Cmd + Enter to send message (alternative to Enter)
+		if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+			e.preventDefault();
+			handleSubmit();
+		}
+		
+		// Ctrl/Cmd + K to focus input (common chat shortcut)
+		if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+			e.preventDefault();
+			const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
+			if (textarea) {
+				textarea.focus();
+			}
+		}
+	};
+
 	// Add a helper function to get the appropriate file icon based on file type
 	const getFileIcon = (file: FileAttachment) => {
 		// Get file extension
@@ -1831,19 +1803,21 @@ export function App() {
 		}
 	};
 
-	// Register global drag handlers on the document body
+	// Register global drag handlers and keyboard shortcuts on the document body
 	useEffect(() => {
 		if (typeof document !== 'undefined') {
 			document.body.addEventListener('dragenter', handleDragEnter);
 			document.body.addEventListener('dragleave', handleDragLeave);
 			document.body.addEventListener('dragover', handleDragOver);
 			document.body.addEventListener('drop', handleDrop);
+			document.addEventListener('keydown', handleKeyDown);
 
 			return () => {
 				document.body.removeEventListener('dragenter', handleDragEnter);
 				document.body.removeEventListener('dragleave', handleDragLeave);
 				document.body.removeEventListener('dragover', handleDragOver);
 				document.body.removeEventListener('drop', handleDrop);
+				document.removeEventListener('keydown', handleKeyDown);
 			};
 		}
 	}, []);
@@ -1899,33 +1873,19 @@ export function App() {
 				</div>
 			)}
 		
-			{/* Place toggle button outside main container for widget mode */}
-			{position === 'widget' && (
-				<button 
-					className={`chat-toggle standalone ${isOpen ? 'chat-open' : 'chat-closed'}`}
-					onClick={() => setIsOpen(prev => !prev)}
-					aria-label={isOpen ? "Minimize chat" : "Open chat"}
-					title={isOpen ? "Minimize chat" : "Open chat"}
-				>
-					{isOpen ? (
-						<XMarkIcon className="w-6 h-6" aria-hidden="true" />
-					) : (
-						<ChatBubbleLeftIcon className="w-6 h-6" aria-hidden="true" />
-					)}
-				</button>
-			)}
+
 		
 			{teamNotFound ? (
 				<TeamNotFound teamId={teamId} onRetry={handleRetryTeamConfig} />
 			) : (
 				<div 
-					className={`chat-container ${position} ${position === 'widget' ? (isOpen ? 'open' : 'closed') : ''}`} 
+					className="chat-container" 
 					role="application" 
 					aria-label="Chat interface"
-					aria-expanded={position === 'inline' ? true : isOpen}
+					aria-expanded={true}
 				>
 					<ErrorBoundary>
-						{(position === 'inline' || isOpen) && (
+						{(
 						<>
 							<main className="chat-main">
 							{messages.length === 0 && (
@@ -1961,7 +1921,7 @@ export function App() {
 												</button>
 												<button 
 													className="welcome-action-button" 
-													onClick={() => {
+													onClick={async () => {
 														const servicesMessage: ChatMessage = {
 															content: "Tell me about your firm's services",
 															isUser: true
@@ -1978,9 +1938,22 @@ export function App() {
 														};
 														setMessages(prev => [...prev, loadingMessage]);
 														
-														// Simulate AI response
-														setTimeout(() => {
+														try {
+															// Call the actual API
+															const response = await sendMessageToAPI("Tell me about your firm's services");
+															
 															// Update the loading message with actual content
+															setMessages(prev => prev.map(msg => 
+																msg.id === loadingMessageId 
+																	? {
+																		...msg,
+																		content: response,
+																		isLoading: false
+																	}
+																	: msg
+															));
+														} catch (error) {
+															// Fallback to default response if API fails
 															setMessages(prev => prev.map(msg => 
 																msg.id === loadingMessageId 
 																	? {
@@ -1990,7 +1963,7 @@ export function App() {
 																	}
 																	: msg
 															));
-														}, 1000);
+														}
 													}}
 												>
 													Learn about our services
@@ -2008,16 +1981,13 @@ export function App() {
 						onRequestMoreDates={handleRequestMoreDates}
 						onServiceSelect={handleServiceSelect}
 						onUrgencySelect={handleUrgencySelect}
-						position={position}
+
 						sessionId={sessionId}
 						teamId={teamId}
 						onFeedbackSubmit={handleFeedbackSubmit}
 					/>
 							<div className="input-area" role="form" aria-label="Message composition">
-								<div className="input-container" style={{
-									maxWidth: position === 'inline' ? 'none' : '768px',
-									margin: position === 'inline' ? '0' : '0 auto'
-								}}>
+								<div className="input-container">
 									{previewFiles.length > 0 && (
 										<div className="input-preview" role="list" aria-label="File attachments">
 											{previewFiles.map((file, index) => (
@@ -2114,7 +2084,10 @@ export function App() {
 								</div>
 							</div>
 							<div className="disclaimer-text">
-								Blawby can make mistakes. Check for important information.
+								Blawby can make mistakes. Check for important information. 
+								<span className="keyboard-shortcuts">
+									Press Enter to send, Esc to clear, Ctrl+K to focus
+								</span>
 							</div>
 						</main>
 						</>

@@ -121,8 +121,8 @@ body {
 	/* Prevent body scroll when input is focused */
 }
 
-/* Inline mode styling - always full width and height, no animations */
-.chat-container.inline {
+/* Chat container styling - full width and height */
+.chat-container {
 	position: relative;
 	height: 100vh;
 	width: 100%;
@@ -133,16 +133,13 @@ body {
 	box-shadow: none;
 	border: none;
 	transition: none;
-	/* Disable all transitions for inline mode */
 	animation: none;
-	/* Disable any animations */
-	/* Ensure immediate rendering without any animation delay */
 	opacity: 1;
 	transform: none;
 }
 
-/* Ensure input area works properly in inline mode */
-.chat-container.inline .input-area {
+/* Ensure input area works properly */
+.chat-container .input-area {
 	position: fixed;
 	bottom: 0;
 	left: 0;
@@ -150,119 +147,12 @@ body {
 	z-index: 1001;
 }
 
-/* Widget positioning */
-.chat-container.widget {
-	position: fixed;
-	height: calc(100% - 100px);
-	/* Leave space for button with some margin */
-	width: 400px;
-	max-width: 100%;
-	margin: 0;
-	border-radius: 12px 0 0 0;
-	/* Rounded top-left corner for style */
-	overflow: hidden;
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-	bottom: 90px;
-	/* Increased space for button */
-	top: auto;
-	/* Allow height to be controlled by bottom and height */
-	right: 0;
-	z-index: 1000;
-	background-color: var(--bg-color);
-	border-left: 1px solid var(--border-color);
-	transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
 
-/* Open/closed states */
-.chat-container.open {
-	transform: translateX(0);
-	opacity: 1;
-}
 
-.chat-container.closed {
-	transform: translateY(20px);
-	opacity: 0;
-	pointer-events: none;
-}
 
-.chat-container.widget.closed {
-	transform: translateY(100%);
-	opacity: 0;
-	pointer-events: none;
-}
 
-/* Toggle button visibility */
-.chat-toggle {
-	position: absolute;
-	top: 20px;
-	width: 50px;
-	height: 50px;
-	border-radius: 50%;
-	background-color: var(--accent-color);
-	color: var(--bg-color);
-	border: none;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	z-index: 10;
-	transition: all 0.2s ease;
-	padding: 0;
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-	overflow: hidden;
-}
-
-/* Button positioning for different states */
-.chat-container.widget .chat-toggle {
-	display: none;
-}
-
-/* Override for the closed state to keep button visible */
-.chat-container.widget.closed .chat-toggle {
-	display: none;
-}
-
-.chat-toggle:hover {
-	transform: scale(1.05);
-	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-}
-
-.chat-toggle svg {
-	width: 30px;
-	height: 30px;
-}
-
-/* Responsive adjustments for widget mode */
+/* Mobile adjustments */
 @media (max-width: 768px) {
-	.chat-container.widget {
-		width: 100%;
-		height: calc(100% - 100px);
-		bottom: 90px;
-		top: auto;
-		left: 0;
-		right: 0;
-		border-radius: 20px 20px 0 0;
-		/* Rounded top corners on mobile */
-	}
-
-	.chat-container.widget.closed {
-		transform: translateY(100%);
-	}
-
-	/* Remove these rules as they're no longer needed */
-	.chat-container.widget.closed .chat-toggle {
-		display: none;
-	}
-
-	/* Remove the after pseudo-element */
-	.chat-container.widget.closed::after {
-		display: none;
-	}
-
-	/* Remove the before pseudo-element */
-	.chat-container.widget.closed::before {
-		display: none;
-	}
 
 	/* Mobile adjustments for sticky input */
 	.input-area {
@@ -450,6 +340,13 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	gap: 1rem;
+}
+
+.keyboard-shortcuts {
+	font-size: 0.7rem;
+	color: var(--text-muted);
+	opacity: 0.7;
 }
 
 .input-container {
@@ -1987,66 +1884,7 @@ kbd {
 	background-color: rgba(0, 0, 0, 0.5);
 }
 
-/* Standalone toggle button for widget mode */
-.chat-toggle.standalone {
-	position: fixed;
-	top: auto;
-	bottom: 20px;
-	right: 20px;
-	width: 60px;
-	height: 60px;
-	border-radius: 50%;
-	background-color: #000000;
-	color: #ffffff;
-	border: none;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	z-index: 1001;
-	transition: all 0.3s ease;
-	padding: 0;
-	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-	overflow: hidden;
-}
 
-/* Different styling for when chat is open vs closed */
-.chat-toggle.standalone.chat-open {
-	background-color: #ffffff;
-	color: #000000;
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
-.chat-toggle.standalone:hover {
-	transform: scale(1.05);
-	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-}
-
-.chat-toggle.standalone svg {
-	width: 32px;
-	height: 32px;
-}
-
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-	.chat-toggle.standalone {
-		background-color: #ffffff;
-		color: #000000;
-	}
-
-	.chat-toggle.standalone.chat-open {
-		background-color: #000000;
-		color: #ffffff;
-	}
-}
-
-/* Mobile adjustments for standalone toggle */
-@media (max-width: 768px) {
-	.chat-toggle.standalone {
-		bottom: 20px;
-		/* Already at bottom, just maintaining for clarity */
-	}
-}
 
 .textarea-wrapper {
 	width: 100%;

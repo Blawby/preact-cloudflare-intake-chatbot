@@ -82,7 +82,7 @@ interface VirtualMessageListProps {
     onRequestMoreDates?: () => void;
     onServiceSelect?: (service: string) => void;
     onUrgencySelect?: (urgency: string) => void;
-    position?: 'widget' | 'inline';
+
     // Feedback props
     sessionId?: string;
     teamId?: string;
@@ -101,7 +101,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     onRequestMoreDates,
     onServiceSelect,
     onUrgencySelect,
-    position = 'widget',
+
     sessionId,
     teamId,
     onFeedbackSubmit
@@ -178,10 +178,6 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         <div 
             class="message-list" 
             ref={listRef}
-            style={{
-                maxWidth: position === 'inline' ? 'none' : '768px',
-                margin: position === 'inline' ? '0' : '0 auto'
-            }}
         >
             {startIndex > 0 && (
                 <div class="load-more-trigger">
