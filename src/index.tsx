@@ -18,11 +18,7 @@ import {
   extractContactInfo,
   formatFormData
 } from './utils/conversationalForm';
-import {
-  sendContactFormWebhook,
-  sendMatterCreationWebhook,
-  sendAppointmentWebhook
-} from './utils/webhooks';
+
 import {
 	DocumentIcon,
 	DocumentTextIcon,
@@ -617,30 +613,7 @@ export function App() {
 		
 		// Simulate AI confirmation response
 		setTimeout(async () => {
-			// Send appointment webhook if enabled
-			if (teamConfig?.config?.webhooks?.enabled) {
-				try {
-					await sendAppointmentWebhook(
-						teamConfig.config.webhooks,
-						{
-							scheduledDateTime: timeSlot,
-							timeSlot: formattedTime,
-							service: 'Consultation',
-							contactInfo: {
-								email: 'To be collected',
-								phone: 'To be collected',
-								name: 'To be collected'
-							},
-							notes: 'Consultation scheduled via chat interface'
-						},
-						sessionId,
-						teamId
-					);
-					console.log('Appointment webhook sent successfully');
-				} catch (webhookError) {
-					console.warn('Failed to send appointment webhook:', webhookError);
-				}
-			}
+
 			
 			// Update the loading message with actual content
 			setMessages(prev => prev.map(msg => 
@@ -953,44 +926,7 @@ export function App() {
 					console.warn('Failed to fetch team config:', error);
 				}
 				
-				// Send webhook for contact form submission
-				if (teamConfig?.config?.webhooks?.enabled) {
-					try {
-						await sendContactFormWebhook(
-							teamConfig.config.webhooks,
-							formData,
-							sessionId,
-							teamId
-						);
-						console.log('Contact form webhook sent successfully');
-						
-						// If this includes matter data, also send matter creation webhook
-						if (formData.matterDescription || formData.matterDetails) {
-							await sendMatterCreationWebhook(
-								teamConfig.config.webhooks,
-								{
-									matterType: formData.matterType,
-									description: formData.matterDescription,
-									urgency: formData.urgency,
-									location: formData.location,
-									additionalInfo: formData.additionalInfo,
-									aiAnswers: formData.matterDetails,
-									matterSummary: formData.matterDescription,
-									contactInfo: {
-										email: formData.email,
-										phone: formData.phone,
-										name: formData.name || 'Not provided'
-									}
-								},
-								sessionId,
-								teamId
-							);
-							console.log('Matter creation webhook sent successfully');
-						}
-					} catch (webhookError) {
-						console.warn('Failed to send webhook:', webhookError);
-					}
-				}
+
 				
 				// Create confirmation message based on payment requirements and matter creation status
 				let confirmationContent = "";
@@ -1102,15 +1038,7 @@ export function App() {
 					isActive: false
 				});
 
-				// Send webhook for contact form submission
-				if (teamConfig?.config?.webhookUrl) {
-					try {
-						await sendContactFormWebhook(teamConfig.config.webhookUrl, formData);
-						console.log('Contact form webhook sent successfully.');
-					} catch (webhookError) {
-						console.warn('Failed to send contact form webhook:', webhookError);
-					}
-				}
+
 				
 			} else {
 				throw new Error('Form submission failed');
