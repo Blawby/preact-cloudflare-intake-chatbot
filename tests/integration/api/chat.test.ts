@@ -25,7 +25,7 @@ describe('Chat API Integration Tests', () => {
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'Hello, I need legal help' }],
-          teamId: 'demo',
+          teamId: 'blawby-ai',
           sessionId: 'test-session',
         }),
       });
@@ -53,7 +53,7 @@ describe('Chat API Integration Tests', () => {
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'I need help with a business contract dispute' }],
-          teamId: 'demo',
+          teamId: 'blawby-ai',
           sessionId: 'test-session',
         }),
       });
@@ -87,7 +87,7 @@ describe('Chat API Integration Tests', () => {
         ok: true,
         status: 200,
         json: () => Promise.resolve([
-          { id: 'demo', name: 'Demo Team' },
+          { id: 'blawby-ai', name: 'Blawby AI' },
           { id: 'north-carolina-legal-services', name: 'North Carolina Legal Services' }
         ]),
       };

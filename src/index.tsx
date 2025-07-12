@@ -6,6 +6,7 @@ import LoadingIndicator from './components/LoadingIndicator';
 // import MediaControls from './components/MediaControls';
 import VirtualMessageList from './components/VirtualMessageList';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { TeamNotFound } from './components/TeamNotFound';
 import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
@@ -129,8 +130,9 @@ export function App() {
 	const [previewFiles, setPreviewFiles] = useState<FileAttachment[]>([]);
 	const [position, setPosition] = useState<ChatPosition>('widget');
 	const [isOpen, setIsOpen] = useState(position === 'inline' ? true : false);
-	const [teamId, setTeamId] = useState<string>('demo');
+	const [teamId, setTeamId] = useState<string>('');
 	const [sessionId] = useState<string>(() => crypto.randomUUID());
+	const [teamNotFound, setTeamNotFound] = useState<boolean>(false);
 	const messageListRef = useRef<HTMLDivElement>(null);
 	const [isRecording, setIsRecording] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
@@ -194,13 +196,13 @@ export function App() {
 			const positionParam = urlParams.get('position');
 			const teamIdParam = urlParams.get('teamId');
 			
-			// Check if we're on the root domain with no parameters - redirect to inline demo
+			// Check if we're on the root domain with no parameters - redirect to Blawby AI
 			if (window.location.hostname === 'ai.blawby.com' && 
 				window.location.pathname === '/' && 
 				!positionParam && 
 				!teamIdParam) {
-				// Redirect to inline demo
-				window.location.href = 'https://ai.blawby.com/?position=inline&teamId=demo';
+				// Redirect to Blawby AI
+				window.location.href = 'https://ai.blawby.com/?position=inline&teamId=blawby-ai';
 				return;
 			}
 			
@@ -215,9 +217,11 @@ export function App() {
 				}
 			}
 
-			// Set teamId if available, otherwise keep the default "demo"
+			// Set teamId if available, otherwise show team not found
 			if (teamIdParam) {
 				setTeamId(teamIdParam);
+			} else {
+				setTeamNotFound(true);
 			}
 		}
 	}, []);
@@ -298,7 +302,10 @@ export function App() {
 
 	// Fetch team configuration
 	const fetchTeamConfig = async () => {
-		if (!teamId) return;
+		if (!teamId) {
+			setTeamNotFound(true);
+			return;
+		}
 		
 		try {
 			const response = await fetch(getTeamsEndpoint());
@@ -307,17 +314,23 @@ export function App() {
 				const team = teams.find((t: any) => t.id === teamId);
 				if (team?.config) {
 					const config = {
-						name: team.name || 'Legal AI Assistant',
+						name: team.name || 'Blawby AI',
 						profileImage: team.config.profileImage || null,
 						introMessage: team.config.introMessage || null,
 						availableServices: team.config.availableServices || [],
 						serviceQuestions: team.config.serviceQuestions || {}
 					};
 					setTeamConfig(config);
+					setTeamNotFound(false);
+				} else {
+					setTeamNotFound(true);
 				}
+			} else {
+				setTeamNotFound(true);
 			}
 		} catch (error) {
 			console.warn('Failed to fetch team config:', error);
+			setTeamNotFound(true);
 		}
 	};
 
@@ -325,6 +338,12 @@ export function App() {
 	useEffect(() => {
 		fetchTeamConfig();
 	}, [teamId]);
+
+	// Retry function for team config
+	const handleRetryTeamConfig = () => {
+		setTeamNotFound(false);
+		fetchTeamConfig();
+	};
 
 	const handlePhotoSelect = async (files: File[]) => {
 		const fileAttachments: FileAttachment[] = await Promise.all(
@@ -1897,14 +1916,17 @@ export function App() {
 				</button>
 			)}
 		
-			<div 
-				className={`chat-container ${position} ${position === 'widget' ? (isOpen ? 'open' : 'closed') : ''}`} 
-				role="application" 
-				aria-label="Chat interface"
-				aria-expanded={position === 'inline' ? true : isOpen}
-			>
-				<ErrorBoundary>
-					{(position === 'inline' || isOpen) && (
+			{teamNotFound ? (
+				<TeamNotFound teamId={teamId} onRetry={handleRetryTeamConfig} />
+			) : (
+				<div 
+					className={`chat-container ${position} ${position === 'widget' ? (isOpen ? 'open' : 'closed') : ''}`} 
+					role="application" 
+					aria-label="Chat interface"
+					aria-expanded={position === 'inline' ? true : isOpen}
+				>
+					<ErrorBoundary>
+						{(position === 'inline' || isOpen) && (
 						<>
 							<main className="chat-main">
 							{messages.length === 0 && (
@@ -2100,6 +2122,7 @@ export function App() {
 					)}
 				</ErrorBoundary>
 			</div>
+			)}
 		</>
 	);
 }

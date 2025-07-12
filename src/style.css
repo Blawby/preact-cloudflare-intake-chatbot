@@ -3,16 +3,45 @@
 }
 
 /* Heroicons compatibility - scoped sizing utilities for SVG icons only */
-svg[class*="w-4"] { width: 1rem; }
-svg[class*="h-4"] { height: 1rem; }
-svg[class*="w-5"] { width: 1.25rem; }
-svg[class*="h-5"] { height: 1.25rem; }
-svg[class*="w-6"] { width: 1.5rem; }
-svg[class*="h-6"] { height: 1.5rem; }
-svg[class*="w-8"] { width: 2rem; }
-svg[class*="h-8"] { height: 2rem; }
-svg[class*="w-12"] { width: 3rem; }
-svg[class*="h-12"] { height: 3rem; }
+svg[class*="w-4"] {
+	width: 1rem;
+}
+
+svg[class*="h-4"] {
+	height: 1rem;
+}
+
+svg[class*="w-5"] {
+	width: 1.25rem;
+}
+
+svg[class*="h-5"] {
+	height: 1.25rem;
+}
+
+svg[class*="w-6"] {
+	width: 1.5rem;
+}
+
+svg[class*="h-6"] {
+	height: 1.5rem;
+}
+
+svg[class*="w-8"] {
+	width: 2rem;
+}
+
+svg[class*="h-8"] {
+	height: 2rem;
+}
+
+svg[class*="w-12"] {
+	width: 3rem;
+}
+
+svg[class*="h-12"] {
+	height: 3rem;
+}
 
 :root {
 	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -2644,4 +2673,81 @@ kbd {
 		width: 100%;
 		justify-content: center;
 	}
+}
+
+/* Team Not Found Styles */
+.team-not-found {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	padding: 2rem;
+	background: var(--bg-color);
+}
+
+.team-not-found-content {
+	text-align: center;
+	max-width: 400px;
+	padding: 2rem;
+	background: var(--message-bg-ai);
+	border-radius: 12px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+	border: 1px solid var(--border-color);
+}
+
+.team-not-found-icon {
+	margin-bottom: 1.5rem;
+	color: #ef4444;
+}
+
+.team-not-found h2 {
+	margin-bottom: 1rem;
+	color: var(--text-color);
+	font-size: 1.5rem;
+	font-weight: 600;
+}
+
+.team-not-found p {
+	margin-bottom: 2rem;
+	color: var(--accent-color);
+	line-height: 1.6;
+}
+
+.team-not-found-actions {
+	display: flex;
+	gap: 1rem;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+.retry-button {
+	background: #3b82f6;
+	color: white;
+	border: none;
+	padding: 0.75rem 1.5rem;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 0.875rem;
+	font-weight: 500;
+	transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+	background: #2563eb;
+}
+
+.home-link {
+	background: var(--message-bg-user);
+	color: var(--text-color);
+	border: 1px solid var(--border-color);
+	padding: 0.75rem 1.5rem;
+	border-radius: 6px;
+	text-decoration: none;
+	font-size: 0.875rem;
+	font-weight: 500;
+	transition: background-color 0.2s;
+}
+
+.home-link:hover {
+	background: var(--hover-color);
 }

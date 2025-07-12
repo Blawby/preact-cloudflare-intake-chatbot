@@ -25,7 +25,7 @@ describe('File Upload API Integration Tests', () => {
 
       const formData = new FormData();
       formData.append('file', new Blob(['Test content'], { type: 'text/plain' }), 'test-document.txt');
-      formData.append('teamId', 'demo');
+      formData.append('teamId', 'blawby-ai');
       formData.append('sessionId', 'test-session');
 
       const response = await fetch('/api/files/upload', {
@@ -55,7 +55,7 @@ describe('File Upload API Integration Tests', () => {
 
       const formData = new FormData();
       formData.append('file', new Blob(['PDF content'], { type: 'application/pdf' }), 'test-document.pdf');
-      formData.append('teamId', 'demo');
+      formData.append('teamId', 'blawby-ai');
       formData.append('sessionId', 'test-session');
 
       const response = await fetch('/api/files/upload', {
@@ -79,7 +79,7 @@ describe('File Upload API Integration Tests', () => {
 
       const formData = new FormData();
       formData.append('file', new Blob(['x'.repeat(10 * 1024 * 1024)], { type: 'text/plain' }), 'large-file.txt');
-      formData.append('teamId', 'demo');
+      formData.append('teamId', 'blawby-ai');
       formData.append('sessionId', 'test-session');
 
       const response = await fetch('/api/files/upload', {
@@ -100,7 +100,7 @@ describe('File Upload API Integration Tests', () => {
 
       const formData = new FormData();
       formData.append('file', new Blob(['executable content'], { type: 'application/x-executable' }), 'test.exe');
-      formData.append('teamId', 'demo');
+      formData.append('teamId', 'blawby-ai');
       formData.append('sessionId', 'test-session');
 
       const response = await fetch('/api/files/upload', {
@@ -136,7 +136,7 @@ describe('File Upload API Integration Tests', () => {
       // First upload a file
       const formData = new FormData();
       formData.append('file', new Blob(['This file will be downloaded for testing.'], { type: 'text/plain' }), 'test-document.txt');
-      formData.append('teamId', 'demo');
+      formData.append('teamId', 'blawby-ai');
       formData.append('sessionId', 'test-session');
 
       const uploadResponse = await fetch('/api/files/upload', {
@@ -179,7 +179,7 @@ describe('File Upload API Integration Tests', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       const formData = new FormData();
-      formData.append('teamId', 'demo');
+      formData.append('teamId', 'blawby-ai');
       formData.append('sessionId', 'test-session');
       // No file appended
 
