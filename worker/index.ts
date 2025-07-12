@@ -1071,22 +1071,6 @@ Write each question as if you're a supportive friend or counselor asking for cla
           }
         }
         
-        // Create empathetic intro message before canvas
-        let reviewMessage = `Thanks for sharing your situation with me. I can tell this has been really challenging, especially dealing with ${body.service.toLowerCase()} matters. I've put together a matter summary based on what you've shared so far — you'll see that summary below.`;
-        
-        // Get matter number for display
-        let matterNumber = 'Draft';
-        if (matterId) {
-          try {
-            const matterResult = await env.DB.prepare(`
-              SELECT matter_number FROM matters WHERE id = ?
-            `).bind(matterId).first();
-            matterNumber = (matterResult as any)?.matter_number || 'Draft';
-          } catch (error) {
-            console.warn('Failed to get matter number:', error);
-          }
-        }
-        
         // Create matter canvas data
         const matterCanvasData = {
           matterId: matterId,
@@ -1097,21 +1081,16 @@ Write each question as if you're a supportive friend or counselor asking for cla
           answers: matterAnswers
         };
         
-        // Create intelligent follow-up message based on quality assessment
+        // Improved follow-up message logic to avoid redundancy
         let followUpMessage = '';
         if (needsImprovement) {
-          if (reviewQuality.issues.length > 0) {
-            // Address specific issues
-            const mainIssue = reviewQuality.issues[0];
-            if (mainIssue.includes('too short')) {
-              followUpMessage = `I noticed some of your answers were quite brief. To help you get the best legal assistance, could you provide more details? ${followUpQuestions[0] || 'Can you tell me more about your situation?'}`;
-            } else if (reviewQuality.breakdown.answerQuality < 50) {
-              followUpMessage = `To make sure we have everything needed for your ${body.service.toLowerCase()} matter, I'd love to get a few more details. ${followUpQuestions[0] || 'Can you tell me more about your situation?'}`;
-            } else {
-              followUpMessage = `Looking at your matter summary, I'd love to get a few more details to strengthen your position. ${followUpQuestions[0] || 'Can you tell me more about your situation?'}`;
-            }
+          if (followUpQuestions.length > 0) {
+            // Use the first AI-generated follow-up question directly
+            followUpMessage = followUpQuestions[0];
+          } else if (reviewQuality.issues.length > 0 && reviewQuality.issues[0].includes('too short')) {
+            followUpMessage = `I noticed some of your answers were quite brief. To help you get the best legal assistance, could you provide more details?`;
           } else {
-            followUpMessage = `To make sure we have everything needed for your ${body.service.toLowerCase()} matter, I'd love to get a few more details. ${followUpQuestions[0] || 'Can you tell me more about your situation?'}`;
+            followUpMessage = `To make sure we have everything needed for your ${body.service.toLowerCase()} matter, I'd love to get a few more details. Can you tell me more about your situation?`;
           }
         } else {
           // High quality matter - provide positive feedback
@@ -1159,7 +1138,7 @@ Write each question as if you're a supportive friend or counselor asking for cla
         
         return new Response(JSON.stringify({
           step: needsImprovement ? 'matter-review' : 'complete',
-          message: reviewMessage,
+          message: followUpMessage,
           selectedService: body.service,
           qualityScore: reviewQuality,
           matterCanvas: matterCanvasData,
