@@ -7,6 +7,7 @@ import LoadingIndicator from './components/LoadingIndicator';
 import VirtualMessageList from './components/VirtualMessageList';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TeamNotFound } from './components/TeamNotFound';
+import TeamProfile from './components/TeamProfile';
 import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
@@ -172,8 +173,8 @@ export function App() {
 		availableServices: string[];
 		serviceQuestions?: Record<string, string[]>;
 	}>({
-		name: 'Legal AI Assistant',
-		profileImage: null,
+		name: 'Blawby AI',
+		profileImage: '/blawby-favicon-iframe.png',
 		introMessage: null,
 		availableServices: [],
 		serviceQuestions: {}
@@ -263,7 +264,7 @@ export function App() {
 				if (team?.config) {
 					const config = {
 						name: team.name || 'Blawby AI',
-						profileImage: team.config.profileImage || null,
+						profileImage: team.config.profileImage || '/blawby-favicon-iframe.png',
 						introMessage: team.config.introMessage || null,
 						availableServices: team.config.availableServices || [],
 						serviceQuestions: team.config.serviceQuestions || {}
@@ -1900,18 +1901,13 @@ export function App() {
 									{messages.length === 0 && (
 										<div className="welcome-message">
 											<div className="welcome-card">
-												<div className="welcome-icon">
-													{teamConfig.profileImage ? (
-														<img 
-															src={teamConfig.profileImage} 
-															alt={`${teamConfig.name} logo`}
-															className="team-profile-image"
-														/>
-													) : (
-														<FaceSmileIcon className="w-12 h-12" />
-													)}
-												</div>
-												<h2>{teamConfig.name}</h2>
+												<TeamProfile
+													name={teamConfig.name}
+													profileImage={teamConfig.profileImage}
+													teamId={teamId}
+													variant="welcome"
+													showVerified={true}
+												/>
 												<p>{teamConfig.introMessage || "I'm an AI assistant designed to help you get started with your matter."}</p>
 												<div className="welcome-actions">
 													<p>How can I help today?</p>
@@ -2106,9 +2102,61 @@ export function App() {
 
 					{/* Right Column */}
 					<div className="grid-right">
-						<div className="sidebar-content">
-							<h3>Right Sidebar</h3>
-							<p>This is the right column (0.75fr)</p>
+						<div className="team-sidebar">
+							<TeamProfile
+								name={teamConfig.name}
+								profileImage={teamConfig.profileImage}
+								teamId={teamId}
+								variant="sidebar"
+								showVerified={true}
+							/>
+
+							{/* Actions Row */}
+							<div className="team-actions">
+								<button 
+									className="action-button share-button"
+									onClick={() => {
+										const url = `${window.location.origin}${window.location.pathname}?teamId=${teamId}`;
+										navigator.clipboard.writeText(url);
+										// Could add a toast notification here
+									}}
+									title="Share team intake form"
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+									</svg>
+									Share
+								</button>
+								<button 
+									className="action-button profile-button"
+									onClick={() => {
+										// TODO: Show team profile modal/info
+										console.log('Show team profile');
+									}}
+									title="View team profile"
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+									</svg>
+									Profile
+								</button>
+							</div>
+
+							{/* Media Section */}
+							<div className="team-section">
+								<h4 className="section-title">Media</h4>
+								<div className="section-content">
+									<span className="placeholder-text">Files and links</span>
+								</div>
+							</div>
+
+							{/* Privacy & Support Section */}
+							<div className="team-section">
+								<h4 className="section-title">Privacy & Support</h4>
+								<div className="section-content">
+									<span className="placeholder-text">Privacy and support information</span>
+								</div>
+							</div>
 						</div>
 					</div>
 				</>
