@@ -7,7 +7,7 @@ Here’s a cleaned-up version of your README with redundancy removed, sections r
 A full-featured, open-source **ChatGPT-like legal assistant**, built with Preact and powered by Cloudflare Workers AI, D1, and KV. Designed for self-hosting, extensibility, and privacy-first deployments.
 
 **Live Demo:** [ai.blawby.com](https://ai.blawby.com)  
-**Repo:** [GitHub](https://github.com/pcl-labs/preact-cloudflare-intake-chatbot)
+**Repo:** [GitHub](https://github.com/Blawby/preact-cloudflare-intake-chatbot)
 
 ---
 
@@ -16,6 +16,7 @@ A full-featured, open-source **ChatGPT-like legal assistant**, built with Preact
 * **Lightweight Preact Chat UI** - Fast, responsive interface with ~40KB gzipped bundle
 * **Cloudflare Workers AI Backend** - Llama 3.1 8B for conversational AI
 * **Intelligent Matter Building** - Guided conversation flow for legal intake
+* **AI-Powered Quality Assessment** - Comprehensive content analysis and scoring
 * **Team-Based Configuration** - Multi-tenant support with custom branding
 * **Practice Area-Specific Questions** - Tailored intake forms per legal service
 * **D1 Database** - Persistent storage for conversations and matter data
@@ -33,7 +34,7 @@ Your chatbot follows a **structured intake process** that maximizes lead quality
 1. **🤖 AI Conversation** - Natural language interaction to understand client needs
 2. **📋 Matter Building** - Guided service selection and practice area-specific questions
 3. **📝 Matter Details** - Comprehensive matter description and situation analysis
-4. **✅ Quality Assessment** - Real-time feedback on matter completeness
+4. **✅ AI Quality Assessment** - Real-time content analysis and completeness scoring
 5. **📞 Contact Collection** - Seamless transition to attorney connection
 6. **💳 Payment Processing** - Optional consultation fee collection
 7. **📅 Scheduling** - Automated appointment booking system
@@ -62,7 +63,7 @@ Your chatbot follows a **structured intake process** that maximizes lead quality
 ### 2. Clone & Install
 
 ```bash
-git clone https://github.com/pcl-labs/preact-cloudflare-intake-chatbot.git
+git clone https://github.com/Blawby/preact-cloudflare-intake-chatbot.git
 cd preact-cloudflare-intake-chatbot
 npm install
 ```
@@ -176,15 +177,67 @@ node sync-teams.js
 
 ## 🤖 Matter Creation Flow
 
-The system provides an **intelligent matter building process** that guides users through structured data collection:
+The system provides an **intelligent matter building process** that guides users through structured data collection with AI-powered quality assessment:
 
 ### Step-by-Step Process
 
 1. **Service Selection** → User chooses practice area
 2. **Practice Area Questions** → Tailored questions for the selected service
 3. **Matter Details** → Comprehensive situation description
-4. **Quality Assessment** → Real-time feedback on matter completeness
+4. **AI Quality Assessment** → Real-time content analysis and scoring
 5. **Contact Collection** → Seamless transition to attorney connection
+
+### AI Quality Assessment
+
+The system includes **comprehensive content analysis** that evaluates matter quality across multiple dimensions:
+
+#### Quality Metrics
+
+- **Answer Quality** (25%) - Meaningfulness and responsiveness of answers
+- **Answer Length** (20%) - Adequacy of detail provided
+- **Service Specificity** (15%) - Specificity of legal service area
+- **Urgency Indication** (10%) - Presence of urgency indicators
+- **Evidence Mentioned** (10%) - Documentation and evidence references
+- **Timeline Provided** (10%) - Temporal context and dates
+- **Answer Completeness** (10%) - Number of questions answered
+
+#### Quality Scoring
+
+```json
+{
+  "qualityScore": {
+    "score": 76,
+    "readyForLawyer": true,
+    "breakdown": {
+      "answerQuality": 100,
+      "answerLength": 32,
+      "serviceSpecificity": 100,
+      "urgencyIndication": 0,
+      "evidenceMentioned": 100,
+      "timelineProvided": 100
+    },
+    "issues": [],
+    "suggestions": [],
+    "confidence": "medium"
+  }
+}
+```
+
+#### Quality Thresholds
+
+- **Ready for Lawyer**: Score ≥ 70 AND Answer Quality ≥ 60%
+- **Needs Improvement**: Score < 70 OR Answer Quality < 60%
+- **High Confidence**: Score ≥ 80 AND ≥ 3 meaningful answers
+- **Medium Confidence**: Score ≥ 60 AND ≥ 2 meaningful answers
+- **Low Confidence**: Score < 60 OR < 2 meaningful answers
+
+#### Smart Feedback
+
+The system provides **intelligent follow-up messages** based on quality assessment:
+
+- **Poor Quality**: "I noticed some of your answers were quite brief. To help you get the best legal assistance, could you provide more details?"
+- **Good Quality**: "Great! Your matter summary looks comprehensive. You've provided strong information to connect you with the right attorney."
+- **Excellent Quality**: "Excellent! Your matter summary is comprehensive and well-detailed. You've provided everything we need."
 
 ### API Endpoints
 
@@ -222,25 +275,6 @@ POST /api/matter-creation
   "service": "Family Law",
   "description": "I need help with a custody modification...",
   "answers": {...}
-}
-```
-
-### Quality Assessment
-
-Each step includes a **quality score** that helps users understand matter completeness:
-
-```json
-{
-  "step": "questions",
-  "message": "Thank you for that information...",
-  "quality": {
-    "score": 65,
-    "suggestions": [
-      "Answer all practice area questions",
-      "Provide specific details about timing"
-    ],
-    "readyForLawyer": false
-  }
 }
 ```
 
@@ -394,7 +428,7 @@ Triggered when matter review is completed with quality scores.
       "score": 85,
       "readyForLawyer": true,
       "needsImprovement": false,
-      "threshold": 75
+      "threshold": 70
     },
     "followUpQuestions": [],
     "urgency": "normal",
@@ -597,6 +631,7 @@ routes = [
 | **Backend** | ✅ Production Ready |
 | **AI Integration** | ✅ Llama 3.1 8B |
 | **Matter Creation** | ✅ Fully Functional |
+| **AI Quality Assessment** | ✅ Comprehensive Content Analysis |
 | **Team Configuration** | ✅ Multi-tenant |
 | **Email Notifications** | ✅ Resend Integration |
 | **Scheduling** | ✅ Appointment Booking |
@@ -612,51 +647,46 @@ Based on code analysis, here are recommended enhancements:
 
 ### 🎯 High Priority
 
-1. **Enhanced Matter Quality Scoring**
-   - Restore full AI-powered matter analysis
-   - Add progress tracking with visual indicators
-   - Implement suggestion system for matter improvement
-
-2. **File Upload Integration**
+1. **File Upload Integration**
    - R2 bucket configuration for document storage
    - Drag-and-drop file upload in chat interface
    - Document preview and management
 
-3. **Advanced Payment Processing**
+2. **Advanced Payment Processing**
    - Stripe integration for direct payment collection
    - Payment verification before attorney connection
    - Automated payment status tracking
 
 ### 🔧 Medium Priority
 
-4. **Session Management**
+3. **Session Management**
    - Persistent conversation history
    - Resume interrupted matter creation flows
    - Better session timeout handling
 
-5. **Email Template System**
+4. **Email Template System**
    - Customizable email templates per team
    - Rich HTML email formatting
    - Automated follow-up sequences
 
-6. **Analytics Dashboard**
+5. **Analytics Dashboard**
    - Matter completion rates
    - Lead quality metrics
    - Team performance insights
 
 ### 🌟 Long-term Enhancements
 
-7. **Enhanced CRM Integration**
+6. **Enhanced CRM Integration**
    - ✅ Custom API webhooks (implemented)
    - Zapier webhook endpoints
    - Salesforce/HubSpot connectors
 
-8. **Advanced AI Features**
+7. **Advanced AI Features**
    - Document analysis with AI
    - Legal research integration
    - Automated matter categorization
 
-9. **Mobile Optimization**
+8. **Mobile Optimization**
    - Progressive Web App (PWA)
    - Native mobile app integration
    - Push notifications
@@ -738,7 +768,7 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ## 🧑‍💻 Maintainers
 
-* [@pcl-labs](https://github.com/pcl-labs)
+* [@Blawby](https://github.com/Blawby)
 * [@paulchrisluke](https://github.com/paulchrisluke)
 
 ---
