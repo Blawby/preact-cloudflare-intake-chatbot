@@ -245,6 +245,8 @@ body {
 
 	.grid-center {
 		grid-row: 2;
+		/* Ensure proper spacing for input and disclaimer */
+		padding-bottom: 0;
 	}
 
 	.grid-right {
@@ -389,14 +391,13 @@ body {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-	position: fixed;
+	position: sticky;
 	bottom: 32px;
 	/* Move input area up to make room for disclaimer */
-	left: 0;
-	right: 0;
 	z-index: 1000;
 	backdrop-filter: blur(10px);
 	-webkit-backdrop-filter: blur(10px);
+	border-top: 1px solid var(--border-color);
 }
 
 .disclaimer-text {
@@ -405,10 +406,8 @@ body {
 	text-align: center;
 	padding: 0.5rem 1rem;
 	background-color: var(--bg-color);
-	position: fixed;
+	position: sticky;
 	bottom: 0;
-	left: 0;
-	right: 0;
 	z-index: 1001;
 	/* Higher z-index than input area */
 	opacity: 0.8;
@@ -418,6 +417,7 @@ body {
 	align-items: center;
 	justify-content: center;
 	gap: 1rem;
+	border-top: 1px solid var(--border-color);
 }
 
 .keyboard-shortcuts {
