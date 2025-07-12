@@ -2697,7 +2697,7 @@ kbd {
 
 .team-not-found-icon {
 	margin-bottom: 1.5rem;
-	color: #ef4444;
+	color: var(--accent-color);
 }
 
 .team-not-found h2 {
@@ -2721,19 +2721,20 @@ kbd {
 }
 
 .retry-button {
-	background: #3b82f6;
-	color: white;
+	background: var(--accent-color);
+	color: var(--bg-color);
 	border: none;
 	padding: 0.75rem 1.5rem;
 	border-radius: 6px;
 	cursor: pointer;
 	font-size: 0.875rem;
 	font-weight: 500;
-	transition: background-color 0.2s;
+	transition: all 0.2s ease;
 }
 
 .retry-button:hover {
-	background: #2563eb;
+	opacity: 0.9;
+	transform: translateY(-1px);
 }
 
 .home-link {
@@ -2745,9 +2746,10 @@ kbd {
 	text-decoration: none;
 	font-size: 0.875rem;
 	font-weight: 500;
-	transition: background-color 0.2s;
+	transition: all 0.2s ease;
 }
 
 .home-link:hover {
 	background: var(--hover-color);
+	transform: translateY(-1px);
 }
