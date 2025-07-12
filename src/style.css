@@ -2304,37 +2304,9 @@ kbd {
 	overflow: hidden;
 }
 
-.matter-canvas-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 8px 12px;
-	background: rgba(var(--accent-color-rgb), 0.05);
-	border-bottom: 1px solid var(--border-color);
-}
 
-.matter-canvas-title {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-size: 14px;
-	font-weight: 500;
-	color: var(--text-color);
-}
 
-.matter-canvas-toggle {
-	background: none;
-	border: none;
-	padding: 4px;
-	cursor: pointer;
-	color: var(--text-color);
-	opacity: 0.7;
-	transition: opacity 0.2s ease;
-}
 
-.matter-canvas-toggle:hover {
-	opacity: 1;
-}
 
 .matter-canvas-content {
 	padding: 0;
@@ -2352,6 +2324,57 @@ kbd {
 	white-space: pre-wrap;
 	word-wrap: break-word;
 	overflow-x: auto;
+}
+
+/* Missing Information Section */
+.missing-info-section {
+	margin-top: 12px;
+	padding: 12px;
+	background: rgba(251, 191, 36, 0.1);
+	border: 1px solid rgba(251, 191, 36, 0.3);
+	border-radius: 6px;
+	border-left: 4px solid #fbbf24;
+}
+
+.missing-info-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	font-weight: 600;
+	font-size: 14px;
+	color: #92400e;
+}
+
+.missing-info-header svg {
+	color: #fbbf24;
+}
+
+.missing-info-list p {
+	margin: 0 0 8px 0;
+	font-size: 13px;
+	color: var(--text-color);
+	line-height: 1.4;
+}
+
+.missing-info-list ul {
+	margin: 0 0 8px 0;
+	padding-left: 20px;
+	list-style-type: disc;
+}
+
+.missing-info-list li {
+	margin: 4px 0;
+	font-size: 13px;
+	color: var(--text-color);
+	line-height: 1.4;
+}
+
+.missing-info-note {
+	font-size: 12px !important;
+	color: var(--accent-color) !important;
+	font-style: italic;
+	margin-top: 8px !important;
 }
 
 /* Feedback UI Styles */
@@ -2832,4 +2855,54 @@ kbd {
 	.action-button {
 		justify-content: flex-start;
 	}
+}
+
+/* Sidebar Matter Canvas Styles */
+.team-section .matter-canvas {
+	margin: 0;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	background: var(--bg-color);
+	overflow: hidden;
+	font-size: 12px;
+}
+
+
+
+.team-section .matter-canvas-toggle {
+	padding: 2px;
+}
+
+.team-section .matter-canvas-markdown {
+	padding: 8px;
+	font-size: 11px;
+	line-height: 1.4;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.team-section .missing-info-section {
+	margin-top: 8px;
+	padding: 8px;
+	font-size: 11px;
+}
+
+.team-section .missing-info-header {
+	font-size: 12px;
+	margin-bottom: 6px;
+}
+
+.team-section .missing-info-list p {
+	font-size: 11px;
+	margin: 0 0 6px 0;
+}
+
+.team-section .missing-info-list li {
+	font-size: 11px;
+	margin: 2px 0;
+}
+
+.team-section .missing-info-note {
+	font-size: 10px !important;
+	margin-top: 6px !important;
 }

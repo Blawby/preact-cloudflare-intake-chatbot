@@ -377,6 +377,52 @@ async function storeMatterQuestion(
   }
 }
 
+// Helper function to create a new matter record
+async function createMatterRecord(
+  env: Env,
+  teamId: string,
+  sessionId: string,
+  service: string,
+  description: string,
+  urgency: string = 'normal'
+): Promise<string> {
+  try {
+    const matterId = crypto.randomUUID();
+    
+    // Generate matter number (e.g., MAT-2024-001)
+    const year = new Date().getFullYear();
+    const matterNumberResult = await env.DB.prepare(`
+      SELECT COUNT(*) as count FROM matters 
+      WHERE team_id = ? AND strftime('%Y', created_at) = ?
+    `).bind(teamId, year.toString()).first();
+    
+    const count = (matterNumberResult as any)?.count || 0;
+    const matterNumber = `MAT-${year}-${(count + 1).toString().padStart(3, '0')}`;
+    
+    // Create matter record
+    await env.DB.prepare(`
+      INSERT INTO matters (
+        id, team_id, matter_type, title, description, status, priority, 
+        lead_source, matter_number, custom_fields, created_at
+      ) VALUES (?, ?, ?, ?, ?, 'lead', ?, 'website', ?, ?, datetime('now'))
+    `).bind(
+      matterId,
+      teamId,
+      service,
+      `${service} Matter`,
+      description,
+      urgency === 'urgent' ? 'high' : urgency === 'somewhat urgent' ? 'normal' : 'low',
+      matterNumber,
+      JSON.stringify({ sessionId, source: 'ai-intake' })
+    ).run();
+    
+    return matterId;
+  } catch (error) {
+    console.warn('Failed to create matter record:', error);
+    throw error;
+  }
+}
+
 // Helper function to store AI-generated summaries
 async function storeAISummary(
   env: Env,
@@ -777,29 +823,45 @@ IMPORTANT FOR FAMILY LAW CASES:
             
             matterSummary = summaryResult.response || `# 📋 ${body.service} Matter Summary\n\n## 💼 Legal Matter\n${body.service} matter with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
             
-            // Store AI-generated summary for training
-            if (matterSummary && body.sessionId) {
-              await storeAISummary(
-                env,
-                body.sessionId, // Using sessionId as matterId for now
-                matterSummary,
-                '@cf/meta/llama-3.1-8b-instruct',
-                summaryPrompt
-              );
-            }
+                    // Create actual matter record in database
+        let matterId: string | undefined;
+        try {
+          matterId = await createMatterRecord(
+            env,
+            body.teamId,
+            body.sessionId || '',
+            body.service,
+            matterDescription,
+            body.urgency
+          );
+          
+          // Store AI-generated summary linked to the matter
+          if (matterSummary && matterId) {
+            await storeAISummary(
+              env,
+              matterId,
+              matterSummary,
+              '@cf/meta/llama-3.1-8b-instruct',
+              summaryPrompt
+            );
+          }
+        } catch (error) {
+          console.warn('Failed to create matter record:', error);
+          // Continue without matter record if creation fails
+        }
           } catch (error) {
             console.warn('AI matter summary failed:', error);
             matterSummary = `# 📋 ${body.service} Matter Summary\n\n## 💼 Legal Matter\n${body.service} matter with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
           }
         }
         
-        // Store matter Q&A pairs for training
-        if (body.sessionId && matterAnswers) {
+        // Store matter Q&A pairs linked to the matter
+        if (matterId && matterAnswers) {
           Object.entries(matterAnswers).forEach(async ([key, value]) => {
             if (typeof value === 'object' && value !== null && 'question' in value && 'answer' in value) {
               await storeMatterQuestion(
                 env,
-                body.sessionId, // Using sessionId as matterId for now
+                matterId,
                 body.teamId,
                 value.question,
                 value.answer,
@@ -850,13 +912,27 @@ Write each question as if you're a supportive friend or counselor asking for cla
         // Create empathetic intro message before canvas
         let reviewMessage = `Thanks for sharing your situation with me. I can tell this has been really challenging, especially dealing with ${body.service.toLowerCase()} matters. I've put together a matter summary based on what you've shared so far — you'll see that summary below.`;
         
+        // Get matter number for display
+        let matterNumber = 'Draft';
+        if (matterId) {
+          try {
+            const matterResult = await env.DB.prepare(`
+              SELECT matter_number FROM matters WHERE id = ?
+            `).bind(matterId).first();
+            matterNumber = (matterResult as any)?.matter_number || 'Draft';
+          } catch (error) {
+            console.warn('Failed to get matter number:', error);
+          }
+        }
+        
         // Create matter canvas data
         const matterCanvasData = {
+          matterId: matterId,
+          matterNumber: matterNumber,
           service: body.service,
           matterSummary: matterSummary,
           qualityScore: reviewQuality,
-          answers: matterAnswers,
-          isExpanded: false
+          answers: matterAnswers
         };
         
         // Follow-up message if needed
@@ -874,7 +950,10 @@ Write each question as if you're a supportive friend or counselor asking for cla
           timestamp: new Date().toISOString(),
           teamId: body.teamId,
           sessionId: body.sessionId,
+          matterId: matterId,
           matter: {
+            matterId: matterId,
+            matterNumber: matterNumber,
             service: body.service,
             description: matterDescription,
             summary: matterSummary,

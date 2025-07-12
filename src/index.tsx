@@ -8,6 +8,7 @@ import VirtualMessageList from './components/VirtualMessageList';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TeamNotFound } from './components/TeamNotFound';
 import TeamProfile from './components/TeamProfile';
+import MatterCanvas from './components/MatterCanvas';
 import { debounce } from './utils/debounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
@@ -96,6 +97,8 @@ interface ChatMessage {
 	scheduling?: SchedulingData;
 	matterCreation?: MatterCreationData;
 	matterCanvas?: {
+		matterId?: string;
+		matterNumber?: string;
 		service: string;
 		matterSummary: string;
 		qualityScore?: {
@@ -115,7 +118,6 @@ interface ChatMessage {
 			suggestions: string[];
 		};
 		answers?: Record<string, string>;
-		isExpanded?: boolean;
 	};
 	isLoading?: boolean;
 	id?: string;
@@ -180,8 +182,60 @@ export function App() {
 		serviceQuestions: {}
 	});
 
+	// State for sidebar matter view
+	const [sidebarMatter, setSidebarMatter] = useState<{
+		matterId?: string;
+		matterNumber?: string;
+		service: string;
+		matterSummary: string;
+		qualityScore?: any;
+		answers?: Record<string, string>;
+	} | null>(null);
+
 	// Track drag counter for better handling of nested elements
 	const dragCounter = useRef(0);
+
+	// Function to find the most recent matter canvas from messages
+	const findMostRecentMatter = () => {
+		for (let i = messages.length - 1; i >= 0; i--) {
+			if (messages[i].matterCanvas) {
+				return messages[i].matterCanvas;
+			}
+		}
+		return null;
+	};
+
+	// Function to handle view matter button click
+	const handleViewMatter = () => {
+		const mostRecentMatter = findMostRecentMatter();
+		if (mostRecentMatter) {
+			setSidebarMatter({
+				...mostRecentMatter
+			});
+		} else {
+			// If no matter exists, start the matter creation flow
+			handleCreateMatterStart();
+		}
+	};
+
+	// Effect to automatically update sidebar matter when new matter canvases are added
+	useEffect(() => {
+		const mostRecentMatter = findMostRecentMatter();
+		if (mostRecentMatter && sidebarMatter) {
+			// Only update if the matter has actually changed (different service or summary)
+			if (mostRecentMatter.service !== sidebarMatter.service || 
+				mostRecentMatter.matterSummary !== sidebarMatter.matterSummary) {
+				setSidebarMatter({
+					...mostRecentMatter
+				});
+			}
+		} else if (mostRecentMatter && !sidebarMatter) {
+			// If there's a matter but no sidebar matter, show it
+			setSidebarMatter({
+				...mostRecentMatter
+			});
+		}
+	}, [messages]); // Watch for changes in messages
 
 	// Handle feedback submission
 	const handleFeedbackSubmit = useCallback((feedback: any) => {
@@ -2114,33 +2168,35 @@ export function App() {
 							{/* Actions Row */}
 							<div className="team-actions">
 								<button 
-									className="action-button share-button"
-									onClick={() => {
-										const url = `${window.location.origin}${window.location.pathname}?teamId=${teamId}`;
-										navigator.clipboard.writeText(url);
-										// Could add a toast notification here
-									}}
-									title="Share team intake form"
+									className="action-button view-matter-button"
+									onClick={handleViewMatter}
+									title={sidebarMatter ? "View matter details" : "Create a new matter"}
 								>
 									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 									</svg>
-									Share
-								</button>
-								<button 
-									className="action-button profile-button"
-									onClick={() => {
-										// TODO: Show team profile modal/info
-										console.log('Show team profile');
-									}}
-									title="View team profile"
-								>
-									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-									</svg>
-									Profile
+									{sidebarMatter ? 'View Matter' : 'Create Matter'}
 								</button>
 							</div>
+
+							{/* Matter Canvas in Sidebar */}
+							{sidebarMatter && (
+								<div className="team-section">
+									<h4 className="section-title">
+										{sidebarMatter.matterNumber ? `Matter ${sidebarMatter.matterNumber}` : 'Case Summary'}
+									</h4>
+									<div className="section-content">
+										<MatterCanvas
+											matterId={sidebarMatter.matterId}
+											matterNumber={sidebarMatter.matterNumber}
+											service={sidebarMatter.service}
+											matterSummary={sidebarMatter.matterSummary}
+											qualityScore={sidebarMatter.qualityScore}
+											answers={sidebarMatter.answers}
+										/>
+									</div>
+								</div>
+							)}
 
 							{/* Media Section */}
 							<div className="team-section">

@@ -373,11 +373,12 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				{/* Display matter canvas */}
 				{matterCanvas && (
 					<MatterCanvas
+						matterId={matterCanvas.matterId}
+						matterNumber={matterCanvas.matterNumber}
 						service={matterCanvas.service}
 						matterSummary={matterCanvas.matterSummary}
 						qualityScore={matterCanvas.qualityScore}
 						answers={matterCanvas.answers}
-						isExpanded={matterCanvas.isExpanded}
 					/>
 				)}
 				

@@ -1,27 +1,103 @@
 import { FunctionalComponent } from 'preact';
-import { useState } from 'preact/hooks';
-import { DocumentTextIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface MatterCanvasProps {
+  matterId?: string;
+  matterNumber?: string;
   service: string;
   matterSummary: string;
   qualityScore: any;
   answers: Record<string, string | { question: string; answer: string }>;
-  isExpanded?: boolean;
 }
 
 /**
- * Simple markdown-based matter canvas similar to ChatGPT's canvas
- * Just expandable markdown content integrated into chat flow
+ * Case Summary component - displays matter details with missing information analysis
+ * Shows markdown content with professional matter tracking
  */
 const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
+  matterId,
+  matterNumber,
   service,
   matterSummary,
   qualityScore,
-  answers,
-  isExpanded = false
+  answers
 }) => {
-  const [expanded, setExpanded] = useState(isExpanded);
+
+  // Analyze matter content to identify missing information
+  const analyzeMissingInfo = () => {
+    const missingInfo: string[] = [];
+    
+    // Check if matter summary is empty or very basic
+    if (!matterSummary || matterSummary.trim().length < 50) {
+      missingInfo.push('Detailed matter description');
+    }
+    
+    // Check for common missing fields based on service type
+    const summaryLower = matterSummary.toLowerCase();
+    
+    // Check for timeline information
+    if (!summaryLower.includes('when') && !summaryLower.includes('date') && !summaryLower.includes('timeline')) {
+      missingInfo.push('Timeline of events');
+    }
+    
+    // Check for location information
+    if (!summaryLower.includes('where') && !summaryLower.includes('location') && !summaryLower.includes('state')) {
+      missingInfo.push('Location/venue information');
+    }
+    
+    // Check for evidence/documentation
+    if (!summaryLower.includes('document') && !summaryLower.includes('evidence') && !summaryLower.includes('proof')) {
+      missingInfo.push('Supporting documents or evidence');
+    }
+    
+    // Service-specific checks
+    if (service.toLowerCase().includes('family')) {
+      if (!summaryLower.includes('child') && !summaryLower.includes('children') && !summaryLower.includes('custody')) {
+        missingInfo.push('Information about children (if applicable)');
+      }
+      if (!summaryLower.includes('marriage') && !summaryLower.includes('divorce') && !summaryLower.includes('relationship')) {
+        missingInfo.push('Relationship/marriage details');
+      }
+    }
+    
+    if (service.toLowerCase().includes('employment')) {
+      if (!summaryLower.includes('employer') && !summaryLower.includes('company') && !summaryLower.includes('work')) {
+        missingInfo.push('Employer/company information');
+      }
+      if (!summaryLower.includes('termination') && !summaryLower.includes('fired') && !summaryLower.includes('laid off')) {
+        missingInfo.push('Employment status details');
+      }
+    }
+    
+    if (service.toLowerCase().includes('business')) {
+      if (!summaryLower.includes('contract') && !summaryLower.includes('agreement')) {
+        missingInfo.push('Contract or agreement details');
+      }
+      if (!summaryLower.includes('damage') && !summaryLower.includes('loss') && !summaryLower.includes('financial')) {
+        missingInfo.push('Financial impact or damages');
+      }
+    }
+    
+    // Check answers for completeness
+    if (answers) {
+      const answerValues = Object.values(answers);
+      const hasSubstantialAnswers = answerValues.some(answer => {
+        if (typeof answer === 'string') {
+          return answer.length > 20;
+        }
+        if (typeof answer === 'object' && answer.answer) {
+          return answer.answer.length > 20;
+        }
+        return false;
+      });
+      
+      if (!hasSubstantialAnswers) {
+        missingInfo.push('Detailed responses to questions');
+      }
+    }
+    
+    return missingInfo;
+  };
 
   // Generate markdown content for the matter - CLIENT-FACING ONLY
   const generateMarkdown = () => {
@@ -31,32 +107,36 @@ const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
   };
 
   const markdownContent = generateMarkdown();
-  const previewContent = markdownContent.split('\n').slice(0, 6).join('\n') + '\n\n*[Click to expand full matter details]*';
+  const missingInfo = analyzeMissingInfo();
 
   return (
     <div class="matter-canvas">
-      <div class="matter-canvas-header">
-        <div class="matter-canvas-title">
-          <DocumentTextIcon className="w-4 h-4" />
-          Matter Canvas
-        </div>
-        <button 
-          class="matter-canvas-toggle" 
-          onClick={() => setExpanded(!expanded)}
-          aria-label={expanded ? 'Collapse matter details' : 'Expand matter details'}
-        >
-          {expanded ? (
-            <ChevronUpIcon className="w-4 h-4" />
-          ) : (
-            <ChevronDownIcon className="w-4 h-4" />
-          )}
-        </button>
-      </div>
-      
       <div class="matter-canvas-content">
         <pre class="matter-canvas-markdown">
-          {expanded ? markdownContent : previewContent}
+          {markdownContent}
         </pre>
+        
+        {/* Show missing information */}
+        {missingInfo.length > 0 && (
+          <div class="missing-info-section">
+            <div class="missing-info-header">
+              <ExclamationTriangleIcon className="w-4 h-4" />
+              <span>Missing Information</span>
+            </div>
+            <div class="missing-info-list">
+              <p>To strengthen your matter, consider providing:</p>
+              <ul>
+                {missingInfo.map((info, index) => (
+                  <li key={index}>{info}</li>
+                ))}
+              </ul>
+              <p class="missing-info-note">
+                You can provide this information by continuing our conversation. 
+                The more details you share, the better we can assist you.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

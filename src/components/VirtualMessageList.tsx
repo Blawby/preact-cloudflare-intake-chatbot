@@ -34,6 +34,8 @@ interface ChatMessage {
     scheduling?: SchedulingData;
     matterCreation?: MatterCreationData;
     matterCanvas?: {
+        matterId?: string;
+        matterNumber?: string;
         service: string;
         matterSummary: string;
         qualityScore?: {
@@ -53,7 +55,6 @@ interface ChatMessage {
             suggestions: string[];
         };
         answers?: Record<string, string>;
-        isExpanded?: boolean;
     };
     qualityScore?: {
         score: number;
