@@ -1,5 +1,11 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
+import {
+	PlusIcon,
+	PhotoIcon,
+	CameraIcon,
+	DocumentIcon
+} from '@heroicons/react/24/outline';
 import createLazyComponent from '../utils/LazyComponent';
 
 // Create lazy-loaded CameraModal
@@ -180,9 +186,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                 aria-expanded={isOpen}
                 ref={triggerRef}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="file-menu-icon" aria-hidden="true">
-                    <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
+                <PlusIcon className="file-menu-icon w-5 h-5" aria-hidden="true" />
             </button>
             
             {(isOpen || isClosing) && (
@@ -199,9 +203,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                         ref={firstMenuItemRef}
                     >
                         <span>Attach photos</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                        </svg>
+                        <PhotoIcon className="w-5 h-5" aria-hidden="true" />
                     </button>
                     
                     <button 
@@ -211,10 +213,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                         role="menuitem"
                     >
                         <span>Take Photo</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="currentColor" d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
-                            <path fill="currentColor" d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
-                        </svg>
+                        <CameraIcon className="w-5 h-5" aria-hidden="true" />
                     </button>
                     
                     <button 
@@ -224,9 +223,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                         role="menuitem"
                     >
                         <span>Attach files</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/>
-                        </svg>
+                        <DocumentIcon className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
             )}

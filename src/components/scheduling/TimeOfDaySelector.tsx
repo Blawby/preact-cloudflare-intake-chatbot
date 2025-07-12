@@ -1,5 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState, useCallback } from 'preact/hooks';
+import { SunIcon } from '@heroicons/react/24/outline';
+import { SunIcon as SolidSunIcon } from '@heroicons/react/24/solid';
 
 interface TimeOfDaySelectorProps {
   onTimeOfDaySelect: (timeOfDay: 'morning' | 'afternoon') => void;
@@ -86,56 +88,17 @@ const TimeOfDayButton: FunctionalComponent<TimeOfDayButtonProps> = ({
 };
 
 /**
- * Morning icon (sunrise)
+ * Morning icon (sunrise) - using outline sun for morning
  */
 const MorningIcon: FunctionalComponent = () => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    stroke-width="2" 
-    stroke-linecap="round" 
-    stroke-linejoin="round"
-  >
-    <path d="M12 2v8" />
-    <path d="m4.93 10.93 1.41 1.41" />
-    <path d="M2 18h2" />
-    <path d="M20 18h2" />
-    <path d="m19.07 10.93-1.41 1.41" />
-    <path d="M22 22H2" />
-    <path d="m8 6 4-4 4 4" />
-    <path d="M16 18a4 4 0 0 0-8 0" />
-  </svg>
+  <SunIcon className="w-6 h-6" />
 );
 
 /**
- * Afternoon icon (sun)
+ * Afternoon icon (full sun) - using solid sun for afternoon to show difference
  */
 const AfternoonIcon: FunctionalComponent = () => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    stroke-width="2" 
-    stroke-linecap="round" 
-    stroke-linejoin="round"
-  >
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2v2" />
-    <path d="M12 20v2" />
-    <path d="m4.93 4.93 1.41 1.41" />
-    <path d="m17.66 17.66 1.41 1.41" />
-    <path d="M2 12h2" />
-    <path d="M20 12h2" />
-    <path d="m6.34 17.66-1.41 1.41" />
-    <path d="m19.07 4.93-1.41 1.41" />
-  </svg>
+  <SolidSunIcon className="w-6 h-6" />
 );
 
 export default TimeOfDaySelector; 

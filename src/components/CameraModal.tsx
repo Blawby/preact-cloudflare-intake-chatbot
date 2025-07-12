@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState } from 'preact/hooks';
 import Modal from './Modal';
+import { CameraIcon } from '@heroicons/react/24/solid';
 
 interface CameraModalProps {
     isOpen: boolean;
@@ -118,9 +119,7 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
                         disabled={!isCameraReady}
                         title="Take photo"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10" fill="currentColor" />
-                        </svg>
+                        <CameraIcon className="w-8 h-8" />
                     </button>
                 </div>
             </div>
