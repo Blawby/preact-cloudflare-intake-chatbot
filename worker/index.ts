@@ -769,6 +769,24 @@ async function handleMatterCreation(request: Request, env: Env, corsHeaders: Rec
         
                 // Generate structured markdown matter summary for canvas
         let matterSummary = '';
+        let matterId: string | undefined;
+        
+        // Create actual matter record in database first
+        try {
+          matterId = await createMatterRecord(
+            env,
+            body.teamId,
+            body.sessionId || '',
+            body.service,
+            matterDescription,
+            body.urgency
+          );
+        } catch (error) {
+          console.warn('Failed to create matter record:', error);
+          // Continue without matter record if creation fails
+        }
+        
+        // Try to generate AI summary, but fallback gracefully if it fails
         if (aiService) {
           try {
              const summaryPrompt = `Create a clean matter summary markdown for this ${body.service} matter. The client provided initial structured answers AND follow-up conversation details. Use ALL information provided:
@@ -823,36 +841,48 @@ IMPORTANT FOR FAMILY LAW CASES:
             
             matterSummary = summaryResult.response || `# 📋 ${body.service} Matter Summary\n\n## 💼 Legal Matter\n${body.service} matter with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
             
-                    // Create actual matter record in database
-        let matterId: string | undefined;
-        try {
-          matterId = await createMatterRecord(
-            env,
-            body.teamId,
-            body.sessionId || '',
-            body.service,
-            matterDescription,
-            body.urgency
-          );
-          
-          // Store AI-generated summary linked to the matter
-          if (matterSummary && matterId) {
-            await storeAISummary(
-              env,
-              matterId,
-              matterSummary,
-              '@cf/meta/llama-3.1-8b-instruct',
-              summaryPrompt
-            );
-          }
-        } catch (error) {
-          console.warn('Failed to create matter record:', error);
-          // Continue without matter record if creation fails
-        }
+            // Store AI-generated summary linked to the matter
+            if (matterSummary && matterId) {
+              await storeAISummary(
+                env,
+                matterId,
+                matterSummary,
+                '@cf/meta/llama-3.1-8b-instruct',
+                summaryPrompt
+              );
+            }
           } catch (error) {
             console.warn('AI matter summary failed:', error);
-            matterSummary = `# 📋 ${body.service} Matter Summary\n\n## 💼 Legal Matter\n${body.service} matter with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
+            // Create a basic summary from the Q&A data
+            const basicSummary = `# 📋 ${body.service} Matter Summary
+
+## 💼 Legal Matter
+${body.service} matter with details provided through consultation.
+
+## 📝 Key Details
+- **Practice Area**: ${body.service}
+- **Issue**: ${questionAnswerPairs.length > 0 ? questionAnswerPairs[0].split(': ')[1] || 'Details provided through consultation' : 'Information gathered through Q&A'}
+- **Current Situation**: ${questionAnswerPairs.length > 1 ? questionAnswerPairs[1].split(': ')[1] || 'Under review' : 'Under review'}
+
+## 🎯 Objective
+${questionAnswerPairs.length > 2 ? questionAnswerPairs[2].split(': ')[1] || 'Seeking legal assistance' : 'Seeking legal assistance'}`;
+            
+            matterSummary = basicSummary;
           }
+        } else {
+          // No AI service available, create basic summary
+          matterSummary = `# 📋 ${body.service} Matter Summary
+
+## 💼 Legal Matter
+${body.service} matter with details provided through consultation.
+
+## 📝 Key Details
+- **Practice Area**: ${body.service}
+- **Issue**: ${questionAnswerPairs.length > 0 ? questionAnswerPairs[0].split(': ')[1] || 'Details provided through consultation' : 'Information gathered through Q&A'}
+- **Current Situation**: ${questionAnswerPairs.length > 1 ? questionAnswerPairs[1].split(': ')[1] || 'Under review' : 'Under review'}
+
+## 🎯 Objective
+${questionAnswerPairs.length > 2 ? questionAnswerPairs[2].split(': ')[1] || 'Seeking legal assistance' : 'Seeking legal assistance'}`;
         }
         
         // Store matter Q&A pairs linked to the matter
@@ -906,6 +936,12 @@ Write each question as if you're a supportive friend or counselor asking for cla
             followUpQuestions = rawQuestions.slice(0, 3);
           } catch (error) {
             console.warn('AI follow-up questions failed:', error);
+            // Provide default follow-up questions if AI fails
+            followUpQuestions = [
+              `Can you tell me more about when this ${body.service.toLowerCase()} issue first started?`,
+              `I'd love to understand what outcome you're hoping for in this situation.`,
+              `Is there anything else about your ${body.service.toLowerCase()} matter that you think would be important for us to know?`
+            ];
           }
         }
         
