@@ -1071,6 +1071,9 @@ Write each question as if you're a supportive friend or counselor asking for cla
           }
         }
         
+        // Generate matter number from matter ID
+        const matterNumber = matterId ? `M-${matterId.substring(0, 8).toUpperCase()}` : undefined;
+        
         // Create matter canvas data
         const matterCanvasData = {
           matterId: matterId,
