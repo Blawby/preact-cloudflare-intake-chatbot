@@ -29,6 +29,18 @@ interface FeatureFlags {
      * When false, the left column will be hidden and the layout will be 2-column
      */
     enableLeftSidebar: boolean;
+
+    /**
+     * Enable AI feedback and copy buttons on messages
+     * When false, feedback UI and copy functionality will be hidden from messages
+     */
+    enableMessageFeedback: boolean;
+
+    /**
+     * Enable disclaimer text below input
+     * When false, the disclaimer text will be hidden
+     */
+    enableDisclaimerText: boolean;
 }
 
 const features: FeatureFlags = {
@@ -36,6 +48,8 @@ const features: FeatureFlags = {
     enableVideoRecording: false, // Not implemented yet
     enableFileAttachments: true, // File attachments are enabled
     enableLeftSidebar: true, // Enable left sidebar
+    enableMessageFeedback: false, // Disable feedback and copy buttons on messages
+    enableDisclaimerText: false, // Disable disclaimer text below input
 };
 
 // For development environment, you can override settings

@@ -6,6 +6,7 @@ import MatterCanvas from './MatterCanvas';
 import FeedbackUI from './FeedbackUI';
 import TeamProfile from './TeamProfile';
 import createLazyComponent from '../utils/LazyComponent';
+import features from '../config/features';
 import {
 	DocumentIcon,
 	DocumentTextIcon,
@@ -362,18 +363,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 		file.type.startsWith('audio/')
 	);
 
-	const [copied, setCopied] = useState(false);
 
-	const handleCopy = () => {
-		if (!content) return;
-		const tempDiv = document.createElement('div');
-		tempDiv.innerHTML = marked(content);
-		const text = tempDiv.textContent || tempDiv.innerText || '';
-		navigator.clipboard.writeText(text).then(() => {
-			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
-		});
-	};
 
 	return (
 		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
@@ -507,7 +497,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				))}
 				
 				{/* Show feedback UI only on AI messages and when not loading */}
-				{!isUser && !isLoading && showFeedback && (
+				{!isUser && !isLoading && showFeedback && features.enableMessageFeedback && (
 					<FeedbackUI
 						messageId={id}
 						sessionId={sessionId}

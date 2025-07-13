@@ -137,10 +137,7 @@ svg[class*="h-12"] {
 		--skeleton-end: rgba(10, 15, 26, 0.3);
 	}
 
-	.disclaimer-text {
-		background-color: var(--bg-color);
-		border-top-color: var(--border-color);
-	}
+
 }
 
 * {
@@ -216,16 +213,11 @@ body {
 	}
 
 	.message-list {
-		padding-bottom: 140px;
-		/* Account for input area and disclaimer on mobile */
+		padding-bottom: 120px;
+		/* Account for input area on mobile */
 	}
 
-	.disclaimer-text {
-		font-size: 0.7rem;
-		padding: 0.4rem 16px;
-		height: 28px;
-		/* Slightly smaller height on mobile */
-	}
+
 }
 
 @media (max-width: 480px) {
@@ -234,9 +226,7 @@ body {
 		padding-right: 12px;
 	}
 
-	.disclaimer-text {
-		padding: 0.4rem 12px;
-	}
+
 }
 
 /* Responsive grid layout */
@@ -435,23 +425,13 @@ body {
 	-webkit-backdrop-filter: blur(10px);
 }
 
-.disclaimer-text {
+.input-disclaimer {
 	font-size: 0.75rem;
 	color: var(--accent-color);
 	text-align: center;
-	padding: 0.5rem 1rem;
-	background-color: var(--bg-color);
-	position: sticky;
-	bottom: 0;
-	z-index: 1001;
-	/* Higher z-index than input area */
+	padding: 0.25rem 0;
 	opacity: 0.8;
-	height: 32px;
-	/* Fixed height for the disclaimer */
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 1rem;
+	margin-top: 0.25rem;
 }
 
 

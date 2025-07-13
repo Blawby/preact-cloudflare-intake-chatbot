@@ -2177,9 +2177,11 @@ export function App() {
 											</div>
 										</div>
 									</div>
-									<div className="disclaimer-text">
-										Blawby can make mistakes. Check for important information.
-									</div>
+									{features.enableDisclaimerText && (
+										<div className="input-disclaimer">
+											Blawby can make mistakes. Check for important information.
+										</div>
+									)}
 									</main>
 								</>
 								)}
