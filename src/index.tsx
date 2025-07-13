@@ -97,6 +97,9 @@ interface ChatMessage {
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
 	matterCreation?: MatterCreationData;
+	welcomeMessage?: {
+		showButtons: boolean;
+	};
 	matterCanvas?: {
 		matterId?: string;
 		matterNumber?: string;
@@ -371,6 +374,30 @@ export function App() {
 	useEffect(() => {
 		fetchTeamConfig();
 	}, [teamId]);
+
+	// Add welcome message when team config is loaded and no messages exist
+	useEffect(() => {
+		if (teamConfig.introMessage && messages.length === 0) {
+			// Add team profile message first
+			const profileMessage: ChatMessage = {
+				content: '',
+				isUser: false,
+				welcomeMessage: {
+					showButtons: false
+				}
+			};
+			
+			// Add welcome message with buttons
+			const welcomeMessage: ChatMessage = {
+				content: teamConfig.introMessage,
+				isUser: false,
+				welcomeMessage: {
+					showButtons: true
+				}
+			};
+			setMessages([profileMessage, welcomeMessage]);
+		}
+	}, [teamConfig.introMessage, messages.length]);
 
 	// Retry function for team config
 	const handleRetryTeamConfig = () => {
@@ -1989,87 +2016,6 @@ export function App() {
 								{(
 								<>
 									<main className="chat-main">
-									{messages.length === 0 && (
-										<div className="welcome-message">
-											<div className="welcome-card">
-												<TeamProfile
-													name={teamConfig.name}
-													profileImage={teamConfig.profileImage}
-													teamId={teamId}
-													variant="welcome"
-													showVerified={true}
-													onClick={() => setIsMobileSidebarOpen(true)}
-												/>
-												<p>{teamConfig.introMessage || "I'm an AI assistant designed to help you get started with your matter."}</p>
-												<div className="welcome-actions">
-													<p>How can I help today?</p>
-													<div className="welcome-buttons">
-														<button 
-															className="welcome-action-button primary" 
-															onClick={handleCreateMatterStart}
-														>
-															Create Matter
-														</button>
-														<button 
-															className="welcome-action-button" 
-															onClick={handleScheduleStart}
-														>
-															Request a consultation
-														</button>
-														<button 
-															className="welcome-action-button" 
-															onClick={async () => {
-																const servicesMessage: ChatMessage = {
-																	content: "Tell me about your firm's services",
-																	isUser: true
-																};
-																setMessages([servicesMessage]);
-																
-																// Add placeholder message with loading indicator (ChatGPT style)
-																const loadingMessageId = crypto.randomUUID();
-																const loadingMessage: ChatMessage = {
-																	content: "Let me tell you about our services...",
-																	isUser: false,
-																	isLoading: true,
-																	id: loadingMessageId
-																};
-																setMessages(prev => [...prev, loadingMessage]);
-																
-																try {
-																	// Call the actual API
-																	const response = await sendMessageToAPI("Tell me about your firm's services");
-																	
-																	// Update the loading message with actual content
-																	setMessages(prev => prev.map(msg => 
-																		msg.id === loadingMessageId 
-																			? {
-																				...msg,
-																				content: response,
-																				isLoading: false
-																			}
-																			: msg
-																	));
-																} catch (error) {
-																	// Fallback to default response if API fails
-																	setMessages(prev => prev.map(msg => 
-																		msg.id === loadingMessageId 
-																			? {
-																				...msg,
-																				content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
-																				isLoading: false
-																			}
-																			: msg
-																	));
-																}
-															}}
-														>
-															Learn about our services
-														</button>
-													</div>
-												</div>
-											</div>
-										</div>
-									)}
 									<VirtualMessageList
 										messages={messages}
 										onDateSelect={handleDateSelect}
@@ -2078,6 +2024,58 @@ export function App() {
 										onRequestMoreDates={handleRequestMoreDates}
 										onServiceSelect={handleServiceSelect}
 										onUrgencySelect={handleUrgencySelect}
+										onCreateMatter={handleCreateMatterStart}
+										onScheduleConsultation={handleScheduleStart}
+										onLearnServices={async () => {
+											const servicesMessage: ChatMessage = {
+												content: "Tell me about your firm's services",
+												isUser: true
+											};
+											setMessages(prev => [...prev, servicesMessage]);
+											
+											// Add placeholder message with loading indicator (ChatGPT style)
+											const loadingMessageId = crypto.randomUUID();
+											const loadingMessage: ChatMessage = {
+												content: "Let me tell you about our services...",
+												isUser: false,
+												isLoading: true,
+												id: loadingMessageId
+											};
+											setMessages(prev => [...prev, loadingMessage]);
+											
+											try {
+												// Call the actual API
+												const response = await sendMessageToAPI("Tell me about your firm's services");
+												
+												// Update the loading message with actual content
+												setMessages(prev => prev.map(msg => 
+													msg.id === loadingMessageId 
+														? {
+															...msg,
+															content: response,
+															isLoading: false
+														}
+														: msg
+												));
+											} catch (error) {
+												// Fallback to default response if API fails
+												setMessages(prev => prev.map(msg => 
+													msg.id === loadingMessageId 
+														? {
+															...msg,
+															content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
+															isLoading: false
+														}
+														: msg
+												));
+											}
+										}}
+										teamConfig={{
+											name: teamConfig.name,
+											profileImage: teamConfig.profileImage,
+											teamId: teamId
+										}}
+										onOpenSidebar={() => setIsMobileSidebarOpen(true)}
 										sessionId={sessionId}
 										teamId={teamId}
 										onFeedbackSubmit={handleFeedbackSubmit}

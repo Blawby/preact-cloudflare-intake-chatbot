@@ -33,6 +33,9 @@ interface ChatMessage {
     files?: FileAttachment[];
     scheduling?: SchedulingData;
     matterCreation?: MatterCreationData;
+    welcomeMessage?: {
+        showButtons: boolean;
+    };
     matterCanvas?: {
         matterId?: string;
         matterNumber?: string;
@@ -83,6 +86,15 @@ interface VirtualMessageListProps {
     onRequestMoreDates?: () => void;
     onServiceSelect?: (service: string) => void;
     onUrgencySelect?: (urgency: string) => void;
+    onCreateMatter?: () => void;
+    onScheduleConsultation?: () => void;
+    onLearnServices?: () => void;
+    teamConfig?: {
+        name: string;
+        profileImage: string | null;
+        teamId: string;
+    };
+    onOpenSidebar?: () => void;
 
     // Feedback props
     sessionId?: string;
@@ -102,6 +114,11 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     onRequestMoreDates,
     onServiceSelect,
     onUrgencySelect,
+    onCreateMatter,
+    onScheduleConsultation,
+    onLearnServices,
+    teamConfig,
+    onOpenSidebar,
 
     sessionId,
     teamId,
@@ -194,6 +211,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         files={message.files}
                         scheduling={message.scheduling}
                         matterCreation={message.matterCreation}
+                        welcomeMessage={message.welcomeMessage}
                         matterCanvas={message.matterCanvas}
                         qualityScore={message.qualityScore}
                         onDateSelect={onDateSelect}
@@ -202,6 +220,11 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         onRequestMoreDates={onRequestMoreDates}
                         onServiceSelect={onServiceSelect}
                         onUrgencySelect={onUrgencySelect}
+                        onCreateMatter={onCreateMatter}
+                        onScheduleConsultation={onScheduleConsultation}
+                        onLearnServices={onLearnServices}
+                        teamConfig={teamConfig}
+                        onOpenSidebar={onOpenSidebar}
                         isLoading={message.isLoading}
                         id={message.id}
                         sessionId={sessionId}

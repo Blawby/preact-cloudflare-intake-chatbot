@@ -4,6 +4,7 @@ import { marked } from 'marked';
 import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
 import FeedbackUI from './FeedbackUI';
+import TeamProfile from './TeamProfile';
 import createLazyComponent from '../utils/LazyComponent';
 import {
 	DocumentIcon,
@@ -72,6 +73,9 @@ interface MessageProps {
 	files?: FileAttachment[];
 	scheduling?: SchedulingData;
 	matterCreation?: MatterCreationData;
+	welcomeMessage?: {
+		showButtons: boolean;
+	};
 	matterCanvas?: {
 		service: string;
 		matterSummary: string;
@@ -100,6 +104,15 @@ interface MessageProps {
 	onRequestMoreDates?: () => void;
 	onServiceSelect?: (service: string) => void;
 	onUrgencySelect?: (urgency: string) => void;
+	onCreateMatter?: () => void;
+	onScheduleConsultation?: () => void;
+	onLearnServices?: () => void;
+	teamConfig?: {
+		name: string;
+		profileImage: string | null;
+		teamId: string;
+	};
+	onOpenSidebar?: () => void;
 	isLoading?: boolean;
 	// Feedback props
 	id?: string;
@@ -270,12 +283,51 @@ const UrgencySelectionButtons: FunctionComponent<{
 	);
 };
 
+// Welcome message buttons component
+const WelcomeMessageButtons: FunctionComponent<{ 
+	onCreateMatter?: () => void;
+	onScheduleConsultation?: () => void;
+	onLearnServices?: () => void;
+}> = ({ onCreateMatter, onScheduleConsultation, onLearnServices }) => {
+	return (
+		<div class="welcome-buttons-container">
+			<div class="welcome-buttons">
+				{onCreateMatter && (
+					<button
+						class="welcome-button primary"
+						onClick={onCreateMatter}
+					>
+						Create Matter
+					</button>
+				)}
+				{onScheduleConsultation && (
+					<button
+						class="welcome-button"
+						onClick={onScheduleConsultation}
+					>
+						Request a consultation
+					</button>
+				)}
+				{onLearnServices && (
+					<button
+						class="welcome-button"
+						onClick={onLearnServices}
+					>
+						Learn about our services
+					</button>
+				)}
+			</div>
+		</div>
+	);
+};
+
 const Message: FunctionComponent<MessageProps> = memo(({ 
 	content, 
 	isUser, 
 	files = [], 
 	scheduling, 
 	matterCreation,
+	welcomeMessage,
 	matterCanvas,
 	onDateSelect, 
 	onTimeOfDaySelect, 
@@ -283,6 +335,11 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	onRequestMoreDates,
 	onServiceSelect,
 	onUrgencySelect,
+	onCreateMatter,
+	onScheduleConsultation,
+	onLearnServices,
+	teamConfig,
+	onOpenSidebar,
 	isLoading,
 	id,
 	sessionId,
@@ -320,6 +377,19 @@ const Message: FunctionComponent<MessageProps> = memo(({
 
 	return (
 		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
+			{/* Show team profile for welcome message without content */}
+			{welcomeMessage && !welcomeMessage.showButtons && !content && teamConfig && (
+				<div class="welcome-profile">
+					<TeamProfile
+						name={teamConfig.name}
+						profileImage={teamConfig.profileImage}
+						teamId={teamConfig.teamId}
+						variant="welcome"
+						showVerified={true}
+						onClick={onOpenSidebar}
+					/>
+				</div>
+			)}
 			<div class="message-content">
 				{/* Show loading indicator if this message is loading */}
 				{isLoading ? (
@@ -395,7 +465,14 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					/>
 				)}
 				
-
+				{/* Display welcome message buttons */}
+				{welcomeMessage && welcomeMessage.showButtons && (
+					<WelcomeMessageButtons
+						onCreateMatter={onCreateMatter}
+						onScheduleConsultation={onScheduleConsultation}
+						onLearnServices={onLearnServices}
+					/>
+				)}
 				
 				{/* Display files */}
 				{imageFiles.map(file => (
