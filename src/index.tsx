@@ -9,6 +9,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { TeamNotFound } from './components/TeamNotFound';
 import TeamProfile from './components/TeamProfile';
 import MatterCanvas from './components/MatterCanvas';
+import MediaSidebar from './components/MediaSidebar';
 import { debounce } from './utils/debounce';
 import { useDebounce } from './utils/useDebounce';
 import createLazyComponent from './utils/LazyComponent';
@@ -67,13 +68,7 @@ const LazyScheduleButton = createLazyComponent(
 
 // Define position type
 
-
-interface FileAttachment {
-	name: string;
-	size: number;
-	type: string;
-	url: string;
-}
+import { FileAttachment } from './types/media';
 
 // Add scheduling interface
 interface SchedulingData {
@@ -2211,10 +2206,7 @@ export function App() {
 
 							{/* Media Section */}
 							<div className="team-section">
-								<h4 className="section-title">Media</h4>
-								<div className="section-content">
-									<span className="placeholder-text">Files and links</span>
-								</div>
+								<MediaSidebar messages={messages} />
 							</div>
 
 							{/* Privacy & Support Section */}
