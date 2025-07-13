@@ -2694,10 +2694,11 @@ kbd {
 
 /* Verified Badge */
 .verified-check {
-	width: 1rem;
-	height: 1rem;
+	width: 1.25rem;
+	height: 1.25rem;
 	color: var(--text-color);
 	margin-left: 0.25rem;
+	flex-shrink: 0;
 }
 
 /* Team Profile Component */
@@ -2745,6 +2746,8 @@ kbd {
 	align-items: center;
 	justify-content: center;
 	gap: 0.25rem;
+	flex-wrap: nowrap;
+	max-width: 100%;
 }
 
 .team-profile .team-name h3 {
@@ -2753,6 +2756,10 @@ kbd {
 	text-align: center;
 	margin: 0;
 	color: var(--text-color);
+	line-height: 1.2;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .team-profile.welcome .team-name h3 {
@@ -2853,6 +2860,11 @@ kbd {
 
 	.team-name h3 {
 		font-size: 1.1rem;
+	}
+
+	.verified-check {
+		width: 1.125rem;
+		height: 1.125rem;
 	}
 
 	.team-actions {
@@ -3262,5 +3274,40 @@ kbd {
 		right: 0.5rem;
 		width: 2.5rem;
 		height: 2.5rem;
+	}
+}
+
+/* Simple Privacy & Support Links */
+.privacy-support-links {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.privacy-support-link {
+	color: var(--accent-color);
+	text-decoration: none;
+	font-size: 0.875rem;
+	padding: 0.25rem 0;
+}
+
+.privacy-support-link:hover {
+	text-decoration: underline;
+}
+
+/* Mobile adjustments for team profile */
+@media (max-width: 768px) {
+	.team-profile .team-name h3 {
+		font-size: 1rem;
+		line-height: 1.1;
+	}
+
+	.verified-check {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.team-profile .team-name {
+		gap: 0.125rem;
 	}
 }

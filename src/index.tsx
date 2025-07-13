@@ -10,6 +10,7 @@ import { TeamNotFound } from './components/TeamNotFound';
 import TeamProfile from './components/TeamProfile';
 import MatterCanvas from './components/MatterCanvas';
 import MediaSidebar from './components/MediaSidebar';
+import PrivacySupportSidebar from './components/PrivacySupportSidebar';
 import { debounce } from './utils/debounce';
 import { useDebounce } from './utils/useDebounce';
 import createLazyComponent from './utils/LazyComponent';
@@ -2210,12 +2211,7 @@ export function App() {
 							</div>
 
 							{/* Privacy & Support Section */}
-							<div className="team-section">
-								<h4 className="section-title">Privacy & Support</h4>
-								<div className="section-content">
-									<span className="placeholder-text">Privacy and support information</span>
-								</div>
-							</div>
+							<PrivacySupportSidebar />
 						</div>
 					</div>
 				</>
