@@ -35,7 +35,7 @@ const features: FeatureFlags = {
     enableAudioRecording: false, // Set to false to hide voice recording
     enableVideoRecording: false, // Not implemented yet
     enableFileAttachments: true, // File attachments are enabled
-    enableLeftSidebar: false, // Set to false to hide left sidebar for now
+    enableLeftSidebar: true, // Enable left sidebar
 };
 
 // For development environment, you can override settings

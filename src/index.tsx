@@ -11,6 +11,10 @@ import TeamProfile from './components/TeamProfile';
 import MatterCanvas from './components/MatterCanvas';
 import MediaSidebar from './components/MediaSidebar';
 import PrivacySupportSidebar from './components/PrivacySupportSidebar';
+import LeftSidebar from './components/LeftSidebar';
+import BottomNavigation from './components/BottomNavigation';
+import MobileSidebar from './components/MobileSidebar';
+import MobileTopNav from './components/MobileTopNav';
 import { debounce } from './utils/debounce';
 import { useDebounce } from './utils/useDebounce';
 import createLazyComponent from './utils/LazyComponent';
@@ -189,6 +193,12 @@ export function App() {
 		answers?: Record<string, string>;
 	} | null>(null);
 
+	// State for mobile bottom navigation
+	const [activeTab, setActiveTab] = useState<'chats' | 'matters'>('chats');
+	
+	// State for mobile sidebar
+	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
 	// Track drag counter for better handling of nested elements
 	const dragCounter = useRef(0);
 
@@ -239,6 +249,29 @@ export function App() {
 		console.log('Feedback submitted:', feedback);
 		// Could show a toast notification here
 	}, []);
+
+	// Handle bottom navigation tab changes
+	const handleTabChange = useCallback((tab: 'chats' | 'matters') => {
+		setActiveTab(tab);
+		
+		// Handle different tab actions
+		switch (tab) {
+			case 'matters':
+				// Show matter creation or view existing matters
+				if (sidebarMatter) {
+					// If there's an active matter, focus on it
+					console.log('Focusing on active matter');
+				} else {
+					// Start matter creation flow
+					handleCreateMatterStart();
+				}
+				break;
+			case 'chats':
+			default:
+				// Default chat view - no special action needed
+				break;
+		}
+	}, [sidebarMatter]);
 
 	// Parse URL parameters for configuration
 	useEffect(() => {
@@ -1940,10 +1973,7 @@ export function App() {
 					{/* Left Column */}
 					{features.enableLeftSidebar && (
 						<div className="grid-left">
-							<div className="sidebar-content">
-								<h3>Left Sidebar</h3>
-								<p>This is the left column (0.25fr)</p>
-							</div>
+							<LeftSidebar />
 						</div>
 					)}
 
@@ -1968,6 +1998,7 @@ export function App() {
 													teamId={teamId}
 													variant="welcome"
 													showVerified={true}
+													onClick={() => setIsMobileSidebarOpen(true)}
 												/>
 												<p>{teamConfig.introMessage || "I'm an AI assistant designed to help you get started with your matter."}</p>
 												<div className="welcome-actions">
@@ -2149,10 +2180,7 @@ export function App() {
 										</div>
 									</div>
 									<div className="disclaimer-text">
-										Blawby can make mistakes. Check for important information. 
-										<span className="keyboard-shortcuts">
-											Press Enter to send, Esc to clear, Ctrl+K to focus
-										</span>
+										Blawby can make mistakes. Check for important information.
 									</div>
 									</main>
 								</>
@@ -2214,6 +2242,36 @@ export function App() {
 							<PrivacySupportSidebar />
 						</div>
 					</div>
+
+					{/* Mobile Top Navigation */}
+					<MobileTopNav
+						teamConfig={{
+							name: teamConfig.name,
+							profileImage: teamConfig.profileImage,
+							teamId: teamId
+						}}
+						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+					/>
+
+					{/* Mobile Bottom Navigation */}
+					<BottomNavigation 
+						activeTab={activeTab}
+						onTabChange={handleTabChange}
+					/>
+
+					{/* Mobile Sidebar */}
+					<MobileSidebar
+						isOpen={isMobileSidebarOpen}
+						onClose={() => setIsMobileSidebarOpen(false)}
+						teamConfig={{
+							name: teamConfig.name,
+							profileImage: teamConfig.profileImage,
+							teamId: teamId
+						}}
+						sidebarMatter={sidebarMatter}
+						messages={messages}
+						onViewMatter={handleViewMatter}
+					/>
 				</>
 			)}
 		</>
