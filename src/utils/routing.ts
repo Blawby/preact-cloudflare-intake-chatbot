@@ -15,6 +15,14 @@ export class Router {
   }
 
   private parseHash(): RouterState {
+    if (typeof window === "undefined") {
+      // Default state for SSR/prerendering
+      return {
+        currentRoute: 'chats',
+        params: {}
+      };
+    }
+    
     const hash = window.location.hash.slice(1) || 'chats';
     const [route, ...paramParts] = hash.split('?');
     
@@ -33,6 +41,10 @@ export class Router {
   }
 
   private setupHashListener() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    
     window.addEventListener('hashchange', () => {
       this.currentState = this.parseHash();
       this.notifyListeners();
@@ -57,6 +69,10 @@ export class Router {
   }
 
   navigate(route: Route, params?: Record<string, string>) {
+    if (typeof window === "undefined") {
+      return;
+    }
+    
     let hash = route;
     if (params && Object.keys(params).length > 0) {
       const searchParams = new URLSearchParams();
