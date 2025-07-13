@@ -15,12 +15,16 @@ import LeftSidebar from './components/LeftSidebar';
 import BottomNavigation from './components/BottomNavigation';
 import MobileSidebar from './components/MobileSidebar';
 import MobileTopNav from './components/MobileTopNav';
+import MattersList from './components/MattersList';
+import MatterDetail from './components/MatterDetail';
 import { debounce } from './utils/debounce';
 import { useDebounce } from './utils/useDebounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getMatterCreationEndpoint } from './config/api';
+import { router, RouterState } from './utils/routing';
+import { Matter } from './types/matter';
 import {
   FormState,
   processFormStep,
@@ -196,8 +200,13 @@ export function App() {
 		answers?: Record<string, string>;
 	} | null>(null);
 
-	// State for mobile bottom navigation
-	const [activeTab, setActiveTab] = useState<'chats' | 'matters'>('chats');
+	// State for routing
+	const [routerState, setRouterState] = useState<RouterState>({ currentRoute: 'chats', params: {} });
+	
+	// State for matters
+	const [matters, setMatters] = useState<Matter[]>([]);
+	const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
+	const [isLoadingMatters, setIsLoadingMatters] = useState(false);
 	
 	// State for mobile sidebar
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -253,28 +262,72 @@ export function App() {
 		// Could show a toast notification here
 	}, []);
 
+	// Handle routing changes
+	useEffect(() => {
+		const unsubscribe = router.subscribe((state) => {
+			setRouterState(state);
+		});
+		
+		return unsubscribe;
+	}, []);
+
 	// Handle bottom navigation tab changes
 	const handleTabChange = useCallback((tab: 'chats' | 'matters') => {
-		setActiveTab(tab);
+		router.navigate(tab);
+	}, []);
+
+	// Load matters from messages (convert existing matter canvases to matters)
+	useEffect(() => {
+		const mattersFromMessages: Matter[] = messages
+			.filter(msg => msg.matterCanvas)
+			.map((msg, index) => {
+				const canvas = msg.matterCanvas!;
+				return {
+					id: canvas.matterId || `matter-${index}`,
+					matterNumber: canvas.matterNumber,
+					title: `${canvas.service} Matter`,
+					service: canvas.service,
+					status: 'submitted' as const,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					summary: canvas.matterSummary,
+					qualityScore: canvas.qualityScore,
+					answers: canvas.answers,
+					contactInfo: {
+						email: 'user@example.com', // This would come from form data
+						phone: '+1 (555) 123-4567'
+					}
+				};
+			});
 		
-		// Handle different tab actions
-		switch (tab) {
-			case 'matters':
-				// Show matter creation or view existing matters
-				if (sidebarMatter) {
-					// If there's an active matter, focus on it
-					console.log('Focusing on active matter');
-				} else {
-					// Start matter creation flow
-					handleCreateMatterStart();
-				}
-				break;
-			case 'chats':
-			default:
-				// Default chat view - no special action needed
-				break;
-		}
-	}, [sidebarMatter]);
+		setMatters(mattersFromMessages);
+	}, [messages]);
+
+	// Handle matter selection
+	const handleMatterSelect = useCallback((matter: Matter) => {
+		setSelectedMatter(matter);
+		router.navigate('matters', { id: matter.id });
+	}, []);
+
+	// Handle matter creation from matters view
+	const handleCreateMatterFromList = useCallback(() => {
+		router.navigate('chats');
+		// Start matter creation flow after a short delay to allow navigation
+		setTimeout(() => {
+			handleCreateMatterStart();
+		}, 100);
+	}, []);
+
+	// Handle back to matters list
+	const handleBackToMatters = useCallback(() => {
+		setSelectedMatter(null);
+		router.navigate('matters');
+	}, []);
+
+	// Handle edit matter (for now, just go back to chat)
+	const handleEditMatter = useCallback(() => {
+		router.navigate('chats');
+	}, []);
 
 	// Parse URL parameters for configuration
 	useEffect(() => {
@@ -2000,191 +2053,212 @@ export function App() {
 					{/* Left Column */}
 					{features.enableLeftSidebar && (
 						<div className="grid-left">
-							<LeftSidebar />
+							<LeftSidebar 
+								currentRoute={routerState.currentRoute}
+								onTabChange={handleTabChange}
+								onOpenMenu={() => setIsMobileSidebarOpen(true)}
+							/>
 						</div>
 					)}
 
-					{/* Center Column - Main Chat */}
+					{/* Center Column - Main Content */}
 					<div className={features.enableLeftSidebar ? "grid-center" : "grid-center-full"}>
 						<div 
 							className="chat-container" 
 							role="application" 
-							aria-label="Chat interface"
+							aria-label="Main interface"
 							aria-expanded={true}
 						>
 							<ErrorBoundary>
-								{(
-								<>
-									<main className="chat-main">
-									<VirtualMessageList
-										messages={messages}
-										onDateSelect={handleDateSelect}
-										onTimeOfDaySelect={handleTimeOfDaySelect}
-										onTimeSlotSelect={handleTimeSlotSelect}
-										onRequestMoreDates={handleRequestMoreDates}
-										onServiceSelect={handleServiceSelect}
-										onUrgencySelect={handleUrgencySelect}
-										onCreateMatter={handleCreateMatterStart}
-										onScheduleConsultation={handleScheduleStart}
-										onLearnServices={async () => {
-											const servicesMessage: ChatMessage = {
-												content: "Tell me about your firm's services",
-												isUser: true
-											};
-											setMessages(prev => [...prev, servicesMessage]);
-											
-											// Add placeholder message with loading indicator (ChatGPT style)
-											const loadingMessageId = crypto.randomUUID();
-											const loadingMessage: ChatMessage = {
-												content: "Let me tell you about our services...",
-												isUser: false,
-												isLoading: true,
-												id: loadingMessageId
-											};
-											setMessages(prev => [...prev, loadingMessage]);
-											
-											try {
-												// Call the actual API
-												const response = await sendMessageToAPI("Tell me about your firm's services");
+								{routerState.currentRoute === 'chats' ? (
+									<>
+										<main className="chat-main">
+										<VirtualMessageList
+											messages={messages}
+											onDateSelect={handleDateSelect}
+											onTimeOfDaySelect={handleTimeOfDaySelect}
+											onTimeSlotSelect={handleTimeSlotSelect}
+											onRequestMoreDates={handleRequestMoreDates}
+											onServiceSelect={handleServiceSelect}
+											onUrgencySelect={handleUrgencySelect}
+											onCreateMatter={handleCreateMatterStart}
+											onScheduleConsultation={handleScheduleStart}
+											onLearnServices={async () => {
+												const servicesMessage: ChatMessage = {
+													content: "Tell me about your firm's services",
+													isUser: true
+												};
+												setMessages(prev => [...prev, servicesMessage]);
 												
-												// Update the loading message with actual content
-												setMessages(prev => prev.map(msg => 
-													msg.id === loadingMessageId 
-														? {
-															...msg,
-															content: response,
-															isLoading: false
-														}
-														: msg
-												));
-											} catch (error) {
-												// Fallback to default response if API fails
-												setMessages(prev => prev.map(msg => 
-													msg.id === loadingMessageId 
-														? {
-															...msg,
-															content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
-															isLoading: false
-														}
-														: msg
-												));
-											}
-										}}
-										teamConfig={{
-											name: teamConfig.name,
-											profileImage: teamConfig.profileImage,
-											teamId: teamId
-										}}
-										onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-										sessionId={sessionId}
-										teamId={teamId}
-										onFeedbackSubmit={handleFeedbackSubmit}
-									/>
-									<div className="input-area" role="form" aria-label="Message composition">
-										<div className="input-container">
-											{previewFiles.length > 0 && (
-												<div className="input-preview" role="list" aria-label="File attachments">
-													{previewFiles.map((file, index) => (
-														<div 
-															className={`input-preview-item ${file.type.startsWith('image/') ? 'image-preview' : 'file-preview'}`}
-															key={index}
-															role="listitem"
-														>
-															{file.type.startsWith('image/') ? (
-																<>
-																	<img src={file.url} alt={`Preview of ${file.name}`} />
-																</>
-															) : (
-																<>
-																	<div className="file-thumbnail" aria-hidden="true">
-																		{getFileIcon(file)}
-																	</div>
-																	<div className="file-info">
-																		<div className="file-name">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
-																		<div className="file-ext">{file.name.split('.').pop()}</div>
-																	</div>
-																</>
-															)}
-															<button
-																type="button"
-																className="input-preview-remove"
-																onClick={() => removePreviewFile(index)}
-																title="Remove file"
-																aria-label={`Remove ${file.name}`}
-															>
-																<XMarkIcon className="w-4 h-4" aria-hidden="true" />
-															</button>
-														</div>
-													))}
-												</div>
-											)}
-											<div className="textarea-wrapper">
-												<textarea
-													className="message-input"
-													placeholder="Type a message..."
-													rows={1}
-													value={inputValue}
-													onInput={handleInputChange}
-													onKeyPress={handleKeyPress}
-													disabled={false}
-													aria-label="Message input"
-													aria-multiline="true"
-													style={{ 
-														minHeight: '24px',
-														width: '100%'
-													}}
-												/>
-											</div>
-											<span id="input-instructions" className="sr-only">
-												Type your message and press Enter to send. Use the buttons below to attach files or record audio.
-											</span>
-											<div className="input-controls-row">
-												<div className="input-controls">
-													{!isRecording && (
-														<div className="input-left-controls">
-															<LazyFileMenu
-																onPhotoSelect={handlePhotoSelect}
-																onCameraCapture={handleCameraCapture}
-																onFileSelect={handleFileSelect}
-															/>
-															
-															<LazyScheduleButton
-																onClick={handleScheduleStart}
-																disabled={false}
-															/>
-														</div>
-													)}
+												// Add placeholder message with loading indicator (ChatGPT style)
+												const loadingMessageId = crypto.randomUUID();
+												const loadingMessage: ChatMessage = {
+													content: "Let me tell you about our services...",
+													isUser: false,
+													isLoading: true,
+													id: loadingMessageId
+												};
+												setMessages(prev => [...prev, loadingMessage]);
+												
+												try {
+													// Call the actual API
+													const response = await sendMessageToAPI("Tell me about your firm's services");
 													
-													<div className="send-controls">
-														{features.enableAudioRecording && (
-															<LazyMediaControls
-																onMediaCapture={handleMediaCapture}
-																onRecordingStateChange={setIsRecording}
-															/>
+													// Update the loading message with actual content
+													setMessages(prev => prev.map(msg => 
+														msg.id === loadingMessageId 
+															? {
+																...msg,
+																content: response,
+																isLoading: false
+															}
+															: msg
+													));
+												} catch (error) {
+													// Fallback to default response if API fails
+													setMessages(prev => prev.map(msg => 
+														msg.id === loadingMessageId 
+															? {
+																...msg,
+																content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
+																isLoading: false
+															}
+															: msg
+													));
+												}
+											}}
+											teamConfig={{
+												name: teamConfig.name,
+												profileImage: teamConfig.profileImage,
+												teamId: teamId
+											}}
+											onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+											sessionId={sessionId}
+											teamId={teamId}
+											onFeedbackSubmit={handleFeedbackSubmit}
+										/>
+										<div className="input-area" role="form" aria-label="Message composition">
+											<div className="input-container">
+												{previewFiles.length > 0 && (
+													<div className="input-preview" role="list" aria-label="File attachments">
+														{previewFiles.map((file, index) => (
+															<div 
+																className={`input-preview-item ${file.type.startsWith('image/') ? 'image-preview' : 'file-preview'}`}
+																key={index}
+																role="listitem"
+															>
+																{file.type.startsWith('image/') ? (
+																	<>
+																		<img src={file.url} alt={`Preview of ${file.name}`} />
+																	</>
+																) : (
+																	<>
+																		<div className="file-thumbnail" aria-hidden="true">
+																			{getFileIcon(file)}
+																		</div>
+																		<div className="file-info">
+																			<div className="file-name">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
+																			<div className="file-ext">{file.name.split('.').pop()}</div>
+																		</div>
+																	</>
+																)}
+																<button
+																	type="button"
+																	className="input-preview-remove"
+																	onClick={() => removePreviewFile(index)}
+																	title="Remove file"
+																	aria-label={`Remove ${file.name}`}
+																>
+																	<XMarkIcon className="w-4 h-4" aria-hidden="true" />
+																</button>
+															</div>
+														))}
+													</div>
+												)}
+												<div className="textarea-wrapper">
+													<textarea
+														className="message-input"
+														placeholder="Type a message..."
+														rows={1}
+														value={inputValue}
+														onInput={handleInputChange}
+														onKeyPress={handleKeyPress}
+														disabled={false}
+														aria-label="Message input"
+														aria-multiline="true"
+														style={{ 
+															minHeight: '24px',
+															width: '100%'
+														}}
+													/>
+												</div>
+												<span id="input-instructions" className="sr-only">
+													Type your message and press Enter to send. Use the buttons below to attach files or record audio.
+												</span>
+												<div className="input-controls-row">
+													<div className="input-controls">
+														{!isRecording && (
+															<div className="input-left-controls">
+																<LazyFileMenu
+																	onPhotoSelect={handlePhotoSelect}
+																	onCameraCapture={handleCameraCapture}
+																	onFileSelect={handleFileSelect}
+																/>
+																
+																<LazyScheduleButton
+																	onClick={handleScheduleStart}
+																	disabled={false}
+																/>
+															</div>
 														)}
 														
-														<button
-															className="send-button"
-															type="button"
-															onClick={handleSubmit}
-															disabled={(!inputValue.trim() && previewFiles.length === 0)}
-															aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
-														>
-															<ArrowUpIcon className="send-icon w-5 h-5" aria-hidden="true" />
-														</button>
+														<div className="send-controls">
+															{features.enableAudioRecording && (
+																<LazyMediaControls
+																	onMediaCapture={handleMediaCapture}
+																	onRecordingStateChange={setIsRecording}
+																/>
+															)}
+															
+															<button
+																className="send-button"
+																type="button"
+																onClick={handleSubmit}
+																disabled={(!inputValue.trim() && previewFiles.length === 0)}
+																aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
+															>
+																<ArrowUpIcon className="send-icon w-5 h-5" aria-hidden="true" />
+															</button>
+														</div>
 													</div>
 												</div>
 											</div>
 										</div>
-									</div>
-									{features.enableDisclaimerText && (
-										<div className="input-disclaimer">
-											Blawby can make mistakes. Check for important information.
-										</div>
-									)}
-									</main>
-								</>
-								)}
+										{features.enableDisclaimerText && (
+											<div className="input-disclaimer">
+												Blawby can make mistakes. Check for important information.
+											</div>
+										)}
+										</main>
+									</>
+								) : routerState.currentRoute === 'matters' ? (
+									<>
+										{selectedMatter ? (
+											<MatterDetail
+												matter={selectedMatter}
+												onBack={handleBackToMatters}
+												onEdit={handleEditMatter}
+											/>
+										) : (
+											<MattersList
+												matters={matters}
+												onMatterSelect={handleMatterSelect}
+												onCreateMatter={handleCreateMatterFromList}
+												isLoading={isLoadingMatters}
+											/>
+										)}
+									</>
+								) : null}
 							</ErrorBoundary>
 						</div>
 					</div>
@@ -2255,7 +2329,7 @@ export function App() {
 
 					{/* Mobile Bottom Navigation */}
 					<BottomNavigation 
-						activeTab={activeTab}
+						activeTab={routerState.currentRoute}
 						onTabChange={handleTabChange}
 					/>
 

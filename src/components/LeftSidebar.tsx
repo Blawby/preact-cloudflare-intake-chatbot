@@ -4,7 +4,13 @@ import {
   Bars3Icon 
 } from '@heroicons/react/24/solid';
 
-const LeftSidebar = () => {
+interface LeftSidebarProps {
+  currentRoute: string;
+  onTabChange: (tab: 'chats' | 'matters') => void;
+  onOpenMenu?: () => void;
+}
+
+const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps) => {
   return (
     <div className="left-sidebar">
       <div className="left-sidebar-content">
@@ -12,7 +18,10 @@ const LeftSidebar = () => {
         <div className="left-sidebar-top">
           {/* Chats Section */}
           <div className="left-sidebar-section">
-            <div className="left-sidebar-header">
+            <div 
+              className={`left-sidebar-header ${currentRoute === 'chats' ? 'active' : ''}`}
+              onClick={() => onTabChange('chats')}
+            >
               <ChatBubbleLeftRightIcon className="left-sidebar-icon" />
               <span style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Chats</span>
             </div>
@@ -20,7 +29,10 @@ const LeftSidebar = () => {
 
           {/* Matters Section */}
           <div className="left-sidebar-section">
-            <div className="left-sidebar-header">
+            <div 
+              className={`left-sidebar-header ${currentRoute === 'matters' ? 'active' : ''}`}
+              onClick={() => onTabChange('matters')}
+            >
               <DocumentTextIcon className="left-sidebar-icon" />
               <span style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Matters</span>
             </div>
@@ -30,7 +42,10 @@ const LeftSidebar = () => {
         {/* Bottom Section - Menu */}
         <div className="left-sidebar-bottom">
           <div className="left-sidebar-section">
-            <div className="left-sidebar-header">
+            <div 
+              className="left-sidebar-header"
+              onClick={onOpenMenu}
+            >
               <Bars3Icon className="left-sidebar-icon" />
               <span style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Menu</span>
             </div>
