@@ -10,6 +10,7 @@ import { TeamNotFound } from './components/TeamNotFound';
 import TeamProfile from './components/TeamProfile';
 import MatterCanvas from './components/MatterCanvas';
 import { debounce } from './utils/debounce';
+import { useDebounce } from './utils/useDebounce';
 import createLazyComponent from './utils/LazyComponent';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
@@ -1081,7 +1082,10 @@ export function App() {
 	};
 
 	// Update handleSubmit to use the new API function
-	const handleSubmit = async () => {
+
+
+	// Create debounced submit function
+	const debouncedSubmit = useDebounce(() => {
 		if (!inputValue.trim() && previewFiles.length === 0) return;
 
 		const message = inputValue.trim();
@@ -1095,7 +1099,7 @@ export function App() {
 		
 		// Handle matter creation flow
 		if (matterState.isActive) {
-			await handleMatterCreationStep(message, attachments);
+			handleMatterCreationStep(message, attachments);
 			return;
 		}
 
@@ -1111,6 +1115,11 @@ export function App() {
 		if (textarea) {
 			textarea.focus();
 		}
+	}, 500);
+
+	// Update handleSubmit to use the debounced version
+	const handleSubmit = () => {
+		debouncedSubmit();
 	};
 
 	// Handle service selection from buttons
