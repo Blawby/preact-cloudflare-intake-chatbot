@@ -482,7 +482,7 @@ Triggered when consultations are scheduled.
 
 All webhooks include security headers:
 
-- **X-Webhook-Signature**: HMAC-SHA256 signature using your webhook secret
+- **X-Webhook-Signature**: HMAC-SHA256 signature in Stripe-like format (`t=timestamp,v1=signature`)
 - **X-Webhook-ID**: Unique identifier for the webhook delivery
 - **X-Webhook-Event**: Event type (matter_creation, matter_details, etc.)
 - **X-Webhook-Timestamp**: ISO timestamp of webhook delivery
@@ -560,18 +560,27 @@ POST /api/webhooks/test
 
 ### Webhook Verification
 
-To verify webhook authenticity in your endpoint:
+To verify webhook authenticity in your endpoint (Stripe-like format):
 
 ```javascript
 const crypto = require('crypto');
 
 function verifyWebhook(payload, signature, secret) {
+  // Parse signature header (format: "t=timestamp,v1=signature")
+  const signatureParts = signature.split(',');
+  const timestamp = signatureParts[0].split('=')[1];
+  const receivedSignature = signatureParts[1].split('=')[1];
+  
+  // Create signed payload (timestamp.payload)
+  const signedPayload = `${timestamp}.${payload}`;
+  
+  // Generate expected signature
   const expectedSignature = crypto
     .createHmac('sha256', secret)
-    .update(payload)
+    .update(signedPayload)
     .digest('hex');
   
-  return signature === `sha256=${expectedSignature}`;
+  return receivedSignature === expectedSignature;
 }
 
 // Express.js example

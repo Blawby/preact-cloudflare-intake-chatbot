@@ -156,21 +156,49 @@ class EmailService {
 class WebhookService {
   constructor(private env: Env) {}
 
-  // Generate HMAC signature for webhook security
-  private async generateSignature(payload: string, secret: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(payload);
-    const key = await crypto.subtle.importKey(
+  // Generate HMAC-SHA256 signature using Web Crypto API
+  private async generateHMACSHA256(message: string, key: string): Promise<string> {
+    // Convert string key to Uint8Array
+    const keyBytes = new TextEncoder().encode(key);
+    const messageBytes = new TextEncoder().encode(message);
+
+    // Import the HMAC key
+    const cryptoKey = await crypto.subtle.importKey(
       'raw',
-      encoder.encode(secret),
+      keyBytes,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
-      ['sign']
+      ['sign'],
     );
-    const signature = await crypto.subtle.sign('HMAC', key, data);
+
+    // Sign the message
+    const signature = await crypto.subtle.sign(
+      'HMAC',
+      cryptoKey,
+      messageBytes,
+    );
+
+    // Convert to hex string
     return Array.from(new Uint8Array(signature))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
+  }
+
+  // Generate a webhook signature for client-side use (Stripe-like format)
+  private async generateWebhookSignature(payload: string, signingKey: string, timestamp: number | null = null): Promise<string> {
+    // Use current timestamp if not provided
+    if (timestamp === null || timestamp === undefined) {
+      timestamp = Math.floor(Date.now() / 1000);
+    }
+
+    // Create signed payload (timestamp.payload)
+    const signedPayload = `${timestamp}.${payload}`;
+
+    // Generate HMAC-SHA256 signature
+    const signature = await this.generateHMACSHA256(signedPayload, signingKey);
+
+    // Return in Stripe-like format
+    return `t=${timestamp},v1=${signature}`;
   }
 
   // Send webhook with retry logic
@@ -206,7 +234,7 @@ class WebhookService {
     // Generate signature if secret is provided
     let signature = '';
     if (teamConfig.webhooks.secret) {
-      signature = await this.generateSignature(payloadString, teamConfig.webhooks.secret);
+      signature = await this.generateWebhookSignature(payloadString, teamConfig.webhooks.secret);
     }
 
     // Log webhook attempt (create table if it doesn't exist)
@@ -231,7 +259,7 @@ class WebhookService {
       };
 
       if (signature) {
-        headers['X-Webhook-Signature'] = `sha256=${signature}`;
+        headers['X-Webhook-Signature'] = signature;
       }
 
       const controller = new AbortController();
