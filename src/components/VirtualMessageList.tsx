@@ -127,34 +127,20 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     const listRef = useRef<HTMLDivElement>(null);
     const [startIndex, setStartIndex] = useState(Math.max(0, messages.length - BATCH_SIZE));
     const [endIndex, setEndIndex] = useState(messages.length);
-    const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
-    const [isAtBottom, setIsAtBottom] = useState(true);
-    const lastScrollTop = useRef(0);
+    const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
 
-    // Check if scrolled to bottom
-    const checkIfAtBottom = useCallback((element: HTMLElement) => {
+    const checkIfScrolledToBottom = useCallback((element: HTMLElement) => {
         const { scrollTop, scrollHeight, clientHeight } = element;
-        return Math.abs(scrollHeight - scrollTop - clientHeight) < 50;
+        return Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
     }, []);
 
-    // Handle scroll events
     const handleScroll = useCallback(() => {
         if (!listRef.current) return;
 
         const element = listRef.current;
-        const currentScrollTop = element.scrollTop;
-        const isBottom = checkIfAtBottom(element);
-        
-        // Detect if user is manually scrolling up
-        if (currentScrollTop < lastScrollTop.current && !isBottom) {
-            setIsUserScrolledUp(true);
-        } else if (isBottom) {
-            setIsUserScrolledUp(false);
-        }
-        
-        setIsAtBottom(isBottom);
-        lastScrollTop.current = currentScrollTop;
-        
+        const isBottom = checkIfScrolledToBottom(element);
+        setIsScrolledToBottom(isBottom);
+
         // Load more messages when scrolling up
         if (element.scrollTop < SCROLL_THRESHOLD && startIndex > 0) {
             const newStartIndex = Math.max(0, startIndex - BATCH_SIZE);
@@ -170,14 +156,13 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                 }
             });
         }
-    }, [startIndex, checkIfAtBottom]);
+    }, [startIndex, checkIfScrolledToBottom]);
 
     const debouncedHandleScroll = useCallback(
         debounce(handleScroll, DEBOUNCE_DELAY),
         [handleScroll]
     );
 
-    // Add scroll listener
     useEffect(() => {
         const list = listRef.current;
         if (list) {
@@ -190,95 +175,64 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         };
     }, [debouncedHandleScroll]);
 
-    // Scroll to bottom function
-    const scrollToBottom = useCallback(() => {
-        if (!listRef.current) return;
-        
-        const element = listRef.current;
-        element.scrollTo({
-            top: element.scrollHeight,
-            behavior: 'smooth'
-        });
-        setIsUserScrolledUp(false);
-        setIsAtBottom(true);
-    }, []);
-
     useEffect(() => {
         // Update indices when new messages are added
-        if (!isUserScrolledUp || messages[messages.length - 1]?.isUser) {
+        if (isScrolledToBottom || messages[messages.length - 1]?.isUser) {
             setEndIndex(messages.length);
             setStartIndex(Math.max(0, messages.length - BATCH_SIZE));
         }
-    }, [messages.length, isUserScrolledUp]);
+    }, [messages.length, isScrolledToBottom]);
 
     useEffect(() => {
-        // Auto-scroll on new messages
-        if (!isUserScrolledUp || messages[messages.length - 1]?.isUser) {
-            requestAnimationFrame(() => {
-                scrollToBottom();
-            });
+        // Scroll to bottom when new messages are added and we're at the bottom
+        if (listRef.current && (isScrolledToBottom || messages[messages.length - 1]?.isUser)) {
+            listRef.current.scrollTop = listRef.current.scrollHeight;
         }
-    }, [messages, endIndex, isUserScrolledUp, scrollToBottom]);
+    }, [messages, endIndex, isScrolledToBottom]);
 
     const visibleMessages = messages.slice(startIndex, endIndex);
 
     return (
-        <div class="message-list-container">
-            <div 
-                class="message-list" 
-                ref={listRef}
-            >
-                {startIndex > 0 && (
-                    <div class="load-more-trigger">
-                        <LoadingIndicator />
-                    </div>
-                )}
-                <ErrorBoundary>
-                    {visibleMessages.map((message, index) => (
-                        <Message
-                            key={startIndex + index}
-                            content={message.content}
-                            isUser={message.isUser}
-                            files={message.files}
-                            scheduling={message.scheduling}
-                            matterCreation={message.matterCreation}
-                            welcomeMessage={message.welcomeMessage}
-                            matterCanvas={message.matterCanvas}
-                            qualityScore={message.qualityScore}
-                            onDateSelect={onDateSelect}
-                            onTimeOfDaySelect={onTimeOfDaySelect}
-                            onTimeSlotSelect={onTimeSlotSelect}
-                            onRequestMoreDates={onRequestMoreDates}
-                            onServiceSelect={onServiceSelect}
-                            onUrgencySelect={onUrgencySelect}
-                            onCreateMatter={onCreateMatter}
-                            onScheduleConsultation={onScheduleConsultation}
-                            onLearnServices={onLearnServices}
-                            teamConfig={teamConfig}
-                            onOpenSidebar={onOpenSidebar}
-                            isLoading={message.isLoading}
-                            id={message.id}
-                            sessionId={sessionId}
-                            teamId={teamId}
-                            onFeedbackSubmit={onFeedbackSubmit}
-                        />
-                    ))}
-                </ErrorBoundary>
-            </div>
-            
-            {/* Scroll to bottom button - appears when user has scrolled up */}
-            {isUserScrolledUp && (
-                <button 
-                    class="scroll-to-bottom-button"
-                    onClick={scrollToBottom}
-                    aria-label="Scroll to latest message"
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M7 13l5 5 5-5"/>
-                        <path d="M7 6l5 5 5-5"/>
-                    </svg>
-                </button>
+        <div 
+            class="message-list" 
+            ref={listRef}
+        >
+            {startIndex > 0 && (
+                <div class="load-more-trigger">
+                    <LoadingIndicator />
+                </div>
             )}
+            <ErrorBoundary>
+                {visibleMessages.map((message, index) => (
+                    <Message
+                        key={startIndex + index}
+                        content={message.content}
+                        isUser={message.isUser}
+                        files={message.files}
+                        scheduling={message.scheduling}
+                        matterCreation={message.matterCreation}
+                        welcomeMessage={message.welcomeMessage}
+                        matterCanvas={message.matterCanvas}
+                        qualityScore={message.qualityScore}
+                        onDateSelect={onDateSelect}
+                        onTimeOfDaySelect={onTimeOfDaySelect}
+                        onTimeSlotSelect={onTimeSlotSelect}
+                        onRequestMoreDates={onRequestMoreDates}
+                        onServiceSelect={onServiceSelect}
+                        onUrgencySelect={onUrgencySelect}
+                        onCreateMatter={onCreateMatter}
+                        onScheduleConsultation={onScheduleConsultation}
+                        onLearnServices={onLearnServices}
+                        teamConfig={teamConfig}
+                        onOpenSidebar={onOpenSidebar}
+                        isLoading={message.isLoading}
+                        id={message.id}
+                        sessionId={sessionId}
+                        teamId={teamId}
+                        onFeedbackSubmit={onFeedbackSubmit}
+                    />
+                ))}
+            </ErrorBoundary>
         </div>
     );
 };
