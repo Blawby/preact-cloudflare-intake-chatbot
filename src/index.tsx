@@ -1265,6 +1265,13 @@ export function App() {
 				return;
 			}
 			
+			// Ensure teamId is set before making API call
+			if (!teamId) {
+				console.log('TeamId not set yet, waiting...');
+				setTimeout(() => debouncedServiceSelect(service), 100);
+				return;
+			}
+			
 			setIsProcessingRequest(true);
 			
 			// Add user message
@@ -1355,6 +1362,13 @@ export function App() {
 				return;
 			}
 			
+			// Ensure teamId is set before making API call
+			if (!teamId) {
+				console.log('TeamId not set yet, waiting...');
+				setTimeout(() => debouncedUrgencySelect(urgency), 100);
+				return;
+			}
+			
 			setIsProcessingRequest(true);
 			
 			// Add user message
@@ -1435,8 +1449,13 @@ export function App() {
 	// API-driven matter creation handler
 	const handleMatterCreationAPI = async (step: string, data: any = {}) => {
 		try {
+			// Ensure we have a valid teamId
+			if (!teamId) {
+				throw new Error('TeamId not set - cannot make API request');
+			}
+			
 			const requestBody = {
-				teamId: teamId || 'demo',
+				teamId: teamId,
 				service: data.service || matterState.data.matterType,
 				step: step,
 				currentQuestionIndex: data.currentQuestionIndex,
