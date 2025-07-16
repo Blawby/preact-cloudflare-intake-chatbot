@@ -2384,6 +2384,12 @@ export function App() {
 }
 
 if (typeof window !== 'undefined') {
+	// Initialize theme from localStorage
+	const savedTheme = localStorage.getItem('theme');
+	if (savedTheme === 'dark') {
+		document.documentElement.classList.add('dark');
+	}
+	
 	hydrate(<App />, document.getElementById('app'));
 }
 

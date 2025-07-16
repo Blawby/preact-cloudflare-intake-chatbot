@@ -107,7 +107,7 @@ svg[class*="h-12"] {
 	font-weight: 400;
 	color-scheme: light dark;
 
-	/* Light theme colors */
+	/* Light theme colors (default) */
 	--bg-color: #ffffff;
 	--bg-color-rgb: 255, 255, 255;
 	--text-color: #1a1a1a;
@@ -121,9 +121,24 @@ svg[class*="h-12"] {
 	--skeleton-end: rgba(200, 200, 200, 0.3);
 }
 
+/* Dark theme */
+:root.dark {
+	--bg-color: #030712;
+	--bg-color-rgb: 3, 7, 18;
+	--text-color: #ffffff;
+	--message-bg-user: #111827;
+	--message-bg-ai: #0a0f1a;
+	--border-color: #10131a;
+	--input-bg: #0a0f1a;
+	--hover-color: #111827;
+	--accent-color: #64748b;
+	--skeleton-start: rgba(10, 15, 26, 0.1);
+	--skeleton-end: rgba(10, 15, 26, 0.3);
+}
+
+/* System preference fallback */
 @media (prefers-color-scheme: dark) {
-	:root {
-		/* Dark theme colors */
+	:root:not(.light):not(.dark) {
 		--bg-color: #030712;
 		--bg-color-rgb: 3, 7, 18;
 		--text-color: #ffffff;
@@ -997,16 +1012,29 @@ body {
 }
 
 /* Dark mode adjustments for markdown */
+:root.dark .message-content blockquote {
+	color: var(--accent-color);
+}
+
+:root.dark .message-content a {
+	color: var(--text-color);
+}
+
+:root.dark .message-file-size {
+	color: var(--accent-color);
+}
+
+/* System preference fallback */
 @media (prefers-color-scheme: dark) {
-	.message-content blockquote {
+	:root:not(.light):not(.dark) .message-content blockquote {
 		color: var(--accent-color);
 	}
 
-	.message-content a {
+	:root:not(.light):not(.dark) .message-content a {
 		color: var(--text-color);
 	}
 
-	.message-file-size {
+	:root:not(.light):not(.dark) .message-file-size {
 		color: var(--accent-color);
 	}
 }
@@ -1994,12 +2022,21 @@ kbd {
 }
 
 /* Dark mode adjustments */
+:root.dark .welcome-card {
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+:root.dark .welcome-actions {
+	border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* System preference fallback */
 @media (prefers-color-scheme: dark) {
-	.welcome-card {
+	:root:not(.light):not(.dark) .welcome-card {
 		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 	}
 
-	.welcome-actions {
+	:root:not(.light):not(.dark) .welcome-actions {
 		border-top-color: rgba(255, 255, 255, 0.08);
 	}
 }
@@ -3917,6 +3954,31 @@ kbd {
 
 .mobile-top-nav-menu:hover {
 	background: var(--hover-bg);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	border: none;
+	padding: 8px;
+	border-radius: 8px;
+	color: var(--text-color);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	opacity: 0.8;
+}
+
+.theme-toggle:hover {
+	background-color: var(--hover-color);
+	opacity: 1;
+}
+
+.theme-toggle:focus {
+	outline: 2px solid var(--accent-color);
+	outline-offset: 2px;
 }
 
 /* Show top nav on mobile, hide team profile button */

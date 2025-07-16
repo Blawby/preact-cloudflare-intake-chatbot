@@ -3,6 +3,7 @@ import {
   DocumentTextIcon, 
   Bars3Icon 
 } from '@heroicons/react/24/solid';
+import ThemeToggle from './ThemeToggle';
 
 interface LeftSidebarProps {
   currentRoute: string;
@@ -39,9 +40,10 @@ const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps
           </div>
         </div>
 
-        {/* Bottom Section - Menu */}
+        {/* Bottom Section - Theme Toggle and Menu */}
         <div className="left-sidebar-bottom">
-          <div className="left-sidebar-section">
+          <div className="left-sidebar-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+            <ThemeToggle />
             <div 
               className="left-sidebar-header"
               onClick={onOpenMenu}

@@ -1,4 +1,5 @@
 import { Bars3Icon } from '@heroicons/react/24/outline';
+import ThemeToggle from './ThemeToggle';
 
 interface MobileTopNavProps {
   teamConfig: {
@@ -30,6 +31,9 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar }: MobileTopNavProps) => {
           </div>
         </div>
       </button>
+
+      {/* Theme Toggle Button */}
+      <ThemeToggle />
 
       {/* Menu Button */}
       <button 
