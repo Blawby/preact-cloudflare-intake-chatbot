@@ -211,6 +211,9 @@ export function App() {
 	// State for mobile sidebar
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+	// State to prevent multiple simultaneous requests
+	const [isProcessingRequest, setIsProcessingRequest] = useState(false);
+
 	// Track drag counter for better handling of nested elements
 	const dragCounter = useRef(0);
 
@@ -1256,6 +1259,14 @@ export function App() {
 	// Create debounced service selection handler to prevent spam clicks
 	const debouncedServiceSelect = useMemo(() => 
 		debounce(async (service: string) => {
+			// Prevent multiple simultaneous requests
+			if (isProcessingRequest) {
+				console.log('Request already in progress, ignoring click');
+				return;
+			}
+			
+			setIsProcessingRequest(true);
+			
 			// Add user message
 			const userMessage: ChatMessage = {
 				content: service,
@@ -1323,9 +1334,11 @@ export function App() {
 							: msg
 					));
 				}, 300);
+			} finally {
+				setIsProcessingRequest(false);
 			}
 		}, 500), // 500ms debounce delay
-		[matterState.isActive, matterState.data]
+		[] // Empty dependency array to prevent recreation
 	);
 
 	// Handle service selection from buttons (now debounced)
@@ -1336,6 +1349,14 @@ export function App() {
 	// Create debounced urgency selection handler to prevent spam clicks
 	const debouncedUrgencySelect = useMemo(() => 
 		debounce(async (urgency: string) => {
+			// Prevent multiple simultaneous requests
+			if (isProcessingRequest) {
+				console.log('Request already in progress, ignoring click');
+				return;
+			}
+			
+			setIsProcessingRequest(true);
+			
 			// Add user message
 			const userMessage: ChatMessage = {
 				content: urgency,
@@ -1399,9 +1420,11 @@ export function App() {
 							: msg
 					));
 				}, 300);
+			} finally {
+				setIsProcessingRequest(false);
 			}
 		}, 500), // 500ms debounce delay
-		[matterState.data.matterType]
+		[] // Empty dependency array to prevent recreation
 	);
 
 	// Handle urgency selection from buttons (now debounced)
