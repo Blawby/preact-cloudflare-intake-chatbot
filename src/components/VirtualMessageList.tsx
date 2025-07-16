@@ -185,10 +185,19 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
 
     useEffect(() => {
         // Scroll to bottom when new messages are added and we're at the bottom
+        // Also scroll when new messages are added (for button clicks, etc.)
         if (listRef.current && (isScrolledToBottom || messages[messages.length - 1]?.isUser)) {
             listRef.current.scrollTop = listRef.current.scrollHeight;
         }
     }, [messages, endIndex, isScrolledToBottom]);
+
+    // Additional effect to handle button-triggered messages
+    useEffect(() => {
+        // Always scroll to bottom when messages length changes (new messages added)
+        if (listRef.current) {
+            listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+    }, [messages.length]);
 
     const visibleMessages = messages.slice(startIndex, endIndex);
 
