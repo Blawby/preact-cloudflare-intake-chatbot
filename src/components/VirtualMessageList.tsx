@@ -5,7 +5,6 @@ import LoadingIndicator from './LoadingIndicator';
 import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
 import { ErrorBoundary } from './ErrorBoundary';
-import { useChatScroll } from '../hooks/useChatScroll';
 
 interface FileAttachment {
     name: string;
@@ -125,25 +124,36 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     teamId,
     onFeedbackSubmit
 }) => {
+    const listRef = useRef<HTMLDivElement>(null);
     const [startIndex, setStartIndex] = useState(Math.max(0, messages.length - BATCH_SIZE));
     const [endIndex, setEndIndex] = useState(messages.length);
-    
-    // Use the new chat scroll hook
-    const { 
-        containerRef: listRef, 
-        isUserScrolledUp, 
-        isAtBottom, 
-        scrollOnNewMessage 
-    } = useChatScroll({
-        threshold: 50,
-        smoothScroll: true,
-        autoScrollOnNewMessage: true
-    });
+    const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
+    const [isAtBottom, setIsAtBottom] = useState(true);
+    const lastScrollTop = useRef(0);
 
+    // Check if scrolled to bottom
+    const checkIfAtBottom = useCallback((element: HTMLElement) => {
+        const { scrollTop, scrollHeight, clientHeight } = element;
+        return Math.abs(scrollHeight - scrollTop - clientHeight) < 50;
+    }, []);
+
+    // Handle scroll events
     const handleScroll = useCallback(() => {
         if (!listRef.current) return;
 
         const element = listRef.current;
+        const currentScrollTop = element.scrollTop;
+        const isBottom = checkIfAtBottom(element);
+        
+        // Detect if user is manually scrolling up
+        if (currentScrollTop < lastScrollTop.current && !isBottom) {
+            setIsUserScrolledUp(true);
+        } else if (isBottom) {
+            setIsUserScrolledUp(false);
+        }
+        
+        setIsAtBottom(isBottom);
+        lastScrollTop.current = currentScrollTop;
         
         // Load more messages when scrolling up
         if (element.scrollTop < SCROLL_THRESHOLD && startIndex > 0) {
@@ -160,13 +170,14 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                 }
             });
         }
-    }, [startIndex]);
+    }, [startIndex, checkIfAtBottom]);
 
     const debouncedHandleScroll = useCallback(
         debounce(handleScroll, DEBOUNCE_DELAY),
         [handleScroll]
     );
 
+    // Add scroll listener
     useEffect(() => {
         const list = listRef.current;
         if (list) {
@@ -179,6 +190,19 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         };
     }, [debouncedHandleScroll]);
 
+    // Scroll to bottom function
+    const scrollToBottom = useCallback(() => {
+        if (!listRef.current) return;
+        
+        const element = listRef.current;
+        element.scrollTo({
+            top: element.scrollHeight,
+            behavior: 'smooth'
+        });
+        setIsUserScrolledUp(false);
+        setIsAtBottom(true);
+    }, []);
+
     useEffect(() => {
         // Update indices when new messages are added
         if (!isUserScrolledUp || messages[messages.length - 1]?.isUser) {
@@ -190,9 +214,11 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     useEffect(() => {
         // Auto-scroll on new messages
         if (!isUserScrolledUp || messages[messages.length - 1]?.isUser) {
-            scrollOnNewMessage();
+            requestAnimationFrame(() => {
+                scrollToBottom();
+            });
         }
-    }, [messages, endIndex, isUserScrolledUp, scrollOnNewMessage]);
+    }, [messages, endIndex, isUserScrolledUp, scrollToBottom]);
 
     const visibleMessages = messages.slice(startIndex, endIndex);
 
@@ -244,7 +270,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             {isUserScrolledUp && (
                 <button 
                     class="scroll-to-bottom-button"
-                    onClick={() => scrollOnNewMessage()}
+                    onClick={scrollToBottom}
                     aria-label="Scroll to latest message"
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -72,10 +72,15 @@ export const useChatScroll = (options: UseChatScrollOptions = {}) => {
     const element = containerRef.current;
     if (!element) return;
 
-    element.addEventListener('scroll', handleScroll, { passive: true });
+    // Use a more specific handler that doesn't conflict with other scroll listeners
+    const scrollHandler = () => {
+      handleScroll();
+    };
+
+    element.addEventListener('scroll', scrollHandler, { passive: true });
     
     return () => {
-      element.removeEventListener('scroll', handleScroll);
+      element.removeEventListener('scroll', scrollHandler);
     };
   }, [handleScroll]);
 
