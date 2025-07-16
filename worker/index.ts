@@ -117,6 +117,15 @@ class AIService {
     
     return {};
   }
+
+  // Clear cache for a specific team or all teams
+  clearCache(teamId?: string): void {
+    if (teamId) {
+      this.teamConfigCache.delete(teamId);
+    } else {
+      this.teamConfigCache.clear();
+    }
+  }
 }
 
 // Optimized Email Service
@@ -201,6 +210,22 @@ class WebhookService {
     return `t=${timestamp},v1=${signature}`;
   }
 
+  // Extract signing key from webhook secret (matches Laravel logic)
+  private extractSigningKeyFromSecret(webhookSecret: string): string {
+    // If it's a signed secret (starts with wh_), extract the signature part as signing key
+    if (webhookSecret.startsWith('wh_')) {
+      const parts = webhookSecret.split('.');
+      if (parts.length >= 2) {
+        // Use the signature part (first 12 characters of HMAC) as the signing key
+        const signature = parts[0].replace('wh_', '');
+        return signature;
+      }
+    }
+    
+    // If it's a simple secret, return as-is
+    return webhookSecret;
+  }
+
   // Send webhook with retry logic
   async sendWebhook(
     teamId: string,
@@ -234,7 +259,8 @@ class WebhookService {
     // Generate signature if secret is provided
     let signature = '';
     if (teamConfig.webhooks.secret) {
-      signature = await this.generateWebhookSignature(payloadString, teamConfig.webhooks.secret);
+      const signingKey = this.extractSigningKeyFromSecret(teamConfig.webhooks.secret);
+      signature = await this.generateWebhookSignature(payloadString, signingKey);
     }
 
     // Log webhook attempt (create table if it doesn't exist)
@@ -1278,8 +1304,13 @@ async function handleForms(request: Request, env: Env, corsHeaders: Record<strin
       }
     };
 
+    // Debug logging for webhook config
+    console.warn('Contact form webhook config:', JSON.stringify(teamConfig.webhooks));
+    console.warn('Contact form webhook event enabled:', teamConfig.webhooks?.events?.contactForm);
+
     // Fire and forget webhook - don't wait for completion
     webhookService.sendWebhook(body.teamId, 'contact_form', contactFormPayload, teamConfig)
+      .then(() => console.warn('Contact form webhook sent!'))
       .catch(error => console.warn('Contact form webhook failed:', error));
 
     return new Response(JSON.stringify({
@@ -2104,6 +2135,30 @@ async function handleWebhooks(request: Request, env: Env, corsHeaders: Record<st
     } catch (error) {
       console.error('Webhook test error:', error);
       return new Response(JSON.stringify({ error: 'Failed to send test webhook' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // POST /api/webhooks/clear-cache - Clear team config cache
+  if (path === '/api/webhooks/clear-cache' && request.method === 'POST') {
+    try {
+      const body = await parseJsonBody(request) as { teamId?: string };
+      
+      const aiService = new AIService(env.AI, env);
+      aiService.clearCache(body.teamId);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: body.teamId ? `Cache cleared for team ${body.teamId}` : 'All caches cleared'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } catch (error) {
+      console.error('Clear cache error:', error);
+      return new Response(JSON.stringify({ error: 'Failed to clear cache' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

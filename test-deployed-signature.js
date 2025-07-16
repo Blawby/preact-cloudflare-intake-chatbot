@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-// Extract signing key from webhook secret (matches Laravel logic)
+// Extract signing key from webhook secret (matches the deployed Worker logic)
 function extractSigningKeyFromSecret(webhookSecret) {
   // If it's a JWT-style token (starts with wh_), extract the actual signing key
   if (webhookSecret.startsWith('wh_')) {
@@ -23,7 +23,6 @@ function extractSigningKeyFromSecret(webhookSecret) {
   return webhookSecret;
 }
 
-// Test webhook signature generation
 async function generateHMACSHA256(message, key) {
   const encoder = new TextEncoder();
   const messageBytes = encoder.encode(message);
@@ -55,38 +54,39 @@ async function generateWebhookSignature(payload, signingKey, timestamp = null) {
     timestamp = Math.floor(Date.now() / 1000);
   }
 
-  // Create signed payload (timestamp.payload)
+  // Create the signed payload (timestamp.payload)
   const signedPayload = `${timestamp}.${payload}`;
-
+  
   // Generate HMAC-SHA256 signature
   const signature = await generateHMACSHA256(signedPayload, signingKey);
-
-  // Return in Stripe-like format
+  
+  // Return in Stripe format: t=timestamp,v1=signature
   return `t=${timestamp},v1=${signature}`;
 }
 
-// Test with the actual values from teams.json
+// Test with the actual webhook secret
+const webhookSecret = "wh_f1be34ea3bff.eyJ0IjoiMDFqcTcwam5zdHlmemV2YzY0MjNjemg1MGUiLCJwIjoiaW50YWtlLWZvcm0ifQ==";
+const extractedKey = extractSigningKeyFromSecret(webhookSecret);
+
+console.log('Webhook Secret:', webhookSecret);
+console.log('Extracted Signing Key:', extractedKey);
+
+// Test payload
 const testPayload = JSON.stringify({
-  event: 'contact_form',
-  timestamp: '2025-07-16T04:55:59.276Z',
-  teamId: 'north-carolina-legal-services',
+  event: "contact_form",
+  timestamp: "2025-07-16T05:09:20.305Z",
+  teamId: "north-carolina-legal-services",
   test: true,
-  data: {
-    message: 'This is a test webhook payload'
-  }
+  data: { message: "This is a test webhook payload" }
 });
 
-const secret = 'wh_f1be34ea3bff.eyJ0IjoiMDFqcTcwam5zdHlmemV2YzY0MjNjemg1MGUiLCJwIjoiaW50YWtlLWZvcm0ifQ==';
 const timestamp = Math.floor(Date.now() / 1000);
+const signature = await generateWebhookSignature(testPayload, extractedKey, timestamp);
 
-// Extract the actual signing key
-const signingKey = extractSigningKeyFromSecret(secret);
+console.log('\nTest Payload:', testPayload);
+console.log('Timestamp:', timestamp);
+console.log('Generated Signature:', signature);
 
-generateWebhookSignature(testPayload, signingKey, timestamp).then(signature => {
-  console.log('Test Payload:', testPayload);
-  console.log('Original Secret:', secret);
-  console.log('Extracted Signing Key:', signingKey);
-  console.log('Timestamp:', timestamp);
-  console.log('Generated Signature:', signature);
-  console.log('Signed Payload:', `${timestamp}.${testPayload}`);
-}); 
+// Also test with the raw secret for comparison
+const rawSignature = await generateWebhookSignature(testPayload, webhookSecret, timestamp);
+console.log('Raw Secret Signature:', rawSignature); 
