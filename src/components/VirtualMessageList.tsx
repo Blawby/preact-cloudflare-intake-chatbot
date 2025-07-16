@@ -5,6 +5,7 @@ import LoadingIndicator from './LoadingIndicator';
 import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
 import { ErrorBoundary } from './ErrorBoundary';
+import { useChatScroll } from '../hooks/useChatScroll';
 
 interface FileAttachment {
     name: string;
@@ -124,23 +125,26 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     teamId,
     onFeedbackSubmit
 }) => {
-    const listRef = useRef<HTMLDivElement>(null);
     const [startIndex, setStartIndex] = useState(Math.max(0, messages.length - BATCH_SIZE));
     const [endIndex, setEndIndex] = useState(messages.length);
-    const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
-
-    const checkIfScrolledToBottom = useCallback((element: HTMLElement) => {
-        const { scrollTop, scrollHeight, clientHeight } = element;
-        return Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
-    }, []);
+    
+    // Use the new chat scroll hook
+    const { 
+        containerRef: listRef, 
+        isUserScrolledUp, 
+        isAtBottom, 
+        scrollOnNewMessage 
+    } = useChatScroll({
+        threshold: 50,
+        smoothScroll: true,
+        autoScrollOnNewMessage: true
+    });
 
     const handleScroll = useCallback(() => {
         if (!listRef.current) return;
 
         const element = listRef.current;
-        const isBottom = checkIfScrolledToBottom(element);
-        setIsScrolledToBottom(isBottom);
-
+        
         // Load more messages when scrolling up
         if (element.scrollTop < SCROLL_THRESHOLD && startIndex > 0) {
             const newStartIndex = Math.max(0, startIndex - BATCH_SIZE);
@@ -156,7 +160,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                 }
             });
         }
-    }, [startIndex, checkIfScrolledToBottom]);
+    }, [startIndex]);
 
     const debouncedHandleScroll = useCallback(
         debounce(handleScroll, DEBOUNCE_DELAY),
@@ -177,62 +181,78 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
 
     useEffect(() => {
         // Update indices when new messages are added
-        if (isScrolledToBottom || messages[messages.length - 1]?.isUser) {
+        if (!isUserScrolledUp || messages[messages.length - 1]?.isUser) {
             setEndIndex(messages.length);
             setStartIndex(Math.max(0, messages.length - BATCH_SIZE));
         }
-    }, [messages.length, isScrolledToBottom]);
+    }, [messages.length, isUserScrolledUp]);
 
     useEffect(() => {
-        // Scroll to bottom when new messages are added and we're at the bottom
-        if (listRef.current && (isScrolledToBottom || messages[messages.length - 1]?.isUser)) {
-            listRef.current.scrollTop = listRef.current.scrollHeight;
+        // Auto-scroll on new messages
+        if (!isUserScrolledUp || messages[messages.length - 1]?.isUser) {
+            scrollOnNewMessage();
         }
-    }, [messages, endIndex, isScrolledToBottom]);
+    }, [messages, endIndex, isUserScrolledUp, scrollOnNewMessage]);
 
     const visibleMessages = messages.slice(startIndex, endIndex);
 
     return (
-        <div 
-            class="message-list" 
-            ref={listRef}
-        >
-            {startIndex > 0 && (
-                <div class="load-more-trigger">
-                    <LoadingIndicator />
-                </div>
+        <div class="message-list-container">
+            <div 
+                class="message-list" 
+                ref={listRef}
+            >
+                {startIndex > 0 && (
+                    <div class="load-more-trigger">
+                        <LoadingIndicator />
+                    </div>
+                )}
+                <ErrorBoundary>
+                    {visibleMessages.map((message, index) => (
+                        <Message
+                            key={startIndex + index}
+                            content={message.content}
+                            isUser={message.isUser}
+                            files={message.files}
+                            scheduling={message.scheduling}
+                            matterCreation={message.matterCreation}
+                            welcomeMessage={message.welcomeMessage}
+                            matterCanvas={message.matterCanvas}
+                            qualityScore={message.qualityScore}
+                            onDateSelect={onDateSelect}
+                            onTimeOfDaySelect={onTimeOfDaySelect}
+                            onTimeSlotSelect={onTimeSlotSelect}
+                            onRequestMoreDates={onRequestMoreDates}
+                            onServiceSelect={onServiceSelect}
+                            onUrgencySelect={onUrgencySelect}
+                            onCreateMatter={onCreateMatter}
+                            onScheduleConsultation={onScheduleConsultation}
+                            onLearnServices={onLearnServices}
+                            teamConfig={teamConfig}
+                            onOpenSidebar={onOpenSidebar}
+                            isLoading={message.isLoading}
+                            id={message.id}
+                            sessionId={sessionId}
+                            teamId={teamId}
+                            onFeedbackSubmit={onFeedbackSubmit}
+                        />
+                    ))}
+                </ErrorBoundary>
+            </div>
+            
+            {/* Scroll to bottom button - appears when user has scrolled up */}
+            {isUserScrolledUp && (
+                <button 
+                    class="scroll-to-bottom-button"
+                    onClick={() => scrollOnNewMessage()}
+                    aria-label="Scroll to latest message"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M7 13l5 5 5-5"/>
+                        <path d="M7 6l5 5 5-5"/>
+                    </svg>
+                </button>
             )}
-            <ErrorBoundary>
-                {visibleMessages.map((message, index) => (
-                    <Message
-                        key={startIndex + index}
-                        content={message.content}
-                        isUser={message.isUser}
-                        files={message.files}
-                        scheduling={message.scheduling}
-                        matterCreation={message.matterCreation}
-                        welcomeMessage={message.welcomeMessage}
-                        matterCanvas={message.matterCanvas}
-                        qualityScore={message.qualityScore}
-                        onDateSelect={onDateSelect}
-                        onTimeOfDaySelect={onTimeOfDaySelect}
-                        onTimeSlotSelect={onTimeSlotSelect}
-                        onRequestMoreDates={onRequestMoreDates}
-                        onServiceSelect={onServiceSelect}
-                        onUrgencySelect={onUrgencySelect}
-                        onCreateMatter={onCreateMatter}
-                        onScheduleConsultation={onScheduleConsultation}
-                        onLearnServices={onLearnServices}
-                        teamConfig={teamConfig}
-                        onOpenSidebar={onOpenSidebar}
-                        isLoading={message.isLoading}
-                        id={message.id}
-                        sessionId={sessionId}
-                        teamId={teamId}
-                        onFeedbackSubmit={onFeedbackSubmit}
-                    />
-                ))}
-            </ErrorBoundary>
         </div>
     );
 };
