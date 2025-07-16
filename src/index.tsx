@@ -334,9 +334,16 @@ export function App() {
 		if (typeof window !== 'undefined') {
 			const urlParams = new URLSearchParams(window.location.search);
 			const teamIdParam = urlParams.get('teamId');
+			const hostname = window.location.hostname;
+			
+			// Domain-based team routing
+			if (hostname === 'northcarolinalegalservices.blawby.com') {
+				setTeamId('north-carolina-legal-services');
+				return;
+			}
 			
 			// Check if we're on the root domain with no parameters - redirect to Blawby AI
-			if (window.location.hostname === 'ai.blawby.com' && 
+			if (hostname === 'ai.blawby.com' && 
 				window.location.pathname === '/' && 
 				!teamIdParam) {
 				// Redirect to Blawby AI
