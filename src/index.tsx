@@ -1446,6 +1446,8 @@ export function App() {
 			};
 			
 			console.log('Matter creation API request:', requestBody);
+			console.log('Current teamId:', teamId);
+			console.log('API endpoint:', getMatterCreationEndpoint());
 			
 			const response = await fetch(getMatterCreationEndpoint(), {
 				method: 'POST',
@@ -1454,6 +1456,9 @@ export function App() {
 				},
 				body: JSON.stringify(requestBody)
 			});
+
+			console.log('API response status:', response.status);
+			console.log('API response headers:', Object.fromEntries(response.headers.entries()));
 
 			if (!response.ok) {
 				const errorText = await response.text();
