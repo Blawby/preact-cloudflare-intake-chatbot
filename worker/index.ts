@@ -2108,16 +2108,35 @@ async function handleWebhooks(request: Request, env: Env, corsHeaders: Record<st
         });
       }
 
-      // Create test payload
-      const testPayload = body.testPayload || {
-        event: body.webhookType,
-        timestamp: new Date().toISOString(),
-        teamId: body.teamId,
-        test: true,
-        data: {
-          message: 'This is a test webhook payload'
-        }
-      };
+      // Create test payload based on webhook type
+      let testPayload;
+      if (body.testPayload) {
+        testPayload = body.testPayload;
+      } else if (body.webhookType === 'contact_form') {
+        testPayload = {
+          event: body.webhookType,
+          timestamp: new Date().toISOString(),
+          teamId: body.teamId,
+          formId: crypto.randomUUID(),
+          contactForm: {
+            email: "test@example.com",
+            phoneNumber: "+1234567890",
+            urgency: "high",
+            matterDetails: "This is a test matter from webhook",
+            status: "pending"
+          }
+        };
+      } else {
+        testPayload = {
+          event: body.webhookType,
+          timestamp: new Date().toISOString(),
+          teamId: body.teamId,
+          test: true,
+          data: {
+            message: 'This is a test webhook payload'
+          }
+        };
+      }
 
       // Send test webhook
       const webhookService = new WebhookService(env);
