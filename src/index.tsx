@@ -1,5 +1,5 @@
 import { hydrate, prerender as ssr } from 'preact-iso';
-import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'preact/hooks';
 // Remove direct imports of components that will be lazy-loaded
 // import FileMenu from './components/FileMenu';
 import LoadingIndicator from './components/LoadingIndicator';
@@ -517,94 +517,109 @@ export function App() {
 		setMessages((prev) => [...prev, newMessage]);
 	};
 
-	// Add matter creation handlers
-	const handleCreateMatterStart = () => {
-		// Send user's matter creation request message
-		const matterMessage: ChatMessage = {
-			content: "I'd like to create a matter and get help with my legal concern.",
-			isUser: true
-		};
-		
-		setMessages([...messages, matterMessage]);
-		setInputValue('');
-		
-		// Add placeholder message with loading indicator (ChatGPT style)
-		const loadingMessageId = crypto.randomUUID();
-		const loadingMessage: ChatMessage = {
-			content: "Let me set up your matter creation process...",
-			isUser: false,
-			isLoading: true,
-			id: loadingMessageId
-		};
-		setMessages(prev => [...prev, loadingMessage]);
-		
-		// Start matter creation flow
-		setTimeout(() => {
-			const services = teamConfig.availableServices || [];
-			const serviceOptions = services.length > 0 
-				? services.map(service => `• ${service}`).join('\n')
-				: '• Family Law\n• Business Law\n• Employment Law\n• Real Estate\n• Criminal Law\n• Other';
+	// Create debounced welcome button handlers to prevent spam clicks
+	const debouncedCreateMatterStart = useMemo(() => 
+		debounce(() => {
+			// Send user's matter creation request message
+			const matterMessage: ChatMessage = {
+				content: "I'd like to create a matter and get help with my legal concern.",
+				isUser: true
+			};
 			
-			// Update the loading message with actual content
-			setMessages(prev => prev.map(msg => 
-				msg.id === loadingMessageId 
-					? {
-						...msg,
-						content: `I'm here to help you create a matter and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
-						isLoading: false,
-						matterCreation: {
-							type: 'service-selection',
-							availableServices: services
-						}
-					}
-					: msg
-			));
+			setMessages([...messages, matterMessage]);
+			setInputValue('');
+			
+			// Add placeholder message with loading indicator (ChatGPT style)
+			const loadingMessageId = crypto.randomUUID();
+			const loadingMessage: ChatMessage = {
+				content: "Let me set up your matter creation process...",
+				isUser: false,
+				isLoading: true,
+				id: loadingMessageId
+			};
+			setMessages(prev => [...prev, loadingMessage]);
 			
 			// Start matter creation flow
-			setMatterState({
-				step: 'gathering-info',
-				data: {},
-				isActive: true
-			});
-		}, 1000);
+			setTimeout(() => {
+				const services = teamConfig.availableServices || [];
+				const serviceOptions = services.length > 0 
+					? services.map(service => `• ${service}`).join('\n')
+					: '• Family Law\n• Business Law\n• Employment Law\n• Real Estate\n• Criminal Law\n• Other';
+				
+				// Update the loading message with actual content
+				setMessages(prev => prev.map(msg => 
+					msg.id === loadingMessageId 
+						? {
+							...msg,
+							content: `I'm here to help you create a matter and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
+							isLoading: false,
+							matterCreation: {
+								type: 'service-selection',
+								availableServices: services
+							}
+						}
+						: msg
+				));
+				
+				// Start matter creation flow
+				setMatterState({
+					step: 'gathering-info',
+					data: {},
+					isActive: true
+				});
+			}, 1000);
+		}, 500), // 500ms debounce delay
+		[messages, teamConfig.availableServices]
+	);
+
+	const debouncedScheduleStart = useMemo(() => 
+		debounce(() => {
+			// Send user's scheduling request message
+			const schedulingMessage: ChatMessage = {
+				content: "I'd like to request a consultation.",
+				isUser: true
+			};
+			
+			setMessages([...messages, schedulingMessage]);
+			setInputValue('');
+			
+			// Add placeholder message with loading indicator (ChatGPT style)
+			const loadingMessageId = crypto.randomUUID();
+			const loadingMessage: ChatMessage = {
+				content: "Let me help you schedule a consultation...",
+				isUser: false,
+				isLoading: true,
+				id: loadingMessageId
+			};
+			setMessages(prev => [...prev, loadingMessage]);
+			
+			// Use our scheduling utility to create the AI response
+			setTimeout(() => {
+				const aiResponse = createSchedulingResponse('initial');
+				// Update the loading message with actual content
+				setMessages(prev => prev.map(msg => 
+					msg.id === loadingMessageId 
+						? {
+							...msg,
+							content: aiResponse.content,
+							isLoading: false,
+							scheduling: aiResponse.scheduling
+						}
+						: msg
+				));
+			}, 800);
+		}, 500), // 500ms debounce delay
+		[messages]
+	);
+
+	// Add matter creation handlers (now debounced)
+	const handleCreateMatterStart = () => {
+		debouncedCreateMatterStart();
 	};
 
-	// Add scheduling handlers
+	// Add scheduling handlers (now debounced)
 	const handleScheduleStart = () => {
-		// Send user's scheduling request message
-		const schedulingMessage: ChatMessage = {
-			content: "I'd like to request a consultation.",
-			isUser: true
-		};
-		
-		setMessages([...messages, schedulingMessage]);
-		setInputValue('');
-		
-		// Add placeholder message with loading indicator (ChatGPT style)
-		const loadingMessageId = crypto.randomUUID();
-		const loadingMessage: ChatMessage = {
-			content: "Let me help you schedule a consultation...",
-			isUser: false,
-			isLoading: true,
-			id: loadingMessageId
-		};
-		setMessages(prev => [...prev, loadingMessage]);
-		
-		// Use our scheduling utility to create the AI response
-		setTimeout(() => {
-			const aiResponse = createSchedulingResponse('initial');
-			// Update the loading message with actual content
-			setMessages(prev => prev.map(msg => 
-				msg.id === loadingMessageId 
-					? {
-						...msg,
-						content: aiResponse.content,
-						isLoading: false,
-						scheduling: aiResponse.scheduling
-					}
-					: msg
-			));
-		}, 800);
+		debouncedScheduleStart();
 	};
 	
 	const handleDateSelect = (date: Date) => {
@@ -1231,144 +1246,160 @@ export function App() {
 		debouncedSubmit();
 	};
 
-	// Handle service selection from buttons
-	const handleServiceSelect = async (service: string) => {
-		// Add user message
-		const userMessage: ChatMessage = {
-			content: service,
-			isUser: true
-		};
-		setMessages(prev => [...prev, userMessage]);
-		
-		// Add placeholder message with loading indicator (ChatGPT style)
-		const loadingMessageId = crypto.randomUUID();
-		
-		try {
-			// Ensure matter state is properly initialized
-			if (!matterState.isActive) {
-				setMatterState({
-					step: 'gathering-info',
-					data: {},
-					isActive: true
-				});
-			}
-			const loadingMessage: ChatMessage = {
-				content: `Great choice! Let me get the right questions for ${service}...`,
-				isUser: false,
-				isLoading: true,
-				id: loadingMessageId
+	// Create debounced service selection handler to prevent spam clicks
+	const debouncedServiceSelect = useMemo(() => 
+		debounce(async (service: string) => {
+			// Add user message
+			const userMessage: ChatMessage = {
+				content: service,
+				isUser: true
 			};
-			setMessages(prev => [...prev, loadingMessage]);
+			setMessages(prev => [...prev, userMessage]);
 			
-			// Call API for service selection
-			const result = await handleMatterCreationAPI('service-selection', { service });
-			
-			setMatterState(prev => ({
-				...prev,
-				data: { ...prev.data, matterType: service },
-				step: result.step === 'questions' ? 'ai-questions' : 'matter-details',
-				currentQuestionIndex: result.currentQuestion ? result.currentQuestion - 1 : 0
-			}));
-			
-			// Update the loading message with actual content
-			setTimeout(() => {
-				setMessages(prev => prev.map(msg => 
-					msg.id === loadingMessageId 
-						? {
-							...msg,
-							content: result.message,
-							isLoading: false,
-							matterCreation: result.step === 'urgency-selection' ? {
-								type: 'urgency-selection',
-								availableServices: []
-							} : undefined
-						}
-						: msg
-				));
-			}, 300);
-		} catch (error) {
-			console.error('Service selection error:', error);
-			// Update loading message with error content
-			setTimeout(() => {
-				setMessages(prev => prev.map(msg => 
-					msg.id === loadingMessageId 
-						? {
-							...msg,
-							content: "I apologize, but I encountered an error processing your service selection. Please try again.",
-							isLoading: false
-						}
-						: msg
-				));
-			}, 300);
-		}
-	};
-
-	// Handle urgency selection from buttons
-	const handleUrgencySelect = async (urgency: string) => {
-		// Add user message
-		const userMessage: ChatMessage = {
-			content: urgency,
-			isUser: true
-		};
-		setMessages(prev => [...prev, userMessage]);
-		
-		try {
 			// Add placeholder message with loading indicator (ChatGPT style)
 			const loadingMessageId = crypto.randomUUID();
-			const loadingMessage: ChatMessage = {
-				content: `Got it! Let me prepare the right questions for your ${urgency.toLowerCase()} matter...`,
-				isUser: false,
-				isLoading: true,
-				id: loadingMessageId
-			};
-			setMessages(prev => [...prev, loadingMessage]);
 			
-			// Call API for urgency selection
-			const result = await handleMatterCreationAPI('urgency-selection', {
-				service: matterState.data.matterType,
-				urgency: urgency
-			});
-			
-			setMatterState(prev => ({
-				...prev,
-				data: { ...prev.data, urgency: urgency },
-				step: result.step,
-				currentQuestionIndex: result.currentQuestionIndex || 0
-			}));
-			
-			// If we're moving to AI questions, we need to handle the first question
-			if (result.step === 'ai-questions' && result.question) {
-				// The AI response will include the question, so we don't need to add it separately
-				// The user will see the question in the AI message and can respond in the chat input
+			try {
+				// Ensure matter state is properly initialized
+				if (!matterState.isActive) {
+					setMatterState({
+						step: 'gathering-info',
+						data: {},
+						isActive: true
+					});
+				}
+				const loadingMessage: ChatMessage = {
+					content: `Great choice! Let me get the right questions for ${service}...`,
+					isUser: false,
+					isLoading: true,
+					id: loadingMessageId
+				};
+				setMessages(prev => [...prev, loadingMessage]);
+				
+				// Call API for service selection
+				const result = await handleMatterCreationAPI('service-selection', { service });
+				
+				setMatterState(prev => ({
+					...prev,
+					data: { ...prev.data, matterType: service },
+					step: result.step === 'questions' ? 'ai-questions' : 'matter-details',
+					currentQuestionIndex: result.currentQuestion ? result.currentQuestion - 1 : 0
+				}));
+				
+				// Update the loading message with actual content
+				setTimeout(() => {
+					setMessages(prev => prev.map(msg => 
+						msg.id === loadingMessageId 
+							? {
+								...msg,
+								content: result.message,
+								isLoading: false,
+								matterCreation: result.step === 'urgency-selection' ? {
+									type: 'urgency-selection',
+									availableServices: []
+								} : undefined
+							}
+							: msg
+					));
+				}, 300);
+			} catch (error) {
+				console.error('Service selection error:', error);
+				// Update loading message with error content
+				setTimeout(() => {
+					setMessages(prev => prev.map(msg => 
+						msg.id === loadingMessageId 
+							? {
+								...msg,
+								content: "I apologize, but I encountered an error processing your service selection. Please try again.",
+								isLoading: false
+							}
+							: msg
+					));
+				}, 300);
 			}
+		}, 500), // 500ms debounce delay
+		[matterState.isActive, matterState.data]
+	);
+
+	// Handle service selection from buttons (now debounced)
+	const handleServiceSelect = (service: string) => {
+		debouncedServiceSelect(service);
+	};
+
+	// Create debounced urgency selection handler to prevent spam clicks
+	const debouncedUrgencySelect = useMemo(() => 
+		debounce(async (urgency: string) => {
+			// Add user message
+			const userMessage: ChatMessage = {
+				content: urgency,
+				isUser: true
+			};
+			setMessages(prev => [...prev, userMessage]);
 			
-			// Update the loading message with actual content
-			setTimeout(() => {
-				setMessages(prev => prev.map(msg => 
-					msg.id === loadingMessageId 
-						? {
-							...msg,
-							content: result.message,
-							isLoading: false
-						}
-						: msg
-				));
-			}, 300);
-		} catch (error) {
-			console.error('Urgency selection error:', error);
-			// Update loading message with error content
-			setTimeout(() => {
-				setMessages(prev => prev.map(msg => 
-					msg.id === loadingMessageId 
-						? {
-							...msg,
-							content: "I apologize, but I encountered an error processing your urgency selection. Please try again.",
-							isLoading: false
-						}
-						: msg
-				));
-			}, 300);
-		}
+			try {
+				// Add placeholder message with loading indicator (ChatGPT style)
+				const loadingMessageId = crypto.randomUUID();
+				const loadingMessage: ChatMessage = {
+					content: `Got it! Let me prepare the right questions for your ${urgency.toLowerCase()} matter...`,
+					isUser: false,
+					isLoading: true,
+					id: loadingMessageId
+				};
+				setMessages(prev => [...prev, loadingMessage]);
+				
+				// Call API for urgency selection
+				const result = await handleMatterCreationAPI('urgency-selection', {
+					service: matterState.data.matterType,
+					urgency: urgency
+				});
+				
+				setMatterState(prev => ({
+					...prev,
+					data: { ...prev.data, urgency: urgency },
+					step: result.step,
+					currentQuestionIndex: result.currentQuestionIndex || 0
+				}));
+				
+				// If we're moving to AI questions, we need to handle the first question
+				if (result.step === 'ai-questions' && result.question) {
+					// The AI response will include the question, so we don't need to add it separately
+					// The user will see the question in the AI message and can respond in the chat input
+				}
+				
+				// Update the loading message with actual content
+				setTimeout(() => {
+					setMessages(prev => prev.map(msg => 
+						msg.id === loadingMessageId 
+							? {
+								...msg,
+								content: result.message,
+								isLoading: false
+							}
+							: msg
+					));
+				}, 300);
+			} catch (error) {
+				console.error('Urgency selection error:', error);
+				// Update loading message with error content
+				setTimeout(() => {
+					setMessages(prev => prev.map(msg => 
+						msg.id === loadingMessageId 
+							? {
+								...msg,
+								content: "I apologize, but I encountered an error processing your urgency selection. Please try again.",
+								isLoading: false
+							}
+							: msg
+					));
+				}, 300);
+			}
+		}, 500), // 500ms debounce delay
+		[matterState.data.matterType]
+	);
+
+	// Handle urgency selection from buttons (now debounced)
+	const handleUrgencySelect = (urgency: string) => {
+		debouncedUrgencySelect(urgency);
 	};
 
 	// API-driven matter creation handler
