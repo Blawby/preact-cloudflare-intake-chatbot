@@ -465,8 +465,8 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				)}
 				
 				{/* Display files */}
-				{imageFiles.map(file => (
-					<ImagePreview key={file.url} file={file} />
+				{imageFiles.map((file, index) => (
+					<ImagePreview key={file.url || index} file={file} />
 				))}
 				
 				{otherFiles.map((file, index) => (
@@ -491,9 +491,6 @@ const Message: FunctionComponent<MessageProps> = memo(({
 							className="message-media"
 						/>
 					</div>
-				))}
-				{imageFiles.map((file, index) => (
-					<ImagePreview key={index} file={file} />
 				))}
 				
 				{/* Show feedback UI only on AI messages and when not loading */}
