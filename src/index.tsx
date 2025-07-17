@@ -1256,6 +1256,54 @@ export function App() {
 		debouncedSubmit();
 	};
 
+	// API-driven matter creation handler
+	const handleMatterCreationAPI = useCallback(async (step: string, data: any = {}) => {
+		try {
+			// Ensure we have a valid teamId
+			if (!teamId) {
+				throw new Error('TeamId not set - cannot make API request');
+			}
+			
+			const requestBody = {
+				teamId: teamId,
+				service: data.service || matterState.data.matterType,
+				step: step,
+				currentQuestionIndex: data.currentQuestionIndex,
+				answers: data.answers,
+				description: data.description,
+				urgency: data.urgency
+			};
+			
+			console.log('Matter creation API request:', requestBody);
+			console.log('Current teamId:', teamId);
+			console.log('API endpoint:', getMatterCreationEndpoint());
+			
+			const response = await fetch(getMatterCreationEndpoint(), {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			console.log('API response status:', response.status);
+			console.log('API response headers:', Object.fromEntries(response.headers.entries()));
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('API response error:', response.status, errorText);
+				throw new Error(`API request failed: ${response.status} - ${errorText}`);
+			}
+
+			const result = await response.json();
+			console.log('Matter creation API response:', result);
+			return result;
+		} catch (error) {
+			console.error('Matter creation API error:', error);
+			throw error;
+		}
+	}, [teamId, matterState.data.matterType]);
+
 	// Create debounced service selection handler to prevent spam clicks
 	const debouncedServiceSelect = useMemo(() => 
 		debounce(async (service: string) => {
@@ -1451,54 +1499,6 @@ export function App() {
 		console.log('Current matterState:', matterState);
 		debouncedUrgencySelect(urgency);
 	};
-
-	// API-driven matter creation handler
-	const handleMatterCreationAPI = useCallback(async (step: string, data: any = {}) => {
-		try {
-			// Ensure we have a valid teamId
-			if (!teamId) {
-				throw new Error('TeamId not set - cannot make API request');
-			}
-			
-			const requestBody = {
-				teamId: teamId,
-				service: data.service || matterState.data.matterType,
-				step: step,
-				currentQuestionIndex: data.currentQuestionIndex,
-				answers: data.answers,
-				description: data.description,
-				urgency: data.urgency
-			};
-			
-			console.log('Matter creation API request:', requestBody);
-			console.log('Current teamId:', teamId);
-			console.log('API endpoint:', getMatterCreationEndpoint());
-			
-			const response = await fetch(getMatterCreationEndpoint(), {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(requestBody)
-			});
-
-			console.log('API response status:', response.status);
-			console.log('API response headers:', Object.fromEntries(response.headers.entries()));
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error('API response error:', response.status, errorText);
-				throw new Error(`API request failed: ${response.status} - ${errorText}`);
-			}
-
-			const result = await response.json();
-			console.log('Matter creation API response:', result);
-			return result;
-		} catch (error) {
-			console.error('Matter creation API error:', error);
-			throw error;
-		}
-	}, [teamId, matterState.data.matterType]);
 
 	// Handle matter creation flow steps
 	const handleMatterCreationStep = async (message: string, attachments: FileAttachment[] = []) => {
@@ -1751,7 +1751,7 @@ export function App() {
 						setTimeout(() => {
 							const nextQuestion = followUpQuestions[currentFollowUpIndex + 1];
 							const aiResponse: ChatMessage = {
-								content: `**${nextQuestion}**`,
+								content: `${nextQuestion}`,
 								isUser: false
 							};
 							setMessages(prev => [...prev, aiResponse]);
