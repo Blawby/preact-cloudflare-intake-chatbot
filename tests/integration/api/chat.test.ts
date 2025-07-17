@@ -1,123 +1,185 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { handleChat } from '../../../worker/routes/chat';
+import { handleHealth } from '../../../worker/routes/health';
+import { handleTeams } from '../../../worker/routes/teams';
 
-// Mock fetch for these tests
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Mock the services that the route handlers depend on
+vi.mock('../../../worker/services/AIService', () => ({
+  AIService: vi.fn().mockImplementation(() => ({
+    getTeamConfig: vi.fn().mockResolvedValue({
+      requiresPayment: false,
+      consultationFee: 0,
+      availableServices: ['Family Law', 'Business Law'],
+      serviceQuestions: {
+        'Family Law': ['What type of family issue?'],
+        'Business Law': ['What type of business issue?']
+      }
+    }),
+    runLLM: vi.fn().mockResolvedValue({
+      response: 'I understand your situation. How can I help you with your legal matter?'
+    })
+  }))
+}));
+
+// Mock the utils
+vi.mock('../../../worker/utils', () => ({
+  parseJsonBody: vi.fn().mockImplementation(async (request: Request) => {
+    // Simulate the actual parseJsonBody behavior
+    try {
+      return await request.json();
+    } catch {
+      throw new Error("Invalid JSON");
+    }
+  }),
+  logChatMessage: vi.fn().mockResolvedValue(undefined),
+  CORS_HEADERS: {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  }
+}));
 
 describe('Chat API Integration Tests', () => {
+  let mockEnv;
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
   beforeEach(() => {
-    mockFetch.mockClear();
+    vi.clearAllMocks();
+    mockEnv = {
+      AI: {},
+      DB: {
+        prepare: vi.fn().mockReturnValue({
+          bind: vi.fn().mockReturnValue({
+            run: vi.fn().mockResolvedValue({}),
+            all: vi.fn().mockResolvedValue({
+              results: [
+                { id: 'team1', name: 'Test Team', config: JSON.stringify({ availableServices: ['Family Law'] }) }
+              ]
+            })
+          }),
+          all: vi.fn().mockResolvedValue({
+            results: [
+              { id: 'team1', name: 'Test Team', config: JSON.stringify({ availableServices: ['Family Law'] }) }
+            ]
+          })
+        })
+      },
+      CHAT_SESSIONS: {
+        put: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue(null)
+      },
+      RESEND_API_KEY: 'test-key',
+      FILES_BUCKET: undefined
+    };
   });
 
   describe('Basic Chat Functionality', () => {
     it('should handle basic chat messages', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ message: 'Hello! How can I help you with your legal matter?' }),
+      const requestBody = {
+        messages: [
+          { role: 'user', content: 'I need help with a legal matter' }
+        ],
+        teamId: 'team1',
+        sessionId: 'session1'
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/chat', {
+      const request = new Request('http://localhost/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Hello, I need legal help' }],
-          teamId: 'blawby-ai',
-          sessionId: 'test-session',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
+      const response = await handleChat(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toHaveProperty('message');
-      expect(typeof data.message).toBe('string');
+      expect(data).toHaveProperty('response');
+      expect(data).toHaveProperty('intent');
     });
 
     it('should handle chat with matter intent', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ 
-          message: 'I understand you need help with a business contract dispute. Let me guide you through our matter creation process.' 
-        }),
+      const requestBody = {
+        messages: [
+          { role: 'user', content: 'I want to start a legal matter' }
+        ],
+        teamId: 'team1',
+        sessionId: 'session1'
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/chat', {
+      const request = new Request('http://localhost/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'I need help with a business contract dispute' }],
-          teamId: 'blawby-ai',
-          sessionId: 'test-session',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
+      const response = await handleChat(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toHaveProperty('message');
-      expect(data.message).toContain('business') || expect(data.message).toContain('contract');
+      expect(data).toHaveProperty('response');
     });
   });
 
   describe('Health Check', () => {
     it('should return health status', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ status: 'healthy', timestamp: new Date().toISOString() }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+      const request = new Request('http://localhost/api/health', {
+        method: 'GET'
+      });
 
-      const response = await fetch('/api/health');
+      const response = await handleHealth(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toHaveProperty('status');
+      expect(data).toHaveProperty('status', 'ok');
     });
   });
 
   describe('Teams Management', () => {
     it('should return available teams', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve([
-          { id: 'blawby-ai', name: 'Blawby AI' },
-          { id: 'north-carolina-legal-services', name: 'North Carolina Legal Services' }
-        ]),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+      const request = new Request('http://localhost/api/teams', {
+        method: 'GET'
+      });
 
-      const response = await fetch('/api/teams');
+      const response = await handleTeams(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(Array.isArray(data)).toBe(true);
-      expect(data.length).toBeGreaterThan(0);
     });
   });
 
   describe('Error Handling', () => {
-    it('should handle network errors', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'));
+    it('should handle invalid request method', async () => {
+      const request = new Request('http://localhost/api/chat', {
+        method: 'GET'
+      });
 
-      await expect(fetch('/api/chat')).rejects.toThrow('Network error');
+      const response = await handleChat(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(405);
+      const data = await response.json();
+      expect(data).toHaveProperty('error');
     });
 
-    it('should handle server errors', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ error: 'Internal server error' }),
+    it('should handle missing messages', async () => {
+      const requestBody = {
+        teamId: 'team1',
+        sessionId: 'session1'
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/chat');
-      expect(response.status).toBe(500);
+      const request = new Request('http://localhost/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const response = await handleChat(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(400);
       const data = await response.json();
       expect(data).toHaveProperty('error');
     });

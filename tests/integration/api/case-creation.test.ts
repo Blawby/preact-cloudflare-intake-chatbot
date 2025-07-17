@@ -1,246 +1,275 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { handleMatterCreation } from '../../../worker/routes/matter-creation';
 
-// Mock fetch for these tests
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Mock the services that the route handlers depend on
+vi.mock('../../../worker/services/AIService', () => ({
+  AIService: vi.fn().mockImplementation(() => ({
+    getTeamConfig: vi.fn().mockImplementation(async (teamId) => {
+      if (teamId === 'invalid-team') return {};
+      return {
+        availableServices: ['Family Law', 'Business Law', 'Employment Law', 'Criminal Law'],
+        serviceQuestions: {
+          'Family Law': [
+            'What type of family issue are you dealing with?',
+            'Are there any children involved?',
+            'Have you filed any court documents?',
+            'What is your current living situation?',
+            'Do you have any existing court orders?'
+          ],
+          'Business Law': [
+            'What type of business issue are you facing?',
+            'Is this related to contracts, employment, or something else?',
+            'What is the estimated value of this matter?',
+            'Have you consulted with any other attorneys?'
+          ]
+        }
+      };
+    }),
+    runLLM: vi.fn().mockResolvedValue({
+      response: 'I understand your situation. Let me help you with the next steps.'
+    })
+  }))
+}));
+
+// Mock the utils
+vi.mock('../../../worker/utils', () => ({
+  parseJsonBody: vi.fn().mockImplementation(async (request: Request) => {
+    // Simulate the actual parseJsonBody behavior
+    try {
+      return await request.json();
+    } catch {
+      throw new Error("Invalid JSON");
+    }
+  }),
+  createMatterRecord: vi.fn().mockResolvedValue('matter-123'),
+  storeMatterQuestion: vi.fn().mockResolvedValue(undefined),
+  storeAISummary: vi.fn().mockResolvedValue(undefined),
+  CORS_HEADERS: {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  }
+}));
+
+// Mock the quality assessment
+vi.mock('../../../worker/utils/qualityAssessment', () => ({
+  assessMatterQuality: vi.fn().mockReturnValue({
+    score: 85,
+    readyForLawyer: true,
+    breakdown: {
+      answerQuality: 90,
+      completeness: 80,
+      clarity: 85
+    },
+    issues: []
+  })
+}));
+
+// Mock the webhook service
+vi.mock('../../../worker/services/WebhookService', () => ({
+  WebhookService: vi.fn().mockImplementation(() => ({
+    sendWebhook: vi.fn().mockResolvedValue(undefined)
+  }))
+}));
 
 describe('Matter Creation API Integration Tests', () => {
+  const mockEnv = {
+    AI: {},
+    DB: {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          run: vi.fn().mockResolvedValue({}),
+          all: vi.fn().mockResolvedValue({
+            results: [
+              { id: 'team1', name: 'Test Team', config: JSON.stringify({ availableServices: ['Family Law'] }) }
+            ]
+          })
+        })
+      })
+    },
+    CHAT_SESSIONS: {
+      put: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue(null)
+    },
+    RESEND_API_KEY: 'test-key',
+    FILES_BUCKET: undefined
+  };
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
   beforeEach(() => {
-    mockFetch.mockClear();
+    vi.clearAllMocks();
   });
 
   describe('Service Selection Flow', () => {
     it('should return available services on initial request', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          message: 'Please select a practice area',
-          services: ['Family Law', 'Business Law', 'Employment Law', 'Criminal Law']
-        }),
+      const requestBody = {
+        teamId: 'team1',
+        step: 'service-selection'
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/matter-creation', {
+      const request = new Request('http://localhost/api/matter-creation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
-          step: 'service-selection',
-          sessionId: 'test-session',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
+      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toHaveProperty('message');
+      expect(data).toHaveProperty('step');
+      expect(data.step).toBe('service-selection');
       expect(data).toHaveProperty('services');
-      expect(Array.isArray(data.services)).toBe(true);
-      expect(data.services.length).toBeGreaterThan(0);
     });
 
     it('should proceed to questions when service is selected', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          step: 'questions',
-          currentQuestion: 1,
-          totalQuestions: 5,
-          message: 'What type of family law issue are you dealing with?'
-        }),
+      const requestBody = {
+        teamId: 'team1',
+        step: 'service-selection',
+        service: 'Family Law'
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/matter-creation', {
+      const request = new Request('http://localhost/api/matter-creation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
-          step: 'service-selection',
-          service: 'Family Law',
-          sessionId: 'test-session',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
+      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data).toHaveProperty('step');
       expect(data.step).toBe('questions');
-      expect(data).toHaveProperty('currentQuestion');
-      expect(data).toHaveProperty('totalQuestions');
+      expect(data).toHaveProperty('selectedService');
     });
   });
 
   describe('Question Flow', () => {
     it('should progress through questions correctly', async () => {
-      const mockResponse1 = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          step: 'questions',
-          currentQuestion: 2,
-          message: 'Are there any children involved?'
-        }),
+      const requestBody = {
+        teamId: 'team1',
+        step: 'questions',
+        service: 'Family Law',
+        currentQuestionIndex: 0
       };
-      mockFetch.mockResolvedValue(mockResponse1);
 
-      const response1 = await fetch('/api/matter-creation', {
+      const request = new Request('http://localhost/api/matter-creation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
-          step: 'questions',
-          service: 'Family Law',
-          currentQuestionIndex: 1,
-          answers: { q1: 'divorce' },
-          sessionId: 'test-session',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
-      expect(response1.status).toBe(200);
-      const data1 = await response1.json();
-      expect(data1.step).toBe('questions');
-      expect(data1.currentQuestion).toBe(2);
+      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.step).toBe('questions');
+      expect(data).toHaveProperty('currentQuestion');
     });
 
     it('should complete question flow and move to matter details', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          step: 'matter-details',
-          message: 'Please provide details about your matter'
-        }),
+      const requestBody = {
+        teamId: 'team1',
+        step: 'questions',
+        service: 'Family Law',
+        currentQuestionIndex: 5, // Beyond the number of questions
+        answers: {
+          'question1': { question: 'What type of family issue?', answer: 'Divorce' },
+          'question2': { question: 'Are there children involved?', answer: 'Yes, two children' }
+        }
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/matter-creation', {
+      const request = new Request('http://localhost/api/matter-creation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
-          step: 'questions',
-          service: 'Family Law',
-          currentQuestionIndex: 5,
-          answers: {
-            q1: 'divorce',
-            q2: 'yes, 2 children',
-            q3: 'no, not yet',
-            q4: 'separated, living apart',
-            q5: 'no existing court orders',
-          },
-          sessionId: 'test-session',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
+      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.step).toBe('matter-details');
+      expect(data.step).toBe('matter-review');
     });
   });
 
   describe('Matter Details with Quality Scoring', () => {
     it('should process matter details and return quality score', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          qualityScore: {
-            score: 75,
-            badge: 'Good',
-            readyForLawyer: true
-          },
-          message: 'Your matter has been processed successfully'
-        }),
+      const requestBody = {
+        teamId: 'team1',
+        step: 'matter-review',
+        service: 'Family Law',
+        description: 'I need help with a divorce case involving child custody',
+        answers: {
+          'question1': { question: 'What type of family issue?', answer: 'Divorce' },
+          'question2': { question: 'Are there children involved?', answer: 'Yes, two children' }
+        }
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/matter-creation', {
+      const request = new Request('http://localhost/api/matter-creation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
-          step: 'matter-details',
-          service: 'Family Law',
-          description: 'Seeking divorce after 10 years of marriage. Have two children ages 8 and 12.',
-          urgency: 'Somewhat Urgent',
-          answers: {
-            q1: 'divorce',
-            q2: 'yes, 2 children',
-            q3: 'no, not yet',
-            q4: 'separated, living apart',
-            q5: 'no existing court orders',
-          },
-          sessionId: 'test-session',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
+      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data).toHaveProperty('qualityScore');
       expect(data.qualityScore).toHaveProperty('score');
-      expect(data.qualityScore).toHaveProperty('badge');
-      expect(data.qualityScore).toHaveProperty('readyForLawyer');
-      expect(typeof data.qualityScore.score).toBe('number');
-      expect(data.qualityScore.score).toBeGreaterThan(0);
-      expect(data.qualityScore.score).toBeLessThanOrEqual(100);
     });
   });
 
   describe('Error Handling', () => {
     it('should handle invalid team ID', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 404,
-        json: () => Promise.resolve({ error: 'Team not found' }),
+      const requestBody = {
+        teamId: 'invalid-team',
+        step: 'service-selection'
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/matter-creation', {
+      const request = new Request('http://localhost/api/matter-creation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: 'non-existent-team',
-          step: 'service-selection',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
+      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(404);
     });
 
     it('should handle missing required fields', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({ error: 'Missing required fields' }),
+      const requestBody = {
+        step: 'service-selection'
+        // Missing teamId
       };
-      mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/matter-creation', {
+      const request = new Request('http://localhost/api/matter-creation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
-          // Missing step
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
 
+      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(400);
+    });
+
+    it('should handle invalid request method', async () => {
+      const request = new Request('http://localhost/api/matter-creation', {
+        method: 'GET'
+      });
+
+      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(405);
     });
   });
 }); 

@@ -1,215 +1,240 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { handleFiles } from '../../../worker/routes/files';
 
-// Mock fetch for these tests
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Mock the utils
+vi.mock('../../../worker/utils', () => ({
+  CORS_HEADERS: {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  }
+}));
 
 describe('File Upload API Integration Tests', () => {
+  const mockEnv = {
+    AI: {},
+    DB: {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          run: vi.fn().mockResolvedValue({}),
+          first: vi.fn().mockResolvedValue({
+            file_name: 'test-file.txt',
+            original_name: 'test-document.txt',
+            file_type: 'text/plain',
+            file_size: 1024
+          }),
+          all: vi.fn().mockResolvedValue({ results: [] })
+        }),
+        all: vi.fn().mockResolvedValue({ results: [] })
+      })
+    },
+    CHAT_SESSIONS: {
+      put: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue(null)
+    },
+    RESEND_API_KEY: 'test-key',
+    FILES_BUCKET: {
+      put: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue({
+        body: new Blob(['test content'], { type: 'text/plain' }),
+        httpMetadata: { contentType: 'text/plain' }
+      })
+    }
+  };
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
   beforeEach(() => {
-    mockFetch.mockClear();
+    vi.clearAllMocks();
   });
 
   describe('File Upload', () => {
     it('should upload a text file successfully', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          fileId: 'test-file-id-123',
-          fileName: 'test-document.txt',
-          fileSize: 1024,
-          message: 'File uploaded successfully'
-        }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+      // Create a mock file
+      const fileContent = 'This is a test document content';
+      const file = new File([fileContent], 'test-document.txt', { type: 'text/plain' });
 
       const formData = new FormData();
-      formData.append('file', new Blob(['Test content'], { type: 'text/plain' }), 'test-document.txt');
-      formData.append('teamId', 'blawby-ai');
-      formData.append('sessionId', 'test-session');
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
 
-      const response = await fetch('/api/files/upload', {
+      const request = new Request('http://localhost/api/files/upload', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
 
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
+      expect(data.success).toBe(true);
       expect(data).toHaveProperty('fileId');
       expect(data).toHaveProperty('fileName');
       expect(data.fileName).toBe('test-document.txt');
     });
 
     it('should handle PDF file upload', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          fileId: 'test-pdf-id-456',
-          fileName: 'test-document.pdf',
-          fileSize: 2048,
-          message: 'PDF uploaded successfully'
-        }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+      // Create a mock PDF file
+      const fileContent = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // PDF header
+      const file = new File([fileContent], 'test-document.pdf', { type: 'application/pdf' });
 
       const formData = new FormData();
-      formData.append('file', new Blob(['PDF content'], { type: 'application/pdf' }), 'test-document.pdf');
-      formData.append('teamId', 'blawby-ai');
-      formData.append('sessionId', 'test-session');
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
 
-      const response = await fetch('/api/files/upload', {
+      const request = new Request('http://localhost/api/files/upload', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
 
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(200);
       const data = await response.json();
+      expect(data.success).toBe(true);
       expect(data).toHaveProperty('fileId');
       expect(data.fileName).toBe('test-document.pdf');
     });
 
     it('should reject files that are too large', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 413,
-        json: () => Promise.resolve({ error: 'File too large' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+      // Create a mock file that's too large (11MB)
+      const largeContent = new Array(11 * 1024 * 1024).fill('a').join('');
+      const file = new File([largeContent], 'large-file.txt', { type: 'text/plain' });
 
       const formData = new FormData();
-      formData.append('file', new Blob(['x'.repeat(10 * 1024 * 1024)], { type: 'text/plain' }), 'large-file.txt');
-      formData.append('teamId', 'blawby-ai');
-      formData.append('sessionId', 'test-session');
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
 
-      const response = await fetch('/api/files/upload', {
+      const request = new Request('http://localhost/api/files/upload', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
 
-      expect(response.status).toBe(413);
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data).toHaveProperty('error');
     });
 
     it('should reject unsupported file types', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 415,
-        json: () => Promise.resolve({ error: 'Unsupported file type' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+      // Create a mock file with unsupported type
+      const file = new File(['content'], 'test.exe', { type: 'application/x-executable' });
 
       const formData = new FormData();
-      formData.append('file', new Blob(['executable content'], { type: 'application/x-executable' }), 'test.exe');
-      formData.append('teamId', 'blawby-ai');
-      formData.append('sessionId', 'test-session');
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
 
-      const response = await fetch('/api/files/upload', {
+      const request = new Request('http://localhost/api/files/upload', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
 
-      expect(response.status).toBe(415);
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data).toHaveProperty('error');
     });
   });
 
   describe('File Download', () => {
     it('should download uploaded file', async () => {
-      const mockUploadResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          fileId: 'test-file-id-123',
-          fileName: 'test-document.txt',
-        }),
-      };
-
-      const mockDownloadResponse = {
-        ok: true,
-        status: 200,
-        text: () => Promise.resolve('This file will be downloaded for testing.'),
-      };
-
-      mockFetch
-        .mockResolvedValueOnce(mockUploadResponse)
-        .mockResolvedValueOnce(mockDownloadResponse);
-
-      // First upload a file
-      const formData = new FormData();
-      formData.append('file', new Blob(['This file will be downloaded for testing.'], { type: 'text/plain' }), 'test-document.txt');
-      formData.append('teamId', 'blawby-ai');
-      formData.append('sessionId', 'test-session');
-
-      const uploadResponse = await fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData,
+      const request = new Request('http://localhost/api/files/file-123', {
+        method: 'GET'
       });
 
-      expect(uploadResponse.status).toBe(200);
-      const uploadData = await uploadResponse.json();
-      const fileId = uploadData.fileId;
-
-      // Then download the file
-      const downloadResponse = await fetch(`/api/files/${fileId}`);
-      expect(downloadResponse.status).toBe(200);
+      const response = await handleFiles(request, mockEnv, corsHeaders);
       
-      const downloadedContent = await downloadResponse.text();
-      expect(downloadedContent).toBe('This file will be downloaded for testing.');
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('text/plain');
     });
 
     it('should handle non-existent file download', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 404,
-        json: () => Promise.resolve({ error: 'File not found' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+      // Mock the database to return null for non-existent file
+      mockEnv.DB.prepare = vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(null)
+        })
+      });
 
-      const response = await fetch('/api/files/non-existent-file-id');
+      const request = new Request('http://localhost/api/files/non-existent', {
+        method: 'GET'
+      });
+
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(404);
     });
   });
 
   describe('Error Handling', () => {
     it('should handle missing file in upload', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({ error: 'No file provided' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
       const formData = new FormData();
-      formData.append('teamId', 'blawby-ai');
-      formData.append('sessionId', 'test-session');
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
       // No file appended
 
-      const response = await fetch('/api/files/upload', {
+      const request = new Request('http://localhost/api/files/upload', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
 
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
       expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data).toHaveProperty('error');
     });
 
     it('should handle missing team ID', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 422,
-        json: () => Promise.resolve({ error: 'Missing team ID' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' });
 
       const formData = new FormData();
-      formData.append('file', new Blob(['Test content'], { type: 'text/plain' }), 'test.txt');
-      formData.append('sessionId', 'test-session');
-      // No teamId
+      formData.append('file', file);
+      formData.append('sessionId', 'session1');
+      // No teamId appended
 
-      const response = await fetch('/api/files/upload', {
+      const request = new Request('http://localhost/api/files/upload', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
 
-      expect(response.status).toBe(422);
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data).toHaveProperty('error');
+    });
+
+    it('should handle missing FILES_BUCKET configuration', async () => {
+      const envWithoutBucket = { ...mockEnv, FILES_BUCKET: undefined };
+      
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
+
+      const request = new Request('http://localhost/api/files/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const response = await handleFiles(request, envWithoutBucket, corsHeaders);
+      
+      expect(response.status).toBe(503);
+      const data = await response.json();
+      expect(data).toHaveProperty('error');
     });
   });
 }); 

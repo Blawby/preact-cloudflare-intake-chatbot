@@ -1,0 +1,91 @@
+import { Env } from './health';
+import { parseJsonBody } from '../utils';
+
+export async function handleScheduling(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method === 'POST') {
+    try {
+      const body = await parseJsonBody(request) as {
+        teamId: string;
+        email: string;
+        phoneNumber: string;
+        preferredDate: string;
+        preferredTime: string;
+        matterType: string;
+        notes?: string;
+      };
+      
+      if (!body.teamId || !body.email || !body.preferredDate || !body.matterType) {
+        return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const appointmentId = crypto.randomUUID();
+      
+      await env.DB.prepare(`
+        INSERT INTO appointments (id, team_id, client_email, client_phone, preferred_date, preferred_time, matter_type, notes, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+      `).bind(
+        appointmentId, body.teamId, body.email, body.phoneNumber || '',
+        body.preferredDate, body.preferredTime || '', body.matterType, body.notes || ''
+      ).run();
+
+      // Send appointment webhook
+      const { AIService } = await import('../services/AIService.js');
+      const { WebhookService } = await import('../services/WebhookService.js');
+      const aiService = new AIService(env.AI, env);
+      const teamConfig = await aiService.getTeamConfig(body.teamId);
+      const webhookService = new WebhookService(env);
+      const appointmentPayload = {
+        event: 'appointment',
+        timestamp: new Date().toISOString(),
+        teamId: body.teamId,
+        appointmentId,
+        appointment: {
+          clientEmail: body.email,
+          clientPhone: body.phoneNumber,
+          preferredDate: body.preferredDate,
+          preferredTime: body.preferredTime,
+          matterType: body.matterType,
+          notes: body.notes,
+          status: 'pending'
+        }
+      };
+
+      // Fire and forget webhook - don't wait for completion
+      webhookService.sendWebhook(body.teamId, 'appointment', appointmentPayload, teamConfig)
+        .catch(error => console.warn('Appointment webhook failed:', error));
+
+      return new Response(JSON.stringify({
+        success: true,
+        appointmentId,
+        message: 'Appointment requested successfully. We will contact you within 24 hours.'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      console.error('Scheduling error:', error);
+      return new Response(JSON.stringify({ error: 'Scheduling failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  if (request.method === 'GET') {
+    const timeSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
+    
+    return new Response(JSON.stringify({
+      availableSlots: timeSlots,
+      timezone: 'America/New_York'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+} 
