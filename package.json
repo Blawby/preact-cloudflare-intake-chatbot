@@ -16,9 +16,11 @@
 		"preact": "^10.25.3",
 		"preact-iso": "^2.9.1",
 		"preact-markdown": "^2.1.0",
-		"preact-render-to-string": "^6.5.13"
+		"preact-render-to-string": "^6.5.13",
+		"zod": "^4.0.5"
 	},
 	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20250715.0",
 		"@preact/preset-vite": "^2.9.3",
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/preact": "^3.2.4",

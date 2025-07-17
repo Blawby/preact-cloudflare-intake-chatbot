@@ -1,4 +1,5 @@
-import { Env } from './health';
+import type { Env } from '../types';
+import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { CORS_HEADERS } from '../utils';
 
 export async function handleRoot(request: Request, env: Env): Promise<Response> {

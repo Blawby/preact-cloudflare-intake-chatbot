@@ -1,4 +1,5 @@
-import { Env } from './health';
+import type { Env } from '../types';
+import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 
 export async function handleFiles(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   const url = new URL(request.url);
@@ -8,10 +9,7 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
   if (path === '/api/files/upload' && request.method === 'POST') {
     try {
       if (!env.FILES_BUCKET) {
-        return new Response(JSON.stringify({ error: 'File storage not configured' }), {
-          status: 503,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.serviceUnavailable('File storage not configured');
       }
 
       const formData = await request.formData();
@@ -21,17 +19,7 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
 
       // Required field checks BEFORE any DB or bucket operations
       if (!file || !teamId || !sessionId) {
-        return new Response(JSON.stringify({ error: 'Missing required fields: file, teamId, or sessionId' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      if (!file) {
-        return new Response(JSON.stringify({ error: 'No file provided' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.badRequest('Missing required fields: file, teamId, or sessionId');
       }
 
       // Validate file type and size
@@ -45,18 +33,12 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
       ];
 
       if (!allowedTypes.includes(file.type)) {
-        return new Response(JSON.stringify({ error: 'File type not allowed' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.badRequest('File type not allowed');
       }
 
       // 10MB limit
       if (file.size > 10 * 1024 * 1024) {
-        return new Response(JSON.stringify({ error: 'File too large. Maximum size is 10MB' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.badRequest('File too large. Maximum size is 10MB');
       }
 
       // Generate unique filename
@@ -87,23 +69,16 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `).bind(fileId, teamId, sessionId, file.name, fileName, file.type, file.size).run();
 
-      return new Response(JSON.stringify({
-        success: true,
+      return createSuccessResponse({
         fileId,
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
         url: `/api/files/${fileId}`
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      }, corsHeaders);
 
     } catch (error) {
-      console.error('File upload error:', error);
-      return new Response(JSON.stringify({ error: 'File upload failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return handleError(error, corsHeaders);
     }
   }
 
@@ -112,35 +87,23 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
     try {
       const fileId = path.split('/').pop();
       if (!fileId) {
-        return new Response(JSON.stringify({ error: 'File ID required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.badRequest('File ID required');
       }
 
       // Get file metadata from database
       const fileRow = await env.DB.prepare('SELECT * FROM files WHERE id = ?').bind(fileId).first();
       if (!fileRow) {
-        return new Response(JSON.stringify({ error: 'File not found' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.notFound('File not found');
       }
 
       if (!env.FILES_BUCKET) {
-        return new Response(JSON.stringify({ error: 'File storage not configured' }), {
-          status: 503,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.serviceUnavailable('File storage not configured');
       }
 
       // Get file from R2
       const object = await env.FILES_BUCKET.get(fileRow.file_name as string);
       if (!object) {
-        return new Response(JSON.stringify({ error: 'File not found in storage' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.notFound('File not found in storage');
       }
 
       // Return file with appropriate headers
@@ -154,16 +117,9 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
       });
 
     } catch (error) {
-      console.error('File download error:', error);
-      return new Response(JSON.stringify({ error: 'File download failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return handleError(error, corsHeaders);
     }
   }
 
-  return new Response(JSON.stringify({ error: 'Invalid file endpoint' }), {
-    status: 404,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
+  throw HttpErrors.notFound('Invalid file endpoint');
 } 

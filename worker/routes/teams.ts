@@ -1,11 +1,9 @@
-import { Env } from './health';
+import type { Env } from '../types';
+import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 
 export async function handleTeams(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    throw HttpErrors.methodNotAllowed('Only GET method is allowed');
   }
 
   try {
@@ -19,18 +17,11 @@ export async function handleTeams(request: Request, env: Env, corsHeaders: Recor
       config: JSON.parse(row.config || '{}')
     }));
 
-    return new Response(JSON.stringify(teams), {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
-      }
+    return createSuccessResponse(teams, {
+      ...corsHeaders,
+      'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
     });
   } catch (error) {
-    console.error('Teams error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch teams' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return handleError(error, corsHeaders);
   }
 } 

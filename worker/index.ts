@@ -15,14 +15,8 @@ import {
   handleWebhooks
 } from './routes';
 import { CORS_HEADERS } from './utils';
-
-export interface Env {
-  AI: any;
-  DB: D1Database;
-  CHAT_SESSIONS: KVNamespace;
-  RESEND_API_KEY: string;
-  FILES_BUCKET?: R2Bucket;
-}
+import { Env } from './types';
+import { handleError, HttpErrors } from './errorHandler';
 
 export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
@@ -46,18 +40,11 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     if (path === '/api/health') return handleHealth(request, env, CORS_HEADERS);
     if (path === '/') return handleRoot(request, env);
 
-    return new Response(JSON.stringify({ error: 'Not found' }), {
-      status: 404,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-    });
+    throw HttpErrors.notFound('Endpoint not found');
 
   } catch (error) {
-    console.error('Worker error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-    });
+    return handleError(error, CORS_HEADERS);
   }
 }
 
-export default { fetch: handleRequest }; 
+export default { fetch: handleRequest };

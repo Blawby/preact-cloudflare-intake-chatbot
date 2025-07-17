@@ -1,4 +1,4 @@
-import type { Env } from './routes/health';
+import type { Env } from './types';
 
 export async function parseJsonBody(request: Request) {
   try {

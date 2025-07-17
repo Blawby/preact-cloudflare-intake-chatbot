@@ -71,11 +71,11 @@ describe('File Upload API Integration Tests', () => {
       const response = await handleFiles(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.success).toBe(true);
-      expect(data).toHaveProperty('fileId');
-      expect(data).toHaveProperty('fileName');
-      expect(data.fileName).toBe('test-document.txt');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data).toHaveProperty('fileId');
+      expect(responseData.data).toHaveProperty('fileName');
+      expect(responseData.data.fileName).toBe('test-document.txt');
     });
 
     it('should handle PDF file upload', async () => {
@@ -96,10 +96,10 @@ describe('File Upload API Integration Tests', () => {
       const response = await handleFiles(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.success).toBe(true);
-      expect(data).toHaveProperty('fileId');
-      expect(data.fileName).toBe('test-document.pdf');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data).toHaveProperty('fileId');
+      expect(responseData.data.fileName).toBe('test-document.pdf');
     });
 
     it('should reject files that are too large', async () => {
@@ -120,8 +120,9 @@ describe('File Upload API Integration Tests', () => {
       const response = await handleFiles(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data).toHaveProperty('error');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData).toHaveProperty('error');
     });
 
     it('should reject unsupported file types', async () => {
@@ -141,8 +142,9 @@ describe('File Upload API Integration Tests', () => {
       const response = await handleFiles(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data).toHaveProperty('error');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData).toHaveProperty('error');
     });
   });
 
@@ -191,8 +193,9 @@ describe('File Upload API Integration Tests', () => {
       const response = await handleFiles(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data).toHaveProperty('error');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData).toHaveProperty('error');
     });
 
     it('should handle missing team ID', async () => {
@@ -211,8 +214,9 @@ describe('File Upload API Integration Tests', () => {
       const response = await handleFiles(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data).toHaveProperty('error');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData).toHaveProperty('error');
     });
 
     it('should handle missing FILES_BUCKET configuration', async () => {
@@ -233,8 +237,9 @@ describe('File Upload API Integration Tests', () => {
       const response = await handleFiles(request, envWithoutBucket, corsHeaders);
       
       expect(response.status).toBe(503);
-      const data = await response.json();
-      expect(data).toHaveProperty('error');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData).toHaveProperty('error');
     });
   });
 }); 

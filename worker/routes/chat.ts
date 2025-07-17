@@ -1,34 +1,20 @@
-import { Env } from './health';
+import type { Env } from '../types';
 import { parseJsonBody, logChatMessage } from '../utils';
-
-interface ChatRequest {
-  messages: Array<{ role: string; content: string }>;
-  teamId?: string;
-  sessionId?: string;
-}
+import { chatRequestSchema } from '../schemas';
+import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 
 export async function handleChat(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-
   try {
-    const body = await parseJsonBody(request) as ChatRequest;
-    
-    if (!body.messages?.length) {
-      return new Response(JSON.stringify({ error: 'Messages required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (request.method !== 'POST') {
+      throw HttpErrors.methodNotAllowed('Only POST method is allowed');
     }
+    const body = await parseJsonBody(request);
+    const validatedData = chatRequestSchema.parse(body);
 
     // Get team config using cached service
     const { AIService } = await import('../services/AIService.js');
     const aiService = new AIService(env.AI, env);
-    const teamConfig = body.teamId ? await aiService.getTeamConfig(body.teamId) : {};
+    const teamConfig = validatedData.teamId ? await aiService.getTeamConfig(validatedData.teamId) : {};
 
     // Generate AI response with optimized prompt
     const systemPrompt = teamConfig 
@@ -37,35 +23,35 @@ export async function handleChat(request: Request, env: Env, corsHeaders: Record
 
     const aiResult = await aiService.runLLM([
       { role: 'system', content: systemPrompt },
-      ...body.messages.slice(-3) // Keep last 3 messages for context
+      ...validatedData.messages.slice(-3) // Keep last 3 messages for context
     ]);
 
     const response = aiResult.response || "I'm here to help with your legal needs. What can I assist you with?";
     
     // Log chat messages to database for AI training
-    if (body.sessionId) {
+    if (validatedData.sessionId) {
       // Log user messages (only the most recent one to avoid duplicates)
-      const lastUserMessage = body.messages[body.messages.length - 1];
+      const lastUserMessage = validatedData.messages[validatedData.messages.length - 1];
       if (lastUserMessage && lastUserMessage.role === 'user') {
-        await logChatMessage(env, body.sessionId, body.teamId, 'user', lastUserMessage.content);
+        await logChatMessage(env, validatedData.sessionId, validatedData.teamId, 'user', lastUserMessage.content);
       }
       
       // Log assistant response
-      await logChatMessage(env, body.sessionId, body.teamId, 'assistant', response);
+      await logChatMessage(env, validatedData.sessionId, validatedData.teamId, 'assistant', response);
     }
     
     // Save conversation to session if sessionId provided - optimized with structured data
-    if (body.sessionId) {
+    if (validatedData.sessionId) {
       try {
         const sessionData = {
-          teamId: body.teamId,
-          messages: [...body.messages, { role: 'assistant', content: response }],
+          teamId: validatedData.teamId,
+          messages: [...validatedData.messages, { role: 'assistant', content: response }],
           lastActivity: new Date().toISOString(),
           intent: 'general',
           shouldStartMatterCreation: false
         };
 
-        await env.CHAT_SESSIONS.put(body.sessionId, JSON.stringify(sessionData), {
+        await env.CHAT_SESSIONS.put(validatedData.sessionId, JSON.stringify(sessionData), {
           expirationTtl: 24 * 60 * 60 // 24 hours
         });
       } catch (error) {
@@ -73,20 +59,14 @@ export async function handleChat(request: Request, env: Env, corsHeaders: Record
       }
     }
 
-    return new Response(JSON.stringify({
+    return createSuccessResponse({
       response,
       intent: 'general',
       shouldStartMatterCreation: false,
       timestamp: new Date().toISOString()
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    }, corsHeaders);
 
   } catch (error) {
-    console.error('Chat error:', error);
-    return new Response(JSON.stringify({ error: 'Chat service unavailable' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return handleError(error, corsHeaders);
   }
 } 

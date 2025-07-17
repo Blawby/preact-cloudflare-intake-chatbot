@@ -25,10 +25,10 @@ experimental_remote = true
 
 # Resend API key for email notifications (set via wrangler secret put RESEND_API_KEY)
 
-# R2 bucket for file storage (will enable once bucket is created)
-# [[r2_buckets]]
-# binding = "FILES_BUCKET"
-# bucket_name = "blawby-ai-files"
+# R2 bucket for file storage
+[[r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "blawby-ai-files"
 
 # Domain configuration for ai.blawby.com
 [env.production]

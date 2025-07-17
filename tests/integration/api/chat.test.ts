@@ -96,9 +96,10 @@ describe('Chat API Integration Tests', () => {
       const response = await handleChat(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('response');
-      expect(data).toHaveProperty('intent');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data).toHaveProperty('response');
+      expect(responseData.data).toHaveProperty('intent');
     });
 
     it('should handle chat with matter intent', async () => {
@@ -119,8 +120,9 @@ describe('Chat API Integration Tests', () => {
       const response = await handleChat(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('response');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data).toHaveProperty('response');
     });
   });
 
@@ -133,8 +135,9 @@ describe('Chat API Integration Tests', () => {
       const response = await handleHealth(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('status', 'ok');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data).toHaveProperty('status', 'ok');
     });
   });
 
@@ -147,8 +150,9 @@ describe('Chat API Integration Tests', () => {
       const response = await handleTeams(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(Array.isArray(data)).toBe(true);
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(Array.isArray(responseData.data)).toBe(true);
     });
   });
 
@@ -161,8 +165,9 @@ describe('Chat API Integration Tests', () => {
       const response = await handleChat(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(405);
-      const data = await response.json();
-      expect(data).toHaveProperty('error');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData).toHaveProperty('error');
     });
 
     it('should handle missing messages', async () => {
@@ -180,8 +185,9 @@ describe('Chat API Integration Tests', () => {
       const response = await handleChat(request, mockEnv, corsHeaders);
       
       expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data).toHaveProperty('error');
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData).toHaveProperty('error');
     });
   });
 }); 

@@ -1,6 +1,6 @@
 // API Configuration
-// Set this to 'local' to use local development server, 'deployed' to use the live API
-const API_MODE = 'deployed' as const;
+// Automatically detect environment - use local for development, deployed for production
+const API_MODE = (import.meta.env.DEV ? 'local' : 'deployed') as const;
 
 const API_CONFIG = {
   local: {

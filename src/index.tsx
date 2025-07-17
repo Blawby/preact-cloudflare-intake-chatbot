@@ -134,6 +134,25 @@ interface ChatMessage {
 const ANIMATION_DURATION = 300;
 const RESIZE_DEBOUNCE_DELAY = 100;
 
+// Utility function to upload a file to backend
+async function uploadFileToBackend(file: File, teamId: string, sessionId: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('teamId', teamId);
+  formData.append('sessionId', sessionId);
+
+  const response = await fetch('/api/files/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error?.error || 'File upload failed');
+  }
+  const result = await response.json();
+  return result.data;
+}
+
 export function App() {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [inputValue, setInputValue] = useState('');
@@ -409,8 +428,8 @@ export function App() {
 		try {
 			const response = await fetch(getTeamsEndpoint());
 			if (response.ok) {
-				const teams = await response.json();
-				const team = teams.find((t: any) => t.id === teamId);
+				const teamsResponse = await response.json();
+				const team = teamsResponse.data.find((t: any) => t.id === teamId);
 				if (team?.config) {
 					const config = {
 						name: team.name || 'Blawby AI',
@@ -469,40 +488,67 @@ export function App() {
 	};
 
 	const handlePhotoSelect = async (files: File[]) => {
-		const fileAttachments: FileAttachment[] = await Promise.all(
-			files.map(async (file) => ({
-				name: file.name,
-				size: file.size,
-				type: file.type,
-				url: URL.createObjectURL(file),
-			}))
-		);
-
-		setPreviewFiles(prev => [...prev, ...fileAttachments]);
+		if (!teamId || !sessionId) {
+			alert('Missing team or session ID. Cannot upload files.');
+			return;
+		}
+		for (const file of files) {
+			try {
+				const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+				const fileAttachment: FileAttachment = {
+					name: uploaded.fileName,
+					size: uploaded.fileSize,
+					type: uploaded.fileType,
+					url: uploaded.url,
+					backendId: uploaded.fileId,
+				};
+				setPreviewFiles(prev => [...prev, fileAttachment]);
+			} catch (err: any) {
+				alert(`Failed to upload file: ${file.name}\n${err.message}`);
+			}
+		}
 	};
 
 	const handleCameraCapture = async (file: File) => {
-		const fileAttachment: FileAttachment = {
-			name: file.name,
-			size: file.size,
-			type: file.type,
-			url: URL.createObjectURL(file),
-		};
-
-		setPreviewFiles(prev => [...prev, fileAttachment]);
+		if (!teamId || !sessionId) {
+			alert('Missing team or session ID. Cannot upload files.');
+			return;
+		}
+		try {
+			const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+			const fileAttachment: FileAttachment = {
+				name: uploaded.fileName,
+				size: uploaded.fileSize,
+				type: uploaded.fileType,
+				url: uploaded.url,
+				backendId: uploaded.fileId,
+			};
+			setPreviewFiles(prev => [...prev, fileAttachment]);
+		} catch (err: any) {
+			alert(`Failed to upload file: ${file.name}\n${err.message}`);
+		}
 	};
 
 	const handleFileSelect = async (files: File[]) => {
-		const fileAttachments: FileAttachment[] = await Promise.all(
-			files.map(async (file) => ({
-				name: file.name,
-				size: file.size,
-				type: file.type,
-				url: URL.createObjectURL(file),
-			}))
-		);
-
-		setPreviewFiles(prev => [...prev, ...fileAttachments]);
+		if (!teamId || !sessionId) {
+			alert('Missing team or session ID. Cannot upload files.');
+			return;
+		}
+		for (const file of files) {
+			try {
+				const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+				const fileAttachment: FileAttachment = {
+					name: uploaded.fileName,
+					size: uploaded.fileSize,
+					type: uploaded.fileType,
+					url: uploaded.url,
+					backendId: uploaded.fileId,
+				};
+				setPreviewFiles(prev => [...prev, fileAttachment]);
+			} catch (err: any) {
+				alert(`Failed to upload file: ${file.name}\n${err.message}`);
+			}
+		}
 	};
 
 	const removePreviewFile = (index: number) => {
@@ -1073,8 +1119,8 @@ export function App() {
 				try {
 					const teamsResponse = await fetch(getTeamsEndpoint());
 					if (teamsResponse.ok) {
-						const teams = await teamsResponse.json();
-						teamConfig = teams.find((team: any) => team.id === teamId);
+						const teamsJson = await teamsResponse.json();
+						teamConfig = teamsJson.data.find((team: any) => team.id === teamId);
 					}
 				} catch (error) {
 					console.warn('Failed to fetch team config:', error);

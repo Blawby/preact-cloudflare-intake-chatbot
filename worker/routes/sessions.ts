@@ -1,5 +1,6 @@
-import { Env } from './health';
+import type { Env } from '../types';
 import { parseJsonBody } from '../utils';
+import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 
 export async function handleSessions(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   const url = new URL(request.url);
@@ -10,18 +11,12 @@ export async function handleSessions(request: Request, env: Env, corsHeaders: Re
     try {
       const sessionId = path.split('/').pop();
       if (!sessionId) {
-        return new Response(JSON.stringify({ error: 'Session ID required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.badRequest('Session ID required');
       }
 
       const sessionData = await env.CHAT_SESSIONS.get(sessionId);
       if (!sessionData) {
-        return new Response(JSON.stringify({ error: 'Session not found' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.notFound('Session not found');
       }
 
       return new Response(sessionData, {
@@ -29,11 +24,7 @@ export async function handleSessions(request: Request, env: Env, corsHeaders: Re
       });
 
     } catch (error) {
-      console.error('Session retrieval error:', error);
-      return new Response(JSON.stringify({ error: 'Session retrieval failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return handleError(error, corsHeaders);
     }
   }
 
@@ -44,10 +35,7 @@ export async function handleSessions(request: Request, env: Env, corsHeaders: Re
       const { sessionId, data } = body;
       
       if (!sessionId || !data) {
-        return new Response(JSON.stringify({ error: 'Session ID and data required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.badRequest('Session ID and data required');
       }
 
       // Store session data with TTL of 24 hours
@@ -55,16 +43,10 @@ export async function handleSessions(request: Request, env: Env, corsHeaders: Re
         expirationTtl: 24 * 60 * 60 // 24 hours in seconds
       });
 
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return createSuccessResponse({ success: true }, corsHeaders);
 
     } catch (error) {
-      console.error('Session save error:', error);
-      return new Response(JSON.stringify({ error: 'Session save failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return handleError(error, corsHeaders);
     }
   }
 
@@ -73,29 +55,17 @@ export async function handleSessions(request: Request, env: Env, corsHeaders: Re
     try {
       const sessionId = path.split('/').pop();
       if (!sessionId) {
-        return new Response(JSON.stringify({ error: 'Session ID required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        throw HttpErrors.badRequest('Session ID required');
       }
 
       await env.CHAT_SESSIONS.delete(sessionId);
 
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return createSuccessResponse({ success: true }, corsHeaders);
 
     } catch (error) {
-      console.error('Session deletion error:', error);
-      return new Response(JSON.stringify({ error: 'Session deletion failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return handleError(error, corsHeaders);
     }
   }
 
-  return new Response(JSON.stringify({ error: 'Invalid session endpoint' }), {
-    status: 404,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
+  throw HttpErrors.notFound('Invalid session endpoint');
 } 
