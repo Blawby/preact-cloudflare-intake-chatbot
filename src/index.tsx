@@ -1345,11 +1345,14 @@ export function App() {
 				setIsProcessingRequest(false);
 			}
 		}, 500), // 500ms debounce delay
-		[] // Empty dependency array to prevent recreation
+		[teamId, isProcessingRequest, matterState.isActive, handleMatterCreationAPI] // Include dependencies
 	);
 
 	// Handle service selection from buttons (now debounced)
 	const handleServiceSelect = (service: string) => {
+		console.log('Service selection clicked:', service);
+		console.log('Current teamId:', teamId);
+		console.log('Current matterState:', matterState);
 		debouncedServiceSelect(service);
 	};
 
@@ -1438,16 +1441,19 @@ export function App() {
 				setIsProcessingRequest(false);
 			}
 		}, 500), // 500ms debounce delay
-		[] // Empty dependency array to prevent recreation
+		[teamId, isProcessingRequest, matterState.data.matterType, handleMatterCreationAPI] // Include dependencies
 	);
 
 	// Handle urgency selection from buttons (now debounced)
 	const handleUrgencySelect = (urgency: string) => {
+		console.log('Urgency selection clicked:', urgency);
+		console.log('Current teamId:', teamId);
+		console.log('Current matterState:', matterState);
 		debouncedUrgencySelect(urgency);
 	};
 
 	// API-driven matter creation handler
-	const handleMatterCreationAPI = async (step: string, data: any = {}) => {
+	const handleMatterCreationAPI = useCallback(async (step: string, data: any = {}) => {
 		try {
 			// Ensure we have a valid teamId
 			if (!teamId) {
@@ -1492,7 +1498,7 @@ export function App() {
 			console.error('Matter creation API error:', error);
 			throw error;
 		}
-	};
+	}, [teamId, matterState.data.matterType]);
 
 	// Handle matter creation flow steps
 	const handleMatterCreationStep = async (message: string, attachments: FileAttachment[] = []) => {
