@@ -34,29 +34,6 @@ interface MatterCreationRequest {
   sessionId?: string;
 }
 
-interface TeamConfig {
-  requiresPayment?: boolean;
-  consultationFee?: number;
-  ownerEmail?: string;
-  serviceQuestions?: Record<string, string[]>;
-  availableServices?: string[];
-  webhooks?: {
-    enabled?: boolean;
-    url?: string;
-    secret?: string;
-    events?: {
-      matterCreation?: boolean;
-      matterDetails?: boolean;
-      contactForm?: boolean;
-      appointment?: boolean;
-    };
-    retryConfig?: {
-      maxRetries?: number;
-      retryDelay?: number; // in seconds
-    };
-  };
-}
-
 // Optimized helper functions
 async function parseJsonBody(request: Request) {
   try {
@@ -73,450 +50,13 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// Optimized AI Service with caching and timeouts
-class AIService {
-  private teamConfigCache = new Map<string, { config: TeamConfig; timestamp: number }>();
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-  constructor(private ai: any, private env: Env) {}
-  
-  async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-    
-    try {
-      const result = await this.ai.run(model, {
-        messages,
-        max_tokens: 500,
-        temperature: 0.4,
-      });
-      clearTimeout(timeout);
-      return result;
-    } catch (error) {
-      clearTimeout(timeout);
-      throw error;
-    }
-  }
-  
-  async getTeamConfig(teamId: string): Promise<TeamConfig> {
-    const cached = this.teamConfigCache.get(teamId);
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return cached.config;
-    }
 
-    try {
-      const teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(teamId).first();
-      if (teamRow) {
-        const config = JSON.parse(teamRow.config as string);
-        this.teamConfigCache.set(teamId, { config, timestamp: Date.now() });
-        return config;
-      }
-    } catch (error) {
-      console.warn('Failed to fetch team config:', error);
-    }
-    
-    return {};
-  }
 
-  // Clear cache for a specific team or all teams
-  clearCache(teamId?: string): void {
-    if (teamId) {
-      this.teamConfigCache.delete(teamId);
-    } else {
-      this.teamConfigCache.clear();
-    }
-  }
-}
 
-// Optimized Email Service
-class EmailService {
-  constructor(private apiKey: string) {}
-  
-  async send(email: { from: string; to: string; subject: string; text: string }) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    
-    try {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(email),
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeout);
-      
-      if (!response.ok) {
-        throw new Error(`Email failed: ${response.status}`);
-      }
-      
-      return response;
-    } catch (error) {
-      clearTimeout(timeout);
-      throw error;
-    }
-  }
-}
 
-// Webhook Service for secure webhook delivery
-class WebhookService {
-  constructor(private env: Env) {}
 
-  // Generate HMAC-SHA256 signature using Web Crypto API
-  private async generateHMACSHA256(message: string, key: string): Promise<string> {
-    // Convert string key to Uint8Array
-    const keyBytes = new TextEncoder().encode(key);
-    const messageBytes = new TextEncoder().encode(message);
 
-    // Import the HMAC key
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyBytes,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign'],
-    );
-
-    // Sign the message
-    const signature = await crypto.subtle.sign(
-      'HMAC',
-      cryptoKey,
-      messageBytes,
-    );
-
-    // Convert to hex string
-    return Array.from(new Uint8Array(signature))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-
-  // Generate a webhook signature for client-side use (Stripe-like format)
-  private async generateWebhookSignature(payload: string, signingKey: string, timestamp: number | null = null): Promise<string> {
-    // Use current timestamp if not provided
-    if (timestamp === null || timestamp === undefined) {
-      timestamp = Math.floor(Date.now() / 1000);
-    }
-
-    // Create signed payload (timestamp.payload)
-    const signedPayload = `${timestamp}.${payload}`;
-
-    // Generate HMAC-SHA256 signature
-    const signature = await this.generateHMACSHA256(signedPayload, signingKey);
-
-    // Return in Stripe-like format
-    return `t=${timestamp},v1=${signature}`;
-  }
-
-  // Extract signing key from webhook secret (matches Laravel logic)
-  private extractSigningKeyFromSecret(webhookSecret: string): string {
-    // If it's a signed secret (starts with wh_), extract the signature part as signing key
-    if (webhookSecret.startsWith('wh_')) {
-      const parts = webhookSecret.split('.');
-      if (parts.length >= 2) {
-        // Use the signature part (first 12 characters of HMAC) as the signing key
-        const signature = parts[0].replace('wh_', '');
-        return signature;
-      }
-    }
-    
-    // If it's a simple secret, return as-is
-    return webhookSecret;
-  }
-
-  // Send webhook with retry logic
-  async sendWebhook(
-    teamId: string,
-    webhookType: 'matter_creation' | 'matter_details' | 'contact_form' | 'appointment',
-    payload: any,
-    teamConfig: TeamConfig
-  ): Promise<void> {
-    // Check if webhooks are enabled and configured
-    if (!teamConfig.webhooks?.enabled || !teamConfig.webhooks?.url) {
-      console.log(`Webhooks not enabled for team ${teamId}`);
-      return;
-    }
-
-    // Check if this specific event type is enabled
-    const eventEnabled = teamConfig.webhooks.events?.[
-      webhookType === 'matter_creation' ? 'matterCreation' :
-      webhookType === 'matter_details' ? 'matterDetails' :
-      webhookType === 'contact_form' ? 'contactForm' :
-      'appointment'
-    ];
-
-    if (!eventEnabled) {
-      console.log(`Webhook event ${webhookType} not enabled for team ${teamId}`);
-      return;
-    }
-
-    const webhookId = crypto.randomUUID();
-    const webhookUrl = teamConfig.webhooks.url;
-    const payloadString = JSON.stringify(payload);
-
-    // Generate signature if secret is provided
-    let signature = '';
-    if (teamConfig.webhooks.secret) {
-      const signingKey = this.extractSigningKeyFromSecret(teamConfig.webhooks.secret);
-      signature = await this.generateWebhookSignature(payloadString, signingKey);
-    }
-
-    // Log webhook attempt (create table if it doesn't exist)
-    try {
-      await this.env.DB.prepare(`
-        INSERT INTO webhook_logs (id, team_id, webhook_type, webhook_url, payload, status, created_at)
-        VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
-      `).bind(webhookId, teamId, webhookType, webhookUrl, payloadString).run();
-    } catch (error) {
-      console.warn('Failed to log webhook attempt:', error);
-      // Continue with webhook delivery even if logging fails
-    }
-
-    // Send webhook
-    try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Blawby-Webhook/1.0',
-        'X-Webhook-ID': webhookId,
-        'X-Webhook-Event': webhookType,
-        'X-Webhook-Timestamp': new Date().toISOString(),
-      };
-
-      if (signature) {
-        headers['X-Webhook-Signature'] = signature;
-      }
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      try {
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers,
-          body: payloadString,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeout);
-
-        const responseBody = await response.text();
-
-        // Update webhook log with result
-        try {
-          if (response.ok) {
-            await this.env.DB.prepare(`
-              UPDATE webhook_logs 
-              SET status = 'success', http_status = ?, response_body = ?, completed_at = datetime('now'), updated_at = datetime('now')
-              WHERE id = ?
-            `).bind(response.status, responseBody, webhookId).run();
-          } else {
-            await this.env.DB.prepare(`
-              UPDATE webhook_logs 
-              SET status = 'failed', http_status = ?, response_body = ?, error_message = ?, updated_at = datetime('now')
-              WHERE id = ?
-            `).bind(response.status, responseBody, `HTTP ${response.status}: ${response.statusText}`, webhookId).run();
-            
-            // Schedule retry if configured
-            await this.scheduleRetry(webhookId, teamConfig);
-          }
-        } catch (error) {
-          console.warn('Failed to update webhook log:', error);
-        }
-
-      } catch (error) {
-        clearTimeout(timeout);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        
-        try {
-          await this.env.DB.prepare(`
-            UPDATE webhook_logs 
-            SET status = 'failed', error_message = ?, updated_at = datetime('now')
-            WHERE id = ?
-          `).bind(errorMessage, webhookId).run();
-          
-          // Schedule retry if configured
-          await this.scheduleRetry(webhookId, teamConfig);
-        } catch (dbError) {
-          console.warn('Failed to update webhook log on error:', dbError);
-        }
-      }
-    } catch (outerError) {
-      console.warn('Failed to send webhook:', outerError);
-    }
-  }
-
-  // Schedule webhook retry with exponential backoff
-  private async scheduleRetry(webhookId: string, teamConfig: TeamConfig): Promise<void> {
-    const maxRetries = teamConfig.webhooks?.retryConfig?.maxRetries || 3;
-    const baseDelay = teamConfig.webhooks?.retryConfig?.retryDelay || 60; // 1 minute default
-
-    // Get current retry count
-    const webhookLog = await this.env.DB.prepare(
-      'SELECT retry_count FROM webhook_logs WHERE id = ?'
-    ).bind(webhookId).first();
-
-    const currentRetryCount = (webhookLog?.retry_count as number) || 0;
-
-    if (currentRetryCount < maxRetries) {
-      // Calculate next retry time with exponential backoff
-      const delaySeconds = baseDelay * Math.pow(2, currentRetryCount);
-      const nextRetryAt = new Date(Date.now() + delaySeconds * 1000);
-
-      await this.env.DB.prepare(`
-        UPDATE webhook_logs 
-        SET status = 'retry', retry_count = ?, next_retry_at = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(currentRetryCount + 1, nextRetryAt.toISOString(), webhookId).run();
-
-      console.log(`Scheduled webhook retry ${currentRetryCount + 1}/${maxRetries} for ${webhookId} at ${nextRetryAt.toISOString()}`);
-    } else {
-      console.log(`Max retries reached for webhook ${webhookId}`);
-    }
-  }
-}
-
-// Simplified matter quality assessment (no AI calls)
-interface QualityAssessment {
-  score: number;
-  readyForLawyer: boolean;
-  breakdown: {
-    answerQuality: number;
-    answerCompleteness: number;
-    answerRelevance: number;
-    answerLength: number;
-    serviceSpecificity: number;
-    urgencyIndication: number;
-    evidenceMentioned: number;
-    timelineProvided: number;
-  };
-  issues: string[];
-  suggestions: string[];
-  confidence: 'high' | 'medium' | 'low';
-}
-
-function assessMatterQuality(matterData: any): QualityAssessment {
-  const answers = matterData.answers || {};
-  const answerEntries = Object.entries(answers);
-  
-  // Initialize assessment
-  const assessment: QualityAssessment = {
-    score: 0,
-    readyForLawyer: false,
-    breakdown: {
-      answerQuality: 0,
-      answerCompleteness: 0,
-      answerRelevance: 0,
-      answerLength: 0,
-      serviceSpecificity: 0,
-      urgencyIndication: 0,
-      evidenceMentioned: 0,
-      timelineProvided: 0
-    },
-    issues: [],
-    suggestions: [],
-    confidence: 'low'
-  };
-
-  // 1. Analyze answer quality and length
-  let totalAnswerLength = 0;
-  let meaningfulAnswers = 0;
-  let totalAnswers = answerEntries.length;
-  
-  for (const [key, value] of answerEntries) {
-    const answer = typeof value === 'string' ? value : (value as any)?.answer || '';
-    const question = typeof value === 'string' ? key : (value as any)?.question || key;
-    
-    // Check if answer is meaningful (not just 1-3 characters)
-    if (answer.length >= 10) {
-      meaningfulAnswers++;
-      totalAnswerLength += answer.length;
-    } else if (answer.length <= 3) {
-      assessment.issues.push(`Answer "${answer}" is too short for question "${question}"`);
-    }
-  }
-
-  // Calculate answer quality metrics
-  assessment.breakdown.answerQuality = totalAnswers > 0 ? (meaningfulAnswers / totalAnswers) * 100 : 0;
-  assessment.breakdown.answerLength = totalAnswers > 0 ? Math.min((totalAnswerLength / totalAnswers) / 5, 100) : 0; // Normalize to 100
-
-  // 2. Check service specificity
-  if (matterData.service && matterData.service !== 'General Inquiry') {
-    assessment.breakdown.serviceSpecificity = 100;
-  } else if (matterData.service === 'General Inquiry') {
-    assessment.breakdown.serviceSpecificity = 50;
-    assessment.suggestions.push('Consider specifying the exact type of legal matter');
-  } else {
-    assessment.breakdown.serviceSpecificity = 0;
-    assessment.issues.push('No legal service area specified');
-  }
-
-  // 3. Analyze content for urgency indicators
-  const urgencyKeywords = ['urgent', 'emergency', 'immediate', 'asap', 'quickly', 'soon', 'deadline', 'court date', 'hearing'];
-  const content = JSON.stringify(answers).toLowerCase();
-  const hasUrgency = urgencyKeywords.some(keyword => content.includes(keyword));
-  assessment.breakdown.urgencyIndication = hasUrgency ? 100 : 0;
-
-  // 4. Check for evidence/documentation mentions
-  const evidenceKeywords = ['document', 'contract', 'letter', 'email', 'text', 'photo', 'video', 'receipt', 'bill', 'court order', 'agreement'];
-  const hasEvidence = evidenceKeywords.some(keyword => content.includes(keyword));
-  assessment.breakdown.evidenceMentioned = hasEvidence ? 100 : 0;
-
-  // 5. Check for timeline information
-  const timelineKeywords = ['yesterday', 'today', 'tomorrow', 'last week', 'last month', 'next week', 'next month', 'date', 'when', 'since'];
-  const hasTimeline = timelineKeywords.some(keyword => content.includes(keyword));
-  assessment.breakdown.timelineProvided = hasTimeline ? 100 : 0;
-
-  // 6. Calculate overall score with weighted components
-  const weights = {
-    answerQuality: 0.25,
-    answerLength: 0.20,
-    serviceSpecificity: 0.15,
-    urgencyIndication: 0.10,
-    evidenceMentioned: 0.10,
-    timelineProvided: 0.10,
-    answerCompleteness: 0.10
-  };
-
-  assessment.score = Math.round(
-    assessment.breakdown.answerQuality * weights.answerQuality +
-    assessment.breakdown.answerLength * weights.answerLength +
-    assessment.breakdown.serviceSpecificity * weights.serviceSpecificity +
-    assessment.breakdown.urgencyIndication * weights.urgencyIndication +
-    assessment.breakdown.evidenceMentioned * weights.evidenceMentioned +
-    assessment.breakdown.timelineProvided * weights.timelineProvided +
-    (totalAnswers >= 3 ? 100 : totalAnswers * 33.33) * weights.answerCompleteness
-  );
-
-  // 7. Determine if ready for lawyer
-  assessment.readyForLawyer = assessment.score >= 70 && meaningfulAnswers >= 2;
-
-  // 8. Set confidence level
-  if (assessment.score >= 80 && meaningfulAnswers >= 3) {
-    assessment.confidence = 'high';
-  } else if (assessment.score >= 60 && meaningfulAnswers >= 2) {
-    assessment.confidence = 'medium';
-  } else {
-    assessment.confidence = 'low';
-  }
-
-  // 9. Generate suggestions based on issues
-  if (assessment.breakdown.answerQuality < 50) {
-    assessment.suggestions.push('Please provide more detailed answers to the questions');
-  }
-  if (assessment.breakdown.evidenceMentioned === 0) {
-    assessment.suggestions.push('Consider mentioning any relevant documents or evidence');
-  }
-  if (assessment.breakdown.timelineProvided === 0) {
-    assessment.suggestions.push('Include timeline information about when events occurred');
-  }
-  if (totalAnswers < 3) {
-    assessment.suggestions.push('Answer more questions to provide a complete picture');
-  }
-
-  return assessment;
-}
 
 // Helper function to log chat messages to database
 async function logChatMessage(
@@ -680,6 +220,7 @@ async function handleChat(request: Request, env: Env, corsHeaders: Record<string
     }
 
     // Get team config using cached service
+    const { AIService } = await import('./services/AIService.js');
     const aiService = new AIService(env.AI, env);
     const teamConfig = body.teamId ? await aiService.getTeamConfig(body.teamId) : {};
 
@@ -764,6 +305,7 @@ async function handleMatterCreation(request: Request, env: Env, corsHeaders: Rec
     }
 
     // Get team config using cached service
+    const { AIService } = await import('./services/AIService.js');
     const aiService = new AIService(env.AI, env);
     const teamConfig = await aiService.getTeamConfig(body.teamId);
     
@@ -774,6 +316,7 @@ async function handleMatterCreation(request: Request, env: Env, corsHeaders: Rec
       });
     }
 
+    const { assessMatterQuality } = await import('./utils/qualityAssessment.js');
     const quality = assessMatterQuality(body);
 
           switch (body.step) {
@@ -829,6 +372,7 @@ async function handleMatterCreation(request: Request, env: Env, corsHeaders: Rec
           ];
 
           // Send matter creation webhook (when service is first selected)
+          const { WebhookService } = await import('./services/WebhookService.js');
           const webhookService = new WebhookService(env);
           const matterCreationPayload = {
             event: 'matter_creation',
@@ -1161,6 +705,7 @@ Write each question as if you're a supportive friend or counselor asking for cla
         }
 
         // Send matter details webhook (when matter review is completed)
+        const { WebhookService } = await import('./services/WebhookService.js');
         const webhookService = new WebhookService(env);
         const matterDetailsPayload = {
           event: 'matter_details',
@@ -1281,12 +826,49 @@ async function handleForms(request: Request, env: Env, corsHeaders: Record<strin
     // Send notifications asynchronously to improve response time
     if (env.RESEND_API_KEY) {
       // Fire and forget - don't wait for email to complete
-      sendNotifications(body, formId, env).catch(error => {
+      (async () => {
+        const { EmailService } = await import('./services/EmailService.js');
+        const emailService = new EmailService(env.RESEND_API_KEY);
+        
+        // Send client confirmation and team notification in parallel for better performance
+        const promises = [];
+        
+        // Client confirmation
+        promises.push(
+          emailService.send({
+            from: 'noreply@blawby.com',
+            to: body.email,
+            subject: 'Thank you for contacting our law firm',
+            text: `Thank you for your inquiry. Reference ID: ${formId}. We will contact you within 24 hours.`
+          })
+        );
+
+        // Team notification using cached config
+        const { AIService } = await import('./services/AIService.js');
+        const aiService = new AIService(env.AI, env);
+        const teamConfig = await aiService.getTeamConfig(body.teamId);
+        
+        if (teamConfig.ownerEmail) {
+          promises.push(
+            emailService.send({
+              from: 'noreply@blawby.com',
+              to: teamConfig.ownerEmail,
+              subject: `New Lead: ${body.email}`,
+              text: `New lead received:\n\nEmail: ${body.email}\nPhone: ${body.phoneNumber}\nMatter: ${body.matterDetails}\nForm ID: ${formId}`
+            })
+          );
+        }
+        
+        // Wait for all emails to complete
+        await Promise.allSettled(promises);
+      })().catch(error => {
         console.warn('Email notification failed:', error);
       });
     }
 
     // Send contact form webhook
+    const { AIService } = await import('./services/AIService.js');
+    const { WebhookService } = await import('./services/WebhookService.js');
     const aiService = new AIService(env.AI, env);
     const teamConfig = await aiService.getTeamConfig(body.teamId);
     const webhookService = new WebhookService(env);
@@ -1398,6 +980,8 @@ async function handleScheduling(request: Request, env: Env, corsHeaders: Record<
       ).run();
 
       // Send appointment webhook
+      const { AIService } = await import('./services/AIService.js');
+      const { WebhookService } = await import('./services/WebhookService.js');
       const aiService = new AIService(env.AI, env);
       const teamConfig = await aiService.getTeamConfig(body.teamId);
       const webhookService = new WebhookService(env);
@@ -1953,6 +1537,8 @@ async function handleWebhooks(request: Request, env: Env, corsHeaders: Record<st
         }
 
         // Get team config and retry webhook
+        const { AIService } = await import('./services/AIService.js');
+        const { WebhookService } = await import('./services/WebhookService.js');
         const aiService = new AIService(env.AI, env);
         const teamConfig = await aiService.getTeamConfig(webhookLog.team_id as string);
         const webhookService = new WebhookService(env);
@@ -1987,6 +1573,8 @@ async function handleWebhooks(request: Request, env: Env, corsHeaders: Record<st
           'SELECT * FROM webhook_logs WHERE team_id = ? AND status IN (?, ?) LIMIT 10'
         ).bind(body.teamId, 'failed', 'retry').all();
 
+        const { AIService } = await import('./services/AIService.js');
+        const { WebhookService } = await import('./services/WebhookService.js');
         const aiService = new AIService(env.AI, env);
         const teamConfig = await aiService.getTeamConfig(body.teamId);
         const webhookService = new WebhookService(env);
@@ -2098,6 +1686,7 @@ async function handleWebhooks(request: Request, env: Env, corsHeaders: Record<st
       }
 
       // Get team config
+      const { AIService } = await import('./services/AIService.js');
       const aiService = new AIService(env.AI, env);
       const teamConfig = await aiService.getTeamConfig(body.teamId);
 
@@ -2139,6 +1728,7 @@ async function handleWebhooks(request: Request, env: Env, corsHeaders: Record<st
       }
 
       // Send test webhook
+      const { WebhookService } = await import('./services/WebhookService.js');
       const webhookService = new WebhookService(env);
       await webhookService.sendWebhook(body.teamId, body.webhookType, testPayload, teamConfig);
 
@@ -2165,6 +1755,7 @@ async function handleWebhooks(request: Request, env: Env, corsHeaders: Record<st
     try {
       const body = await parseJsonBody(request) as { teamId?: string };
       
+      const { AIService } = await import('./services/AIService.js');
       const aiService = new AIService(env.AI, env);
       aiService.clearCache(body.teamId);
 
@@ -2190,41 +1781,7 @@ async function handleWebhooks(request: Request, env: Env, corsHeaders: Record<st
   });
 }
 
-// Optimized notification sender with cached team config
-async function sendNotifications(formData: ContactForm, formId: string, env: Env) {
-  const emailService = new EmailService(env.RESEND_API_KEY);
-  
-  // Send client confirmation and team notification in parallel for better performance
-  const promises = [];
-  
-  // Client confirmation
-  promises.push(
-    emailService.send({
-      from: 'noreply@blawby.com',
-      to: formData.email,
-      subject: 'Thank you for contacting our law firm',
-      text: `Thank you for your inquiry. Reference ID: ${formId}. We will contact you within 24 hours.`
-    })
-  );
-
-  // Team notification using cached config
-  const aiService = new AIService(env.AI, env);
-  const teamConfig = await aiService.getTeamConfig(formData.teamId);
-  
-  if (teamConfig.ownerEmail) {
-    promises.push(
-      emailService.send({
-        from: 'noreply@blawby.com',
-        to: teamConfig.ownerEmail,
-        subject: `New Lead: ${formData.email}`,
-        text: `New lead received:\n\nEmail: ${formData.email}\nPhone: ${formData.phoneNumber}\nMatter: ${formData.matterDetails}\nForm ID: ${formId}`
-      })
-    );
-  }
-  
-  // Wait for all emails to complete
-  await Promise.allSettled(promises);
-} 
+ 
 
 export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
