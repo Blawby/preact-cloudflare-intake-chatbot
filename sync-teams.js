@@ -1,4 +1,4 @@
-// Usage: node sync-teams.js
+// Usage: node sync-teams.js [--remote]
 // This script will now DELETE any teams in the D1 database that are not present in teams.json (DRY sync)
 // Requires: wrangler installed and configured, teams.json in project root
 
@@ -14,6 +14,10 @@ const __dirname = path.dirname(__filename);
 const TEAMS_FILE = path.join(__dirname, 'teams.json');
 const DB_NAME = 'blawby-ai-chatbot';
 
+// Check if --remote flag is provided
+const isRemote = process.argv.includes('--remote');
+const wranglerFlag = isRemote ? '--remote' : '--local';
+
 if (!fs.existsSync(TEAMS_FILE)) {
   console.error('teams.json not found!');
   process.exit(1);
@@ -24,7 +28,7 @@ const teams = JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf-8'));
 // Fetch all existing team IDs from D1
 function getExistingTeamIds() {
   try {
-    const result = execSync(`wrangler d1 execute ${DB_NAME} --local --json --command "SELECT id FROM teams;"`, { encoding: 'utf-8' });
+    const result = execSync(`wrangler d1 execute ${DB_NAME} ${wranglerFlag} --json --command "SELECT id FROM teams;"`, { encoding: 'utf-8' });
     const data = JSON.parse(result);
     // The output is an array with one object containing results
     if (data[0] && data[0].results && Array.isArray(data[0].results)) {
@@ -63,7 +67,7 @@ if (idsToDelete.length > 0) {
   const tmpDeleteFile = path.join(os.tmpdir(), `delete-teams-${Date.now()}.sql`);
   fs.writeFileSync(tmpDeleteFile, deleteSql, 'utf-8');
   try {
-    execSync(`wrangler d1 execute ${DB_NAME} --local --file "${tmpDeleteFile}"`, { stdio: 'inherit' });
+    execSync(`wrangler d1 execute ${DB_NAME} ${wranglerFlag} --file "${tmpDeleteFile}"`, { stdio: 'inherit' });
     console.log(`🗑️ Deleted teams: ${idsToDelete.join(', ')}`);
   } catch (err) {
     console.error('Failed to delete old teams:', err.message);
@@ -86,7 +90,7 @@ const tmpFile = path.join(os.tmpdir(), `sync-teams-${Date.now()}.sql`);
 fs.writeFileSync(tmpFile, sql, 'utf-8');
 
 try {
-  execSync(`wrangler d1 execute ${DB_NAME} --local --file "${tmpFile}"`, { stdio: 'inherit' });
+  execSync(`wrangler d1 execute ${DB_NAME} ${wranglerFlag} --file "${tmpFile}"`, { stdio: 'inherit' });
   console.log('✅ Team sync complete!');
 } catch (err) {
   console.error('Failed to sync teams:', err.message);
