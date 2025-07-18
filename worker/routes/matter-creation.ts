@@ -240,53 +240,39 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
         // Try to generate AI summary, but fallback gracefully if it fails
         if (aiService) {
           try {
-            const summaryPrompt = `Create a clean matter summary markdown for this ${body.service} matter. The client provided initial structured answers AND follow-up conversation details. Use ALL information provided:
+            const summaryPrompt = `Create a matter summary for this ${body.service} matter using ONLY the information provided below. DO NOT add any details that were not explicitly mentioned by the client.
 
-Initial Q&A and Follow-up Information:
+CLIENT PROVIDED INFORMATION:
 ${questionAnswerPairs.join('\n')}
 
-Generate ONLY markdown content using the EXACT format below. Use FACTS ONLY - no empathetic language, no emotional content:
+INSTRUCTIONS:
+- Use ONLY the information provided above
+- If information is missing for a section, write "Not provided" or "Information not available"
+- DO NOT make assumptions or add details that weren't mentioned
+- DO NOT create fictional scenarios or relationships
+- If the client only said "divorce" with no other details, the summary should reflect that limited information
+
+Generate a markdown summary using this exact format:
 
 # 📋 ${body.service} Matter Summary
 
 ## 💼 Legal Matter
-[State the specific legal issue in clear terms]
+[State ONLY what the client explicitly mentioned - if they only said "divorce", write "Divorce matter"]
 
 ## 📝 Key Details
 - **Practice Area**: ${body.service}
-- **Issue**: [what the problem is]
-- **Timeline**: [when events occurred] 
-- **Current Situation**: [current status]
-- **Evidence/Documentation**: [any documents or evidence mentioned]
+- **Issue**: [Only what was explicitly stated]
+- **Timeline**: [Only if dates/timing were mentioned, otherwise "Not provided"]
+- **Current Situation**: [Only if current status was mentioned, otherwise "Not provided"]
+- **Evidence/Documentation**: [Only if documents were mentioned, otherwise "Not provided"]
 
 ## 🎯 Objective
-[What the client is seeking to achieve]
+[Only what the client stated they want to achieve, otherwise "Seeking legal assistance"]
 
-CRITICAL REQUIREMENTS: 
-- Use BOTH initial Q&A responses AND follow-up conversation details
-- Use only factual, objective language
-- NO "Your Responses" section - DO NOT repeat back the Q&A
-- NO internal assessments, scores, or AI analysis
-- NO quality ratings or percentages  
-- NO suggestions for improvement
-- NO "Matter Assessment" section
-- This is what the CLIENT sees in their matter summary
-- Keep it clean and professional
-- ONLY include the 3 sections shown above: Legal Matter, Key Details, and Objective
-
-IMPORTANT FOR FAMILY LAW CASES:
-- Be very careful about relationships and who is who
-- "im with my mom" = client is living with their own mother/grandmother
-- "they are with their mother" = children are with their mother (who is the client's spouse/partner)
-- "their mother" in context of children = the other parent (client's spouse/partner)
-- Client and spouse/partner are different people
-- Children live with spouse/partner, not with client's mother
-- Keep relationships clear and simple
-- Don't confuse multiple "mothers" in the same matter
-- Synthesize ALL information into a coherent summary`;
+CRITICAL: If the client provided minimal information (like just "divorce"), the summary should reflect that limited information rather than making up details.`;
 
             const summaryResult = await aiService.runLLM([
-              { role: 'system', content: 'You are a legal assistant creating structured markdown matter summaries. Follow the exact format requested. Use clear, professional language. Pay close attention to relationships and living arrangements. Initial Q&A responses and follow-up conversation details should both be considered to create a comprehensive summary.' },
+              { role: 'system', content: 'You are a legal assistant creating factual matter summaries. Use ONLY information explicitly provided by the client. Do not add assumptions, fictional details, or information that was not mentioned. If information is missing, state "Not provided" rather than making up details.' },
               { role: 'user', content: summaryPrompt }
             ]);
             
@@ -359,21 +345,23 @@ ${questionAnswerPairs.length > 2 ? questionAnswerPairs[2].split(': ')[1] || 'See
         let followUpQuestions = [];
         if (needsImprovement && aiService) {
           try {
-            const questionPrompt = `I'm helping someone with their ${body.service} situation. To make sure we have all the information needed to help them effectively, I'd like to ask a few more gentle, supportive questions.
+            const questionPrompt = `Based on the client's ${body.service} matter, generate 2-3 specific follow-up questions to gather missing information.
 
-Their situation: ${matterSummary}
-Current score: ${reviewQuality.score}/100
+CLIENT'S CURRENT INFORMATION:
+${questionAnswerPairs.join('\n')}
 
-Please suggest 2-3 conversational, empathetic follow-up questions that:
-1. Feel natural and caring, not interrogative
-2. Gather the most important missing information
-3. Use phrases like "Can you tell me more about..." or "I'd love to understand..."
-4. Acknowledge this might be difficult to discuss
+GUIDELINES:
+- Ask ONLY about information that is clearly missing
+- Do NOT ask about details that were already provided
+- Do NOT assume relationships or situations that weren't mentioned
+- If the client only said "divorce", ask basic questions like timeline, current status, etc.
+- Use gentle, supportive language
+- Focus on factual information needed for legal assistance
 
-Write each question as if you're a supportive friend or counselor asking for clarification.`;
+Generate 2-3 specific questions that would help complete the matter details.`;
 
             const questionResult = await aiService.runLLM([
-              { role: 'system', content: 'You are a legal assistant. Generate specific, actionable follow-up questions.' },
+              { role: 'system', content: 'You are a legal assistant generating follow-up questions. Ask only about missing information that was not already provided. Do not assume details or relationships that were not mentioned.' },
               { role: 'user', content: questionPrompt }
             ]);
             

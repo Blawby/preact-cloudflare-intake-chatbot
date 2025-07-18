@@ -44,7 +44,7 @@ export class AIService {
       const result = await this.ai.run(model, {
         messages,
         max_tokens: 500,
-        temperature: 0.4,
+        temperature: 0.1, // Reduced from 0.4 to 0.1 for more factual responses
       });
       clearTimeout(timeout);
       return result;
