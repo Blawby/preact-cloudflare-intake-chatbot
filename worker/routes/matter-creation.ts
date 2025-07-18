@@ -1,6 +1,6 @@
 import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
-import { parseJsonBody, createMatterRecord, storeMatterQuestion, storeAISummary } from '../utils';
+import { parseJsonBody, createMatterRecord, storeMatterQuestion, storeAISummary, updateAISummary, updateMatterRecord, getMatterIdBySession } from '../utils';
 
 interface MatterCreationRequest {
   teamId: string;
@@ -222,18 +222,34 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
         let matterSummary = '';
         let matterId: string | undefined;
         
-        // Create actual matter record in database first
+        // Check if we already have a matter record for this session (for follow-up questions)
+        if (body.sessionId) {
+          matterId = await getMatterIdBySession(env, body.sessionId, body.teamId);
+        }
+        
+        // Create or update matter record in database
         try {
-          matterId = await createMatterRecord(
-            env,
-            body.teamId,
-            body.sessionId || '',
-            body.service,
-            matterDescription,
-            body.urgency
-          );
+          if (matterId) {
+            // Update existing matter record with new information
+            await updateMatterRecord(
+              env,
+              matterId,
+              matterDescription,
+              body.urgency
+            );
+          } else {
+            // Create new matter record
+            matterId = await createMatterRecord(
+              env,
+              body.teamId,
+              body.sessionId || '',
+              body.service,
+              matterDescription,
+              body.urgency
+            );
+          }
         } catch (error) {
-          console.warn('Failed to create matter record:', error);
+          console.warn('Failed to create/update matter record:', error);
           // Continue without matter record if creation fails
         }
         
@@ -278,9 +294,9 @@ CRITICAL: If the client provided minimal information (like just "divorce"), the 
             
             matterSummary = summaryResult.response || `# 📋 ${body.service} Matter Summary\n\n## 💼 Legal Matter\n${body.service} matter with provided details.\n\n## 📝 Key Details\n- **Issue**: Details provided through consultation\n- **Current Situation**: Information gathered`;
             
-            // Store AI-generated summary linked to the matter
+            // Store or update AI-generated summary linked to the matter
             if (matterSummary && matterId) {
-              await storeAISummary(
+              await updateAISummary(
                 env,
                 matterId,
                 matterSummary,
@@ -326,13 +342,15 @@ ${questionAnswerPairs.length > 2 ? questionAnswerPairs[2].split(': ')[1] || 'See
         if (matterId && matterAnswers) {
           Object.entries(matterAnswers).forEach(async ([key, value]) => {
             if (typeof value === 'object' && value !== null && 'question' in value && 'answer' in value) {
+              // Determine if this is a follow-up question based on the key
+              const isFollowUp = key.startsWith('followup_');
               await storeMatterQuestion(
                 env,
                 matterId,
                 body.teamId,
                 value.question,
                 value.answer,
-                'ai-form'
+                isFollowUp ? 'followup' : 'ai-form'
               );
             }
           });
