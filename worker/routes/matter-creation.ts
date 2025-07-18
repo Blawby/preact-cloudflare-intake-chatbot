@@ -400,10 +400,7 @@ Generate 2-3 specific questions that would help complete the matter details.`;
         // Improved follow-up message logic to avoid redundancy
         let followUpMessage = '';
         if (needsImprovement) {
-          if (followUpQuestions.length > 0) {
-            // Use the first AI-generated follow-up question directly
-            followUpMessage = followUpQuestions[0];
-          } else if (reviewQuality.issues.length > 0 && reviewQuality.issues[0].includes('too short')) {
+          if (reviewQuality.issues.length > 0 && reviewQuality.issues[0].includes('too short')) {
             followUpMessage = `I noticed some of your answers were quite brief. To help you get the best legal assistance, could you provide more details?`;
           } else {
             followUpMessage = `To make sure we have everything needed for your ${body.service.toLowerCase()} matter, I'd love to get a few more details. Can you tell me more about your situation?`;
