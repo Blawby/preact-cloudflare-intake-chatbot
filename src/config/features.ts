@@ -41,6 +41,18 @@ interface FeatureFlags {
      * When false, the disclaimer text will be hidden
      */
     enableDisclaimerText: boolean;
+
+    /**
+     * Enable "Learn about our services" button
+     * When false, the learn services button will be hidden from welcome messages
+     */
+    enableLearnServicesButton: boolean;
+
+    /**
+     * Enable "Request a consultation" button
+     * When false, the consultation request button will be hidden from welcome messages
+     */
+    enableConsultationButton: boolean;
 }
 
 const features: FeatureFlags = {
@@ -50,6 +62,8 @@ const features: FeatureFlags = {
     enableLeftSidebar: true, // Enable left sidebar
     enableMessageFeedback: false, // Disable feedback and copy buttons on messages
     enableDisclaimerText: false, // Disable disclaimer text below input
+    enableLearnServicesButton: false, // Hide learn services button
+    enableConsultationButton: false, // Hide consultation request button
 };
 
 // For development environment, you can override settings

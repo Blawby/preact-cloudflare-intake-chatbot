@@ -301,7 +301,7 @@ const WelcomeMessageButtons: FunctionComponent<{
 						Create Matter
 					</button>
 				)}
-				{onScheduleConsultation && (
+				{onScheduleConsultation && features.enableConsultationButton && (
 					<button
 						class="welcome-button"
 						onClick={onScheduleConsultation}
@@ -309,7 +309,7 @@ const WelcomeMessageButtons: FunctionComponent<{
 						Request a consultation
 					</button>
 				)}
-				{onLearnServices && (
+				{onLearnServices && features.enableLearnServicesButton && (
 					<button
 						class="welcome-button"
 						onClick={onLearnServices}
