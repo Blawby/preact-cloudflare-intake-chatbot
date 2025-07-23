@@ -111,12 +111,12 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
     ) {
       if (lastPromptedSlot === 'phone' && isValidPhone(body.description)) {
         mergedAnswers[lastPromptedSlot] = {
-          question: `What is your ${SLOT_LABELS[lastPromptedSlot]}?`,
+          question: `${SLOT_LABELS[lastPromptedSlot]}?`,
           answer: body.description
         };
       } else if (lastPromptedSlot === 'opposing_party' && isValidOpposingParty(body.description, body.service)) {
         mergedAnswers[lastPromptedSlot] = {
-          question: `What is your ${SLOT_LABELS[lastPromptedSlot]}?`,
+          question: `${SLOT_LABELS[lastPromptedSlot]}?`,
           answer: body.description
         };
       } else if (lastPromptedSlot === 'matter_details' && isValidDescription(body.description, body.service, mergedAnswers)) {
@@ -209,7 +209,7 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
     SLOT_ORDER.forEach(field => {
       if (field !== 'matter_details' && extractedData[field] && !isPlaceholder(extractedData[field])) {
         mergedAnswers[field] = {
-          question: `What is your ${SLOT_LABELS[field]}?`,
+          question: `${SLOT_LABELS[field]}?`,
           answer: extractedData[field]
         };
       }
@@ -242,6 +242,12 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
       field => mergedAnswers[field] && mergedAnswers[field].answer && !isPlaceholder(mergedAnswers[field].answer)
     );
     if (hasAllRequired) {
+      // Get the actual team ID (ULID) from the database using the slug if needed
+      let actualTeamId = body.teamId;
+      try {
+        const teamInfo = await env.DB.prepare('SELECT id FROM teams WHERE slug = ?').bind(body.teamId).first();
+        if (teamInfo) actualTeamId = teamInfo.id as string;
+      } catch {}
       const contactSummary = [
         `- **Full Name**: ${mergedAnswers.full_name?.answer}`,
         `- **Email**: ${mergedAnswers.email?.answer}`,
@@ -252,16 +258,69 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
       const service = body.service || 'General Consultation';
       // If user is submitting intake, finalize and return thank you
       if (body.step === 'submit-intake') {
-        // TODO: Trigger webhook, store in DB, etc. (simulate for now)
+        // Send matter_details webhook with full details
+        const matterDetailsPayload = {
+          event: 'matter_details',
+          timestamp: new Date().toISOString(),
+          teamId: actualTeamId,
+          sessionId: body.sessionId,
+          matter: {
+            service: service,
+            description: matterDescription,
+            summary: `# Legal Intake Summary – ${service}\n\n## Contact Details\n${contactSummary}\n\n## Description of Legal Matter\n${matterDescription}`,
+            answers: mergedAnswers,
+            step: 'intake-complete',
+            totalQuestions: SLOT_ORDER.length,
+            hasQuestions: true
+          }
+        };
+        console.log('Sending matter_details webhook payload:', JSON.stringify(matterDetailsPayload, null, 2));
+        try {
+          const { WebhookService } = await import('../services/WebhookService.js');
+          const webhookService = new WebhookService(env);
+          await webhookService.sendWebhook(actualTeamId, 'matter_details', matterDetailsPayload, teamConfig);
+        } catch (err) {
+          console.warn('Failed to send matter_details webhook:', err);
+        }
         return new Response(JSON.stringify({
           step: 'intake-complete',
           message: 'Thank you! Your information has been submitted. A lawyer will contact you soon.',
-          answers: mergedAnswers
+          answers: mergedAnswers,
+          webhookPayload: matterDetailsPayload, // for test verification
+          followupMessage: "I've sent your info to our team, we will be in contact with you shortly. Would you like to add any more details to your request?"
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       // Otherwise, show summary and ask for confirmation
+      // Send matter_creation webhook with full details
+      const matterCreationPayload = {
+        event: 'matter_creation',
+        timestamp: new Date().toISOString(),
+        teamId: actualTeamId,
+        sessionId: body.sessionId,
+        matter: {
+          service: service,
+          full_name: mergedAnswers.full_name?.answer,
+          email: mergedAnswers.email?.answer,
+          phone: mergedAnswers.phone?.answer,
+          opposing_party: mergedAnswers.opposing_party?.answer,
+          description: matterDescription,
+          summary: `# Legal Intake Summary – ${service}\n\n## Contact Details\n${contactSummary}\n\n## Description of Legal Matter\n${matterDescription}`,
+          answers: mergedAnswers,
+          step: 'service-selected',
+          totalQuestions: SLOT_ORDER.length,
+          hasQuestions: true
+        }
+      };
+      console.log('Sending matter_creation webhook payload:', JSON.stringify(matterCreationPayload, null, 2));
+      try {
+        const { WebhookService } = await import('../services/WebhookService.js');
+        const webhookService = new WebhookService(env);
+        await webhookService.sendWebhook(actualTeamId, 'matter_creation', matterCreationPayload, teamConfig);
+      } catch (err) {
+        console.warn('Failed to send matter_creation webhook:', err);
+      }
       return new Response(JSON.stringify({
         step: 'awaiting-confirmation',
         message: `Thank you. Based on what you've shared, here’s a summary of your legal matter:`,
@@ -271,7 +330,9 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
           answers: mergedAnswers
         },
         confirmationPrompt: `Does everything look correct? If so, click ‘Request Consultation’ to submit. If you need to make changes, just type your correction below.`,
-        answers: mergedAnswers
+        answers: mergedAnswers,
+        webhookPayload: matterCreationPayload, // for test verification
+        followupMessage: "I've sent your info to our team, we will be in contact with you shortly. Would you like to add any more details to your request?"
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

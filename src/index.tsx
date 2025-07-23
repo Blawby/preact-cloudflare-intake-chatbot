@@ -1599,6 +1599,17 @@ export function App() {
 			};
 			setMessages(prev => [...prev, aiResponse]);
 
+			// Always show followupMessage if present
+			if (aiResult.followupMessage) {
+				setMessages(prev => [
+					...prev,
+					{
+						content: aiResult.followupMessage,
+						isUser: false
+					}
+				]);
+			}
+
 			// If the backend returns a summary, move to summary state
 			if (aiResult.step === 'matter-details' || aiResult.step === 'matter-review') {
 				setMatterState(prev => ({
@@ -2048,6 +2059,54 @@ export function App() {
 											</div>
 										)}
 										</main>
+										{(() => {
+											// Find the last AI message with a summary and confirmation prompt
+											const lastAiMsg = messages.slice().reverse().find(
+												m =>
+													!m.isUser &&
+													m.matterCanvas &&
+													m.content &&
+													m.content.includes("here's a summary of your legal matter:")
+											);
+											if (lastAiMsg && lastAiMsg.matterCanvas) {
+												return (
+													<div className="confirmation-prompt" style={{ margin: '16px 0', textAlign: 'center' }}>
+														<p>Does everything look correct? If so, click 'Request Consultation' to submit. If you need to make changes, just type your correction below.</p>
+														<Button
+															variant="primary"
+															onClick={async () => {
+																// Call backend with step: 'submit-intake'
+																const submitResult = await handleMatterCreationAPI('submit-intake', {
+																	answers: lastAiMsg.matterCanvas.answers,
+																	service: lastAiMsg.matterCanvas.service,
+																	sessionId,
+																});
+																setMessages(prev => [
+																	...prev,
+																	{
+																		content: submitResult.message,
+																		isUser: false,
+																		matterCanvas: submitResult.matterCanvas,
+																	},
+																]);
+																if (submitResult.followupMessage) {
+																	setMessages(prev => [
+																		...prev,
+																		{
+																			content: submitResult.followupMessage,
+																			isUser: false
+																		}
+																	]);
+																}
+															}}
+														>
+															Request Consultation
+														</Button>
+													</div>
+												);
+											}
+											return null;
+										})()}
 									</>
 								) : routerState.currentRoute === 'matters' ? (
 									<>

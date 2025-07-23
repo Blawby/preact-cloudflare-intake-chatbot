@@ -227,6 +227,68 @@ describe('Matter Creation API Integration Tests', () => {
     });
   });
 
+  describe('Slot-by-slot Intake Flow', () => {
+    it('should require all slots (including opposing party and description) before showing summary', async () => {
+      // 1. Service selection
+      let requestBody = {
+        teamId: 'team1',
+        service: 'Family Law',
+        answers: {},
+        sessionId: 'test-session'
+      };
+      let request = new Request('http://localhost/api/matter-creation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+      let response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      let data = await response.json();
+      expect(data.step).toBe('info-request');
+      expect(data.message).toMatch(/full name/i);
+
+      // 2. Name
+      requestBody.answers = { full_name: { question: 'May I have your full name?', answer: 'Alice Example' } };
+      requestBody.description = 'Alice Example';
+      response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      data = await response.json();
+      expect(data.step).toBe('info-request');
+      expect(data.message).toMatch(/email address/i);
+
+      // 3. Email
+      requestBody.answers.email = { question: 'Could you please share your email address?', answer: 'alice@example.com' };
+      requestBody.description = 'alice@example.com';
+      response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      data = await response.json();
+      expect(data.step).toBe('info-request');
+      expect(data.message).toMatch(/phone number/i);
+
+      // 4. Phone
+      requestBody.answers.phone = { question: 'What’s the best phone number to reach you at?', answer: '555-123-4567' };
+      requestBody.description = '555-123-4567';
+      response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      data = await response.json();
+      expect(data.step).toBe('info-request');
+      expect(data.message).toMatch(/opposing party/i);
+
+      // 5. Opposing party
+      requestBody.answers.opposing_party = { question: 'Who is the opposing party (person or company) involved in this matter?', answer: 'Bob Example' };
+      requestBody.description = 'Bob Example';
+      response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      data = await response.json();
+      expect(data.step).toBe('info-request');
+      expect(data.message).toMatch(/describe/i);
+
+      // 6. Description
+      requestBody.answers.matter_details = { question: 'Can you briefly describe the Family Law issue you’re facing?', answer: 'Divorce and custody dispute.' };
+      requestBody.description = 'Divorce and custody dispute.';
+      response = await handleMatterCreation(request, mockEnv, corsHeaders);
+      data = await response.json();
+      expect(data.step).toBe('awaiting-confirmation');
+      expect(data.matterCanvas).toBeDefined();
+      expect(data.matterCanvas.matterSummary).toMatch(/Divorce and custody dispute/i);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle invalid team ID', async () => {
       const requestBody = {
