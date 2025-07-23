@@ -1954,15 +1954,6 @@ kbd {
 	max-width: 300px;
 }
 
-
-}
-
-.welcome-button.primary:hover {
-	background-color: var(--accent-hover);
-	border-color: var(--accent-hover);
-}
-
-*/ */
 /* Mobile responsive adjustments for welcome buttons */
 @media (max-width: 768px) {
 	.welcome-buttons {
@@ -2879,34 +2870,6 @@ kbd {
 	justify-content: center;
 }
 
-/* .action-button {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.75rem 1rem;
-	background-color: var(--input-bg);
-	border: 1px solid var(--border-color);
-	border-radius: 0.75rem;
-	color: var(--text-color);
-	font-size: 0.9rem;
-	font-weight: 500;
-	cursor: pointer;
-	transition: all 0.2s ease;
-	flex: 1;
-	justify-content: center;
-}
-
-/* .action-button:hover {
-	background-color: var(--hover-color);
-	border-color: var(--accent-color);
-}
-
-.action-button svg {
-	width: 1rem;
-	height: 1rem;
-} */
-*/
-
 /* Team Sections */
 .team-section {
 	border-top: 1px solid var(--border-color);
@@ -2960,10 +2923,6 @@ kbd {
 	.team-actions {
 		flex-direction: column;
 	}
-
-	/* .action-button {
-		justify-content: flex-start;
-	} */
 }
 
 /* Sidebar Matter Canvas Styles */
@@ -3912,32 +3871,8 @@ kbd {
 	margin: 0;
 }
 
-/* .create-matter-button {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.5rem 1rem;
-	background-color: var(--accent-color);
-	color: var(--bg-color);
-	border: none;
-	border-radius: 0.5rem;
-	font-size: 0.875rem;
-	font-weight: 500;
-	cursor: pointer;
-	transition: all 0.2s;
-}
 
-/* .create-matter-button:hover {
-	opacity: 0.9;
-	transform: translateY(-1px);
-}
-
-.create-matter-button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-	transform: none;
-} */
-*/ .matters-loading {
+.matters-loading {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -3976,25 +3911,6 @@ kbd {
 	max-width: 300px;
 }
 
-/* .empty-create-button {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.75rem 1.5rem;
-	background-color: var(--accent-color);
-	color: var(--bg-color);
-	border: none;
-	border-radius: 0.5rem;
-	font-size: 0.875rem;
-	font-weight: 500;
-	cursor: pointer;
-	transition: all 0.2s;
-}
-
-.empty-create-button:hover {
-	opacity: 0.9;
-	transform: translateY(-1px);
-} */
 
 .matters-grid {
 	display: grid;
