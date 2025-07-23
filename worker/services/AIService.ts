@@ -19,11 +19,6 @@ export interface TeamConfig {
       retryDelay?: number; // in seconds
     };
   };
-  promptOnly?: {
-    enabled?: boolean;
-    requiredFields?: string[];
-    empathyPrompts?: Record<string, string>;
-  };
 }
 
 export interface Env {
@@ -94,26 +89,8 @@ export class AIService {
   }
 
   // NEW: Enhanced prompt system for required field collection
-  async generateIntakePrompt(teamConfig: TeamConfig, service: string, step: 'initial' | 'required_fields' | 'matter_details'): Promise<string> {
-    const empathyPrompt = teamConfig.promptOnly?.empathyPrompts?.[service] || 
-      `I'm here to help you with your ${service} matter. Let me gather some information to better assist you.`;
-    
-    const requiredFields = teamConfig.promptOnly?.requiredFields || ['full_name', 'email', 'phone'];
-    
-    switch (step) {
-      case 'initial':
-        return `${empathyPrompt}\n\nTo get started, I need to collect some basic information. What's your full legal name?`;
-      
-      case 'required_fields':
-        return `Perfect! Now I need your contact information so we can keep you updated on your ${service} matter. What's your email address?`;
-      
-      case 'matter_details':
-        return `Great! Now let's talk about your ${service} situation. Can you tell me what specific issue you're dealing with?`;
-      
-      default:
-        return empathyPrompt;
-    }
-  }
+  // Remove generateIntakePrompt and all promptOnly/empathy logic
+  // Keep only runLLM, getTeamConfig, clearCache, validateCollectedData, extractFieldValue
 
   // NEW: Validate collected data against required fields
   validateCollectedData(answers: Record<string, any>, requiredFields: string[]): {

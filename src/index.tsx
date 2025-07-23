@@ -1458,7 +1458,10 @@ export function App() {
 		console.log('Service selection clicked:', service);
 		console.log('Current teamId:', teamId);
 		console.log('Current matterState:', matterState);
-		debouncedServiceSelect(service);
+
+		// Only send the AI-driven message to the backend, and include the service
+		const initialDescription = `I'm looking for legal help with my ${service} issue.`;
+		handleMatterCreationStep(initialDescription, [], service);
 	};
 
 	// Create debounced urgency selection handler to prevent spam clicks
@@ -1556,7 +1559,7 @@ export function App() {
 	};
 
 	// Handle matter creation flow steps
-	const handleMatterCreationStep = async (message: string, attachments: FileAttachment[] = []) => {
+	const handleMatterCreationStep = async (message: string, attachments: FileAttachment[] = [], service?: string) => {
 		if (isProcessingRequest) {
 			console.log('Request already in progress, ignoring message');
 			return;
@@ -1575,12 +1578,16 @@ export function App() {
 
 		try {
 			// Always send the message to the backend, no step logic
-			const apiPayload = {
+			const apiPayload: any = {
 				teamId,
 				sessionId,
 				description: message,
 				answers: matterState.data?.aiAnswers || {},
 			};
+			// Always include the selected service if set
+			if (service || selectedService) {
+				apiPayload.service = service || selectedService;
+			}
 			const aiResult = await handleMatterCreationAPI('questions', apiPayload);
 
 			// Display the backend's message
@@ -1823,6 +1830,9 @@ export function App() {
 			}
 		};
 	}, []);
+
+	// Add state for selected service
+	const [selectedService, setSelectedService] = useState<string | undefined>(undefined);
 
 	return (
 		<>
