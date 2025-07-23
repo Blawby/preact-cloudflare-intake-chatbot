@@ -1,4 +1,5 @@
 import { h } from 'preact';
+import { Button } from './ui/Button';
 
 interface TeamNotFoundProps {
   teamId: string;
@@ -23,9 +24,9 @@ export function TeamNotFound({ teamId, onRetry }: TeamNotFoundProps) {
         </p>
         <div className="team-not-found-actions">
           {onRetry && (
-            <button onClick={onRetry} className="retry-button">
+            <Button onClick={onRetry} variant="primary">
               Try Again
-            </button>
+            </Button>
           )}
           <a href="/" className="home-link">
             Go to Home

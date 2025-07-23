@@ -8,6 +8,7 @@ import {
   ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
 import { Matter, MatterDetailProps } from '../types/matter';
+import { Button } from './ui/Button';
 
 const getStatusIcon = (status: Matter['status']) => {
   switch (status) {
@@ -75,24 +76,24 @@ const MatterDetail = ({ matter, onBack, onEdit }: MatterDetailProps) => {
   return (
     <div className="matter-detail-container">
       <div className="matter-detail-header">
-        <button 
-          className="back-button"
+        <Button 
+          variant="ghost"
           onClick={onBack}
           aria-label="Back to matters"
         >
-          <ArrowLeftIcon className="w-5 h-5" />
+          <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Back to Matters
-        </button>
+        </Button>
         
         <div className="matter-detail-actions">
-          <button 
-            className="edit-button"
+          <Button 
+            variant="secondary"
             onClick={onEdit}
             aria-label="Edit matter"
           >
-            <PencilIcon className="w-4 h-4" />
+            <PencilIcon className="w-4 h-4 mr-2" />
             Edit
-          </button>
+          </Button>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'preact';
 import Modal from './Modal';
+import { Button } from './ui/Button';
 
 interface IntroductionPanelProps {
     isOpen: boolean;
@@ -46,9 +47,9 @@ const IntroductionPanel: FunctionComponent<IntroductionPanelProps> = ({ isOpen, 
                     </ul>
                 </section>
 
-                <button class="intro-button" onClick={onClose}>
+                <Button variant="primary" onClick={onClose}>
                     Get Started
-                </button>
+                </Button>
             </div>
         </Modal>
     );
