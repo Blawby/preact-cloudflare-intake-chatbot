@@ -429,7 +429,7 @@ export function App() {
 			const response = await fetch(getTeamsEndpoint());
 			if (response.ok) {
 				const teamsResponse = await response.json();
-				const team = teamsResponse.data.find((t: any) => t.id === teamId);
+				const team = teamsResponse.data.find((t: any) => t.slug === teamId || t.id === teamId);
 				if (team?.config) {
 					const config = {
 						name: team.name || 'Blawby AI',
@@ -1120,7 +1120,7 @@ export function App() {
 					const teamsResponse = await fetch(getTeamsEndpoint());
 					if (teamsResponse.ok) {
 						const teamsJson = await teamsResponse.json();
-						teamConfig = teamsJson.data.find((team: any) => team.id === teamId);
+						teamConfig = teamsJson.data.find((team: any) => team.slug === teamId || team.id === teamId);
 					}
 				} catch (error) {
 					console.warn('Failed to fetch team config:', error);

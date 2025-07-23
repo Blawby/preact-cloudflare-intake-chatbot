@@ -101,10 +101,15 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
           // Send matter creation webhook (when service is first selected)
           const { WebhookService } = await import('../services/WebhookService.js');
           const webhookService = new WebhookService(env);
+          
+          // Get team info for webhook payload - use slug to find ULID
+          const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(body.teamId).first();
+          
           const matterCreationPayload = {
             event: 'matter_creation',
             timestamp: new Date().toISOString(),
-            teamId: body.teamId,
+            teamId: teamInfo?.id || body.teamId, // Use ULID if available, fallback to slug
+            teamName: body.teamId, // Human-readable team identifier (slug)
             sessionId: body.sessionId,
             matter: {
               service: body.service,
@@ -437,10 +442,15 @@ Generate 2-3 specific questions that would help complete the matter details.`;
         // Send matter details webhook (when matter review is completed)
         const { WebhookService } = await import('../services/WebhookService.js');
         const webhookService = new WebhookService(env);
+        
+        // Get team info for webhook payload - use slug to find ULID
+        const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(body.teamId).first();
+        
         const matterDetailsPayload = {
           event: 'matter_details',
           timestamp: new Date().toISOString(),
-          teamId: body.teamId,
+          teamId: teamInfo?.id || body.teamId, // Use ULID if available, fallback to slug
+          teamName: body.teamId, // Human-readable team identifier (slug)
           sessionId: body.sessionId,
           matterId: matterId,
           matter: {

@@ -61,7 +61,12 @@ export class AIService {
     }
 
     try {
-      const teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(teamId).first();
+      // Try to find team by ID (ULID) first, then by slug
+      let teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(teamId).first();
+      if (!teamRow) {
+        teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE slug = ?').bind(teamId).first();
+      }
+      
       if (teamRow) {
         const config = JSON.parse(teamRow.config as string);
         this.teamConfigCache.set(teamId, { config, timestamp: Date.now() });

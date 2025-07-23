@@ -82,7 +82,8 @@ teams.forEach(team => {
     .replace(/\\/g, '\\\\')   // escape backslashes
     .replace(/'/g, "''")          // escape single quotes for SQL
     .replace(/\n/g, '\\n');      // escape newlines
-  sql += `INSERT INTO teams (id, name, config) VALUES ('${team.id.replace(/'/g, "''")}', '${team.name.replace(/'/g, "''")}', '${configJson}')\nON CONFLICT(id) DO UPDATE SET name=excluded.name, config=excluded.config;\n`;
+  const slug = team.slug || team.id; // Use slug if available, fallback to id
+  sql += `INSERT INTO teams (id, slug, name, config) VALUES ('${team.id.replace(/'/g, "''")}', '${slug.replace(/'/g, "''")}', '${team.name.replace(/'/g, "''")}', '${configJson}')\nON CONFLICT(id) DO UPDATE SET slug=excluded.slug, name=excluded.name, config=excluded.config;\n`;
 });
 
 // Write SQL to a temp file

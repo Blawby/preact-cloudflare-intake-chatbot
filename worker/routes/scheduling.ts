@@ -38,10 +38,14 @@ export async function handleScheduling(request: Request, env: Env, corsHeaders: 
       const aiService = new AIService(env.AI, env);
       const teamConfig = await aiService.getTeamConfig(body.teamId);
       const webhookService = new WebhookService(env);
+      // Get team info for webhook payload - use slug to find ULID
+      const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(body.teamId).first();
+      
       const appointmentPayload = {
         event: 'appointment',
         timestamp: new Date().toISOString(),
-        teamId: body.teamId,
+        teamId: teamInfo?.id || body.teamId, // Use ULID if available, fallback to slug
+        teamName: body.teamId, // Human-readable team identifier (slug)
         appointmentId,
         appointment: {
           clientEmail: body.email,

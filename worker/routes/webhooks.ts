@@ -240,10 +240,14 @@ export async function handleWebhooks(request: Request, env: Env, corsHeaders: Re
       if (body.testPayload) {
         testPayload = body.testPayload;
       } else if (body.webhookType === 'contact_form') {
+        // Get team info for webhook payload - use slug to find team info
+        const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(body.teamId).first();
+        
         testPayload = {
           event: body.webhookType,
           timestamp: new Date().toISOString(),
-          teamId: body.teamId,
+          teamId: teamInfo?.id || body.teamId, // Use team ID (could be ULID or string), fallback to slug
+          teamName: body.teamId, // Human-readable team identifier (slug)
           formId: crypto.randomUUID(),
           contactForm: {
             email: "test@example.com",

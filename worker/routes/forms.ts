@@ -14,11 +14,14 @@ export async function handleForms(request: Request, env: Env, corsHeaders: Recor
 
     const formId = crypto.randomUUID();
     
+    // Get team info for database insert - use slug to find ULID
+    const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(validatedData.teamId).first();
+    
     // Store form with optimized query
     await env.DB.prepare(`
       INSERT INTO contact_forms (id, team_id, phone_number, email, matter_details, status)
       VALUES (?, ?, ?, ?, ?, 'pending')
-    `).bind(formId, validatedData.teamId, validatedData.phoneNumber, validatedData.email, validatedData.matterDetails).run();
+    `).bind(formId, teamInfo?.id || validatedData.teamId, validatedData.phoneNumber, validatedData.email, validatedData.matterDetails).run();
 
     // Send notifications asynchronously to improve response time
     if (env.RESEND_API_KEY) {
@@ -67,12 +70,14 @@ export async function handleForms(request: Request, env: Env, corsHeaders: Recor
     const { AIService } = await import('../services/AIService.js');
     const { WebhookService } = await import('../services/WebhookService.js');
     const aiService = new AIService(env.AI, env);
-    const teamConfig = await aiService.getTeamConfig(body.teamId);
+    const teamConfig = await aiService.getTeamConfig(validatedData.teamId);
     const webhookService = new WebhookService(env);
+    
     const contactFormPayload = {
       event: 'contact_form',
       timestamp: new Date().toISOString(),
-      teamId: validatedData.teamId,
+      teamId: teamInfo?.id || validatedData.teamId, // Use ULID if available, fallback to slug
+      teamName: validatedData.teamId, // Human-readable team identifier (slug)
       formId,
       contactForm: {
         email: validatedData.email,
