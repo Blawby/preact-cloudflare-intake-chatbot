@@ -5,6 +5,7 @@ import {
   getTimeSlots, 
   getReadableTimezone 
 } from '../../utils/dateTime';
+import { Button } from '../ui/Button';
 
 interface TimeSlotSelectorProps {
   onTimeSlotSelect: (timeSlot: Date) => void;
@@ -92,16 +93,17 @@ const TimeSlotButton: FunctionalComponent<TimeSlotButtonProps> = ({
   const formattedTime = formatTimeSlot(timeSlot);
   
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      class={`time-slot-button ${isHovered ? 'hovered' : ''}`}
+      className={`time-slot-button ${isHovered ? 'hovered' : ''}`}
       aria-label={`Select ${formattedTime}`}
     >
       {formattedTime}
-    </button>
+    </Button>
   );
 };
 

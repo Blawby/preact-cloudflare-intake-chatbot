@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import { Button } from './ui/Button';
 
 const ThemeToggle = () => {
   const [isDark, setIsDark] = useState(false);
@@ -18,13 +19,14 @@ const ThemeToggle = () => {
   };
 
   return (
-    <button
+    <Button
+      variant="ghost"
       onClick={toggleTheme}
-      className="theme-toggle"
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      className="theme-toggle"
     >
       {isDark ? <SunIcon className="w-6 h-6" /> : <MoonIcon className="w-6 h-6" />}
-    </button>
+    </Button>
   );
 };
 

@@ -6,6 +6,7 @@ import {
 	CameraIcon,
 	DocumentIcon
 } from '@heroicons/react/24/outline';
+import { Button } from './ui/Button';
 import createLazyComponent from '../utils/LazyComponent';
 
 // Create lazy-loaded CameraModal
@@ -176,18 +177,20 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
 
     return (
         <div className="file-menu" ref={menuRef}>
-            <button
+            <Button
                 type="button"
-                className="file-menu-trigger"
+                variant="icon"
+                size="sm"
                 onClick={() => setIsOpen(!isOpen)}
                 title="Add attachment"
                 aria-label="Open file attachment menu"
                 aria-haspopup="true"
                 aria-expanded={isOpen}
                 ref={triggerRef}
+                className="file-menu-trigger"
             >
-                <PlusIcon className="file-menu-icon w-5 h-5" aria-hidden="true" />
-            </button>
+                <PlusIcon className="w-5 h-5" aria-hidden="true" />
+            </Button>
             
             {(isOpen || isClosing) && (
                 <div 
@@ -195,36 +198,39 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                     role="menu"
                     aria-labelledby="attachment-menu"
                 >
-                    <button 
+                    <Button 
                         type="button" 
-                        className="file-menu-item" 
+                        variant="ghost"
                         onClick={handlePhotoClick}
                         role="menuitem"
                         ref={firstMenuItemRef}
+                        className="file-menu-item w-full justify-between"
                     >
                         <span>Attach photos</span>
                         <PhotoIcon className="w-5 h-5" aria-hidden="true" />
-                    </button>
+                    </Button>
                     
-                    <button 
+                    <Button 
                         type="button" 
-                        className="file-menu-item" 
+                        variant="ghost"
                         onClick={handleCameraClick}
                         role="menuitem"
+                        className="file-menu-item w-full justify-between"
                     >
                         <span>Take Photo</span>
                         <CameraIcon className="w-5 h-5" aria-hidden="true" />
-                    </button>
+                    </Button>
                     
-                    <button 
+                    <Button 
                         type="button" 
-                        className="file-menu-item" 
+                        variant="ghost"
                         onClick={handleFileClick}
                         role="menuitem"
+                        className="file-menu-item w-full justify-between"
                     >
                         <span>Attach files</span>
                         <DocumentIcon className="w-5 h-5" aria-hidden="true" />
-                    </button>
+                    </Button>
                 </div>
             )}
 

@@ -3,6 +3,7 @@ import { createPortal } from 'preact/compat';
 import { useEffect, useState } from 'preact/hooks';
 import { XMarkIcon, PlayIcon } from '@heroicons/react/24/outline';
 import { type AggregatedMedia } from '../utils/mediaAggregation';
+import { Button } from './ui/Button';
 
 interface LightboxProps {
     media: AggregatedMedia;
@@ -93,9 +94,9 @@ const Lightbox: FunctionComponent<LightboxProps> = ({ media, onClose }) => {
                     </p>
                 </div>
             </div>
-            <button className="lightbox-close" onClick={handleClose}>
+            <Button variant="ghost" size="sm" onClick={handleClose} className="lightbox-close">
                 <XMarkIcon className="w-6 h-6" />
-            </button>
+            </Button>
         </div>
     );
 

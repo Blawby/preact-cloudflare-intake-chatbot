@@ -2300,15 +2300,17 @@ export function App() {
 																		</div>
 																	</>
 																)}
-																<button
+																<Button
 																	type="button"
-																	className="input-preview-remove"
+																	variant="ghost"
+																	size="sm"
 																	onClick={() => removePreviewFile(index)}
 																	title="Remove file"
 																	aria-label={`Remove ${file.name}`}
+																	className="input-preview-remove"
 																>
 																	<XMarkIcon className="w-4 h-4" aria-hidden="true" />
-																</button>
+																</Button>
 															</div>
 														))}
 													</div>
@@ -2364,7 +2366,6 @@ export function App() {
 																variant="icon"
 																onClick={handleSubmit}
 																disabled={(!inputValue.trim() && previewFiles.length === 0)}
-																className="ml-1"
 																aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
 															>
 																<ArrowUpIcon className="w-4 h-4" aria-hidden="true" />
@@ -2417,9 +2418,8 @@ export function App() {
 							{/* Actions Row */}
 							<div className="team-actions">
 								<Button 
-									variant="secondary"
+									variant="primary"
 									onClick={handleViewMatter}
-									className="w-full"
 									title={sidebarMatter ? "View matter details" : "Create a new matter"}
 								>
 									<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

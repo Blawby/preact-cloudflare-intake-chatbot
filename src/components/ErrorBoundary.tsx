@@ -1,4 +1,5 @@
 import { Component, ComponentChildren } from 'preact';
+import { Button } from './ui/Button';
 
 interface Props {
     children: ComponentChildren;
@@ -36,13 +37,14 @@ export class ErrorBoundary extends Component<Props, State> {
                         <summary>Error details</summary>
                         <pre>{this.state.error?.message}</pre>
                     </details>
-                    <button 
+                    <Button 
+                        variant="primary"
                         onClick={() => {
                             this.setState({ hasError: false, error: null });
                         }}
                     >
                         Try again
-                    </button>
+                    </Button>
                 </div>
             );
         }

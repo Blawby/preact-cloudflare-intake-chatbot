@@ -5,6 +5,7 @@ import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
 import FeedbackUI from './FeedbackUI';
 import TeamProfile from './TeamProfile';
+import { Button } from './ui/Button';
 import createLazyComponent from '../utils/LazyComponent';
 import features from '../config/features';
 import {
@@ -226,20 +227,22 @@ const ServiceSelectionButtons: FunctionComponent<{
 		<div class="service-selection-container">
 			<div class="service-buttons">
 				{services.map((service, index) => (
-					<button
+					<Button
 						key={index}
-						class="time-slot-button"
+						variant="secondary"
 						onClick={() => onServiceSelect(service)}
+						className="w-full"
 					>
 						{formatServiceName(service)}
-					</button>
+					</Button>
 				))}
-				<button
-					class="time-slot-button"
+				<Button
+					variant="secondary"
 					onClick={() => onServiceSelect('General Inquiry')}
+					className="w-full"
 				>
 					General Inquiry
-				</button>
+				</Button>
 			</div>
 		</div>
 	);
@@ -268,16 +271,17 @@ const UrgencySelectionButtons: FunctionComponent<{
 		<div class="service-selection-container">
 			<div class="service-buttons">
 				{urgencyOptions.map((option, index) => (
-					<button
+					<Button
 						key={index}
-						class="time-slot-button"
+						variant="secondary"
 						onClick={() => onUrgencySelect(option.label)}
+						className="w-full"
 					>
 						<div>
-							<div style="font-weight: 600; margin-bottom: 2px;">{option.label}</div>
-							<div style="font-size: 12px; color: var(--accent-color);">{option.description}</div>
+							<div style={{ fontWeight: 600, marginBottom: '2px' }}>{option.label}</div>
+							<div style={{ fontSize: '12px', color: 'var(--accent-color)' }}>{option.description}</div>
 						</div>
-					</button>
+					</Button>
 				))}
 			</div>
 		</div>
@@ -294,28 +298,31 @@ const WelcomeMessageButtons: FunctionComponent<{
 		<div class="welcome-buttons-container">
 			<div class="welcome-buttons">
 				{onCreateMatter && (
-					<button
-						class="welcome-button primary"
+					<Button
+						variant="primary"
 						onClick={onCreateMatter}
+						className="w-full"
 					>
 						Create Matter
-					</button>
+					</Button>
 				)}
 				{onScheduleConsultation && features.enableConsultationButton && (
-					<button
-						class="welcome-button"
+					<Button
+						variant="secondary"
 						onClick={onScheduleConsultation}
+						className="w-full"
 					>
 						Request a consultation
-					</button>
+					</Button>
 				)}
 				{onLearnServices && features.enableLearnServicesButton && (
-					<button
-						class="welcome-button"
+					<Button
+						variant="secondary"
 						onClick={onLearnServices}
+						className="w-full"
 					>
 						Learn about our services
-					</button>
+					</Button>
 				)}
 			</div>
 		</div>

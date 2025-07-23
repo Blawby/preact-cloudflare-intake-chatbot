@@ -2,6 +2,7 @@ import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState } from 'preact/hooks';
 import Modal from './Modal';
 import { CameraIcon } from '@heroicons/react/24/solid';
+import { Button } from './ui/Button';
 
 interface CameraModalProps {
     isOpen: boolean;
@@ -112,15 +113,16 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
                 </div>
                 
                 <div className="camera-controls">
-                    <button
+                    <Button
                         type="button"
-                        className="camera-control-btn capture"
+                        variant="primary"
                         onClick={takePhoto}
                         disabled={!isCameraReady}
                         title="Take photo"
+                        className="camera-control-btn capture"
                     >
                         <CameraIcon className="w-8 h-8" />
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>

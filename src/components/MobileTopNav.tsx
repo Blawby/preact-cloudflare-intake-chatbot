@@ -1,5 +1,6 @@
 import { Bars3Icon } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
+import { Button } from './ui/Button';
 
 interface MobileTopNavProps {
   teamConfig: {
@@ -14,10 +15,11 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar }: MobileTopNavProps) => {
   return (
     <div className="mobile-top-nav">
       {/* Team Profile Section */}
-      <button 
-        className="mobile-top-nav-profile"
+      <Button 
+        variant="ghost"
         onClick={onOpenSidebar}
         aria-label="Open team menu"
+        className="mobile-top-nav-profile"
       >
         <div className="mobile-top-nav-team">
           <img 
@@ -30,19 +32,20 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar }: MobileTopNavProps) => {
             <span className="mobile-top-nav-status">Online</span>
           </div>
         </div>
-      </button>
+      </Button>
 
       {/* Theme Toggle Button */}
       <ThemeToggle />
 
       {/* Menu Button */}
-      <button 
-        className="mobile-top-nav-menu"
+      <Button 
+        variant="ghost"
         onClick={onOpenSidebar}
         aria-label="Open menu"
+        className="mobile-top-nav-menu"
       >
         <Bars3Icon className="w-6 h-6" />
-      </button>
+      </Button>
     </div>
   );
 };

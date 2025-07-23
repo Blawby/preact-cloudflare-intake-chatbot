@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useEffect, useState, useRef } from 'preact/hooks';
 import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { Button } from './ui/Button';
 
 interface AudioRecordingUIProps {
     onCancel: () => void;
@@ -303,14 +304,16 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
 
     return (
         <div className="audio-recording-ui" role="dialog" aria-label="Audio recording in progress">
-            <button 
-                className="recording-control-btn cancel" 
+            <Button 
+                variant="ghost"
+                size="sm"
                 onClick={onCancel}
                 aria-label="Cancel recording"
                 title="Cancel recording"
+                className="recording-control-btn cancel"
             >
                 <XMarkIcon className="w-5 h-5" aria-hidden="true" />
-            </button>
+            </Button>
             <div className="recording-visualization" aria-live="polite">
                 <canvas ref={canvasRef} width="300" height="40" aria-hidden="true" />
                 <div className="recording-timer" role="timer" aria-label={`Recording time: ${formatTime(recordingTime)}`}>
@@ -320,15 +323,17 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
                     Recording audio, duration: {formatTime(recordingTime)}
                 </div>
             </div>
-            <button 
-                className="recording-control-btn confirm" 
+            <Button 
+                variant="primary"
+                size="sm"
                 onClick={onConfirm}
                 aria-label="Confirm and send recording"
                 title="Confirm and send recording"
                 ref={confirmBtnRef}
+                className="recording-control-btn confirm"
             >
                 <CheckIcon className="w-5 h-5" aria-hidden="true" />
-            </button>
+            </Button>
         </div>
     );
 };

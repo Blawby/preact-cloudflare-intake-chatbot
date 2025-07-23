@@ -17,6 +17,7 @@ import {
   type AggregatedMedia 
 } from '../utils/mediaAggregation';
 import createLazyComponent from '../utils/LazyComponent';
+import { Button } from './ui/Button';
 
 const LazyLightbox = createLazyComponent(
 	() => import('./Lightbox'),
@@ -77,7 +78,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
       <div className="media-sidebar">
         <h4 className="section-title">Media, Files, and Links</h4>
         <div className="section-content">
-          <div className="empty-media-state">
+          <div className="empty-media-state flex flex-col items-center justify-center text-center">
             <PhotoIcon className="empty-icon w-8 h-8" />
             <p className="empty-text">No files shared yet</p>
             <p className="empty-subtext">Files you share in the conversation will appear here</p>
@@ -133,13 +134,15 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                           </div>
                           <div className="file-meta">
                             <span className="file-size">{formatFileSize(media.size)}</span>
-                            <button
-                              className="download-button"
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={(e) => handleDownload(media, e)}
                               title="Download file"
+                              className="download-button"
                             >
                               <ArrowDownTrayIcon className="download-icon w-3 h-3" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState, useCallback } from 'preact/hooks';
 import { CalendarIcon as HeroCalendarIcon } from '@heroicons/react/24/outline';
+import { Button } from '../ui/Button';
 
 interface ScheduleButtonProps {
   onClick: () => void;
@@ -21,19 +22,20 @@ const ScheduleButton: FunctionalComponent<ScheduleButtonProps> = ({
   const handleMouseLeave = useCallback(() => setIsHovered(false), []);
   
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
       onClick={onClick}
       disabled={disabled}
-      class="schedule-button"
       aria-label="Request Consultation"
       title="Request Consultation"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      className="schedule-button"
     >
       <CalendarIcon isHovered={isHovered} />
-      <span class="schedule-button-text">Consultation</span>
-    </button>
+      <span className="schedule-button-text">Consultation</span>
+    </Button>
   );
 };
 

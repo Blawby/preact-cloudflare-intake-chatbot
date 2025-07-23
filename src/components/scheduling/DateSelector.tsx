@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState, useCallback, useMemo, useEffect } from 'preact/hooks';
 import { formatDateForSelector, getDateGrid } from '../../utils/dateTime';
+import { Button } from '../ui/Button';
 
 interface DateSelectorProps {
   onDateSelect: (date: Date) => void;
@@ -55,11 +56,12 @@ const DateSelector: FunctionalComponent<DateSelectorProps> = ({
       </div>
       
       <div class="date-selector-footer">
-        <button 
+        <Button 
           type="button"
+          variant="secondary"
           onClick={onRequestMoreDates}
-          class="more-dates-button"
           aria-label="Show more date options"
+          className="more-dates-button"
         >
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
@@ -71,12 +73,12 @@ const DateSelector: FunctionalComponent<DateSelectorProps> = ({
             stroke-width="2" 
             stroke-linecap="round" 
             stroke-linejoin="round"
-            class="more-dates-icon"
+            className="more-dates-icon"
           >
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
           Show more dates
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -109,17 +111,18 @@ const DateButton: FunctionalComponent<DateButtonProps> = ({
   const formattedDate = formatDateForSelector(date);
   
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      class={`date-button ${isToday ? 'today' : ''} ${isHovered ? 'hovered' : ''}`}
+      className={`date-button ${isToday ? 'today' : ''} ${isHovered ? 'hovered' : ''}`}
       aria-label={`Select ${formattedDate}`}
     >
-      <div class="date-button-text">{formattedDate}</div>
-      {isToday && <div class="today-indicator">Today</div>}
-    </button>
+      <div className="date-button-text">{formattedDate}</div>
+      {isToday && <div className="today-indicator">Today</div>}
+    </Button>
   );
 };
 

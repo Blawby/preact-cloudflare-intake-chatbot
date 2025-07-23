@@ -2,7 +2,7 @@ import {
   ChatBubbleLeftRightIcon, 
   DocumentTextIcon, 
   Bars3Icon 
-} from '@heroicons/react/24/solid';
+} from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
 
 interface LeftSidebarProps {
@@ -22,9 +22,9 @@ const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps
             <div 
               className={`left-sidebar-header ${currentRoute === 'chats' ? 'active' : ''}`}
               onClick={() => onTabChange('chats')}
+              title="Chats"
             >
               <ChatBubbleLeftRightIcon className="left-sidebar-icon" />
-              <span style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Chats</span>
             </div>
           </div>
 
@@ -33,9 +33,9 @@ const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps
             <div 
               className={`left-sidebar-header ${currentRoute === 'matters' ? 'active' : ''}`}
               onClick={() => onTabChange('matters')}
+              title="Matters"
             >
               <DocumentTextIcon className="left-sidebar-icon" />
-              <span style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Matters</span>
             </div>
           </div>
         </div>
@@ -47,9 +47,9 @@ const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps
             <div 
               className="left-sidebar-header"
               onClick={onOpenMenu}
+              title="Menu"
             >
               <Bars3Icon className="left-sidebar-icon" />
-              <span style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Menu</span>
             </div>
           </div>
         </div>

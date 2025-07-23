@@ -3,6 +3,7 @@ import TeamProfile from './TeamProfile';
 import MatterCanvas from './MatterCanvas';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
+import { Button } from './ui/Button';
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -46,13 +47,15 @@ const MobileSidebar = ({
         {/* Header */}
         <div className="mobile-sidebar-header">
           <h3 className="mobile-sidebar-title">Menu</h3>
-          <button 
-            className="mobile-sidebar-close"
+          <Button 
+            variant="ghost"
+            size="sm"
             onClick={onClose}
             aria-label="Close sidebar"
+            className="mobile-sidebar-close"
           >
             <XMarkIcon className="w-6 h-6" />
-          </button>
+          </Button>
         </div>
         
         {/* Content */}
@@ -71,8 +74,8 @@ const MobileSidebar = ({
           {/* Actions Row */}
           <div className="mobile-sidebar-section">
             <div className="team-actions">
-              <button 
-                className="action-button view-matter-button"
+              <Button 
+                variant="primary"
                 onClick={onViewMatter}
                 title={sidebarMatter ? "View matter details" : "Create a new matter"}
               >
@@ -80,7 +83,7 @@ const MobileSidebar = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 {sidebarMatter ? 'View Matter' : 'Create Matter'}
-              </button>
+              </Button>
             </div>
           </div>
 

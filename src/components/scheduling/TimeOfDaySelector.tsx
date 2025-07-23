@@ -2,6 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useState, useCallback } from 'preact/hooks';
 import { SunIcon } from '@heroicons/react/24/outline';
 import { SunIcon as SolidSunIcon } from '@heroicons/react/24/solid';
+import { Button } from '../ui/Button';
 
 interface TimeOfDaySelectorProps {
   onTimeOfDaySelect: (timeOfDay: 'morning' | 'afternoon') => void;
@@ -68,22 +69,23 @@ const TimeOfDayButton: FunctionalComponent<TimeOfDayButtonProps> = ({
   const handleMouseLeave = useCallback(() => setIsHovered(false), []);
   
   return (
-    <button
+    <Button
       type="button"
-      class={`time-of-day-button ${isHovered ? 'hovered' : ''}`}
+      variant="secondary"
       onClick={onClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       aria-label={`Select ${label}: ${description}`}
+      className={`time-of-day-button ${isHovered ? 'hovered' : ''}`}
     >
-      <div class="time-of-day-icon">
+      <div className="time-of-day-icon">
         {icon}
       </div>
-      <div class="time-of-day-info">
-        <div class="time-of-day-label">{label}</div>
-        <div class="time-of-day-description">{description}</div>
+      <div className="time-of-day-info">
+        <div className="time-of-day-label">{label}</div>
+        <div className="time-of-day-description">{description}</div>
       </div>
-    </button>
+    </Button>
   );
 };
 

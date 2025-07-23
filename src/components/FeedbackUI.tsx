@@ -3,6 +3,7 @@ import { useState, useCallback } from 'preact/hooks';
 import { HandThumbUpIcon, HandThumbDownIcon } from '@heroicons/react/24/outline';
 import { memo } from 'preact/compat';
 import { getFeedbackEndpoint } from '../config/api';
+import { Button } from './ui/Button';
 
 interface FeedbackUIProps {
   messageId?: string;
@@ -101,26 +102,31 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
     <div class="feedback-ui">
       <div class="feedback-actions">
         <div class="feedback-thumbs">
-          <button
-            class={`feedback-btn ${feedback.thumbsUp === true ? 'active' : ''}`}
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleThumbsUp}
             disabled={isSubmitting}
             aria-label="This response was helpful"
             title="This response was helpful"
+            className={`${feedback.thumbsUp === true ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : ''}`}
           >
             <HandThumbUpIcon className="w-4 h-4" />
-          </button>
-          <button
-            class={`feedback-btn ${feedback.thumbsUp === false ? 'active' : ''}`}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleThumbsDown}
             disabled={isSubmitting}
             aria-label="This response was not helpful"
             title="This response was not helpful"
+            className={`${feedback.thumbsUp === false ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : ''}`}
           >
             <HandThumbDownIcon className="w-4 h-4" />
-          </button>
-          <button
-            class="feedback-btn"
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleCopy}
             aria-label="Copy response to clipboard"
             title="Copy response to clipboard"
@@ -131,7 +137,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6V4.125A2.625 2.625 0 0 0 13.875 1.5h-7.5A2.625 2.625 0 0 0 3.75 4.125v13.5A2.625 2.625 0 0 0 6.375 20.25H8.25" />
               <rect width="13.5" height="13.5" x="9.75" y="6.75" rx="2.25" />
             </svg>
-          </button>
+          </Button>
         </div>
         {copied && <div style={{ fontSize: '0.85em', color: 'var(--accent-color)', marginTop: '0.25rem' }}>Copied!</div>}
       </div>

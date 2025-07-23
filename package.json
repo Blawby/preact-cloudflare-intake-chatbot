@@ -23,7 +23,6 @@
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20250715.0",
 		"@preact/preset-vite": "^2.9.3",
-		"@tailwindcss/postcss": "^4.1.11",
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/preact": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
@@ -35,7 +34,7 @@
 		"jsdom": "^26.1.0",
 		"postcss": "^8.5.6",
 		"rollup-plugin-visualizer": "^5.14.0",
-		"tailwindcss": "^4.1.11",
+		"tailwindcss": "^3.4.17",
 		"typescript": "^5.8.2",
 		"vite": "^6.0.4",
 		"vite-plugin-compression": "^0.5.1",
