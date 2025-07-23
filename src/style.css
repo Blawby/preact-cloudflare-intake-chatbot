@@ -655,98 +655,13 @@ body {
 	align-items: center;
 }
 
-.file-menu-trigger {
-	width: 32px;
-	height: 32px;
-	border-radius: 50%;
-	background-color: transparent;
-	border: 1px solid var(--accent-color);
-	cursor: pointer;
-	color: var(--accent-color);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-right: 0.25rem;
-}
 
-.file-menu-trigger:hover {
-	background-color: var(--hover-color);
-}
 
-.file-menu-icon {
-	width: 16px;
-	height: 16px;
-}
 
-.media-icon {
-	width: 16px;
-	height: 16px;
-}
 
-.media-button {
-	width: 32px;
-	height: 32px;
-	border-radius: 50%;
-	background-color: transparent;
-	border: 1px solid var(--accent-color);
-	cursor: pointer;
-	color: var(--accent-color);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-left: 0.25rem;
-	padding: 0;
-	transition: all 0.2s ease;
-}
 
-.media-button:hover:not(:disabled) {
-	background-color: var(--hover-color);
-}
 
-.media-button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
 
-.media-button.recording {
-	animation: pulse 1.5s infinite;
-	border-color: var(--accent-color);
-	background-color: var(--hover-color);
-}
-
-.send-button {
-	width: 32px;
-	height: 32px;
-	min-width: 32px;
-	min-height: 32px;
-	border-radius: 50%;
-	background-color: var(--text-color);
-	border: none;
-	cursor: pointer;
-	color: var(--bg-color);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-left: 0.25rem;
-	padding: 0;
-	box-sizing: border-box;
-	transition: transform 0.2s ease;
-	overflow: hidden;
-}
-
-.send-button:hover {
-	transform: scale(1.05);
-}
-
-.send-button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-.send-icon {
-	width: 16px;
-	height: 16px;
-}
 
 .send-controls {
 	display: flex;
@@ -1578,9 +1493,7 @@ kbd {
 	align-items: center;
 }
 
-.file-menu-trigger:hover {
-	/* These styles are now handled by the shared selector */
-}
+
 
 .file-menu-dropdown {
 	position: absolute;
