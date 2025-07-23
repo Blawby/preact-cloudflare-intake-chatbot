@@ -19,6 +19,11 @@ export interface TeamConfig {
       retryDelay?: number; // in seconds
     };
   };
+  promptOnly?: {
+    enabled?: boolean;
+    requiredFields?: string[];
+    empathyPrompts?: Record<string, string>;
+  };
 }
 
 export interface Env {
@@ -86,5 +91,61 @@ export class AIService {
     } else {
       this.teamConfigCache.clear();
     }
+  }
+
+  // NEW: Enhanced prompt system for required field collection
+  async generateIntakePrompt(teamConfig: TeamConfig, service: string, step: 'initial' | 'required_fields' | 'matter_details'): Promise<string> {
+    const empathyPrompt = teamConfig.promptOnly?.empathyPrompts?.[service] || 
+      `I'm here to help you with your ${service} matter. Let me gather some information to better assist you.`;
+    
+    const requiredFields = teamConfig.promptOnly?.requiredFields || ['full_name', 'email', 'phone'];
+    
+    switch (step) {
+      case 'initial':
+        return `${empathyPrompt}\n\nTo get started, I need to collect some basic information. What's your full legal name?`;
+      
+      case 'required_fields':
+        return `Perfect! Now I need your contact information so we can keep you updated on your ${service} matter. What's your email address?`;
+      
+      case 'matter_details':
+        return `Great! Now let's talk about your ${service} situation. Can you tell me what specific issue you're dealing with?`;
+      
+      default:
+        return empathyPrompt;
+    }
+  }
+
+  // NEW: Validate collected data against required fields
+  validateCollectedData(answers: Record<string, any>, requiredFields: string[]): {
+    isValid: boolean;
+    missingFields: string[];
+    extractedData: Record<string, string>;
+  } {
+    const extractedData: Record<string, string> = {};
+    const missingFields: string[] = [];
+    
+    for (const field of requiredFields) {
+      const fieldValue = this.extractFieldValue(answers, field);
+      if (fieldValue) {
+        extractedData[field] = fieldValue;
+      } else {
+        missingFields.push(field);
+      }
+    }
+    
+    return {
+      isValid: missingFields.length === 0,
+      missingFields,
+      extractedData
+    };
+  }
+  
+  private extractFieldValue(answers: Record<string, any>, field: string): string | null {
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes(field.replace('_', ''))) {
+        return typeof value === 'string' ? value : (value as any)?.answer || null;
+      }
+    }
+    return null;
   }
 } 

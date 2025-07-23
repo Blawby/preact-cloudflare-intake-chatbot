@@ -13,6 +13,58 @@ interface MatterCreationRequest {
   sessionId?: string;
 }
 
+// NEW: Helper functions for enhanced prompt system
+function generateRequiredFieldPrompt(field: string, service: string): string {
+  const fieldPrompts = {
+    full_name: `To help you with your ${service} matter, I'll need your full name. What's your complete legal name?`,
+    email: `Great! Now I need your email address so we can send you important updates about your ${service} matter. What's your email?`,
+    phone: `Perfect! Finally, I need a phone number where we can reach you about your ${service} matter. What's the best number to contact you?`
+  };
+  
+  return fieldPrompts[field as keyof typeof fieldPrompts] || `Please provide your ${field.replace('_', ' ')}.`;
+}
+
+function validateRequiredFields(answers: Record<string, any>): { isValid: boolean; missingFields: string[] } {
+  const requiredFields = ['full_name', 'email', 'phone'];
+  const missingFields: string[] = [];
+  
+  for (const field of requiredFields) {
+    const hasField = Object.keys(answers).some(key => 
+      key.toLowerCase().includes(field) && 
+      answers[key] && 
+      (typeof answers[key] === 'string' ? answers[key].trim() : answers[key].answer?.trim())
+    );
+    
+    if (!hasField) {
+      missingFields.push(field.replace('_', ' '));
+    }
+  }
+  
+  return {
+    isValid: missingFields.length === 0,
+    missingFields
+  };
+}
+
+// NEW: Extract contact information from answers
+function extractContactInfo(answers: Record<string, any>): { full_name?: string; email?: string; phone?: string } {
+  const contactInfo: { full_name?: string; email?: string; phone?: string } = {};
+  
+  for (const [key, value] of Object.entries(answers)) {
+    const answer = typeof value === 'string' ? value : (value as any)?.answer || '';
+    
+    if (key.toLowerCase().includes('full_name') || key.toLowerCase().includes('name')) {
+      contactInfo.full_name = answer;
+    } else if (key.toLowerCase().includes('email')) {
+      contactInfo.email = answer;
+    } else if (key.toLowerCase().includes('phone')) {
+      contactInfo.phone = answer;
+    }
+  }
+  
+  return contactInfo;
+}
+
 export async function handleMatterCreation(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -149,60 +201,255 @@ export async function handleMatterCreation(request: Request, env: Env, corsHeade
         }
 
       case 'questions':
-        const questions = teamConfig.serviceQuestions?.[body.service!] || [
-          `Tell me more about your ${body.service} situation.`,
-          'When did this issue begin?',
-          'What outcome are you hoping for?'
-        ];
-        const currentIndex = body.currentQuestionIndex || 0;
-        
-        if (currentIndex < questions.length) {
-          return new Response(JSON.stringify({
-            step: 'questions',
-            message: questions[currentIndex],
-            currentQuestion: currentIndex + 1,
-            totalQuestions: questions.length,
-            selectedService: body.service,
-            qualityScore: quality,
-            questionText: questions[currentIndex] // Include the actual question text
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        } else {
-          // All questions answered, move to matter review step
-          const answers = body.answers || {};
-          const answerValues = Object.values(answers).filter(Boolean);
+        // 1. ALWAYS try AI extraction first if description is provided
+        if (body.description && body.description.trim().length > 0) {
+          console.log('🔍 Running AI extraction on description:', body.description);
           
-          // Auto-generate matter description from Q&A answers
-          const autoDescription = `${body.service} matter: ${answerValues.join('. ')}.`;
+          // Load existing session data
+          let sessionData = null;
+          if (body.sessionId) {
+            try {
+              const sessionString = await env.CHAT_SESSIONS.get(body.sessionId);
+              if (sessionString) {
+                sessionData = JSON.parse(sessionString);
+              }
+            } catch (error) {
+              console.warn('Failed to load session data:', error);
+            }
+          }
           
-          // Create enhanced body for quality assessment
-          const enhancedBody = {
-            ...body,
-            description: autoDescription,
-            answers: answers
-          };
-          
-          // Get quality assessment with the auto-generated description
-          const initialQuality = assessMatterQuality(enhancedBody);
-          
-          return new Response(JSON.stringify({
-            step: 'matter-review',
-            message: `Thank you for answering those questions. Let me review your matter and provide a summary.`,
-            selectedService: body.service,
-            qualityScore: initialQuality,
-            autoGeneratedDescription: autoDescription,
-            answers: answers
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+          // Merge existing answers
+          const existingAnswers = sessionData?.matterCreationState?.data?.answers || {};
+          const currentAnswers = body.answers || {};
+          const mergedAnswers = { ...existingAnswers, ...currentAnswers };
+
+          // Determine last question asked
+          const lastQuestion = sessionData?.matterCreationState?.data?.lastQuestion || '';
+
+          // Determine which slots are missing
+          const requiredFields = ['full_name', 'email', 'phone', 'matter_details'];
+          const filledFields = Object.fromEntries(
+            requiredFields.map(field => [field, mergedAnswers[field]?.answer || ''])
+          );
+          const missingFields = requiredFields.filter(field => !filledFields[field]);
+
+          // If user asks 'what is missing' or similar, respond directly
+          const whatIsMissingRegex = /what(\s+is|'s)?\s+(the\s+)?missing|what do you need|what info|what information|what else/i;
+          if (whatIsMissingRegex.test(body.description)) {
+            return new Response(JSON.stringify({
+              step: 'questions',
+              message: `To proceed, please provide: ${missingFields.map(f => f.replace('_', ' ')).join(', ')}.`,
+              answers: mergedAnswers
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+          // Build AI prompt
+          const alreadyProvided = requiredFields
+            .filter(field => filledFields[field])
+            .map(field => `- ${field.replace('_', ' ')}: "${filledFields[field]}"`).join('\n');
+          const missingList = missingFields.map(f => f.replace('_', ' ')).join(', ');
+
+          const aiPrompt = `You are a legal intake agent. Here is the conversation so far:
+
+Last question you asked: "${lastQuestion}"
+User's reply: "${body.description}"
+
+Already provided:
+${alreadyProvided || 'None'}
+
+Missing fields:
+${missingList || 'None'}
+
+If the user asks "what is missing?" or "what do you need?", respond with a clear, direct list of the missing fields.
+
+Return ONLY a JSON object:
+{
+  "full_name": "",
+  "email": "",
+  "phone": "",
+  "matter_details": "",
+  "acknowledgement": "",
+  "next_question": ""
+}`;
+
+          try {
+            const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+              messages: [
+                { 
+                  role: 'system', 
+                  content: `You are a helpful legal intake assistant for ${teamConfig.name || 'legal services'}. Extract information naturally and ask follow-up questions conversationally.` 
+                },
+                { role: 'user', content: aiPrompt }
+              ]
+            });
+
+            const aiResult = aiResponse.response;
+            console.log('AI extraction result:', aiResult);
+            
+            // Parse AI response - extract first JSON block only
+            let extractedData;
+            try {
+              const raw = aiResult;
+              const jsonBlock = raw.match(/\{[\s\S]*?\}/)?.[0];   // grab first {...}
+              if (!jsonBlock) throw new Error('No JSON from LLM');
+              extractedData = JSON.parse(jsonBlock);
+              console.log('✅ Successfully parsed JSON from LLM:', extractedData);
+            } catch (parseError) {
+              console.error('❌ Failed to parse AI extraction:', parseError);
+              console.error('Raw AI response:', aiResult);
+            }
+            
+            if (extractedData) {
+              // Update answers with extracted info
+              const updatedAnswers = { ...mergedAnswers };
+              
+              if (extractedData.full_name) {
+                updatedAnswers.full_name = {
+                  question: 'What is your full legal name?',
+                  answer: extractedData.full_name
+                };
+              }
+              if (extractedData.email) {
+                updatedAnswers.email = {
+                  question: 'What is your email address?',
+                  answer: extractedData.email
+                };
+              }
+              if (extractedData.phone) {
+                updatedAnswers.phone = {
+                  question: 'What is your phone number?',
+                  answer: extractedData.phone
+                };
+              }
+              if (extractedData.matter_details) {
+                updatedAnswers.matter_details = {
+                  question: 'Tell me about your legal situation',
+                  answer: extractedData.matter_details
+                };
+              }
+              
+              // Save to session, including lastQuestion
+              if (body.sessionId) {
+                try {
+                  const updatedSessionData = {
+                    ...sessionData,
+                    matterCreationState: {
+                      ...sessionData?.matterCreationState,
+                      data: {
+                        ...sessionData?.matterCreationState?.data,
+                        answers: updatedAnswers,
+                        lastQuestion: extractedData.next_question || ''
+                      },
+                      timestamp: new Date().toISOString()
+                    },
+                    lastActivity: new Date().toISOString()
+                  };
+                  
+                  await env.CHAT_SESSIONS.put(body.sessionId, JSON.stringify(updatedSessionData), {
+                    expirationTtl: 24 * 60 * 60
+                  });
+                } catch (error) {
+                  console.warn('Failed to save session data:', error);
+                }
+              }
+              
+              // Check which fields are missing
+              const requiredFields = ['full_name', 'email', 'phone', 'matter_details'];
+              const hasAllRequired = requiredFields.every(field => 
+                updatedAnswers[field] && updatedAnswers[field].answer
+              );
+              
+              if (!hasAllRequired) {
+                // Use AI-generated acknowledgement and next_question
+                const nextQuestion = extractedData.next_question || 'Could you provide the missing information?';
+                const acknowledgement = extractedData.acknowledgement || '';
+                return new Response(JSON.stringify({
+                  step: 'questions',
+                  message: `${acknowledgement}${acknowledgement ? '\n' : ''}${nextQuestion}`.trim(),
+                  answers: updatedAnswers
+                }), {
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+              } else {
+                // All required fields present - move to matter review
+                const contactSummary = [
+                  `**Name**: ${updatedAnswers.full_name?.answer}`,
+                  `**Email**: ${updatedAnswers.email?.answer}`,
+                  `**Phone**: ${updatedAnswers.phone?.answer}`
+                ].join('\n');
+                
+                // Create matter description from extracted data
+                const matterDescription = extractedData.matter_details || 'Legal matter details provided';
+                const service = extractedData.service || body.service || 'General Consultation';
+                
+                // Create enhanced body for quality assessment
+                const enhancedBody = {
+                  ...body,
+                  service: service,
+                  description: matterDescription,
+                  answers: updatedAnswers
+                };
+                
+                // Get quality assessment
+                const qualityScore = assessMatterQuality(enhancedBody);
+                
+                // Create matter canvas
+                const matterCanvas = {
+                  service: service,
+                  matterSummary: `# ${service} Matter Summary\n\n## Contact Information\n${contactSummary}\n\n## Matter Details\n${matterDescription}\n\n## Quality Assessment\n- **Score**: ${qualityScore.score}/100\n- **Status**: ${qualityScore.readyForLawyer ? 'Ready for Attorney' : 'Needs More Information'}`,
+                  qualityScore: qualityScore,
+                  answers: updatedAnswers
+                };
+                
+                console.log('✅ AI extraction successful - all required fields present, creating matter summary');
+                return new Response(JSON.stringify({
+                  step: 'matter-details',
+                  message: `Perfect! I have your contact information:\n\n${contactSummary}\n\nHere's your matter summary:`,
+                  answers: updatedAnswers,
+                  matterCanvas: matterCanvas,
+                  qualityScore: qualityScore
+                }), {
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+              }
+            }
+          } catch (aiError) {
+            console.warn('AI extraction failed:', aiError);
+            return new Response(JSON.stringify({
+              step: 'questions',
+              message: 'Sorry, I had trouble understanding your last message. Could you please rephrase or provide the missing information?',
+              answers: mergedAnswers
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
         }
 
       case 'matter-review':
         // Generate comprehensive matter summary and determine next steps
-        const matterAnswers = body.answers || {};
-        const matterDescription = body.description || `${body.service} matter with provided details`;
         
+        // Load existing session data to get all answers
+        let reviewSessionData = null;
+        if (body.sessionId) {
+          try {
+            const sessionString = await env.CHAT_SESSIONS.get(body.sessionId);
+            if (sessionString) {
+              reviewSessionData = JSON.parse(sessionString);
+            }
+          } catch (error) {
+            console.warn('Failed to load session data:', error);
+          }
+        }
+        
+        // Merge answers from session and current request
+        const reviewSessionAnswers = reviewSessionData?.matterCreationState?.data?.answers || {};
+        const reviewCurrentAnswers = body.answers || {};
+        const matterAnswers = { ...reviewSessionAnswers, ...reviewCurrentAnswers };
+        
+        const matterDescription = body.description || `${body.service} matter with provided details`;
+
         // Extract question-answer pairs from the new data structure
         const questionAnswerPairs = Object.entries(matterAnswers).map(([key, value]) => {
           if (typeof value === 'object' && value !== null && 'question' in value && 'answer' in value) {
@@ -446,6 +693,9 @@ Generate 2-3 specific questions that would help complete the matter details.`;
         // Get team info for webhook payload - use slug to find ULID
         const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(body.teamId).first();
         
+        // NEW: Extract contact information from answers
+        const contactInfo = extractContactInfo(matterAnswers);
+        
         const matterDetailsPayload = {
           event: 'matter_details',
           timestamp: new Date().toISOString(),
@@ -453,6 +703,7 @@ Generate 2-3 specific questions that would help complete the matter details.`;
           teamName: body.teamId, // Human-readable team identifier (slug)
           sessionId: body.sessionId,
           matterId: matterId,
+          contact: contactInfo, // NEW: Structured contact information
           matter: {
             matterId: matterId,
             matterNumber: matterNumber,
@@ -474,8 +725,19 @@ Generate 2-3 specific questions that would help complete the matter details.`;
           }
         };
 
+        // Debug webhook configuration
+        console.log('Webhook debug info:');
+        console.log('- Team ID:', body.teamId);
+        console.log('- Team config webhooks enabled:', teamConfig.webhooks?.enabled);
+        console.log('- Team config webhook URL:', teamConfig.webhooks?.url);
+        console.log('- Team config webhook events:', teamConfig.webhooks?.events);
+        console.log('- Matter details event enabled:', teamConfig.webhooks?.events?.matterDetails);
+
         // Fire and forget webhook - don't wait for completion
+        // Use the team slug to get the team config for webhook delivery
+        console.log('About to send webhook...');
         webhookService.sendWebhook(body.teamId, 'matter_details', matterDetailsPayload, teamConfig)
+          .then(() => console.log('Webhook sent successfully'))
           .catch(error => console.warn('Matter details webhook failed:', error));
         
         return new Response(JSON.stringify({

@@ -185,6 +185,8 @@ export function App() {
 			matterSummary?: string;
 			followUpQuestions?: string[];
 			currentFollowUpIndex?: number;
+			isRequiredField?: boolean;
+			requiredField?: string;
 		};
 		isActive: boolean;
 		currentQuestionIndex?: number;
@@ -1318,7 +1320,8 @@ export function App() {
 				currentQuestionIndex: data.currentQuestionIndex,
 				answers: data.answers,
 				description: data.description,
-				urgency: data.urgency
+				urgency: data.urgency,
+				sessionId: sessionId // Add sessionId to the request body
 			};
 			
 			console.log('Matter creation API request:', requestBody);
@@ -1401,7 +1404,12 @@ export function App() {
 				
 				setMatterState(prev => ({
 					...prev,
-					data: { ...prev.data, matterType: service },
+					data: { 
+						...prev.data, 
+						matterType: service,
+						isRequiredField: result.isRequiredField || false,
+						requiredField: result.requiredField || null
+					},
 					step: result.step === 'questions' ? 'ai-questions' : 'matter-details',
 					currentQuestionIndex: result.currentQuestion ? result.currentQuestion - 1 : 0
 				}));
@@ -1417,7 +1425,9 @@ export function App() {
 								matterCreation: result.step === 'urgency-selection' ? {
 									type: 'urgency-selection',
 									availableServices: []
-								} : undefined
+								} : undefined,
+								isRequiredField: result.isRequiredField,
+								requiredField: result.requiredField
 							}
 							: msg
 					));
@@ -1542,13 +1552,17 @@ export function App() {
 	// Handle urgency selection from buttons (now debounced)
 	const handleUrgencySelect = (urgency: string) => {
 		console.log('Urgency selection clicked:', urgency);
-		console.log('Current teamId:', teamId);
-		console.log('Current matterState:', matterState);
 		debouncedUrgencySelect(urgency);
 	};
 
 	// Handle matter creation flow steps
 	const handleMatterCreationStep = async (message: string, attachments: FileAttachment[] = []) => {
+		if (isProcessingRequest) {
+			console.log('Request already in progress, ignoring message');
+			return;
+		}
+		setIsProcessingRequest(true);
+
 		// Add user message
 		const userMessage: ChatMessage = {
 			content: message,
@@ -1560,399 +1574,40 @@ export function App() {
 		setPreviewFiles([]);
 
 		try {
-			// Process based on current step
-			switch (matterState.step) {
-				case 'gathering-info':
-					// Store matter type and start urgency selection
-					const selectedService = message;
-					
-					setMatterState(prev => ({
-						...prev,
-						data: { ...prev.data, matterType: message },
-						step: 'urgency-selection'
-					}));
-					
-								// Call API for service selection
-			const serviceResult = await handleMatterCreationAPI('service-selection', { service: selectedService });
-			
-			// Update matter state based on API response
-			setMatterState(prev => ({
-				...prev,
-				data: { ...prev.data, matterType: selectedService },
-				step: serviceResult.step === 'questions' ? 'ai-questions' : 'matter-details',
-				currentQuestionIndex: serviceResult.currentQuestion ? serviceResult.currentQuestion - 1 : 0
-			}));
-			
-			setTimeout(() => {
-				const aiResponse: ChatMessage = {
-					content: serviceResult.message,
-					isUser: false,
-					matterCreation: serviceResult.step === 'urgency-selection' ? {
-						type: 'urgency-selection',
-						availableServices: []
-					} : undefined,
-					qualityScore: serviceResult.qualityScore
-				};
-				setMessages(prev => [...prev, aiResponse]);
-			}, 800);
-					break;
+			// Always send the message to the backend, no step logic
+			const apiPayload = {
+				teamId,
+				sessionId,
+				description: message,
+				answers: matterState.data?.aiAnswers || {},
+			};
+			const aiResult = await handleMatterCreationAPI('questions', apiPayload);
 
-				case 'ai-questions':
-					// Store answer to current AI question
-					const currentService = matterState.data.matterType;
-					const currentIndex = matterState.currentQuestionIndex || 0;
-					
-					// Store the answer with the question text for better context
-					const updatedAnswers = {
-						...matterState.data.aiAnswers,
-						[`q${currentIndex + 1}`]: {
-							question: matterState.data.currentQuestion || `Question ${currentIndex + 1}`,
-							answer: message
-						}
-					};
-					
-					// Add placeholder message with loading indicator (ChatGPT style)
-					const loadingMessageId = crypto.randomUUID();
-					const loadingMessage: ChatMessage = {
-						content: "Let me get your next question...",
-						isUser: false,
-						isLoading: true,
-						id: loadingMessageId
-					};
-					setMessages(prev => [...prev, loadingMessage]);
-					
-					// Call API for questions step (next question)
-					const aiResult = await handleMatterCreationAPI('questions', {
-						service: currentService,
-						currentQuestionIndex: currentIndex + 1,
-						answers: updatedAnswers,
-						urgency: matterState.data.urgency
-					});
-					
-					if (aiResult.step === 'questions') {
-						// More questions to ask
-						setMatterState(prev => ({
-							...prev,
-							data: { 
-								...prev.data, 
-								aiAnswers: updatedAnswers,
-								currentQuestion: aiResult.questionText || aiResult.message
-							},
-							currentQuestionIndex: aiResult.currentQuestion ? aiResult.currentQuestion - 1 : prev.currentQuestionIndex + 1
-						}));
-						
-						setTimeout(() => {
-							// Update the loading message with actual content
-							setMessages(prev => prev.map(msg => 
-								msg.id === loadingMessageId 
-									? {
-										...msg,
-										content: aiResult.message,
-										isLoading: false
-									}
-									: msg
-							));
-						}, 800);
-					} else {
-						// All questions answered, move to matter review
-						setMatterState(prev => ({
-							...prev,
-							data: { ...prev.data, aiAnswers: updatedAnswers },
-							step: 'matter-review'
-						}));
-						
-						setTimeout(() => {
-							// Update the loading message with actual content
-							setMessages(prev => prev.map(msg => 
-								msg.id === loadingMessageId 
-									? {
-										...msg,
-										content: aiResult.message,
-										isLoading: false
-									}
-									: msg
-							));
-							
-							// Automatically trigger matter review
-							setTimeout(async () => {
-								try {
-									// Add placeholder message with loading indicator (ChatGPT style)
-									const loadingMessageId = crypto.randomUUID();
-									const loadingMessage: ChatMessage = {
-										content: "Let me review your matter and create a summary...",
-										isUser: false,
-										isLoading: true,
-										id: loadingMessageId
-									};
-									setMessages(prev => [...prev, loadingMessage]);
-									
-									const reviewResult = await handleMatterCreationAPI('matter-review', {
-										service: matterState.data.matterType,
-										answers: updatedAnswers,
-										description: aiResult.autoGeneratedDescription
-									});
-									
-									// Update matter state with review data
-									setMatterState(prev => ({
-										...prev,
-										data: { 
-											...prev.data, 
-											matterSummary: reviewResult.matterCanvas?.matterSummary,
-											followUpQuestions: reviewResult.followUpQuestions || [],
-											currentFollowUpIndex: 0
-										},
-										step: reviewResult.needsImprovement ? 'matter-review' : 'ready-for-lawyer'
-									}));
-									
-									// Update the loading message with actual content
-									setMessages(prev => prev.map(msg => 
-										msg.id === loadingMessageId 
-											? {
-												...msg,
-												content: reviewResult.message,
-												isLoading: false,
-												matterCanvas: reviewResult.matterCanvas
-											}
-											: msg
-									));
-									
-									// Add follow-up message if there is one
-									if (reviewResult.followUpMessage) {
-										setTimeout(() => {
-											const followUpResponse: ChatMessage = {
-												content: reviewResult.followUpMessage,
-												isUser: false
-											};
-											setMessages(prev => [...prev, followUpResponse]);
-										}, 1000);
-									}
-									
-									// If matter is ready and no improvement needed, auto-start contact form
-									if (reviewResult.readyForNextStep) {
-										setTimeout(() => {
-											// Directly start the contact form without asking
-											setFormState({
-												step: 'collecting_email',
-												data: { 
-													matterType: matterState.data.matterType, 
-													matterDescription: reviewResult.matterSummary || 'Matter details provided through Q&A',
-													matterDetails: matterState.data.aiAnswers,
-													urgency: reviewResult.qualityScore?.inferredUrgency || 'Not Urgent'
-												},
-												isActive: true
-											});
-											
-											setMatterState(prev => ({
-												...prev,
-												isActive: false
-											}));
-											
-											// Add initial form prompt
-											const formStartMessage: ChatMessage = {
-												content: "Perfect! To connect you with the right attorney, I'll need some contact information. What's your email address?",
-												isUser: false
-											};
-											setMessages(prev => [...prev, formStartMessage]);
-										}, 2000);
-									}
-								} catch (error) {
-									console.error('Matter review error:', error);
-									// Fallback to ready-for-lawyer
-									setMatterState(prev => ({
-										...prev,
-										step: 'ready-for-lawyer'
-									}));
-								}
-							}, 1000);
-						}, 800);
-					}
-					break;
+			// Display the backend's message
+			const aiResponse: ChatMessage = {
+				content: aiResult.message,
+				isUser: false,
+				matterCanvas: aiResult.matterCanvas,
+				qualityScore: aiResult.qualityScore,
+			};
+			setMessages(prev => [...prev, aiResponse]);
 
-				        case 'matter-review':
-					// Handle follow-up questions to improve matter quality
-					const followUpQuestions = matterState.data.followUpQuestions || [];
-					const currentFollowUpIndex = matterState.data.currentFollowUpIndex || 0;
-					
-					// Store the follow-up answer with question text
-					const followUpAnswers = {
-						...matterState.data.aiAnswers,
-						[`followup_${currentFollowUpIndex + 1}`]: {
-							question: followUpQuestions[currentFollowUpIndex] || `Follow-up question ${currentFollowUpIndex + 1}`,
-							answer: message
-						}
-					};
-					
-					// Update matter state with new answer
-					setMatterState(prev => ({
-						...prev,
-						data: { 
-							...prev.data, 
-							aiAnswers: followUpAnswers,
-							currentFollowUpIndex: currentFollowUpIndex + 1
-						}
-					}));
-					
-					// Check if we have more follow-up questions
-					if (currentFollowUpIndex + 1 < followUpQuestions.length) {
-						// Ask next follow-up question
-						setTimeout(() => {
-							const nextQuestion = followUpQuestions[currentFollowUpIndex + 1];
-							const aiResponse: ChatMessage = {
-								content: `${nextQuestion}`,
-								isUser: false
-							};
-							setMessages(prev => [...prev, aiResponse]);
-						}, 800);
-					} else {
-						// All follow-up questions answered, re-assess matter
-						setTimeout(async () => {
-							try {
-								// Add placeholder message with loading indicator (ChatGPT style)
-								const loadingMessageId = crypto.randomUUID();
-								const loadingMessage: ChatMessage = {
-									content: "Thank you so much for providing those additional details. Let me update your matter summary...",
-									isUser: false,
-									isLoading: true,
-									id: loadingMessageId
-								};
-								setMessages(prev => [...prev, loadingMessage]);
-								
-								const finalReviewResult = await handleMatterCreationAPI('matter-review', {
-									service: matterState.data.matterType,
-									answers: followUpAnswers,
-									description: matterState.data.matterSummary
-								});
-								
-								// Update matter state and quality score
-								setMatterState(prev => ({
-									...prev,
-									data: { 
-										...prev.data, 
-										matterSummary: finalReviewResult.matterCanvas?.matterSummary,
-										aiAnswers: followUpAnswers
-									},
-									step: 'ready-for-lawyer'
-								}));
-								
-								// Update the loading message with actual content
-								setMessages(prev => prev.map(msg => 
-									msg.id === loadingMessageId 
-										? {
-											...msg,
-											content: "Thank you so much for providing those additional details. Here's your updated matter summary:",
-											isLoading: false,
-											matterCanvas: finalReviewResult.matterCanvas
-										}
-										: msg
-								));
-								
-								// Add completion message
-								setTimeout(() => {
-									const completionMessage: ChatMessage = {
-										content: `Your matter quality score is now ${finalReviewResult.qualityScore?.score || 0}/100 - excellent! You've given us everything we need to connect you with the right attorney who can help with your situation.`,
-										isUser: false
-									};
-									setMessages(prev => [...prev, completionMessage]);
-								}, 1000);
-								
-								// Auto-start contact form
-								setTimeout(() => {
-									// Directly start the contact form without asking
-									setFormState({
-										step: 'collecting_email',
-										data: { 
-											matterType: matterState.data.matterType, 
-											matterDescription: finalReviewResult.matterSummary || 'Comprehensive matter details provided',
-											matterDetails: followUpAnswers,
-											urgency: finalReviewResult.qualityScore?.inferredUrgency || 'Not Urgent'
-										},
-										isActive: true
-									});
-									
-									setMatterState(prev => ({
-										...prev,
-										isActive: false
-									}));
-									
-									// Add initial form prompt
-									const formStartMessage: ChatMessage = {
-										content: "Perfect! To connect you with the right attorney, I'll need some contact information. What's your email address?",
-										isUser: false
-									};
-									setMessages(prev => [...prev, formStartMessage]);
-								}, 2000);
-								
-							} catch (error) {
-								console.error('Final matter review error:', error);
-								setMatterState(prev => ({
-									...prev,
-									step: 'ready-for-lawyer'
-								}));
-							}
-						}, 800);
-					}
-					break;
-
-				        case 'ready-for-lawyer':
-					// Handle additional information after matter completion
-					// Add any additional information to the matter
-					setMatterState(prev => ({
-						...prev,
-						data: { ...prev.data, additionalInfo: message }
-					}));
-					
-					// Re-assess matter with additional information to get updated urgency
-					const finalResult = await handleMatterCreationAPI('matter-details', {
-						service: matterState.data.matterType,
-						description: matterState.data.description || `${matterState.data.matterType} matter with provided details and additional information: ${message}`,
-						answers: matterState.data.aiAnswers
-					});
-					
-
-					
-					setTimeout(() => {
-						const urgencyText = finalResult.qualityScore?.inferredUrgency 
-							? ` I've assessed this as ${finalResult.qualityScore.inferredUrgency.toLowerCase()}.`
-							: '';
-						
-						const aiResponse: ChatMessage = {
-							content: `Thank you for the additional information.${urgencyText} This will be included with your matter details when we connect you with an attorney.`,
-							isUser: false
-						};
-						setMessages(prev => [...prev, aiResponse]);
-						
-						// Auto-start contact form
-						setTimeout(() => {
-							const contactResponse: ChatMessage = {
-								content: "Let me gather your contact information so we can connect you with the right attorney.",
-								isUser: false
-							};
-							setMessages(prev => [...prev, contactResponse]);
-							
-							setFormState({
-								step: 'contact',
-								data: { 
-									matterType: matterState.data.matterType, 
-									matterDescription: finalResult.autoGeneratedDescription || `${matterState.data.matterType} matter with additional details: ${message}`,
-									matterDetails: matterState.data.aiAnswers,
-									urgency: finalResult.qualityScore?.inferredUrgency || 'Not Urgent',
-									additionalInfo: message
-								},
-								isActive: true
-							});
-							
-							// Deactivate matter creation since we're now in form collection mode
-							setMatterState(prev => ({
-								...prev,
-								isActive: false
-							}));
-						}, 2000);
-					}, 800);
-					break;
+			// If the backend returns a summary, move to summary state
+			if (aiResult.step === 'matter-details' || aiResult.step === 'matter-review') {
+				setMatterState(prev => ({
+					...prev,
+					data: { ...prev.data, aiAnswers: aiResult.answers || {} },
+					step: 'matter-details',
+				}));
+			} else {
+				setMatterState(prev => ({
+					...prev,
+					data: { ...prev.data, aiAnswers: aiResult.answers || {} },
+					step: 'questions',
+				}));
 			}
 		} catch (error) {
 			console.error('Matter creation step error:', error);
-			// Fallback to error message
 			setTimeout(() => {
 				const errorResponse: ChatMessage = {
 					content: "I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.",
@@ -1960,6 +1615,8 @@ export function App() {
 				};
 				setMessages(prev => [...prev, errorResponse]);
 			}, 800);
+		} finally {
+			setIsProcessingRequest(false);
 		}
 	};
 

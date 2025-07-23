@@ -102,14 +102,36 @@ export class WebhookService {
       signature = await this.generateWebhookSignature(payloadString, signingKey);
     }
 
+    // Get the actual team ID from the database using the slug
+    let actualTeamId = teamId;
+    try {
+      const teamInfo = await this.env.DB.prepare('SELECT id FROM teams WHERE slug = ?').bind(teamId).first();
+      if (teamInfo) {
+        actualTeamId = teamInfo.id as string;
+      }
+    } catch (error) {
+      console.warn('Failed to get team ID from slug:', error);
+      // Fall back to using the slug as-is
+    }
+
     // Log webhook attempt (create table if it doesn't exist)
     try {
+      console.log('📝 Attempting to log webhook to database...');
+      console.log('   Webhook ID:', webhookId);
+      console.log('   Team Slug:', teamId);
+      console.log('   Team ID:', actualTeamId);
+      console.log('   Webhook Type:', webhookType);
+      console.log('   Webhook URL:', webhookUrl);
+      
       await this.env.DB.prepare(`
         INSERT INTO webhook_logs (id, team_id, webhook_type, webhook_url, payload, status, created_at)
         VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
-      `).bind(webhookId, teamId, webhookType, webhookUrl, payloadString).run();
+      `).bind(webhookId, actualTeamId, webhookType, webhookUrl, payloadString).run();
+      
+      console.log('✅ Webhook logged to database successfully');
     } catch (error) {
-      console.warn('Failed to log webhook attempt:', error);
+      console.error('❌ Failed to log webhook attempt:', error);
+      console.error('   Error details:', error.message);
       // Continue with webhook delivery even if logging fails
     }
 

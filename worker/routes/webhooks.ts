@@ -9,20 +9,33 @@ export async function handleWebhooks(request: Request, env: Env, corsHeaders: Re
   // GET /api/webhooks/logs - Get webhook logs
   if (path === '/api/webhooks/logs' && request.method === 'GET') {
     try {
-      const teamId = url.searchParams.get('teamId');
+      const teamSlug = url.searchParams.get('teamId');
       const limit = parseInt(url.searchParams.get('limit') || '50');
       const status = url.searchParams.get('status'); // 'pending', 'success', 'failed', 'retry'
 
       let query = 'SELECT * FROM webhook_logs';
       let params: any[] = [];
 
-      if (teamId || status) {
+      if (teamSlug || status) {
         query += ' WHERE';
         const conditions = [];
         
-        if (teamId) {
-          conditions.push(' team_id = ?');
-          params.push(teamId);
+        if (teamSlug) {
+          // Convert team slug to team ID for the database query
+          const teamInfo = await env.DB.prepare('SELECT id FROM teams WHERE slug = ?').bind(teamSlug).first();
+          if (teamInfo) {
+            conditions.push(' team_id = ?');
+            params.push(teamInfo.id);
+          } else {
+            // Team not found, return empty results
+            return new Response(JSON.stringify({
+              success: true,
+              logs: [],
+              count: 0
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
         }
         
         if (status) {
