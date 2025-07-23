@@ -23,6 +23,7 @@
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20250715.0",
 		"@preact/preset-vite": "^2.9.3",
+		"@tailwindcss/postcss": "^4.1.11",
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/preact": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
