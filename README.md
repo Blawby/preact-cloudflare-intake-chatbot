@@ -384,7 +384,7 @@ Add webhook settings to your team configuration in `teams.json`:
 ### Webhook Events
 
 #### 1. Matter Creation (`matter_creation`)
-Triggered when a client selects a legal service.
+Triggered when a client completes all required intake fields and the summary is shown.
 
 ```json
 {
@@ -394,9 +394,18 @@ Triggered when a client selects a legal service.
   "sessionId": "abc123",
   "matter": {
     "service": "Family Law",
-    "qualityScore": {
-      "score": 40,
-      "readyForLawyer": false
+    "full_name": "Jane Doe",
+    "email": "jane@example.com",
+    "phone": "555-123-4567",
+    "opposing_party": "John Doe",
+    "description": "I need help with a custody modification...",
+    "summary": "# Legal Intake Summary – Family Law\n\n## Contact Details\n- **Full Name**: Jane Doe\n- **Email**: jane@example.com\n- **Phone**: 555-123-4567\n- **Opposing Party**: John Doe\n\n## Description of Legal Matter\nI need help with a custody modification...",
+    "answers": {
+      "full_name": { "answer": "Jane Doe" },
+      "email": { "answer": "jane@example.com" },
+      "phone": { "answer": "555-123-4567" },
+      "opposing_party": { "answer": "John Doe" },
+      "matter_details": { "answer": "I need help with a custody modification..." }
     },
     "step": "service-selected",
     "totalQuestions": 5,
@@ -406,7 +415,7 @@ Triggered when a client selects a legal service.
 ```
 
 #### 2. Matter Details (`matter_details`)
-Triggered when matter review is completed with quality scores.
+Triggered when the user confirms and submits the intake (or after final review).
 
 ```json
 {
@@ -416,27 +425,35 @@ Triggered when matter review is completed with quality scores.
   "sessionId": "abc123",
   "matter": {
     "service": "Family Law",
-    "description": "Child custody modification case...",
-    "summary": "# Family Law Matter Summary\n\n## Legal Matter\n...",
+    "full_name": "Jane Doe",
+    "email": "jane@example.com",
+    "phone": "555-123-4567",
+    "opposing_party": "John Doe",
+    "description": "I need help with a custody modification...",
+    "summary": "# Legal Intake Summary – Family Law\n\n## Contact Details\n- **Full Name**: Jane Doe\n- **Email**: jane@example.com\n- **Phone**: 555-123-4567\n- **Opposing Party**: John Doe\n\n## Description of Legal Matter\nI need help with a custody modification...",
     "answers": {
-      "question1": {
-        "question": "What specific family law issue?",
-        "answer": "Child custody dispute"
-      }
+      "full_name": { "answer": "Jane Doe" },
+      "email": { "answer": "jane@example.com" },
+      "phone": { "answer": "555-123-4567" },
+      "opposing_party": { "answer": "John Doe" },
+      "matter_details": { "answer": "I need help with a custody modification..." }
     },
-    "qualityScore": {
-      "score": 85,
-      "readyForLawyer": true,
-      "needsImprovement": false,
-      "threshold": 70
-    },
-    "followUpQuestions": [],
-    "urgency": "normal",
-    "readyForNextStep": true,
-    "nextActions": ["contact", "schedule"]
+    "step": "intake-complete",
+    "totalQuestions": 5,
+    "hasQuestions": true
   }
 }
 ```
+
+---
+
+### Follow-Up Message
+
+After the summary is shown, the API always returns a follow-up message:
+
+> "I've sent your info to our team, we will be in contact with you shortly. Would you like to add any more details to your request?"
+
+This ensures the user is prompted to provide any additional information after the main intake is complete.
 
 #### 3. Contact Form (`contact_form`)
 Triggered when clients submit contact information.
