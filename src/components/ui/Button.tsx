@@ -22,10 +22,10 @@ export function Button({
   const baseClasses = 'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variantClasses = {
-    primary: 'bg-text text-bg hover:scale-105 focus:ring-text',
-    secondary: 'bg-hover text-text border border-border hover:bg-border focus:ring-accent',
-    ghost: 'bg-transparent text-text hover:bg-hover focus:ring-accent',
-    icon: 'bg-text text-bg hover:scale-105 focus:ring-text rounded-full',
+    primary: 'bg-gray-900 text-white hover:bg-gray-800 hover:scale-105 focus:ring-gray-500 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100',
+    secondary: 'bg-gray-100 text-gray-900 border border-gray-300 hover:bg-gray-200 hover:scale-105 focus:ring-gray-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700',
+    ghost: 'bg-transparent text-gray-900 hover:bg-gray-100 hover:scale-105 focus:ring-gray-500 dark:text-gray-100 dark:hover:bg-gray-800',
+    icon: 'bg-gray-900 text-white hover:bg-gray-800 hover:scale-105 focus:ring-gray-500 rounded-full dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100',
   };
   
   const sizeClasses = {
