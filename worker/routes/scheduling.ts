@@ -47,7 +47,6 @@ export async function handleScheduling(request: Request, env: Env, corsHeaders: 
         event: 'appointment',
         timestamp: new Date().toISOString(),
         teamId: teamInfo?.id || body.teamId, // Use ULID if available, fallback to slug
-        teamName: body.teamId, // Human-readable team identifier (slug)
         appointmentId,
         appointment: {
           clientEmail: body.email,

@@ -263,7 +263,6 @@ export async function handleWebhooks(request: Request, env: Env, corsHeaders: Re
           event: body.webhookType,
           timestamp: new Date().toISOString(),
           teamId: canonicalTeamId, // Always use canonical teamId
-          teamName: body.teamId, // Human-readable team identifier (slug)
           formId: crypto.randomUUID(),
           contactForm: {
             email: "test@example.com",
