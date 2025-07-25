@@ -124,6 +124,20 @@ npm run dev
 
 Configure your law firm teams via `teams.json`:
 
+- The `sync-teams.js` script now performs a **true sync**:
+  - All teams in `teams.json` are upserted (inserted or updated) into the D1 database.
+  - Any team in the database not present in `teams.json` is deleted, along with all related records in dependent tables (cascading deletes).
+  - This ensures your D1 database always matches your `teams.json` source of truth.
+
+- **Remote vs Local DB:**
+  - Use `node sync-teams.js --remote` to sync the remote D1 database (used by your deployed worker).
+  - Use `node sync-teams.js` (no flag) to sync your local D1 database (used by local dev).
+  - To verify which teams are present in D1, run:
+    - `wrangler d1 execute blawby-ai-chatbot --remote --command "SELECT id, slug, name FROM teams;"` (remote)
+    - `wrangler d1 execute blawby-ai-chatbot --local --command "SELECT id, slug, name FROM teams;"` (local)
+
+- After syncing, both local and remote environments will have the correct teams and IDs for all lookups and webhooks.
+
 ```json
 {
   "id": "family-law-firm",

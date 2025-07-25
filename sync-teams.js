@@ -53,9 +53,16 @@ if (idsToDelete.length > 0) {
   let deleteSql = '';
   // First delete related records to avoid foreign key constraints
   idsToDelete.forEach(id => {
+    deleteSql += `DELETE FROM webhook_logs WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
+    deleteSql += `DELETE FROM ai_feedback WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
+    deleteSql += `DELETE FROM appointments WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
+    deleteSql += `DELETE FROM matters WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
+    deleteSql += `DELETE FROM lawyers WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
+    deleteSql += `DELETE FROM files WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
+    deleteSql += `DELETE FROM chat_logs WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
+    deleteSql += `DELETE FROM matter_questions WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
     deleteSql += `DELETE FROM contact_forms WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
     deleteSql += `DELETE FROM services WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
-    // Delete conversations (this will cascade to messages and chat_intents due to foreign keys)
     deleteSql += `DELETE FROM conversations WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
   });
   // Then delete the teams

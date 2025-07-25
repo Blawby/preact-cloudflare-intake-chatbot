@@ -43,7 +43,7 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
 
       // Generate unique filename
       const timestamp = Date.now();
-      const randomId = crypto.randomUUID();
+      const randomId = teamId + '-' + Date.now();
       const fileExtension = file.name.split('.').pop() || 'bin';
       const fileName = `${teamId}/${sessionId}/${timestamp}-${randomId}.${fileExtension}`;
 
@@ -63,7 +63,7 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
       });
 
       // Store file metadata in database
-      const fileId = crypto.randomUUID();
+      const fileId = teamId + '-' + Date.now();
       await env.DB.prepare(`
         INSERT INTO files (id, team_id, session_id, original_name, file_name, file_type, file_size, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))

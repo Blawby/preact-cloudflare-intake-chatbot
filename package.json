@@ -17,7 +17,6 @@
 		"preact-iso": "^2.9.1",
 		"preact-markdown": "^2.1.0",
 		"preact-render-to-string": "^6.5.13",
-		"ulid": "^3.0.1",
 		"zod": "^4.0.5"
 	},
 	"devDependencies": {

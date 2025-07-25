@@ -250,16 +250,19 @@ export async function handleWebhooks(request: Request, env: Env, corsHeaders: Re
 
       // Create test payload based on webhook type
       let testPayload;
+      let canonicalTeamId = body.teamId;
+      // Always resolve the canonical teamId from the DB
+      const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(body.teamId).first();
+      if (teamInfo && teamInfo.id) {
+        canonicalTeamId = teamInfo.id;
+      }
       if (body.testPayload) {
         testPayload = body.testPayload;
       } else if (body.webhookType === 'contact_form') {
-        // Get team info for webhook payload - use slug to find team info
-        const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(body.teamId).first();
-        
         testPayload = {
           event: body.webhookType,
           timestamp: new Date().toISOString(),
-          teamId: teamInfo?.id || body.teamId, // Use team ID (could be ULID or string), fallback to slug
+          teamId: canonicalTeamId, // Always use canonical teamId
           teamName: body.teamId, // Human-readable team identifier (slug)
           formId: crypto.randomUUID(),
           contactForm: {
@@ -274,7 +277,7 @@ export async function handleWebhooks(request: Request, env: Env, corsHeaders: Re
         testPayload = {
           event: body.webhookType,
           timestamp: new Date().toISOString(),
-          teamId: body.teamId,
+          teamId: canonicalTeamId, // Always use canonical teamId
           test: true,
           data: {
             message: 'This is a test webhook payload'
@@ -285,7 +288,7 @@ export async function handleWebhooks(request: Request, env: Env, corsHeaders: Re
       // Send test webhook
       const { WebhookService } = await import('../services/WebhookService.js');
       const webhookService = new WebhookService(env);
-      await webhookService.sendWebhook(body.teamId, body.webhookType, testPayload, teamConfig);
+      await webhookService.sendWebhook(canonicalTeamId, body.webhookType, testPayload, teamConfig);
 
       return new Response(JSON.stringify({
         success: true,
