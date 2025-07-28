@@ -24,6 +24,8 @@ A full-featured, open-source **ChatGPT-like legal assistant**, built with Preact
 * **API-First Design** - RESTful endpoints for easy integration
 * **Self-Hostable** - Complete ownership of your data and infrastructure
 * **Privacy-First** - GDPR-compliant with no external tracking
+* **Enhanced Security** - OWASP-compliant headers and request validation
+* **Production Ready** - Comprehensive error handling and monitoring
 
 ---
 
@@ -48,6 +50,7 @@ Your chatbot follows a **structured intake process** that maximizes lead quality
 * **Storage**: D1 Database (conversations, teams, matters), KV (sessions, cache)
 * **AI**: Cloudflare Workers AI with Llama 3.1 8B model
 * **Email**: Resend API for notifications and confirmations
+* **Security**: OWASP-compliant headers, request validation, structured logging
 * **Optional**: R2 for file uploads (planned)
 
 ---
@@ -91,6 +94,33 @@ Set these variables:
 * `VITE_API_BASE_URL` - Frontend API endpoint
 
 ### 5. Development
+
+---
+
+## 🛡️ Security & Best Practices
+
+### Enhanced Security Headers
+The application now includes comprehensive security headers following OWASP guidelines:
+
+- **X-Content-Type-Options**: `nosniff` - Prevents MIME type sniffing
+- **X-Frame-Options**: `DENY` - Prevents clickjacking attacks
+- **X-XSS-Protection**: `1; mode=block` - XSS protection
+- **Referrer-Policy**: `strict-origin-when-cross-origin` - Controls referrer information
+- **Permissions-Policy**: `camera=(), microphone=(), geolocation=()` - Restricts permissions
+- **Strict-Transport-Security**: `max-age=31536000; includeSubDomains` - Enforces HTTPS
+
+### Request Validation
+- **Size Limits**: 10MB maximum request size
+- **Content Type Validation**: Ensures proper JSON for POST requests
+- **Input Sanitization**: Comprehensive validation with Zod schemas
+
+### Error Handling & Monitoring
+- **Structured Logging**: JSON-formatted error logs with context
+- **Error Categorization**: Proper HTTP status codes and error codes
+- **Rate Limiting**: Built-in protection against abuse
+- **Security Monitoring**: Comprehensive audit trails
+
+---
 
 Enable remote bindings for local development:
 
@@ -676,6 +706,9 @@ routes = [
 | **Email Notifications** | ✅ Resend Integration |
 | **Scheduling** | ✅ Appointment Booking |
 | **Webhook Integration** | ✅ Comprehensive System |
+| **Security Headers** | ✅ OWASP Compliant |
+| **Error Handling** | ✅ Structured Logging |
+| **Request Validation** | ✅ Size & Content Type Checks |
 | **File Uploads** | ⏳ Planned (R2 integration) |
 | **Payment Processing** | ⏳ External links only |
 
