@@ -6,7 +6,7 @@ interface MatterCanvasProps {
   matterNumber?: string;
   service: string;
   matterSummary: string;
-  qualityScore: any;
+  
   answers: Record<string, string | { question: string; answer: string }>;
 }
 
@@ -19,7 +19,7 @@ const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
   matterNumber,
   service,
   matterSummary,
-  qualityScore,
+  
   answers
 }) => {
 

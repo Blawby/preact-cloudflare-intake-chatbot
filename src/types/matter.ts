@@ -10,12 +10,6 @@ export interface Matter {
   updatedAt: Date;
   summary: string;
   urgency?: string;
-  qualityScore?: {
-    score: number;
-    badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
-    color: 'blue' | 'green' | 'yellow' | 'red';
-    inferredUrgency: string;
-  };
   answers?: Record<string, string>;
   contactInfo?: {
     email?: string;

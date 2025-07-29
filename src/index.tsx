@@ -110,22 +110,7 @@ interface ChatMessage {
 		matterNumber?: string;
 		service: string;
 		matterSummary: string;
-		qualityScore?: {
-			score: number;
-			badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
-			color: 'blue' | 'green' | 'yellow' | 'red';
-			inferredUrgency: string;
-			breakdown: {
-				followUpCompletion: number;
-				requiredFields: number;
-				evidence: number;
-				clarity: number;
-				urgency: number;
-				consistency: number;
-				aiConfidence: number;
-			};
-			suggestions: string[];
-		};
+		
 		answers?: Record<string, string>;
 	};
 	isLoading?: boolean;
@@ -316,7 +301,7 @@ export function App() {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 					summary: canvas.matterSummary,
-					qualityScore: canvas.qualityScore,
+	
 					answers: canvas.answers,
 					contactInfo: {
 						email: 'user@example.com', // This would come from form data
@@ -1528,7 +1513,7 @@ export function App() {
 				content: aiResult.message,
 				isUser: false,
 				matterCanvas: aiResult.matterCanvas,
-				qualityScore: aiResult.qualityScore,
+
 			};
 			setMessages(prev => [...prev, aiResponse]);
 
@@ -2100,7 +2085,7 @@ export function App() {
 											matterNumber={sidebarMatter.matterNumber}
 											service={sidebarMatter.service}
 											matterSummary={sidebarMatter.matterSummary}
-											qualityScore={sidebarMatter.qualityScore}
+							
 											answers={sidebarMatter.answers}
 										/>
 									</div>
