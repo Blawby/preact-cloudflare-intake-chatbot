@@ -1,13 +1,8 @@
 export { handleHealth } from './health';
 export { handleRoot } from './root';
-export { handleChat } from './chat';
 export { handleAgent } from './agent';
-export { handleMatterCreation } from './matter-creation';
 export { handleForms } from './forms';
 export { handleTeams } from './teams';
 export { handleScheduling } from './scheduling';
-export { handleSessions } from './sessions';
 export { handleFiles } from './files';
-export { handleFeedback } from './feedback';
-export { handleExport } from './export';
 export { handleWebhooks } from './webhooks'; 

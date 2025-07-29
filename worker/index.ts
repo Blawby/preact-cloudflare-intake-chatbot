@@ -3,16 +3,11 @@
 import {
   handleHealth,
   handleRoot,
-  handleChat,
   handleAgent,
-  handleMatterCreation,
   handleForms,
   handleTeams,
   handleScheduling,
-  handleSessions,
   handleFiles,
-  handleFeedback,
-  handleExport,
   handleWebhooks
 } from './routes';
 import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
@@ -67,26 +62,16 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     // Route handling with enhanced error context
     let response: Response;
     
-    if (path.startsWith('/api/chat')) {
-      response = await handleChat(request, env, CORS_HEADERS);
-    } else if (path.startsWith('/api/agent')) {
+    if (path.startsWith('/api/agent')) {
       response = await handleAgent(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/teams')) {
       response = await handleTeams(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/forms')) {
       response = await handleForms(request, env, CORS_HEADERS);
-    } else if (path.startsWith('/api/matter-creation')) {
-      response = await handleMatterCreation(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/scheduling')) {
       response = await handleScheduling(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/files')) {
       response = await handleFiles(request, env, CORS_HEADERS);
-    } else if (path.startsWith('/api/sessions')) {
-      response = await handleSessions(request, env, CORS_HEADERS);
-    } else if (path.startsWith('/api/feedback')) {
-      response = await handleFeedback(request, env, CORS_HEADERS);
-    } else if (path.startsWith('/api/export')) {
-      response = await handleExport(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/webhooks')) {
       response = await handleWebhooks(request, env, CORS_HEADERS);
     } else if (path === '/api/health') {
