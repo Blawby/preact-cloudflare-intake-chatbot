@@ -5,29 +5,20 @@ const API_MODE = (import.meta.env.DEV ? 'local' : 'deployed') as const;
 const API_CONFIG = {
   local: {
     baseUrl: 'http://localhost:8787',
-    chatEndpoint: '/api/chat',
     agentEndpoint: '/api/agent',
     teamsEndpoint: '/api/teams',
-    healthEndpoint: '/api/health',
-    matterCreationEndpoint: '/api/matter-creation'
+    healthEndpoint: '/api/health'
   },
   deployed: {
     baseUrl: 'https://blawby-ai-chatbot.paulchrisluke.workers.dev',
-    chatEndpoint: '/api/chat',
     agentEndpoint: '/api/agent',
     teamsEndpoint: '/api/teams',
-    healthEndpoint: '/api/health',
-    matterCreationEndpoint: '/api/matter-creation'
+    healthEndpoint: '/api/health'
   }
 };
 
 export const getApiConfig = () => {
   return API_CONFIG[API_MODE];
-};
-
-export const getChatEndpoint = () => {
-  const config = getApiConfig();
-  return `${config.baseUrl}${config.chatEndpoint}`;
 };
 
 export const getAgentEndpoint = () => {
@@ -40,11 +31,6 @@ export const getFormsEndpoint = () => {
   return `${config.baseUrl}/api/forms`;
 };
 
-export const getFeedbackEndpoint = () => {
-  const config = getApiConfig();
-  return `${config.baseUrl}/api/feedback`;
-};
-
 export const getTeamsEndpoint = () => {
   const config = getApiConfig();
   return `${config.baseUrl}${config.teamsEndpoint}`;
@@ -53,9 +39,4 @@ export const getTeamsEndpoint = () => {
 export const getHealthEndpoint = () => {
   const config = getApiConfig();
   return `${config.baseUrl}${config.healthEndpoint}`;
-};
-
-export const getMatterCreationEndpoint = () => {
-  const config = getApiConfig();
-  return `${config.baseUrl}${config.matterCreationEndpoint}`;
 }; 
