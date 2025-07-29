@@ -51,19 +51,7 @@ vi.mock('../../../worker/utils', () => ({
   }
 }));
 
-// Mock the quality assessment
-vi.mock('../../../worker/utils/qualityAssessment', () => ({
-  assessMatterQuality: vi.fn().mockReturnValue({
-    score: 85,
-    readyForLawyer: true,
-    breakdown: {
-      answerQuality: 90,
-      completeness: 80,
-      clarity: 85
-    },
-    issues: []
-  })
-}));
+
 
 // Mock the webhook service
 vi.mock('../../../worker/services/WebhookService', () => ({
@@ -199,33 +187,7 @@ describe('Matter Creation API Integration Tests', () => {
     });
   });
 
-  describe('Matter Details with Quality Scoring', () => {
-    it('should process matter details and return quality score', async () => {
-      const requestBody = {
-        teamId: 'team1',
-        step: 'matter-review',
-        service: 'Family Law',
-        description: 'I need help with a divorce case involving child custody',
-        answers: {
-          'question1': { question: 'What type of family issue?', answer: 'Divorce' },
-          'question2': { question: 'Are there children involved?', answer: 'Yes, two children' }
-        }
-      };
 
-      const request = new Request('http://localhost/api/matter-creation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      const response = await handleMatterCreation(request, mockEnv, corsHeaders);
-      
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('qualityScore');
-      expect(data.qualityScore).toHaveProperty('score');
-    });
-  });
 
   describe('Slot-by-slot Intake Flow', () => {
     it('should require all slots (including opposing party and description) before showing summary', async () => {

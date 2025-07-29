@@ -107,19 +107,11 @@ const MatterCard = ({ matter, onClick }: MatterCardProps) => {
         </p>
       </div>
       
-      {matter.qualityScore && (
+      {matter.urgency && (
         <div className="matter-card-footer">
-          <div className="quality-score">
-            <span className="quality-label">Quality Score:</span>
-            <span className={`quality-badge quality-${matter.qualityScore.badge.toLowerCase()}`}>
-              {matter.qualityScore.score}/100
-            </span>
-          </div>
-          {matter.urgency && (
-            <span className="urgency-badge">
-              {matter.urgency}
-            </span>
-          )}
+          <span className="urgency-badge">
+            {matter.urgency}
+          </span>
         </div>
       )}
     </div>

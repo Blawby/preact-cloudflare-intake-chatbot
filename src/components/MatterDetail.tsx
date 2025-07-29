@@ -129,26 +129,7 @@ const MatterDetail = ({ matter, onBack, onEdit }: MatterDetailProps) => {
           )}
         </div>
 
-        {matter.qualityScore && (
-          <div className="matter-quality-section">
-            <h3 className="section-title">Quality Assessment</h3>
-            <div className="quality-score-display">
-              <div className="quality-score-main">
-                <span className="quality-score-value">
-                  {matter.qualityScore.score}/100
-                </span>
-                <span className={`quality-score-badge quality-${matter.qualityScore.badge.toLowerCase()}`}>
-                  {matter.qualityScore.badge}
-                </span>
-              </div>
-              <div className="quality-score-details">
-                <span className="quality-urgency">
-                  Inferred Urgency: {matter.qualityScore.inferredUrgency}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         <div className="matter-summary-section">
           <h3 className="section-title">Summary</h3>

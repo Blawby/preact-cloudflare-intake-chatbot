@@ -18,7 +18,7 @@ interface MobileSidebarProps {
     matterNumber?: string;
     service: string;
     matterSummary: string;
-    qualityScore?: any;
+    
     answers?: Record<string, string>;
   } | null;
   messages: any[];
@@ -99,7 +99,7 @@ const MobileSidebar = ({
                   matterNumber={sidebarMatter.matterNumber}
                   service={sidebarMatter.service}
                   matterSummary={sidebarMatter.matterSummary}
-                  qualityScore={sidebarMatter.qualityScore}
+                  
                   answers={sidebarMatter.answers}
                 />
               </div>

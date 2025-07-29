@@ -59,21 +59,7 @@ interface ChatMessage {
         };
         answers?: Record<string, string>;
     };
-    qualityScore?: {
-        score: number;
-        breakdown: {
-            followUpCompletion: number;
-            requiredFields: number;
-            evidence: number;
-            clarity: number;
-            urgency: number;
-            consistency: number;
-            aiConfidence: number;
-        };
-        suggestions: string[];
-        readyForLawyer: boolean;
-        color: 'red' | 'yellow' | 'green' | 'blue';
-    };
+    
     isLoading?: boolean;
     id?: string;
 }

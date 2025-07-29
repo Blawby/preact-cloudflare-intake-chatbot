@@ -380,84 +380,9 @@ JSON:`;
   };
 }
 
-// Quality Assessment Chain
-async function runQualityAssessmentChain(context: ChainContext, collectedInfo: any): Promise<any> {
-  const { env } = context;
-  
-  const prompt = `Assess the quality and completeness of the legal intake information.
 
-Collected information: ${JSON.stringify(collectedInfo, null, 2)}
 
-Assess the quality and return a JSON object with:
-- quality_score: number 0-100
-- completeness_score: number 0-100
-- clarity_score: number 0-100
-- requires_human_review: boolean
-- recommendations: array of strings
 
-JSON:`;
-
-  const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 300,
-    temperature: 0.1
-  });
-
-  try {
-    const jsonMatch = result.response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-  } catch (e) {
-    console.warn('Failed to parse quality assessment response:', e);
-  }
-
-  return {
-    quality_score: 50,
-    completeness_score: 50,
-    clarity_score: 50,
-    requires_human_review: true,
-    recommendations: ['Need more information']
-  };
-}
-
-// Action Decision Chain
-async function runActionDecisionChain(context: ChainContext, qualityAssessment: any, intentClassification: any): Promise<any> {
-  const { env } = context;
-  
-  const prompt = `Decide on the appropriate action based on the collected information and quality assessment.
-
-Quality Assessment: ${JSON.stringify(qualityAssessment, null, 2)}
-Intent Classification: ${JSON.stringify(intentClassification, null, 2)}
-
-Decide on the next action and return a JSON object with:
-- action: "request_lawyer_approval" | "schedule_consultation" | "send_information_packet" | "request_more_info" | "immediate_response"
-- priority: "low" | "medium" | "high" | "urgent"
-- reasoning: string
-
-JSON:`;
-
-  const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 200,
-    temperature: 0.1
-  });
-
-  try {
-    const jsonMatch = result.response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-  } catch (e) {
-    console.warn('Failed to parse action decision response:', e);
-  }
-
-  return {
-    action: 'request_more_info',
-    priority: 'medium',
-    reasoning: 'Need more information to proceed'
-  };
-}
 
 // Main Intake Chain Orchestrator
 export async function runIntakeChain(context: ChainContext): Promise<any> {
