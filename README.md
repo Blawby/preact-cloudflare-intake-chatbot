@@ -1,63 +1,46 @@
-# Preact Chat GPT Interface
+# Legal Intake Chatbot - Cloudflare Workers AI
 
-A modern, responsive chat interface built with Preact, designed for legal intake and consultation workflows. This application integrates with Cloudflare Workers AI for intelligent conversation handling and matter creation.
+A production-ready legal intake chatbot built with Cloudflare Workers AI, featuring intelligent conversation handling, step-by-step information collection, and automated matter creation with payment integration.
 
-## 🚀 **Recent Updates - Cloudflare Agents & Prompt Chaining**
+## 🎯 **Production Status: LIVE & READY**
 
-### ✅ **Successfully Implemented:**
+### ✅ **Successfully Deployed Features:**
 
-- **Cloudflare Agents Framework**: Replaced complex custom API with modular agent architecture
-- **Prompt Chaining**: Implemented Anthropic patterns for routing and workflow management
-- **Native AI Bindings**: Using `env.AI` directly (removed deprecated `@cloudflare/ai` package)
-- **Human-in-the-Loop**: Automatic lawyer approval for complex legal matters
-- **Simplified Frontend**: Single `/api/agent` endpoint handles all workflows
+- **🤖 Intelligent Legal Intake Agent**: Cloudflare Workers AI-powered conversation handling
+- **📋 Step-by-Step Information Collection**: Systematic gathering of client details (Name → Phone → Email → Matter Details)
+- **⚖️ Legal Matter Classification**: Automatic classification of legal issues (Employment Law, Family Law, Personal Injury, etc.)
+- **💰 Payment Integration**: Automated consultation fee collection ($75) with team configuration
+- **👨‍💼 Human-in-the-Loop**: Automatic lawyer approval for urgent matters
+- **📱 Responsive Design**: Mobile-first interface with modern UI/UX
+- **🔒 Production Security**: OWASP-compliant security headers and validation
 
 ### 🏗️ **Architecture:**
 
 ```
-Frontend → /api/agent → Prompt Chain Orchestrator → Specialized Chains → Actions
+Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Actions
 ```
 
-**Chain Components:**
-- **Router Chain**: Determines workflow (GENERAL_INQUIRY, MATTER_CREATION, SCHEDULING, etc.)
-- **Intent Chain**: Classifies user intent and extracts key information
-- **Info Gathering Chain**: Collects client information systematically
-- **Quality Assessment Chain**: Evaluates completeness and quality
-- **Action Decision Chain**: Determines next actions (lawyer approval, scheduling, etc.)
+**Core Components:**
+- **Legal Intake Agent**: Cloudflare Workers AI with structured tool calling
+- **Tool Handlers**: Modular functions for contact collection, matter creation, lawyer review
+- **Team Configuration**: Dynamic payment and service configuration per team
+- **Enhanced Metadata**: Rich debugging context for monitoring and HITL dashboards
 
-### 🧪 **Test Results:**
+### 🧪 **Live Test Results:**
 
-✅ **Divorce Matter Creation**: "im getting a divorce" → MATTER_CREATION workflow  
-✅ **General Inquiry**: "what are my rights?" → GENERAL_INQUIRY workflow  
-✅ **Scheduling**: "I want to schedule a consultation" → SCHEDULING workflow  
-
-### 📊 **Benefits Achieved:**
-
-- **Simplified Codebase**: Removed 400+ lines of complex matter creation logic
-- **Modular Design**: Each chain has a single responsibility
-- **Better Testing**: Each chain can be tested independently
-- **Human-in-the-Loop**: Automatic lawyer approval for complex cases
-- **Scalable**: Easy to add new workflows and chains
+✅ **Employment Law**: "i got fired for downloading porn onmy work laptop" → Complete matter creation  
+✅ **Family Law**: "i need help with my divorce" → Step-by-step collection + payment flow  
+✅ **Personal Injury**: "i ran over my cousin with my golf cart" → Urgent matter classification  
+✅ **Payment Integration**: Automatic $75 consultation fee with team config  
+✅ **Lawyer Approval**: Automatic escalation for urgent matters  
 
 ## 🛠️ **Technology Stack**
 
 - **Frontend**: Preact, TypeScript, Tailwind CSS
 - **Backend**: Cloudflare Workers, D1 Database, KV Storage, R2 Object Storage
 - **AI**: Cloudflare Workers AI (Llama 3.1 8B)
-- **Deployment**: Cloudflare Workers, GitHub Actions
+- **Deployment**: Cloudflare Workers
 - **Development**: Vite, Wrangler CLI
-
-## 🏗️ **Architecture**
-
-The application follows a modern, serverless architecture:
-
-- **Frontend**: Single-page application with responsive design
-- **Backend**: Cloudflare Workers with AI integration
-- **Database**: Cloudflare D1 for persistent data
-- **Storage**: Cloudflare R2 for file uploads
-- **Caching**: Cloudflare KV for session management
-- **AI**: Cloudflare Workers AI for intelligent responses
-- **Security**: OWASP-compliant security headers and validation
 
 ## 🚀 **Quick Start**
 
@@ -136,28 +119,34 @@ The `wrangler.toml` file is pre-configured with:
 
 ## 🧪 **Testing**
 
-### Unit Tests
-
-```bash
-npm test
-```
-
-### Integration Tests
-
-```bash
-npm run test:integration
-```
-
 ### Manual Testing
 
 Test the agent API directly:
 
 ```bash
+# Test initial contact
 curl -X POST https://your-worker.workers.dev/api/agent \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"role": "user", "content": "I need help with a divorce"}],
-    "teamId": "your-team-id",
+    "messages": [{"role": "user", "content": "hello i got fired for downloading porn onmy work laptop"}],
+    "teamId": "north-carolina-legal-services",
+    "sessionId": "test-session"
+  }'
+
+# Test complete flow
+curl -X POST https://your-worker.workers.dev/api/agent \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "hello i got fired for downloading porn onmy work laptop"},
+      {"role": "assistant", "content": "Can you please provide your full name?"},
+      {"role": "user", "content": "my name is john smith"},
+      {"role": "assistant", "content": "Thank you John! Now I need your phone number."},
+      {"role": "user", "content": "555-123-4567"},
+      {"role": "assistant", "content": "Thank you! Now I need your email address."},
+      {"role": "user", "content": "john@example.com"}
+    ],
+    "teamId": "north-carolina-legal-services",
     "sessionId": "test-session"
   }'
 ```
@@ -166,13 +155,14 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 
 ```
 ├── src/                    # Frontend source code
-│   ├── components/        # React/Preact components
+│   ├── components/        # Preact components
 │   ├── config/           # Configuration files
 │   ├── hooks/            # Custom React hooks
 │   ├── types/            # TypeScript type definitions
 │   └── utils/            # Utility functions
 ├── worker/               # Cloudflare Worker backend
-│   ├── chains/          # Prompt chaining logic
+│   ├── agents/          # AI agent definitions
+│   ├── chains/          # Workflow orchestration
 │   ├── routes/          # API route handlers
 │   ├── services/        # Business logic services
 │   └── utils/           # Backend utilities
@@ -205,6 +195,7 @@ The application implements comprehensive security headers:
 - Centralized error handling
 - Graceful degradation
 - Comprehensive error responses
+- Rich metadata for debugging and HITL dashboards
 
 ## 🚀 **Deployment**
 
@@ -232,6 +223,9 @@ The application is automatically deployed via GitHub Actions:
 | Database | ✅ Production Ready | D1 with migrations |
 | File Storage | ✅ Production Ready | R2 with CDN |
 | AI Integration | ✅ Production Ready | Llama 3.1 8B |
+| Legal Intake Agent | ✅ Production Ready | Step-by-step collection |
+| Payment Integration | ✅ Production Ready | Team config support |
+| Lawyer Approval | ✅ Production Ready | HITL workflow |
 | Security Headers | ✅ OWASP Compliant | Comprehensive security |
 | Error Handling | ✅ Structured Logging | Centralized error management |
 | Request Validation | ✅ Size & Content Type Checks | Input sanitization |
@@ -255,10 +249,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For support and questions:
 
-- **Documentation**: Check the [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed architecture information
 - **Issues**: Create an issue on GitHub
 - **Discussions**: Use GitHub Discussions for questions
 
 ---
 
-**Built with ❤️ using Cloudflare Workers and Preact**
+**Built with ❤️ using Cloudflare Workers AI and Preact**
