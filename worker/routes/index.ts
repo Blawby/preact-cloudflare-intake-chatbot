@@ -1,6 +1,7 @@
 export { handleHealth } from './health';
 export { handleRoot } from './root';
 export { handleChat } from './chat';
+export { handleAgent } from './agent';
 export { handleMatterCreation } from './matter-creation';
 export { handleForms } from './forms';
 export { handleTeams } from './teams';

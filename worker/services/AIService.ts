@@ -55,27 +55,39 @@ export class AIService {
   }
   
   async getTeamConfig(teamId: string): Promise<TeamConfig> {
+    console.log('AIService.getTeamConfig called with teamId:', teamId);
     const cached = this.teamConfigCache.get(teamId);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      console.log('Returning cached team config');
       return cached.config;
     }
 
     try {
       // Try to find team by ID (ULID) first, then by slug
+      console.log('Querying database for team config...');
       let teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(teamId).first();
+      console.log('Team row found by ID:', teamRow ? 'yes' : 'no');
       if (!teamRow) {
         teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE slug = ?').bind(teamId).first();
+        console.log('Team row found by slug:', teamRow ? 'yes' : 'no');
       }
       
       if (teamRow) {
         const config = JSON.parse(teamRow.config as string);
+        console.log('Parsed team config:', JSON.stringify(config, null, 2));
         this.teamConfigCache.set(teamId, { config, timestamp: Date.now() });
-        return config;
+        return { config }; // Return with config property to match expected structure
+      } else {
+        console.log('No team found in database');
+        console.log('Available teams:');
+        const allTeams = await this.env.DB.prepare('SELECT id, slug FROM teams').all();
+        console.log('All teams:', allTeams);
       }
     } catch (error) {
       console.warn('Failed to fetch team config:', error);
     }
     
+    console.log('Returning empty team config');
     return {};
   }
 

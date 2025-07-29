@@ -1,6 +1,6 @@
 import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
-import { CORS_HEADERS } from '../utils';
+import { CORS_HEADERS } from '../errorHandler';
 
 export async function handleRoot(request: Request, env: Env): Promise<Response> {
   return new Response(`
