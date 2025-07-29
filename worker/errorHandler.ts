@@ -1,35 +1,78 @@
 import { HttpError, ApiResponse } from './types';
 import { ZodError } from 'zod';
 
-// Centralized error handler
+// Security headers following Cloudflare best practices
+export const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+};
+
+// Enhanced CORS headers
+export const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+  'Access-Control-Max-Age': '86400',
+  'Access-Control-Allow-Credentials': 'true'
+};
+
+// Structured logging for better observability
+export function logError(error: unknown, context: Record<string, any> = {}) {
+  const errorData = {
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+    context,
+    timestamp: new Date().toISOString(),
+    worker: 'blawby-ai-chatbot'
+  };
+  
+  console.error(JSON.stringify(errorData));
+}
+
+// Centralized error handler with enhanced features
 export function handleError(error: unknown, corsHeaders: Record<string, string>): Response {
-  console.error('Worker error:', error);
+  logError(error, { endpoint: 'unknown' });
 
   let status = 500;
   let message = 'Internal server error';
   let details: any = undefined;
+  let errorCode = 'INTERNAL_ERROR';
 
   if (error instanceof HttpError) {
     status = error.status;
     message = error.message;
     details = error.details;
+    errorCode = `HTTP_${status}`;
   } else if (error instanceof ZodError) {
     status = 400;
     message = 'Validation error';
     details = error.errors;
+    errorCode = 'VALIDATION_ERROR';
   } else if (error instanceof Error) {
     message = error.message;
+    errorCode = 'GENERIC_ERROR';
   }
 
   const response: ApiResponse = {
     success: false,
     error: message,
+    errorCode,
     ...(details && { details })
+  };
+
+  const headers = {
+    ...corsHeaders,
+    ...SECURITY_HEADERS,
+    'Content-Type': 'application/json'
   };
 
   return new Response(JSON.stringify(response), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    headers
   });
 }
 
@@ -52,15 +95,42 @@ export const HttpErrors = {
   serviceUnavailable: (message: string = 'Service unavailable', details?: any) => createHttpError(503, message, details)
 };
 
-// Success response helper
+// Success response helper with security headers
 export function createSuccessResponse<T>(data: T, corsHeaders: Record<string, string>): Response {
   const response: ApiResponse<T> = {
     success: true,
     data
   };
 
+  const headers = {
+    ...corsHeaders,
+    ...SECURITY_HEADERS,
+    'Content-Type': 'application/json'
+  };
+
   return new Response(JSON.stringify(response), {
     status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    headers
+  });
+}
+
+// Rate limiting helper (basic implementation)
+export function createRateLimitResponse(corsHeaders: Record<string, string>): Response {
+  const response: ApiResponse = {
+    success: false,
+    error: 'Too many requests',
+    errorCode: 'RATE_LIMIT_EXCEEDED'
+  };
+
+  const headers = {
+    ...corsHeaders,
+    ...SECURITY_HEADERS,
+    'Content-Type': 'application/json',
+    'Retry-After': '60'
+  };
+
+  return new Response(JSON.stringify(response), {
+    status: 429,
+    headers
   });
 } 

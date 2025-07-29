@@ -4,6 +4,7 @@ import {
   handleHealth,
   handleRoot,
   handleChat,
+  handleAgent,
   handleMatterCreation,
   handleForms,
   handleTeams,
@@ -14,33 +15,99 @@ import {
   handleExport,
   handleWebhooks
 } from './routes';
-import { CORS_HEADERS } from './utils';
+import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
+
+// Basic request validation
+function validateRequest(request: Request): boolean {
+  const url = new URL(request.url);
+  
+  // Check for reasonable request size (10MB limit)
+  const contentLength = request.headers.get('content-length');
+  if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+    return false;
+  }
+  
+  // Check for valid content type on POST requests
+  if (request.method === 'POST') {
+    const contentType = request.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return false;
+    }
+  }
+  
+  return true;
+}
 
 export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
 
+  // Handle preflight requests
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: CORS_HEADERS });
+    return new Response(null, { 
+      headers: { ...CORS_HEADERS, ...SECURITY_HEADERS } 
+    });
+  }
+
+  // Basic request validation
+  if (!validateRequest(request)) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Invalid request',
+      errorCode: 'INVALID_REQUEST'
+    }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' }
+    });
   }
 
   try {
-    if (path.startsWith('/api/chat')) return handleChat(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/teams')) return handleTeams(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/forms')) return handleForms(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/matter-creation')) return handleMatterCreation(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/scheduling')) return handleScheduling(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/files')) return handleFiles(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/sessions')) return handleSessions(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/feedback')) return handleFeedback(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/export')) return handleExport(request, env, CORS_HEADERS);
-    if (path.startsWith('/api/webhooks')) return handleWebhooks(request, env, CORS_HEADERS);
-    if (path === '/api/health') return handleHealth(request, env, CORS_HEADERS);
-    if (path === '/') return handleRoot(request, env);
+    // Route handling with enhanced error context
+    let response: Response;
+    
+    if (path.startsWith('/api/chat')) {
+      response = await handleChat(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/agent')) {
+      response = await handleAgent(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/teams')) {
+      response = await handleTeams(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/forms')) {
+      response = await handleForms(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/matter-creation')) {
+      response = await handleMatterCreation(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/scheduling')) {
+      response = await handleScheduling(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/files')) {
+      response = await handleFiles(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/sessions')) {
+      response = await handleSessions(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/feedback')) {
+      response = await handleFeedback(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/export')) {
+      response = await handleExport(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/webhooks')) {
+      response = await handleWebhooks(request, env, CORS_HEADERS);
+    } else if (path === '/api/health') {
+      response = await handleHealth(request, env, CORS_HEADERS);
+    } else if (path === '/') {
+      response = await handleRoot(request, env);
+    } else {
+      throw HttpErrors.notFound('Endpoint not found');
+    }
 
-    throw HttpErrors.notFound('Endpoint not found');
+    // Add security headers to all responses
+    const headers = new Headers(response.headers);
+    Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+      headers.set(key, value);
+    });
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers
+    });
 
   } catch (error) {
     return handleError(error, CORS_HEADERS);

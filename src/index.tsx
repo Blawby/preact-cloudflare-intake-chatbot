@@ -23,7 +23,7 @@ import createLazyComponent from './utils/LazyComponent';
 import { Button } from './components/ui/Button';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
-import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getMatterCreationEndpoint } from './config/api';
+import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getMatterCreationEndpoint, getAgentEndpoint } from './config/api';
 import { router, RouterState } from './utils/routing';
 import { Matter } from './types/matter';
 import {
@@ -137,21 +137,21 @@ const RESIZE_DEBOUNCE_DELAY = 100;
 
 // Utility function to upload a file to backend
 async function uploadFileToBackend(file: File, teamId: string, sessionId: string) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('teamId', teamId);
-  formData.append('sessionId', sessionId);
+	const formData = new FormData();
+	formData.append('file', file);
+	formData.append('teamId', teamId);
+	formData.append('sessionId', sessionId);
 
-  const response = await fetch('/api/files/upload', {
-    method: 'POST',
-    body: formData,
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error?.error || 'File upload failed');
-  }
-  const result = await response.json();
-  return result.data;
+	const response = await fetch('/api/files/upload', {
+		method: 'POST',
+		body: formData,
+	});
+	if (!response.ok) {
+		const error = await response.json().catch(() => ({})) as any;
+		throw new Error(error?.error || 'File upload failed');
+	}
+	const result = await response.json() as any;
+	return result.data;
 }
 
 export function App() {
@@ -431,7 +431,7 @@ export function App() {
 		try {
 			const response = await fetch(getTeamsEndpoint());
 			if (response.ok) {
-				const teamsResponse = await response.json();
+				const teamsResponse = await response.json() as any;
 				const team = teamsResponse.data.find((t: any) => t.slug === teamId || t.id === teamId);
 				if (team?.config) {
 					const config = {
@@ -943,79 +943,6 @@ export function App() {
 				return;
 			}
 			
-			// Check if user typed a service name directly
-			const availableServices = teamConfig.availableServices || [];
-			const isServiceName = availableServices.some(service => 
-				message.toLowerCase().trim() === service.toLowerCase() ||
-				message.toLowerCase().trim() === service.toLowerCase().replace(/-/g, ' ')
-			);
-			
-			// Also check for "General Inquiry"
-			const isGeneralInquiry = message.toLowerCase().trim() === 'general inquiry';
-			
-			if ((isServiceName || isGeneralInquiry) && !matterState.isActive) {
-				// Start matter creation flow with the typed service
-				setMatterState({
-					step: 'gathering-info',
-					data: {},
-					isActive: true
-				});
-				
-				// Process the service selection
-				setTimeout(async () => {
-					try {
-						const result = await handleMatterCreationAPI('service-selection', { service: message });
-						
-						setMatterState(prev => ({
-							...prev,
-							data: { ...prev.data, matterType: message },
-							step: result.step,
-							currentQuestionIndex: result.currentQuestionIndex || 0
-						}));
-						
-						setMessages(prev => prev.map(msg => 
-							msg.id === placeholderId ? { 
-								...msg, 
-								content: result.message,
-								isLoading: false,
-								id: placeholderId 
-							} : msg
-						));
-					} catch (error) {
-						console.error('Service selection error:', error);
-						setMessages(prev => prev.map(msg => 
-							msg.id === placeholderId ? { 
-								...msg, 
-								content: "I apologize, but I encountered an error processing your service selection. Please try again.",
-								isLoading: false,
-								id: placeholderId 
-							} : msg
-						));
-					}
-				}, 1000);
-				
-				return;
-			}
-			
-			// Check if this is a scheduled message (could come from API in real implementation)
-			const hasSchedulingIntent = detectSchedulingIntent(message);
-			
-			// This simulates the AI detecting scheduling intent and responding
-			if (hasSchedulingIntent) {
-				// Start typing after a short delay
-				setTimeout(() => {
-					// Create a scheduling response using our utility
-					const aiResponse = createSchedulingResponse('initial');
-					
-					// Replace the placeholder message with the actual response
-					setMessages(prev => prev.map(msg => 
-						msg.id === placeholderId ? { ...aiResponse, isLoading: false, id: placeholderId } : msg
-					));
-				}, 1000);
-				
-				return;
-			}
-			
 			// Create message history from existing messages
 			const messageHistory = messages.map(msg => ({
 				role: msg.isUser ? 'user' : 'assistant',
@@ -1028,8 +955,8 @@ export function App() {
 				content: message
 			});
 			
-			// Make actual API call using configuration
-			const apiEndpoint = getChatEndpoint();
+			// Use the new agent API endpoint
+			const apiEndpoint = getAgentEndpoint();
 			
 			try {
 				const response = await fetch(apiEndpoint, {
@@ -1048,11 +975,10 @@ export function App() {
 					throw new Error(`API response error: ${response.status}`);
 				}
 				
-				// Handle JSON response (non-streaming)
-				const data = await response.json();
+				// Handle JSON response from agent API
+				const data = await response.json() as any;
 				
-				const aiResponseText = data.response || data.message || data.content || '';
-
+				const aiResponseText = data.data?.response || data.response || 'I apologize, but I encountered an error processing your request.';
 				
 				// Update the placeholder message with the response
 				setMessages(prev => prev.map(msg => 
@@ -1063,8 +989,14 @@ export function App() {
 					} : msg
 				));
 				
+				// Handle any actions returned by the agent
+				if (data.data?.actions && data.data.actions.length > 0) {
+					console.log('Agent actions:', data.data.actions);
+					// Actions are handled on the backend, but we can log them here
+				}
+				
 			} catch (error) {
-				console.error('Error fetching from AI API:', error);
+				console.error('Error fetching from Agent API:', error);
 				
 				// Update placeholder with error message
 				setMessages(prev => prev.map(msg => 
@@ -1079,7 +1011,8 @@ export function App() {
 		} catch (error) {
 			console.error('Error sending message:', error);
 			
-			// Update placeholder with error message
+			// Update placeholder with error message - use the placeholderId from the outer scope
+			const placeholderId = Date.now().toString();
 			setMessages(prev => prev.map(msg => 
 				msg.id === placeholderId ? { 
 					...msg, 
@@ -1122,7 +1055,7 @@ export function App() {
 				try {
 					const teamsResponse = await fetch(getTeamsEndpoint());
 					if (teamsResponse.ok) {
-						const teamsJson = await teamsResponse.json();
+						const teamsJson = await teamsResponse.json() as any;
 						teamConfig = teamsJson.data.find((team: any) => team.slug === teamId || team.id === teamId);
 					}
 				} catch (error) {
