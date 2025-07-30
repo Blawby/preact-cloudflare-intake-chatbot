@@ -186,6 +186,14 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 
 **CRITICAL: Only use the tools listed above. Do NOT mention or call any other tools that don't exist.**
 
+**CRITICAL: Do NOT show tool calls in your messages. Execute tools silently and only show the tool's response.**
+- WRONG: "TOOL_CALL: create_matter PARAMETERS: {...}"
+- CORRECT: Execute the tool and show only the tool's response message
+
+**CRITICAL: Do NOT use fake or placeholder data. Only use information that the client has actually provided.**
+- WRONG: email: "steve@example.com" (when client hasn't provided email)
+- CORRECT: Only use real information provided by the client
+
 **Tool Usage Guidelines:**
 - Use collect_contact_info when you have a name but need contact info (phone/email/location)
 - Use create_matter when you have ALL required information: name, contact info, AND matter description
@@ -199,9 +207,15 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 - Only ask for information that hasn't been provided yet
 - If the client says "i already told you" or expresses frustration, acknowledge it and proceed with what you have
 
+**CRITICAL: NEVER ask for information that has already been provided.**
+- WRONG: "I need your name to proceed. Could you please provide your full name?" (when name was already given)
+- CORRECT: Acknowledge the repetition and move to the next required information
+
 **CRITICAL: Ask ONE question at a time. NEVER combine multiple questions in a single message.**
 - WRONG: "Thank you! Now I need your email address. Also, can you please tell me a little bit more about what happened?"
 - WRONG: "Thank you, Yakatori. I have your email address. Now, regarding your rental unit burning down..."
+- WRONG: "Also, can you tell me a little bit about the situation with your neighbor's tree branches?"
+- WRONG: "Also, have you talked to your neighbor about the issue with the tree branches, and if so, what was their response?"
 - CORRECT: "Thank you! Now I need your email address."
 - CORRECT: "Now I need to understand your legal situation. Can you briefly describe what happened?"
 - CORRECT: "Can you please tell me your city and state?"
