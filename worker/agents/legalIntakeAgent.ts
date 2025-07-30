@@ -1,13 +1,18 @@
 // Tool definitions with structured schemas
 export const collectContactInfo = {
   name: 'collect_contact_info',
-  description: 'Collect and validate client contact information',
+  description: 'Collect and validate client contact information including location for jurisdiction verification',
   parameters: {
     type: 'object',
     properties: {
       name: { type: 'string', description: 'Client full name' },
       phone: { type: 'string', description: 'Client phone number' },
-      email: { type: 'string', description: 'Client email address' }
+      email: { type: 'string', description: 'Client email address' },
+      location: { 
+        type: 'string', 
+        description: 'Client location (city, state, or country)',
+        examples: ['Charlotte, NC', 'North Carolina', 'NC', 'United States', 'US']
+      }
     },
     required: ['name']
   }
@@ -71,31 +76,7 @@ export const scheduleConsultation = {
   }
 };
 
-export const verifyJurisdiction = {
-  name: 'verify_jurisdiction',
-  description: 'Verify if the user is in a supported jurisdiction for legal services',
-  parameters: {
-    type: 'object',
-    properties: {
-      user_location: { 
-        type: 'string', 
-        description: 'User location (state, city, or country)',
-        examples: ['North Carolina', 'NC', 'Charlotte, NC', 'United States', 'US']
-      },
-      user_state: { 
-        type: 'string', 
-        description: 'User state (if known)',
-        examples: ['NC', 'California', 'CA']
-      },
-      user_country: { 
-        type: 'string', 
-        description: 'User country (if known)',
-        examples: ['US', 'United States', 'Canada']
-      }
-    },
-    required: ['user_location']
-  }
-};
+
 
 // Helper function to get team configuration
 async function getTeamConfig(env: any, teamId: string) {
@@ -123,8 +104,7 @@ export const TOOL_HANDLERS = {
   collect_contact_info: handleCollectContactInfo,
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
-  schedule_consultation: handleScheduleConsultation,
-  verify_jurisdiction: handleVerifyJurisdiction
+  schedule_consultation: handleScheduleConsultation
 };
 
 // Create the legal intake agent using native Cloudflare AI
@@ -189,28 +169,17 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 
 **Step-by-Step Information Collection:**
 1. **Name**: "Can you please provide your full name?"
-2. **Phone**: "Thank you [name]! Now I need your phone number."
-3. **Email**: "Thank you! Now I need your email address."
-4. **Matter Details**: "Now I need to understand your legal situation. Can you briefly describe what happened?"
-5. **Opposing Party**: "Who is the opposing party in your case?" (if relevant)
+2. **Location**: "Can you please tell me your city and state?" (if not mentioned)
+3. **Phone**: "Thank you [name]! Now I need your phone number."
+4. **Email**: "Thank you! Now I need your email address."
+5. **Matter Details**: "Now I need to understand your legal situation. Can you briefly describe what happened?"
+6. **Opposing Party**: "Who is the opposing party in your case?" (if relevant)
 
 **Tool Usage Guidelines:**
-- **ALWAYS use verify_jurisdiction FIRST** when the client mentions any location (state, city, or country) in their messages
-- Use collect_contact_info when you have a name but need contact info (phone/email)
+- Use collect_contact_info when you have a name but need contact info (phone/email/location)
 - Use create_matter when you have ALL required information: name, contact info, AND matter description
 - Use request_lawyer_review for urgent or complex matters
 - Use schedule_consultation when client wants to schedule
-
-**CRITICAL: Jurisdiction Verification Priority**
-- If the client mentions ANY location (state, city, country) in ANY message, call verify_jurisdiction IMMEDIATELY
-- Do NOT proceed with information collection until jurisdiction is verified
-- If jurisdiction verification fails, explain why and direct them to appropriate resources
-- Only proceed with contact information collection after jurisdiction is confirmed as supported
-
-**IMPORTANT: You MUST actually call the verify_jurisdiction tool, not just mention it.**
-- When you see a location, immediately call: verify_jurisdiction with the location parameters
-- Wait for the tool response before proceeding
-- Do not fake the verification result
 
 **IMPORTANT: Check the conversation history carefully!**
 - If the client mentioned their legal issue in an earlier message, you already have the matter description
@@ -220,14 +189,12 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 - If the client says "i already told you" or expresses frustration, acknowledge it and proceed with what you have
 
 **Information Collection Priority:**
-1. **JURISDICTION VERIFICATION** (MANDATORY - call verify_jurisdiction if ANY location is mentioned)
-2. Name (if not provided)
+1. Name (if not provided)
+2. Location (if not provided)
 3. Phone number (if not provided)
 4. Email address (if not provided)
 5. Matter description (if not provided)
 6. Opposing party information (if relevant)
-
-**CRITICAL: You MUST verify jurisdiction before collecting any contact information if a location is mentioned.**
 
 **CRITICAL: When to call create_matter tool**
 You MUST call the create_matter tool when you have:
@@ -241,11 +208,7 @@ You MUST call the create_matter tool when you have:
 - "i need help with my divorce" → Family Law matter about divorce
 - "i was in a car accident" → Personal Injury matter about car accident
 
-**JURISDICTION VERIFICATION EXAMPLES:**
-- "I'm from Charlotte, NC" → Call verify_jurisdiction with user_location: "Charlotte, NC", user_state: "NC"
-- "I live in California" → Call verify_jurisdiction with user_location: "California", user_state: "CA"
-- "I'm in New York" → Call verify_jurisdiction with user_location: "New York", user_state: "NY"
-- "I'm from Toronto, Canada" → Call verify_jurisdiction with user_location: "Toronto, Canada", user_country: "Canada"
+
 
 **When you have name, phone, and email, AND the client mentioned their legal issue in any message, call create_matter immediately.**
 
@@ -255,7 +218,9 @@ Example 1:
 - Client: "hello i got caught downloading porn onmy work laptop and got fired"
 - Assistant: "Can you please provide your full name?"
 - Client: "my name is john smith"
-- Assistant: "Thank you John! Now I need your phone number."
+- Assistant: "Thank you John! Can you please tell me your city and state?"
+- Client: "Charlotte, NC"
+- Assistant: "Thank you! Now I need your phone number."
 - Client: "555-123-4567"
 - Assistant: "Thank you! Now I need your email address."
 - Client: "john@example.com"
@@ -266,13 +231,16 @@ Example 1:
   - name: "john smith"
   - phone: "555-123-4567"
   - email: "john@example.com"
+  - location: "Charlotte, NC"
   - opposing_party: ""
 
 Example 2:
 - Client: "i need help with my divorce"
 - Assistant: "Can you please provide your full name?"
 - Client: "my name is jane doe"
-- Assistant: "Thank you Jane! Now I need your phone number."
+- Assistant: "Thank you Jane! Can you please tell me your city and state?"
+- Client: "Raleigh, NC"
+- Assistant: "Thank you! Now I need your phone number."
 - Client: "555-987-6543"
 - Assistant: "Thank you! Now I need your email address."
 - Client: "jane@example.com"
@@ -283,6 +251,7 @@ Example 2:
   - name: "jane doe"
   - phone: "555-987-6543"
   - email: "jane@example.com"
+  - location: "Raleigh, NC"
   - opposing_party: ""
 
 **DO NOT ask for additional information if you have name, phone, email, and the client mentioned their legal issue. Call create_matter immediately.**
@@ -537,7 +506,35 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
 
 // Tool handlers
 export async function handleCollectContactInfo(parameters: any, env: any, teamConfig: any) {
-  const { name, phone, email } = parameters;
+  const { name, phone, email, location } = parameters;
+  
+  // First, verify jurisdiction if location is provided
+  if (location) {
+    const jurisdiction = teamConfig?.config?.jurisdiction;
+    if (jurisdiction) {
+      const locationLower = location.toLowerCase();
+      const stateLower = locationLower.includes('nc') || locationLower.includes('north carolina') ? 'nc' : '';
+      
+      // Check if it's a national service
+      if (jurisdiction.type === 'national' && jurisdiction.supportedCountries.includes('US')) {
+        // National service - accept all US locations
+      } else if (jurisdiction.type === 'state') {
+        const supportedStates = jurisdiction.supportedStates.map((s: string) => s.toLowerCase());
+        const primaryState = jurisdiction.primaryState?.toLowerCase();
+        
+        const isSupported = supportedStates.includes('all') || 
+                           supportedStates.some(s => locationLower.includes(s)) ||
+                           (primaryState && locationLower.includes(primaryState));
+        
+        if (!isSupported) {
+          return {
+            success: false,
+            message: `I'm sorry, but we currently only provide legal services in ${jurisdiction.description}. We cannot assist with legal matters outside of our service area. Please contact a local attorney in your area for assistance.`
+          };
+        }
+      }
+    }
+  }
   
   if (!name) {
     return { success: false, message: "I need your name to proceed. Could you please provide your full name?" };
@@ -559,12 +556,12 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
   return { 
     success: true, 
     message: `Thank you ${name}! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?`,
-    data: { name, phone, email }
+    data: { name, phone, email, location }
   };
 }
 
 export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
-  const { matter_type, description, urgency, name, phone, email, opposing_party } = parameters;
+  const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
   if (!matter_type || !description || !urgency || !name) {
     return { 
@@ -589,7 +586,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
 
 **Client Information:**
 - Name: ${name}
-- Contact: ${phone || 'Not provided'}${email ? `, ${email}` : ''}`;
+- Contact: ${phone || 'Not provided'}${email ? `, ${email}` : ''}${location ? `, ${location}` : ''}`;
 
   if (opposing_party) {
     summaryMessage += `
@@ -627,6 +624,7 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
       description,
       urgency,
       opposing_party: opposing_party || '',
+      location: location || '',
       estimated_value: 0,
       requires_payment: requiresPayment,
       consultation_fee: consultationFee,
@@ -676,101 +674,4 @@ export async function handleScheduleConsultation(parameters: any, env: any, team
   };
 }
 
-export async function handleVerifyJurisdiction(parameters: any, env: any, teamConfig: any) {
-  const { user_location, user_state, user_country } = parameters;
-  
-  console.log('🔍 Jurisdiction verification called with:', { user_location, user_state, user_country });
-  console.log('🏢 Team config jurisdiction:', teamConfig?.config?.jurisdiction);
-  
-  // Get jurisdiction information from team config
-  const jurisdiction = teamConfig?.config?.jurisdiction;
-  
-  if (!jurisdiction) {
-    console.log('⚠️ No jurisdiction restrictions configured');
-    return {
-      success: true,
-      message: "I can help you with your legal matter. Let me collect some information to get started.",
-      data: {
-        jurisdiction_verified: true,
-        supported: true,
-        reason: "No jurisdiction restrictions configured"
-      }
-    };
-  }
-  
-  // Normalize location input
-  const location = (user_location || '').toLowerCase();
-  const state = (user_state || '').toLowerCase();
-  const country = (user_country || '').toLowerCase();
-  
-  console.log('📍 Normalized location inputs:', { location, state, country });
-  console.log('🏛️ Jurisdiction config:', jurisdiction);
-  
-  // Check if it's a national service
-  if (jurisdiction.type === 'national' && jurisdiction.supportedCountries.includes('US')) {
-    console.log('✅ National service - accepting all US locations');
-    return {
-      success: true,
-      message: "Great! I can help you with your legal matter. We provide services nationwide.",
-      data: {
-        jurisdiction_verified: true,
-        supported: true,
-        reason: "National service available"
-      }
-    };
-  }
-  
-  // Check for state-specific service
-  if (jurisdiction.type === 'state') {
-    const supportedStates = jurisdiction.supportedStates.map((s: string) => s.toLowerCase());
-    const primaryState = jurisdiction.primaryState?.toLowerCase();
-    
-    console.log('🏛️ State-specific service check:', {
-      supportedStates,
-      primaryState,
-      userState: state,
-      userLocation: location
-    });
-    
-    // Check if user is in supported state
-    const isSupported = supportedStates.includes('all') || 
-                       supportedStates.some(s => location.includes(s) || state.includes(s)) ||
-                       (primaryState && (location.includes(primaryState) || state.includes(primaryState)));
-    
-    console.log('✅ Is supported?', isSupported);
-    
-    if (isSupported) {
-      return {
-        success: true,
-        message: `Perfect! I can help you with your legal matter. We provide services in ${jurisdiction.description}.`,
-        data: {
-          jurisdiction_verified: true,
-          supported: true,
-          reason: `Supported state: ${jurisdiction.primaryState || jurisdiction.supportedStates.join(', ')}`
-        }
-      };
-    } else {
-      return {
-        success: false,
-        message: `I'm sorry, but we currently only provide legal services in ${jurisdiction.description}. We cannot assist with legal matters outside of our service area. Please contact a local attorney in your area for assistance.`,
-        data: {
-          jurisdiction_verified: true,
-          supported: false,
-          reason: `Not in supported jurisdiction: ${jurisdiction.supportedStates.join(', ')}`
-        }
-      };
-    }
-  }
-  
-  // Default response for unknown jurisdiction types
-  console.log('⚠️ Unknown jurisdiction type:', jurisdiction.type);
-  return {
-    success: true,
-    message: "I can help you with your legal matter. Let me collect some information to get started.",
-    data: {
-      jurisdiction_verified: true,
-      supported: true,
-      reason: "Jurisdiction verification completed"
-    }
-  };
-} 
+ 
