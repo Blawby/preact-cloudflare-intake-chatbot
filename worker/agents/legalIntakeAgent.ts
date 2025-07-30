@@ -38,6 +38,7 @@ export const createMatter = {
       name: { type: 'string', description: 'Client full name' },
       phone: { type: 'string', description: 'Client phone number' },
       email: { type: 'string', description: 'Client email address' },
+      location: { type: 'string', description: 'Client location (city and state)' },
       opposing_party: { type: 'string', description: 'Opposing party name if applicable' }
     },
     required: ['matter_type', 'description', 'urgency', 'name']
