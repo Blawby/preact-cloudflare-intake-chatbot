@@ -2,6 +2,8 @@ import type { Env } from '../types';
 import { parseJsonBody } from '../utils';
 import { runLegalIntakeAgent } from '../agents/legalIntakeAgent';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
+import { SecurityLogger } from '../utils/securityLogger.js';
 
 export async function handleAgent(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
@@ -20,6 +22,40 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
     const latestMessage = messages[messages.length - 1];
     if (!latestMessage || !latestMessage.content) {
       throw HttpErrors.badRequest('No message content provided');
+    }
+
+    // Get team configuration for security validation
+    let teamConfig = null;
+    if (teamId) {
+      try {
+        const { AIService } = await import('../services/AIService.js');
+        const aiService = new AIService(env.AI, env);
+        const rawTeamConfig = await aiService.getTeamConfig(teamId);
+        // Extract the config object for security validation
+        teamConfig = rawTeamConfig?.config || rawTeamConfig;
+      } catch (error) {
+        console.warn('Failed to get team config for security validation:', error);
+      }
+    }
+
+    // Security validation
+    const validation = await validateInput(body, teamConfig);
+    if (!validation.isValid) {
+      SecurityLogger.logInputValidation(validation, latestMessage.content, teamId);
+      
+      const securityResponse = getSecurityResponse(validation.violations || [], teamConfig);
+      
+      return createSuccessResponse({
+        response: securityResponse,
+        workflow: 'SECURITY_BLOCK',
+        actions: [],
+        metadata: { 
+          securityBlock: true, 
+          reason: validation.reason,
+          violations: validation.violations 
+        },
+        sessionId
+      }, corsHeaders);
     }
 
     // Run the legal intake agent directly
