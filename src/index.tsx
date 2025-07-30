@@ -23,7 +23,7 @@ import createLazyComponent from './utils/LazyComponent';
 import { Button } from './components/ui/Button';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
-import { getChatEndpoint, getFormsEndpoint, getTeamsEndpoint, getMatterCreationEndpoint, getAgentEndpoint } from './config/api';
+import { getFormsEndpoint, getTeamsEndpoint, getAgentEndpoint } from './config/api';
 import { router, RouterState } from './utils/routing';
 import { Matter } from './types/matter';
 import {
@@ -1223,54 +1223,11 @@ export function App() {
 		debouncedSubmit();
 	};
 
-	// API-driven matter creation handler
+	// Matter creation is now handled by the agent
 	const handleMatterCreationAPI = useCallback(async (step: string, data: any = {}) => {
-		try {
-			// Ensure we have a valid teamId
-			if (!teamId) {
-				throw new Error('TeamId not set - cannot make API request');
-			}
-			
-			const requestBody = {
-				teamId: teamId,
-				service: data.service || matterState.data.matterType,
-				step: step,
-				currentQuestionIndex: data.currentQuestionIndex,
-				answers: data.answers,
-				description: data.description,
-				urgency: data.urgency,
-				sessionId: sessionId // Add sessionId to the request body
-			};
-			
-			console.log('Matter creation API request:', requestBody);
-			console.log('Current teamId:', teamId);
-			console.log('API endpoint:', getMatterCreationEndpoint());
-			
-			const response = await fetch(getMatterCreationEndpoint(), {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(requestBody)
-			});
-
-			console.log('API response status:', response.status);
-			console.log('API response headers:', Object.fromEntries(response.headers.entries()));
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error('API response error:', response.status, errorText);
-				throw new Error(`API request failed: ${response.status} - ${errorText}`);
-			}
-
-			const result = await response.json();
-			console.log('Matter creation API response:', result);
-			return result;
-		} catch (error) {
-			console.error('Matter creation API error:', error);
-			throw error;
-		}
-	}, [teamId, matterState.data.matterType]);
+		console.log('Matter creation handled by agent - step:', step, 'data:', data);
+		return { success: true, message: 'Matter creation handled by agent' };
+	}, []);
 
 	// Create debounced service selection handler to prevent spam clicks
 	const debouncedServiceSelect = useMemo(() => 
