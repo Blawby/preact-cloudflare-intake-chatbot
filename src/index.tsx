@@ -1,7 +1,7 @@
 import { hydrate, prerender as ssr } from 'preact-iso';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'preact/hooks';
 // Remove direct imports of components that will be lazy-loaded
-// import FileMenu from './components/FileMenu';
+import FileMenu from './components/FileMenu';
 import LoadingIndicator from './components/LoadingIndicator';
 // import MediaControls from './components/MediaControls';
 import VirtualMessageList from './components/VirtualMessageList';
@@ -17,22 +17,15 @@ import MobileSidebar from './components/MobileSidebar';
 import MobileTopNav from './components/MobileTopNav';
 import MattersList from './components/MattersList';
 import MatterDetail from './components/MatterDetail';
+import ReviewQueue from './components/ReviewQueue';
 import { debounce } from './utils/debounce';
-import { useDebounce } from './utils/useDebounce';
-import createLazyComponent from './utils/LazyComponent';
+// Removed unused useDebounce import
+// Removed unused LazyComponent import
 import { Button } from './components/ui/Button';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import { getFormsEndpoint, getTeamsEndpoint, getAgentEndpoint } from './config/api';
-import { router, RouterState } from './utils/routing';
 import { Matter } from './types/matter';
-import {
-  FormState,
-  processFormStep,
-  startConversationalForm,
-  extractContactInfo,
-  formatFormData
-} from './utils/conversationalForm';
 
 import {
 	DocumentIcon,
@@ -49,68 +42,22 @@ import {
 import './style.css';
 
 // Create lazy-loaded components
-const LazyMediaControls = createLazyComponent(
-	() => import('./components/MediaControls'),
-	'MediaControls'
-);
-
-const LazyFileMenu = createLazyComponent(
-	() => import('./components/FileMenu'),
-	'FileMenu'
-);
-
-// Lazy-load other components that might not be needed immediately
-const LazyLightbox = createLazyComponent(
-	() => import('./components/Lightbox'),
-	'Lightbox'
-);
-
-const LazyCameraModal = createLazyComponent(
-	() => import('./components/CameraModal'),
-	'CameraModal'
-);
-
-// Lazy-load scheduling components
-const LazyScheduleButton = createLazyComponent(
-	() => import('./components/scheduling/ScheduleButton'),
-	'ScheduleButton'
-);
+// Agent handles all functionality - no lazy components needed
 
 // Define position type
 
 import { FileAttachment } from './types/media';
 
 // Add scheduling interface
-interface SchedulingData {
-	type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
-	selectedDate?: Date;
-	timeOfDay?: 'morning' | 'afternoon';
-	scheduledDateTime?: Date;
-}
-
-interface MatterCreationData {
-	type: 'service-selection' | 'urgency-selection' | 'ai-questions';
-	availableServices: string[];
-	question?: string;
-	totalQuestions?: number;
-	currentQuestionIndex?: number;
-}
-
 interface ChatMessage {
 	content: string;
 	isUser: boolean;
 	files?: FileAttachment[];
-	scheduling?: SchedulingData;
-	matterCreation?: MatterCreationData;
-	welcomeMessage?: {
-		showButtons: boolean;
-	};
 	matterCanvas?: {
 		matterId?: string;
 		matterNumber?: string;
 		service: string;
 		matterSummary: string;
-		
 		answers?: Record<string, string>;
 	};
 	isLoading?: boolean;
@@ -151,48 +98,21 @@ export function App() {
 	const messageListRef = useRef<HTMLDivElement>(null);
 	const [isRecording, setIsRecording] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
-	const [formState, setFormState] = useState<FormState>({
-		step: 'idle',
-		data: {},
-		isActive: false
-	});
-
-	// State for matter creation flow
-	const [matterState, setMatterState] = useState<{
-		step: 'idle' | 'gathering-info' | 'ai-questions' | 'matter-review' | 'matter-details' | 'ai-analysis' | 'ready-for-lawyer';
-		data: {
-			matterType?: string;
-			description?: string;
-			urgency?: string;
-			location?: string;
-			additionalInfo?: string;
-			aiAnswers?: Record<string, string>;
-			matterSummary?: string;
-			followUpQuestions?: string[];
-			currentFollowUpIndex?: number;
-			isRequiredField?: boolean;
-			requiredField?: string;
-		};
-		isActive: boolean;
-		currentQuestionIndex?: number;
-	}>({
-		step: 'idle',
-		data: {},
-		isActive: false,
-		currentQuestionIndex: 0
-	});
+	// Agent handles all conversation flow - no manual state management needed
 
 	// State for team configuration
 	const [teamConfig, setTeamConfig] = useState<{
 		name: string;
 		profileImage: string | null;
 		introMessage: string | null;
+		description: string | null;
 		availableServices: string[];
 		serviceQuestions?: Record<string, string[]>;
 	}>({
 		name: 'Blawby AI',
 		profileImage: '/blawby-favicon-iframe.png',
 		introMessage: null,
+		description: null,
 		availableServices: [],
 		serviceQuestions: {}
 	});
@@ -207,8 +127,8 @@ export function App() {
 		answers?: Record<string, string>;
 	} | null>(null);
 
-	// State for routing
-	const [routerState, setRouterState] = useState<RouterState>({ currentRoute: 'chats', params: {} });
+	// Simplified state - agent handles all conversation flow
+	const [currentTab, setCurrentTab] = useState<'chats' | 'matters' | 'review'>('chats');
 	
 	// State for matters
 	const [matters, setMatters] = useState<Matter[]>([]);
@@ -219,7 +139,7 @@ export function App() {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
 	// State to prevent multiple simultaneous requests
-	const [isProcessingRequest, setIsProcessingRequest] = useState(false);
+	// Simplified state - no complex processing needed
 
 	// Track drag counter for better handling of nested elements
 	const dragCounter = useRef(0);
@@ -272,18 +192,9 @@ export function App() {
 		// Could show a toast notification here
 	}, []);
 
-	// Handle routing changes
-	useEffect(() => {
-		const unsubscribe = router.subscribe((state) => {
-			setRouterState(state);
-		});
-		
-		return unsubscribe;
-	}, []);
-
 	// Handle bottom navigation tab changes
-	const handleTabChange = useCallback((tab: 'chats' | 'matters') => {
-		router.navigate(tab);
+	const handleTabChange = useCallback((tab: 'chats' | 'matters' | 'review') => {
+		setCurrentTab(tab);
 	}, []);
 
 	// Load matters from messages (convert existing matter canvases to matters)
@@ -423,6 +334,7 @@ export function App() {
 						name: team.name || 'Blawby AI',
 						profileImage: team.config.profileImage || '/blawby-favicon-iframe.png',
 						introMessage: team.config.introMessage || null,
+						description: team.config.description || null,
 						availableServices: team.config.availableServices || [],
 						serviceQuestions: team.config.serviceQuestions || {}
 					};
@@ -445,27 +357,15 @@ export function App() {
 		fetchTeamConfig();
 	}, [teamId]);
 
-	// Add welcome message when team config is loaded and no messages exist
+	// Add intro message when team config is loaded and no messages exist
 	useEffect(() => {
 		if (teamConfig.introMessage && messages.length === 0) {
-			// Add team profile message first
-			const profileMessage: ChatMessage = {
-				content: '',
-				isUser: false,
-				welcomeMessage: {
-					showButtons: false
-				}
-			};
-			
-			// Add welcome message with buttons
-			const welcomeMessage: ChatMessage = {
+			// Add intro message only (team profile is now a UI element)
+			const introMessage: ChatMessage = {
 				content: teamConfig.introMessage,
-				isUser: false,
-				welcomeMessage: {
-					showButtons: true
-				}
+				isUser: false
 			};
-			setMessages([profileMessage, welcomeMessage]);
+			setMessages([introMessage]);
 		}
 	}, [teamConfig.introMessage, messages.length]);
 
@@ -606,11 +506,7 @@ export function App() {
 				));
 				
 				// Start matter creation flow
-				setMatterState({
-					step: 'gathering-info',
-					data: {},
-					isActive: true
-				});
+						// Agent handles matter creation flow
 			}, 1000);
 		}, 500), // 500ms debounce delay
 		[messages, teamConfig.availableServices]
@@ -658,219 +554,82 @@ export function App() {
 
 	// Add matter creation handlers (now debounced)
 	const handleCreateMatterStart = () => {
-		debouncedCreateMatterStart();
+		// Send matter creation request to agent
+		const matterMessage: ChatMessage = {
+			content: "I'd like to create a new legal matter.",
+			isUser: true
+		};
+		setMessages(prev => [...prev, matterMessage]);
+		sendMessageToAPI("I'd like to create a new legal matter.", []);
 	};
 
-	// Add scheduling handlers (now debounced)
+	// Simplified scheduling handlers - agent handles all scheduling logic
 	const handleScheduleStart = () => {
-		debouncedScheduleStart();
+		const scheduleMessage: ChatMessage = {
+			content: "I'd like to schedule a consultation.",
+			isUser: true
+		};
+		setMessages(prev => [...prev, scheduleMessage]);
+		sendMessageToAPI("I'd like to schedule a consultation.", []);
 	};
 	
 	const handleDateSelect = (date: Date) => {
-		// Send user's selected date as a message
 		const formattedDate = new Intl.DateTimeFormat('en-US', {
 			weekday: 'long',
 			month: 'long',
 			day: 'numeric'
 		}).format(date);
 		
-		const dateSelectionMessage: ChatMessage = {
+		const dateMessage: ChatMessage = {
 			content: `I'd like to be contacted on ${formattedDate} for my consultation.`,
 			isUser: true
 		};
-		
-		setMessages(prev => [...prev, dateSelectionMessage]);
-		
-		// Add placeholder message with loading indicator (ChatGPT style)
-		const loadingMessageId = crypto.randomUUID();
-		const loadingMessage: ChatMessage = {
-			content: "Perfect! Let me check time slots for that date...",
-			isUser: false,
-			isLoading: true,
-			id: loadingMessageId
-		};
-		setMessages(prev => [...prev, loadingMessage]);
-		
-		// Simulate AI response with time of day options
-		setTimeout(() => {
-			// Update the loading message with actual content
-			setMessages(prev => prev.map(msg => 
-				msg.id === loadingMessageId 
-					? {
-						...msg,
-						content: `Great! What time on ${formattedDate} would be best for your consultation?`,
-						isLoading: false,
-						scheduling: {
-							type: 'time-of-day-selection',
-							selectedDate: date
-						}
-					}
-					: msg
-			));
-		}, 800);
+		setMessages(prev => [...prev, dateMessage]);
+		sendMessageToAPI(`I'd like to be contacted on ${formattedDate} for my consultation.`, []);
 	};
 	
 	const handleTimeOfDaySelect = (timeOfDay: 'morning' | 'afternoon') => {
-		// Get the most recent selected date from messages
-		const lastDateSelection = [...messages]
-			.reverse()
-			.find(msg => msg.scheduling?.selectedDate)?.scheduling?.selectedDate;
-			
-		if (!lastDateSelection) return;
-		
-		// Map time of day to human-readable string
 		const timeOfDayLabel = {
 			morning: 'Morning (8:00 AM - 12:00 PM)',
 			afternoon: 'Afternoon (12:00 PM - 5:00 PM)'
 		}[timeOfDay];
 		
-		// Format the date
-		const formattedDate = new Intl.DateTimeFormat('en-US', {
-			weekday: 'long',
-			month: 'long',
-			day: 'numeric'
-		}).format(lastDateSelection);
-		
-		// Send user's time of day selection as a message
-		const timeSelectionMessage: ChatMessage = {
-			content: `I prefer to be contacted in the ${timeOfDayLabel} on ${formattedDate}.`,
+		const timeMessage: ChatMessage = {
+			content: `I prefer to be contacted in the ${timeOfDayLabel}.`,
 			isUser: true
 		};
-		
-		setMessages(prev => [...prev, timeSelectionMessage]);
-		
-		// Add placeholder message with loading indicator (ChatGPT style)
-		const loadingMessageId = crypto.randomUUID();
-		const loadingMessage: ChatMessage = {
-			content: "Great! Let me show you the available time slots...",
-			isUser: false,
-			isLoading: true,
-			id: loadingMessageId
-		};
-		setMessages(prev => [...prev, loadingMessage]);
-		
-		// Simulate AI response with specific time slots
-		setTimeout(() => {
-			// Update the loading message with actual content
-			setMessages(prev => prev.map(msg => 
-				msg.id === loadingMessageId 
-					? {
-						...msg,
-						content: `Great! Please select a specific time when you'll be available for your consultation on ${formattedDate}:`,
-						isLoading: false,
-						scheduling: {
-							type: 'time-slot-selection',
-							selectedDate: lastDateSelection,
-							timeOfDay
-						}
-					}
-					: msg
-			));
-		}, 800);
+		setMessages(prev => [...prev, timeMessage]);
+		sendMessageToAPI(`I prefer to be contacted in the ${timeOfDayLabel}.`, []);
 	};
 	
 	const handleTimeSlotSelect = (timeSlot: Date) => {
-		// Format the time
 		const formattedTime = new Intl.DateTimeFormat('en-US', {
 			hour: 'numeric',
 			minute: 'numeric',
 			hour12: true
 		}).format(timeSlot);
 		
-		// Format the full date
 		const formattedDate = new Intl.DateTimeFormat('en-US', {
 			weekday: 'long',
 			month: 'long',
 			day: 'numeric'
 		}).format(timeSlot);
 		
-		// Send user's time slot selection as a message
-		const timeSlotSelectionMessage: ChatMessage = {
+		const timeSlotMessage: ChatMessage = {
 			content: `I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`,
 			isUser: true
 		};
-		
-		setMessages(prev => [...prev, timeSlotSelectionMessage]);
-		
-		// Add placeholder message with loading indicator (ChatGPT style)
-		const loadingMessageId = crypto.randomUUID();
-		const loadingMessage: ChatMessage = {
-			content: "Perfect! Let me confirm your consultation request...",
-			isUser: false,
-			isLoading: true,
-			id: loadingMessageId
-		};
-		setMessages(prev => [...prev, loadingMessage]);
-		
-		// Simulate AI confirmation response
-		setTimeout(async () => {
-
-			
-			// Update the loading message with actual content
-			setMessages(prev => prev.map(msg => 
-				msg.id === loadingMessageId 
-					? {
-						...msg,
-						content: `Thank you! Your consultation request has been submitted for ${formattedTime} on ${formattedDate}. A team member will contact you at this time. Is there anything specific you'd like to discuss during your consultation?`,
-						isLoading: false,
-						scheduling: {
-							type: 'confirmation',
-							scheduledDateTime: timeSlot
-						}
-					}
-					: msg
-			));
-		}, 800);
+		setMessages(prev => [...prev, timeSlotMessage]);
+		sendMessageToAPI(`I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`, []);
 	};
 	
 	const handleRequestMoreDates = () => {
-		// Send user's request for more dates as a message
 		const moreDatesMessage: ChatMessage = {
 			content: "I need to see more date options.",
 			isUser: true
 		};
-		
 		setMessages(prev => [...prev, moreDatesMessage]);
-		
-		// Add placeholder message with loading indicator (ChatGPT style)
-		const loadingMessageId = crypto.randomUUID();
-		const loadingMessage: ChatMessage = {
-			content: "Let me find more available dates for you...",
-			isUser: false,
-			isLoading: true,
-			id: loadingMessageId
-		};
-		setMessages(prev => [...prev, loadingMessage]);
-		
-		// Find the most recent date-selection message
-		const latestDateSelectionMsg = [...messages]
-			.reverse()
-			.find(msg => msg.scheduling?.type === 'date-selection');
-			
-		// Calculate new start date - add 9 days to the previous start date
-		let startDate = new Date();
-		if (latestDateSelectionMsg?.scheduling?.selectedDate) {
-			startDate = new Date(latestDateSelectionMsg.scheduling.selectedDate);
-			startDate.setDate(startDate.getDate() + 9); // Add 9 days
-		}
-		
-		// Simulate AI response with more dates
-		setTimeout(() => {
-			// Update the loading message with actual content
-			setMessages(prev => prev.map(msg => 
-				msg.id === loadingMessageId 
-					? {
-						...msg,
-						content: "Here are some additional dates to choose from:",
-						isLoading: false,
-						scheduling: {
-							type: 'date-selection',
-							selectedDate: startDate
-						}
-					}
-					: msg
-			));
-		}, 800);
+		sendMessageToAPI("I need to see more date options.", []);
 	};
 
 	// Make real API calls to ai.blawby.com with SSE support
@@ -900,33 +659,7 @@ export function App() {
 			
 			setMessages(prev => [...prev, placeholderMessage]);
 			
-			// Check if we're in an active form collection state
-			if (formState.isActive) {
-				// Process form step
-				const extractedInfo = extractContactInfo(message);
-				const { newState, response, shouldSubmit } = processFormStep(formState, message, extractedInfo);
-				
-				setFormState(newState);
-				
-				// Update the placeholder message with form response
-				setTimeout(() => {
-					setMessages(prev => prev.map(msg => 
-						msg.id === placeholderId ? { 
-							...msg, 
-							content: response,
-							isLoading: false,
-							id: placeholderId 
-						} : msg
-					));
-					
-					// Submit form if complete
-					if (shouldSubmit && newState.data.email && newState.data.phone && newState.data.matterDetails) {
-						submitContactForm(newState.data);
-					}
-				}, 1000);
-				
-				return;
-			}
+			// Agent handles all conversation flow - no manual form processing needed
 			
 			// Create message history from existing messages
 			const messageHistory = messages.map(msg => ({
@@ -1185,26 +918,14 @@ export function App() {
 	// Update handleSubmit to use the new API function
 
 
-	// Create debounced submit function
-	const debouncedSubmit = useDebounce(() => {
+	// Simplified submit function - agent handles all conversation flow
+	const handleSubmit = () => {
 		if (!inputValue.trim() && previewFiles.length === 0) return;
 
 		const message = inputValue.trim();
 		const attachments = [...previewFiles];
 		
-		// Handle form flow first (higher priority than matter creation)
-		if (formState.isActive) {
-			sendMessageToAPI(message, attachments);
-			return;
-		}
-		
-		// Handle matter creation flow
-		if (matterState.isActive) {
-			handleMatterCreationStep(message, attachments);
-			return;
-		}
-
-		// Send message to API
+		// Send message to API - agent handles all conversation flow
 		sendMessageToAPI(message, attachments);
 		
 		// Reset input and focus
@@ -1216,302 +937,32 @@ export function App() {
 		if (textarea) {
 			textarea.focus();
 		}
-	}, 500);
-
-	// Update handleSubmit to use the debounced version
-	const handleSubmit = () => {
-		debouncedSubmit();
 	};
 
-	// Matter creation is now handled by the agent
-	const handleMatterCreationAPI = useCallback(async (step: string, data: any = {}) => {
-		console.log('Matter creation handled by agent - step:', step, 'data:', data);
-		return { success: true, message: 'Matter creation handled by agent' };
-	}, []);
+	// Agent handles all matter creation - no manual API needed
 
-	// Create debounced service selection handler to prevent spam clicks
-	const debouncedServiceSelect = useMemo(() => 
-		debounce(async (service: string) => {
-			// Prevent multiple simultaneous requests
-			if (isProcessingRequest) {
-				console.log('Request already in progress, ignoring click');
-				return;
-			}
-			
-			// Ensure teamId is set before making API call
-			if (!teamId) {
-				console.log('TeamId not set yet, waiting...');
-				setTimeout(() => debouncedServiceSelect(service), 100);
-				return;
-			}
-			
-			setIsProcessingRequest(true);
-			
-			// Add user message
-			const userMessage: ChatMessage = {
-				content: service,
-				isUser: true
-			};
-			setMessages(prev => [...prev, userMessage]);
-			
-			// Add placeholder message with loading indicator (ChatGPT style)
-			const loadingMessageId = crypto.randomUUID();
-			
-			try {
-				// Ensure matter state is properly initialized
-				if (!matterState.isActive) {
-					setMatterState({
-						step: 'gathering-info',
-						data: {},
-						isActive: true
-					});
-				}
-				const loadingMessage: ChatMessage = {
-					content: `Great choice! Let me get the right questions for ${service}...`,
-					isUser: false,
-					isLoading: true,
-					id: loadingMessageId
-				};
-				setMessages(prev => [...prev, loadingMessage]);
-				
-				// Call API for service selection
-				const result = await handleMatterCreationAPI('service-selection', { service });
-				
-				setMatterState(prev => ({
-					...prev,
-					data: { 
-						...prev.data, 
-						matterType: service,
-						isRequiredField: result.isRequiredField || false,
-						requiredField: result.requiredField || null
-					},
-					step: result.step === 'questions' ? 'ai-questions' : 'matter-details',
-					currentQuestionIndex: result.currentQuestion ? result.currentQuestion - 1 : 0
-				}));
-				
-				// Update the loading message with actual content
-				setTimeout(() => {
-					setMessages(prev => prev.map(msg => 
-						msg.id === loadingMessageId 
-							? {
-								...msg,
-								content: result.message,
-								isLoading: false,
-								matterCreation: result.step === 'urgency-selection' ? {
-									type: 'urgency-selection',
-									availableServices: []
-								} : undefined,
-								isRequiredField: result.isRequiredField,
-								requiredField: result.requiredField
-							}
-							: msg
-					));
-				}, 300);
-			} catch (error) {
-				console.error('Service selection error:', error);
-				// Update loading message with error content
-				setTimeout(() => {
-					setMessages(prev => prev.map(msg => 
-						msg.id === loadingMessageId 
-							? {
-								...msg,
-								content: "I apologize, but I encountered an error processing your service selection. Please try again.",
-								isLoading: false
-							}
-							: msg
-					));
-				}, 300);
-			} finally {
-				setIsProcessingRequest(false);
-			}
-		}, 500), // 500ms debounce delay
-		[teamId, isProcessingRequest, matterState.isActive, handleMatterCreationAPI] // Include dependencies
-	);
-
-	// Handle service selection from buttons (now debounced)
+	// Simplified service selection - agent handles all logic
 	const handleServiceSelect = (service: string) => {
-		console.log('Service selection clicked:', service);
-		console.log('Current teamId:', teamId);
-		console.log('Current matterState:', matterState);
-
-		// Only send the AI-driven message to the backend, and include the service
-		const initialDescription = `I'm looking for legal help with my ${service} issue.`;
-		handleMatterCreationStep(initialDescription, [], service);
-	};
-
-	// Create debounced urgency selection handler to prevent spam clicks
-	const debouncedUrgencySelect = useMemo(() => 
-		debounce(async (urgency: string) => {
-			// Prevent multiple simultaneous requests
-			if (isProcessingRequest) {
-				console.log('Request already in progress, ignoring click');
-				return;
-			}
-			
-			// Ensure teamId is set before making API call
-			if (!teamId) {
-				console.log('TeamId not set yet, waiting...');
-				setTimeout(() => debouncedUrgencySelect(urgency), 100);
-				return;
-			}
-			
-			setIsProcessingRequest(true);
-			
-			// Add user message
-			const userMessage: ChatMessage = {
-				content: urgency,
-				isUser: true
-			};
-			setMessages(prev => [...prev, userMessage]);
-			
-			try {
-				// Add placeholder message with loading indicator (ChatGPT style)
-				const loadingMessageId = crypto.randomUUID();
-				const loadingMessage: ChatMessage = {
-					content: `Got it! Let me prepare the right questions for your ${urgency.toLowerCase()} matter...`,
-					isUser: false,
-					isLoading: true,
-					id: loadingMessageId
-				};
-				setMessages(prev => [...prev, loadingMessage]);
-				
-				// Call API for urgency selection
-				const result = await handleMatterCreationAPI('urgency-selection', {
-					service: matterState.data.matterType,
-					urgency: urgency
-				});
-				
-				setMatterState(prev => ({
-					...prev,
-					data: { ...prev.data, urgency: urgency },
-					step: result.step,
-					currentQuestionIndex: result.currentQuestionIndex || 0
-				}));
-				
-				// If we're moving to AI questions, we need to handle the first question
-				if (result.step === 'ai-questions' && result.question) {
-					// The AI response will include the question, so we don't need to add it separately
-					// The user will see the question in the AI message and can respond in the chat input
-				}
-				
-				// Update the loading message with actual content
-				setTimeout(() => {
-					setMessages(prev => prev.map(msg => 
-						msg.id === loadingMessageId 
-							? {
-								...msg,
-								content: result.message,
-								isLoading: false
-							}
-							: msg
-					));
-				}, 300);
-			} catch (error) {
-				console.error('Urgency selection error:', error);
-				// Update loading message with error content
-				setTimeout(() => {
-					setMessages(prev => prev.map(msg => 
-						msg.id === loadingMessageId 
-							? {
-								...msg,
-								content: "I apologize, but I encountered an error processing your urgency selection. Please try again.",
-								isLoading: false
-							}
-							: msg
-					));
-				}, 300);
-			} finally {
-				setIsProcessingRequest(false);
-			}
-		}, 500), // 500ms debounce delay
-		[teamId, isProcessingRequest, matterState.data.matterType, handleMatterCreationAPI] // Include dependencies
-	);
-
-	// Handle urgency selection from buttons (now debounced)
-	const handleUrgencySelect = (urgency: string) => {
-		console.log('Urgency selection clicked:', urgency);
-		debouncedUrgencySelect(urgency);
-	};
-
-	// Handle matter creation flow steps
-	const handleMatterCreationStep = async (message: string, attachments: FileAttachment[] = [], service?: string) => {
-		if (isProcessingRequest) {
-			console.log('Request already in progress, ignoring message');
-			return;
-		}
-		setIsProcessingRequest(true);
-
-		// Add user message
-		const userMessage: ChatMessage = {
-			content: message,
-			isUser: true,
-			files: attachments
+		const serviceMessage: ChatMessage = {
+			content: `I'm looking for legal help with my ${service} issue.`,
+			isUser: true
 		};
-		setMessages(prev => [...prev, userMessage]);
-		setInputValue('');
-		setPreviewFiles([]);
-
-		try {
-			// Always send the message to the backend, no step logic
-			const apiPayload: any = {
-				teamId,
-				sessionId,
-				description: message,
-				answers: matterState.data?.aiAnswers || {},
-			};
-			// Always include the selected service if set
-			if (service || selectedService) {
-				apiPayload.service = service || selectedService;
-			}
-			const aiResult = await handleMatterCreationAPI('questions', apiPayload);
-
-			// Display the backend's message
-			const aiResponse: ChatMessage = {
-				content: aiResult.message,
-				isUser: false,
-				matterCanvas: aiResult.matterCanvas,
-
-			};
-			setMessages(prev => [...prev, aiResponse]);
-
-			// Always show followupMessage if present
-			if (aiResult.followupMessage) {
-				setMessages(prev => [
-					...prev,
-					{
-						content: aiResult.followupMessage,
-						isUser: false
-					}
-				]);
-			}
-
-			// If the backend returns a summary, move to summary state
-			if (aiResult.step === 'matter-details' || aiResult.step === 'matter-review') {
-				setMatterState(prev => ({
-					...prev,
-					data: { ...prev.data, aiAnswers: aiResult.answers || {} },
-					step: 'matter-details',
-				}));
-			} else {
-				setMatterState(prev => ({
-					...prev,
-					data: { ...prev.data, aiAnswers: aiResult.answers || {} },
-					step: 'questions',
-				}));
-			}
-		} catch (error) {
-			console.error('Matter creation step error:', error);
-			setTimeout(() => {
-				const errorResponse: ChatMessage = {
-					content: "I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.",
-					isUser: false
-				};
-				setMessages(prev => [...prev, errorResponse]);
-			}, 800);
-		} finally {
-			setIsProcessingRequest(false);
-		}
+		setMessages(prev => [...prev, serviceMessage]);
+		sendMessageToAPI(`I'm looking for legal help with my ${service} issue.`, []);
 	};
+
+	// Simplified urgency selection - agent handles all logic
+	const handleUrgencySelect = (urgency: string) => {
+		const urgencyMessage: ChatMessage = {
+			content: `This is a ${urgency.toLowerCase()} matter.`,
+			isUser: true
+		};
+		setMessages(prev => [...prev, urgencyMessage]);
+		sendMessageToAPI(`This is a ${urgency.toLowerCase()} matter.`, []);
+	};
+
+
+	// Agent handles all matter creation flow - no manual step handling needed
 
 	const handleKeyPress = (e: KeyboardEvent) => {
 		if (e.key === 'Enter' && !e.shiftKey) {
@@ -1718,7 +1169,7 @@ export function App() {
 	}, []);
 
 	// Add state for selected service
-	const [selectedService, setSelectedService] = useState<string | undefined>(undefined);
+
 
 	return (
 		<>
@@ -1745,7 +1196,7 @@ export function App() {
 					{features.enableLeftSidebar && (
 						<div className="grid-left">
 							<LeftSidebar 
-								currentRoute={routerState.currentRoute}
+								currentRoute={currentTab}
 								onTabChange={handleTabChange}
 								onOpenMenu={() => setIsMobileSidebarOpen(true)}
 							/>
@@ -1761,7 +1212,7 @@ export function App() {
 							aria-expanded={true}
 						>
 							<ErrorBoundary>
-								{routerState.currentRoute === 'chats' ? (
+								{currentTab === 'chats' ? (
 									<>
 										<main className="chat-main">
 										<VirtualMessageList
@@ -1821,7 +1272,8 @@ export function App() {
 											teamConfig={{
 												name: teamConfig.name,
 												profileImage: teamConfig.profileImage,
-												teamId: teamId
+												teamId: teamId,
+												description: teamConfig.description
 											}}
 											onOpenSidebar={() => setIsMobileSidebarOpen(true)}
 											sessionId={sessionId}
@@ -1892,11 +1344,11 @@ export function App() {
 													<div className="input-controls">
 														{!isRecording && (
 															<div className="input-left-controls">
-																<LazyFileMenu
-																	onPhotoSelect={handlePhotoSelect}
-																	onCameraCapture={handleCameraCapture}
-																	onFileSelect={handleFileSelect}
-																/>
+																								<FileMenu
+									onPhotoSelect={handlePhotoSelect}
+									onCameraCapture={handleCameraCapture}
+									onFileSelect={handleFileSelect}
+								/>
 																
 																{features.enableConsultationButton && (
 																	<LazyScheduleButton
@@ -1983,7 +1435,7 @@ export function App() {
 											return null;
 										})()}
 									</>
-								) : routerState.currentRoute === 'matters' ? (
+								) : currentTab === 'matters' ? (
 									<>
 										{selectedMatter ? (
 											<MatterDetail
@@ -1999,6 +1451,16 @@ export function App() {
 												isLoading={isLoadingMatters}
 											/>
 										)}
+									</>
+								) : currentTab === 'review' ? (
+									<>
+										<ReviewQueue
+											teamId={teamId}
+											onRefresh={() => {
+												// Refresh matters list when review actions are taken
+												setMatters(prev => [...prev]);
+											}}
+										/>
 									</>
 								) : null}
 							</ErrorBoundary>
@@ -2064,14 +1526,15 @@ export function App() {
 						teamConfig={{
 							name: teamConfig.name,
 							profileImage: teamConfig.profileImage,
-							teamId: teamId
+							teamId: teamId,
+							description: teamConfig.description
 						}}
 						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
 					/>
 
 					{/* Mobile Bottom Navigation */}
 					<BottomNavigation 
-						activeTab={routerState.currentRoute}
+													activeTab={currentTab}
 						onTabChange={handleTabChange}
 					/>
 
@@ -2082,7 +1545,8 @@ export function App() {
 						teamConfig={{
 							name: teamConfig.name,
 							profileImage: teamConfig.profileImage,
-							teamId: teamId
+							teamId: teamId,
+							description: teamConfig.description
 						}}
 						sidebarMatter={sidebarMatter}
 						messages={messages}

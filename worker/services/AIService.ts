@@ -100,41 +100,5 @@ export class AIService {
     }
   }
 
-  // NEW: Enhanced prompt system for required field collection
-  // Remove generateIntakePrompt and all promptOnly/empathy logic
-  // Keep only runLLM, getTeamConfig, clearCache, validateCollectedData, extractFieldValue
-
-  // NEW: Validate collected data against required fields
-  validateCollectedData(answers: Record<string, any>, requiredFields: string[]): {
-    isValid: boolean;
-    missingFields: string[];
-    extractedData: Record<string, string>;
-  } {
-    const extractedData: Record<string, string> = {};
-    const missingFields: string[] = [];
-    
-    for (const field of requiredFields) {
-      const fieldValue = this.extractFieldValue(answers, field);
-      if (fieldValue) {
-        extractedData[field] = fieldValue;
-      } else {
-        missingFields.push(field);
-      }
-    }
-    
-    return {
-      isValid: missingFields.length === 0,
-      missingFields,
-      extractedData
-    };
-  }
-  
-  private extractFieldValue(answers: Record<string, any>, field: string): string | null {
-    for (const [key, value] of Object.entries(answers)) {
-      if (key.toLowerCase().includes(field.replace('_', ''))) {
-        return typeof value === 'string' ? value : (value as any)?.answer || null;
-      }
-    }
-    return null;
-  }
+  // Agent handles all conversation logic - no manual validation needed
 } 

@@ -71,8 +71,49 @@ export const scheduleConsultation = {
   }
 };
 
+// Helper function to get team configuration
+async function getTeamConfig(env: any, teamId: string) {
+  try {
+    const { AIService } = await import('../services/AIService.js');
+    const aiService = new AIService(env.AI, env);
+    console.log('Retrieving team config for teamId:', teamId);
+    const teamConfig = await aiService.getTeamConfig(teamId);
+    console.log('Retrieved team config:', JSON.stringify(teamConfig, null, 2));
+    return teamConfig;
+  } catch (error) {
+    console.warn('Failed to get team config:', error);
+    return {
+      config: {
+        requiresPayment: false,
+        consultationFee: 0,
+        paymentLink: null
+      }
+    };
+  }
+}
+
+// Tool handlers mapping
+export const TOOL_HANDLERS = {
+  collect_contact_info: handleCollectContactInfo,
+  create_matter: handleCreateMatter,
+  request_lawyer_review: handleRequestLawyerReview,
+  schedule_consultation: handleScheduleConsultation
+};
+
 // Create the legal intake agent using native Cloudflare AI
-export async function runLegalIntakeAgent(env: any, messages: any[]) {
+export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string) {
+  // Get team configuration if teamId is provided
+  let teamConfig = null;
+  if (teamId) {
+    teamConfig = await getTeamConfig(env, teamId);
+  }
+
+  // Convert messages to the format expected by Cloudflare AI
+  const formattedMessages = messages.map(msg => ({
+    role: msg.isUser ? 'user' : 'assistant',
+    content: msg.content
+  }));
+
   const systemPrompt = `You are a professional legal intake assistant for North Carolina Legal Services. Your role is to:
 
 1. **Collect Essential Information Step-by-Step**: Gather information gradually to avoid overwhelming the client:
@@ -288,7 +329,7 @@ Assistant: "Perfect! I have all the information I need. Here's a summary of your
     const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
       messages: [
         { role: 'system', content: systemPrompt },
-        ...messages
+        ...formattedMessages
       ],
       max_tokens: 500,
       temperature: 0.1
@@ -313,7 +354,8 @@ Assistant: "Perfect! I have all the information I need. Here's a summary of your
             metadata: {
               error: 'Failed to parse tool parameters',
               originalResponse: response,
-              sessionId: messages.length > 0 ? messages[messages.length - 1]?.sessionId : null
+              sessionId,
+              teamId
             }
           };
         }
@@ -321,29 +363,83 @@ Assistant: "Perfect! I have all the information I need. Here's a summary of your
         // Extract the response text (everything before TOOL_CALL)
         const responseText = response.split('TOOL_CALL:')[0].trim();
         
-        return {
-          toolCalls: [{
-            name: toolName,
-            parameters
-          }],
-          response: responseText || "I'm processing your request.",
-          metadata: {
-            toolName,
-            parameters,
-            inputMessageCount: messages.length,
-            lastUserMessage: messages[messages.length - 1]?.content || null,
-            sessionId: messages.length > 0 ? messages[messages.length - 1]?.sessionId : null
+        // Execute the tool handler
+        const handler = TOOL_HANDLERS[toolName];
+        if (!handler) {
+          console.warn(`Unknown tool called: ${toolName}`);
+          return {
+            response: responseText || "I'm processing your request.",
+            metadata: {
+              error: `Unknown tool: ${toolName}`,
+              toolName,
+              parameters,
+              sessionId,
+              teamId
+            }
+          };
+        }
+        
+        try {
+          const toolResult = await handler(parameters, env, teamConfig);
+          
+          // If tool was successful and created a matter, trigger lawyer approval
+          if (toolResult.success && toolName === 'create_matter') {
+            // Trigger lawyer approval if matter was created
+            await handleLawyerApproval(env, {
+              matter_type: parameters.matter_type,
+              urgency: parameters.urgency,
+              client_message: formattedMessages[formattedMessages.length - 1]?.content || '',
+              client_name: parameters.name,
+              client_phone: parameters.phone,
+              client_email: parameters.email,
+              opposing_party: parameters.opposing_party || '',
+              matter_details: parameters.description,
+              submitted: true,
+              requires_payment: toolResult.data?.requires_payment || false,
+              consultation_fee: toolResult.data?.consultation_fee || 0,
+              payment_link: toolResult.data?.payment_link || null
+            }, teamId);
           }
-        };
+          
+          return {
+            toolCalls: [{
+              name: toolName,
+              parameters
+            }],
+            response: toolResult.message || responseText || "I'm processing your request.",
+            metadata: {
+              toolName,
+              parameters,
+              toolResult,
+              inputMessageCount: formattedMessages.length,
+              lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+              sessionId,
+              teamId
+            }
+          };
+        } catch (error) {
+          console.error('Error executing tool handler:', error);
+          return {
+            response: responseText || "I'm processing your request.",
+            metadata: {
+              error: error.message,
+              toolName,
+              parameters,
+              sessionId,
+              teamId
+            }
+          };
+        }
       }
     }
     
     return {
       response: response.trim(),
       metadata: {
-        inputMessageCount: messages.length,
-        lastUserMessage: messages[messages.length - 1]?.content || null,
-        sessionId: messages.length > 0 ? messages[messages.length - 1]?.sessionId : null
+        inputMessageCount: formattedMessages.length,
+        lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+        sessionId,
+        teamId
       }
     };
     
@@ -353,11 +449,41 @@ Assistant: "Perfect! I have all the information I need. Here's a summary of your
       response: "I'm here to help with your legal needs. What can I assist you with?",
       metadata: {
         error: error.message,
-        inputMessageCount: messages.length,
-        lastUserMessage: messages[messages.length - 1]?.content || null,
-        sessionId: messages.length > 0 ? messages[messages.length - 1]?.sessionId : null
+        inputMessageCount: formattedMessages.length,
+        lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+        sessionId,
+        teamId
       }
     };
+  }
+}
+
+// Helper function to handle lawyer approval
+async function handleLawyerApproval(env: any, params: any, teamId: string) {
+  console.log('Lawyer approval requested:', params);
+  
+  try {
+    // Get team config for notification
+    const { AIService } = await import('../services/AIService.js');
+    const aiService = new AIService(env.AI, env);
+    const teamConfig = await aiService.getTeamConfig(teamId);
+    
+    if (teamConfig.ownerEmail && env.RESEND_API_KEY) {
+      const { EmailService } = await import('../services/EmailService.js');
+      const emailService = new EmailService(env.RESEND_API_KEY);
+      
+      await emailService.send({
+        from: 'noreply@blawby.com',
+        to: teamConfig.ownerEmail,
+        subject: 'New Matter Requires Review',
+        text: `A new legal matter requires your review.\n\nMatter Details: ${JSON.stringify(params, null, 2)}`
+      });
+    } else {
+      console.log('Email service not configured - skipping email notification');
+    }
+  } catch (error) {
+    console.warn('Failed to send lawyer approval email:', error);
+    // Don't fail the request if email fails
   }
 }
 
@@ -500,12 +626,4 @@ export async function handleScheduleConsultation(parameters: any, env: any, team
     success: true,
     message: `I'd like to schedule a consultation with one of our experienced attorneys for your ${matter_type} matter. Would you be available to meet with us this week?`
   };
-}
-
-// Tool handler mapping
-export const TOOL_HANDLERS = {
-  'collect_contact_info': handleCollectContactInfo,
-  'create_matter': handleCreateMatter,
-  'request_lawyer_review': handleRequestLawyerReview,
-  'schedule_consultation': handleScheduleConsultation
-}; 
+} 
