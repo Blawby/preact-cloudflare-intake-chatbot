@@ -192,7 +192,9 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 
 **CRITICAL: Do NOT show tool calls in your messages. Execute tools silently and only show the tool's response.**
 - WRONG: "TOOL_CALL: create_matter PARAMETERS: {...}"
+- WRONG: Showing tool parameters in the message
 - CORRECT: Execute the tool and show only the tool's response message
+- CORRECT: Show the formatted matter summary from the tool response
 
 **CRITICAL: Do NOT use fake or placeholder data. Only use information that the client has actually provided.**
 - WRONG: email: "steve@example.com" (when client hasn't provided email)
@@ -261,6 +263,8 @@ You MUST call the create_matter tool when you have:
 **CRITICAL: If the client's initial message contains the matter description, do NOT ask for it again. Proceed directly to create_matter after collecting contact info.**
 
 **CRITICAL: When you have name, phone, email, location, AND the client mentioned their legal issue in ANY message (including the initial message), call create_matter immediately. Do NOT ask for matter details again.**
+
+**CRITICAL: The create_matter tool will return a formatted summary. Show ONLY that summary, not the tool call.**
 
 
 
