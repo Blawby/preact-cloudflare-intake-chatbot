@@ -195,11 +195,17 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 5. **Opposing Party**: "Who is the opposing party in your case?" (if relevant)
 
 **Tool Usage Guidelines:**
-- Use verify_jurisdiction when the client mentions their location or you need to confirm they're in a supported area
+- **ALWAYS use verify_jurisdiction FIRST** when the client mentions any location (state, city, or country) in their messages
 - Use collect_contact_info when you have a name but need contact info (phone/email)
 - Use create_matter when you have ALL required information: name, contact info, AND matter description
 - Use request_lawyer_review for urgent or complex matters
 - Use schedule_consultation when client wants to schedule
+
+**CRITICAL: Jurisdiction Verification Priority**
+- If the client mentions ANY location (state, city, country) in ANY message, call verify_jurisdiction IMMEDIATELY
+- Do NOT proceed with information collection until jurisdiction is verified
+- If jurisdiction verification fails, explain why and direct them to appropriate resources
+- Only proceed with contact information collection after jurisdiction is confirmed as supported
 
 **IMPORTANT: Check the conversation history carefully!**
 - If the client mentioned their legal issue in an earlier message, you already have the matter description
@@ -209,12 +215,14 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 - If the client says "i already told you" or expresses frustration, acknowledge it and proceed with what you have
 
 **Information Collection Priority:**
-1. Jurisdiction verification (if location mentioned or needed)
+1. **JURISDICTION VERIFICATION** (MANDATORY - call verify_jurisdiction if ANY location is mentioned)
 2. Name (if not provided)
 3. Phone number (if not provided)
 4. Email address (if not provided)
 5. Matter description (if not provided)
 6. Opposing party information (if relevant)
+
+**CRITICAL: You MUST verify jurisdiction before collecting any contact information if a location is mentioned.**
 
 **CRITICAL: When to call create_matter tool**
 You MUST call the create_matter tool when you have:
@@ -227,6 +235,12 @@ You MUST call the create_matter tool when you have:
 - "hello i got caught downloading porn onmy work laptop and got fired" → Employment Law matter about termination
 - "i need help with my divorce" → Family Law matter about divorce
 - "i was in a car accident" → Personal Injury matter about car accident
+
+**JURISDICTION VERIFICATION EXAMPLES:**
+- "I'm from Charlotte, NC" → Call verify_jurisdiction with user_location: "Charlotte, NC", user_state: "NC"
+- "I live in California" → Call verify_jurisdiction with user_location: "California", user_state: "CA"
+- "I'm in New York" → Call verify_jurisdiction with user_location: "New York", user_state: "NY"
+- "I'm from Toronto, Canada" → Call verify_jurisdiction with user_location: "Toronto, Canada", user_country: "Canada"
 
 **When you have name, phone, and email, AND the client mentioned their legal issue in any message, call create_matter immediately.**
 
