@@ -176,6 +176,7 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 5. **Matter Details**: "Now I need to understand your legal situation. Can you briefly describe what happened?"
 6. **Opposing Party**: "Who is the opposing party in your case?" (if relevant)
 
+**CRITICAL: Follow this EXACT order. Do NOT skip any steps.**
 **IMPORTANT: Ask ONE question at a time. Do NOT combine multiple questions in a single message.**
 
 **Available Tools:**
@@ -249,6 +250,8 @@ You MUST call the create_matter tool when you have:
 
 
 **When you have name, phone, email, location, AND the client mentioned their legal issue in any message, call create_matter immediately.**
+
+**CRITICAL: You MUST have location before calling create_matter. If location is missing, ask for it first.**
 
 **EXAMPLES OF WHEN TO CALL create_matter:**
 
