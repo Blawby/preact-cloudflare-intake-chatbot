@@ -15,6 +15,12 @@
         "Employment Law",
         "General Consultation"
       ],
+      "jurisdiction": {
+        "type": "national",
+        "description": "Available nationwide",
+        "supportedStates": ["all"],
+        "supportedCountries": ["US"]
+      },
       "domain": "ai.blawby.com",
       "description": "AI-powered legal assistance for businesses and individuals",
       "paymentLink": null,
@@ -56,6 +62,13 @@
         "Probate and Estate Planning",
         "Special Education and IEP Advocacy"
       ],
+      "jurisdiction": {
+        "type": "state",
+        "description": "Available in North Carolina",
+        "supportedStates": ["NC"],
+        "supportedCountries": ["US"],
+        "primaryState": "NC"
+      },
       "domain": "northcarolinalegalservices.blawby.com",
       "description": "Affordable, comprehensive legal services for North Carolina. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.",
       "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500",
