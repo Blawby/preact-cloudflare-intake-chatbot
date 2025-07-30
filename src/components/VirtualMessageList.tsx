@@ -2,6 +2,7 @@ import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState, useCallback } from 'preact/hooks';
 import Message from './Message';
 import LoadingIndicator from './LoadingIndicator';
+import TeamProfile from './TeamProfile';
 import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -79,6 +80,7 @@ interface VirtualMessageListProps {
         name: string;
         profileImage: string | null;
         teamId: string;
+        description?: string | null;
     };
     onOpenSidebar?: () => void;
 
@@ -192,6 +194,20 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             class="message-list" 
             ref={listRef}
         >
+            {/* Team Profile Header - Fixed at top of scrollable area */}
+            {teamConfig && (
+                <div className="team-profile-header">
+                    <TeamProfile 
+                        name={teamConfig.name}
+                        profileImage={teamConfig.profileImage}
+                        teamId={teamId}
+                        description={teamConfig.description}
+                        variant="welcome"
+                        showVerified={true}
+                    />
+                </div>
+            )}
+            
             {startIndex > 0 && (
                 <div class="load-more-trigger">
                     <LoadingIndicator />

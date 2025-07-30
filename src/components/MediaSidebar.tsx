@@ -16,13 +16,8 @@ import {
   type MediaGroup,
   type AggregatedMedia 
 } from '../utils/mediaAggregation';
-import createLazyComponent from '../utils/LazyComponent';
 import { Button } from './ui/Button';
-
-const LazyLightbox = createLazyComponent(
-	() => import('./Lightbox'),
-	'Lightbox'
-);
+import Lightbox from './Lightbox';
 
 interface MediaSidebarProps {
   messages: any[];
@@ -157,7 +152,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
 
       {/* Lightbox for viewing images and videos */}
       {isLightboxOpen && selectedMedia && (
-        <LazyLightbox
+        <Lightbox
           isOpen={isLightboxOpen}
           onClose={() => {
             setIsLightboxOpen(false);

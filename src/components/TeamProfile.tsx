@@ -4,6 +4,7 @@ interface TeamProfileProps {
 	name: string;
 	profileImage: string | null;
 	teamId: string;
+	description?: string | null;
 	variant?: 'sidebar' | 'welcome';
 	showVerified?: boolean;
 }
@@ -12,6 +13,7 @@ export default function TeamProfile({
 	name, 
 	profileImage, 
 	teamId, 
+	description,
 	variant = 'sidebar',
 	showVerified = true 
 }: TeamProfileProps) {
@@ -48,6 +50,13 @@ export default function TeamProfile({
 			<div className="team-slug">
 				<span>@{teamId}</span>
 			</div>
+
+			{/* Team Description */}
+			{description && (
+				<div className="team-description">
+					<p className="text-gray-500 dark:text-gray-400 text-center text-sm leading-relaxed max-w-xs mx-auto">{description}</p>
+				</div>
+			)}
 		</div>
 	);
 } 

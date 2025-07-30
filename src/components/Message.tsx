@@ -5,7 +5,6 @@ import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
 import TeamProfile from './TeamProfile';
 import { Button } from './ui/Button';
-import createLazyComponent from '../utils/LazyComponent';
 import features from '../config/features';
 import {
 	DocumentIcon,
@@ -17,26 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useState } from 'preact/hooks';
 
-// Lazy load scheduling components
-const LazyDateSelector = createLazyComponent(
-	() => import('./scheduling/DateSelector'),
-	'DateSelector'
-);
-
-const LazyTimeOfDaySelector = createLazyComponent(
-	() => import('./scheduling/TimeOfDaySelector'),
-	'TimeOfDaySelector'
-);
-
-const LazyTimeSlotSelector = createLazyComponent(
-	() => import('./scheduling/TimeSlotSelector'),
-	'TimeSlotSelector'
-);
-
-const LazyScheduleConfirmation = createLazyComponent(
-	() => import('./scheduling/ScheduleConfirmation'),
-	'ScheduleConfirmation'
-);
+// Agent handles all scheduling and matter creation - no lazy components needed
 
 // Set options for marked
 marked.setOptions({
@@ -51,48 +31,18 @@ interface FileAttachment {
 	url: string;
 }
 
-// Add scheduling-related data interface
-interface SchedulingData {
-	type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
-	selectedDate?: Date;
-	timeOfDay?: 'morning' | 'afternoon';
-	scheduledDateTime?: Date;
-}
-
-// Add matter creation-related data interface
-interface MatterCreationData {
-	type: 'service-selection' | 'urgency-selection' | 'ai-questions';
-	availableServices: string[];
-	question?: string;
-	totalQuestions?: number;
-	currentQuestionIndex?: number;
-}
+// Agent handles all scheduling and matter creation - no interfaces needed
 
 interface MessageProps {
 	content: string;
 	isUser: boolean;
 	files?: FileAttachment[];
-	scheduling?: SchedulingData;
-	matterCreation?: MatterCreationData;
-	welcomeMessage?: {
-		showButtons: boolean;
-	};
 	matterCanvas?: {
 		service: string;
 		matterSummary: string;
-		
 		answers?: Record<string, string>;
 		isExpanded?: boolean;
 	};
-	onDateSelect?: (date: Date) => void;
-	onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
-	onTimeSlotSelect?: (timeSlot: Date) => void;
-	onRequestMoreDates?: () => void;
-	onServiceSelect?: (service: string) => void;
-	onUrgencySelect?: (urgency: string) => void;
-	onCreateMatter?: () => void;
-	onScheduleConsultation?: () => void;
-	onLearnServices?: () => void;
 	teamConfig?: {
 		name: string;
 		profileImage: string | null;
@@ -194,142 +144,17 @@ const ImagePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => 
 	);
 };
 
-// Service selection buttons component
-const ServiceSelectionButtons: FunctionComponent<{ 
-	services: string[]; 
-	onServiceSelect: (service: string) => void;
-}> = ({ services, onServiceSelect }) => {
-	// Format service names for display
-	const formatServiceName = (service: string) => {
-		return service
-			.split('-')
-							.map(word => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(' ');
-	};
+// Agent handles service selection - no component needed
 
-	return (
-		<div class="service-selection-container">
-			<div class="service-buttons">
-				{services.map((service, index) => (
-					<Button
-						key={index}
-						variant="secondary"
-						onClick={() => onServiceSelect(service)}
-						className="w-full"
-					>
-						{formatServiceName(service)}
-					</Button>
-				))}
-				<Button
-					variant="secondary"
-					onClick={() => onServiceSelect('General Inquiry')}
-					className="w-full"
-				>
-					General Inquiry
-				</Button>
-			</div>
-		</div>
-	);
-};
+// Agent handles urgency selection - no component needed
 
-// Urgency selection buttons component
-const UrgencySelectionButtons: FunctionComponent<{ 
-	onUrgencySelect: (urgency: string) => void;
-}> = ({ onUrgencySelect }) => {
-	const urgencyOptions = [
-		{
-			label: 'Very Urgent',
-			description: 'Immediate action needed'
-		},
-		{
-			label: 'Somewhat Urgent',
-			description: 'Within a few weeks'
-		},
-		{
-			label: 'Not Urgent',
-			description: 'Can wait a month or more'
-		}
-	];
-
-	return (
-		<div class="service-selection-container">
-			<div class="service-buttons">
-				{urgencyOptions.map((option, index) => (
-					<Button
-						key={index}
-						variant="secondary"
-						onClick={() => onUrgencySelect(option.label)}
-						className="w-full"
-					>
-						<div>
-							<div style={{ fontWeight: 600, marginBottom: '2px' }}>{option.label}</div>
-							<div style={{ fontSize: '12px', color: 'var(--accent-color)' }}>{option.description}</div>
-						</div>
-					</Button>
-				))}
-			</div>
-		</div>
-	);
-};
-
-// Welcome message buttons component
-const WelcomeMessageButtons: FunctionComponent<{ 
-	onCreateMatter?: () => void;
-	onScheduleConsultation?: () => void;
-	onLearnServices?: () => void;
-}> = ({ onCreateMatter, onScheduleConsultation, onLearnServices }) => {
-	return (
-		<div class="welcome-buttons-container">
-			<div class="welcome-buttons">
-				{onCreateMatter && (
-					<Button
-						variant="primary"
-						onClick={onCreateMatter}
-						className="w-full"
-					>
-						Create Matter
-					</Button>
-				)}
-				{onScheduleConsultation && features.enableConsultationButton && (
-					<Button
-						variant="secondary"
-						onClick={onScheduleConsultation}
-						className="w-full"
-					>
-						Request a consultation
-					</Button>
-				)}
-				{onLearnServices && features.enableLearnServicesButton && (
-					<Button
-						variant="secondary"
-						onClick={onLearnServices}
-						className="w-full"
-					>
-						Learn about our services
-					</Button>
-				)}
-			</div>
-		</div>
-	);
-};
+// Agent handles welcome messages - no component needed
 
 const Message: FunctionComponent<MessageProps> = memo(({ 
 	content, 
 	isUser, 
 	files = [], 
-	scheduling, 
-	matterCreation,
-	welcomeMessage,
 	matterCanvas,
-	onDateSelect, 
-	onTimeOfDaySelect, 
-	onTimeSlotSelect, 
-	onRequestMoreDates,
-	onServiceSelect,
-	onUrgencySelect,
-	onCreateMatter,
-	onScheduleConsultation,
-	onLearnServices,
 	teamConfig,
 	onOpenSidebar,
 	isLoading,
@@ -358,19 +183,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 
 	return (
 		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
-			{/* Show team profile for welcome message without content */}
-			{welcomeMessage && !welcomeMessage.showButtons && !content && teamConfig && (
-				<div class="welcome-profile">
-					<TeamProfile
-						name={teamConfig.name}
-						profileImage={teamConfig.profileImage}
-						teamId={teamConfig.teamId}
-						variant="welcome"
-						showVerified={true}
-						onClick={onOpenSidebar}
-					/>
-				</div>
-			)}
+			{/* Agent handles welcome messages - no special logic needed */}
 			<div class="message-content">
 				{/* Show loading indicator if this message is loading */}
 				{isLoading ? (
@@ -387,39 +200,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				)}
 				
 				{/* Then display scheduling components */}
-				{scheduling && (
-					<div class="scheduling-container">
-						{scheduling.type === 'date-selection' && onDateSelect && onRequestMoreDates && (
-							<LazyDateSelector
-								onDateSelect={onDateSelect}
-								onRequestMoreDates={onRequestMoreDates}
-								startDate={scheduling.selectedDate}
-							/>
-						)}
-						
-						{scheduling.type === 'time-of-day-selection' && scheduling.selectedDate && onTimeOfDaySelect && (
-							<LazyTimeOfDaySelector
-								selectedDate={scheduling.selectedDate}
-								onTimeOfDaySelect={onTimeOfDaySelect}
-							/>
-						)}
-						
-						{scheduling.type === 'time-slot-selection' && scheduling.selectedDate && 
-						 scheduling.timeOfDay && onTimeSlotSelect && (
-							<LazyTimeSlotSelector
-								selectedDate={scheduling.selectedDate}
-								timeOfDay={scheduling.timeOfDay}
-								onTimeSlotSelect={onTimeSlotSelect}
-							/>
-						)}
-						
-						{scheduling.type === 'confirmation' && scheduling.scheduledDateTime && (
-							<LazyScheduleConfirmation
-								scheduledDateTime={scheduling.scheduledDateTime}
-							/>
-						)}
-					</div>
-				)}
+				{/* Agent handles all scheduling - no components needed */}
 				
 				{/* Display matter canvas */}
 				{matterCanvas && (
@@ -433,27 +214,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					/>
 				)}
 				
-				{/* Display matter creation components */}
-				{matterCreation && matterCreation.type === 'service-selection' && onServiceSelect && (
-					<ServiceSelectionButtons
-						services={matterCreation.availableServices}
-						onServiceSelect={onServiceSelect}
-					/>
-				)}
-				{matterCreation && matterCreation.type === 'urgency-selection' && onUrgencySelect && (
-					<UrgencySelectionButtons
-						onUrgencySelect={onUrgencySelect}
-					/>
-				)}
-				
-				{/* Display welcome message buttons */}
-				{welcomeMessage && welcomeMessage.showButtons && (
-					<WelcomeMessageButtons
-						onCreateMatter={onCreateMatter}
-						onScheduleConsultation={onScheduleConsultation}
-						onLearnServices={onLearnServices}
-					/>
-				)}
+				{/* Agent handles all matter creation and welcome messages - no components needed */}
 				
 				{/* Display files */}
 				{imageFiles.map((file, index) => (

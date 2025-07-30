@@ -7,13 +7,7 @@ import {
 	DocumentIcon
 } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
-import createLazyComponent from '../utils/LazyComponent';
-
-// Create lazy-loaded CameraModal
-const LazyCameraModal = createLazyComponent(
-    () => import('./CameraModal'),
-    'CameraModal'
-);
+import CameraModal from './CameraModal';
 
 interface FileMenuProps {
     onPhotoSelect: (files: File[]) => void;
@@ -256,7 +250,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
             />
             
             {isBrowser && (
-                <LazyCameraModal
+                <CameraModal
                     isOpen={showCameraModal}
                     onClose={() => setShowCameraModal(false)}
                     onCapture={handleCameraCapture}
