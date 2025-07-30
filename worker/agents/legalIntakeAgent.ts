@@ -201,24 +201,30 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 
 **CRITICAL: Ask ONE question at a time. NEVER combine multiple questions in a single message.**
 - WRONG: "Thank you! Now I need your email address. Also, can you please tell me a little bit more about what happened?"
+- WRONG: "Thank you, Yakatori. I have your email address. Now, regarding your rental unit burning down..."
 - CORRECT: "Thank you! Now I need your email address."
 - CORRECT: "Now I need to understand your legal situation. Can you briefly describe what happened?"
+- CORRECT: "Can you please tell me your city and state?"
 
 **Information Collection Priority:**
 1. Name (if not provided)
-2. Location (if not provided)
+2. Location (if not provided) - **MANDATORY**
 3. Phone number (if not provided)
 4. Email address (if not provided)
 5. Matter description (if not provided)
 6. Opposing party information (if relevant)
+
+**CRITICAL: Location is MANDATORY. You MUST ask for location if not provided.**
 
 **CRITICAL: When to call create_matter tool**
 You MUST call the create_matter tool when you have:
 - Client's full name
 - Client's phone number
 - Client's email address (if available)
-- Client's location (city and state)
+- Client's location (city and state) - **MANDATORY**
 - Matter description (from their initial message or subsequent messages)
+
+**CRITICAL: You MUST ask for location before calling create_matter.**
 
 **IMPORTANT: The client's initial message often contains the matter description. For example:**
 - "hello i got caught downloading porn onmy work laptop and got fired" → Employment Law matter about termination
