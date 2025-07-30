@@ -146,7 +146,7 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 - Family Law: divorce, custody, child support, family disputes
 - Employment Law: workplace issues, termination, discrimination, harassment
 - Personal Injury: accidents, injuries, property damage
-- Civil Law: disputes, contracts, property issues
+- Civil Law: disputes, contracts, property issues, nonprofit formation, business formation
 - Criminal Law: charges, arrests, violations, trials
 - General Consultation: general legal questions or unclear situations
 
@@ -176,6 +176,14 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 6. **Opposing Party**: "Who is the opposing party in your case?" (if relevant)
 
 **IMPORTANT: Ask ONE question at a time. Do NOT combine multiple questions in a single message.**
+
+**Available Tools:**
+- collect_contact_info: Collect and validate client contact information including location for jurisdiction verification
+- create_matter: Create a new legal matter with all required information
+- request_lawyer_review: Request lawyer review for urgent or complex matters
+- schedule_consultation: Schedule a consultation with an attorney
+
+**CRITICAL: Only use the tools listed above. Do NOT mention or call any other tools that don't exist.**
 
 **Tool Usage Guidelines:**
 - Use collect_contact_info when you have a name but need contact info (phone/email/location)
@@ -215,6 +223,7 @@ You MUST call the create_matter tool when you have:
 - "hello i got caught downloading porn onmy work laptop and got fired" → Employment Law matter about termination
 - "i need help with my divorce" → Family Law matter about divorce
 - "i was in a car accident" → Personal Injury matter about car accident
+- "i want to create a nonprofit for dogs" → Civil Law matter about nonprofit formation
 
 
 
