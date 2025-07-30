@@ -39,6 +39,9 @@ jobs:
         command: deploy
         packageManager: npm
 
+    - name: Install Wrangler
+      run: npm install -g wrangler
+
     - name: Sync teams to database
       run: node sync-teams.js
       env:
