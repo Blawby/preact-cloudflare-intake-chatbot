@@ -108,13 +108,26 @@ export function App() {
 		description: string | null;
 		availableServices: string[];
 		serviceQuestions?: Record<string, string[]>;
+		jurisdiction?: {
+			type: 'national' | 'state';
+			description: string;
+			supportedStates: string[];
+			supportedCountries: string[];
+			primaryState?: string;
+		};
 	}>({
 		name: 'Blawby AI',
 		profileImage: '/blawby-favicon-iframe.png',
 		introMessage: null,
 		description: null,
 		availableServices: [],
-		serviceQuestions: {}
+		serviceQuestions: {},
+		jurisdiction: {
+			type: 'national',
+			description: 'Available nationwide',
+			supportedStates: ['all'],
+			supportedCountries: ['US']
+		}
 	});
 
 	// State for sidebar matter view
@@ -336,7 +349,13 @@ export function App() {
 						introMessage: team.config.introMessage || null,
 						description: team.config.description || null,
 						availableServices: team.config.availableServices || [],
-						serviceQuestions: team.config.serviceQuestions || {}
+						serviceQuestions: team.config.serviceQuestions || {},
+						jurisdiction: team.config.jurisdiction || {
+							type: 'national',
+							description: 'Available nationwide',
+							supportedStates: ['all'],
+							supportedCountries: ['US']
+						}
 					};
 					setTeamConfig(config);
 					setTeamNotFound(false);
