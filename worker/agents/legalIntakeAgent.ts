@@ -207,6 +207,11 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 - If jurisdiction verification fails, explain why and direct them to appropriate resources
 - Only proceed with contact information collection after jurisdiction is confirmed as supported
 
+**IMPORTANT: You MUST actually call the verify_jurisdiction tool, not just mention it.**
+- When you see a location, immediately call: verify_jurisdiction with the location parameters
+- Wait for the tool response before proceeding
+- Do not fake the verification result
+
 **IMPORTANT: Check the conversation history carefully!**
 - If the client mentioned their legal issue in an earlier message, you already have the matter description
 - If the client provided their name in an earlier message, you already have their name
@@ -674,10 +679,14 @@ export async function handleScheduleConsultation(parameters: any, env: any, team
 export async function handleVerifyJurisdiction(parameters: any, env: any, teamConfig: any) {
   const { user_location, user_state, user_country } = parameters;
   
+  console.log('🔍 Jurisdiction verification called with:', { user_location, user_state, user_country });
+  console.log('🏢 Team config jurisdiction:', teamConfig?.config?.jurisdiction);
+  
   // Get jurisdiction information from team config
   const jurisdiction = teamConfig?.config?.jurisdiction;
   
   if (!jurisdiction) {
+    console.log('⚠️ No jurisdiction restrictions configured');
     return {
       success: true,
       message: "I can help you with your legal matter. Let me collect some information to get started.",
@@ -694,8 +703,12 @@ export async function handleVerifyJurisdiction(parameters: any, env: any, teamCo
   const state = (user_state || '').toLowerCase();
   const country = (user_country || '').toLowerCase();
   
+  console.log('📍 Normalized location inputs:', { location, state, country });
+  console.log('🏛️ Jurisdiction config:', jurisdiction);
+  
   // Check if it's a national service
   if (jurisdiction.type === 'national' && jurisdiction.supportedCountries.includes('US')) {
+    console.log('✅ National service - accepting all US locations');
     return {
       success: true,
       message: "Great! I can help you with your legal matter. We provide services nationwide.",
@@ -712,10 +725,19 @@ export async function handleVerifyJurisdiction(parameters: any, env: any, teamCo
     const supportedStates = jurisdiction.supportedStates.map((s: string) => s.toLowerCase());
     const primaryState = jurisdiction.primaryState?.toLowerCase();
     
+    console.log('🏛️ State-specific service check:', {
+      supportedStates,
+      primaryState,
+      userState: state,
+      userLocation: location
+    });
+    
     // Check if user is in supported state
     const isSupported = supportedStates.includes('all') || 
                        supportedStates.some(s => location.includes(s) || state.includes(s)) ||
                        (primaryState && (location.includes(primaryState) || state.includes(primaryState)));
+    
+    console.log('✅ Is supported?', isSupported);
     
     if (isSupported) {
       return {
@@ -741,6 +763,7 @@ export async function handleVerifyJurisdiction(parameters: any, env: any, teamCo
   }
   
   // Default response for unknown jurisdiction types
+  console.log('⚠️ Unknown jurisdiction type:', jurisdiction.type);
   return {
     success: true,
     message: "I can help you with your legal matter. Let me collect some information to get started.",
