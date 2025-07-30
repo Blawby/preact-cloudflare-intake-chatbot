@@ -5,13 +5,28 @@ export const collectContactInfo = {
   parameters: {
     type: 'object',
     properties: {
-      name: { type: 'string', description: 'Client full name' },
-      phone: { type: 'string', description: 'Client phone number' },
-      email: { type: 'string', description: 'Client email address' },
+      name: { 
+        type: 'string', 
+        description: 'Client full name',
+        minLength: 2,
+        maxLength: 100
+      },
+      phone: { 
+        type: 'string', 
+        description: 'Client phone number',
+        pattern: '^[+]?[0-9\\s\\-\\(\\)]{7,20}$' // International format
+      },
+      email: { 
+        type: 'string', 
+        description: 'Client email address',
+        format: 'email'
+      },
       location: { 
         type: 'string', 
         description: 'Client location (city, state, or country)',
-        examples: ['Charlotte, NC', 'North Carolina', 'NC', 'United States', 'US']
+        examples: ['Charlotte, NC', 'North Carolina', 'NC', 'United States', 'US'],
+        minLength: 2,
+        maxLength: 100
       }
     },
     required: ['name']
@@ -106,6 +121,32 @@ export const TOOL_HANDLERS = {
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
   schedule_consultation: handleScheduleConsultation
+};
+
+// Simple validation functions
+const validateEmail = (email: string): boolean => {
+  if (!email) return false;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+};
+
+const validatePhone = (phone: string): boolean => {
+  if (!phone) return false;
+  // Remove all non-digits for validation
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+};
+
+const validateName = (name: string): boolean => {
+  if (!name) return false;
+  const trimmedName = name.trim();
+  return trimmedName.length >= 2 && trimmedName.length <= 100;
+};
+
+const validateLocation = (location: string): boolean => {
+  if (!location) return false;
+  const trimmedLocation = location.trim();
+  return trimmedLocation.length >= 2 && trimmedLocation.length <= 100;
 };
 
 // Create the legal intake agent using native Cloudflare AI
@@ -600,6 +641,38 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
 export async function handleCollectContactInfo(parameters: any, env: any, teamConfig: any) {
   const { name, phone, email, location } = parameters;
   
+  // Validate name if provided
+  if (name && !validateName(name)) {
+    return { 
+      success: false, 
+      message: "I need your full name to proceed. Could you please provide your complete name?" 
+    };
+  }
+  
+  // Validate email if provided
+  if (email && !validateEmail(email)) {
+    return { 
+      success: false, 
+      message: "The email address you provided doesn't appear to be valid. Could you please provide a valid email address?" 
+    };
+  }
+  
+  // Validate phone if provided
+  if (phone && !validatePhone(phone)) {
+    return { 
+      success: false, 
+      message: "The phone number you provided doesn't appear to be valid. Could you please provide a valid phone number?" 
+    };
+  }
+  
+  // Validate location if provided
+  if (location && !validateLocation(location)) {
+    return { 
+      success: false, 
+      message: "Could you please provide your city and state or country?" 
+    };
+  }
+  
   // First, verify jurisdiction if location is provided
   if (location) {
     const jurisdiction = teamConfig?.config?.jurisdiction;
@@ -655,10 +728,43 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
 export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
+  // Validate required fields
   if (!matter_type || !description || !urgency || !name) {
     return { 
       success: false, 
       message: "I'm missing some essential information. Could you please provide your name, contact information, and describe your legal issue?" 
+    };
+  }
+  
+  // Validate name format
+  if (!validateName(name)) {
+    return { 
+      success: false, 
+      message: "I need your full name to proceed. Could you please provide your complete name?" 
+    };
+  }
+  
+  // Validate email if provided
+  if (email && !validateEmail(email)) {
+    return { 
+      success: false, 
+      message: "The email address you provided doesn't appear to be valid. Could you please provide a valid email address?" 
+    };
+  }
+  
+  // Validate phone if provided
+  if (phone && !validatePhone(phone)) {
+    return { 
+      success: false, 
+      message: "The phone number you provided doesn't appear to be valid. Could you please provide a valid phone number?" 
+    };
+  }
+  
+  // Validate location if provided
+  if (location && !validateLocation(location)) {
+    return { 
+      success: false, 
+      message: "Could you please provide your city and state or country?" 
     };
   }
   
@@ -715,9 +821,11 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
       matter_type,
       description,
       urgency,
-      opposing_party: opposing_party || '',
-      location: location || '',
-      estimated_value: 0,
+      name,
+      phone,
+      email,
+      location,
+      opposing_party,
       requires_payment: requiresPayment,
       consultation_fee: consultationFee,
       payment_link: paymentLink
