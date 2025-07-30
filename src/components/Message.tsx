@@ -3,7 +3,6 @@ import { memo } from 'preact/compat';
 import { marked } from 'marked';
 import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
-import FeedbackUI from './FeedbackUI';
 import TeamProfile from './TeamProfile';
 import { Button } from './ui/Button';
 import createLazyComponent from '../utils/LazyComponent';
@@ -485,16 +484,8 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					</div>
 				))}
 				
-				{/* Show feedback UI only on AI messages and when not loading */}
-				{!isUser && !isLoading && showFeedback && features.enableMessageFeedback && (
-					<FeedbackUI
-						messageId={id}
-						sessionId={sessionId}
-						teamId={teamId}
-						onFeedbackSubmit={onFeedbackSubmit}
-						content={content}
-					/>
-				)}
+				
+				
 			</div>
 		</div>
 	);
