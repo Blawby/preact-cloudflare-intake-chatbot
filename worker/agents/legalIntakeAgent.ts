@@ -484,15 +484,16 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   
   if (requiresPayment && consultationFee > 0) {
     try {
-      // Use Blawby API service if configured in team config and environment variable is set, otherwise fallback to mock service
-      const useBlawbyApi = teamConfig?.config?.blawbyApi?.enabled && env.BLAWBY_API_TOKEN;
+      // Use Blawby API service if configured in team config, otherwise fallback to mock service
+      const useBlawbyApi = teamConfig?.config?.blawbyApi?.enabled && teamConfig?.config?.blawbyApi?.apiKey;
       
       if (useBlawbyApi) {
         const { BlawbyPaymentService } = await import('../services/BlawbyPaymentService.js');
         const paymentService = new BlawbyPaymentService();
         
-        // Set the API URL if not already set
-        process.env.BLAWBY_API_URL = process.env.BLAWBY_API_URL || 'https://app.blawby.com';
+        // Set the API key and URL from team config
+        process.env.BLAWBY_API_TOKEN = teamConfig.config.blawbyApi.apiKey;
+        process.env.BLAWBY_API_URL = process.env.BLAWBY_API_URL || 'https://staging.blawby.com';
         
         const paymentRequest = {
           customerInfo: {
@@ -560,6 +561,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
         } else {
           console.error('❌ Failed to create mock invoice:', paymentResult.error);
         }
+      }
     } catch (error) {
       console.error('❌ Payment service error:', error);
     }
