@@ -487,13 +487,26 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
       // Use Blawby API service if configured in team config, otherwise fallback to mock service
       const useBlawbyApi = teamConfig?.config?.blawbyApi?.enabled && teamConfig?.config?.blawbyApi?.apiKey;
       
+      console.log('🔍 [DEBUG] Blawby API check:', {
+        enabled: teamConfig?.config?.blawbyApi?.enabled,
+        hasApiKey: !!teamConfig?.config?.blawbyApi?.apiKey,
+        useBlawbyApi,
+        teamConfig: JSON.stringify(teamConfig?.config?.blawbyApi, null, 2)
+      });
+      
       if (useBlawbyApi) {
         const { BlawbyPaymentService } = await import('../services/BlawbyPaymentService.js');
-        const paymentService = new BlawbyPaymentService();
+        const paymentService = new BlawbyPaymentService(apiToken, apiUrl);
         
         // Set the API key and URL from team config
-        process.env.BLAWBY_API_TOKEN = teamConfig.config.blawbyApi.apiKey;
-        process.env.BLAWBY_API_URL = process.env.BLAWBY_API_URL || 'https://staging.blawby.com';
+        // Note: In Cloudflare Workers, we need to pass these directly to the service
+        const apiToken = teamConfig.config.blawbyApi.apiKey;
+        const apiUrl = 'https://staging.blawby.com';
+        
+        console.log('🔧 [DEBUG] API configuration:', {
+          apiToken: apiToken ? '***SET***' : 'NOT SET',
+          apiUrl
+        });
         
         const paymentRequest = {
           customerInfo: {
@@ -513,6 +526,8 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
         };
         
         const paymentResult = await paymentService.createInvoice(paymentRequest);
+        
+        console.log('🔍 [DEBUG] Blawby API payment result:', paymentResult);
         
         if (paymentResult.success) {
           invoiceUrl = paymentResult.invoiceUrl;

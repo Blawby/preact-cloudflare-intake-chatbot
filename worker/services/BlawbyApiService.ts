@@ -33,9 +33,9 @@ export class BlawbyApiService {
   private baseUrl: string;
   private apiToken: string;
 
-  constructor() {
-    this.baseUrl = process.env.BLAWBY_API_URL || 'https://staging.blawby.com';
-    this.apiToken = process.env.BLAWBY_API_TOKEN || '';
+  constructor(apiToken?: string, baseUrl?: string) {
+    this.baseUrl = baseUrl || process.env.BLAWBY_API_URL || 'https://staging.blawby.com';
+    this.apiToken = apiToken || process.env.BLAWBY_API_TOKEN || '';
   }
 
   /**
@@ -64,9 +64,25 @@ export class BlawbyApiService {
       },
     };
 
+    console.log('🔍 [DEBUG] Blawby API request:', {
+      url,
+      method: options.method || 'GET',
+      headers: {
+        'Authorization': this.getAuthHeader() ? 'Bearer ***' : 'NOT SET',
+        'Content-Type': 'application/json'
+      },
+      body: options.body ? '***BODY***' : 'NO BODY'
+    });
+
     try {
       const response = await fetch(url, config);
       const data = await response.json();
+
+      console.log('🔍 [DEBUG] Blawby API response:', {
+        status: response.status,
+        ok: response.ok,
+        data: data
+      });
 
       if (!response.ok) {
         console.error(`Blawby API error: ${response.status}`, data);
