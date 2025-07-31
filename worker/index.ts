@@ -4,6 +4,7 @@ import {
   handleHealth,
   handleRoot,
   handleAgent,
+  handleAgentStream,
   handleForms,
   handleTeams,
   handleScheduling,
@@ -63,7 +64,13 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     // Route handling with enhanced error context
     let response: Response;
     
-    if (path.startsWith('/api/agent')) {
+    console.log('🔍 Route matching for path:', path);
+    
+    if (path === '/api/agent/stream') {
+      console.log('✅ Matched streaming route');
+      response = await handleAgentStream(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/agent')) {
+      console.log('✅ Matched regular agent route');
       response = await handleAgent(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/teams')) {
       response = await handleTeams(request, env, CORS_HEADERS);
@@ -82,6 +89,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     } else if (path === '/') {
       response = await handleRoot(request, env);
     } else {
+      console.log('❌ No route matched');
       throw HttpErrors.notFound('Endpoint not found');
     }
 

@@ -958,49 +958,35 @@ body {
 	}
 }
 
-/* Loading Indicator Styles */
-.loading-indicator {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	padding: 8px 0;
-	min-height: 24px;
-	width: fit-content;
+
+
+/* Typing Cursor Styles */
+.typing-cursor {
+	color: var(--accent-color);
+	font-weight: bold;
+	animation: blink 1s infinite;
+	margin-left: 2px;
 }
 
-.message-ai .loading-indicator {
-	margin-left: 0;
-}
-
-.dot {
-	width: 8px;
-	height: 8px;
-	background-color: var(--accent-color);
-	border-radius: 50%;
-	opacity: 0.4;
-	animation: loadingDot 1.4s infinite;
-}
-
-.dot:nth-child(2) {
-	animation-delay: 0.2s;
-}
-
-.dot:nth-child(3) {
-	animation-delay: 0.4s;
-}
-
-@keyframes loadingDot {
+@keyframes blink {
 
 	0%,
-	100% {
-		opacity: 0.4;
-		transform: scale(1);
-	}
-
 	50% {
 		opacity: 1;
-		transform: scale(1.1);
 	}
+
+	51%,
+	100% {
+		opacity: 0;
+	}
+}
+
+/* Loading Text Styles */
+.loading-text {
+	color: var(--text-muted);
+	font-size: 0.875rem;
+	text-align: center;
+	padding: 2rem 0;
 }
 
 /* Media Controls Styles */
@@ -2926,7 +2912,7 @@ kbd {
 	.team-profile-header {
 		padding: 1.5rem 1rem 1rem;
 	}
-	
+
 	.team-profile-header .team-description {
 		max-width: 250px;
 		font-size: 0.8rem;

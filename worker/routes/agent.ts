@@ -1,6 +1,6 @@
 import type { Env } from '../types';
 import { parseJsonBody } from '../utils';
-import { runLegalIntakeAgent } from '../agents/legalIntakeAgent';
+import { runLegalIntakeAgent, runLegalIntakeAgentStream } from '../agents/legalIntakeAgent';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
 import { SecurityLogger } from '../utils/securityLogger.js';
@@ -11,16 +11,14 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
   }
 
   try {
-    const body = await parseJsonBody(request);
+    const body = await request.json(); // Read body once here
     const { messages, teamId, sessionId } = body;
 
-    if (!messages || !Array.isArray(messages)) {
-      throw HttpErrors.badRequest('Messages array is required');
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      throw HttpErrors.badRequest('No message content provided');
     }
-
-    // Get the latest user message
     const latestMessage = messages[messages.length - 1];
-    if (!latestMessage || !latestMessage.content) {
+    if (!latestMessage?.content) {
       throw HttpErrors.badRequest('No message content provided');
     }
 
@@ -39,7 +37,7 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
     }
 
     // Security validation
-    const validation = await validateInput(body, teamConfig);
+    const validation = await validateInput(body, teamConfig); // Pass parsed body
     if (!validation.isValid) {
       SecurityLogger.logInputValidation(validation, latestMessage.content, teamId);
       
@@ -59,47 +57,113 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
     }
 
     // Run the legal intake agent directly
-    const result = await runLegalIntakeAgent(env, messages, teamId, sessionId);
-
-    // Handle tool calls if any
-    if (result.toolCalls?.length) {
-      // Tool execution is now handled within the agent
-      // Return the result with the tool call information in the expected format
-      return createSuccessResponse({
-        response: result.response,
-        workflow: 'MATTER_CREATION',
-        actions: result.toolCalls.map(toolCall => ({
-          name: toolCall.name,
-          parameters: toolCall.parameters
-        })),
-        metadata: result.metadata || {},
-        sessionId,
-        // Add backward compatibility properties
-        success: true,
-        data: {
-          response: result.response,
-          toolCalls: result.toolCalls,
-          metadata: result.metadata
-        }
-      }, corsHeaders);
-    }
-
-    // Return the agent's response with backward compatibility
-    return createSuccessResponse({
-      response: result.response,
-      workflow: 'MATTER_CREATION',
-      actions: [],
-      metadata: result.metadata || {},
-      sessionId,
-      // Add backward compatibility properties
-      success: true,
-      data: {
-        response: result.response,
-        metadata: result.metadata
-      }
-    }, corsHeaders);
-
+    const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId);
+    return createSuccessResponse(agentResponse, corsHeaders);
   } catch (error) {
     return handleError(error, corsHeaders);
+  }
+}
+
+// New streaming endpoint for real-time AI responses
+export async function handleAgentStream(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  console.log('🚀 Streaming endpoint called!');
+  
+  if (request.method !== 'POST') {
+    throw HttpErrors.methodNotAllowed('Only POST method is allowed');
+  }
+
+  // Set SSE headers for streaming
+  const headers = {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': corsHeaders['Access-Control-Allow-Origin'] || '*',
+    'Access-Control-Allow-Methods': corsHeaders['Access-Control-Allow-Methods'] || 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': corsHeaders['Access-Control-Allow-Headers'] || 'Content-Type',
+  };
+
+  try {
+    const body = await request.json();
+    console.log('📥 Request body:', body);
+    
+    const { messages, teamId, sessionId } = body;
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      throw HttpErrors.badRequest('No message content provided');
+    }
+    const latestMessage = messages[messages.length - 1];
+    if (!latestMessage?.content) {
+      throw HttpErrors.badRequest('No message content provided');
+    }
+
+    // Get team configuration for security validation
+    let teamConfig = null;
+    if (teamId) {
+      try {
+        const { AIService } = await import('../services/AIService.js');
+        const aiService = new AIService(env.AI, env);
+        const rawTeamConfig = await aiService.getTeamConfig(teamId);
+        teamConfig = rawTeamConfig?.config || rawTeamConfig;
+      } catch (error) {
+        console.warn('Failed to get team config for security validation:', error);
+      }
+    }
+
+    // Security validation
+    const validation = await validateInput(body, teamConfig);
+    if (!validation.isValid) {
+      SecurityLogger.logInputValidation(validation, latestMessage.content, teamId);
+      
+      const securityResponse = getSecurityResponse(validation.violations || [], teamConfig);
+      
+      // Send security block as a single SSE event
+      const securityEvent = `data: ${JSON.stringify({
+        type: 'security_block',
+        response: securityResponse,
+        reason: validation.reason,
+        violations: validation.violations
+      })}\n\n`;
+      
+      return new Response(securityEvent, { headers });
+    }
+
+    console.log('✅ Security validation passed, creating stream...');
+
+    // Create streaming response using ReadableStream
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          console.log('🔄 Starting streaming agent...');
+          
+          // Send initial connection event
+          controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
+          
+          // Run streaming agent
+          console.log('📞 Calling runLegalIntakeAgentStream...');
+          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, controller);
+          
+          // Send completion event
+          controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));
+          controller.close();
+        } catch (error) {
+          console.error('❌ Streaming error:', error);
+          const errorEvent = `data: ${JSON.stringify({
+            type: 'error',
+            message: 'An error occurred while processing your request'
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(errorEvent));
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, { headers });
+  } catch (error) {
+    console.error('❌ Route error:', error);
+    const errorEvent = `data: ${JSON.stringify({
+      type: 'error',
+      message: error.message || 'An error occurred'
+    })}\n\n`;
+    return new Response(errorEvent, { headers });
   }
 } 
