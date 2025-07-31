@@ -99,6 +99,10 @@ R2_BUCKET_NAME=your_r2_bucket_name
 # AI Configuration
 AI_MODEL=@cf/meta/llama-3.1-8b-instruct
 
+# Team Configuration
+# Copy teams.example.json to teams.json and add your API keys
+cp teams.example.json teams.json
+
 # Rate Limiting
 RATE_LIMIT_REQUESTS_PER_MINUTE=60
 RATE_LIMIT_BURST_SIZE=10
