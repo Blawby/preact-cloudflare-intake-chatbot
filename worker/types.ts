@@ -157,4 +157,25 @@ export interface ValidatedRequest<T = any> {
   data: T;
   env: Env;
   corsHeaders: Record<string, string>;
+}
+
+export interface LanguageConfig {
+  code: string; // 'en', 'es', 'fr', 'de', 'zh', 'ja', etc.
+  name: string; // 'English', 'Spanish', 'French', etc.
+  nativeName: string; // 'English', 'Español', 'Français', etc.
+  direction: 'ltr' | 'rtl';
+  fallback?: string; // fallback language code
+}
+
+export interface LocalizedContent {
+  [key: string]: {
+    [languageCode: string]: string;
+  };
+}
+
+export interface TeamConfig {
+  // ... existing properties ...
+  supportedLanguages?: string[]; // ['en', 'es', 'fr']
+  defaultLanguage?: string; // 'en'
+  languageDetection?: boolean; // auto-detect user's language
 } 

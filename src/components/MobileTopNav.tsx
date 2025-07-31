@@ -1,6 +1,7 @@
 import { Bars3Icon } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
 import { Button } from './ui/Button';
+import { LanguageSelector } from './LanguageSelector';
 
 interface MobileTopNavProps {
   teamConfig: {
@@ -9,9 +10,11 @@ interface MobileTopNavProps {
     teamId: string;
   };
   onOpenSidebar: () => void;
+  currentLanguage?: string;
+  onLanguageChange?: (language: string) => void;
 }
 
-const MobileTopNav = ({ teamConfig, onOpenSidebar }: MobileTopNavProps) => {
+const MobileTopNav = ({ teamConfig, onOpenSidebar, currentLanguage, onLanguageChange }: MobileTopNavProps) => {
   return (
     <div className="mobile-top-nav">
       {/* Team Profile Section */}
@@ -33,6 +36,16 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar }: MobileTopNavProps) => {
           </div>
         </div>
       </Button>
+
+      {/* Language Selector */}
+      {onLanguageChange && (
+        <div className="mobile-top-nav-language">
+          <LanguageSelector 
+            currentLanguage={currentLanguage} 
+            onLanguageChange={onLanguageChange}
+          />
+        </div>
+      )}
 
       {/* Theme Toggle Button */}
       <ThemeToggle />

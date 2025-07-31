@@ -3825,6 +3825,26 @@ kbd {
 	background: var(--hover-bg);
 }
 
+/* Language Selector */
+.mobile-top-nav-language {
+	display: flex;
+	align-items: center;
+	margin: 0 0.5rem;
+	order: 2;
+}
+
+.mobile-top-nav .mobile-top-nav-menu {
+	order: 3;
+}
+
+.mobile-top-nav .mobile-top-nav-profile {
+	order: 1;
+}
+
+.mobile-top-nav .theme-toggle {
+	order: 4;
+}
+
 /* Theme Toggle Button */
 .theme-toggle {
 	display: flex;
