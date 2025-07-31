@@ -1,0 +1,107 @@
+[
+  {
+    "id": "01K0TNGNKTM4Q0AG0XF0A8ST0Q",
+    "slug": "blawby-ai",
+    "name": "Blawby AI",
+    "config": {
+      "aiModel": "llama",
+      "consultationFee": 0,
+      "requiresPayment": false,
+      "ownerEmail": "your-email@example.com",
+      "availableServices": [
+        "Business Law",
+        "Contract Review",
+        "Intellectual Property",
+        "Employment Law",
+        "General Consultation"
+      ],
+      "jurisdiction": {
+        "type": "national",
+        "description": "Available nationwide",
+        "supportedStates": ["all"],
+        "supportedCountries": ["US"]
+      },
+      "domain": "ai.blawby.com",
+      "description": "AI-powered legal assistance for businesses and individuals",
+      "paymentLink": null,
+      "brandColor": "#2563eb",
+      "accentColor": "#3b82f6",
+      "introMessage": "Hello! I'm Blawby AI, your intelligent legal assistant. I can help you with business law, contract review, intellectual property, employment law, and general legal consultation. How can I assist you today?",
+      "profileImage": null,
+      "webhooks": {
+        "enabled": false,
+        "url": "",
+        "secret": "",
+        "events": {
+          "matterCreation": false,
+          "matterDetails": false,
+          "contactForm": false,
+          "appointment": false
+        },
+        "retryConfig": {
+          "maxRetries": 3,
+          "retryDelay": 60
+        }
+      },
+      "blawbyApi": {
+        "enabled": false,
+        "apiKey": "your-api-key-here",
+        "teamUlid": "your-team-ulid-here"
+      }
+    }
+  },
+  {
+    "id": "01jq70jnstyfzevc6423czh50e",
+    "slug": "north-carolina-legal-services",
+    "name": "North Carolina Legal Services",
+    "config": {
+      "aiModel": "llama",
+      "consultationFee": 75,
+      "requiresPayment": true,
+      "ownerEmail": "your-email@example.com",
+      "availableServices": [
+        "Family Law",
+        "Small Business and Nonprofits",
+        "Employment Law",
+        "Tenant Rights Law",
+        "Probate and Estate Planning",
+        "Special Education and IEP Advocacy",
+        "General Consultation"
+      ],
+      "jurisdiction": {
+        "type": "state",
+        "description": "Available in North Carolina",
+        "supportedStates": ["NC"],
+        "supportedCountries": ["US"],
+        "primaryState": "NC"
+      },
+      "domain": "northcarolinalegalservices.blawby.com",
+      "description": "Affordable, comprehensive legal services for North Carolina. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.",
+      "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500",
+      "brandColor": "#059669",
+      "accentColor": "#10b981",
+      "introMessage": "Welcome to North Carolina Legal Services! I'm here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you schedule a consultation with our experienced attorneys. How can I assist you today?",
+      "profileImage": "https://app.blawby.com/storage/team-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg",
+      "webhooks": {
+        "enabled": true,
+        "url": "https://staging.blawby.com/webhooks/intake-form/01jq70jnstyfzevc6423czh50e/webhook-events",
+        "secret": "your-webhook-secret-here",
+        "events": {
+          "matterCreation": true,
+          "matterDetails": true,
+          "contactForm": true,
+          "appointment": true
+        },
+        "retryConfig": {
+          "maxRetries": 3,
+          "retryDelay": 60
+        }
+      },
+      "blawbyApi": {
+        "enabled": true,
+        "apiKey": "your-api-key-here",
+        "teamUlid": "your-team-ulid-here"
+      }
+    }
+  }
+] 
