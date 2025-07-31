@@ -55,39 +55,61 @@ export class AIService {
   }
   
   async getTeamConfig(teamId: string): Promise<TeamConfig> {
-    console.log('AIService.getTeamConfig called with teamId:', teamId);
+    console.log('🔍 [AIService] getTeamConfig called with teamId:', teamId);
     const cached = this.teamConfigCache.get(teamId);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      console.log('Returning cached team config');
+      console.log('🔍 [AIService] Returning cached team config');
       return cached.config;
     }
 
     try {
       // Try to find team by ID (ULID) first, then by slug
-      console.log('Querying database for team config...');
-      let teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(teamId).first();
-      console.log('Team row found by ID:', teamRow ? 'yes' : 'no');
+      console.log('🔍 [AIService] Querying database for team config...');
+      let teamRow = await this.env.DB.prepare('SELECT id, slug, name, config FROM teams WHERE id = ?').bind(teamId).first();
+      console.log('🔍 [AIService] Team row found by ID:', teamRow ? 'yes' : 'no');
       if (!teamRow) {
-        teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE slug = ?').bind(teamId).first();
-        console.log('Team row found by slug:', teamRow ? 'yes' : 'no');
+        teamRow = await this.env.DB.prepare('SELECT id, slug, name, config FROM teams WHERE slug = ?').bind(teamId).first();
+        console.log('🔍 [AIService] Team row found by slug:', teamRow ? 'yes' : 'no');
       }
       
       if (teamRow) {
-        const config = JSON.parse(teamRow.config as string);
-        console.log('Parsed team config:', JSON.stringify(config, null, 2));
+        console.log('🔍 [AIService] Raw config from DB:', teamRow.config);
+        const config = JSON.parse(teamRow.config || '{}');
+        console.log('🔍 [AIService] Parsed team config:', JSON.stringify(config, null, 2));
+        console.log('🔍 [AIService] Config requiresPayment:', config.requiresPayment);
+        console.log('🔍 [AIService] Config consultationFee:', config.consultationFee);
+        console.log('🔍 [AIService] Config blawbyApi:', config.blawbyApi);
         this.teamConfigCache.set(teamId, { config, timestamp: Date.now() });
-        return { config }; // Return with config property to match expected structure
+        return config; // Return the config directly without wrapping it
       } else {
-        console.log('No team found in database');
-        console.log('Available teams:');
+        console.log('🔍 [AIService] No team found in database');
+        console.log('🔍 [AIService] Available teams:');
         const allTeams = await this.env.DB.prepare('SELECT id, slug FROM teams').all();
-        console.log('All teams:', allTeams);
+        console.log('🔍 [AIService] All teams:', allTeams);
+        
+        // Fallback to teams.json file
+        console.log('🔍 [AIService] Trying fallback to teams.json...');
+        try {
+          const teamsResponse = await fetch('https://blawby-ai-chatbot.paulchrisluke.workers.dev/teams.json');
+          if (teamsResponse.ok) {
+            const teams = await teamsResponse.json();
+            const team = teams.find((t: any) => t.id === teamId || t.slug === teamId);
+            if (team) {
+              console.log('🔍 [AIService] Found team in teams.json:', team.id);
+              console.log('🔍 [AIService] Team config from teams.json:', JSON.stringify(team.config, null, 2));
+              this.teamConfigCache.set(teamId, { config: team.config, timestamp: Date.now() });
+              return team.config;
+            }
+          }
+        } catch (fallbackError) {
+          console.warn('🔍 [AIService] Failed to load teams.json:', fallbackError);
+        }
       }
     } catch (error) {
-      console.warn('Failed to fetch team config:', error);
+      console.warn('🔍 [AIService] Failed to fetch team config:', error);
     }
     
-    console.log('Returning empty team config');
+    console.log('🔍 [AIService] Returning empty team config');
     return {};
   }
 

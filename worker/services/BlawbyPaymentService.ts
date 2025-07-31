@@ -49,13 +49,18 @@ export class BlawbyPaymentService {
       let customerResponse = await this.blawbyApi.getCustomerByEmail(teamId, customerInfo.email);
       let customerId: string;
 
+      console.log('🔍 [BLAWBY] Customer search result:', customerResponse);
+
       if (customerResponse.success && customerResponse.data) {
         // Customer exists, use existing customer ID
         customerId = customerResponse.data.id;
-        console.log('✅ [BLAWBY] Found existing customer:', customerId);
+        console.log('✅ [BLAWBY] Found existing customer:', customerId, customerResponse.data);
       } else {
         // Create new customer
+        console.log('🔍 [BLAWBY] Creating new customer with info:', customerInfo);
         const createCustomerResponse = await this.blawbyApi.createCustomer(teamId, customerInfo);
+        
+        console.log('🔍 [BLAWBY] Create customer response:', createCustomerResponse);
         
         if (!createCustomerResponse.success) {
           console.error('❌ [BLAWBY] Failed to create customer:', createCustomerResponse.error);
@@ -65,8 +70,8 @@ export class BlawbyPaymentService {
           };
         }
 
-        customerId = createCustomerResponse.data.id;
-        console.log('✅ [BLAWBY] Created new customer:', customerId);
+        customerId = createCustomerResponse.data.data.id;
+        console.log('✅ [BLAWBY] Created new customer:', customerId, createCustomerResponse.data.data);
 
         // Create a memo for the new customer with matter details
         const memoContent = `New client from intake form. Matter: ${matterInfo.type} - ${matterInfo.description}. Urgency: ${matterInfo.urgency}. Opposing party: ${matterInfo.opposingParty || 'Not specified'}.`;
@@ -78,12 +83,18 @@ export class BlawbyPaymentService {
       const consultationFee = 75; // This should come from team config
       const invoiceDescription = `Consultation fee for ${matterInfo.type} matter: ${matterInfo.description}`;
       
+      console.log('🔍 [BLAWBY] Creating invoice for customer:', customerId);
+      console.log('🔍 [BLAWBY] Invoice details:', { teamId, customerId, consultationFee, invoiceDescription });
+      
+      console.log('🟡 [DEBUG] About to create invoice. customerId:', customerId);
       const invoiceResponse = await this.blawbyApi.createInvoice(
         teamId,
         customerId,
         consultationFee,
         invoiceDescription
       );
+
+      console.log('🔍 [BLAWBY] Create invoice response:', invoiceResponse);
 
       if (!invoiceResponse.success) {
         console.error('❌ [BLAWBY] Failed to create invoice:', invoiceResponse.error);
@@ -93,7 +104,7 @@ export class BlawbyPaymentService {
         };
       }
 
-      const invoiceData = invoiceResponse.data;
+      const invoiceData = invoiceResponse.data.data;
       console.log('✅ [BLAWBY] Invoice created successfully:', invoiceData);
 
       return {
