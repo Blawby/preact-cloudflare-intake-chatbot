@@ -7,6 +7,9 @@ export interface Env {
   CHAT_SESSIONS: KVNamespace;
   RESEND_API_KEY: string;
   FILES_BUCKET?: R2Bucket;
+  PAYMENT_API_KEY?: string;
+  PAYMENT_API_URL?: string;
+  WEBHOOK_SECRET?: string;
 }
 
 // HTTP Error class for centralized error handling

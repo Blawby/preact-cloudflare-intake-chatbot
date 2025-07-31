@@ -121,12 +121,16 @@ export class SecurityFilter {
   }
 
   private static validateJurisdiction(content: string, teamConfig: any): string | null {
-    const jurisdiction = teamConfig?.jurisdiction;
+    const jurisdiction = teamConfig?.jurisdiction || teamConfig?.config?.jurisdiction;
     if (!jurisdiction) return null;
     
     // Extract location from content
     const location = this.extractLocation(content);
-    if (!location) return null;
+    
+    // Only validate jurisdiction if a location is actually mentioned
+    if (!location) {
+      return null;
+    }
     
     const supportedStates = jurisdiction.supportedStates || [];
     const supportedCountries = jurisdiction.supportedCountries || [];
@@ -194,18 +198,30 @@ export class SecurityFilter {
   }
 
   private static extractLocation(content: string): string | null {
-    // Extract location patterns
+    
+    // Extract location patterns - more specific to avoid false matches
     const locationPatterns = [
-      /(?:in|from|located in|based in)\s+([A-Za-z\s,]+?)(?:\s+and|\s+with|\s+for|\s+need|\s+want|\s+looking|\s+seeking)/i,
+      // Specific location mentions
+      /(?:in|from|located in|based in)\s+([A-Za-z\s,]+?)(?:\s+and|\s+with|\s+for|\s+need|\s+want|\s+looking|\s+seeking|\s+but|\s+however|\s+though)/i,
       /(?:state|country)\s+of\s+([A-Za-z\s]+)/i,
       /([A-Z]{2})\s+(?:state|country)/i,
-      /(?:in|from)\s+([A-Za-z\s]+?)(?:\s+and|\s+with|\s+for|\s+need|\s+want|\s+looking|\s+seeking)/i
+      // More specific pattern for "in" followed by location
+      /(?:in|from)\s+([A-Za-z\s]+?)(?:\s+and|\s+with|\s+for|\s+need|\s+want|\s+looking|\s+seeking|\s+but|\s+however|\s+though|\s+for|\s+my|\s+your|\s+his|\s+her|\s+their)/i
     ];
     
     for (const pattern of locationPatterns) {
       const match = content.match(pattern);
       if (match) {
-        return match[1] || match[0];
+        const extractedLocation = match[1] || match[0];
+        // Additional validation: location should be reasonable (not too long, not contain certain words)
+        if (extractedLocation && 
+            extractedLocation.length < 50 && 
+            !extractedLocation.toLowerCase().includes('job') &&
+            !extractedLocation.toLowerCase().includes('employee') &&
+            !extractedLocation.toLowerCase().includes('harass') &&
+            !extractedLocation.toLowerCase().includes('fire')) {
+          return extractedLocation;
+        }
       }
     }
     
