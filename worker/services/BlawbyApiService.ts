@@ -38,11 +38,20 @@ export class BlawbyApiService {
     this.apiToken = process.env.BLAWBY_API_TOKEN || '';
   }
 
+  /**
+   * Get the properly formatted authorization header
+   */
+  private getAuthHeader(): string {
+    if (!this.apiToken) return '';
+    // Add "Bearer " prefix if not already present
+    return this.apiToken.startsWith('Bearer ') ? this.apiToken : `Bearer ${this.apiToken}`;
+  }
+
   private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<BlawbyApiResponse> {
     const url = `${this.baseUrl}${endpoint}`;
     
     const defaultHeaders = {
-      'Authorization': `Bearer ${this.apiToken}`,
+      'Authorization': this.getAuthHeader(),
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
