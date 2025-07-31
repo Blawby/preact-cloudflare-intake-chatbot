@@ -34,7 +34,7 @@ export class BlawbyApiService {
   private apiToken: string;
 
   constructor() {
-    this.baseUrl = process.env.BLAWBY_API_URL || 'https://app.blawby.com';
+    this.baseUrl = process.env.BLAWBY_API_URL || 'https://staging.blawby.com';
     this.apiToken = process.env.BLAWBY_API_TOKEN || '';
   }
 
