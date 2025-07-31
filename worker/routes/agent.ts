@@ -12,7 +12,7 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
 
   try {
     const body = await request.json(); // Read body once here
-    const { messages, teamId, sessionId } = body;
+    const { messages, teamId, sessionId, language } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw HttpErrors.badRequest('No message content provided');
@@ -57,7 +57,7 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
     }
 
     // Run the legal intake agent directly
-    const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId);
+    const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, language);
     return createSuccessResponse(agentResponse, corsHeaders);
   } catch (error) {
     return handleError(error, corsHeaders);
@@ -86,7 +86,7 @@ export async function handleAgentStream(request: Request, env: Env, corsHeaders:
     const body = await request.json();
     console.log('📥 Request body:', body);
     
-    const { messages, teamId, sessionId } = body;
+    const { messages, teamId, sessionId, language } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw HttpErrors.badRequest('No message content provided');
@@ -140,7 +140,7 @@ export async function handleAgentStream(request: Request, env: Env, corsHeaders:
           
           // Run streaming agent
           console.log('📞 Calling runLegalIntakeAgentStream...');
-          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, controller);
+          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, controller, language);
           
           // Send completion event
           controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));

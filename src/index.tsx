@@ -98,6 +98,8 @@ export function App() {
 	const messageListRef = useRef<HTMLDivElement>(null);
 	const [isRecording, setIsRecording] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
+	// Language state
+	const [currentLanguage, setCurrentLanguage] = useState<string>('en');
 	// Agent handles all conversation flow - no manual state management needed
 
 	// State for team configuration
@@ -728,7 +730,8 @@ export function App() {
 		const requestBody = {
 			messages: messageHistory,
 			teamId: teamId,
-			sessionId: sessionId
+			sessionId: sessionId,
+			language: currentLanguage
 		};
 
 		// Use fetch with POST to send the request and get the stream
@@ -812,7 +815,7 @@ export function App() {
 									setMessages(prev => prev.map(msg => 
 										msg.id === placeholderId ? { 
 											...msg, 
-											content: currentContent + '\n\nProcessing your request...',
+											content: 'Processing your request...',
 											isLoading: true 
 										} : msg
 									));
@@ -905,7 +908,8 @@ export function App() {
 				body: JSON.stringify({
 					messages: messageHistory,
 					teamId: teamId,
-					sessionId: sessionId
+					sessionId: sessionId,
+					language: currentLanguage
 				})
 			});
 			
@@ -1736,6 +1740,8 @@ export function App() {
 							description: teamConfig.description
 						}}
 						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+						currentLanguage={currentLanguage}
+						onLanguageChange={setCurrentLanguage}
 					/>
 
 					{/* Mobile Bottom Navigation */}
