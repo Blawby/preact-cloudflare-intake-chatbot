@@ -484,38 +484,79 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   
   if (requiresPayment && consultationFee > 0) {
     try {
-      // Use mock service for development, real service for production
-      const isDevelopment = !env.PAYMENT_API_URL || env.PAYMENT_API_URL.includes('localhost');
-      const { PaymentService } = await import('../services/PaymentService.js');
-      const { MockPaymentService } = await import('../services/MockPaymentService.js');
-      const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
+      // Use Blawby API service if configured, otherwise fallback to mock service
+      const useBlawbyApi = env.BLAWBY_API_TOKEN && env.BLAWBY_API_URL;
       
-      const paymentRequest = {
-        customerInfo: {
-          name: name,
-          email: email || '',
-          phone: phone || '',
-          location: location || ''
-        },
-        matterInfo: {
-          type: matter_type,
-          description: description,
-          urgency: urgency,
-          opposingParty: opposing_party || ''
-        },
-        teamId: teamConfig?.id || 'default',
-        sessionId: 'session-' + Date.now()
-      };
-      
-      const paymentResult = await paymentService.createInvoice(paymentRequest);
-      
-      if (paymentResult.success) {
-        invoiceUrl = paymentResult.invoiceUrl;
-        paymentId = paymentResult.paymentId;
-        console.log('✅ Invoice created successfully:', { invoiceUrl, paymentId });
+      if (useBlawbyApi) {
+        const { BlawbyPaymentService } = await import('../services/BlawbyPaymentService.js');
+        const paymentService = new BlawbyPaymentService();
+        
+        const paymentRequest = {
+          customerInfo: {
+            name: name,
+            email: email || '',
+            phone: phone || '',
+            location: location || ''
+          },
+          matterInfo: {
+            type: matter_type,
+            description: description,
+            urgency: urgency,
+            opposingParty: opposing_party || ''
+          },
+          teamId: teamConfig?.id || 'default',
+          sessionId: 'session-' + Date.now()
+        };
+        
+        const paymentResult = await paymentService.createInvoice(paymentRequest);
+        
+        if (paymentResult.success) {
+          invoiceUrl = paymentResult.invoiceUrl;
+          paymentId = paymentResult.paymentId;
+          console.log('✅ Blawby API invoice created successfully:', { invoiceUrl, paymentId });
+        } else {
+          console.error('❌ Blawby API failed to create invoice:', paymentResult.error);
+          // Fallback to mock service
+          const { MockPaymentService } = await import('../services/MockPaymentService.js');
+          const mockPaymentService = new MockPaymentService(env);
+          const mockResult = await mockPaymentService.createInvoice(paymentRequest);
+          if (mockResult.success) {
+            invoiceUrl = mockResult.invoiceUrl;
+            paymentId = mockResult.paymentId;
+            console.log('✅ Fallback mock invoice created successfully:', { invoiceUrl, paymentId });
+          }
+        }
       } else {
-        console.error('❌ Failed to create invoice:', paymentResult.error);
-      }
+        // Use mock service for development
+        const { MockPaymentService } = await import('../services/MockPaymentService.js');
+        const paymentService = new MockPaymentService(env);
+      
+              const paymentRequest = {
+          customerInfo: {
+            name: name,
+            email: email || '',
+            phone: phone || '',
+            location: location || ''
+          },
+          matterInfo: {
+            type: matter_type,
+            description: description,
+            urgency: urgency,
+            opposingParty: opposing_party || ''
+          },
+          teamId: teamConfig?.id || 'default',
+          sessionId: 'session-' + Date.now()
+        };
+        
+        const paymentResult = await paymentService.createInvoice(paymentRequest);
+        
+        if (paymentResult.success) {
+          invoiceUrl = paymentResult.invoiceUrl;
+          paymentId = paymentResult.paymentId;
+          console.log('✅ Mock invoice created successfully:', { invoiceUrl, paymentId });
+        } else {
+          console.error('❌ Failed to create mock invoice:', paymentResult.error);
+        }
     } catch (error) {
       console.error('❌ Payment service error:', error);
     }
