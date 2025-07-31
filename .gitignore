@@ -44,6 +44,9 @@ coverage
 wrangler.toml
 .wrangler/
 
+# Team configuration (contains sensitive API keys)
+teams.json
+
 # Misc
 .cache
 .parcel-cache
