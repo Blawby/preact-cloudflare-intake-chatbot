@@ -9,7 +9,7 @@ A production-ready legal intake chatbot built with Cloudflare Workers AI, featur
 - **🤖 Intelligent Legal Intake Agent**: Cloudflare Workers AI-powered conversation handling
 - **📋 Step-by-Step Information Collection**: Systematic gathering of client details (Name → Phone → Email → Matter Details)
 - **⚖️ Legal Matter Classification**: Automatic classification of legal issues (Employment Law, Family Law, Personal Injury, etc.)
-- **💰 Payment Integration**: Automated consultation fee collection ($75) with team configuration
+- **💰 Flexible Payment Integration**: Blawby API integration with fallback support for multiple payment processors
 - **👨‍💼 Human-in-the-Loop Review**: Lawyer review queue for urgent/complex matters
 - **📱 Responsive Design**: Mobile-first interface with modern UI/UX
 - **🔒 Production Security**: OWASP-compliant security headers and validation
@@ -23,7 +23,8 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 **Core Components:**
 - **Legal Intake Agent**: Self-contained Cloudflare Workers AI with built-in memory and tool execution
 - **Tool Handlers**: Modular functions for contact collection, matter creation, lawyer review
-- **Team Configuration**: Dynamic payment and service configuration per team
+- **Team Configuration**: Dynamic payment and service configuration per team with Blawby API integration
+- **Payment Services**: Blawby API integration with fallback support for static payment links
 - **Review Queue**: Human-in-the-loop system for lawyer oversight
 
 ### 🧪 **Live Test Results:**
@@ -31,7 +32,7 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 ✅ **Employment Law**: "i got fired for downloading porn onmy work laptop" → Complete matter creation  
 ✅ **Family Law**: "i need help with my divorce" → Step-by-step collection + payment flow  
 ✅ **Personal Injury**: "i ran over my cousin with my golf cart" → Urgent matter classification  
-✅ **Payment Integration**: Automatic $75 consultation fee with team config  
+✅ **Payment Integration**: Blawby API integration with fallback support for multiple payment processors  
 ✅ **Lawyer Review**: Automatic escalation for urgent matters with review queue  
 
 ## 🛠️ **Technology Stack**
@@ -100,8 +101,9 @@ R2_BUCKET_NAME=your_r2_bucket_name
 AI_MODEL=@cf/meta/llama-3.1-8b-instruct
 
 # Team Configuration
-# Copy teams.example.json to teams.json and add your API keys
+# Copy teams.example.json to teams.json and configure payment settings
 cp teams.example.json teams.json
+# Configure Blawby API integration or static payment links per team
 
 # Rate Limiting
 RATE_LIMIT_REQUESTS_PER_MINUTE=60
@@ -176,6 +178,8 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 │   │   └── files.ts     # File upload handling
 │   ├── services/        # Business logic services
 │   │   ├── AIService.ts     # Simplified team config
+│   │   ├── BlawbyApiService.ts # Blawby API integration
+│   │   ├── BlawbyPaymentService.ts # Payment processing with fallbacks
 │   │   ├── ReviewService.ts # Human-in-the-loop review service
 │   │   └── WebhookService.ts # Essential webhook handling
 │   └── utils.ts         # Essential utilities only
@@ -236,7 +240,7 @@ The application is automatically deployed via GitHub Actions:
 | File Storage | ✅ Production Ready | R2 with CDN |
 | AI Integration | ✅ Production Ready | Llama 3.1 8B |
 | Legal Intake Agent | ✅ Production Ready | Self-contained agent |
-| Payment Integration | ✅ Production Ready | Team config support |
+| Payment Integration | ✅ Production Ready | Blawby API + fallback support |
 | Human-in-the-Loop | ✅ Production Ready | Review queue system |
 | Security Headers | ✅ OWASP Compliant | Comprehensive security |
 | Error Handling | ✅ Structured Logging | Centralized error management |
@@ -244,6 +248,74 @@ The application is automatically deployed via GitHub Actions:
 | Rate Limiting | ✅ 60 req/min | Burst protection |
 | CORS | ✅ Configured | Cross-origin support |
 | Monitoring | ✅ Health Checks | Deployment verification |
+
+## 💰 **Payment Integration**
+
+### **Supported Payment Scenarios**
+
+The system supports three payment scenarios to accommodate different team needs:
+
+#### **1. Blawby API Integration (Recommended)**
+- **Real customer creation** in staging.blawby.com
+- **Dynamic invoice generation** with payment links
+- **Automatic fallback** to static payment links if API fails
+- **Seamless integration** with Laravel staging.blawby.com app
+
+#### **2. Static Payment Links (Fallback)**
+- **Works with any payment processor** (Stripe, PayPal, etc.)
+- **Simple and reliable** configuration
+- **No dependency** on Blawby API
+- **Easy setup** for teams using other payment systems
+
+#### **3. Free Consultations**
+- **No payment processing** required
+- **Direct matter submission** to legal team
+- **Simple configuration** for pro bono services
+
+### **Payment Method Detection**
+
+The system automatically detects and logs the payment method used:
+- `blawby_api` - Full integration with staging.blawby.com
+- `fallback_link` - Static link after API failure
+- `static_link` - Static link only (no API integration)
+- `none` - Free consultations
+
+### **Configuration Examples**
+
+#### **Team with Blawby API Integration:**
+```json
+{
+  "requiresPayment": true,
+  "consultationFee": 75,
+  "paymentLink": "https://app.blawby.com/team/pay?amount=7500",
+  "blawbyApi": {
+    "enabled": true,
+    "apiKey": "your-api-key",
+    "teamUlid": "your-team-ulid"
+  }
+}
+```
+
+#### **Team with Static Payment Link:**
+```json
+{
+  "requiresPayment": true,
+  "consultationFee": 100,
+  "paymentLink": "https://stripe.com/pay/example-payment-link",
+  "blawbyApi": {
+    "enabled": false,
+    "apiKey": null,
+    "teamUlid": null
+  }
+}
+```
+
+### **Error Handling & Fallbacks**
+
+- **Graceful degradation** when Blawby API is unavailable
+- **Clear error messages** for users when payment fails
+- **Comprehensive logging** for debugging payment issues
+- **Automatic fallback** to static payment links
 
 ## 🏗️ **Architecture Simplification**
 
