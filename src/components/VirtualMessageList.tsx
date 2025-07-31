@@ -1,7 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState, useCallback } from 'preact/hooks';
 import Message from './Message';
-import LoadingIndicator from './LoadingIndicator';
 import TeamProfile from './TeamProfile';
 import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
@@ -210,7 +209,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             
             {startIndex > 0 && (
                 <div class="load-more-trigger">
-                    <LoadingIndicator />
+                    <div className="loading-text">Loading more messages...</div>
                 </div>
             )}
             <ErrorBoundary>

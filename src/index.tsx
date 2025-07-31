@@ -24,7 +24,7 @@ import { debounce } from './utils/debounce';
 import { Button } from './components/ui/Button';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
-import { getFormsEndpoint, getTeamsEndpoint, getAgentEndpoint } from './config/api';
+import { getFormsEndpoint, getTeamsEndpoint, getAgentEndpoint, getAgentStreamEndpoint } from './config/api';
 import { Matter } from './types/matter';
 
 import {
@@ -670,7 +670,7 @@ export function App() {
 			// Add a placeholder AI message immediately that will be updated
 			const placeholderId = Date.now().toString();
 			const placeholderMessage: ChatMessage = {
-				content: 'Thinking...',
+				content: '',
 				isUser: false,
 				isLoading: true,
 				id: placeholderId
@@ -692,57 +692,12 @@ export function App() {
 				content: message
 			});
 			
-			// Use the new agent API endpoint
-			const apiEndpoint = getAgentEndpoint();
-			
+			// Try streaming first, fallback to regular API
 			try {
-				const response = await fetch(apiEndpoint, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						messages: messageHistory,
-						teamId: teamId,
-						sessionId: sessionId
-					})
-				});
-				
-				if (!response.ok) {
-					throw new Error(`API response error: ${response.status}`);
-				}
-				
-				// Handle JSON response from agent API
-				const data = await response.json() as any;
-				
-				const aiResponseText = data.data?.response || data.response || 'I apologize, but I encountered an error processing your request.';
-				
-				// Update the placeholder message with the response
-				setMessages(prev => prev.map(msg => 
-					msg.id === placeholderId ? { 
-						...msg, 
-						content: aiResponseText,
-						isLoading: false 
-					} : msg
-				));
-				
-				// Handle any actions returned by the agent
-				if (data.data?.actions && data.data.actions.length > 0) {
-					console.log('Agent actions:', data.data.actions);
-					// Actions are handled on the backend, but we can log them here
-				}
-				
-			} catch (error) {
-				console.error('Error fetching from Agent API:', error);
-				
-				// Update placeholder with error message
-				setMessages(prev => prev.map(msg => 
-					msg.id === placeholderId ? { 
-						...msg, 
-						content: "Sorry, there was an error connecting to our AI service. Please try again later.",
-						isLoading: false 
-					} : msg
-				));
+				await sendMessageWithStreaming(messageHistory, teamId, sessionId, placeholderId);
+			} catch (streamingError) {
+				console.warn('Streaming failed, falling back to regular API:', streamingError);
+				await sendMessageWithRegularAPI(messageHistory, teamId, sessionId, placeholderId);
 			}
 			
 		} catch (error) {
@@ -754,6 +709,238 @@ export function App() {
 				msg.id === placeholderId ? { 
 					...msg, 
 					content: "Sorry, there was an error processing your request. Please try again.",
+					isLoading: false 
+				} : msg
+			));
+		}
+	};
+
+	// New streaming message handler using EventSource
+	const sendMessageWithStreaming = async (
+		messageHistory: any[], 
+		teamId: string, 
+		sessionId: string, 
+		placeholderId: string
+	) => {
+		const apiEndpoint = getAgentStreamEndpoint();
+		
+		// Create the request body
+		const requestBody = {
+			messages: messageHistory,
+			teamId: teamId,
+			sessionId: sessionId
+		};
+
+		// Use fetch with POST to send the request and get the stream
+		const response = await fetch(apiEndpoint, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(requestBody)
+		});
+
+		if (!response.ok) {
+			throw new Error(`Streaming API error: ${response.status}`);
+		}
+
+		// Get the response body as a readable stream
+		const reader = response.body?.getReader();
+		if (!reader) {
+			throw new Error('No response body available');
+		}
+
+		const decoder = new TextDecoder();
+		let buffer = '';
+		let currentContent = '';
+
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				
+				if (done) break;
+				
+				// Decode the chunk and add to buffer
+				buffer += decoder.decode(value, { stream: true });
+				
+				// Process complete SSE events
+				const lines = buffer.split('\n');
+				buffer = lines.pop() || ''; // Keep incomplete line in buffer
+				
+				for (const line of lines) {
+					if (line.startsWith('data: ')) {
+						try {
+							const data = JSON.parse(line.slice(6)); // Remove 'data: ' prefix
+							
+							switch (data.type) {
+								case 'connected':
+									// Connection established, start showing typing indicator
+									setMessages(prev => prev.map(msg => 
+										msg.id === placeholderId ? { 
+											...msg, 
+											content: 'AI is thinking...',
+											isLoading: true 
+										} : msg
+									));
+									break;
+									
+								case 'text':
+									// Add text chunk to current content
+									currentContent += data.text;
+									setMessages(prev => prev.map(msg => 
+										msg.id === placeholderId ? { 
+											...msg, 
+											content: currentContent,
+											isLoading: false 
+										} : msg
+									));
+									break;
+									
+								case 'typing':
+									// Show typing indicator during tool calls
+									setMessages(prev => prev.map(msg => 
+										msg.id === placeholderId ? { 
+											...msg, 
+											content: currentContent + '...',
+											isLoading: true 
+										} : msg
+									));
+									break;
+									
+								case 'tool_call':
+									// Tool call detected, show processing message
+									setMessages(prev => prev.map(msg => 
+										msg.id === placeholderId ? { 
+											...msg, 
+											content: currentContent + '\n\nProcessing your request...',
+											isLoading: true 
+										} : msg
+									));
+									break;
+									
+								case 'tool_result':
+									// Tool result received, update content
+									if (data.result && data.result.message) {
+										currentContent = data.result.message;
+										setMessages(prev => prev.map(msg => 
+											msg.id === placeholderId ? { 
+												...msg, 
+												content: currentContent,
+												isLoading: false 
+											} : msg
+										));
+									}
+									break;
+									
+								case 'final':
+									// Final response received
+									setMessages(prev => prev.map(msg => 
+										msg.id === placeholderId ? { 
+											...msg, 
+											content: data.response || currentContent,
+											isLoading: false 
+										} : msg
+									));
+									break;
+									
+								case 'error':
+									// Error occurred
+									setMessages(prev => prev.map(msg => 
+										msg.id === placeholderId ? { 
+											...msg, 
+											content: data.message || 'An error occurred while processing your request.',
+											isLoading: false 
+										} : msg
+									));
+									break;
+									
+								case 'security_block':
+									// Security block
+									setMessages(prev => prev.map(msg => 
+										msg.id === placeholderId ? { 
+											...msg, 
+											content: data.response || 'This request was blocked for security reasons.',
+											isLoading: false 
+										} : msg
+									));
+									break;
+									
+								case 'complete':
+									// Stream completed
+									setMessages(prev => prev.map(msg => 
+										msg.id === placeholderId ? { 
+											...msg, 
+											isLoading: false 
+										} : msg
+									));
+									break;
+							}
+						} catch (parseError) {
+							console.warn('Failed to parse SSE data:', parseError);
+						}
+					}
+				}
+			}
+		} finally {
+			reader.releaseLock();
+		}
+	};
+
+	// Fallback to regular API
+	const sendMessageWithRegularAPI = async (
+		messageHistory: any[], 
+		teamId: string, 
+		sessionId: string, 
+		placeholderId: string
+	) => {
+		// Use the new agent API endpoint
+		const apiEndpoint = getAgentEndpoint();
+		
+		try {
+			const response = await fetch(apiEndpoint, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					messages: messageHistory,
+					teamId: teamId,
+					sessionId: sessionId
+				})
+			});
+			
+			if (!response.ok) {
+				throw new Error(`API response error: ${response.status}`);
+			}
+			
+			// Handle JSON response from agent API
+			const data = await response.json() as any;
+			
+			const aiResponseText = data.data?.response || data.response || 'I apologize, but I encountered an error processing your request.';
+			
+			// Update the placeholder message with the response
+			setMessages(prev => prev.map(msg => 
+				msg.id === placeholderId ? { 
+					...msg, 
+					content: aiResponseText,
+					isLoading: false 
+				} : msg
+			));
+			
+			// Handle any actions returned by the agent
+			if (data.data?.actions && data.data.actions.length > 0) {
+				console.log('Agent actions:', data.data.actions);
+				// Actions are handled on the backend, but we can log them here
+			}
+			
+		} catch (error) {
+			console.error('Error fetching from Agent API:', error);
+			
+			// Update placeholder with error message
+			setMessages(prev => prev.map(msg => 
+				msg.id === placeholderId ? { 
+					...msg, 
+					content: "Sorry, there was an error connecting to our AI service. Please try again later.",
 					isLoading: false 
 				} : msg
 			));

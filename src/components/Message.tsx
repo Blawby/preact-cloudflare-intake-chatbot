@@ -185,18 +185,14 @@ const Message: FunctionComponent<MessageProps> = memo(({
 		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
 			{/* Agent handles welcome messages - no special logic needed */}
 			<div class="message-content">
-				{/* Show loading indicator if this message is loading */}
-				{isLoading ? (
-					<div class="loading-indicator">
-						<span class="dot"></span>
-						<span class="dot"></span>
-						<span class="dot"></span>
-					</div>
-				) : (
-					/* Render message content first */
-					content && (
-						<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
-					)
+				{/* Show content if available */}
+				{content && (
+					<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
+				)}
+				
+				{/* Show typing cursor for streaming content */}
+				{isLoading && content && (
+					<span class="typing-cursor">|</span>
 				)}
 				
 				{/* Then display scheduling components */}

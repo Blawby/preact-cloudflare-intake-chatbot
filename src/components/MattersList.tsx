@@ -1,7 +1,6 @@
 import { PlusIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { MattersListProps } from '../types/matter';
 import MatterCard from './MatterCard';
-import LoadingIndicator from './LoadingIndicator';
 import { Button } from './ui/Button';
 
 const MattersList = ({ matters, onMatterSelect, onCreateMatter, isLoading }: MattersListProps) => {
@@ -20,7 +19,7 @@ const MattersList = ({ matters, onMatterSelect, onCreateMatter, isLoading }: Mat
           </Button>
         </div>
         <div className="matters-loading">
-          <LoadingIndicator />
+          <div className="loading-text">Loading matters...</div>
         </div>
       </div>
     );
