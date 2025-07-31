@@ -103,5 +103,55 @@
         "teamUlid": "your-team-ulid-here"
       }
     }
+  },
+  {
+    "id": "01example-team-with-static-payment",
+    "slug": "example-static-payment-team",
+    "name": "Example Team with Static Payment",
+    "config": {
+      "aiModel": "llama",
+      "consultationFee": 100,
+      "requiresPayment": true,
+      "ownerEmail": "your-email@example.com",
+      "availableServices": [
+        "Family Law",
+        "Employment Law",
+        "General Consultation"
+      ],
+      "jurisdiction": {
+        "type": "state",
+        "description": "Available in California",
+        "supportedStates": ["CA"],
+        "supportedCountries": ["US"],
+        "primaryState": "CA"
+      },
+      "domain": "example-static-payment.blawby.com",
+      "description": "Example team using static payment links instead of Blawby API integration",
+      "paymentLink": "https://stripe.com/pay/example-payment-link",
+      "brandColor": "#dc2626",
+      "accentColor": "#ef4444",
+      "introMessage": "Welcome! I'm here to help you with legal assistance. How can I assist you today?",
+      "profileImage": null,
+      "webhooks": {
+        "enabled": false,
+        "url": "",
+        "secret": "",
+        "events": {
+          "matterCreation": false,
+          "matterDetails": false,
+          "contactForm": false,
+          "appointment": false
+        },
+        "retryConfig": {
+          "maxRetries": 3,
+          "retryDelay": 60
+        }
+      },
+      "blawbyApi": {
+        "enabled": false,
+        "apiKey": null,
+        "teamUlid": null
+      }
+    }
   }
 ] 

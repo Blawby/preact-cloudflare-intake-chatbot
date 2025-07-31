@@ -116,12 +116,7 @@ export class BlawbyApiService {
       currency: customerInfo.currency || 'USD',
       status: customerInfo.status || 'Lead',
       team_id: teamUlid,
-      // Optional address fields if location is provided
-      ...(customerInfo.location && {
-        address_line_1: customerInfo.location,
-        city: customerInfo.location.split(',')[0]?.trim(),
-        state: customerInfo.location.split(',')[1]?.trim(),
-      }),
+      // Note: Removed address fields as they cause API errors
     };
 
     console.log('Creating customer via Blawby API:', customerData);
@@ -147,9 +142,18 @@ export class BlawbyApiService {
     }
 
     // Find customer by email in the response
-    const customer = response.data?.customers?.data?.find((c: any) => c.email === email);
+    const customers = response.data?.customers?.data;
+    if (!customers || customers.length === 0) {
+      return {
+        success: false,
+        error: 'Customer not found',
+      };
+    }
+
+    // Since we're searching by email, the first result should be the customer we want
+    const customer = customers[0];
     
-    if (!customer) {
+    if (customer.email !== email) {
       return {
         success: false,
         error: 'Customer not found',
