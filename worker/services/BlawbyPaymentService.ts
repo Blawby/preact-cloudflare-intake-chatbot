@@ -32,8 +32,8 @@ interface PaymentResponse {
 export class BlawbyPaymentService {
   private blawbyApi: BlawbyApiService;
 
-  constructor() {
-    this.blawbyApi = new BlawbyApiService();
+  constructor(apiToken?: string, baseUrl?: string) {
+    this.blawbyApi = new BlawbyApiService(apiToken, baseUrl);
   }
 
   /**
