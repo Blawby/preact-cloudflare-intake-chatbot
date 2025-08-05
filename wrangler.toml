@@ -23,7 +23,6 @@ binding = "TEAM_SECRETS"
 id = "615f77c481444cfd936eb43109f89a3f"
 preview_id = "31a8a44bf1674e91bc1fbe0b8bd20e7c"
 experimental_remote = true
-
 [[d1_databases]]
 binding = "DB"
 database_name = "blawby-ai-chatbot"

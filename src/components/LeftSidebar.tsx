@@ -46,7 +46,7 @@ const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps
             <ThemeToggle />
             <div 
               className="left-sidebar-header"
-              onClick={() => onOpenMenu?.()}
+              onClick={onOpenMenu}
               title="Menu"
             >
               <Bars3Icon className="left-sidebar-icon" />

@@ -115,7 +115,6 @@ export function App() {
 			supportedCountries: string[];
 			primaryState?: string;
 		};
-		teamId?: string; // Store the actual team ID for API calls
 	}>({
 		name: 'Blawby AI',
 		profileImage: '/blawby-favicon-iframe.png',
@@ -356,8 +355,7 @@ export function App() {
 							description: 'Available nationwide',
 							supportedStates: ['all'],
 							supportedCountries: ['US']
-						},
-						teamId: team.id // Store the actual team ID for API calls
+						}
 					};
 					setTeamConfig(config);
 					setTeamNotFound(false);
@@ -401,10 +399,9 @@ export function App() {
 			alert('Missing team or session ID. Cannot upload files.');
 			return;
 		}
-		const actualTeamId = teamConfig?.teamId || teamId;
 		for (const file of files) {
 			try {
-				const uploaded = await uploadFileToBackend(file, actualTeamId, sessionId);
+				const uploaded = await uploadFileToBackend(file, teamId, sessionId);
 				const fileAttachment: FileAttachment = {
 					name: uploaded.fileName,
 					size: uploaded.fileSize,
@@ -424,9 +421,8 @@ export function App() {
 			alert('Missing team or session ID. Cannot upload files.');
 			return;
 		}
-		const actualTeamId = teamConfig?.teamId || teamId;
 		try {
-			const uploaded = await uploadFileToBackend(file, actualTeamId, sessionId);
+			const uploaded = await uploadFileToBackend(file, teamId, sessionId);
 			const fileAttachment: FileAttachment = {
 				name: uploaded.fileName,
 				size: uploaded.fileSize,
@@ -445,10 +441,9 @@ export function App() {
 			alert('Missing team or session ID. Cannot upload files.');
 			return;
 		}
-		const actualTeamId = teamConfig?.teamId || teamId;
 		for (const file of files) {
 			try {
-				const uploaded = await uploadFileToBackend(file, actualTeamId, sessionId);
+				const uploaded = await uploadFileToBackend(file, teamId, sessionId);
 				const fileAttachment: FileAttachment = {
 					name: uploaded.fileName,
 					size: uploaded.fileSize,
@@ -699,13 +694,10 @@ export function App() {
 			
 			// Try streaming first, fallback to regular API
 			try {
-				// Use the actual team ID from team config if available, otherwise fall back to the slug
-				const actualTeamId = teamConfig?.teamId || teamId;
-				await sendMessageWithStreaming(messageHistory, actualTeamId, sessionId, placeholderId);
+				await sendMessageWithStreaming(messageHistory, teamId, sessionId, placeholderId);
 			} catch (streamingError) {
 				console.warn('Streaming failed, falling back to regular API:', streamingError);
-				const actualTeamId = teamConfig?.teamId || teamId;
-				await sendMessageWithRegularAPI(messageHistory, actualTeamId, sessionId, placeholderId);
+				await sendMessageWithRegularAPI(messageHistory, teamId, sessionId, placeholderId);
 			}
 			
 		} catch (error) {

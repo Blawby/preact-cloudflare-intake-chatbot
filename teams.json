@@ -41,13 +41,12 @@
         "retryConfig": {
           "maxRetries": 3,
           "retryDelay": 60
+        },
+        "blawbyApi": {
+          "enabled": false,
+          "apiKey": null,
+          "teamUlid": null
         }
-      },
-      "blawbyApi": {
-        "enabled": false,
-        "apiKey": null,
-        "teamUlid": null
-      }
     }
   },
   {
@@ -95,13 +94,12 @@
         "retryConfig": {
           "maxRetries": 3,
           "retryDelay": 60
+        },
+        "blawbyApi": {
+          "enabled": true,
+          "apiKey": null,
+          "teamUlid": "01jq70jnstyfzevc6423czh50e"
         }
-      },
-      "blawbyApi": {
-        "enabled": true,
-        "apiKey": null,
-        "teamUlid": "01jq70jnstyfzevc6423czh50e"
-      }
     }
   }
 ] 

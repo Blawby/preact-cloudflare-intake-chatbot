@@ -18,25 +18,9 @@ import {
 } from '../utils/mediaAggregation';
 import { Button } from './ui/Button';
 import Lightbox from './Lightbox';
-import { FileAttachment } from '../types/media';
-
-interface Message {
-  id?: string;
-  content: string;
-  isUser: boolean;
-  files?: FileAttachment[];
-  matterCanvas?: {
-    matterId?: string;
-    matterNumber?: string;
-    service: string;
-    matterSummary: string;
-    answers?: Record<string, string>;
-  };
-  isLoading?: boolean;
-}
 
 interface MediaSidebarProps {
-  messages: Message[];
+  messages: any[];
 }
 
 const iconMap = {

@@ -86,13 +86,7 @@ interface VirtualMessageListProps {
     // Feedback props
     sessionId?: string;
     teamId?: string;
-    onFeedbackSubmit?: (feedback: Feedback) => void;
-}
-
-interface Feedback {
-  rating: number;
-  comment?: string;
-}
+    onFeedbackSubmit?: (feedback: any) => void;
 }
 
 const BATCH_SIZE = 20;

@@ -4,22 +4,6 @@ import MatterCanvas from './MatterCanvas';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
 import { Button } from './ui/Button';
-import { FileAttachment } from '../types/media';
-
-interface Message {
-  id?: string;
-  content: string;
-  isUser: boolean;
-  files?: FileAttachment[];
-  matterCanvas?: {
-    matterId?: string;
-    matterNumber?: string;
-    service: string;
-    matterSummary: string;
-    answers?: Record<string, string>;
-  };
-  isLoading?: boolean;
-}
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -37,7 +21,7 @@ interface MobileSidebarProps {
     
     answers?: Record<string, string>;
   } | null;
-  messages: Message[];
+  messages: any[];
   onViewMatter: () => void;
 }
 
