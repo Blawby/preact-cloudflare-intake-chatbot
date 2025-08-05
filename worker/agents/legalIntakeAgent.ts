@@ -152,10 +152,10 @@ async function processPayment(
       const apiUrl = 'https://staging.blawby.com';
       const paymentService = new BlawbyPaymentService(apiToken, apiUrl);
       
-      console.log('🔧 [DEBUG] Blawby API configuration:', {
-        apiToken: apiToken ? '***SET***' : 'NOT SET',
-        apiUrl
-      });
+                console.log('🔧 [DEBUG] Blawby API configuration:', {
+            hasApiToken: !!apiToken,
+            apiUrl
+          });
       
       const paymentRequest = {
         customerInfo: {
