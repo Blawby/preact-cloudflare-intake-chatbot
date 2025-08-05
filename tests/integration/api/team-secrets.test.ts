@@ -17,7 +17,7 @@ describe('Team Secrets API Integration Tests', () => {
         get: vi.fn().mockResolvedValue(JSON.stringify({
           teamId: '01jq70jnstyfzevc6423czh50e',
           apiKey: 'test-api-key',
-          teamUlid: '01jq70jnstyfzevc6423czh50e',
+          teamUlid: '01jq70jnstyfzevc6423czh50f',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         })),
@@ -35,7 +35,7 @@ describe('Team Secrets API Integration Tests', () => {
     it('should store a team secret successfully', async () => {
       const requestBody = {
         apiKey: 'test-production-key',
-        teamUlid: '01jq70jnstyfzevc6423czh50e'
+        teamUlid: '01jq70jnstyfzevc6423czh50f'
       };
 
       const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50e', {
@@ -55,7 +55,7 @@ describe('Team Secrets API Integration Tests', () => {
 
     it('should handle missing apiKey', async () => {
       const requestBody = {
-        teamUlid: '01jq70jnstyfzevc6423czh50e'
+        teamUlid: '01jq70jnstyfzevc6423czh50f'
       };
 
       const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50e', {
@@ -112,7 +112,7 @@ describe('Team Secrets API Integration Tests', () => {
       // Mock KV to return null for non-existent team
       mockEnv.TEAM_SECRETS.get = vi.fn().mockResolvedValue(null);
 
-      const request = new Request('http://localhost/api/team-secrets/non-existent-team', {
+      const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50g', {
         method: 'GET'
       });
 
@@ -129,7 +129,7 @@ describe('Team Secrets API Integration Tests', () => {
     it('should update a team secret successfully', async () => {
       const requestBody = {
         apiKey: 'updated-production-key',
-        teamUlid: '01jq70jnstyfzevc6423czh50e'
+        teamUlid: '01jq70jnstyfzevc6423czh50f'
       };
 
       const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50e', {
@@ -189,7 +189,7 @@ describe('Team Secrets API Integration Tests', () => {
 
       const requestBody = {
         apiKey: 'test-production-key',
-        teamUlid: '01jq70jnstyfzevc6423czh50e'
+        teamUlid: '01jq70jnstyfzevc6423czh50f'
       };
 
       const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50e', {
@@ -236,24 +236,108 @@ describe('Team Secrets API Integration Tests', () => {
       expect(responseData.data).not.toContain('test-api-key');
     });
 
-    it('should validate team ID format', async () => {
-      const requestBody = {
-        apiKey: 'test-production-key',
-        teamUlid: 'invalid-team-id'
-      };
+    describe('Team ID Format Validation', () => {
+      it('should reject invalid team ID format with 400 status', async () => {
+        const requestBody = {
+          apiKey: 'test-production-key',
+          teamUlid: 'invalid-team-id'
+        };
 
-      const request = new Request('http://localhost/api/team-secrets/invalid-team-id', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        const request = new Request('http://localhost/api/team-secrets/invalid-team-id', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
+        
+        expect(response.status).toBe(400);
+        const responseData = await response.json();
+        expect(responseData.success).toBe(false);
+        expect(responseData.error).toContain('Invalid team ID format');
       });
 
-      const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
-      
-      expect(response.status).toBe(400);
-      const responseData = await response.json();
-      expect(responseData.success).toBe(false);
-      expect(responseData.error).toContain('Invalid team ID format');
+      it('should reject team ID that is too short with 400 status', async () => {
+        const requestBody = {
+          apiKey: 'test-production-key',
+          teamUlid: '01jq70jnstyfzevc6423czh50f'
+        };
+
+        const request = new Request('http://localhost/api/team-secrets/short', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
+        
+        expect(response.status).toBe(400);
+        const responseData = await response.json();
+        expect(responseData.success).toBe(false);
+        expect(responseData.error).toContain('Invalid team ID format');
+      });
+
+      it('should reject team ID that is too long with 400 status', async () => {
+        const requestBody = {
+          apiKey: 'test-production-key',
+          teamUlid: '01jq70jnstyfzevc6423czh50f'
+        };
+
+        const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50e123456789', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
+        
+        expect(response.status).toBe(400);
+        const responseData = await response.json();
+        expect(responseData.success).toBe(false);
+        expect(responseData.error).toContain('Invalid team ID format');
+      });
+
+      it('should reject team ID with invalid characters with 400 status', async () => {
+        const requestBody = {
+          apiKey: 'test-production-key',
+          teamUlid: '01jq70jnstyfzevc6423czh50f'
+        };
+
+        const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50!', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
+        
+        expect(response.status).toBe(400);
+        const responseData = await response.json();
+        expect(responseData.success).toBe(false);
+        expect(responseData.error).toContain('Invalid team ID format');
+      });
+
+
+
+      it('should accept valid ULID format team ID with 200 status', async () => {
+        const requestBody = {
+          apiKey: 'test-production-key',
+          teamUlid: '01jq70jnstyfzevc6423czh50f'
+        };
+
+        const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50e', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
+        
+        expect(response.status).toBe(200);
+        const responseData = await response.json();
+        expect(responseData.success).toBe(true);
+        expect(responseData.data.success).toBe(true);
+      });
     });
   });
 }); 
