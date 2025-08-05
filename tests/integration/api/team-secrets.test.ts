@@ -200,10 +200,15 @@ describe('Team Secrets API Integration Tests', () => {
 
       const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
       
+      // Verify that the KV put method was actually called
+      expect(mockPut).toHaveBeenCalled();
+      
+      // Verify error response status and content
       expect(response.status).toBe(500);
       const responseData = await response.json();
       expect(responseData.success).toBe(false);
-      expect(responseData.error).toContain('storage error');
+      expect(responseData.error).toContain('KV storage error');
+      expect(responseData.errorCode).toBe('GENERIC_ERROR');
     });
 
     it('should handle invalid JSON in request body', async () => {
@@ -219,6 +224,36 @@ describe('Team Secrets API Integration Tests', () => {
       const responseData = await response.json();
       expect(responseData.success).toBe(false);
       expect(responseData.error).toContain('Invalid JSON');
+      expect(responseData.errorCode).toBe('GENERIC_ERROR');
+    });
+
+    it('should handle different types of KV storage errors', async () => {
+      // Test with a different type of KV error
+      const mockPut = vi.fn().mockRejectedValue(new Error('Database connection failed'));
+      mockEnv.TEAM_SECRETS.put = mockPut;
+
+      const requestBody = {
+        apiKey: 'test-production-key',
+        teamUlid: '01jq70jnstyfzevc6423czh50f'
+      };
+
+      const request = new Request('http://localhost/api/team-secrets/01jq70jnstyfzevc6423czh50e', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
+      
+      // Verify that the KV put method was actually called
+      expect(mockPut).toHaveBeenCalled();
+      
+      // Verify error response status and content
+      expect(response.status).toBe(500);
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData.error).toContain('Database connection failed');
+      expect(responseData.errorCode).toBe('GENERIC_ERROR');
     });
   });
 
