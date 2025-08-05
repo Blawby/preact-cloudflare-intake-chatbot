@@ -118,6 +118,131 @@ async function getTeamConfig(env: any, teamId: string) {
   }
 }
 
+// Helper function to process payment
+async function processPayment(
+  teamConfig: any,
+  parameters: any,
+  consultationFee: number
+): Promise<{ 
+  invoiceUrl: string | null, 
+  paymentId: string | null, 
+  paymentMethod: string,
+  success: boolean,
+  error?: string
+}> {
+  const { name, email, phone, location, matter_type, description, urgency, opposing_party } = parameters;
+  const paymentLink = teamConfig?.paymentLink || null;
+  
+  // Check if Blawby API is configured and enabled
+  const useBlawbyApi = teamConfig?.blawbyApi?.enabled && teamConfig?.blawbyApi?.apiKey;
+  
+  console.log('🔍 [DEBUG] Payment configuration check:', {
+    consultationFee,
+    hasPaymentLink: !!paymentLink,
+    blawbyApiEnabled: teamConfig?.blawbyApi?.enabled,
+    hasBlawbyApiKey: !!teamConfig?.blawbyApi?.apiKey,
+    useBlawbyApi
+  });
+  
+  if (useBlawbyApi) {
+    // Use Blawby API for integrated payment processing
+    try {
+      const { BlawbyPaymentService } = await import('../services/BlawbyPaymentService.js');
+      const apiToken = teamConfig.blawbyApi.apiKey;
+      const apiUrl = 'https://staging.blawby.com';
+      const paymentService = new BlawbyPaymentService(apiToken, apiUrl);
+      
+      console.log('🔧 [DEBUG] Blawby API configuration:', {
+        apiToken: apiToken ? '***SET***' : 'NOT SET',
+        apiUrl
+      });
+      
+      const paymentRequest = {
+        customerInfo: {
+          name: name,
+          email: email || '',
+          phone: phone || '',
+          location: location || ''
+        },
+        matterInfo: {
+          type: matter_type,
+          description: description,
+          urgency: urgency,
+          opposingParty: opposing_party || ''
+        },
+        teamId: teamConfig?.blawbyApi?.teamUlid || teamConfig?.id || 'default',
+        sessionId: 'session-' + Date.now()
+      };
+      
+      const paymentResult = await paymentService.createInvoice(paymentRequest);
+      console.log('🔍 [DEBUG] Blawby API payment result:', paymentResult);
+      
+      if (paymentResult.success) {
+        return {
+          invoiceUrl: paymentResult.invoiceUrl || null,
+          paymentId: paymentResult.paymentId || null,
+          paymentMethod: 'blawby_api',
+          success: true
+        };
+      } else {
+        // Fallback to static payment link if Blawby API fails
+        console.warn('⚠️ Blawby API failed, falling back to static payment link:', paymentResult.error);
+        if (paymentLink) {
+          return {
+            invoiceUrl: paymentLink,
+            paymentId: null,
+            paymentMethod: 'fallback_link',
+            success: true
+          };
+        } else {
+          return {
+            invoiceUrl: null,
+            paymentId: null,
+            paymentMethod: 'none',
+            success: false,
+            error: 'No fallback payment link available'
+          };
+        }
+      }
+    } catch (error) {
+      console.error('❌ Blawby API error, falling back to static payment link:', error);
+      if (paymentLink) {
+        return {
+          invoiceUrl: paymentLink,
+          paymentId: null,
+          paymentMethod: 'fallback_link',
+          success: true
+        };
+      } else {
+        return {
+          invoiceUrl: null,
+          paymentId: null,
+          paymentMethod: 'none',
+          success: false,
+          error: 'No fallback payment link available after API error'
+        };
+      }
+    }
+  } else if (paymentLink) {
+    // Use static payment link for teams without Blawby API integration
+    return {
+      invoiceUrl: paymentLink,
+      paymentId: null,
+      paymentMethod: 'static_link',
+      success: true
+    };
+  } else {
+    // No payment method configured
+    return {
+      invoiceUrl: null,
+      paymentId: null,
+      paymentMethod: 'none',
+      success: false,
+      error: 'No payment method configured for this team'
+    };
+  }
+}
+
 // Tool handlers mapping
 export const TOOL_HANDLERS = {
   collect_contact_info: handleCollectContactInfo,
@@ -479,112 +604,16 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   // Check if payment is required
   const requiresPayment = teamConfig?.requiresPayment || false;
   const consultationFee = teamConfig?.consultationFee || 0;
-  const paymentLink = teamConfig?.paymentLink || null;
   
-  // Payment processing logic - supports both Blawby API and fallback payment links
-  let invoiceUrl = null;
-  let paymentId = null;
-  let paymentMethod = 'none';
-  
+  // Process payment if required
+  let paymentResult = null;
   if (requiresPayment && consultationFee > 0) {
-    try {
-      // Check if Blawby API is configured and enabled
-      const useBlawbyApi = teamConfig?.blawbyApi?.enabled && teamConfig?.blawbyApi?.apiKey;
-      
-      console.log('🔍 [DEBUG] Payment configuration check:', {
-        requiresPayment,
-        consultationFee,
-        hasPaymentLink: !!paymentLink,
-        blawbyApiEnabled: teamConfig?.blawbyApi?.enabled,
-        hasBlawbyApiKey: !!teamConfig?.blawbyApi?.apiKey,
-        useBlawbyApi
-      });
-      
-      if (useBlawbyApi) {
-        // Use Blawby API for integrated payment processing
-        try {
-          const { BlawbyPaymentService } = await import('../services/BlawbyPaymentService.js');
-          const apiToken = teamConfig.blawbyApi.apiKey;
-          const apiUrl = 'https://staging.blawby.com';
-          const paymentService = new BlawbyPaymentService(apiToken, apiUrl);
-          
-          console.log('🔧 [DEBUG] Blawby API configuration:', {
-            apiToken: apiToken ? '***SET***' : 'NOT SET',
-            apiUrl
-          });
-          
-          const paymentRequest = {
-            customerInfo: {
-              name: name,
-              email: email || '',
-              phone: phone || '',
-              location: location || ''
-            },
-            matterInfo: {
-              type: matter_type,
-              description: description,
-              urgency: urgency,
-              opposingParty: opposing_party || ''
-            },
-            teamId: teamConfig?.blawbyApi?.teamUlid || teamConfig?.id || 'default',
-            sessionId: 'session-' + Date.now()
-          };
-          
-          const paymentResult = await paymentService.createInvoice(paymentRequest);
-          console.log('🔍 [DEBUG] Blawby API payment result:', paymentResult);
-          
-          if (paymentResult.success) {
-            invoiceUrl = paymentResult.invoiceUrl;
-            paymentId = paymentResult.paymentId;
-            paymentMethod = 'blawby_api';
-            console.log('✅ Blawby API invoice created successfully:', { invoiceUrl, paymentId });
-          } else {
-            // Fallback to static payment link if Blawby API fails
-            console.warn('⚠️ Blawby API failed, falling back to static payment link:', paymentResult.error);
-            if (paymentLink) {
-              invoiceUrl = paymentLink;
-              paymentMethod = 'fallback_link';
-              console.log('✅ Using fallback payment link:', invoiceUrl);
-            } else {
-              console.error('❌ No fallback payment link available');
-              return {
-                success: false,
-                message: `Sorry, we were unable to generate a payment link at this time. Please try again later or contact support.`
-              };
-            }
-          }
-        } catch (error) {
-          console.error('❌ Blawby API error, falling back to static payment link:', error);
-          if (paymentLink) {
-            invoiceUrl = paymentLink;
-            paymentMethod = 'fallback_link';
-            console.log('✅ Using fallback payment link after API error:', invoiceUrl);
-          } else {
-            console.error('❌ No fallback payment link available after API error');
-            return {
-              success: false,
-              message: `Sorry, we were unable to generate a payment link at this time. Please try again later or contact support.`
-            };
-          }
-        }
-      } else if (paymentLink) {
-        // Use static payment link for teams without Blawby API integration
-        invoiceUrl = paymentLink;
-        paymentMethod = 'static_link';
-        console.log('✅ Using static payment link:', invoiceUrl);
-      } else {
-        // No payment method configured
-        console.warn('⚠️ No payment method configured for this team');
-        return {
-          success: false,
-          message: 'Sorry, payment processing is not configured for this team. Please contact support.'
-        };
-      }
-    } catch (error) {
-      console.error('❌ Payment service error:', error);
+    paymentResult = await processPayment(teamConfig, parameters, consultationFee);
+    
+    if (!paymentResult.success) {
       return {
         success: false,
-        message: 'Sorry, there was an error processing your payment request. Please try again later or contact support.'
+        message: `Sorry, we were unable to generate a payment link at this time. ${paymentResult.error}. Please try again later or contact support.`
       };
     }
   }
@@ -607,17 +636,17 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
 - Description: ${description}
 - Urgency: ${urgency}`;
 
-  if (requiresPayment && consultationFee > 0) {
-    if (invoiceUrl) {
+  if (requiresPayment && consultationFee > 0 && paymentResult) {
+    if (paymentResult.invoiceUrl) {
       summaryMessage += `
 \nBefore we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
 \n**Next Steps:**
-1. Please complete the payment using this link: ${invoiceUrl}
+1. Please complete the payment using this link: ${paymentResult.invoiceUrl}
 2. Once payment is confirmed, a lawyer will contact you within 24 hours
 \nPlease complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
       
       // Add payment method info for debugging
-      console.log('💰 [DEBUG] Payment method used:', paymentMethod);
+      console.log('💰 [DEBUG] Payment method used:', paymentResult.paymentMethod);
     } else {
       // If no invoiceUrl, show error message
       summaryMessage += `\n\n❌ Sorry, we were unable to generate a payment link at this time. Please try again later or contact support.`;
@@ -640,9 +669,9 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
       opposing_party,
       requires_payment: requiresPayment,
       consultation_fee: consultationFee,
-      payment_link: invoiceUrl || paymentLink,
-      payment_method: paymentMethod,
-      payment_id: paymentId
+      payment_link: paymentResult?.invoiceUrl || null,
+      payment_method: paymentResult?.paymentMethod || 'none',
+      payment_id: paymentResult?.paymentId || null
     }
   };
   console.log('[handleCreateMatter] result:', JSON.stringify(result, null, 2));

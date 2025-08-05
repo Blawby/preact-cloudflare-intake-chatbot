@@ -33,7 +33,7 @@ describe('Payment API Integration', () => {
         urgency: 'high',
         opposingParty: 'ABC Company'
       },
-      teamId: 'test-team-123',
+      teamId: '01K0TNGNKTM4Q0AG0XF0A8ST0Q',
       sessionId: 'session-123'
     };
 
@@ -48,8 +48,8 @@ describe('Payment API Integration', () => {
     expect(response.status).toBe(200);
     const result = await response.json();
     expect(result.success).toBe(true);
-    expect(result.invoiceUrl).toBeDefined();
-    expect(result.paymentId).toBeDefined();
+    expect(result.data.invoiceUrl).toBeDefined();
+    expect(result.data.paymentId).toBeDefined();
   });
 
   it('should handle missing customer information', async () => {
@@ -64,7 +64,7 @@ describe('Payment API Integration', () => {
         description: 'Terminated for downloading porn on work laptop',
         urgency: 'high'
       },
-      teamId: 'test-team-123',
+      teamId: '01K0TNGNKTM4Q0AG0XF0A8ST0Q',
       sessionId: 'session-123'
     };
 
@@ -94,7 +94,7 @@ describe('Payment API Integration', () => {
         // Missing type and description
         urgency: 'high'
       },
-      teamId: 'test-team-123',
+      teamId: '01K0TNGNKTM4Q0AG0XF0A8ST0Q',
       sessionId: 'session-123'
     };
 
@@ -118,7 +118,8 @@ describe('Payment API Integration', () => {
       paymentId: 'pay_123456789',
       status: 'completed',
       amount: 5000, // $50.00 in cents
-      customerEmail: 'john@example.com'
+      customerEmail: 'john@example.com',
+      teamId: '01K0TNGNKTM4Q0AG0XF0A8ST0Q'
     };
 
     const response = await worker.fetch('/api/payment/webhook', {

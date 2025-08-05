@@ -284,23 +284,41 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
       const customerEmail = body.customerEmail || '';
 
       // Store payment history
-      await env.DB.prepare(`
-        INSERT INTO payment_history (
-          payment_id, team_id, customer_email, amount, status, 
-          event_type, metadata, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-        ON CONFLICT(payment_id) DO UPDATE SET
-          status = ?, updated_at = datetime('now')
-      `).bind(
-        paymentId,
-        body.teamId || 'unknown',
-        customerEmail,
-        amount,
-        status,
-        eventType,
-        JSON.stringify(body),
-        status
-      ).run();
+      try {
+        // First check if the team exists
+        const teamCheck = await env.DB.prepare(`
+          SELECT id FROM teams WHERE id = ?
+        `).bind(body.teamId || 'unknown').first();
+        
+        if (!teamCheck) {
+          console.warn('⚠️ Webhook: Team not found in database, using default team');
+          const defaultTeam = await env.DB.prepare('SELECT id FROM teams LIMIT 1').first();
+          if (defaultTeam) {
+            body.teamId = defaultTeam.id;
+          }
+        }
+        
+        await env.DB.prepare(`
+          INSERT INTO payment_history (
+            payment_id, team_id, customer_email, amount, status, 
+            event_type, metadata, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+          ON CONFLICT(payment_id) DO UPDATE SET
+            status = ?, updated_at = datetime('now')
+        `).bind(
+          paymentId,
+          body.teamId || 'unknown',
+          customerEmail,
+          amount,
+          status,
+          eventType,
+          JSON.stringify(body),
+          status
+        ).run();
+      } catch (error) {
+        console.error('❌ Failed to store payment history in webhook:', error);
+        // Don't fail the webhook if database storage fails
+      }
 
       switch (eventType) {
         case 'payment.completed':

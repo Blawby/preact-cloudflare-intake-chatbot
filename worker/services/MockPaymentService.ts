@@ -24,29 +24,40 @@ export class MockPaymentService {
       // Store payment history in database
       try {
         console.log('💰 [MOCK] Storing payment history in database...');
-        const result = await this.env.DB.prepare(`
-          INSERT INTO payment_history (
-            id, payment_id, team_id, customer_email, customer_name, customer_phone,
-            amount, status, event_type, matter_type, matter_description, invoice_url,
-            metadata, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-        `).bind(
-          `ph_${Date.now()}`,
-          paymentId,
-          paymentRequest.teamId,
-          paymentRequest.customerInfo.email,
-          paymentRequest.customerInfo.name,
-          paymentRequest.customerInfo.phone,
-          5000, // Mock amount in cents ($50.00)
-          'pending',
-          'payment.created',
-          paymentRequest.matterInfo.type,
-          paymentRequest.matterInfo.description,
-          invoiceUrl,
-          JSON.stringify(paymentRequest)
-        ).run();
+        
+        // First check if the team exists
+        const teamCheck = await this.env.DB.prepare(`
+          SELECT id FROM teams WHERE id = ?
+        `).bind(paymentRequest.teamId).first();
+        
+        if (!teamCheck) {
+          console.warn('⚠️ [MOCK] Team not found in database, skipping payment history storage');
+          console.warn('⚠️ [MOCK] Available teams:', await this.env.DB.prepare('SELECT id, slug FROM teams').all());
+        } else {
+          const result = await this.env.DB.prepare(`
+            INSERT INTO payment_history (
+              id, payment_id, team_id, customer_email, customer_name, customer_phone,
+              amount, status, event_type, matter_type, matter_description, invoice_url,
+              metadata, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+          `).bind(
+            `ph_${Date.now()}`,
+            paymentId,
+            paymentRequest.teamId,
+            paymentRequest.customerInfo.email,
+            paymentRequest.customerInfo.name,
+            paymentRequest.customerInfo.phone,
+            5000, // Mock amount in cents ($50.00)
+            'pending',
+            'payment.created',
+            paymentRequest.matterInfo.type,
+            paymentRequest.matterInfo.description,
+            invoiceUrl,
+            JSON.stringify(paymentRequest)
+          ).run();
 
-        console.log('✅ [MOCK] Payment history stored in database:', result);
+          console.log('✅ [MOCK] Payment history stored in database:', result);
+        }
       } catch (error) {
         console.error('❌ [MOCK] Failed to store payment history:', error);
         console.error('❌ [MOCK] Error details:', error.message);

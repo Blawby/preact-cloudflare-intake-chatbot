@@ -1,0 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+use vitest for tests
+use cloudflare best practices and use their llm docs for latest
