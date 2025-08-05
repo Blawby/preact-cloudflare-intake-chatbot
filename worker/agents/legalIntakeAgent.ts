@@ -171,7 +171,8 @@ async function processPayment(
           opposingParty: opposing_party || ''
         },
         teamId: teamConfig?.blawbyApi?.teamUlid || teamConfig?.id || 'default',
-        sessionId: 'session-' + Date.now()
+        sessionId: 'session-' + Date.now(),
+        consultationFee: consultationFee
       };
       
       const paymentResult = await paymentService.createInvoice(paymentRequest);

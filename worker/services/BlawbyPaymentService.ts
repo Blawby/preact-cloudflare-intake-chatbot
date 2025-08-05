@@ -19,6 +19,7 @@ interface PaymentRequest {
   matterInfo: MatterInfo;
   teamId: string;
   sessionId: string;
+  consultationFee?: number;
 }
 
 interface PaymentResponse {
@@ -80,7 +81,7 @@ export class BlawbyPaymentService {
       }
 
       // Create invoice for the customer
-      const consultationFee = 75; // This should come from team config
+      const consultationFee = paymentRequest.consultationFee || 75; // Use team config or fallback to default
       const invoiceDescription = `Consultation fee for ${matterInfo.type} matter: ${matterInfo.description}`;
       
       console.log('🔍 [BLAWBY] Creating invoice for customer:', customerId);
