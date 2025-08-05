@@ -55,7 +55,13 @@ interface MessageProps {
 	sessionId?: string;
 	teamId?: string;
 	showFeedback?: boolean;
-	onFeedbackSubmit?: (feedback: any) => void;
+	onFeedbackSubmit?: (feedback: Feedback) => void;
+}
+
+interface Feedback {
+	rating: number;
+	comment?: string;
+}
 }
 
 const formatFileSize = (bytes: number): string => {
