@@ -30,7 +30,7 @@ interface BlawbyApiResponse {
 }
 
 export class BlawbyApiService {
-  private baseUrl: string;
+  public baseUrl: string;
   private apiToken: string;
 
   constructor(apiToken?: string, baseUrl?: string) {

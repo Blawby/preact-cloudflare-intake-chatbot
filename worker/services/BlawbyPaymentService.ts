@@ -118,10 +118,19 @@ export class BlawbyPaymentService {
       const invoiceData = invoiceResponse.data.data;
       console.log('✅ [BLAWBY] Invoice created successfully:', invoiceData);
 
+      // Construct the correct payment URL based on the environment
+      let paymentUrl = invoiceData.payment_link;
+      if (this.blawbyApi.baseUrl.includes('staging')) {
+        // If we're using staging API, construct staging payment URL
+        const invoiceId = invoiceData.id;
+        paymentUrl = `https://staging.blawby.com/pay/${invoiceId}`;
+        console.log('🔧 [BLAWBY] Using staging payment URL:', paymentUrl);
+      }
+
       const paymentResult = {
         success: true,
         paymentId: invoiceData.id,
-        invoiceUrl: invoiceData.payment_link,
+        invoiceUrl: paymentUrl,
         customerId: customerId,
       };
 

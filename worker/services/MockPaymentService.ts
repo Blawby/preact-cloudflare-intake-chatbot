@@ -17,7 +17,9 @@ export class MockPaymentService {
 
       // Generate mock payment ID and invoice URL
       const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const invoiceUrl = `https://app.blawby.com/pay/inv_${Date.now()}`;
+      // Use staging URL for development environment
+      const baseUrl = this.env.ENVIRONMENT === 'production' ? 'https://app.blawby.com' : 'https://staging.blawby.com';
+      const invoiceUrl = `${baseUrl}/pay/inv_${Date.now()}`;
 
       console.log('✅ [MOCK] Payment API response:', { paymentId, invoiceUrl });
 
@@ -89,7 +91,9 @@ export class MockPaymentService {
       const statuses = ['pending', 'completed', 'failed'];
       const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
 
-      const invoiceUrl = `https://app.blawby.com/pay/inv_${paymentId.split('_')[1]}`;
+      // Use staging URL for development environment
+      const baseUrl = this.env.ENVIRONMENT === 'production' ? 'https://app.blawby.com' : 'https://staging.blawby.com';
+      const invoiceUrl = `${baseUrl}/pay/inv_${paymentId.split('_')[1]}`;
 
       return {
         success: true,
