@@ -45,7 +45,7 @@ wrangler.toml
 .wrangler/
 
 # Team configuration (contains sensitive API keys)
-teams.json
+teams.jsone
 
 # Misc
 .cache

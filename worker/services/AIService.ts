@@ -4,6 +4,11 @@ export interface TeamConfig {
   ownerEmail?: string;
   serviceQuestions?: Record<string, string[]>;
   availableServices?: string[];
+  blawbyApi?: {
+    enabled?: boolean;
+    apiKey?: string;
+    teamUlid?: string;
+  };
   webhooks?: {
     enabled?: boolean;
     url?: string;
@@ -27,6 +32,7 @@ export interface Env {
   CHAT_SESSIONS: KVNamespace;
   RESEND_API_KEY: string;
   FILES_BUCKET?: R2Bucket;
+  BLAWBY_API_TOKEN?: string;
 }
 
 // Optimized AI Service with caching and timeouts
@@ -35,6 +41,30 @@ export class AIService {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(private ai: any, private env: Env) {}
+
+  /**
+   * Substitute environment variables in configuration values
+   */
+  private substituteEnvVars(config: any): any {
+    if (typeof config === 'string') {
+      // Handle ${ENV_VAR} substitution
+      return config.replace(/\$\{([^}]+)\}/g, (match: string, envVar: string) => {
+        const value = this.env[envVar as keyof Env];
+        if (value === undefined) {
+          console.warn(`🔍 [AIService] Environment variable ${envVar} not found, keeping placeholder`);
+          return match;
+        }
+        return value;
+      });
+    } else if (typeof config === 'object' && config !== null) {
+      const result: any = Array.isArray(config) ? [] : {};
+      for (const [key, value] of Object.entries(config)) {
+        result[key] = this.substituteEnvVars(value);
+      }
+      return result;
+    }
+    return config;
+  }
   
   async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
     const controller = new AbortController();
@@ -76,11 +106,16 @@ export class AIService {
         console.log('🔍 [AIService] Raw config from DB:', teamRow.config);
         const config = JSON.parse(teamRow.config || '{}');
         console.log('🔍 [AIService] Parsed team config:', JSON.stringify(config, null, 2));
-        console.log('🔍 [AIService] Config requiresPayment:', config.requiresPayment);
-        console.log('🔍 [AIService] Config consultationFee:', config.consultationFee);
-        console.log('🔍 [AIService] Config blawbyApi:', config.blawbyApi);
-        this.teamConfigCache.set(teamId, { config, timestamp: Date.now() });
-        return config; // Return the config directly without wrapping it
+        
+        // Substitute environment variables in the config
+        const processedConfig = this.substituteEnvVars(config);
+        console.log('🔍 [AIService] Processed team config with env vars:', JSON.stringify(processedConfig, null, 2));
+        console.log('🔍 [AIService] Config requiresPayment:', processedConfig.requiresPayment);
+        console.log('🔍 [AIService] Config consultationFee:', processedConfig.consultationFee);
+        console.log('🔍 [AIService] Config blawbyApi:', processedConfig.blawbyApi);
+        
+        this.teamConfigCache.set(teamId, { config: processedConfig, timestamp: Date.now() });
+        return processedConfig; // Return the processed config
       } else {
         console.log('🔍 [AIService] No team found in database');
         console.log('🔍 [AIService] Available teams:');
@@ -97,8 +132,13 @@ export class AIService {
             if (team) {
               console.log('🔍 [AIService] Found team in teams.json:', team.id);
               console.log('🔍 [AIService] Team config from teams.json:', JSON.stringify(team.config, null, 2));
-              this.teamConfigCache.set(teamId, { config: team.config, timestamp: Date.now() });
-              return team.config;
+              
+              // Substitute environment variables in the config
+              const processedConfig = this.substituteEnvVars(team.config);
+              console.log('🔍 [AIService] Processed team config with env vars:', JSON.stringify(processedConfig, null, 2));
+              
+              this.teamConfigCache.set(teamId, { config: processedConfig, timestamp: Date.now() });
+              return processedConfig;
             }
           }
         } catch (fallbackError) {

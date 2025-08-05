@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BlawbyApiService } from '../BlawbyApiService';
 
 describe('BlawbyApiService', () => {
@@ -29,7 +30,7 @@ describe('BlawbyApiService', () => {
       const teamUlid = '01jw3mhms63s9jvx9299nbwq1g';
 
       // Mock fetch to return success response
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           message: 'Customer created successfully.',
@@ -47,7 +48,7 @@ describe('BlawbyApiService', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
-      expect(result.data.id).toBe('customer_123');
+      expect(result.data.data.id).toBe('customer_123');
     });
 
     it('should handle API errors gracefully', async () => {
@@ -60,7 +61,7 @@ describe('BlawbyApiService', () => {
       const teamUlid = '01jw3mhms63s9jvx9299nbwq1g';
 
       // Mock fetch to return error response
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 422,
         json: async () => ({
@@ -84,7 +85,7 @@ describe('BlawbyApiService', () => {
       const teamUlid = '01jw3mhms63s9jvx9299nbwq1g';
 
       // Mock fetch to return customer list
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           customers: {
@@ -113,7 +114,7 @@ describe('BlawbyApiService', () => {
       const teamUlid = '01jw3mhms63s9jvx9299nbwq1g';
 
       // Mock fetch to return empty customer list
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           customers: {
@@ -137,7 +138,7 @@ describe('BlawbyApiService', () => {
       const description = 'Legal consultation';
 
       // Mock fetch to return success response
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           message: 'Invoice created successfully.',
@@ -157,8 +158,8 @@ describe('BlawbyApiService', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
-      expect(result.data.id).toBe('inv_123');
-      expect(result.data.payment_link).toBe('https://app.blawby.com/pay/inv_123');
+      expect(result.data.data.id).toBe('inv_123');
+      expect(result.data.data.payment_link).toBe('https://app.blawby.com/pay/inv_123');
     });
   });
 }); 
