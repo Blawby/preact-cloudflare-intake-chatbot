@@ -36,6 +36,8 @@ export interface Env {
   TEAM_SECRETS: KVNamespace;
   RESEND_API_KEY: string;
   FILES_BUCKET?: any;
+  TEAMS_FALLBACK_URL?: string;
+  ENVIRONMENT?: string;
 }
 
 // Optimized AI Service with caching and timeouts
@@ -89,27 +91,33 @@ export class AIService {
         const allTeams = await this.env.DB.prepare('SELECT id, slug FROM teams').all();
         console.log('🔍 [AIService] All teams:', allTeams);
         
-        // Fallback to teams.json file
-        console.log('🔍 [AIService] Trying fallback to teams.json...');
-        try {
-          const teamsResponse = await fetch('https://blawby-ai-chatbot.paulchrisluke.workers.dev/teams.json');
-          if (teamsResponse.ok) {
-            const teams = await teamsResponse.json();
-            const team = teams.find((t: any) => t.id === teamId || t.slug === teamId);
-            if (team) {
-              console.log('🔍 [AIService] Found team in teams.json:', team.id);
-              console.log('🔍 [AIService] Team config from teams.json:', JSON.stringify(team.config, null, 2));
-              
-              // Resolve dynamic API keys from KV storage
-              const processedConfig = await this.resolveTeamSecrets(teamId, team.config);
-              console.log('🔍 [AIService] Processed team config with secrets:', JSON.stringify(processedConfig, null, 2));
-              
-              this.teamConfigCache.set(teamId, { config: processedConfig, timestamp: Date.now() });
-              return processedConfig;
+        // Fallback to teams.json file (only in development or if explicitly configured)
+        const shouldUseFallback = this.env.ENVIRONMENT !== 'production' || this.env.TEAMS_FALLBACK_URL;
+        if (shouldUseFallback) {
+          console.log('🔍 [AIService] Trying fallback to teams.json...');
+          try {
+            const fallbackUrl = this.env.TEAMS_FALLBACK_URL || 'https://blawby-ai-chatbot.paulchrisluke.workers.dev/teams.json';
+            const teamsResponse = await fetch(fallbackUrl);
+            if (teamsResponse.ok) {
+              const teams = await teamsResponse.json();
+              const team = teams.find((t: any) => t.id === teamId || t.slug === teamId);
+              if (team) {
+                console.log('🔍 [AIService] Found team in teams.json:', team.id);
+                console.log('🔍 [AIService] Team config from teams.json:', JSON.stringify(team.config, null, 2));
+                
+                // Resolve dynamic API keys from KV storage
+                const processedConfig = await this.resolveTeamSecrets(teamId, team.config);
+                console.log('🔍 [AIService] Processed team config with secrets:', JSON.stringify(processedConfig, null, 2));
+                
+                this.teamConfigCache.set(teamId, { config: processedConfig, timestamp: Date.now() });
+                return processedConfig;
+              }
             }
+          } catch (fallbackError) {
+            console.warn('🔍 [AIService] Failed to load teams.json:', fallbackError);
           }
-        } catch (fallbackError) {
-          console.warn('🔍 [AIService] Failed to load teams.json:', fallbackError);
+        } else {
+          console.log('🔍 [AIService] Skipping fallback in production environment');
         }
       }
     } catch (error) {
