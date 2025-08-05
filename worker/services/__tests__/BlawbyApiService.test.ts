@@ -218,6 +218,35 @@ describe('BlawbyApiService', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Customer not found');
     });
+
+    it('should handle case-insensitive email comparison', async () => {
+      const email = 'JOHN@EXAMPLE.COM'; // Different case
+      const teamUlid = '01jw3mhms63s9jvx9299nbwq1g';
+
+      // Mock fetch to return customer with lowercase email
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          customers: {
+            data: [
+              {
+                id: 'customer_123',
+                name: 'John Doe',
+                email: 'john@example.com', // Lowercase in database
+                phone: '555-123-4567',
+                status: 'Lead'
+              }
+            ]
+          }
+        })
+      });
+
+      const result = await blawbyApi.getCustomerByEmail(teamUlid, email);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data.email).toBe('john@example.com');
+    });
   });
 
   describe('createInvoice', () => {

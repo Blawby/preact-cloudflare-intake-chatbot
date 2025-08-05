@@ -235,7 +235,7 @@ export class BlawbyApiService {
     // Since we're searching by email, the first result should be the customer we want
     const customer = customers[0];
     
-    if (customer.email !== email) {
+    if (customer.email.toLowerCase() !== email.toLowerCase()) {
       return {
         success: false,
         error: 'Customer not found',
