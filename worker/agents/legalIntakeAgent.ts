@@ -150,7 +150,7 @@ async function processPayment(
       const { BlawbyPaymentService } = await import('../services/BlawbyPaymentService.js');
       const apiToken = teamConfig.blawbyApi.apiKey;
       const apiUrl = 'https://staging.blawby.com';
-      const paymentService = new BlawbyPaymentService(apiToken, apiUrl);
+      const paymentService = new BlawbyPaymentService(apiToken, apiUrl, env);
       
                 console.log('🔧 [DEBUG] Blawby API configuration:', {
             hasApiToken: !!apiToken,

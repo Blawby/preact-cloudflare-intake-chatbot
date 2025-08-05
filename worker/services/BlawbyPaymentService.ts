@@ -32,9 +32,11 @@ interface PaymentResponse {
 
 export class BlawbyPaymentService {
   private blawbyApi: BlawbyApiService;
+  private env?: any; // Database environment
 
-  constructor(apiToken?: string, baseUrl?: string) {
+  constructor(apiToken?: string, baseUrl?: string, env?: any) {
     this.blawbyApi = new BlawbyApiService(apiToken, baseUrl);
+    this.env = env;
   }
 
   /**
@@ -108,12 +110,17 @@ export class BlawbyPaymentService {
       const invoiceData = invoiceResponse.data.data;
       console.log('✅ [BLAWBY] Invoice created successfully:', invoiceData);
 
-      return {
+      const paymentResult = {
         success: true,
         paymentId: invoiceData.id,
         invoiceUrl: invoiceData.payment_link,
         customerId: customerId,
       };
+
+      // Store payment history for audit compliance
+      await this.storePaymentHistory(paymentRequest, paymentResult, consultationFee);
+
+      return paymentResult;
 
     } catch (error) {
       console.error('❌ [BLAWBY] Error in createInvoice:', error);
@@ -147,19 +154,88 @@ export class BlawbyPaymentService {
     }
   }
 
-  /**
-   * Store payment history in database
+    /**
+   * Store payment history in database for audit compliance
    */
-  async storePaymentHistory(paymentData: any): Promise<void> {
+  async storePaymentHistory(
+    paymentRequest: PaymentRequest,
+    paymentResult: PaymentResponse,
+    consultationFee: number
+  ): Promise<void> {
     try {
       console.log('💰 [BLAWBY] Storing payment history in database...');
-      
-      // This would store payment history in the local database
-      // For now, we'll just log it
-      console.log('✅ [BLAWBY] Payment history stored successfully');
+
+      if (!this.env?.DB) {
+        console.warn('⚠️ [BLAWBY] No database environment available, skipping payment history storage');
+        return;
+      }
+
+      const { customerInfo, matterInfo, teamId } = paymentRequest;
+      const { paymentId, invoiceUrl, customerId } = paymentResult;
+
+      // Generate a unique ID for the payment history record
+      const historyId = `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Prepare the payment history data
+      const paymentHistoryData = {
+        id: historyId,
+        payment_id: paymentId || `temp_${Date.now()}`,
+        team_id: teamId,
+        customer_email: customerInfo.email,
+        customer_name: customerInfo.name,
+        customer_phone: customerInfo.phone || '',
+        amount: consultationFee * 100, // Convert to cents
+        currency: 'USD',
+        status: paymentResult.success ? 'pending' : 'failed',
+        event_type: paymentResult.success ? 'payment.created' : 'payment.failed',
+        matter_type: matterInfo.type,
+        matter_description: matterInfo.description,
+        invoice_url: invoiceUrl || null,
+        metadata: JSON.stringify({
+          customerId,
+          sessionId: paymentRequest.sessionId,
+          urgency: matterInfo.urgency,
+          opposingParty: matterInfo.opposingParty,
+          paymentMethod: 'blawby_api',
+          consultationFee,
+          originalRequest: paymentRequest,
+          paymentResult
+        }),
+        notes: `Payment created via Blawby API. Matter: ${matterInfo.type} - ${matterInfo.description}. Urgency: ${matterInfo.urgency}.`
+      };
+
+      console.log('🔍 [BLAWBY] Payment history data:', paymentHistoryData);
+
+      // Insert payment history into database
+      const result = await this.env.DB.prepare(`
+        INSERT INTO payment_history (
+          id, payment_id, team_id, customer_email, customer_name, customer_phone,
+          amount, currency, status, event_type, matter_type, matter_description,
+          invoice_url, metadata, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(
+        paymentHistoryData.id,
+        paymentHistoryData.payment_id,
+        paymentHistoryData.team_id,
+        paymentHistoryData.customer_email,
+        paymentHistoryData.customer_name,
+        paymentHistoryData.customer_phone,
+        paymentHistoryData.amount,
+        paymentHistoryData.currency,
+        paymentHistoryData.status,
+        paymentHistoryData.event_type,
+        paymentHistoryData.matter_type,
+        paymentHistoryData.matter_description,
+        paymentHistoryData.invoice_url,
+        paymentHistoryData.metadata,
+        paymentHistoryData.notes
+      ).run();
+
+      console.log('✅ [BLAWBY] Payment history stored successfully:', result);
     } catch (error) {
       console.error('❌ [BLAWBY] Failed to store payment history:', error);
-      throw error;
+      // Don't throw error to avoid breaking the payment flow
+      // Just log it for debugging purposes
     }
   }
 } 

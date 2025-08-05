@@ -195,5 +195,80 @@ describe('BlawbyPaymentService', () => {
         expect.stringContaining('Consultation fee for Criminal Defense matter')
       );
     });
+
+    it('should store payment history when database environment is available', async () => {
+      // Mock database environment
+      const mockEnv = {
+        DB: {
+          prepare: vi.fn().mockReturnValue({
+            bind: vi.fn().mockReturnValue({
+              run: vi.fn().mockResolvedValue({ success: true })
+            })
+          })
+        }
+      };
+
+      const paymentServiceWithDb = new BlawbyPaymentService('test-token', 'https://test.blawby.com', mockEnv);
+
+      const paymentRequest = {
+        customerInfo: {
+          name: 'Test Customer',
+          email: 'test@example.com',
+          phone: '555-999-8888',
+        },
+        matterInfo: {
+          type: 'Family Law',
+          description: 'Divorce case',
+          urgency: 'Medium',
+        },
+        teamId: 'team-db-test',
+        sessionId: 'session-db-test',
+        consultationFee: 150,
+      };
+
+      // Mock customer exists
+      mockGetCustomerByEmail.mockResolvedValue({
+        success: true,
+        data: { id: 'customer-db-test', email: 'test@example.com' },
+      });
+
+      // Mock invoice creation
+      mockCreateInvoice.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            id: 'invoice-db-test',
+            payment_link: 'https://test.blawby.com/pay/invoice-db-test',
+          },
+        },
+      });
+
+      const result = await paymentServiceWithDb.createInvoice(paymentRequest);
+
+      expect(result.success).toBe(true);
+
+      // Verify that database insert was called
+      expect(mockEnv.DB.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO payment_history'));
+      
+      // Verify the bind parameters include the expected data
+      const bindCall = mockEnv.DB.prepare().bind;
+      expect(bindCall).toHaveBeenCalledWith(
+        expect.stringMatching(/^ph_\d+_/), // history ID
+        'invoice-db-test', // payment ID
+        'team-db-test', // team ID
+        'test@example.com', // customer email
+        'Test Customer', // customer name
+        '555-999-8888', // customer phone
+        15000, // amount in cents (150 * 100)
+        'USD', // currency
+        'pending', // status
+        'payment.created', // event type
+        'Family Law', // matter type
+        'Divorce case', // matter description
+        'https://test.blawby.com/pay/invoice-db-test', // invoice URL
+        expect.stringContaining('"customerId":"customer-db-test"'), // metadata
+        expect.stringContaining('Payment created via Blawby API') // notes
+      );
+    });
   });
 }); 
