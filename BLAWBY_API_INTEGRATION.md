@@ -1,136 +1,178 @@
-# Blawby API Integration
+# Blawby API Integration Guide
 
-This document describes the integration with the app.blawby.com API for client creation and invoice generation.
+This guide explains how to set up the Blawby API integration to create real invoices instead of using static payment links.
 
 ## Overview
 
-The integration replaces the mock payment service with real API calls to app.blawby.com for:
-- Creating customers/clients
-- Generating invoices
-- Managing payment links
-- Tracking payment status
+The chatbot system supports two payment methods:
 
-## Environment Variables
+1. **Blawby API Integration** (Recommended) - Creates real customers and invoices in staging.blawby.com
+2. **Static Payment Links** (Fallback) - Uses pre-configured payment links
 
-Add the following environment variables to your `.env` file:
+## Current Issue
+
+The North Carolina Legal Services team is currently using a **static payment link** instead of the Blawby API because the API key is not configured.
+
+## How to Enable Blawby API Integration
+
+### Step 1: Get Blawby API Key
+
+1. Contact the Blawby team to get an API key for your team
+2. The API key should have permissions to create customers and invoices
+
+### Step 2: Store API Key in KV Storage
+
+Use the team secrets API to store the API key:
 
 ```bash
-# Blawby API Configuration
-BLAWBY_API_URL=https://app.blawby.com
-BLAWBY_API_TOKEN=your_blawby_api_token_here
-BLAWBY_TEAM_ULID=your_team_ulid_here
+curl -X POST "https://your-worker.workers.dev/api/team-secrets/01jq70jnstyfzevc6423czh50e" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "apiKey": "your-actual-blawby-api-key",
+    "teamUlid": "01jq70jnstyfzevc6423czh50e"
+  }'
 ```
 
-### Configuration Details
+### Step 3: Verify Configuration
 
-- `BLAWBY_API_URL`: The base URL for the Blawby API (defaults to https://app.blawby.com)
-- `BLAWBY_API_TOKEN`: Your API token from the Blawby dashboard
-- `BLAWBY_TEAM_ULID`: The ULID of your team in the Blawby system
+The team configuration in `teams.json` should have:
 
-## API Endpoints Used
+```json
+{
+  "blawbyApi": {
+    "enabled": true,
+    "apiKey": null,  // This will be populated from KV storage
+    "teamUlid": "01jq70jnstyfzevc6423czh50e"
+  }
+}
+```
 
-### Customer Management
-- `POST /api/v1/teams/{team}/customer` - Create new customer
-- `GET /api/v1/teams/{team}/customers?search={email}` - Find existing customer
-- `PUT /api/v1/teams/{team}/customers/{customer_id}` - Update customer status
+## How It Works
 
-### Invoice Management
-- `POST /api/v1/teams/{team}/invoice` - Create new invoice
-- `GET /api/v1/teams/{team}/invoices/{invoice_id}` - Get invoice details
+### 1. API Key Resolution
 
-## Services
+The `AIService` automatically resolves API keys from KV storage:
 
-### BlawbyApiService
+```typescript
+// In AIService.resolveTeamSecrets()
+if (config.blawbyApi?.enabled) {
+  const apiKey = await this.teamSecretsService.getBlawbyApiKey(teamId);
+  const teamUlid = await this.teamSecretsService.getBlawbyTeamUlid(teamId);
+  
+  if (apiKey && teamUlid) {
+    config.blawbyApi.apiKey = apiKey;
+    config.blawbyApi.teamUlid = teamUlid;
+  } else {
+    config.blawbyApi.enabled = false; // Fallback to static link
+  }
+}
+```
 
-The core service that handles all API communication with app.blawby.com.
+### 2. Payment Processing Flow
 
-**Key Methods:**
-- `createCustomer(teamUlid, customerInfo)` - Creates a new customer
-- `getCustomerByEmail(teamUlid, email)` - Finds existing customer by email
-- `createInvoice(teamUlid, customerId, amount, description)` - Creates an invoice
-- `getInvoice(teamUlid, invoiceId)` - Gets invoice details
-- `updateCustomerStatus(teamUlid, customerId, status)` - Updates customer status
-- `createCustomerMemo(teamUlid, customerId, content)` - Creates a memo for a customer
+1. **Check Blawby API Configuration**:
+   ```typescript
+   const useBlawbyApi = teamConfig?.blawbyApi?.enabled && teamConfig?.blawbyApi?.apiKey;
+   ```
 
-### BlawbyPaymentService
+2. **If API Key Available**:
+   - Create customer in staging.blawby.com
+   - Generate real invoice with payment link
+   - Return actual invoice URL
 
-A higher-level service that orchestrates the customer and invoice creation process.
+3. **If API Key Missing**:
+   - Fall back to static payment link
+   - Log warning about missing API key
 
-**Key Methods:**
-- `createInvoice(paymentRequest)` - Creates customer + invoice in one flow
-- `getPaymentStatus(paymentId)` - Checks payment status
-- `storePaymentHistory(paymentData)` - Stores payment records
+### 3. Debug Information
 
-## Integration Flow
+The system logs detailed information about the payment method used:
 
-1. **Client submits intake form** with contact information and matter details
-2. **System checks** if customer already exists by email
-3. **If customer exists**, uses existing customer ID
-4. **If customer doesn't exist**, creates new customer via API
-5. **Creates invoice** for the consultation fee
-6. **Returns payment link** to the client
-7. **Client completes payment** via the payment link
-8. **System tracks payment status** (future enhancement)
+```
+🔍 [DEBUG] Payment configuration check: {
+  consultationFee: 75,
+  hasPaymentLink: true,
+  blawbyApiEnabled: true,
+  hasBlawbyApiKey: false,  // This should be true when API key is stored
+  useBlawbyApi: false,     // This should be true when API key is stored
+  teamId: "01jq70jnstyfzevc6423czh50e"
+}
+```
 
-## Error Handling
+## Benefits of Blawby API Integration
 
-The integration includes comprehensive error handling:
+1. **Real Customer Creation**: Creates actual customer records in staging.blawby.com
+2. **Real Invoice Generation**: Generates proper invoices with unique payment links
+3. **Payment Tracking**: Integrates with the Laravel app for payment tracking
+4. **Audit Compliance**: Stores payment history for compliance
+5. **Professional Experience**: Provides seamless integration
 
-- **API Failures**: Logs errors and falls back to mock service
-- **Customer Creation Failures**: Returns error message to user
-- **Invoice Creation Failures**: Logs error and provides fallback
-- **Network Issues**: Implements retry logic with exponential backoff
+## Troubleshooting
 
-## Feature Flags
+### Issue: Still Using Static Payment Link
 
-The system uses environment variables as feature flags:
+**Symptoms**:
+- Payment link is always the same (static)
+- No customer created in staging.blawby.com
+- Debug logs show `hasBlawbyApiKey: false`
 
-- **Blawby API Enabled**: When `BLAWBY_API_TOKEN` and `BLAWBY_API_URL` are set
-- **Fallback to Mock**: When API is not configured or fails
-- **Development Mode**: Uses mock service when API is not available
+**Solutions**:
+1. Verify API key is stored in KV storage
+2. Check team configuration has `blawbyApi.enabled: true`
+3. Ensure teamUlid matches the stored value
+
+### Issue: API Key Not Found
+
+**Symptoms**:
+- Debug logs show `⚠️ Blawby API is enabled but no API key found`
+- Fallback to static payment link
+
+**Solutions**:
+1. Store API key using the team secrets API
+2. Verify the team ID matches the stored key
+3. Check KV storage permissions
+
+### Issue: API Errors
+
+**Symptoms**:
+- Debug logs show `❌ Blawby API error`
+- Fallback to static payment link
+
+**Solutions**:
+1. Verify API key is valid
+2. Check API permissions
+3. Ensure staging.blawby.com is accessible
 
 ## Testing
 
-Run the tests to verify the integration:
+To test the integration:
 
-```bash
-npm test worker/services/__tests__/BlawbyApiService.test.ts
-```
+1. **Store API Key**:
+   ```bash
+   curl -X POST "https://your-worker.workers.dev/api/team-secrets/01jq70jnstyfzevc6423czh50e" \
+     -H "Content-Type: application/json" \
+     -d '{"apiKey": "test-api-key", "teamUlid": "01jq70jnstyfzevc6423czh50e"}'
+   ```
 
-## Migration from Mock Service
+2. **Test Payment Flow**:
+   - Start a conversation with the chatbot
+   - Complete the intake form
+   - Verify real invoice is created
 
-The integration is designed to be backward compatible:
+3. **Check Debug Logs**:
+   - Look for `🔍 [DEBUG] Blawby API payment result`
+   - Verify `paymentMethod: 'blawby_api'`
 
-1. **Phase 1**: New services created alongside existing mock service
-2. **Phase 2**: Feature flag controls which service to use
-3. **Phase 3**: Testing with real API in staging environment
-4. **Phase 4**: Production deployment with fallback to mock
-5. **Phase 5**: Remove mock service once stable
+## Security Notes
 
-## API Authentication
+- API keys are stored securely in KV storage
+- Keys are redacted in debug logs
+- Fallback mechanisms ensure reliability
+- No sensitive data is logged
 
-All API requests require authentication using the Bearer token:
+## Next Steps
 
-```
-Authorization: Bearer YOUR_API_TOKEN
-```
-
-## Rate Limiting
-
-The API includes built-in rate limiting. The service handles rate limit responses gracefully and implements exponential backoff for retries.
-
-## Monitoring
-
-The integration includes comprehensive logging:
-
-- `💰 [BLAWBY]` - Payment-related operations
-- `✅ [BLAWBY]` - Successful operations
-- `❌ [BLAWBY]` - Error conditions
-
-## Future Enhancements
-
-- Webhook integration for payment confirmations
-- Real-time payment status updates
-- Customer memo integration for matter details
-- Invoice status tracking
-- Payment history synchronization 
+1. **Get API Key**: Contact Blawby team for API key
+2. **Store API Key**: Use the team secrets API to store it
+3. **Test Integration**: Verify real invoices are created
+4. **Monitor Logs**: Check debug logs for successful integration 

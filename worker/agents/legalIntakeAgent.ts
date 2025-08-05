@@ -141,8 +141,15 @@ async function processPayment(
     hasPaymentLink: !!paymentLink,
     blawbyApiEnabled: teamConfig?.blawbyApi?.enabled,
     hasBlawbyApiKey: !!teamConfig?.blawbyApi?.apiKey,
-    useBlawbyApi
+    useBlawbyApi,
+    teamId: teamConfig?.id || 'unknown'
   });
+
+  // Log detailed Blawby API configuration for debugging
+  if (teamConfig?.blawbyApi?.enabled && !teamConfig?.blawbyApi?.apiKey) {
+    console.warn('⚠️ [DEBUG] Blawby API is enabled but no API key found for team:', teamConfig?.id);
+    console.warn('⚠️ [DEBUG] This will cause fallback to static payment link');
+  }
   
   if (useBlawbyApi) {
     // Use Blawby API for integrated payment processing
@@ -189,6 +196,7 @@ async function processPayment(
         // Fallback to static payment link if Blawby API fails
         console.warn('⚠️ Blawby API failed, falling back to static payment link:', paymentResult.error);
         if (paymentLink) {
+          console.log('🔍 [DEBUG] Using fallback payment link:', paymentLink);
           return {
             invoiceUrl: paymentLink,
             paymentId: null,
@@ -208,6 +216,7 @@ async function processPayment(
     } catch (error) {
       console.error('❌ Blawby API error, falling back to static payment link:', error);
       if (paymentLink) {
+        console.log('🔍 [DEBUG] Using fallback payment link due to API error:', paymentLink);
         return {
           invoiceUrl: paymentLink,
           paymentId: null,
@@ -226,6 +235,7 @@ async function processPayment(
     }
   } else if (paymentLink) {
     // Use static payment link for teams without Blawby API integration
+    console.log('🔍 [DEBUG] Using static payment link (no Blawby API configured):', paymentLink);
     return {
       invoiceUrl: paymentLink,
       paymentId: null,
