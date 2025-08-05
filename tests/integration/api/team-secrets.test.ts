@@ -1,30 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { handleTeamSecrets } from '../../../worker/routes/team-secrets';
-import { TeamSecretsService } from '../../../worker/services/TeamSecretsService';
-
-// Mock the TeamSecretsService
-vi.mock('../../../worker/services/TeamSecretsService', () => ({
-  TeamSecretsService: vi.fn().mockImplementation(() => ({
-    storeTeamSecret: vi.fn().mockResolvedValue(undefined),
-    getTeamSecret: vi.fn().mockResolvedValue({
-      apiKey: 'test-api-key',
-      teamUlid: '01jq70jnstyfzevc6423czh50e',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }),
-    getBlawbyApiKey: vi.fn().mockResolvedValue('test-api-key'),
-    getBlawbyTeamUlid: vi.fn().mockResolvedValue('01jq70jnstyfzevc6423czh50e'),
-    updateTeamSecret: vi.fn().mockResolvedValue(undefined),
-    deleteTeamSecret: vi.fn().mockResolvedValue(undefined),
-    listTeamSecrets: vi.fn().mockResolvedValue([
-      {
-        teamId: '01jq70jnstyfzevc6423czh50e',
-        hasSecret: true
-      }
-    ]),
-    hasTeamSecret: vi.fn().mockResolvedValue(true)
-  }))
-}));
 
 describe('Team Secrets API Integration Tests', () => {
   let mockEnv;
@@ -134,18 +109,8 @@ describe('Team Secrets API Integration Tests', () => {
     });
 
     it('should handle non-existent team secret', async () => {
-      // Mock the service to return null for non-existent team
-      const mockTeamSecretsService = vi.mocked(TeamSecretsService);
-      mockTeamSecretsService.mockImplementation(() => ({
-        getTeamSecret: vi.fn().mockResolvedValue(null),
-        storeTeamSecret: vi.fn().mockResolvedValue(undefined),
-        getBlawbyApiKey: vi.fn().mockResolvedValue(null),
-        getBlawbyTeamUlid: vi.fn().mockResolvedValue(null),
-        updateTeamSecret: vi.fn().mockResolvedValue(undefined),
-        deleteTeamSecret: vi.fn().mockResolvedValue(undefined),
-        listTeamSecrets: vi.fn().mockResolvedValue([]),
-        hasTeamSecret: vi.fn().mockResolvedValue(false)
-      }));
+      // Mock KV to return null for non-existent team
+      mockEnv.TEAM_SECRETS.get = vi.fn().mockResolvedValue(null);
 
       const request = new Request('http://localhost/api/team-secrets/non-existent-team', {
         method: 'GET'
@@ -219,7 +184,8 @@ describe('Team Secrets API Integration Tests', () => {
   describe('Error Handling', () => {
     it('should handle KV storage errors gracefully', async () => {
       // Mock KV to throw an error
-      mockEnv.TEAM_SECRETS.put = vi.fn().mockRejectedValue(new Error('KV storage error'));
+      const mockPut = vi.fn().mockRejectedValue(new Error('KV storage error'));
+      mockEnv.TEAM_SECRETS.put = mockPut;
 
       const requestBody = {
         apiKey: 'test-production-key',
@@ -287,7 +253,7 @@ describe('Team Secrets API Integration Tests', () => {
       expect(response.status).toBe(400);
       const responseData = await response.json();
       expect(responseData.success).toBe(false);
-      expect(responseData.error).toContain('invalid team ID');
+      expect(responseData.error).toContain('Invalid team ID format');
     });
   });
 }); 

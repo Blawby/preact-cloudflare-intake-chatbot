@@ -17,6 +17,11 @@ export async function handleTeamSecrets(request: Request, env: Env, corsHeaders:
         throw HttpErrors.badRequest('Team ID is required');
       }
 
+      // Validate team ID format (should be a valid ULID)
+      if (!/^[0-9A-HJKMNP-TV-Z]{26}$/i.test(teamId)) {
+        throw HttpErrors.badRequest('Invalid team ID format');
+      }
+
       if (!body.apiKey || !body.teamUlid) {
         throw HttpErrors.badRequest('API key and team ULID are required');
       }
@@ -31,6 +36,19 @@ export async function handleTeamSecrets(request: Request, env: Env, corsHeaders:
       }, corsHeaders);
 
     } catch (error) {
+      // Handle specific validation errors from TeamSecretsService
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid team ULID format') || 
+            error.message.includes('invalid team ID')) {
+          throw HttpErrors.badRequest('Invalid team ID format');
+        }
+        if (error.message.includes('API key appears to be too short')) {
+          throw HttpErrors.badRequest('Invalid API key format');
+        }
+        if (error.message.includes('Team ID, API key, and team ULID are required')) {
+          throw HttpErrors.badRequest('Missing required fields');
+        }
+      }
       return handleError(error, corsHeaders);
     }
   }
@@ -69,6 +87,11 @@ export async function handleTeamSecrets(request: Request, env: Env, corsHeaders:
         throw HttpErrors.badRequest('Team ID is required');
       }
 
+      // Validate team ID format (should be a valid ULID)
+      if (!/^[0-9A-HJKMNP-TV-Z]{26}$/i.test(teamId)) {
+        throw HttpErrors.badRequest('Invalid team ID format');
+      }
+
       if (!body.apiKey || !body.teamUlid) {
         throw HttpErrors.badRequest('API key and team ULID are required');
       }
@@ -83,6 +106,19 @@ export async function handleTeamSecrets(request: Request, env: Env, corsHeaders:
       }, corsHeaders);
 
     } catch (error) {
+      // Handle specific validation errors from TeamSecretsService
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid team ULID format') || 
+            error.message.includes('invalid team ID')) {
+          throw HttpErrors.badRequest('Invalid team ID format');
+        }
+        if (error.message.includes('API key appears to be too short')) {
+          throw HttpErrors.badRequest('Invalid API key format');
+        }
+        if (error.message.includes('Team ID, API key, and team ULID are required')) {
+          throw HttpErrors.badRequest('Missing required fields');
+        }
+      }
       return handleError(error, corsHeaders);
     }
   }

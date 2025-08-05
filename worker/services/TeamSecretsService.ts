@@ -60,6 +60,10 @@ export class TeamSecretsService {
    * Retrieve a team's API key from KV
    */
   async getTeamSecret(teamId: string): Promise<TeamSecret | null> {
+    if (!teamId?.trim()) {
+      throw new Error('Team ID is required');
+    }
+
     const key = `team:${teamId}:blawby_api`;
     const secretData = await this.env.TEAM_SECRETS.get(key);
 
@@ -70,11 +74,25 @@ export class TeamSecretsService {
 
     try {
       const secret: TeamSecret = JSON.parse(secretData);
+      
+      // Validate the parsed secret has required fields
+      if (!secret.apiKey || !secret.teamUlid) {
+        throw new Error(`Secret data is missing required fields for team: ${teamId}`);
+      }
+      
       console.log(`🔐 [TEAM_SECRETS] Retrieved API key for team: ${teamId}`);
       return secret;
     } catch (error) {
-      console.error(`❌ [TEAM_SECRETS] Failed to parse secret for team: ${teamId}`, error);
-      throw new Error(`Invalid secret data format for team: ${teamId}`);
+      if (error instanceof SyntaxError) {
+        console.error(`❌ [TEAM_SECRETS] Invalid JSON format for team: ${teamId}`, error);
+        throw new Error(`Corrupted secret data format for team: ${teamId} - invalid JSON`);
+      } else if (error instanceof Error) {
+        console.error(`❌ [TEAM_SECRETS] Secret validation failed for team: ${teamId}`, error);
+        throw error; // Re-throw validation errors
+      } else {
+        console.error(`❌ [TEAM_SECRETS] Unexpected error parsing secret for team: ${teamId}`, error);
+        throw new Error(`Failed to parse secret data for team: ${teamId}`);
+      }
     }
   }
 
@@ -139,24 +157,41 @@ export class TeamSecretsService {
    * Check if a team has a stored API key
    */
   async hasTeamSecret(teamId: string): Promise<boolean> {
-    const secret = await this.getTeamSecret(teamId);
-    return secret !== null;
+    try {
+      const secret = await this.getTeamSecret(teamId);
+      return secret !== null;
+    } catch (error) {
+      // If there's a parsing error, the secret exists but is corrupted
+      // We should log this and return false to indicate no valid secret
+      console.warn(`⚠️ [TEAM_SECRETS] Corrupted secret data for team: ${teamId}`, error);
+      return false;
+    }
   }
 
   /**
    * Get API key for Blawby integration
    */
   async getBlawbyApiKey(teamId: string): Promise<string | null> {
-    const secret = await this.getTeamSecret(teamId);
-    return secret?.apiKey || null;
+    try {
+      const secret = await this.getTeamSecret(teamId);
+      return secret?.apiKey || null;
+    } catch (error) {
+      console.warn(`⚠️ [TEAM_SECRETS] Failed to get API key for team: ${teamId}`, error);
+      return null;
+    }
   }
 
   /**
    * Get team ULID for Blawby integration
    */
   async getBlawbyTeamUlid(teamId: string): Promise<string | null> {
-    const secret = await this.getTeamSecret(teamId);
-    return secret?.teamUlid || null;
+    try {
+      const secret = await this.getTeamSecret(teamId);
+      return secret?.teamUlid || null;
+    } catch (error) {
+      console.warn(`⚠️ [TEAM_SECRETS] Failed to get team ULID for team: ${teamId}`, error);
+      return null;
+    }
   }
 
   /**
