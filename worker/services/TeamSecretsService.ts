@@ -22,6 +22,21 @@ export class TeamSecretsService {
    * Store a team's API key securely in KV
    */
   async storeTeamSecret(teamId: string, apiKey: string, teamUlid: string): Promise<void> {
+    // Input validation
+    if (!teamId?.trim() || !apiKey?.trim() || !teamUlid?.trim()) {
+      throw new Error('Team ID, API key, and team ULID are required and cannot be empty');
+    }
+    
+    // Validate ULID format (basic check)
+    if (!/^[0-9A-HJKMNP-TV-Z]{26}$/i.test(teamUlid)) {
+      throw new Error('Invalid team ULID format');
+    }
+
+    // Validate API key format (should be a non-empty string)
+    if (apiKey.length < 10) {
+      throw new Error('API key appears to be too short');
+    }
+
     const secret: TeamSecret = {
       apiKey,
       teamUlid,
@@ -59,7 +74,7 @@ export class TeamSecretsService {
       return secret;
     } catch (error) {
       console.error(`❌ [TEAM_SECRETS] Failed to parse secret for team: ${teamId}`, error);
-      return null;
+      throw new Error(`Invalid secret data format for team: ${teamId}`);
     }
   }
 
@@ -142,5 +157,44 @@ export class TeamSecretsService {
   async getBlawbyTeamUlid(teamId: string): Promise<string | null> {
     const secret = await this.getTeamSecret(teamId);
     return secret?.teamUlid || null;
+  }
+
+  /**
+   * Store webhook secret for a team
+   */
+  async storeWebhookSecret(teamId: string, webhookSecret: string): Promise<void> {
+    if (!teamId?.trim() || !webhookSecret?.trim()) {
+      throw new Error('Team ID and webhook secret are required and cannot be empty');
+    }
+
+    const key = `team:${teamId}:webhook_secret`;
+    await this.env.TEAM_SECRETS.put(key, webhookSecret, {
+      metadata: {
+        teamId,
+        type: 'webhook_secret',
+        createdAt: new Date().toISOString()
+      }
+    });
+
+    console.log(`🔐 [TEAM_SECRETS] Stored webhook secret for team: ${teamId}`);
+  }
+
+  /**
+   * Get webhook secret for a team
+   */
+  async getWebhookSecret(teamId: string): Promise<string | null> {
+    if (!teamId?.trim()) {
+      throw new Error('Team ID is required');
+    }
+
+    const key = `team:${teamId}:webhook_secret`;
+    const secretData = await this.env.TEAM_SECRETS.get(key);
+    
+    if (!secretData) {
+      return null;
+    }
+
+    console.log(`🔐 [TEAM_SECRETS] Retrieved webhook secret for team: ${teamId}`);
+    return secretData;
   }
 } 

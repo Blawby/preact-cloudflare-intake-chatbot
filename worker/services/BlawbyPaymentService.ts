@@ -1,4 +1,9 @@
+import type { D1Database } from '@cloudflare/workers-types';
 import { BlawbyApiService } from './BlawbyApiService';
+
+interface Environment {
+  DB?: D1Database;
+}
 
 interface CustomerInfo {
   name: string;
@@ -32,9 +37,9 @@ interface PaymentResponse {
 
 export class BlawbyPaymentService {
   private blawbyApi: BlawbyApiService;
-  private env?: any; // Database environment
+  private env?: Environment; // Database environment
 
-  constructor(apiToken?: string, baseUrl?: string, env?: any) {
+  constructor(apiToken?: string, baseUrl?: string, env?: Environment) {
     this.blawbyApi = new BlawbyApiService(apiToken, baseUrl);
     this.env = env;
   }

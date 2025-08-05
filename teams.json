@@ -84,7 +84,7 @@
       "webhooks": {
         "enabled": true,
         "url": "https://staging.blawby.com/webhooks/intake-form/01jq70jnstyfzevc6423czh50e/webhook-events",
-        "secret": "wh_f1be34ea3bff.eyJ0IjoiMDFqcTcwam5zdHlmemV2YzY0MjNjemg1MGUiLCJwIjoiaW50YWtlLWZvcm0ifQ==",
+        "secret": "${WEBHOOK_SECRET}",
         "events": {
           "matterCreation": true,
           "matterDetails": true,

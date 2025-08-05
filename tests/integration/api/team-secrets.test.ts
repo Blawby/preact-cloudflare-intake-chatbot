@@ -234,9 +234,10 @@ describe('Team Secrets API Integration Tests', () => {
 
       const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
       
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(500);
       const responseData = await response.json();
-      expect(responseData.success).toBe(true);
+      expect(responseData.success).toBe(false);
+      expect(responseData.error).toContain('storage error');
     });
 
     it('should handle invalid JSON in request body', async () => {
@@ -283,8 +284,10 @@ describe('Team Secrets API Integration Tests', () => {
 
       const response = await handleTeamSecrets(request, mockEnv, corsHeaders);
       
-      // Should either accept the request or provide a clear error message
-      expect([200, 201, 400, 422]).toContain(response.status);
+      expect(response.status).toBe(400);
+      const responseData = await response.json();
+      expect(responseData.success).toBe(false);
+      expect(responseData.error).toContain('invalid team ID');
     });
   });
 }); 

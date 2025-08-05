@@ -25,6 +25,121 @@ if (!fs.existsSync(TEAMS_FILE)) {
 
 const teams = JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf-8'));
 
+// Validate teams configuration
+function validateTeamConfig(team) {
+  const errors = [];
+
+  // Required top-level fields
+  if (!team.id || typeof team.id !== 'string') {
+    errors.push('Team ID is required and must be a string');
+  }
+
+  if (!team.slug || typeof team.slug !== 'string') {
+    errors.push('Team slug is required and must be a string');
+  }
+
+  if (!team.name || typeof team.name !== 'string') {
+    errors.push('Team name is required and must be a string');
+  }
+
+  if (!team.config || typeof team.config !== 'object') {
+    errors.push('Team config is required and must be an object');
+    return errors;
+  }
+
+  const config = team.config;
+
+  // Validate required config fields
+  if (!config.aiModel || typeof config.aiModel !== 'string') {
+    errors.push('AI model is required and must be a string');
+  }
+
+  if (typeof config.requiresPayment !== 'boolean') {
+    errors.push('requiresPayment must be a boolean');
+  }
+
+  if (config.consultationFee !== undefined && typeof config.consultationFee !== 'number') {
+    errors.push('consultationFee must be a number if provided');
+  }
+
+  if (config.consultationFee !== undefined && config.consultationFee < 0) {
+    errors.push('consultationFee cannot be negative');
+  }
+
+  // Validate jurisdiction if present
+  if (config.jurisdiction) {
+    if (!config.jurisdiction.type || !['national', 'state'].includes(config.jurisdiction.type)) {
+      errors.push('jurisdiction.type must be "national" or "state"');
+    }
+
+    if (!config.jurisdiction.description || typeof config.jurisdiction.description !== 'string') {
+      errors.push('jurisdiction.description is required');
+    }
+
+    if (!Array.isArray(config.jurisdiction.supportedStates)) {
+      errors.push('jurisdiction.supportedStates must be an array');
+    }
+
+    if (!Array.isArray(config.jurisdiction.supportedCountries)) {
+      errors.push('jurisdiction.supportedCountries must be an array');
+    }
+  }
+
+  // Validate webhooks if present
+  if (config.webhooks) {
+    if (typeof config.webhooks.enabled !== 'boolean') {
+      errors.push('webhooks.enabled must be a boolean');
+    }
+
+    if (config.webhooks.enabled) {
+      if (!config.webhooks.url || typeof config.webhooks.url !== 'string') {
+        errors.push('webhooks.url is required when webhooks are enabled');
+      }
+
+      if (!config.webhooks.secret || typeof config.webhooks.secret !== 'string') {
+        errors.push('webhooks.secret is required when webhooks are enabled');
+      }
+    }
+  }
+
+  // Validate blawbyApi if present
+  if (config.blawbyApi) {
+    if (typeof config.blawbyApi.enabled !== 'boolean') {
+      errors.push('blawbyApi.enabled must be a boolean');
+    }
+
+    if (config.blawbyApi.enabled) {
+      if (!config.blawbyApi.teamUlid || typeof config.blawbyApi.teamUlid !== 'string') {
+        errors.push('blawbyApi.teamUlid is required when Blawby API is enabled');
+      }
+
+      // Validate ULID format
+      if (config.blawbyApi.teamUlid && !/^[0-9A-HJKMNP-TV-Z]{26}$/i.test(config.blawbyApi.teamUlid)) {
+        errors.push('blawbyApi.teamUlid must be a valid ULID format');
+      }
+    }
+  }
+
+  return errors;
+}
+
+// Validate all teams
+const validationErrors = [];
+teams.forEach((team, index) => {
+  const errors = validateTeamConfig(team);
+  if (errors.length > 0) {
+    validationErrors.push(`Team ${index + 1} (${team.id || 'unknown'}): ${errors.join(', ')}`);
+  }
+});
+
+if (validationErrors.length > 0) {
+  console.error('❌ Team configuration validation failed:');
+  validationErrors.forEach(error => console.error(`  - ${error}`));
+  process.exit(1);
+}
+
+console.log('✅ Team configuration validation passed');
+
 // Fetch all existing team IDs from D1
 function getExistingTeamIds() {
   try {

@@ -1,5 +1,6 @@
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { TeamSecretsService } from './TeamSecretsService';
+import { validateTeamConfig } from '../utils/teamValidation';
 
 export interface TeamConfig {
   requiresPayment?: boolean;
@@ -74,14 +75,30 @@ export class AIService {
       if (teamRow) {
         console.log('🔍 [AIService] Raw config from DB:', teamRow.config);
         const config = JSON.parse(teamRow.config || '{}');
+        
+        // Validate team configuration
+        const validation = validateTeamConfig({ id: teamId, config });
+        if (!validation.valid) {
+          console.warn(`⚠️ [AIService] Team config validation failed for ${teamId}:`, validation.errors);
+        }
+        
         console.log('🔍 [AIService] Parsed team config:', JSON.stringify(config, null, 2));
         
         // Resolve dynamic API keys from KV storage
         const processedConfig = await this.resolveTeamSecrets(teamId, config);
-        console.log('🔍 [AIService] Processed team config with secrets:', JSON.stringify(processedConfig, null, 2));
+        
+        // Log config without sensitive data
+        const safeConfig = { ...processedConfig };
+        if (safeConfig.blawbyApi?.apiKey) {
+          safeConfig.blawbyApi.apiKey = '***REDACTED***';
+        }
+        if (safeConfig.webhooks?.secret) {
+          safeConfig.webhooks.secret = '***REDACTED***';
+        }
+        console.log('🔍 [AIService] Processed team config with secrets:', JSON.stringify(safeConfig, null, 2));
         console.log('🔍 [AIService] Config requiresPayment:', processedConfig.requiresPayment);
         console.log('🔍 [AIService] Config consultationFee:', processedConfig.consultationFee);
-        console.log('🔍 [AIService] Config blawbyApi:', processedConfig.blawbyApi);
+        console.log('🔍 [AIService] Config blawbyApi enabled:', processedConfig.blawbyApi?.enabled);
         
         this.teamConfigCache.set(teamId, { config: processedConfig, timestamp: Date.now() });
         return processedConfig;
@@ -144,6 +161,19 @@ export class AIService {
       } else {
         console.warn(`⚠️ [AIService] No API key found in KV for team: ${teamId}, disabling Blawby API`);
         config.blawbyApi.enabled = false;
+      }
+    }
+
+    // If webhooks are enabled, try to get the webhook secret from KV storage
+    if (config.webhooks?.enabled) {
+      const webhookSecret = await this.teamSecretsService.getWebhookSecret(teamId);
+      
+      if (webhookSecret) {
+        config.webhooks.secret = webhookSecret;
+        console.log(`🔐 [AIService] Resolved webhook secret for team: ${teamId}`);
+      } else {
+        console.warn(`⚠️ [AIService] No webhook secret found in KV for team: ${teamId}, disabling webhooks`);
+        config.webhooks.enabled = false;
       }
     }
     
