@@ -31,6 +31,7 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
         const rawTeamConfig = await aiService.getTeamConfig(teamId);
         // Extract the config object for security validation
         teamConfig = rawTeamConfig?.config || rawTeamConfig;
+
       } catch (error) {
         console.warn('Failed to get team config for security validation:', error);
       }
@@ -104,6 +105,7 @@ export async function handleAgentStream(request: Request, env: Env, corsHeaders:
         const aiService = new AIService(env.AI, env);
         const rawTeamConfig = await aiService.getTeamConfig(teamId);
         teamConfig = rawTeamConfig?.config || rawTeamConfig;
+
       } catch (error) {
         console.warn('Failed to get team config for security validation:', error);
       }

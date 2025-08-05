@@ -122,7 +122,8 @@ async function getTeamConfig(env: any, teamId: string) {
 async function processPayment(
   teamConfig: any,
   parameters: any,
-  consultationFee: number
+  consultationFee: number,
+  env: any
 ): Promise<{ 
   invoiceUrl: string | null, 
   paymentId: string | null, 
@@ -142,7 +143,9 @@ async function processPayment(
     blawbyApiEnabled: teamConfig?.blawbyApi?.enabled,
     hasBlawbyApiKey: !!teamConfig?.blawbyApi?.apiKey,
     useBlawbyApi,
-    teamId: teamConfig?.id || 'unknown'
+    teamId: teamConfig?.id || 'unknown',
+    teamConfigBlawbyApi: teamConfig?.blawbyApi,
+    fullTeamConfig: JSON.stringify(teamConfig, null, 2)
   });
 
   // Log detailed Blawby API configuration for debugging
@@ -152,17 +155,16 @@ async function processPayment(
   }
   
   if (useBlawbyApi) {
-    // Use Blawby API for integrated payment processing
+    // Use the same payment service logic as the /api/payment/create-invoice endpoint
     try {
-      const { BlawbyPaymentService } = await import('../services/BlawbyPaymentService.js');
-      const apiToken = teamConfig.blawbyApi.apiKey;
-      const apiUrl = 'https://staging.blawby.com';
-      const paymentService = new BlawbyPaymentService(apiToken, apiUrl, env);
+      const { PaymentService } = await import('../services/PaymentService.js');
+      const { MockPaymentService } = await import('../services/MockPaymentService.js');
       
-                console.log('🔧 [DEBUG] Blawby API configuration:', {
-            hasApiToken: !!apiToken,
-            apiUrl
-          });
+      // Use the same logic as the payment endpoint
+      const isDevelopment = !env.PAYMENT_API_URL || env.PAYMENT_API_URL.includes('localhost');
+      const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
+      
+      console.log('🔧 [DEBUG] Using payment service:', isDevelopment ? 'MockPaymentService' : 'PaymentService');
       
       const paymentRequest = {
         customerInfo: {
@@ -183,18 +185,18 @@ async function processPayment(
       };
       
       const paymentResult = await paymentService.createInvoice(paymentRequest);
-      console.log('🔍 [DEBUG] Blawby API payment result:', paymentResult);
+      console.log('🔍 [DEBUG] Payment service result:', paymentResult);
       
       if (paymentResult.success) {
         return {
           invoiceUrl: paymentResult.invoiceUrl || null,
           paymentId: paymentResult.paymentId || null,
-          paymentMethod: 'blawby_api',
+          paymentMethod: 'payment_service',
           success: true
         };
       } else {
-        // Fallback to static payment link if Blawby API fails
-        console.warn('⚠️ Blawby API failed, falling back to static payment link:', paymentResult.error);
+        // Fallback to static payment link if payment service fails
+        console.warn('⚠️ Payment service failed, falling back to static payment link:', paymentResult.error);
         if (paymentLink) {
           console.log('🔍 [DEBUG] Using fallback payment link:', paymentLink);
           return {
@@ -214,9 +216,9 @@ async function processPayment(
         }
       }
     } catch (error) {
-      console.error('❌ Blawby API error, falling back to static payment link:', error);
+      console.error('❌ Payment service error, falling back to static payment link:', error);
       if (paymentLink) {
-        console.log('🔍 [DEBUG] Using fallback payment link due to API error:', paymentLink);
+        console.log('🔍 [DEBUG] Using fallback payment link due to service error:', paymentLink);
         return {
           invoiceUrl: paymentLink,
           paymentId: null,
@@ -229,7 +231,7 @@ async function processPayment(
           paymentId: null,
           paymentMethod: 'none',
           success: false,
-          error: 'No fallback payment link available after API error'
+          error: 'No fallback payment link available after service error'
         };
       }
     }
@@ -290,10 +292,26 @@ const validateLocation = (location: string): boolean => {
 
 // Create the legal intake agent using native Cloudflare AI
 export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string) {
+  console.log('🔍 [DEBUG] runLegalIntakeAgent env keys:', Object.keys(env));
+  console.log('🔍 [DEBUG] runLegalIntakeAgent TEAM_SECRETS type:', typeof env.TEAM_SECRETS);
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
     teamConfig = await getTeamConfig(env, teamId);
+    if (teamConfig && teamConfig.config) {
+      teamConfig = teamConfig.config;
+    }
+    // Ensure blawbyApi is always at the top level for payment logic
+    if (!teamConfig.blawbyApi && teamConfig.config && teamConfig.config.blawbyApi) {
+      teamConfig.blawbyApi = teamConfig.config.blawbyApi;
+    }
+    console.log('🔍 [DEBUG] Final teamConfig structure:', {
+      hasConfig: !!teamConfig,
+      blawbyApi: teamConfig?.blawbyApi,
+      blawbyApiEnabled: teamConfig?.blawbyApi?.enabled,
+      hasApiKey: !!teamConfig?.blawbyApi?.apiKey,
+      teamId: teamConfig?.id || 'unknown'
+    });
   }
 
   // Convert messages to the format expected by Cloudflare AI
@@ -619,7 +637,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   // Process payment if required
   let paymentResult = null;
   if (requiresPayment && consultationFee > 0) {
-    paymentResult = await processPayment(teamConfig, parameters, consultationFee);
+    paymentResult = await processPayment(teamConfig, parameters, consultationFee, env);
     
     if (!paymentResult.success) {
       return {

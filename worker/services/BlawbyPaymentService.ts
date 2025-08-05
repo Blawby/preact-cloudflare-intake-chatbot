@@ -3,6 +3,9 @@ import { BlawbyApiService } from './BlawbyApiService';
 
 interface Environment {
   DB?: D1Database;
+  TEAM_SECRETS?: any;
+  PAYMENT_API_KEY?: string;
+  PAYMENT_API_URL?: string;
 }
 
 interface CustomerInfo {

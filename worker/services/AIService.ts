@@ -84,8 +84,9 @@ export class AIService {
         
         console.log('🔍 [AIService] Parsed team config:', JSON.stringify(config, null, 2));
         
-        // Resolve dynamic API keys from KV storage
-        const processedConfig = await this.resolveTeamSecrets(teamId, config);
+        // Resolve dynamic API keys from KV storage using the actual team ID (ULID)
+        const actualTeamId = teamRow.id; // Use the ULID from database, not the input teamId
+        const processedConfig = await this.resolveTeamSecrets(actualTeamId, config);
         
         // Log config without sensitive data
         const safeConfig = { ...processedConfig };
@@ -122,8 +123,9 @@ export class AIService {
                 console.log('🔍 [AIService] Found team in teams.json:', team.id);
                 console.log('🔍 [AIService] Team config from teams.json:', JSON.stringify(team.config, null, 2));
                 
-                // Resolve dynamic API keys from KV storage
-                const processedConfig = await this.resolveTeamSecrets(teamId, team.config);
+                // Resolve dynamic API keys from KV storage using the actual team ID (ULID)
+                const actualTeamId = team.id; // Use the ULID from teams.json, not the input teamId
+                const processedConfig = await this.resolveTeamSecrets(actualTeamId, team.config);
                 console.log('🔍 [AIService] Processed team config with secrets:', JSON.stringify(processedConfig, null, 2));
                 
                 this.teamConfigCache.set(teamId, { config: processedConfig, timestamp: Date.now() });
@@ -149,19 +151,36 @@ export class AIService {
    * Resolve team secrets from KV storage
    */
   private async resolveTeamSecrets(teamId: string, config: any): Promise<any> {
+    console.log(`🔐 [AIService] resolveTeamSecrets called for team: ${teamId}`);
+    console.log(`🔐 [AIService] Initial config blawbyApi:`, config.blawbyApi);
+    
     // If Blawby API is enabled, try to get the API key from KV storage
     if (config.blawbyApi?.enabled) {
+      console.log(`🔐 [AIService] Blawby API is enabled, fetching API key from KV...`);
       const apiKey = await this.teamSecretsService.getBlawbyApiKey(teamId);
       const teamUlid = await this.teamSecretsService.getBlawbyTeamUlid(teamId);
+      
+      console.log(`🔐 [AIService] KV lookup results:`, {
+        apiKey: apiKey ? '***FOUND***' : 'null',
+        teamUlid: teamUlid || 'null'
+      });
       
       if (apiKey && teamUlid) {
         config.blawbyApi.apiKey = apiKey;
         config.blawbyApi.teamUlid = teamUlid;
         console.log(`🔐 [AIService] Resolved API key for team: ${teamId}`);
+        console.log(`🔐 [AIService] Updated config blawbyApi:`, {
+          enabled: config.blawbyApi.enabled,
+          apiKey: '***REDACTED***',
+          teamUlid: config.blawbyApi.teamUlid
+        });
       } else {
         console.warn(`⚠️ [AIService] No API key found in KV for team: ${teamId}, disabling Blawby API`);
+        console.warn(`⚠️ [AIService] apiKey: ${apiKey ? 'found' : 'null'}, teamUlid: ${teamUlid || 'null'}`);
         config.blawbyApi.enabled = false;
       }
+    } else {
+      console.log(`🔐 [AIService] Blawby API is not enabled in config`);
     }
 
     // If webhooks are enabled, try to get the webhook secret from KV storage
@@ -176,6 +195,14 @@ export class AIService {
         config.webhooks.enabled = false;
       }
     }
+    
+    console.log(`🔐 [AIService] Final resolved config:`, {
+      blawbyApi: {
+        enabled: config.blawbyApi?.enabled,
+        hasApiKey: !!config.blawbyApi?.apiKey,
+        teamUlid: config.blawbyApi?.teamUlid
+      }
+    });
     
     return config;
   }
@@ -199,7 +226,7 @@ export class AIService {
   }
 
   // Clear cache for a specific team or all teams
-  clearCache(teamId?: string): void {
+  public clearCache(teamId?: string): void {
     if (teamId) {
       this.teamConfigCache.delete(teamId);
     } else {
