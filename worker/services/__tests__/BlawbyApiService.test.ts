@@ -24,10 +24,9 @@ describe('BlawbyApiService', () => {
         name: 'John Doe',
         email: 'john@example.com',
         phone: '555-123-4567',
-        location: 'Charlotte, NC'
+        currency: 'USD',
+        status: 'Lead',
       };
-
-      const teamUlid = '01jw3mhms63s9jvx9299nbwq1g';
 
       // Mock fetch to return success response
       global.fetch = vi.fn().mockResolvedValue({
@@ -44,7 +43,7 @@ describe('BlawbyApiService', () => {
         })
       });
 
-      const result = await blawbyApi.createCustomer(teamUlid, customerInfo);
+      const result = await blawbyApi.createCustomer('01jw3mhms63s9jvx9299nbwq1g', customerInfo);
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -55,10 +54,10 @@ describe('BlawbyApiService', () => {
       const customerInfo = {
         name: 'John Doe',
         email: 'john@example.com',
-        phone: '555-123-4567'
+        phone: '555-123-4567',
+        currency: 'USD',
+        status: 'Lead',
       };
-
-      const teamUlid = '01jw3mhms63s9jvx9299nbwq1g';
 
       // Mock fetch to return error response
       global.fetch = vi.fn().mockResolvedValue({
@@ -72,10 +71,101 @@ describe('BlawbyApiService', () => {
         })
       });
 
-      const result = await blawbyApi.createCustomer(teamUlid, customerInfo);
+      const result = await blawbyApi.createCustomer('01jw3mhms63s9jvx9299nbwq1g', customerInfo);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('The email has already been taken.');
+      expect(result.error).toContain('email has already been taken');
+    });
+
+    it('should validate missing teamUlid', async () => {
+      const customerInfo = {
+        name: 'John Doe',
+        email: 'john@example.com',
+        phone: '555-123-4567',
+      };
+
+      const result = await blawbyApi.createCustomer('', customerInfo);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('teamUlid is required');
+    });
+
+    it('should validate missing name', async () => {
+      const customerInfo = {
+        name: '',
+        email: 'john@example.com',
+        phone: '555-123-4567',
+      };
+
+      const result = await blawbyApi.createCustomer('01jw3mhms63s9jvx9299nbwq1g', customerInfo);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('name is required');
+    });
+
+    it('should validate missing email', async () => {
+      const customerInfo = {
+        name: 'John Doe',
+        email: '',
+        phone: '555-123-4567',
+      };
+
+      const result = await blawbyApi.createCustomer('01jw3mhms63s9jvx9299nbwq1g', customerInfo);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('email is required');
+    });
+
+    it('should validate invalid email format', async () => {
+      const customerInfo = {
+        name: 'John Doe',
+        email: 'invalid-email',
+        phone: '555-123-4567',
+      };
+
+      const result = await blawbyApi.createCustomer('01jw3mhms63s9jvx9299nbwq1g', customerInfo);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid email format');
+    });
+
+    it('should validate invalid phone format', async () => {
+      const customerInfo = {
+        name: 'John Doe',
+        email: 'john@example.com',
+        phone: 'invalid-phone',
+      };
+
+      const result = await blawbyApi.createCustomer('01jw3mhms63s9jvx9299nbwq1g', customerInfo);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid phone number format');
+    });
+
+    it('should validate name length', async () => {
+      const customerInfo = {
+        name: 'A', // Too short
+        email: 'john@example.com',
+        phone: '555-123-4567',
+      };
+
+      const result = await blawbyApi.createCustomer('01jw3mhms63s9jvx9299nbwq1g', customerInfo);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Name must be between 2 and 100 characters');
+    });
+
+    it('should validate email length', async () => {
+      const customerInfo = {
+        name: 'John Doe',
+        email: 'a'.repeat(256) + '@example.com', // Too long
+        phone: '555-123-4567',
+      };
+
+      const result = await blawbyApi.createCustomer('01jw3mhms63s9jvx9299nbwq1g', customerInfo);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Email address is too long');
     });
   });
 

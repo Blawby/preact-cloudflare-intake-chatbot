@@ -109,13 +109,71 @@ export class BlawbyApiService {
    * Create a customer/client via the Blawby API
    */
   async createCustomer(teamUlid: string, customerInfo: CustomerInfo): Promise<BlawbyApiResponse> {
+    // Validate required fields
+    if (!teamUlid || !teamUlid.trim()) {
+      return {
+        success: false,
+        error: 'Missing required field: teamUlid is required',
+      };
+    }
+
+    if (!customerInfo.name || !customerInfo.name.trim()) {
+      return {
+        success: false,
+        error: 'Missing required field: name is required',
+      };
+    }
+
+    if (!customerInfo.email || !customerInfo.email.trim()) {
+      return {
+        success: false,
+        error: 'Missing required field: email is required',
+      };
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerInfo.email.trim())) {
+      return {
+        success: false,
+        error: 'Invalid email format',
+      };
+    }
+
+    // Validate phone number (optional but if provided, should be valid)
+    if (customerInfo.phone && customerInfo.phone.trim()) {
+      const phoneRegex = /^[+]?[0-9\s\-\(\)]{7,20}$/;
+      if (!phoneRegex.test(customerInfo.phone.trim())) {
+        return {
+          success: false,
+          error: 'Invalid phone number format',
+        };
+      }
+    }
+
+    // Validate name length
+    if (customerInfo.name.trim().length < 2 || customerInfo.name.trim().length > 100) {
+      return {
+        success: false,
+        error: 'Name must be between 2 and 100 characters',
+      };
+    }
+
+    // Validate email length
+    if (customerInfo.email.trim().length > 255) {
+      return {
+        success: false,
+        error: 'Email address is too long',
+      };
+    }
+
     const customerData = {
-      name: customerInfo.name,
-      email: customerInfo.email,
-      phone: customerInfo.phone,
+      name: customerInfo.name.trim(),
+      email: customerInfo.email.trim().toLowerCase(),
+      phone: customerInfo.phone?.trim() || '',
       currency: customerInfo.currency || 'USD',
       status: customerInfo.status || 'Lead',
-      team_id: teamUlid,
+      team_id: teamUlid.trim(),
       // Note: Removed address fields as they cause API errors
     };
 
@@ -131,7 +189,31 @@ export class BlawbyApiService {
    * Get customer details by email
    */
   async getCustomerByEmail(teamUlid: string, email: string): Promise<BlawbyApiResponse> {
-    const endpoint = `/api/v1/teams/${teamUlid}/customers?search=${encodeURIComponent(email)}`;
+    // Validate required fields
+    if (!teamUlid || !teamUlid.trim()) {
+      return {
+        success: false,
+        error: 'Missing required field: teamUlid is required',
+      };
+    }
+
+    if (!email || !email.trim()) {
+      return {
+        success: false,
+        error: 'Missing required field: email is required',
+      };
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return {
+        success: false,
+        error: 'Invalid email format',
+      };
+    }
+
+    const endpoint = `/api/v1/teams/${teamUlid}/customers?search=${encodeURIComponent(email.trim())}`;
     
     const response = await this.makeRequest(endpoint, {
       method: 'GET',
@@ -170,17 +252,55 @@ export class BlawbyApiService {
    * Create an invoice via the Blawby API
    */
   async createInvoice(teamUlid: string, customerId: string, amount: number, description: string): Promise<BlawbyApiResponse> {
+    // Validate required fields
+    if (!teamUlid || !teamUlid.trim()) {
+      return {
+        success: false,
+        error: 'Missing required field: teamUlid is required',
+      };
+    }
+
+    if (!customerId || !customerId.trim()) {
+      return {
+        success: false,
+        error: 'Missing required field: customerId is required',
+      };
+    }
+
+    if (!description || !description.trim()) {
+      return {
+        success: false,
+        error: 'Missing required field: description is required',
+      };
+    }
+
+    // Validate amount
+    if (typeof amount !== 'number' || amount <= 0) {
+      return {
+        success: false,
+        error: 'Amount must be a positive number',
+      };
+    }
+
+    // Validate description length
+    if (description.trim().length < 1 || description.trim().length > 500) {
+      return {
+        success: false,
+        error: 'Description must be between 1 and 500 characters',
+      };
+    }
+
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30); // Due in 30 days
 
     const invoiceData: CreateInvoiceRequest = {
-      customer_id: customerId,
+      customer_id: customerId.trim(),
       currency: 'USD',
       due_date: dueDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
       status: 'draft',
       line_items: [
         {
-          description: description,
+          description: description.trim(),
           quantity: 1,
           unit_price: amount,
           line_total: amount,
