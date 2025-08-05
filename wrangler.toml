@@ -17,6 +17,13 @@ id = "9ca96bd55b2d4455bad3fe0cda914f14"  # BLAWBY_AI_CHAT_SESSIONS
 preview_id = "e7bbadb101d44a828fb3ef34528b3540"  # BLAWBY_AI_CHAT_SESSIONS_preview
 experimental_remote = true
 
+# Team secrets storage for multi-tenant API key management
+[[kv_namespaces]]
+binding = "TEAM_SECRETS"
+id = "615f77c481444cfd936eb43109f89a3f"
+preview_id = "31a8a44bf1674e91bc1fbe0b8bd20e7c"
+experimental_remote = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "blawby-ai-chatbot"
@@ -38,7 +45,8 @@ routes = [
 ]
 ai = { binding = "AI" }
 kv_namespaces = [
-  { binding = "CHAT_SESSIONS", id = "9ca96bd55b2d4455bad3fe0cda914f14", preview_id = "e7bbadb101d44a828fb3ef34528b3540", experimental_remote = true }
+  { binding = "CHAT_SESSIONS", id = "9ca96bd55b2d4455bad3fe0cda914f14", preview_id = "e7bbadb101d44a828fb3ef34528b3540", experimental_remote = true },
+  { binding = "TEAM_SECRETS", id = "615f77c481444cfd936eb43109f89a3f", preview_id = "31a8a44bf1674e91bc1fbe0b8bd20e7c", experimental_remote = true }
 ]
 d1_databases = [
   { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf", experimental_remote = true }

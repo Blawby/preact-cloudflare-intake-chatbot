@@ -1,21 +1,18 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import {
-  handleHealth,
-  handleRoot,
-  handleAgent,
-  handleAgentStream,
-  handleForms,
-  handleTeams,
-  handleScheduling,
-  handleFiles,
-  handleWebhooks,
-  handleReview,
-  handlePayment
-} from './routes';
-import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
+import { handleAgent, handleAgentStream } from './routes/agent';
+import { handleTeams } from './routes/teams';
+import { handleForms } from './routes/forms';
+import { handleScheduling } from './routes/scheduling';
+import { handleFiles } from './routes/files';
+import { handleWebhooks } from './routes/webhooks';
+import { handleReview } from './routes/review';
+import { handlePayment } from './routes/payment';
+import { handleTeamSecrets } from './routes/team-secrets';
+import { handleHealth } from './routes/health';
+import { handleRoot } from './routes/root';
 import { Env } from './types';
-import { handleError, HttpErrors } from './errorHandler';
+import { handleError, HttpErrors, CORS_HEADERS, SECURITY_HEADERS } from './errorHandler';
 
 // Basic request validation
 function validateRequest(request: Request): boolean {
@@ -75,6 +72,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handleAgent(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/teams')) {
       response = await handleTeams(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/team-secrets')) {
+      response = await handleTeamSecrets(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/forms')) {
       response = await handleForms(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/scheduling')) {

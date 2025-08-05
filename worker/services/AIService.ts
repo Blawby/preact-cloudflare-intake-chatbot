@@ -1,3 +1,6 @@
+import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import { TeamSecretsService } from './TeamSecretsService';
+
 export interface TeamConfig {
   requiresPayment?: boolean;
   consultationFee?: number;
@@ -30,60 +33,24 @@ export interface Env {
   AI: any;
   DB: D1Database;
   CHAT_SESSIONS: KVNamespace;
+  TEAM_SECRETS: KVNamespace;
   RESEND_API_KEY: string;
-  FILES_BUCKET?: R2Bucket;
-  BLAWBY_API_TOKEN?: string;
+  FILES_BUCKET?: any;
 }
 
 // Optimized AI Service with caching and timeouts
 export class AIService {
   private teamConfigCache = new Map<string, { config: TeamConfig; timestamp: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private teamSecretsService: TeamSecretsService;
 
-  constructor(private ai: any, private env: Env) {}
+  constructor(private ai: any, private env: Env) {
+    this.teamSecretsService = new TeamSecretsService({ TEAM_SECRETS: env.TEAM_SECRETS });
+  }
 
   /**
-   * Substitute environment variables in configuration values
+   * Get team configuration with dynamic API key resolution
    */
-  private substituteEnvVars(config: any): any {
-    if (typeof config === 'string') {
-      // Handle ${ENV_VAR} substitution
-      return config.replace(/\$\{([^}]+)\}/g, (match: string, envVar: string) => {
-        const value = this.env[envVar as keyof Env];
-        if (value === undefined) {
-          console.warn(`🔍 [AIService] Environment variable ${envVar} not found, keeping placeholder`);
-          return match;
-        }
-        return value;
-      });
-    } else if (typeof config === 'object' && config !== null) {
-      const result: any = Array.isArray(config) ? [] : {};
-      for (const [key, value] of Object.entries(config)) {
-        result[key] = this.substituteEnvVars(value);
-      }
-      return result;
-    }
-    return config;
-  }
-  
-  async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-    
-    try {
-      const result = await this.ai.run(model, {
-        messages,
-        max_tokens: 500,
-        temperature: 0.1, // Reduced from 0.4 to 0.1 for more factual responses
-      });
-      clearTimeout(timeout);
-      return result;
-    } catch (error) {
-      clearTimeout(timeout);
-      throw error;
-    }
-  }
-  
   async getTeamConfig(teamId: string): Promise<TeamConfig> {
     console.log('🔍 [AIService] getTeamConfig called with teamId:', teamId);
     const cached = this.teamConfigCache.get(teamId);
@@ -107,15 +74,15 @@ export class AIService {
         const config = JSON.parse(teamRow.config || '{}');
         console.log('🔍 [AIService] Parsed team config:', JSON.stringify(config, null, 2));
         
-        // Substitute environment variables in the config
-        const processedConfig = this.substituteEnvVars(config);
-        console.log('🔍 [AIService] Processed team config with env vars:', JSON.stringify(processedConfig, null, 2));
+        // Resolve dynamic API keys from KV storage
+        const processedConfig = await this.resolveTeamSecrets(teamId, config);
+        console.log('🔍 [AIService] Processed team config with secrets:', JSON.stringify(processedConfig, null, 2));
         console.log('🔍 [AIService] Config requiresPayment:', processedConfig.requiresPayment);
         console.log('🔍 [AIService] Config consultationFee:', processedConfig.consultationFee);
         console.log('🔍 [AIService] Config blawbyApi:', processedConfig.blawbyApi);
         
         this.teamConfigCache.set(teamId, { config: processedConfig, timestamp: Date.now() });
-        return processedConfig; // Return the processed config
+        return processedConfig;
       } else {
         console.log('🔍 [AIService] No team found in database');
         console.log('🔍 [AIService] Available teams:');
@@ -133,9 +100,9 @@ export class AIService {
               console.log('🔍 [AIService] Found team in teams.json:', team.id);
               console.log('🔍 [AIService] Team config from teams.json:', JSON.stringify(team.config, null, 2));
               
-              // Substitute environment variables in the config
-              const processedConfig = this.substituteEnvVars(team.config);
-              console.log('🔍 [AIService] Processed team config with env vars:', JSON.stringify(processedConfig, null, 2));
+              // Resolve dynamic API keys from KV storage
+              const processedConfig = await this.resolveTeamSecrets(teamId, team.config);
+              console.log('🔍 [AIService] Processed team config with secrets:', JSON.stringify(processedConfig, null, 2));
               
               this.teamConfigCache.set(teamId, { config: processedConfig, timestamp: Date.now() });
               return processedConfig;
@@ -151,6 +118,46 @@ export class AIService {
     
     console.log('🔍 [AIService] Returning empty team config');
     return {};
+  }
+
+  /**
+   * Resolve team secrets from KV storage
+   */
+  private async resolveTeamSecrets(teamId: string, config: any): Promise<any> {
+    // If Blawby API is enabled, try to get the API key from KV storage
+    if (config.blawbyApi?.enabled) {
+      const apiKey = await this.teamSecretsService.getBlawbyApiKey(teamId);
+      const teamUlid = await this.teamSecretsService.getBlawbyTeamUlid(teamId);
+      
+      if (apiKey && teamUlid) {
+        config.blawbyApi.apiKey = apiKey;
+        config.blawbyApi.teamUlid = teamUlid;
+        console.log(`🔐 [AIService] Resolved API key for team: ${teamId}`);
+      } else {
+        console.warn(`⚠️ [AIService] No API key found in KV for team: ${teamId}, disabling Blawby API`);
+        config.blawbyApi.enabled = false;
+      }
+    }
+    
+    return config;
+  }
+  
+  async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    try {
+      const result = await this.ai.run(model, {
+        messages,
+        max_tokens: 500,
+        temperature: 0.1, // Reduced from 0.4 to 0.1 for more factual responses
+      });
+      clearTimeout(timeout);
+      return result;
+    } catch (error) {
+      clearTimeout(timeout);
+      throw error;
+    }
   }
 
   // Clear cache for a specific team or all teams

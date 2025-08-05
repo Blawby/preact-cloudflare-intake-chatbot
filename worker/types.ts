@@ -5,6 +5,7 @@ export interface Env {
   AI: Ai;
   DB: D1Database;
   CHAT_SESSIONS: KVNamespace;
+  TEAM_SECRETS: KVNamespace; // Multi-tenant secret storage
   RESEND_API_KEY: string;
   FILES_BUCKET?: R2Bucket;
   PAYMENT_API_KEY?: string;
@@ -22,6 +23,123 @@ export class HttpError extends Error {
     super(message);
     this.name = 'HttpError';
   }
+}
+
+// Matter interface for legal intake
+export interface Matter {
+  id: string;
+  teamId: string;
+  sessionId: string;
+  status: 'lead' | 'active' | 'closed' | 'archived';
+  matterType: string;
+  description: string;
+  urgency: 'low' | 'medium' | 'high' | 'urgent';
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientLocation?: string;
+  opposingParty?: string;
+  customFields?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Media interface for file attachments
+export interface Media {
+  id: string;
+  teamId: string;
+  sessionId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  url: string;
+  uploadedAt: string;
+}
+
+// Chat message interface
+export interface ChatMessage {
+  id: string;
+  teamId: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
+}
+
+// Team configuration interface
+export interface TeamConfig {
+  id: string;
+  slug: string;
+  name: string;
+  config: {
+    aiModel?: string;
+    consultationFee?: number;
+    requiresPayment?: boolean;
+    ownerEmail?: string;
+    availableServices?: string[];
+    jurisdiction?: {
+      type: 'national' | 'state';
+      description: string;
+      supportedStates: string[];
+      supportedCountries: string[];
+      primaryState?: string;
+    };
+    domain?: string;
+    description?: string;
+    paymentLink?: string | null;
+    brandColor?: string;
+    accentColor?: string;
+    introMessage?: string;
+    profileImage?: string | null;
+    webhooks?: {
+      enabled?: boolean;
+      url?: string;
+      secret?: string;
+      events?: {
+        matterCreation?: boolean;
+        matterDetails?: boolean;
+        contactForm?: boolean;
+        appointment?: boolean;
+      };
+      retryConfig?: {
+        maxRetries?: number;
+        retryDelay?: number;
+      };
+    };
+    blawbyApi?: {
+      enabled?: boolean;
+      apiKey?: string;
+      teamUlid?: string;
+    };
+  };
+}
+
+// Payment request interface
+export interface PaymentRequest {
+  customerInfo: {
+    name: string;
+    email: string;
+    phone: string;
+    location?: string;
+  };
+  matterInfo: {
+    type: string;
+    description: string;
+    urgency: string;
+    opposingParty?: string;
+  };
+  teamId: string;
+  sessionId: string;
+}
+
+// Payment response interface
+export interface PaymentResponse {
+  success: boolean;
+  paymentId?: string;
+  invoiceUrl?: string;
+  customerId?: string;
+  error?: string;
 }
 
 // Common response types
