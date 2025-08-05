@@ -9,10 +9,10 @@ CREATE TABLE IF NOT EXISTS payment_history (
   customer_email TEXT NOT NULL,
   customer_name TEXT,
   customer_phone TEXT,
-  amount INTEGER NOT NULL, -- in cents
-  currency TEXT DEFAULT 'USD',
-  status TEXT NOT NULL, -- 'pending', 'completed', 'failed', 'cancelled', 'refunded'
-  event_type TEXT NOT NULL, -- 'payment.completed', 'payment.failed', 'payment.refunded', etc.
+  amount INTEGER NOT NULL CHECK (amount >= 0), -- in cents, prevent negative amounts
+  currency CHAR(3) DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'GBP', 'CAD', 'AUD')), -- standardize currency codes
+  status TEXT NOT NULL CHECK (status IN ('pending', 'completed', 'failed', 'cancelled', 'refunded')), -- validate status values
+  event_type TEXT NOT NULL CHECK (event_type LIKE 'payment.%'), -- ensure event types follow pattern
   matter_type TEXT,
   matter_description TEXT,
   invoice_url TEXT,
