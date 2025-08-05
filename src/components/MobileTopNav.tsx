@@ -26,6 +26,9 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar }: MobileTopNavProps) => {
             src={teamConfig.profileImage || '/blawby-favicon-iframe.png'} 
             alt={teamConfig.name}
             className="mobile-top-nav-image"
+            onError={(e) => {
+              e.currentTarget.src = '/blawby-favicon-iframe.png';
+            }}
           />
           <div className="mobile-top-nav-info">
             <span className="mobile-top-nav-name">{teamConfig.name}</span>
