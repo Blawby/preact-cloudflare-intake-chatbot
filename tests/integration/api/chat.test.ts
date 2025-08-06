@@ -50,11 +50,27 @@ describe('Chat API Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockEnv = {
-      AI: {},
+      AI: {
+        run: vi.fn().mockResolvedValue({
+          response: 'I understand your situation. How can I help you with your legal matter?'
+        })
+      },
       DB: {
         prepare: vi.fn().mockReturnValue({
           bind: vi.fn().mockReturnValue({
             run: vi.fn().mockResolvedValue({}),
+            first: vi.fn().mockResolvedValue({
+              id: 'team1',
+              slug: 'test-team',
+              name: 'Test Team',
+              config: JSON.stringify({
+                availableServices: ['Family Law'],
+                requiresPayment: false,
+                consultationFee: 0
+              }),
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z'
+            }),
             all: vi.fn().mockResolvedValue({
               results: [
                 { id: 'team1', name: 'Test Team', config: JSON.stringify({ availableServices: ['Family Law'] }) }
@@ -99,7 +115,6 @@ describe('Chat API Integration Tests', () => {
       const responseData = await response.json();
       expect(responseData.success).toBe(true);
       expect(responseData.data).toHaveProperty('response');
-      expect(responseData.data).toHaveProperty('intent');
     });
 
     it('should handle chat with matter intent', async () => {

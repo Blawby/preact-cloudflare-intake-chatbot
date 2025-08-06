@@ -291,6 +291,22 @@ CREATE TABLE IF NOT EXISTS payment_history (
   FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
+-- Team API tokens table for secure token storage
+CREATE TABLE IF NOT EXISTS team_api_tokens (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  token_name TEXT NOT NULL, -- Human-readable name for the token
+  token_hash TEXT NOT NULL, -- SHA-256 hash of the actual token
+  permissions JSON, -- Array of permissions this token has
+  active BOOLEAN DEFAULT TRUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_used_at DATETIME,
+  expires_at DATETIME, -- Optional expiration date
+  created_by TEXT, -- Who created this token
+  notes TEXT,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
 -- Insert sample lawyers
 INSERT INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES 
 ('lawyer-1', 'test-team', 'Sarah Johnson', 'sarah@testlawfirm.com', '555-0101', '["Family Law", "Divorce", "Child Custody"]', 'attorney', 35000, 'CA123456', 'CA'),

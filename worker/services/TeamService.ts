@@ -210,10 +210,133 @@ export class TeamService {
   }
 
   async validateTeamAccess(teamId: string, apiToken: string): Promise<boolean> {
-    // In a real implementation, you would validate the API token against the team
-    // For now, we'll just check if the team exists
-    const team = await this.getTeam(teamId);
-    return team !== null;
+    try {
+      // First, retrieve the team
+      const team = await this.getTeam(teamId);
+      if (!team) {
+        console.log(`❌ Team not found: ${teamId}`);
+        return false;
+      }
+
+      // Hash the provided API token for comparison
+      const hashedToken = await this.hashToken(apiToken);
+
+      // Check if the team's config contains API tokens
+      if (team.config.blawbyApi?.apiKey) {
+        // Compare with the team's configured API key
+        if (team.config.blawbyApi.apiKey === apiToken) {
+          console.log(`✅ API token validated for team: ${teamId}`);
+          return true;
+        }
+      }
+
+      // If not found in config, check the team_api_tokens table
+      const tokenResult = await this.env.DB.prepare(`
+        SELECT id, token_hash FROM team_api_tokens 
+        WHERE team_id = ? AND token_hash = ? AND active = 1
+      `).bind(teamId, hashedToken).first();
+
+      if (tokenResult) {
+        // Update last_used_at timestamp
+        await this.env.DB.prepare(`
+          UPDATE team_api_tokens SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(tokenResult.id).run();
+        
+        console.log(`✅ API token validated from database for team: ${teamId}`);
+        return true;
+      }
+
+      console.log(`❌ Invalid API token for team: ${teamId}`);
+      return false;
+    } catch (error) {
+      console.error(`❌ Error validating team access for ${teamId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Create a new API token for a team
+   */
+  async createApiToken(teamId: string, tokenName: string, permissions: string[] = [], createdBy?: string): Promise<{ token: string; tokenId: string }> {
+    // Generate a secure random token
+    const token = this.generateSecureToken();
+    const tokenHash = await this.hashToken(token);
+    const tokenId = this.generateULID();
+
+    await this.env.DB.prepare(`
+      INSERT INTO team_api_tokens (id, team_id, token_name, token_hash, permissions, created_by)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      tokenId,
+      teamId,
+      tokenName,
+      tokenHash,
+      JSON.stringify(permissions),
+      createdBy || 'system'
+    ).run();
+
+    return { token, tokenId };
+  }
+
+  /**
+   * Revoke an API token
+   */
+  async revokeApiToken(tokenId: string): Promise<boolean> {
+    const result = await this.env.DB.prepare(`
+      UPDATE team_api_tokens SET active = 0 WHERE id = ?
+    `).bind(tokenId).run();
+    
+    return result.changes > 0;
+  }
+
+  /**
+   * List active API tokens for a team
+   */
+  async listApiTokens(teamId: string): Promise<Array<{
+    id: string;
+    tokenName: string;
+    permissions: string[];
+    createdAt: string;
+    lastUsedAt?: string;
+    expiresAt?: string;
+  }>> {
+    const tokens = await this.env.DB.prepare(`
+      SELECT id, token_name, permissions, created_at, last_used_at, expires_at
+      FROM team_api_tokens 
+      WHERE team_id = ? AND active = 1
+      ORDER BY created_at DESC
+    `).bind(teamId).all();
+
+    return tokens.results.map(row => ({
+      id: row.id as string,
+      tokenName: row.token_name as string,
+      permissions: JSON.parse(row.permissions as string || '[]'),
+      createdAt: row.created_at as string,
+      lastUsedAt: row.last_used_at as string || undefined,
+      expiresAt: row.expires_at as string || undefined
+    }));
+  }
+
+  /**
+   * Hash a token for secure storage and comparison
+   * In production, use a proper cryptographic hash function
+   */
+  private async hashToken(token: string): Promise<string> {
+    // For now, use a simple hash. In production, use crypto.subtle.digest
+    const encoder = new TextEncoder();
+    const data = encoder.encode(token);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /**
+   * Generate a secure random token
+   */
+  private generateSecureToken(): string {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   }
 
   private generateULID(): string {

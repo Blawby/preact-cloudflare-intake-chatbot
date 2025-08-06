@@ -2,6 +2,35 @@
 
 A production-ready legal intake chatbot built with Cloudflare Workers AI, featuring intelligent conversation handling, step-by-step information collection, and automated matter creation with payment integration.
 
+## 🔒 **Security & Configuration**
+
+### Team Configuration Security
+
+The system uses a multi-tenant architecture with team-specific configurations stored in `teams.json`. For security:
+
+- **API Key Storage**: Team API keys are stored as environment variable references (e.g., `${BLAWBY_API_TOKEN}`)
+- **Runtime Resolution**: The `TeamService` automatically resolves these references at runtime
+- **No Hardcoded Secrets**: No sensitive credentials are stored in the codebase or database
+- **Centralized Management**: Secrets are managed via Cloudflare Workers secrets
+
+#### Example Team Configuration
+```json
+{
+  "blawbyApi": {
+    "enabled": true,
+    "apiKey": "${BLAWBY_API_TOKEN}",
+    "teamUlid": "01jq70jnstyfzevc6423czh50e"
+  }
+}
+```
+
+#### Security Benefits
+- ✅ No hardcoded API keys in database or code
+- ✅ Environment variable resolution at runtime
+- ✅ Centralized secret management via Cloudflare
+- ✅ Team-specific API credentials supported
+- ✅ Fallback to global API token if team-specific not available
+
 ## 🎯 **Production Status: LIVE & READY**
 
 ### ✅ **Successfully Deployed Features:**

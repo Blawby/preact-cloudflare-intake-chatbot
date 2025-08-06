@@ -74,6 +74,9 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     } else if (path.startsWith('/api/agent')) {
       console.log('✅ Matched regular agent route');
       response = await handleAgent(request, env, CORS_HEADERS);
+    } else if (path === '/api/chat') {
+      console.log('✅ Matched chat route');
+      response = await handleAgent(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/teams')) {
       response = await handleTeams(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/forms')) {

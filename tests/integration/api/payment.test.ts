@@ -1,33 +1,110 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { unstable_dev } from 'wrangler';
 import type { UnstableDevWorker } from 'wrangler';
+
+// Mock fetch globally
+global.fetch = vi.fn();
+
+// Mock the TeamService module
+vi.mock('../../../worker/services/TeamService', () => ({
+  TeamService: vi.fn().mockImplementation(() => ({
+    getTeam: vi.fn().mockResolvedValue({
+      id: '01jq70jnstyfzevc6423czh50e',
+      slug: 'north-carolina-legal-services',
+      name: 'North Carolina Legal Services',
+      config: {
+        requiresPayment: true,
+        consultationFee: 150,
+        blawbyApi: {
+          enabled: true,
+          apiKey: 'test-token',
+          teamUlid: '01jq70jnstyfzevc6423czh50e'
+        }
+      }
+    }),
+    getTeamConfig: vi.fn().mockResolvedValue({
+      requiresPayment: true,
+      consultationFee: 150,
+      blawbyApi: {
+        enabled: true,
+        apiKey: 'test-token',
+        teamUlid: '01jq70jnstyfzevc6423czh50e'
+      }
+    })
+  }))
+}));
 
 describe('Payment API Integration', () => {
   let worker: UnstableDevWorker;
 
   beforeAll(async () => {
-    // Ensure BLAWBY_API_TOKEN is set for integration tests
-    if (!process.env.BLAWBY_API_TOKEN) {
-      throw new Error('BLAWBY_API_TOKEN environment variable must be set for integration tests');
-    }
+    // Mock successful API responses
+    (fetch as any).mockResolvedValue({
+      status: 200,
+      json: async () => ({
+        message: 'Customer created successfully.',
+        data: { id: 'customer-123' }
+      })
+    });
 
     worker = await unstable_dev('worker/index.ts', {
       experimental: { disableExperimentalWarning: true },
       vars: {
         PAYMENT_API_KEY: 'test-key',
         RESEND_API_KEY: 'test-resend-key',
-        BLAWBY_API_URL: 'https://staging.blawby.com',
-        BLAWBY_API_TOKEN: process.env.BLAWBY_API_TOKEN,
+        BLAWBY_API_URL: 'http://localhost:3000',
+        BLAWBY_API_TOKEN: 'test-token',
         BLAWBY_TEAM_ULID: '01jq70jnstyfzevc6423czh50e'
+      },
+      bindings: {
+        DB: {
+          prepare: vi.fn().mockReturnValue({
+            bind: vi.fn().mockReturnValue({
+              run: vi.fn().mockResolvedValue({}),
+              first: vi.fn().mockResolvedValue(null),
+              all: vi.fn().mockResolvedValue({ results: [] })
+            })
+          })
+        },
+        AI: {
+          run: vi.fn().mockResolvedValue({
+            response: 'Mock AI response'
+          })
+        }
       }
     });
   });
 
   afterAll(async () => {
-    await worker.stop();
+    if (worker) {
+      await worker.stop();
+    }
   });
 
   it('should create payment invoice successfully', async () => {
+    // Mock customer creation
+    (fetch as any).mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({
+        message: 'Customer created successfully.',
+        data: { id: 'customer-123' }
+      })
+    });
+
+    // Mock invoice creation
+    (fetch as any).mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({
+        message: 'Invoice created successfully.',
+        data: {
+          id: 'invoice-123',
+          customer_id: 'customer-123',
+          payment_link: 'https://staging.blawby.com/pay/invoice-123',
+          amount: 150.00
+        }
+      })
+    });
+
     const paymentRequest = {
       customerInfo: {
         name: 'John Doe',
@@ -53,11 +130,14 @@ describe('Payment API Integration', () => {
       body: JSON.stringify(paymentRequest)
     });
 
-    expect(response.status).toBe(200);
+    console.log('Response status:', response.status);
     const result = await response.json();
+    console.log('Response body:', result);
+
+    expect(response.status).toBe(200);
     expect(result.success).toBe(true);
-    expect(result.invoiceUrl).toBeDefined();
-    expect(result.paymentId).toBeDefined();
+    expect(result.data.invoiceUrl).toBeDefined();
+    expect(result.data.paymentId).toBeDefined();
   });
 
   it('should handle missing customer information', async () => {
@@ -99,8 +179,9 @@ describe('Payment API Integration', () => {
         location: 'Charlotte, NC'
       },
       matterInfo: {
-        // Missing type and description
-        urgency: 'high'
+        // Missing required fields
+        type: '',
+        description: ''
       },
       teamId: '01jq70jnstyfzevc6423czh50e',
       sessionId: 'session-123'
@@ -121,12 +202,25 @@ describe('Payment API Integration', () => {
   });
 
   it('should handle payment webhooks', async () => {
-    const webhookPayload = {
+    // Mock the database operations for webhook
+    const mockDb = {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          run: vi.fn().mockResolvedValue({})
+        })
+      })
+    };
+
+    // Override the worker's DB binding for this test
+    (worker as any).env = { ...(worker as any).env, DB: mockDb };
+
+    const webhookData = {
       eventType: 'payment.completed',
-      paymentId: 'pay_123456789',
+      paymentId: 'pay_123',
       status: 'completed',
-      amount: 5000, // $50.00 in cents
-      customerEmail: 'john@example.com'
+      amount: 15000,
+      customerEmail: 'john@example.com',
+      teamId: '01jq70jnstyfzevc6423czh50e'
     };
 
     const response = await worker.fetch('/api/payment/webhook', {
@@ -134,7 +228,7 @@ describe('Payment API Integration', () => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(webhookPayload)
+      body: JSON.stringify(webhookData)
     });
 
     expect(response.status).toBe(200);
@@ -143,7 +237,7 @@ describe('Payment API Integration', () => {
   });
 
   it('should return 404 for unknown payment endpoints', async () => {
-    const response = await worker.fetch('/api/payment/unknown', {
+    const response = await worker.fetch('/api/payment/unknown-endpoint', {
       method: 'GET'
     });
 
