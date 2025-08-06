@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 
 // Mock environment variables for testing
 const mockEnv = {
@@ -7,12 +7,26 @@ const mockEnv = {
   BLAWBY_TEAM_ULID: '01jq70jnstyfzevc6423czh50e'
 };
 
+// Test context for managing test data and state
+interface TestContext {
+  customerIds: string[];
+}
+
 describe('Blawby API Integration Tests', () => {
+  let testContext: TestContext;
+
   beforeAll(() => {
     // Ensure BLAWBY_API_TOKEN is set for integration tests
     if (!process.env.BLAWBY_API_TOKEN) {
       throw new Error('BLAWBY_API_TOKEN environment variable must be set for integration tests');
     }
+  });
+
+  beforeEach(() => {
+    // Initialize test context for each test to ensure isolation
+    testContext = {
+      customerIds: []
+    };
   });
 
   describe('API Authentication', () => {
@@ -76,8 +90,8 @@ describe('Blawby API Integration Tests', () => {
       expect(data.data.name).toBe(customerData.name);
       expect(data.data.email).toBe(customerData.email);
 
-      // Store the customer ID for invoice creation test
-      (global as any).testCustomerId = data.data.id;
+      // Store the customer ID in test context for cleanup
+      testContext.customerIds.push(data.data.id);
     });
 
     it('should reject customer creation with invalid data', async () => {
@@ -137,8 +151,8 @@ describe('Blawby API Integration Tests', () => {
       const customerResult = await customerResponse.json();
       const customerId = customerResult.data.id;
       
-      // Store the customer ID for cleanup
-      (global as any).testInvoiceCustomerId = customerId;
+      // Store the customer ID in test context for cleanup
+      testContext.customerIds.push(customerId);
 
       // Now create an invoice
       const invoiceData = {
@@ -178,12 +192,11 @@ describe('Blawby API Integration Tests', () => {
 
   afterAll(async () => {
     // Clean up test data to prevent accumulation in staging environment
-    const testCustomerId = (global as any).testCustomerId;
-    const testInvoiceCustomerId = (global as any).testInvoiceCustomerId;
+    if (!testContext || !testContext.customerIds.length) {
+      return;
+    }
     
-    const customerIdsToCleanup = [testCustomerId, testInvoiceCustomerId].filter(Boolean);
-    
-    for (const customerId of customerIdsToCleanup) {
+    for (const customerId of testContext.customerIds) {
       try {
         console.log(`🧹 Cleaning up test customer: ${customerId}`);
         
