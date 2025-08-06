@@ -107,16 +107,22 @@ export class TeamService {
   /**
    * Constant-time string comparison to prevent timing attacks
    * Compares two strings in a way that doesn't reveal information about the strings
+   * Always processes both strings fully to avoid timing leaks
    */
   private constantTimeCompare(a: string, b: string): boolean {
-    if (a.length !== b.length) {
-      return false;
+    // Use the longer string length to ensure we always process the same amount
+    const maxLength = Math.max(a.length, b.length);
+    let result = 0;
+    
+    // Process both strings to the maximum length
+    for (let i = 0; i < maxLength; i++) {
+      const aChar = i < a.length ? a.charCodeAt(i) : 0;
+      const bChar = i < b.length ? b.charCodeAt(i) : 0;
+      result |= aChar ^ bChar;
     }
     
-    let result = 0;
-    for (let i = 0; i < a.length; i++) {
-      result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    }
+    // Also compare lengths in constant time
+    result |= a.length ^ b.length;
     
     return result === 0;
   }
