@@ -42,6 +42,11 @@
           "maxRetries": 3,
           "retryDelay": 60
         }
+      },
+      "blawbyApi": {
+        "enabled": false,
+        "apiKey": null,
+        "teamUlid": null
       }
     }
   },
@@ -80,7 +85,7 @@
       "webhooks": {
         "enabled": true,
         "url": "https://staging.blawby.com/webhooks/intake-form/01jq70jnstyfzevc6423czh50e/webhook-events",
-        "secret": "wh_f1be34ea3bff.eyJ0IjoiMDFqcTcwam5zdHlmemV2YzY0MjNjemg1MGUiLCJwIjoiaW50YWtlLWZvcm0ifQ==",
+        "secret": "your_webhook_secret_here",
         "events": {
           "matterCreation": true,
           "matterDetails": true,
@@ -91,6 +96,11 @@
           "maxRetries": 3,
           "retryDelay": 60
         }
+      },
+      "blawbyApi": {
+        "enabled": true,
+        "apiKey": "B3aCXQkQiXy81PJ8jhTtnzP2Dn4j0LcK2PG1U3RGa81e67e2",
+        "teamUlid": "01jq70jnstyfzevc6423czh50e"
       }
     }
   }

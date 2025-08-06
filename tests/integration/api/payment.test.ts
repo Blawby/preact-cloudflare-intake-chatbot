@@ -10,7 +10,10 @@ describe('Payment API Integration', () => {
       experimental: { disableExperimentalWarning: true },
       vars: {
         PAYMENT_API_KEY: 'test-key',
-        RESEND_API_KEY: 'test-resend-key'
+        RESEND_API_KEY: 'test-resend-key',
+        BLAWBY_API_URL: 'https://staging.blawby.com',
+        BLAWBY_API_TOKEN: process.env.BLAWBY_API_TOKEN || 'test-token',
+        BLAWBY_TEAM_ULID: '01jq70jnstyfzevc6423czh50e'
       }
     });
   });
@@ -23,8 +26,8 @@ describe('Payment API Integration', () => {
     const paymentRequest = {
       customerInfo: {
         name: 'John Doe',
-        email: 'john@example.com',
-        phone: '555-123-4567',
+        email: `test-${Date.now()}@example.com`,
+        phone: '13322097232',
         location: 'Charlotte, NC'
       },
       matterInfo: {
@@ -33,7 +36,7 @@ describe('Payment API Integration', () => {
         urgency: 'high',
         opposingParty: 'ABC Company'
       },
-      teamId: 'test-team-123',
+      teamId: '01jq70jnstyfzevc6423czh50e',
       sessionId: 'session-123'
     };
 
@@ -64,7 +67,7 @@ describe('Payment API Integration', () => {
         description: 'Terminated for downloading porn on work laptop',
         urgency: 'high'
       },
-      teamId: 'test-team-123',
+      teamId: '01jq70jnstyfzevc6423czh50e',
       sessionId: 'session-123'
     };
 
@@ -86,15 +89,15 @@ describe('Payment API Integration', () => {
     const invalidRequest = {
       customerInfo: {
         name: 'John Doe',
-        email: 'john@example.com',
-        phone: '555-123-4567',
+        email: `test-${Date.now()}@example.com`,
+        phone: '13322097232',
         location: 'Charlotte, NC'
       },
       matterInfo: {
         // Missing type and description
         urgency: 'high'
       },
-      teamId: 'test-team-123',
+      teamId: '01jq70jnstyfzevc6423czh50e',
       sessionId: 'session-123'
     };
 

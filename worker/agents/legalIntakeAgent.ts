@@ -97,20 +97,42 @@ export const scheduleConsultation = {
 // Helper function to get team configuration
 async function getTeamConfig(env: any, teamId: string) {
   try {
-    const { AIService } = await import('../services/AIService.js');
-    const aiService = new AIService(env.AI, env);
-    console.log('Retrieving team config for teamId:', teamId);
-    const teamConfig = await aiService.getTeamConfig(teamId);
-    console.log('Retrieved team config:', JSON.stringify(teamConfig, null, 2));
-    return teamConfig;
+    const { TeamService } = await import('../services/TeamService.js');
+    const teamService = new TeamService(env);
+    console.log('Retrieving team for teamId:', teamId);
+    const team = await teamService.getTeam(teamId);
+    if (team) {
+      console.log('Retrieved team:', { id: team.id, slug: team.slug, name: team.name });
+      console.log('Team config:', JSON.stringify(team.config, null, 2));
+      return team;
+    } else {
+      console.log('No team found, returning default config');
+      return {
+        id: teamId,
+        slug: 'default',
+        name: 'Default Team',
+        config: {
+          requiresPayment: false,
+          consultationFee: 0,
+          paymentLink: null
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+    }
   } catch (error) {
     console.warn('Failed to get team config:', error);
     return {
+      id: teamId,
+      slug: 'default',
+      name: 'Default Team',
       config: {
         requiresPayment: false,
         consultationFee: 0,
         paymentLink: null
-      }
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
   }
 }
@@ -484,11 +506,9 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   
   if (requiresPayment && consultationFee > 0) {
     try {
-      // Use mock service for development, real service for production
-      const isDevelopment = !env.PAYMENT_API_URL || env.PAYMENT_API_URL.includes('localhost');
+      // Use real Blawby payment service
       const { PaymentService } = await import('../services/PaymentService.js');
-      const { MockPaymentService } = await import('../services/MockPaymentService.js');
-      const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
+      const paymentService = new PaymentService(env);
       
       const paymentRequest = {
         customerInfo: {
@@ -503,7 +523,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
           urgency: urgency,
           opposingParty: opposing_party || ''
         },
-        teamId: teamConfig?.id || 'default',
+        teamId: teamConfig?.id || env.BLAWBY_TEAM_ULID || '01jq70jnstyfzevc6423czh50e',
         sessionId: 'session-' + Date.now()
       };
       
@@ -515,9 +535,15 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
         console.log('✅ Invoice created successfully:', { invoiceUrl, paymentId });
       } else {
         console.error('❌ Failed to create invoice:', paymentResult.error);
+        // Fallback to team payment link
+        invoiceUrl = paymentLink;
+        console.log('✅ Using team payment link as fallback:', invoiceUrl);
       }
     } catch (error) {
       console.error('❌ Payment service error:', error);
+      // Fallback to team payment link
+      invoiceUrl = paymentLink;
+      console.log('✅ Using team payment link as fallback:', invoiceUrl);
     }
   }
   
@@ -581,7 +607,7 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
       opposing_party,
       requires_payment: requiresPayment,
       consultation_fee: consultationFee,
-      payment_link: paymentLink
+      payment_link: invoiceUrl || paymentLink
     }
   };
   console.log('[handleCreateMatter] result:', JSON.stringify(result, null, 2));

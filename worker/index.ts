@@ -11,7 +11,8 @@ import {
   handleFiles,
   handleWebhooks,
   handleReview,
-  handlePayment
+  handlePayment,
+  handleDebug
 } from './routes';
 import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
@@ -87,6 +88,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handleReview(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/payment')) {
       response = await handlePayment(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/debug')) {
+      response = await handleDebug(request, env, CORS_HEADERS);
     } else if (path === '/api/health') {
       response = await handleHealth(request, env, CORS_HEADERS);
     } else if (path === '/') {

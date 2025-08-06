@@ -7,4 +7,5 @@ export { handleScheduling } from './scheduling';
 export { handleFiles } from './files';
 export { handleWebhooks } from './webhooks';
 export { handleReview } from './review';
-export { handlePayment } from './payment'; 
+export { handlePayment } from './payment';
+export { handleDebug } from './debug'; 

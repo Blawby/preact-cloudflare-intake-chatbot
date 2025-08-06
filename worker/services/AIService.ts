@@ -1,25 +1,5 @@
-export interface TeamConfig {
-  requiresPayment?: boolean;
-  consultationFee?: number;
-  ownerEmail?: string;
-  serviceQuestions?: Record<string, string[]>;
-  availableServices?: string[];
-  webhooks?: {
-    enabled?: boolean;
-    url?: string;
-    secret?: string;
-    events?: {
-      matterCreation?: boolean;
-      matterDetails?: boolean;
-      contactForm?: boolean;
-      appointment?: boolean;
-    };
-    retryConfig?: {
-      maxRetries?: number;
-      retryDelay?: number; // in seconds
-    };
-  };
-}
+// Import TeamConfig from TeamService instead of defining it here
+import { TeamConfig } from './TeamService.js';
 
 export interface Env {
   AI: any;
@@ -63,25 +43,21 @@ export class AIService {
     }
 
     try {
-      // Try to find team by ID (ULID) first, then by slug
-      console.log('Querying database for team config...');
-      let teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE id = ?').bind(teamId).first();
-      console.log('Team row found by ID:', teamRow ? 'yes' : 'no');
-      if (!teamRow) {
-        teamRow = await this.env.DB.prepare('SELECT config FROM teams WHERE slug = ?').bind(teamId).first();
-        console.log('Team row found by slug:', teamRow ? 'yes' : 'no');
-      }
+      // Use TeamService to get full team object
+      const { TeamService } = await import('./TeamService.js');
+      const teamService = new TeamService(this.env);
+      const team = await teamService.getTeam(teamId);
       
-      if (teamRow) {
-        const config = JSON.parse(teamRow.config as string);
-        console.log('Parsed team config:', JSON.stringify(config, null, 2));
-        this.teamConfigCache.set(teamId, { config, timestamp: Date.now() });
-        return { config }; // Return with config property to match expected structure
+      if (team) {
+        console.log('Found team:', { id: team.id, slug: team.slug, name: team.name });
+        console.log('Team config:', JSON.stringify(team.config, null, 2));
+        this.teamConfigCache.set(teamId, { config: team.config, timestamp: Date.now() });
+        return team.config;
       } else {
         console.log('No team found in database');
         console.log('Available teams:');
-        const allTeams = await this.env.DB.prepare('SELECT id, slug FROM teams').all();
-        console.log('All teams:', allTeams);
+        const allTeams = await teamService.listTeams();
+        console.log('All teams:', allTeams.map(t => ({ id: t.id, slug: t.slug })));
       }
     } catch (error) {
       console.warn('Failed to fetch team config:', error);

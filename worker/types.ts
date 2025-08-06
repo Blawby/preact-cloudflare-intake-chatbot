@@ -10,6 +10,9 @@ export interface Env {
   PAYMENT_API_KEY?: string;
   PAYMENT_API_URL?: string;
   WEBHOOK_SECRET?: string;
+  BLAWBY_API_URL?: string;
+  BLAWBY_API_TOKEN?: string;
+  BLAWBY_TEAM_ULID?: string;
 }
 
 // HTTP Error class for centralized error handling

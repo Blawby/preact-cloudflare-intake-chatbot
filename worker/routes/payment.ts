@@ -27,7 +27,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
       }
 
       // Use mock service for development, real service for production
-      const isDevelopment = !env.PAYMENT_API_URL || env.PAYMENT_API_URL.includes('localhost');
+      const isDevelopment = !env.BLAWBY_API_URL || env.BLAWBY_API_URL.includes('localhost');
       const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
       const result = await paymentService.createInvoice(body);
 
@@ -62,7 +62,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
       }
 
       // Use mock service for development, real service for production
-      const isDevelopment = !env.PAYMENT_API_URL || env.PAYMENT_API_URL.includes('localhost');
+      const isDevelopment = !env.BLAWBY_API_URL || env.BLAWBY_API_URL.includes('localhost');
       const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
       const result = await paymentService.getPaymentStatus(paymentId);
 

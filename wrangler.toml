@@ -25,6 +25,12 @@ experimental_remote = true
 
 # Resend API key for email notifications (set via wrangler secret put RESEND_API_KEY)
 
+# Blawby API Configuration
+[vars]
+BLAWBY_API_URL = "https://staging.blawby.com"
+BLAWBY_TEAM_ULID = "01jq70jnstyfzevc6423czh50e"
+# BLAWBY_API_TOKEN should be set via: wrangler secret put BLAWBY_API_TOKEN
+
 # R2 bucket for file storage
 [[r2_buckets]]
 binding = "FILES_BUCKET"
