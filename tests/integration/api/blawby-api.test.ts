@@ -3,11 +3,18 @@ import { describe, it, expect, beforeAll } from 'vitest';
 // Mock environment variables for testing
 const mockEnv = {
   BLAWBY_API_URL: 'https://staging.blawby.com',
-  BLAWBY_API_TOKEN: process.env.BLAWBY_API_TOKEN || 'test-token',
+  BLAWBY_API_TOKEN: process.env.BLAWBY_API_TOKEN,
   BLAWBY_TEAM_ULID: '01jq70jnstyfzevc6423czh50e'
 };
 
 describe('Blawby API Integration Tests', () => {
+  beforeAll(() => {
+    // Ensure BLAWBY_API_TOKEN is set for integration tests
+    if (!process.env.BLAWBY_API_TOKEN) {
+      throw new Error('BLAWBY_API_TOKEN environment variable must be set for integration tests');
+    }
+  });
+
   describe('API Authentication', () => {
     it('should successfully authenticate with the Blawby API', async () => {
       const response = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/customers`, {

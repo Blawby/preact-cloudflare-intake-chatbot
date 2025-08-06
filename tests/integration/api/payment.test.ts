@@ -6,13 +6,18 @@ describe('Payment API Integration', () => {
   let worker: UnstableDevWorker;
 
   beforeAll(async () => {
+    // Ensure BLAWBY_API_TOKEN is set for integration tests
+    if (!process.env.BLAWBY_API_TOKEN) {
+      throw new Error('BLAWBY_API_TOKEN environment variable must be set for integration tests');
+    }
+
     worker = await unstable_dev('worker/index.ts', {
       experimental: { disableExperimentalWarning: true },
       vars: {
         PAYMENT_API_KEY: 'test-key',
         RESEND_API_KEY: 'test-resend-key',
         BLAWBY_API_URL: 'https://staging.blawby.com',
-        BLAWBY_API_TOKEN: process.env.BLAWBY_API_TOKEN || 'test-token',
+        BLAWBY_API_TOKEN: process.env.BLAWBY_API_TOKEN,
         BLAWBY_TEAM_ULID: '01jq70jnstyfzevc6423czh50e'
       }
     });
