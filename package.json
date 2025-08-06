@@ -14,6 +14,7 @@
 	"dependencies": {
 		"@heroicons/react": "^2.2.0",
 		"framer-motion": "^12.23.12",
+		"libphonenumber-js": "^1.12.10",
 		"preact": "^10.25.3",
 		"preact-iso": "^2.9.1",
 		"preact-markdown": "^2.1.0",
