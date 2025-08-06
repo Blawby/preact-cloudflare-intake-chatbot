@@ -18,6 +18,7 @@ import MobileTopNav from './components/MobileTopNav';
 import MattersList from './components/MattersList';
 import MatterDetail from './components/MatterDetail';
 import ReviewQueue from './components/ReviewQueue';
+import PaymentEmbed from './components/PaymentEmbed';
 import { debounce } from './utils/debounce';
 // Removed unused useDebounce import
 // Removed unused LazyComponent import

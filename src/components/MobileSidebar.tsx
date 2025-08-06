@@ -1,9 +1,10 @@
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { FunctionComponent } from 'preact/compat';
+import { Button } from './ui/Button';
 import TeamProfile from './TeamProfile';
 import MatterCanvas from './MatterCanvas';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
-import { Button } from './ui/Button';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -84,6 +85,7 @@ const MobileSidebar = ({
                 </svg>
                 {sidebarMatter ? 'View Matter' : 'Create Matter'}
               </Button>
+              
             </div>
           </div>
 

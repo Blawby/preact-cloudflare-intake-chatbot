@@ -1,5 +1,7 @@
 import { FunctionComponent, useState, useEffect, useRef } from 'preact/compat';
-import { XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowTopRightOnSquareIcon, CreditCardIcon } from '@heroicons/react/24/outline';
+import { Button } from './ui/Button';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface PaymentEmbedProps {
   paymentUrl: string;
@@ -16,47 +18,27 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
   onPaymentComplete,
   onClose
 }) => {
-  const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [iframeHeight, setIframeHeight] = useState(600);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [showFallback, setShowFallback] = useState(false);
 
+  // Detect mobile device
   useEffect(() => {
-    // Test if the URL can be embedded
-    const testIframeEmbedding = async () => {
-      try {
-        // Try to fetch the URL to check if it's embeddable
-        const response = await fetch(paymentUrl, { 
-          method: 'HEAD',
-          mode: 'no-cors' // This will fail if CORS is not allowed
-        });
-        // If we get here, the URL might be embeddable
-        setShowFallback(false);
-      } catch (error) {
-        console.warn('Payment URL may not be embeddable, showing fallback');
-        setShowFallback(true);
-      }
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
     };
-
-    // For staging.blawby.com, we know it has X-Frame-Options restrictions
-    // so we'll show the fallback immediately
-    if (paymentUrl.includes('staging.blawby.com')) {
-      console.log('🎯 [PaymentEmbed] Detected staging.blawby.com URL, showing fallback');
-      setShowFallback(true);
-    } else {
-      testIframeEmbedding();
-    }
-  }, [paymentUrl]);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleIframeLoad = () => {
-    setIsLoading(false);
+    // Iframe loaded successfully
   };
 
   const handleIframeError = () => {
-    setIsLoading(false);
     setHasError(true);
-    setShowFallback(true);
   };
 
   const handleExternalLink = () => {
@@ -69,117 +51,173 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
     }
   };
 
-  // Fallback component when iframe embedding fails
-  if (showFallback) {
-    return (
-      <div className="border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 overflow-hidden my-4 shadow-lg">
-        <div className="flex justify-between items-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white m-0">Complete Payment</h3>
-            {amount && (
-              <span className="bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold">
-                ${amount}
-              </span>
-            )}
-          </div>
-          {onClose && (
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-md transition-colors"
-              aria-label="Close payment"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-        
-        <div className="p-4 sm:p-6 text-center">
-          {description && (
-            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-6">
-              {description}
-            </p>
-          )}
-          
-          <div className="flex justify-center">
-            <button
-              onClick={handleExternalLink}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-none px-4 sm:px-6 py-3 rounded-lg text-sm font-medium cursor-pointer transition-all hover:-translate-y-0.5 w-full sm:w-auto"
-            >
-              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-              Open Payment Page
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handlePaymentClick = () => {
+    setShowPaymentModal(true);
+    setHasError(false);
+  };
 
-  return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 overflow-hidden my-4 shadow-lg">
-      <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-        <div className="flex items-center gap-3">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">Complete Payment</h3>
-          {amount && (
-            <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
-              ${amount}
-            </span>
-          )}
-        </div>
-        {onClose && (
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-md transition-colors"
-            aria-label="Close payment"
+  const handlePaymentModalClose = () => {
+    setShowPaymentModal(false);
+  };
+
+  const handlePaymentComplete = (paymentId: string) => {
+    handlePaymentModalClose();
+    if (onPaymentComplete) {
+      onPaymentComplete(paymentId);
+    }
+  };
+
+  // Shared Payment Modal/Drawer Component
+  const PaymentModal = () => {
+    return (
+      <AnimatePresence>
+        {showPaymentModal && (
+          <motion.div 
+            className={`fixed inset-0 ${isMobile ? '' : 'flex items-center justify-center p-4'}`}
+            style={{ zIndex: 1002 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            key="modal"
           >
-            <XMarkIcon className="w-5 h-5" />
-          </button>
-        )}
-      </div>
-      
-      <div className="relative min-h-[300px] sm:min-h-[400px]">
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center p-8 text-gray-500 dark:text-gray-400">
-            <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-            <p>Loading payment form...</p>
-          </div>
-        )}
-        
-        {hasError && (
-          <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400">
-            <p className="mb-4 text-sm">Unable to load payment form. Please use the external link below.</p>
-            <button
-              onClick={handleExternalLink}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-none px-6 py-3 rounded-lg text-sm font-medium cursor-pointer transition-all hover:-translate-y-0.5"
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black bg-opacity-50"
+              onClick={handlePaymentModalClose}
+            />
+            
+            {/* Content */}
+            <motion.div 
+              className={`shadow-2xl overflow-hidden ${
+                isMobile 
+                  ? 'fixed bottom-0 left-0 right-0 rounded-t-2xl max-h-[90vh]' 
+                  : 'relative rounded-xl max-w-4xl w-full max-h-[90vh]'
+              }`}
+              style={{
+                backgroundColor: 'var(--bg-color)',
+                color: 'var(--text-color)',
+                border: '1px solid var(--border-color)'
+              }}
+              initial={isMobile ? { y: "100%" } : { scale: 0.95 }}
+              animate={isMobile ? { y: 0 } : { scale: 1 }}
+              exit={isMobile ? { y: "100%" } : { scale: 0.95 }}
+              transition={isMobile ? { 
+                type: "tween", 
+                duration: 0.3, 
+                ease: [0.25, 0.46, 0.45, 0.94] 
+              } : { 
+                type: "spring" 
+              }}
+              key={`content-${isMobile}`}
             >
-              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-              Open Payment Page
-            </button>
-          </div>
+              {/* Handle for mobile */}
+              {isMobile && (
+                <div className="flex justify-center pt-4 pb-2">
+                  <div className="w-12 h-1 rounded-full" style={{ backgroundColor: 'var(--border-color)' }}></div>
+                </div>
+              )}
+              
+              {/* Header */}
+              <div 
+                className="flex justify-between items-center p-4 border-b"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)'
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCardIcon className="w-6 h-6" style={{ color: 'var(--accent-color)' }} />
+                  <h3 className="text-lg font-semibold m-0 !mt-0 !mb-0" style={{ color: 'var(--text-color)' }}>Complete Payment</h3>
+                  {amount && (
+                    <span 
+                      className="px-3 py-1 rounded-full text-sm font-semibold"
+                      style={{
+                        backgroundColor: 'var(--accent-color)',
+                        color: '#1a1a1a'
+                      }}
+                    >
+                      ${amount}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={handlePaymentModalClose}
+                  className="p-1 rounded-md transition-colors"
+                  style={{ color: 'var(--text-color)' }}
+                  aria-label="Close payment"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
+              
+              {/* Payment iframe - Fixed height container */}
+              <div className={`relative ${isMobile ? 'h-[400px]' : 'h-[500px]'}`}>
+                {hasError && (
+                  <div 
+                    className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
+                    style={{
+                      backgroundColor: 'var(--bg-color)',
+                      color: 'var(--text-color)'
+                    }}
+                  >
+                    <p className="mb-4 text-sm opacity-70">Unable to load payment form. Please use the external link below.</p>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={handleExternalLink}
+                    >
+                      <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
+                      Open Payment Page
+                    </Button>
+                  </div>
+                )}
+                
+                <iframe
+                  ref={iframeRef}
+                  src={paymentUrl}
+                  className="w-full h-full border-none"
+                  style={{ backgroundColor: 'var(--bg-color)' }}
+                  onLoad={handleIframeLoad}
+                  onError={handleIframeError}
+                  title="Payment Form"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  loading="lazy"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
         )}
+      </AnimatePresence>
+    );
+  };
+
+  // Main Payment Link Component
+  return (
+    <>
+      <div className="flex flex-col sm:flex-row gap-3 my-4 w-full">
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={handlePaymentClick}
+          className="flex-1"
+        >
+          <CreditCardIcon className="w-5 h-5 mr-2" />
+          Pay ${amount || '0'}
+        </Button>
         
-        <iframe
-          ref={iframeRef}
-          src={paymentUrl}
-          className="w-full border-none bg-white dark:bg-gray-800"
-          style={{ height: `${iframeHeight}px` }}
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
-          title="Payment Form"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-          loading="lazy"
-        />
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={handleExternalLink}
+          className="flex-1 sm:flex-none"
+        >
+          <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
+          Open in Browser
+        </Button>
       </div>
       
-      <div className="flex justify-center p-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
-        <button
-          onClick={handleExternalLink}
-          className="flex items-center gap-2 bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-500"
-        >
-          <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-          Open in new tab
-        </button>
-      </div>
-    </div>
+      <PaymentModal />
+    </>
   );
 };
 
