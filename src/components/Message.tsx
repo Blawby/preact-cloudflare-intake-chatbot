@@ -39,6 +39,8 @@ interface MessageProps {
 	isUser: boolean;
 	files?: FileAttachment[];
 	matterCanvas?: {
+		matterId?: string;
+		matterNumber?: string;
 		service: string;
 		matterSummary: string;
 		answers?: Record<string, string>;
@@ -213,8 +215,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						matterNumber={matterCanvas.matterNumber}
 						service={matterCanvas.service}
 						matterSummary={matterCanvas.matterSummary}
-						qualityScore={matterCanvas.qualityScore}
-						answers={matterCanvas.answers}
+						answers={matterCanvas.answers || {}}
 					/>
 				)}
 				
