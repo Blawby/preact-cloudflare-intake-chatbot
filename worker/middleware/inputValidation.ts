@@ -1,6 +1,7 @@
 import { SecurityFilter } from '../utils/securityFilter.js';
+import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.js';
 
-export async function validateInput(body: any, teamConfig?: any): Promise<{ isValid: boolean; reason?: string; violations?: string[] }> {
+export async function validateInput(body: any, teamConfig?: any, cloudflareLocation?: CloudflareLocationInfo): Promise<{ isValid: boolean; reason?: string; violations?: string[] }> {
   const { messages } = body;
 
   if (!messages || !Array.isArray(messages)) {
@@ -12,8 +13,8 @@ export async function validateInput(body: any, teamConfig?: any): Promise<{ isVa
     return { isValid: false, reason: 'No message content' };
   }
 
-  // Comprehensive security validation
-  const securityValidation = SecurityFilter.validateRequest(latestMessage.content, teamConfig);
+  // Comprehensive security validation with Cloudflare location
+  const securityValidation = SecurityFilter.validateRequest(latestMessage.content, teamConfig, cloudflareLocation);
   if (!securityValidation.isValid) {
     return { 
       isValid: false, 
@@ -34,7 +35,7 @@ export function getSecurityResponse(violations: string[], teamConfig?: any): str
   }
   
   if (violations.includes('jurisdiction_not_supported')) {
-    return `I can only help with legal matters in our supported jurisdictions. Please contact a local attorney for matters outside our service area.`;
+    return `I understand you're seeking legal help, but I can only assist with matters in our supported service areas. For matters outside our jurisdiction, I recommend contacting a local attorney in your area who can provide the specific legal assistance you need.`;
   }
   
   // Universal responses

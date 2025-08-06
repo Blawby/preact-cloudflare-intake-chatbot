@@ -1,4 +1,6 @@
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
+import { validateLocation as validateLocationUtil, isLocationSupported } from '../utils/locationValidator.js';
+import { CloudflareLocationInfo, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 
 // Tool definitions with structured schemas
 export const collectContactInfo = {
@@ -94,7 +96,20 @@ export const scheduleConsultation = {
   }
 };
 
-
+// Shared utility function for location context and prompt construction
+function buildLocationContext(cloudflareLocation?: CloudflareLocationInfo): { locationContext: string; locationPrompt: string } {
+  let locationContext = '';
+  let locationPrompt = '';
+  
+  if (cloudflareLocation && cloudflareLocation.isValid) {
+    locationContext = `\n**JURISDICTION VALIDATION:** We can validate your location against our service area.`;
+    locationPrompt = '"Can you please tell me your city and state?"';
+  } else {
+    locationPrompt = '"Can you please tell me your city and state?"';
+  }
+  
+  return { locationContext, locationPrompt };
+}
 
 // Helper function to get team configuration
 async function getTeamConfig(env: any, teamId: string) {
@@ -191,12 +206,12 @@ const validateName = (name: string): boolean => {
 
 const validateLocation = (location: string): boolean => {
   if (!location) return false;
-  const trimmedLocation = location.trim();
-  return trimmedLocation.length >= 2 && trimmedLocation.length <= 100;
+  const locationInfo = validateLocationUtil(location);
+  return locationInfo.isValid;
 };
 
 // Create the legal intake agent using native Cloudflare AI
-export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string) {
+export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string, cloudflareLocation?: CloudflareLocationInfo) {
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
@@ -209,18 +224,33 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
     content: msg.content
   }));
 
+  // Use shared utility function for location context and prompt construction
+  const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
+
   const systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
 **IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**
 
+**NAME VALIDATION:**
+- Accept any reasonable name format (first name, full name, nickname, etc.)
+- Don't be overly strict about name validation
+- If someone provides a name, accept it and move to the next step
+- Only ask for clarification if the name is clearly incomplete or invalid
+
 **CONVERSATION FLOW - Follow exactly:**
 1. If no name provided: "Can you please provide your full name?"
-2. If name provided but no location: "Thank you [name]! Now I need your city and state."
+2. If name provided but no location: ${locationPrompt}
 3. If name and location provided but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone provided but no email: "Thank you [name]! Now I need your email address."
 5. If ALL information collected (name, location, phone, email): Call create_matter tool immediately.
 
 **CRITICAL: After collecting all contact information (name, location, phone, email), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
+
+**LOCATION VALIDATION:**
+- We validate user-provided locations against our service area
+- If users are outside our service area, we can still help with general legal guidance
+- For specific legal representation, we may refer users to local attorneys in their area
+- Do not reject clients based on location - provide helpful guidance regardless${locationContext}
 
 **DETERMINING MATTER TYPE:**
 - If client mentions divorce, custody, family issues → "Family Law"
@@ -230,6 +260,7 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 - If client mentions estate, probate, inheritance → "Probate and Estate Planning"
 - If client mentions special education, IEP, disability → "Special Education and IEP Advocacy"
 - If client mentions small business, nonprofit → "Small Business and Nonprofits"
+- If client mentions patent, trademark, copyright → "Intellectual Property"
 - If unclear or general legal help → "General Consultation"
 
 **Available Tools:**
@@ -440,27 +471,18 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
   // First, verify jurisdiction if location is provided
   if (location) {
     const jurisdiction = teamConfig?.config?.jurisdiction;
-    if (jurisdiction) {
-      const locationLower = location.toLowerCase();
-      const stateLower = locationLower.includes('nc') || locationLower.includes('north carolina') ? 'nc' : '';
+    if (jurisdiction && jurisdiction.type) {
+      // Use the new location validator
+      const supportedStates = Array.isArray(jurisdiction.supportedStates) ? jurisdiction.supportedStates : [];
+      const supportedCountries = Array.isArray(jurisdiction.supportedCountries) ? jurisdiction.supportedCountries : [];
       
-      // Check if it's a national service
-      if (jurisdiction.type === 'national' && jurisdiction.supportedCountries.includes('US')) {
-        // National service - accept all US locations
-      } else if (jurisdiction.type === 'state') {
-        const supportedStates = jurisdiction.supportedStates.map((s: string) => s.toLowerCase());
-        const primaryState = jurisdiction.primaryState?.toLowerCase();
-        
-        const isSupported = supportedStates.includes('all') || 
-                           supportedStates.some(s => locationLower.includes(s)) ||
-                           (primaryState && locationLower.includes(primaryState));
-        
-        if (!isSupported) {
-          return {
-            success: false,
-            message: `I'm sorry, but we currently only provide legal services in ${jurisdiction.description}. We cannot assist with legal matters outside of our service area. Please contact a local attorney in your area for assistance.`
-          };
-        }
+      const isSupported = isLocationSupported(location, supportedStates, supportedCountries);
+      
+      if (!isSupported) {
+        return {
+          success: false,
+          message: `I understand you're located in ${location}. While we primarily serve ${jurisdiction.description || 'our service area'}, I can still help you with general legal guidance and information. For specific legal representation in your area, I'd recommend contacting a local attorney. However, I'm happy to continue helping you with your legal questions and can assist with general consultation.`
+        };
       }
     }
   }
@@ -718,6 +740,7 @@ export async function runLegalIntakeAgentStream(
   messages: any[], 
   teamId?: string, 
   sessionId?: string,
+  cloudflareLocation?: CloudflareLocationInfo,
   controller?: ReadableStreamDefaultController
 ) {
   // Get team configuration if teamId is provided
@@ -732,16 +755,44 @@ export async function runLegalIntakeAgentStream(
     content: msg.content
   }));
 
+  // Use shared utility function for location context and prompt construction
+  const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
+
   const systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
 **IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**
 
+**NAME VALIDATION:**
+- Accept any reasonable name format (first name, full name, nickname, etc.)
+- Don't be overly strict about name validation
+- If someone provides a name, accept it and move to the next step
+- Only ask for clarification if the name is clearly incomplete or invalid
+
 **CONVERSATION FLOW - Follow exactly:**
 1. If no name provided: "Can you please provide your full name?"
-2. If name provided but no location: "Can you please tell me your city and state?"
+2. If name provided but no location: ${locationPrompt}
 3. If name and location provided but no phone: "Thank you [name]! Now I need your phone number."
-4. If name, location, and phone provided but no email: "Thank you! Now I need your email address."
+4. If name, location, and phone provided but no email: "Thank you [name]! Now I need your email address."
 5. If ALL information collected (name, location, phone, email): Call create_matter tool immediately.
+
+**CRITICAL: After collecting all contact information (name, location, phone, email), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
+
+**LOCATION VALIDATION:**
+- We validate user-provided locations against our service area
+- If users are outside our service area, we can still help with general legal guidance
+- For specific legal representation, we may refer users to local attorneys in their area
+- Do not reject clients based on location - provide helpful guidance regardless${locationContext}
+
+**DETERMINING MATTER TYPE:**
+- If client mentions divorce, custody, family issues → "Family Law"
+- If client mentions employment, workplace, termination → "Employment Law"
+- If client mentions business, contracts, corporate → "Business Law"
+- If client mentions tenant, landlord, housing → "Tenant Rights Law"
+- If client mentions estate, probate, inheritance → "Probate and Estate Planning"
+- If client mentions special education, IEP, disability → "Special Education and IEP Advocacy"
+- If client mentions small business, nonprofit → "Small Business and Nonprofits"
+- If client mentions patent, trademark, copyright → "Intellectual Property"
+- If unclear or general legal help → "General Consultation"
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email)
@@ -758,6 +809,13 @@ PARAMETERS: {
   "location": "Charlotte, NC",
   "opposing_party": ""
 }
+
+**IMPORTANT: When calling create_matter, you MUST include:**
+- matter_type: Determine from the conversation (Family Law, Employment Law, etc.)
+- description: Brief description of the legal issue mentioned
+- urgency: "low", "medium", or "high" based on context
+- name, phone, email, location: All contact information collected
+- opposing_party: If mentioned, otherwise empty string
 
 **DO NOT provide legal advice or reject cases. Follow the conversation flow step by step.**`;
 
@@ -847,71 +905,69 @@ PARAMETERS: {
             })}\n\n`;
             controller.enqueue(new TextEncoder().encode(errorEvent));
             return;
+          }
+          
+          // Send tool result
+          const resultEvent = `data: ${JSON.stringify({
+            type: 'tool_result',
+            toolName: toolName,
+            result: toolResult
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(resultEvent));
+          
+          // If tool was successful and created a matter, trigger lawyer approval
+          if (toolResult.success && toolName === 'create_matter') {
+            await handleLawyerApproval(env, {
+              matter_type: parameters.matter_type,
+              urgency: parameters.urgency,
+              client_message: formattedMessages[formattedMessages.length - 1]?.content || '',
+              client_name: parameters.name,
+              client_phone: parameters.phone,
+              client_email: parameters.email,
+              opposing_party: parameters.opposing_party || '',
+              matter_details: parameters.description,
+              submitted: true,
+              requires_payment: toolResult.data?.requires_payment || false,
+              consultation_fee: toolResult.data?.consultation_fee || 0,
+              payment_link: toolResult.data?.payment_link || null
+            }, teamId);
+          }
+          
+          // Return after tool execution - don't continue with fallback or regular response
+          return;
         }
-        
-        // Send tool result
-        const resultEvent = `data: ${JSON.stringify({
-          type: 'tool_result',
-          toolName: toolName,
-          result: toolResult
-        })}\n\n`;
-        controller.enqueue(new TextEncoder().encode(resultEvent));
-        
-        // If tool was successful and created a matter, trigger lawyer approval
-        if (toolResult.success && toolName === 'create_matter') {
-          await handleLawyerApproval(env, {
-            matter_type: parameters.matter_type,
-            urgency: parameters.urgency,
-            client_message: formattedMessages[formattedMessages.length - 1]?.content || '',
-            client_name: parameters.name,
-            client_phone: parameters.phone,
-            client_email: parameters.email,
-            opposing_party: parameters.opposing_party || '',
-            matter_details: parameters.description,
-            submitted: true,
-            requires_payment: toolResult.data?.requires_payment || false,
-            consultation_fee: toolResult.data?.consultation_fee || 0,
-            payment_link: toolResult.data?.payment_link || null
-          }, teamId);
-        }
-        
-        // Return after tool execution - don't continue with fallback or regular response
-        return;
       }
-    }
-    
-    // If no tool call detected, stream the regular response
-    console.log('📝 No tool call detected, streaming regular response');
-    
-    // Simulate streaming by sending response in chunks
-    const chunkSize = 3;
-    for (let i = 0; i < response.length; i += chunkSize) {
-      const chunk = response.slice(i, i + chunkSize);
-      const textEvent = `data: ${JSON.stringify({
-        type: 'text',
-        text: chunk
-      })}\n\n`;
-      controller.enqueue(new TextEncoder().encode(textEvent));
       
-      // Small delay to simulate streaming
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // If no tool call detected, stream the regular response
+      console.log('📝 No tool call detected, streaming regular response');
+      
+      // Simulate streaming by sending response in chunks
+      const chunkSize = 3;
+      for (let i = 0; i < response.length; i += chunkSize) {
+        const chunk = response.slice(i, i + chunkSize);
+        const textEvent = `data: ${JSON.stringify({
+          type: 'text',
+          text: chunk
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(textEvent));
+        
+        // Small delay to simulate streaming
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      // Send final response
+      const finalEvent = `data: ${JSON.stringify({
+        type: 'final',
+        response: response
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(finalEvent));
+    } catch (error) {
+      console.error('❌ Streaming error:', error);
+      const errorEvent = `data: ${JSON.stringify({
+        type: 'error',
+        message: 'An error occurred while processing your request'
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(errorEvent));
+      controller.close();
     }
-    
-    // Send final response
-    const finalEvent = `data: ${JSON.stringify({
-      type: 'final',
-      response: response
-    })}\n\n`;
-    controller.enqueue(new TextEncoder().encode(finalEvent));
-  } catch (error) {
-    console.error('❌ Streaming error:', error);
-    const errorEvent = `data: ${JSON.stringify({
-      type: 'error',
-      message: 'An error occurred while processing your request'
-    })}\n\n`;
-    controller.enqueue(new TextEncoder().encode(errorEvent));
-    controller.close();
   }
-}
-
- 

@@ -1,3 +1,6 @@
+import { extractLocationFromText, isLocationSupported } from './locationValidator.js';
+import { CloudflareLocationInfo, isCloudflareLocationSupported } from './cloudflareLocationValidator.js';
+
 export class SecurityFilter {
   // Core legal intake activities (always allowed)
   private static CORE_INTAKE_ACTIVITIES = [
@@ -10,7 +13,7 @@ export class SecurityFilter {
   ];
 
   // Comprehensive security validation
-  static validateRequest(content: string, teamConfig: any): { isValid: boolean; violations: string[]; reason?: string } {
+  static validateRequest(content: string, teamConfig: any, cloudflareLocation?: CloudflareLocationInfo): { isValid: boolean; violations: string[]; reason?: string } {
     const violations: string[] = [];
     
     // 1. Check for jailbreak attempts first (highest priority)
@@ -44,8 +47,8 @@ export class SecurityFilter {
       };
     }
     
-    // 4. Check for jurisdiction violations
-    const jurisdictionViolation = this.validateJurisdiction(content, teamConfig);
+    // 4. Check for jurisdiction violations using Cloudflare location data
+    const jurisdictionViolation = this.validateJurisdictionWithCloudflare(content, teamConfig, cloudflareLocation);
     if (jurisdictionViolation) {
       violations.push(jurisdictionViolation);
       return { 
@@ -63,8 +66,8 @@ export class SecurityFilter {
 
   private static isNonLegalRequest(content: string): boolean {
     const nonLegalPatterns = [
-      // Technical/Programming
-      /(cd|ls|sudo|bash|\.py|<script>|SELECT .* FROM)/i,
+      // Technical/Programming - more specific to avoid false positives
+      /(^cd\s|^ls\s|^sudo\s|^bash\s|\.py$|<script>|SELECT .* FROM)/i,
       /(terminal|command line|shell|programming|coding|script)/i,
       /(javascript|python|html|css|sql|api)/i,
       /(hack|crack|exploit|vulnerability)/i,
@@ -118,59 +121,58 @@ export class SecurityFilter {
     const legalMatterType = this.extractLegalMatterType(content);
     
     // Only validate if we found a specific legal matter type AND have team config
+    // Allow General Consultation to handle most legal questions
     if (legalMatterType && teamConfig && !availableServices.includes(legalMatterType)) {
+      // If the team offers General Consultation, allow most legal questions
+      if (availableServices.includes('General Consultation')) {
+        return null; // Allow general consultation to handle the request
+      }
       return 'service_not_offered';
     }
     
     return null;
   }
 
-  private static validateJurisdiction(content: string, teamConfig: any): string | null {
+  private static validateJurisdictionWithCloudflare(content: string, teamConfig: any, cloudflareLocation?: CloudflareLocationInfo): string | null {
     const jurisdiction = teamConfig?.jurisdiction || teamConfig?.config?.jurisdiction;
     if (!jurisdiction) return null;
-    
-    // Extract location from content
-    const location = this.extractLocation(content);
-    
-    // Only validate jurisdiction if a location is actually mentioned
-    if (!location) {
+
+    // Use Cloudflare location data if available
+    if (cloudflareLocation && cloudflareLocation.isValid) {
+      const supportedStates = Array.isArray(jurisdiction.supportedStates) ? jurisdiction.supportedStates : [];
+      const supportedCountries = Array.isArray(jurisdiction.supportedCountries) ? jurisdiction.supportedCountries : [];
+      
+      const isSupported = isCloudflareLocationSupported(cloudflareLocation, supportedStates, supportedCountries);
+      if (!isSupported) {
+        // Don't block entirely - let the agent handle jurisdiction gracefully
+        return null;
+      }
       return null;
     }
-    
-    const supportedStates = jurisdiction.supportedStates || [];
-    const supportedCountries = jurisdiction.supportedCountries || [];
-    
-    // Check if location is in supported jurisdictions
-    if (supportedStates.includes('all') || supportedCountries.includes('all')) {
-      return null; // All jurisdictions supported
+
+    // Fallback to parsing location from content if Cloudflare data is not available
+    const locationInfo = extractLocationFromText(content);
+    console.log('SecurityFilter: Extracted location info:', locationInfo, 'from content:', content);
+
+    // Only validate jurisdiction if a location is actually mentioned
+    if (!locationInfo) {
+      return null;
     }
+
+    // Ensure supportedStates and supportedCountries are arrays
+    const supportedStates = Array.isArray(jurisdiction.supportedStates) ? jurisdiction.supportedStates : [];
+    const supportedCountries = Array.isArray(jurisdiction.supportedCountries) ? jurisdiction.supportedCountries : [];
     
-    // Check state/country match with full name mapping
-    const stateNameMap: { [key: string]: string } = {
-      'NC': 'north carolina',
-      'CA': 'california',
-      'NY': 'new york',
-      'TX': 'texas',
-      'FL': 'florida',
-      'PA': 'pennsylvania',
-      'IL': 'illinois',
-      'OH': 'ohio',
-      'GA': 'georgia',
-      'MI': 'michigan'
-    };
-    
-    const stateMatch = supportedStates.some(state => {
-      const stateCode = state.toLowerCase();
-      const stateName = stateNameMap[state.toUpperCase()] || stateCode;
-      return location.toLowerCase().includes(stateName) || location.toLowerCase().includes(stateCode);
-    });
-    
-    const countryMatch = supportedCountries.some(country => 
-      location.toLowerCase().includes(country.toLowerCase())
+    // Check if location is supported using the new validator
+    const isSupported = isLocationSupported(
+      locationInfo.state || locationInfo.country || locationInfo.city || '',
+      supportedStates,
+      supportedCountries
     );
     
-    if (!stateMatch && !countryMatch) {
-      return 'jurisdiction_not_supported';
+    if (!isSupported) {
+      // Don't block entirely - let the agent handle jurisdiction gracefully
+      return null;
     }
     
     return null;
@@ -202,34 +204,5 @@ export class SecurityFilter {
     return null;
   }
 
-  private static extractLocation(content: string): string | null {
-    
-    // Extract location patterns - more specific to avoid false matches
-    const locationPatterns = [
-      // Specific location mentions
-      /(?:in|from|located in|based in)\s+([A-Za-z\s,]+?)(?:\s+and|\s+with|\s+for|\s+need|\s+want|\s+looking|\s+seeking|\s+but|\s+however|\s+though)/i,
-      /(?:state|country)\s+of\s+([A-Za-z\s]+)/i,
-      /([A-Z]{2})\s+(?:state|country)/i,
-      // More specific pattern for "in" followed by location
-      /(?:in|from)\s+([A-Za-z\s]+?)(?:\s+and|\s+with|\s+for|\s+need|\s+want|\s+looking|\s+seeking|\s+but|\s+however|\s+though|\s+for|\s+my|\s+your|\s+his|\s+her|\s+their)/i
-    ];
-    
-    for (const pattern of locationPatterns) {
-      const match = content.match(pattern);
-      if (match) {
-        const extractedLocation = match[1] || match[0];
-        // Additional validation: location should be reasonable (not too long, not contain certain words)
-        if (extractedLocation && 
-            extractedLocation.length < 50 && 
-            !extractedLocation.toLowerCase().includes('job') &&
-            !extractedLocation.toLowerCase().includes('employee') &&
-            !extractedLocation.toLowerCase().includes('harass') &&
-            !extractedLocation.toLowerCase().includes('fire')) {
-          return extractedLocation;
-        }
-      }
-    }
-    
-    return null;
-  }
+
 } 
