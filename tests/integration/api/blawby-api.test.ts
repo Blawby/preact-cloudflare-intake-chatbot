@@ -136,6 +136,9 @@ describe('Blawby API Integration Tests', () => {
       expect(customerResponse.status).toBe(200);
       const customerResult = await customerResponse.json();
       const customerId = customerResult.data.id;
+      
+      // Store the customer ID for cleanup
+      (global as any).testInvoiceCustomerId = customerId;
 
       // Now create an invoice
       const invoiceData = {
@@ -171,5 +174,36 @@ describe('Blawby API Integration Tests', () => {
       expect(invoiceResult.data).toHaveProperty('payment_link');
       expect(invoiceResult.data.payment_link).toContain('staging.blawby.com');
     });
+  });
+
+  afterAll(async () => {
+    // Clean up test data to prevent accumulation in staging environment
+    const testCustomerId = (global as any).testCustomerId;
+    const testInvoiceCustomerId = (global as any).testInvoiceCustomerId;
+    
+    const customerIdsToCleanup = [testCustomerId, testInvoiceCustomerId].filter(Boolean);
+    
+    for (const customerId of customerIdsToCleanup) {
+      try {
+        console.log(`🧹 Cleaning up test customer: ${customerId}`);
+        
+        const deleteResponse = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/customer/${customerId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${mockEnv.BLAWBY_API_TOKEN}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (deleteResponse.ok) {
+          console.log(`✅ Successfully deleted test customer: ${customerId}`);
+        } else {
+          console.warn(`⚠️ Failed to delete test customer ${customerId}: ${deleteResponse.status} ${deleteResponse.statusText}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error cleaning up test customer ${customerId}:`, error);
+        // Don't fail the tests due to cleanup errors
+      }
+    }
   });
 }); 
