@@ -808,15 +808,11 @@ export function App() {
 									if (data.result && data.result.message) {
 										currentContent = data.result.message;
 										
-																				// Check for payment embed data - correct path for streaming response
+																				// Extract payment embed data from streaming response
 										const paymentEmbed = data.result?.data?.payment_embed;
 										
-										console.log('🔍 [Streaming] Checking for payment embed data...');
-										console.log('🔍 [Streaming] data.result:', !!data.result);
-										console.log('🔍 [Streaming] data.result.data:', !!data.result?.data);
-										console.log('🔍 [Streaming] payment_embed found:', !!paymentEmbed);
 										if (paymentEmbed) {
-											console.log('✅ [Streaming] Payment embed data:', paymentEmbed);
+											console.log('Payment embed data received via streaming');
 										}
 										
 
@@ -918,17 +914,11 @@ export function App() {
 			
 			const aiResponseText = data.data?.response || data.response || 'I apologize, but I encountered an error processing your request.';
 			
-						// Check for payment embed data - correct path for regular API response
+			// Extract payment embed data from regular API response
 			const paymentEmbed = data.data?.metadata?.toolResult?.data?.payment_embed;
 			
-			console.log('🔍 [Regular API] Checking for payment embed data...');
-			console.log('🔍 [Regular API] data.data:', !!data.data);
-			console.log('🔍 [Regular API] data.data.metadata:', !!data.data?.metadata);
-			console.log('🔍 [Regular API] data.data.metadata.toolResult:', !!data.data?.metadata?.toolResult);
-			console.log('🔍 [Regular API] data.data.metadata.toolResult.data:', !!data.data?.metadata?.toolResult?.data);
-			console.log('🔍 [Regular API] payment_embed found:', !!paymentEmbed);
 			if (paymentEmbed) {
-				console.log('✅ [Regular API] Payment embed data:', paymentEmbed);
+				console.log('Payment embed data received via regular API');
 			}
 			
 
