@@ -5,73 +5,10 @@ import TeamProfile from './TeamProfile';
 import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
 import { ErrorBoundary } from './ErrorBoundary';
-
-interface FileAttachment {
-    name: string;
-    size: number;
-    type: string;
-    url: string;
-}
-
-// Add scheduling interface
-interface SchedulingData {
-    type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
-    selectedDate?: Date;
-    timeOfDay?: 'morning' | 'afternoon';
-    scheduledDateTime?: Date;
-}
-
-// Add matter creation interface
-interface MatterCreationData {
-    type: 'service-selection';
-    availableServices: string[];
-}
-
-interface ChatMessage {
-    content: string;
-    isUser: boolean;
-    files?: FileAttachment[];
-    scheduling?: SchedulingData;
-    matterCreation?: MatterCreationData;
-    welcomeMessage?: {
-        showButtons: boolean;
-    };
-    matterCanvas?: {
-        matterId?: string;
-        matterNumber?: string;
-        service: string;
-        matterSummary: string;
-        qualityScore?: {
-            score: number;
-            badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
-            color: 'blue' | 'green' | 'yellow' | 'red';
-            inferredUrgency: string;
-            breakdown: {
-                followUpCompletion: number;
-                requiredFields: number;
-                evidence: number;
-                clarity: number;
-                urgency: number;
-                consistency: number;
-                aiConfidence: number;
-            };
-            suggestions: string[];
-        };
-        answers?: Record<string, string>;
-    };
-    paymentEmbed?: {
-        paymentUrl: string;
-        amount?: number;
-        description?: string;
-        paymentId?: string;
-    };
-    
-    isLoading?: boolean;
-    id?: string;
-}
+import { ChatMessageUI } from '../../worker/types';
 
 interface VirtualMessageListProps {
-    messages: ChatMessage[];
+    messages: ChatMessageUI[];
     onDateSelect?: (date: Date) => void;
     onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
     onTimeSlotSelect?: (timeSlot: Date) => void;

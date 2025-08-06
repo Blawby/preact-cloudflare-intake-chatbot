@@ -163,4 +163,71 @@ export interface ValidatedRequest<T = any> {
   data: T;
   env: Env;
   corsHeaders: Record<string, string>;
+}
+
+// UI-specific types that extend base types
+export interface FileAttachment {
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+}
+
+export interface SchedulingData {
+  type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
+  selectedDate?: Date;
+  timeOfDay?: 'morning' | 'afternoon';
+  scheduledDateTime?: Date;
+}
+
+export interface MatterCreationData {
+  type: 'service-selection';
+  availableServices: string[];
+}
+
+export interface WelcomeMessageData {
+  showButtons: boolean;
+}
+
+export interface MatterCanvasData {
+  matterId?: string;
+  matterNumber?: string;
+  service: string;
+  matterSummary: string;
+  qualityScore?: {
+    score: number;
+    badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+    color: 'blue' | 'green' | 'yellow' | 'red';
+    inferredUrgency: string;
+    breakdown: {
+      followUpCompletion: number;
+      requiredFields: number;
+      evidence: number;
+      clarity: number;
+      urgency: number;
+      consistency: number;
+      aiConfidence: number;
+    };
+    suggestions: string[];
+  };
+  answers?: Record<string, string>;
+}
+
+export interface PaymentEmbedData {
+  paymentUrl: string;
+  amount?: number;
+  description?: string;
+  paymentId?: string;
+}
+
+// UI-specific ChatMessage interface that extends the base ChatMessage
+export interface ChatMessageUI extends ChatMessage {
+  isUser: boolean;
+  files?: FileAttachment[];
+  scheduling?: SchedulingData;
+  matterCreation?: MatterCreationData;
+  welcomeMessage?: WelcomeMessageData;
+  matterCanvas?: MatterCanvasData;
+  paymentEmbed?: PaymentEmbedData;
+  isLoading?: boolean;
 } 

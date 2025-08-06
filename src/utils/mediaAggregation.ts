@@ -1,4 +1,4 @@
-import { FileAttachment } from '../types/media';
+import { FileAttachment } from '../../worker/types';
 
 export interface AggregatedMedia {
   id: string;

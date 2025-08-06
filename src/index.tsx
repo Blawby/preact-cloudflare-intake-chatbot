@@ -47,29 +47,7 @@ import './style.css';
 
 // Define position type
 
-import { FileAttachment } from './types/media';
-
-// Add scheduling interface
-interface ChatMessage {
-	content: string;
-	isUser: boolean;
-	files?: FileAttachment[];
-	matterCanvas?: {
-		matterId?: string;
-		matterNumber?: string;
-		service: string;
-		matterSummary: string;
-		answers?: Record<string, string>;
-	};
-	paymentEmbed?: {
-		paymentUrl: string;
-		amount?: number;
-		description?: string;
-		paymentId?: string;
-	};
-	isLoading?: boolean;
-	id?: string;
-}
+import { ChatMessageUI } from '../worker/types';
 
 const ANIMATION_DURATION = 300;
 const RESIZE_DEBOUNCE_DELAY = 100;
@@ -94,7 +72,7 @@ async function uploadFileToBackend(file: File, teamId: string, sessionId: string
 }
 
 export function App() {
-	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [messages, setMessages] = useState<ChatMessageUI[]>([]);
 	const [inputValue, setInputValue] = useState('');
 	// Global loading state removed - using per-message loading instead
 	const [previewFiles, setPreviewFiles] = useState<FileAttachment[]>([]);
@@ -387,7 +365,7 @@ export function App() {
 	useEffect(() => {
 		if (teamConfig.introMessage && messages.length === 0) {
 			// Add intro message only (team profile is now a UI element)
-			const introMessage: ChatMessage = {
+			const introMessage: ChatMessageUI = {
 				content: teamConfig.introMessage,
 				isUser: false
 			};
@@ -478,7 +456,7 @@ export function App() {
 			url,
 		};
 
-		const newMessage: ChatMessage = {
+		const newMessage: ChatMessageUI = {
 			content: '',
 			isUser: true,
 			files: [file],
@@ -491,7 +469,7 @@ export function App() {
 	const debouncedCreateMatterStart = useMemo(() => 
 		debounce(() => {
 			// Send user's matter creation request message
-			const matterMessage: ChatMessage = {
+			const matterMessage: ChatMessageUI = {
 				content: "I'd like to create a matter and get help with my legal concern.",
 				isUser: true
 			};
@@ -501,7 +479,7 @@ export function App() {
 			
 			// Add placeholder message with loading indicator (ChatGPT style)
 			const loadingMessageId = crypto.randomUUID();
-			const loadingMessage: ChatMessage = {
+			const loadingMessage: ChatMessageUI = {
 				content: "Let me set up your matter creation process...",
 				isUser: false,
 				isLoading: true,
@@ -541,7 +519,7 @@ export function App() {
 	const debouncedScheduleStart = useMemo(() => 
 		debounce(() => {
 			// Send user's scheduling request message
-			const schedulingMessage: ChatMessage = {
+			const schedulingMessage: ChatMessageUI = {
 				content: "I'd like to request a consultation.",
 				isUser: true
 			};
@@ -551,7 +529,7 @@ export function App() {
 			
 			// Add placeholder message with loading indicator (ChatGPT style)
 			const loadingMessageId = crypto.randomUUID();
-			const loadingMessage: ChatMessage = {
+			const loadingMessage: ChatMessageUI = {
 				content: "Let me help you schedule a consultation...",
 				isUser: false,
 				isLoading: true,
@@ -581,7 +559,7 @@ export function App() {
 	// Add matter creation handlers (now debounced)
 	const handleCreateMatterStart = () => {
 		// Send matter creation request to agent
-		const matterMessage: ChatMessage = {
+		const matterMessage: ChatMessageUI = {
 			content: "I'd like to create a new legal matter.",
 			isUser: true
 		};
@@ -591,7 +569,7 @@ export function App() {
 
 	// Simplified scheduling handlers - agent handles all scheduling logic
 	const handleScheduleStart = () => {
-		const scheduleMessage: ChatMessage = {
+		const scheduleMessage: ChatMessageUI = {
 			content: "I'd like to schedule a consultation.",
 			isUser: true
 		};
@@ -606,7 +584,7 @@ export function App() {
 			day: 'numeric'
 		}).format(date);
 		
-		const dateMessage: ChatMessage = {
+		const dateMessage: ChatMessageUI = {
 			content: `I'd like to be contacted on ${formattedDate} for my consultation.`,
 			isUser: true
 		};
@@ -620,7 +598,7 @@ export function App() {
 			afternoon: 'Afternoon (12:00 PM - 5:00 PM)'
 		}[timeOfDay];
 		
-		const timeMessage: ChatMessage = {
+		const timeMessage: ChatMessageUI = {
 			content: `I prefer to be contacted in the ${timeOfDayLabel}.`,
 			isUser: true
 		};
@@ -641,7 +619,7 @@ export function App() {
 			day: 'numeric'
 		}).format(timeSlot);
 		
-		const timeSlotMessage: ChatMessage = {
+		const timeSlotMessage: ChatMessageUI = {
 			content: `I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`,
 			isUser: true
 		};
@@ -650,7 +628,7 @@ export function App() {
 	};
 	
 	const handleRequestMoreDates = () => {
-		const moreDatesMessage: ChatMessage = {
+		const moreDatesMessage: ChatMessageUI = {
 			content: "I need to see more date options.",
 			isUser: true
 		};
@@ -664,7 +642,7 @@ export function App() {
 		// In a real implementation, this would be a call to your AI service API
 		try {
 			// Create user message
-			const userMessage: ChatMessage = {
+			const userMessage: ChatMessageUI = {
 				content: message,
 				isUser: true,
 				files: attachments
@@ -676,7 +654,7 @@ export function App() {
 			
 			// Add a placeholder AI message immediately that will be updated
 			const placeholderId = Date.now().toString();
-			const placeholderMessage: ChatMessage = {
+			const placeholderMessage: ChatMessageUI = {
 				content: '',
 				isUser: false,
 				isLoading: true,
@@ -991,7 +969,7 @@ export function App() {
 		const loadingMessageId = crypto.randomUUID();
 		
 		try {
-			const loadingMessage: ChatMessage = {
+			const loadingMessage: ChatMessageUI = {
 				content: "Thank you! Let me submit your information to our legal team...",
 				isUser: false,
 				isLoading: true,
@@ -1091,7 +1069,7 @@ export function App() {
 									`- **Submitted**: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
 								
 								// Show the updated matter canvas as a new message
-								const updatedMatterMessage: ChatMessage = {
+								const updatedMatterMessage: ChatMessageUI = {
 									content: "Here's your complete matter information with contact details:",
 									isUser: false,
 									matterCanvas: {
@@ -1122,7 +1100,7 @@ export function App() {
 								nextStepsMessage = `A lawyer will review your complete matter information and contact you within 24 hours. Thank you for choosing our firm!`;
 							}
 							
-							const nextStepsMsg: ChatMessage = {
+							const nextStepsMsg: ChatMessageUI = {
 								content: nextStepsMessage,
 								isUser: false
 							};
@@ -1189,7 +1167,7 @@ export function App() {
 
 	// Simplified service selection - agent handles all logic
 	const handleServiceSelect = (service: string) => {
-		const serviceMessage: ChatMessage = {
+		const serviceMessage: ChatMessageUI = {
 			content: `I'm looking for legal help with my ${service} issue.`,
 			isUser: true
 		};
@@ -1199,7 +1177,7 @@ export function App() {
 
 	// Simplified urgency selection - agent handles all logic
 	const handleUrgencySelect = (urgency: string) => {
-		const urgencyMessage: ChatMessage = {
+		const urgencyMessage: ChatMessageUI = {
 			content: `This is a ${urgency.toLowerCase()} matter.`,
 			isUser: true
 		};
@@ -1472,7 +1450,7 @@ export function App() {
 											onCreateMatter={handleCreateMatterStart}
 											onScheduleConsultation={handleScheduleStart}
 											onLearnServices={async () => {
-												const servicesMessage: ChatMessage = {
+												const servicesMessage: ChatMessageUI = {
 													content: "Tell me about your firm's services",
 													isUser: true
 												};
@@ -1480,7 +1458,7 @@ export function App() {
 												
 												// Add placeholder message with loading indicator (ChatGPT style)
 												const loadingMessageId = crypto.randomUUID();
-												const loadingMessage: ChatMessage = {
+												const loadingMessage: ChatMessageUI = {
 													content: "Let me tell you about our services...",
 													isUser: false,
 													isLoading: true,
