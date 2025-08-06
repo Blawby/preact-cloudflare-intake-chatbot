@@ -59,6 +59,12 @@ interface ChatMessage {
         };
         answers?: Record<string, string>;
     };
+    paymentEmbed?: {
+        paymentUrl: string;
+        amount?: number;
+        description?: string;
+        paymentId?: string;
+    };
     
     isLoading?: boolean;
     id?: string;
@@ -223,6 +229,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         matterCreation={message.matterCreation}
                         welcomeMessage={message.welcomeMessage}
                         matterCanvas={message.matterCanvas}
+                        paymentEmbed={message.paymentEmbed}
                         qualityScore={message.qualityScore}
                         onDateSelect={onDateSelect}
                         onTimeOfDaySelect={onTimeOfDaySelect}

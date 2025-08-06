@@ -3,6 +3,7 @@ import { memo } from 'preact/compat';
 import { marked } from 'marked';
 import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
+import PaymentEmbed from './PaymentEmbed';
 import TeamProfile from './TeamProfile';
 import { Button } from './ui/Button';
 import features from '../config/features';
@@ -42,6 +43,12 @@ interface MessageProps {
 		matterSummary: string;
 		answers?: Record<string, string>;
 		isExpanded?: boolean;
+	};
+	paymentEmbed?: {
+		paymentUrl: string;
+		amount?: number;
+		description?: string;
+		paymentId?: string;
 	};
 	teamConfig?: {
 		name: string;
@@ -155,6 +162,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	isUser, 
 	files = [], 
 	matterCanvas,
+	paymentEmbed,
 	teamConfig,
 	onOpenSidebar,
 	isLoading,
@@ -207,6 +215,19 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						matterSummary={matterCanvas.matterSummary}
 						qualityScore={matterCanvas.qualityScore}
 						answers={matterCanvas.answers}
+					/>
+				)}
+				
+				{/* Display payment embed */}
+				{paymentEmbed && (
+					<PaymentEmbed
+							paymentUrl={paymentEmbed.paymentUrl}
+							amount={paymentEmbed.amount}
+							description={paymentEmbed.description}
+							onPaymentComplete={(paymentId) => {
+								console.log('Payment completed:', paymentId);
+								// TODO: Handle payment completion
+							}}
 					/>
 				)}
 				
