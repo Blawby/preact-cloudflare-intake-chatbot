@@ -32,7 +32,7 @@ describe('Payment API Integration', () => {
       customerInfo: {
         name: 'John Doe',
         email: `test-${Date.now()}@example.com`,
-        phone: '13322097232',
+        phone: '5551234567',
         location: 'Charlotte, NC'
       },
       matterInfo: {
@@ -95,7 +95,7 @@ describe('Payment API Integration', () => {
       customerInfo: {
         name: 'John Doe',
         email: `test-${Date.now()}@example.com`,
-        phone: '13322097232',
+        phone: '5551234567',
         location: 'Charlotte, NC'
       },
       matterInfo: {
