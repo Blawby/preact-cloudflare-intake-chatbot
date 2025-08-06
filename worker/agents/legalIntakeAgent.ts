@@ -96,7 +96,23 @@ export const scheduleConsultation = {
   }
 };
 
-
+// Shared utility function for location context and prompt construction
+async function buildLocationContext(cloudflareLocation?: CloudflareLocationInfo): Promise<{ locationContext: string; locationPrompt: string }> {
+  let locationContext = '';
+  let locationPrompt = '';
+  
+  if (cloudflareLocation && cloudflareLocation.isValid) {
+    const { getLocationDescription } = await import('../utils/cloudflareLocationValidator.js');
+    // Note: locationDesc is not used in the current implementation
+    // const locationDesc = getLocationDescription(cloudflareLocation);
+    locationContext = `\n**JURISDICTION VALIDATION:** We can validate your location against our service area.`;
+    locationPrompt = '"Can you please tell me your city and state?"';
+  } else {
+    locationPrompt = '"Can you please tell me your city and state?"';
+  }
+  
+  return { locationContext, locationPrompt };
+}
 
 // Helper function to get team configuration
 async function getTeamConfig(env: any, teamId: string) {
@@ -211,17 +227,8 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
     content: msg.content
   }));
 
-  // Use Cloudflare location for jurisdiction validation, but don't show it to users
-  let locationContext = '';
-  let locationPrompt = '';
-  if (cloudflareLocation && cloudflareLocation.isValid) {
-    const { getLocationDescription } = await import('../utils/cloudflareLocationValidator.js');
-    const locationDesc = getLocationDescription(cloudflareLocation);
-    locationContext = `\n**JURISDICTION VALIDATION:** We can validate your location against our service area.`;
-    locationPrompt = '"Can you please tell me your city and state?"';
-  } else {
-    locationPrompt = '"Can you please tell me your city and state?"';
-  }
+  // Use shared utility function for location context and prompt construction
+  const { locationContext, locationPrompt } = await buildLocationContext(cloudflareLocation);
 
   const systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
@@ -751,17 +758,8 @@ export async function runLegalIntakeAgentStream(
     content: msg.content
   }));
 
-  // Use Cloudflare location for jurisdiction validation, but don't show it to users
-  let locationContext = '';
-  let locationPrompt = '';
-  if (cloudflareLocation && cloudflareLocation.isValid) {
-    const { getLocationDescription } = await import('../utils/cloudflareLocationValidator.js');
-    const locationDesc = getLocationDescription(cloudflareLocation);
-    locationContext = `\n**JURISDICTION VALIDATION:** We can validate your location against our service area.`;
-    locationPrompt = '"Can you please tell me your city and state?"';
-  } else {
-    locationPrompt = '"Can you please tell me your city and state?"';
-  }
+  // Use shared utility function for location context and prompt construction
+  const { locationContext, locationPrompt } = await buildLocationContext(cloudflareLocation);
 
   const systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
