@@ -35,7 +35,7 @@ export function getSecurityResponse(violations: string[], teamConfig?: any): str
   }
   
   if (violations.includes('jurisdiction_not_supported')) {
-    return `I can only help with legal matters in our supported jurisdictions. Please contact a local attorney for matters outside our service area.`;
+    return `I understand you're seeking legal help, but I can only assist with matters in our supported service areas. For matters outside our jurisdiction, I recommend contacting a local attorney in your area who can provide the specific legal assistance you need.`;
   }
   
   // Universal responses

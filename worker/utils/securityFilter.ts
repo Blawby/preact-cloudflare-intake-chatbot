@@ -66,8 +66,8 @@ export class SecurityFilter {
 
   private static isNonLegalRequest(content: string): boolean {
     const nonLegalPatterns = [
-      // Technical/Programming
-      /(cd|ls|sudo|bash|\.py|<script>|SELECT .* FROM)/i,
+      // Technical/Programming - more specific to avoid false positives
+      /(^cd\s|^ls\s|^sudo\s|^bash\s|\.py$|<script>|SELECT .* FROM)/i,
       /(terminal|command line|shell|programming|coding|script)/i,
       /(javascript|python|html|css|sql|api)/i,
       /(hack|crack|exploit|vulnerability)/i,

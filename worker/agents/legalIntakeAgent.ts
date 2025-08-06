@@ -751,14 +751,14 @@ export async function runLegalIntakeAgentStream(
     content: msg.content
   }));
 
-  // Get location description if Cloudflare data is available
+  // Use Cloudflare location for jurisdiction validation, but don't show it to users
   let locationContext = '';
   let locationPrompt = '';
   if (cloudflareLocation && cloudflareLocation.isValid) {
     const { getLocationDescription } = await import('../utils/cloudflareLocationValidator.js');
     const locationDesc = getLocationDescription(cloudflareLocation);
-    locationContext = `\n**DETECTED LOCATION:** I have detected your location as ${locationDesc}. Please confirm if this is correct for your legal matter, or let me know your actual location.`;
-    locationPrompt = `"I have detected your location as ${locationDesc}. Is this case related to the service area?"`;
+    locationContext = `\n**JURISDICTION VALIDATION:** We can validate your location against our service area.`;
+    locationPrompt = '"Can you please tell me your city and state?"';
   } else {
     locationPrompt = '"Can you please tell me your city and state?"';
   }
