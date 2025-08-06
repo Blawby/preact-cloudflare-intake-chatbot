@@ -144,7 +144,8 @@ export class SecurityFilter {
       
       const isSupported = isCloudflareLocationSupported(cloudflareLocation, supportedStates, supportedCountries);
       if (!isSupported) {
-        return 'jurisdiction_not_supported';
+        // Don't block entirely - let the agent handle jurisdiction gracefully
+        return null;
       }
       return null;
     }
@@ -170,7 +171,8 @@ export class SecurityFilter {
     );
     
     if (!isSupported) {
-      return 'jurisdiction_not_supported';
+      // Don't block entirely - let the agent handle jurisdiction gracefully
+      return null;
     }
     
     return null;

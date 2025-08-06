@@ -115,8 +115,12 @@ export async function handleAgentStream(request: Request, env: Env, corsHeaders:
       }
     }
 
-    // Security validation
-    const validation = await validateInput(body, teamConfig);
+    // Get Cloudflare location data
+    const cloudflareLocation = getCloudflareLocation(request);
+    console.log('Cloudflare location data:', cloudflareLocation);
+
+    // Security validation with Cloudflare location
+    const validation = await validateInput(body, teamConfig, cloudflareLocation);
     if (!validation.isValid) {
       SecurityLogger.logInputValidation(validation, latestMessage.content, teamId);
       
@@ -144,9 +148,9 @@ export async function handleAgentStream(request: Request, env: Env, corsHeaders:
           // Send initial connection event
           controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
           
-          // Run streaming agent
+          // Run streaming agent with Cloudflare location
           console.log('📞 Calling runLegalIntakeAgentStream...');
-          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, controller);
+          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller);
           
           // Send completion event
           controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));

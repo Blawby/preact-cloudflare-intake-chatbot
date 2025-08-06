@@ -291,41 +291,67 @@ export function validateLocation(location: string): LocationInfo {
   let city: string | undefined;
   let foundValidLocation = false;
 
-  // Check each part for state, country, or city
-  for (const part of parts) {
-    const cleanPart = part.trim().toLowerCase();
-    
-    // Check if it's a state code
-    if (US_STATES[cleanPart.toUpperCase()]) {
-      state = cleanPart.toUpperCase();
-      foundValidLocation = true;
-      continue;
-    }
-    
-    // Check if it's a state name
-    if (STATE_NAMES_TO_CODES[cleanPart]) {
-      state = STATE_NAMES_TO_CODES[cleanPart];
-      foundValidLocation = true;
-      continue;
-    }
-    
-    // Check if it's a country code
-    if (COUNTRIES[cleanPart.toUpperCase()]) {
-      country = cleanPart.toUpperCase();
-      foundValidLocation = true;
-      continue;
-    }
-    
-    // Check if it's a country name
-    if (COUNTRY_NAMES_TO_CODES[cleanPart]) {
-      country = COUNTRY_NAMES_TO_CODES[cleanPart];
-      foundValidLocation = true;
-      continue;
-    }
-    
-    // If it's not a state or country, assume it's a city (if it's not too short)
-    if (cleanPart.length >= 2 && !city) {
-      city = part.trim(); // Keep original case for city
+  // First, check if the entire location is a state name or code
+  const lowerLocationFull = trimmed.toLowerCase();
+  
+  // Check if it's a state code
+  if (US_STATES[trimmed.toUpperCase()]) {
+    state = trimmed.toUpperCase();
+    foundValidLocation = true;
+  }
+  // Check if it's a state name
+  else if (STATE_NAMES_TO_CODES[lowerLocationFull]) {
+    state = STATE_NAMES_TO_CODES[lowerLocationFull];
+    foundValidLocation = true;
+  }
+  // Check if it's a country code
+  else if (COUNTRIES[trimmed.toUpperCase()]) {
+    country = trimmed.toUpperCase();
+    foundValidLocation = true;
+  }
+  // Check if it's a country name
+  else if (COUNTRY_NAMES_TO_CODES[lowerLocationFull]) {
+    country = COUNTRY_NAMES_TO_CODES[lowerLocationFull];
+    foundValidLocation = true;
+  }
+  // If not a single state/country, check each part
+  else {
+    // Check each part for state, country, or city
+    for (const part of parts) {
+      const cleanPart = part.trim().toLowerCase();
+      
+      // Check if it's a state code
+      if (US_STATES[cleanPart.toUpperCase()]) {
+        state = cleanPart.toUpperCase();
+        foundValidLocation = true;
+        continue;
+      }
+      
+      // Check if it's a state name
+      if (STATE_NAMES_TO_CODES[cleanPart]) {
+        state = STATE_NAMES_TO_CODES[cleanPart];
+        foundValidLocation = true;
+        continue;
+      }
+      
+      // Check if it's a country code
+      if (COUNTRIES[cleanPart.toUpperCase()]) {
+        country = cleanPart.toUpperCase();
+        foundValidLocation = true;
+        continue;
+      }
+      
+      // Check if it's a country name
+      if (COUNTRY_NAMES_TO_CODES[cleanPart]) {
+        country = COUNTRY_NAMES_TO_CODES[cleanPart];
+        foundValidLocation = true;
+        continue;
+      }
+      
+      // If it's not a state or country, assume it's a city (if it's not too short)
+      if (cleanPart.length >= 2 && !city) {
+        city = part.trim(); // Keep original case for city
+      }
     }
   }
 
