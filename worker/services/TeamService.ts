@@ -53,6 +53,32 @@ export class TeamService {
 
   constructor(private env: Env) {}
 
+  /**
+   * Resolves environment variable placeholders in team configuration
+   * This allows storing sensitive data like API keys as environment variable references
+   */
+  private resolveEnvironmentVariables(config: any): any {
+    if (typeof config !== 'object' || config === null) {
+      return config;
+    }
+
+    const resolved = { ...config };
+    
+    // Handle API key substitution
+    if (resolved.blawbyApi?.apiKey === '${BLAWBY_API_TOKEN}') {
+      resolved.blawbyApi.apiKey = this.env.BLAWBY_API_TOKEN || null;
+    }
+
+    // Recursively resolve nested objects
+    for (const [key, value] of Object.entries(resolved)) {
+      if (typeof value === 'object' && value !== null) {
+        resolved[key] = this.resolveEnvironmentVariables(value);
+      }
+    }
+
+    return resolved;
+  }
+
   async getTeam(teamId: string): Promise<Team | null> {
     console.log('TeamService.getTeam called with teamId:', teamId);
     
@@ -77,11 +103,14 @@ export class TeamService {
       }
       
       if (teamRow) {
+        const rawConfig = JSON.parse(teamRow.config as string);
+        const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
+        
         const team: Team = {
           id: teamRow.id as string,
           slug: teamRow.slug as string,
           name: teamRow.name as string,
-          config: JSON.parse(teamRow.config as string),
+          config: resolvedConfig,
           createdAt: teamRow.created_at as string,
           updatedAt: teamRow.updated_at as string
         };

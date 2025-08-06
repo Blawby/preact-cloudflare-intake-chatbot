@@ -33,6 +33,8 @@ The following variables are set in `wrangler.toml` and are safe to commit:
 - ✅ API tokens are stored as Cloudflare secrets, not in code
 - ✅ Test files use environment variables or safe mock values
 - ✅ No hardcoded secrets in the codebase
+- ✅ Team configurations use environment variable references (${BLAWBY_API_TOKEN})
+- ✅ TeamService resolves environment variables at runtime
 
 ### Development Setup
 
@@ -44,6 +46,33 @@ BLAWBY_API_TOKEN=your_development_token_here
 BLAWBY_TEAM_ULID=01jq70jnstyfzevc6423czh50e
 RESEND_API_KEY=your_resend_key_here
 ```
+
+### Team Configuration Security
+
+The multi-tenant system stores team configurations in the database, including API credentials. To maintain security:
+
+#### API Key Storage
+- Team API keys are stored as environment variable references: `${BLAWBY_API_TOKEN}`
+- The TeamService automatically resolves these references at runtime
+- This prevents hardcoding sensitive credentials in the database
+
+#### Example Team Configuration
+```json
+{
+  "blawbyApi": {
+    "enabled": true,
+    "apiKey": "${BLAWBY_API_TOKEN}",
+    "teamUlid": "01jq70jnstyfzevc6423czh50e"
+  }
+}
+```
+
+#### Security Benefits
+- ✅ No hardcoded API keys in database or code
+- ✅ Environment variable resolution at runtime
+- ✅ Centralized secret management via Cloudflare
+- ✅ Team-specific API credentials supported
+- ✅ Fallback to global API token if team-specific not available
 
 ### Testing
 

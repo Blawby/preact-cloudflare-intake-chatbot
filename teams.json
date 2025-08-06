@@ -1,4 +1,7 @@
 [
+  // SECURITY NOTE: API keys are stored as environment variable references
+  // to prevent hardcoding sensitive credentials in the codebase.
+  // The TeamService will resolve ${BLAWBY_API_TOKEN} to the actual environment variable.
   {
     "id": "01K0TNGNKTM4Q0AG0XF0A8ST0Q",
     "slug": "blawby-ai",
@@ -99,7 +102,7 @@
       },
       "blawbyApi": {
         "enabled": true,
-        "apiKey": "B3aCXQkQiXy81PJ8jhTtnzP2Dn4j0LcK2PG1U3RGa81e67e2",
+        "apiKey": "${BLAWBY_API_TOKEN}",
         "teamUlid": "01jq70jnstyfzevc6423czh50e"
       }
     }
