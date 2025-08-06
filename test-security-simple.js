@@ -97,7 +97,12 @@ class SecurityFilter {
   }
 
   static validateServiceScope(content, teamConfig) {
-    const availableServices = teamConfig?.availableServices || [];
+    let availableServices = teamConfig?.config?.availableServices || teamConfig?.availableServices || [];
+    
+    // Ensure availableServices is an array (handle case where it's stored as object)
+    if (availableServices && typeof availableServices === 'object' && !Array.isArray(availableServices)) {
+      availableServices = Object.values(availableServices);
+    }
     
     // Extract legal matter type from content
     const legalMatterType = this.extractLegalMatterType(content);
@@ -111,7 +116,7 @@ class SecurityFilter {
   }
 
   static validateJurisdiction(content, teamConfig) {
-    const jurisdiction = teamConfig?.jurisdiction;
+    const jurisdiction = teamConfig?.jurisdiction || teamConfig?.config?.jurisdiction;
     if (!jurisdiction) return null;
     
     // Extract location from content

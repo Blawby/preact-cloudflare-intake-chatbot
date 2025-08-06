@@ -26,8 +26,8 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
         throw HttpErrors.badRequest('Missing team ID');
       }
 
-      // Use mock service for development, real service for production
-      const isDevelopment = !env.BLAWBY_API_URL || env.BLAWBY_API_URL.includes('localhost');
+      // Use real service for staging.blawby.com, mock for localhost
+      const isDevelopment = env.BLAWBY_API_URL?.includes('localhost');
       const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
       const result = await paymentService.createInvoice(body);
 
@@ -61,8 +61,8 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
         throw HttpErrors.badRequest('Payment ID is required');
       }
 
-      // Use mock service for development, real service for production
-      const isDevelopment = !env.BLAWBY_API_URL || env.BLAWBY_API_URL.includes('localhost');
+      // Use real service for staging.blawby.com, mock for localhost
+      const isDevelopment = env.BLAWBY_API_URL?.includes('localhost');
       const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
       const result = await paymentService.getPaymentStatus(paymentId);
 

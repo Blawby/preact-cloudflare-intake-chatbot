@@ -107,7 +107,12 @@ export class SecurityFilter {
   }
 
   private static validateServiceScope(content: string, teamConfig: any): string | null {
-    const availableServices = teamConfig?.availableServices || [];
+    let availableServices = teamConfig?.config?.availableServices || teamConfig?.availableServices || [];
+    
+    // Ensure availableServices is an array (handle case where it's stored as object)
+    if (availableServices && typeof availableServices === 'object' && !Array.isArray(availableServices)) {
+      availableServices = Object.values(availableServices);
+    }
     
     // Extract legal matter type from content
     const legalMatterType = this.extractLegalMatterType(content);

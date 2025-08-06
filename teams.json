@@ -99,7 +99,7 @@
       },
       "blawbyApi": {
         "enabled": true,
-        "apiKey": "${BLAWBY_API_TOKEN}",
+        "apiKey": "BLAWBY_API_TOKEN",
         "teamUlid": "01jq70jnstyfzevc6423czh50e"
       }
     }

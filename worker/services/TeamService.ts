@@ -56,6 +56,7 @@ export class TeamService {
   /**
    * Resolves environment variable placeholders in team configuration
    * This allows storing sensitive data like API keys as environment variable references
+   * Supports generic ${VAR_NAME} pattern matching
    */
   private resolveEnvironmentVariables(config: any): any {
     if (typeof config !== 'object' || config === null) {
@@ -64,19 +65,60 @@ export class TeamService {
 
     const resolved = { ...config };
     
-    // Handle API key substitution
-    if (resolved.blawbyApi?.apiKey === '${BLAWBY_API_TOKEN}') {
-      resolved.blawbyApi.apiKey = this.env.BLAWBY_API_TOKEN || null;
-    }
-
-    // Recursively resolve nested objects
+    // Recursively resolve nested objects and handle string substitutions
     for (const [key, value] of Object.entries(resolved)) {
       if (typeof value === 'object' && value !== null) {
         resolved[key] = this.resolveEnvironmentVariables(value);
+      } else if (typeof value === 'string') {
+        resolved[key] = this.resolveStringVariables(value);
       }
     }
 
     return resolved;
+  }
+
+  /**
+   * Resolves environment variable placeholders in string values
+   * Uses regex to find and replace ${VAR_NAME} patterns with actual env values
+   * Also handles direct environment variable names
+   */
+  private resolveStringVariables(value: string): string {
+    // Handle ${VAR_NAME} pattern
+    const envVarRegex = /\$\{([^}]+)\}/g;
+    let result = value.replace(envVarRegex, (match, varName) => {
+      const envValue = (this.env as any)[varName];
+      console.log(`🔍 Resolving ${varName}: ${envValue !== undefined ? 'FOUND' : 'NOT FOUND'}`);
+      return envValue !== undefined ? envValue : match;
+    });
+    
+    // Handle direct environment variable names (without ${} wrapper)
+    // Only replace if the value looks like an environment variable name
+    if (result.match(/^[A-Z_]+$/)) {
+      const envValue = (this.env as any)[result];
+      console.log(`🔍 Resolving direct ${result}: ${envValue !== undefined ? 'FOUND' : 'NOT FOUND'}`);
+      if (envValue !== undefined) {
+        return envValue;
+      }
+    }
+    
+    return result;
+  }
+
+  /**
+   * Constant-time string comparison to prevent timing attacks
+   * Compares two strings in a way that doesn't reveal information about the strings
+   */
+  private constantTimeCompare(a: string, b: string): boolean {
+    if (a.length !== b.length) {
+      return false;
+    }
+    
+    let result = 0;
+    for (let i = 0; i < a.length; i++) {
+      result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    
+    return result === 0;
   }
 
   async getTeam(teamId: string): Promise<Team | null> {
@@ -166,9 +208,12 @@ export class TeamService {
       return null;
     }
 
+    // Extract only mutable fields from updates, excluding immutable fields
+    const { id, createdAt, ...mutableUpdates } = updates;
+
     const updatedTeam: Team = {
       ...existingTeam,
-      ...updates,
+      ...mutableUpdates,
       updatedAt: new Date().toISOString()
     };
 
@@ -223,8 +268,8 @@ export class TeamService {
 
       // Check if the team's config contains API tokens
       if (team.config.blawbyApi?.apiKey) {
-        // Compare with the team's configured API key
-        if (team.config.blawbyApi.apiKey === apiToken) {
+        // Compare with the team's configured API key using constant-time comparison
+        if (this.constantTimeCompare(team.config.blawbyApi.apiKey, apiToken)) {
           console.log(`✅ API token validated for team: ${teamId}`);
           return true;
         }

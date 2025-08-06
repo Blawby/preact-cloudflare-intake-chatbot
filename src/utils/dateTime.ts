@@ -16,13 +16,14 @@ export function formatFullDate(date: Date): string {
 }
 
 export function formatTimeWithTimezone(date: Date): string {
-  const timeString = date.toLocaleTimeString('en-US', {
+  // Convert to UTC/GMT time
+  const utcTimeString = date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
+    timeZone: 'UTC'
   });
-  // Force GMT timezone for consistent testing
-  return `${timeString} GMT`;
+  return `${utcTimeString} GMT`;
 }
 
 export function getDateGrid(startDate: Date, count: number): Date[] {

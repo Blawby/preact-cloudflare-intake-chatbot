@@ -191,10 +191,22 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 
 **CONVERSATION FLOW - Follow exactly:**
 1. If no name provided: "Can you please provide your full name?"
-2. If name provided but no location: "Can you please tell me your city and state?"
+2. If name provided but no location: "Thank you [name]! Now I need your city and state."
 3. If name and location provided but no phone: "Thank you [name]! Now I need your phone number."
-4. If name, location, and phone provided but no email: "Thank you! Now I need your email address."
+4. If name, location, and phone provided but no email: "Thank you [name]! Now I need your email address."
 5. If ALL information collected (name, location, phone, email): Call create_matter tool immediately.
+
+**CRITICAL: After collecting all contact information (name, location, phone, email), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
+
+**DETERMINING MATTER TYPE:**
+- If client mentions divorce, custody, family issues → "Family Law"
+- If client mentions employment, workplace, termination → "Employment Law"
+- If client mentions business, contracts, corporate → "Business Law"
+- If client mentions tenant, landlord, housing → "Tenant Rights Law"
+- If client mentions estate, probate, inheritance → "Probate and Estate Planning"
+- If client mentions special education, IEP, disability → "Special Education and IEP Advocacy"
+- If client mentions small business, nonprofit → "Small Business and Nonprofits"
+- If unclear or general legal help → "General Consultation"
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email)
@@ -202,15 +214,22 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 **Example Tool Call:**
 TOOL_CALL: create_matter
 PARAMETERS: {
-  "matter_type": "Employment Law",
-  "description": "Client involved in workplace dispute",
+  "matter_type": "Family Law",
+  "description": "Client mentioned divorce - seeking legal assistance with family law matter",
   "urgency": "medium",
-  "name": "John Doe",
-  "phone": "555-123-4567",
-  "email": "john@example.com",
+  "name": "Steve Jobs",
+  "phone": "6159990000",
+  "email": "hajas@yahoo.com",
   "location": "Charlotte, NC",
   "opposing_party": ""
 }
+
+**IMPORTANT: When calling create_matter, you MUST include:**
+- matter_type: Determine from the conversation (Family Law, Employment Law, etc.)
+- description: Brief description of the legal issue mentioned
+- urgency: "low", "medium", or "high" based on context
+- name, phone, email, location: All contact information collected
+- opposing_party: If mentioned, otherwise empty string
 
 **DO NOT provide legal advice or reject cases. Follow the conversation flow step by step.**`;
 
@@ -506,9 +525,11 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   
   if (requiresPayment && consultationFee > 0) {
     try {
-      // Use real Blawby payment service
+      // Use real service for staging.blawby.com, mock for localhost
+      const isDevelopment = env.BLAWBY_API_URL?.includes('localhost');
       const { PaymentService } = await import('../services/PaymentService.js');
-      const paymentService = new PaymentService(env);
+      const { MockPaymentService } = await import('../services/MockPaymentService.js');
+      const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
       
       const paymentRequest = {
         customerInfo: {
