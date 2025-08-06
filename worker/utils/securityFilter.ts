@@ -1,4 +1,5 @@
 import { extractLocationFromText, isLocationSupported } from './locationValidator.js';
+import { CloudflareLocationInfo, isCloudflareLocationSupported } from './cloudflareLocationValidator.js';
 
 export class SecurityFilter {
   // Core legal intake activities (always allowed)
@@ -12,7 +13,7 @@ export class SecurityFilter {
   ];
 
   // Comprehensive security validation
-  static validateRequest(content: string, teamConfig: any): { isValid: boolean; violations: string[]; reason?: string } {
+  static validateRequest(content: string, teamConfig: any, cloudflareLocation?: CloudflareLocationInfo): { isValid: boolean; violations: string[]; reason?: string } {
     const violations: string[] = [];
     
     // 1. Check for jailbreak attempts first (highest priority)
@@ -46,8 +47,8 @@ export class SecurityFilter {
       };
     }
     
-    // 4. Check for jurisdiction violations
-    const jurisdictionViolation = this.validateJurisdiction(content, teamConfig);
+    // 4. Check for jurisdiction violations using Cloudflare location data
+    const jurisdictionViolation = this.validateJurisdictionWithCloudflare(content, teamConfig, cloudflareLocation);
     if (jurisdictionViolation) {
       violations.push(jurisdictionViolation);
       return { 
@@ -132,19 +133,31 @@ export class SecurityFilter {
     return null;
   }
 
-  private static validateJurisdiction(content: string, teamConfig: any): string | null {
+  private static validateJurisdictionWithCloudflare(content: string, teamConfig: any, cloudflareLocation?: CloudflareLocationInfo): string | null {
     const jurisdiction = teamConfig?.jurisdiction || teamConfig?.config?.jurisdiction;
     if (!jurisdiction) return null;
-    
-    // Extract location from content using the new location validator
+
+    // Use Cloudflare location data if available
+    if (cloudflareLocation && cloudflareLocation.isValid) {
+      const supportedStates = Array.isArray(jurisdiction.supportedStates) ? jurisdiction.supportedStates : [];
+      const supportedCountries = Array.isArray(jurisdiction.supportedCountries) ? jurisdiction.supportedCountries : [];
+      
+      const isSupported = isCloudflareLocationSupported(cloudflareLocation, supportedStates, supportedCountries);
+      if (!isSupported) {
+        return 'jurisdiction_not_supported';
+      }
+      return null;
+    }
+
+    // Fallback to parsing location from content if Cloudflare data is not available
     const locationInfo = extractLocationFromText(content);
     console.log('SecurityFilter: Extracted location info:', locationInfo, 'from content:', content);
-    
+
     // Only validate jurisdiction if a location is actually mentioned
     if (!locationInfo) {
       return null;
     }
-    
+
     // Ensure supportedStates and supportedCountries are arrays
     const supportedStates = Array.isArray(jurisdiction.supportedStates) ? jurisdiction.supportedStates : [];
     const supportedCountries = Array.isArray(jurisdiction.supportedCountries) ? jurisdiction.supportedCountries : [];

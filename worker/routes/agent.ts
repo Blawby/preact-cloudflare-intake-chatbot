@@ -4,6 +4,7 @@ import { runLegalIntakeAgent, runLegalIntakeAgentStream } from '../agents/legalI
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
 import { SecurityLogger } from '../utils/securityLogger.js';
+import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 
 export async function handleAgent(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
@@ -36,8 +37,12 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
       }
     }
 
-    // Security validation
-    const validation = await validateInput(body, teamConfig); // Pass parsed body
+    // Get Cloudflare location data
+    const cloudflareLocation = getCloudflareLocation(request);
+    console.log('Cloudflare location data:', cloudflareLocation);
+
+    // Security validation with Cloudflare location
+    const validation = await validateInput(body, teamConfig, cloudflareLocation);
     if (!validation.isValid) {
       SecurityLogger.logInputValidation(validation, latestMessage.content, teamId);
       
@@ -50,14 +55,15 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
         metadata: { 
           securityBlock: true, 
           reason: validation.reason,
-          violations: validation.violations 
+          violations: validation.violations,
+          cloudflareLocation: cloudflareLocation.isValid ? getLocationDescription(cloudflareLocation) : 'Unknown'
         },
         sessionId
       }, corsHeaders);
     }
 
     // Run the legal intake agent directly
-    const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId);
+    const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation);
     return createSuccessResponse(agentResponse, corsHeaders);
   } catch (error) {
     return handleError(error, corsHeaders);

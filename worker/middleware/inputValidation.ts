@@ -1,6 +1,7 @@
 import { SecurityFilter } from '../utils/securityFilter.js';
+import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.js';
 
-export async function validateInput(body: any, teamConfig?: any): Promise<{ isValid: boolean; reason?: string; violations?: string[] }> {
+export async function validateInput(body: any, teamConfig?: any, cloudflareLocation?: CloudflareLocationInfo): Promise<{ isValid: boolean; reason?: string; violations?: string[] }> {
   const { messages } = body;
 
   if (!messages || !Array.isArray(messages)) {
@@ -12,8 +13,8 @@ export async function validateInput(body: any, teamConfig?: any): Promise<{ isVa
     return { isValid: false, reason: 'No message content' };
   }
 
-  // Comprehensive security validation
-  const securityValidation = SecurityFilter.validateRequest(latestMessage.content, teamConfig);
+  // Comprehensive security validation with Cloudflare location
+  const securityValidation = SecurityFilter.validateRequest(latestMessage.content, teamConfig, cloudflareLocation);
   if (!securityValidation.isValid) {
     return { 
       isValid: false, 

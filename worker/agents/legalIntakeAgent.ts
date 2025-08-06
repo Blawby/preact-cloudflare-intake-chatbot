@@ -1,5 +1,6 @@
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { validateLocation as validateLocationUtil, isLocationSupported } from '../utils/locationValidator.js';
+import { CloudflareLocationInfo, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 
 // Tool definitions with structured schemas
 export const collectContactInfo = {
@@ -197,7 +198,7 @@ const validateLocation = (location: string): boolean => {
 };
 
 // Create the legal intake agent using native Cloudflare AI
-export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string) {
+export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string, cloudflareLocation?: CloudflareLocationInfo) {
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
@@ -224,8 +225,9 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 **CRITICAL: After collecting all contact information (name, location, phone, email), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
 
 **LOCATION VALIDATION:**
-- Always ask for city and state when collecting location information
-- If client provides location outside service area, explain we can still help with general legal guidance but may need to refer to local attorneys for specific representation
+- We automatically detect your location for jurisdiction validation
+- If you're outside our service area, we can still help with general legal guidance
+- For specific legal representation, we may refer you to local attorneys in your area
 - Do not reject clients based on location - provide helpful guidance regardless
 
 **DETERMINING MATTER TYPE:**
@@ -744,8 +746,9 @@ export async function runLegalIntakeAgentStream(
 **CRITICAL: After collecting all contact information (name, location, phone, email), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
 
 **LOCATION VALIDATION:**
-- Always ask for city and state when collecting location information
-- If client provides location outside service area, explain we can still help with general legal guidance but may need to refer to local attorneys for specific representation
+- We automatically detect your location for jurisdiction validation
+- If you're outside our service area, we can still help with general legal guidance
+- For specific legal representation, we may refer you to local attorneys in your area
 - Do not reject clients based on location - provide helpful guidance regardless
 
 **DETERMINING MATTER TYPE:**
