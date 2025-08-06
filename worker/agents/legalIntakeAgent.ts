@@ -97,14 +97,11 @@ export const scheduleConsultation = {
 };
 
 // Shared utility function for location context and prompt construction
-async function buildLocationContext(cloudflareLocation?: CloudflareLocationInfo): Promise<{ locationContext: string; locationPrompt: string }> {
+function buildLocationContext(cloudflareLocation?: CloudflareLocationInfo): { locationContext: string; locationPrompt: string } {
   let locationContext = '';
   let locationPrompt = '';
   
   if (cloudflareLocation && cloudflareLocation.isValid) {
-    const { getLocationDescription } = await import('../utils/cloudflareLocationValidator.js');
-    // Note: locationDesc is not used in the current implementation
-    // const locationDesc = getLocationDescription(cloudflareLocation);
     locationContext = `\n**JURISDICTION VALIDATION:** We can validate your location against our service area.`;
     locationPrompt = '"Can you please tell me your city and state?"';
   } else {
@@ -228,7 +225,7 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
   }));
 
   // Use shared utility function for location context and prompt construction
-  const { locationContext, locationPrompt } = await buildLocationContext(cloudflareLocation);
+  const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
 
   const systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
@@ -759,7 +756,7 @@ export async function runLegalIntakeAgentStream(
   }));
 
   // Use shared utility function for location context and prompt construction
-  const { locationContext, locationPrompt } = await buildLocationContext(cloudflareLocation);
+  const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
 
   const systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
