@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
 import { useState, useEffect } from 'preact/hooks';
+import DOMPurify from 'dompurify';
 import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
 import PaymentEmbed from './PaymentEmbed';
@@ -173,9 +174,14 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	useEffect(() => {
 		setIsClient(true);
 		// Dynamically import ReactMarkdown only on the client side
-		import('react-markdown').then((module) => {
-			setReactMarkdown(() => module.default);
-		});
+		import('react-markdown')
+			.then((module) => {
+				setReactMarkdown(() => module.default);
+			})
+			.catch((error) => {
+				console.error('Failed to load ReactMarkdown:', error);
+				// Keep ReactMarkdown as null to use fallback rendering
+			});
 	}, []);
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
 	const audioFiles = files.filter(file => file.type.startsWith('audio/'));
@@ -204,7 +210,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						{isClient && ReactMarkdown ? (
 							<ReactMarkdown>{content}</ReactMarkdown>
 						) : (
-							<div dangerouslySetInnerHTML={{ __html: content }} />
+							<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
 						)}
 					</div>
 				)}

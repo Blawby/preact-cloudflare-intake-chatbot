@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { unstable_dev } from 'wrangler';
 import type { UnstableDevWorker } from 'wrangler';
 
@@ -110,10 +110,8 @@ describe('Chat Flow E2E Tests', () => {
         body: formData
       });
 
-      // Since E2E tests have different behavior than integration tests,
-      // we'll accept either success or a proper error response
-      expect(uploadResponse.status).toBeGreaterThanOrEqual(200);
-      expect(uploadResponse.status).toBeLessThan(500);
+      // File upload should either succeed (200) or fail with a specific error (400, 401, 403)
+      expect([200, 400, 401, 403]).toContain(uploadResponse.status);
       
       const uploadData = await uploadResponse.json();
       
@@ -151,9 +149,8 @@ describe('Chat Flow E2E Tests', () => {
         })
       });
 
-      // Since we're using real API calls, we expect either success or a proper error
-      expect(paymentResponse.status).toBeGreaterThanOrEqual(200);
-      expect(paymentResponse.status).toBeLessThan(500);
+      // Payment should either succeed (200) or fail with authentication/validation errors (400, 401, 403)
+      expect([200, 400, 401, 403]).toContain(paymentResponse.status);
       
       const paymentData = await paymentResponse.json();
       

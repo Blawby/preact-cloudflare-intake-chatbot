@@ -116,8 +116,8 @@ describe('AIService', () => {
       const result = await aiService.runLLM([], '@cf/meta/llama-3.1-8b-instruct');
       expect(result).toBeDefined();
       
-      // Test with null messages (should still work as the actual implementation doesn't validate)
-      const result2 = await aiService.runLLM(null as any, '@cf/meta/llama-3.1-8b-instruct');
+      // Test with undefined messages (should still work as the actual implementation doesn't validate)
+      const result2 = await aiService.runLLM(undefined, '@cf/meta/llama-3.1-8b-instruct');
       expect(result2).toBeDefined();
     });
   });
