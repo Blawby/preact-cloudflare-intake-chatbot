@@ -17,7 +17,6 @@ import MobileSidebar from './components/MobileSidebar';
 import MobileTopNav from './components/MobileTopNav';
 import MattersList from './components/MattersList';
 import MatterDetail from './components/MatterDetail';
-import ReviewQueue from './components/ReviewQueue';
 import PaymentEmbed from './components/PaymentEmbed';
 import { debounce } from './utils/debounce';
 // Removed unused useDebounce import
@@ -126,7 +125,7 @@ export function App() {
 	} | null>(null);
 
 	// Simplified state - agent handles all conversation flow
-	const [currentTab, setCurrentTab] = useState<'chats' | 'matters' | 'review'>('chats');
+	const [currentTab, setCurrentTab] = useState<'chats' | 'matters'>('chats');
 	
 	// State for matters
 	const [matters, setMatters] = useState<Matter[]>([]);
@@ -191,7 +190,7 @@ export function App() {
 	}, []);
 
 	// Handle bottom navigation tab changes
-	const handleTabChange = useCallback((tab: 'chats' | 'matters' | 'review') => {
+	const handleTabChange = useCallback((tab: 'chats' | 'matters') => {
 		setCurrentTab(tab);
 	}, []);
 
@@ -225,12 +224,12 @@ export function App() {
 	// Handle matter selection
 	const handleMatterSelect = useCallback((matter: Matter) => {
 		setSelectedMatter(matter);
-		router.navigate('matters', { id: matter.id });
+		setCurrentTab('matters');
 	}, []);
 
 	// Handle matter creation from matters view
 	const handleCreateMatterFromList = useCallback(() => {
-		router.navigate('chats');
+		setCurrentTab('chats');
 		// Start matter creation flow after a short delay to allow navigation
 		setTimeout(() => {
 			handleCreateMatterStart();
@@ -240,12 +239,12 @@ export function App() {
 	// Handle back to matters list
 	const handleBackToMatters = useCallback(() => {
 		setSelectedMatter(null);
-		router.navigate('matters');
+		setCurrentTab('matters');
 	}, []);
 
 	// Handle edit matter (for now, just go back to chat)
 	const handleEditMatter = useCallback(() => {
-		router.navigate('chats');
+		setCurrentTab('chats');
 	}, []);
 
 	// Parse URL parameters for configuration
@@ -1418,178 +1417,180 @@ export function App() {
 					)}
 
 					{/* Center Column - Main Content */}
-					<div className={features.enableLeftSidebar ? "grid-center" : "grid-center-full"}>
-						<div 
-							className="chat-container" 
-							role="application" 
-							aria-label="Main interface"
-							aria-expanded={true}
-						>
-							<ErrorBoundary>
-								{currentTab === 'chats' ? (
-									<>
-										<main className="chat-main">
-										<VirtualMessageList
-											messages={messages}
-											onDateSelect={handleDateSelect}
-											onTimeOfDaySelect={handleTimeOfDaySelect}
-											onTimeSlotSelect={handleTimeSlotSelect}
-											onRequestMoreDates={handleRequestMoreDates}
-											onServiceSelect={handleServiceSelect}
-											onUrgencySelect={handleUrgencySelect}
-											onCreateMatter={handleCreateMatterStart}
-											onScheduleConsultation={handleScheduleStart}
-											onLearnServices={async () => {
-												const servicesMessage: ChatMessageUI = {
-													content: "Tell me about your firm's services",
-													isUser: true
-												};
-												setMessages(prev => [...prev, servicesMessage]);
+					<div className={
+						features.enableLeftSidebar 
+							? (currentTab === 'matters' ? "grid-center-full" : "grid-center") 
+							: "grid-center-full"
+					}>
+						<ErrorBoundary>
+							{currentTab === 'chats' ? (
+								<div 
+									className="chat-container" 
+									role="application" 
+									aria-label="Main interface"
+									aria-expanded={true}
+								>
+									<main className="chat-main">
+									<VirtualMessageList
+										messages={messages}
+										onDateSelect={handleDateSelect}
+										onTimeOfDaySelect={handleTimeOfDaySelect}
+										onTimeSlotSelect={handleTimeSlotSelect}
+										onRequestMoreDates={handleRequestMoreDates}
+										onServiceSelect={handleServiceSelect}
+										onUrgencySelect={handleUrgencySelect}
+										onCreateMatter={handleCreateMatterStart}
+										onScheduleConsultation={handleScheduleStart}
+										onLearnServices={async () => {
+											const servicesMessage: ChatMessageUI = {
+												content: "Tell me about your firm's services",
+												isUser: true
+											};
+											setMessages(prev => [...prev, servicesMessage]);
+											
+											// Add placeholder message with loading indicator (ChatGPT style)
+											const loadingMessageId = crypto.randomUUID();
+											const loadingMessage: ChatMessageUI = {
+												content: "Let me tell you about our services...",
+												isUser: false,
+												isLoading: true,
+												id: loadingMessageId
+											};
+											setMessages(prev => [...prev, loadingMessage]);
+											
+											try {
+												// Call the actual API
+												const response = await sendMessageToAPI("Tell me about your firm's services");
 												
-												// Add placeholder message with loading indicator (ChatGPT style)
-												const loadingMessageId = crypto.randomUUID();
-												const loadingMessage: ChatMessageUI = {
-													content: "Let me tell you about our services...",
-													isUser: false,
-													isLoading: true,
-													id: loadingMessageId
-												};
-												setMessages(prev => [...prev, loadingMessage]);
-												
-												try {
-													// Call the actual API
-													const response = await sendMessageToAPI("Tell me about your firm's services");
-													
-													// Update the loading message with actual content
-													setMessages(prev => prev.map(msg => 
-														msg.id === loadingMessageId 
-															? {
-																...msg,
-																content: response,
-																isLoading: false
-															}
-															: msg
-													));
-												} catch (error) {
-													// Fallback to default response if API fails
-													setMessages(prev => prev.map(msg => 
-														msg.id === loadingMessageId 
-															? {
-																...msg,
-																content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
-																isLoading: false
-															}
-															: msg
-													));
-												}
-											}}
-											teamConfig={{
-												name: teamConfig.name,
-												profileImage: teamConfig.profileImage,
-												teamId: teamId,
-												description: teamConfig.description
-											}}
-											onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-											sessionId={sessionId}
-											teamId={teamId}
-											onFeedbackSubmit={handleFeedbackSubmit}
-										/>
-										<div className="input-area" role="form" aria-label="Message composition">
-											<div className="input-container">
-												{previewFiles.length > 0 && (
-													<div className="input-preview" role="list" aria-label="File attachments">
-														{previewFiles.map((file, index) => (
-															<div 
-																className={`input-preview-item ${file.type.startsWith('image/') ? 'image-preview' : 'file-preview'}`}
-																key={index}
-																role="listitem"
+												// Update the loading message with actual content
+												setMessages(prev => prev.map(msg => 
+													msg.id === loadingMessageId 
+														? {
+															...msg,
+															content: response,
+															isLoading: false
+														}
+														: msg
+												));
+											} catch (error) {
+												// Fallback to default response if API fails
+												setMessages(prev => prev.map(msg => 
+													msg.id === loadingMessageId 
+														? {
+															...msg,
+															content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
+															isLoading: false
+														}
+														: msg
+												));
+											}
+										}}
+										teamConfig={{
+											name: teamConfig.name,
+											profileImage: teamConfig.profileImage,
+											teamId: teamId,
+											description: teamConfig.description
+										}}
+										onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+										sessionId={sessionId}
+										teamId={teamId}
+										onFeedbackSubmit={handleFeedbackSubmit}
+									/>
+									<div className="input-area" role="form" aria-label="Message composition">
+										<div className="input-container">
+											{previewFiles.length > 0 && (
+												<div className="input-preview" role="list" aria-label="File attachments">
+													{previewFiles.map((file, index) => (
+														<div 
+															className={`input-preview-item ${file.type.startsWith('image/') ? 'image-preview' : 'file-preview'}`}
+															key={index}
+															role="listitem"
+														>
+															{file.type.startsWith('image/') ? (
+																<>
+																	<img src={file.url} alt={`Preview of ${file.name}`} />
+																</>
+															) : (
+																<>
+																	<div className="file-thumbnail" aria-hidden="true">
+																		{getFileIcon(file)}
+																	</div>
+																	<div className="file-info">
+																		<div className="file-name">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
+																		<div className="file-ext">{file.name.split('.').pop()}</div>
+																	</div>
+																</>
+															)}
+															<Button
+																type="button"
+																variant="ghost"
+																size="sm"
+																onClick={() => removePreviewFile(index)}
+																title="Remove file"
+																aria-label={`Remove ${file.name}`}
+																className="input-preview-remove"
 															>
-																{file.type.startsWith('image/') ? (
-																	<>
-																		<img src={file.url} alt={`Preview of ${file.name}`} />
-																	</>
-																) : (
-																	<>
-																		<div className="file-thumbnail" aria-hidden="true">
-																			{getFileIcon(file)}
-																		</div>
-																		<div className="file-info">
-																			<div className="file-name">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
-																			<div className="file-ext">{file.name.split('.').pop()}</div>
-																		</div>
-																	</>
-																)}
-																<Button
-																	type="button"
-																	variant="ghost"
-																	size="sm"
-																	onClick={() => removePreviewFile(index)}
-																	title="Remove file"
-																	aria-label={`Remove ${file.name}`}
-																	className="input-preview-remove"
-																>
-																	<XMarkIcon className="w-4 h-4" aria-hidden="true" />
-																</Button>
-															</div>
-														))}
-													</div>
-												)}
-												<div className="textarea-wrapper">
-													<textarea
-														className="message-input"
-														placeholder="Type a message..."
-														rows={1}
-														value={inputValue}
-														onInput={handleInputChange}
-														onKeyPress={handleKeyPress}
-														disabled={false}
-														aria-label="Message input"
-														aria-multiline="true"
-														style={{ 
-															minHeight: '24px',
-															width: '100%'
-														}}
-													/>
+																<XMarkIcon className="w-4 h-4" aria-hidden="true" />
+															</Button>
+														</div>
+													))}
 												</div>
-												<span id="input-instructions" className="sr-only">
-													Type your message and press Enter to send. Use the buttons below to attach files or record audio.
-												</span>
-												<div className="input-controls-row">
-													<div className="input-controls">
-														{!isRecording && (
-															<div className="input-left-controls">
-																								<FileMenu
+											)}
+											<div className="textarea-wrapper">
+												<textarea
+													className="message-input"
+													placeholder="Type a message..."
+													rows={1}
+													value={inputValue}
+													onInput={handleInputChange}
+													onKeyPress={handleKeyPress}
+													disabled={false}
+													aria-label="Message input"
+													aria-multiline="true"
+													style={{ 
+														minHeight: '24px',
+														width: '100%'
+													}}
+												/>
+											</div>
+											<span id="input-instructions" className="sr-only">
+												Type your message and press Enter to send. Use the buttons below to attach files or record audio.
+											</span>
+											<div className="input-controls-row">
+												<div className="input-controls">
+													{!isRecording && (
+														<div className="input-left-controls">
+															<FileMenu
 									onPhotoSelect={handlePhotoSelect}
 									onCameraCapture={handleCameraCapture}
 									onFileSelect={handleFileSelect}
 								/>
-																
-																{features.enableConsultationButton && (
-																	<LazyScheduleButton
-																		onClick={handleScheduleStart}
-																		disabled={false}
-																	/>
-																)}
-															</div>
-														)}
-														
-														<div className="send-controls">
-															{features.enableAudioRecording && (
-																<LazyMediaControls
-																	onMediaCapture={handleMediaCapture}
-																	onRecordingStateChange={setIsRecording}
+															
+															{features.enableConsultationButton && (
+																<LazyScheduleButton
+																	onClick={handleScheduleStart}
+																	disabled={false}
 																/>
 															)}
-															
-															<Button
-																variant="icon"
-																onClick={handleSubmit}
-																disabled={(!inputValue.trim() && previewFiles.length === 0)}
-																aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
-															>
-																<ArrowUpIcon className="w-4 h-4" aria-hidden="true" />
-															</Button>
 														</div>
+													)}
+													
+													<div className="send-controls">
+														{features.enableAudioRecording && (
+															<LazyMediaControls
+																onMediaCapture={handleMediaCapture}
+																onRecordingStateChange={setIsRecording}
+															/>
+														)}
+														
+														<Button
+															variant="icon"
+															onClick={handleSubmit}
+															disabled={(!inputValue.trim() && previewFiles.length === 0)}
+															aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
+														>
+															<ArrowUpIcon className="w-4 h-4" aria-hidden="true" />
+														</Button>
 													</div>
 												</div>
 											</div>
@@ -1599,56 +1600,57 @@ export function App() {
 												Blawby can make mistakes. Check for important information.
 											</div>
 										)}
-										</main>
-										{(() => {
-											// Find the last AI message with a summary and confirmation prompt
-											const lastAiMsg = messages.slice().reverse().find(
-												m =>
-													!m.isUser &&
-													m.matterCanvas &&
-													m.content &&
-													m.content.includes("here's a summary of your legal matter:")
-											);
-											if (lastAiMsg && lastAiMsg.matterCanvas) {
-												return (
-													<div className="confirmation-prompt" style={{ margin: '16px 0', textAlign: 'center' }}>
-														<p>Does everything look correct? If so, click 'Request Consultation' to submit. If you need to make changes, just type your correction below.</p>
-														<Button
-															variant="primary"
-															onClick={async () => {
-																// Call backend with step: 'submit-intake'
-																const submitResult = await handleMatterCreationAPI('submit-intake', {
-																	answers: lastAiMsg.matterCanvas.answers,
-																	service: lastAiMsg.matterCanvas.service,
-																	sessionId,
-																});
+									</div>
+									{(() => {
+										// Find the last AI message with a summary and confirmation prompt
+										const lastAiMsg = messages.slice().reverse().find(
+											m =>
+												!m.isUser &&
+												m.matterCanvas &&
+												m.content &&
+												m.content.includes("here's a summary of your legal matter:")
+										);
+										if (lastAiMsg && lastAiMsg.matterCanvas) {
+											return (
+												<div className="confirmation-prompt" style={{ margin: '16px 0', textAlign: 'center' }}>
+													<p>Does everything look correct? If so, click 'Request Consultation' to submit. If you need to make changes, just type your correction below.</p>
+													<Button
+														variant="primary"
+														onClick={async () => {
+															// Call backend with step: 'submit-intake'
+															const submitResult = await handleMatterCreationAPI('submit-intake', {
+																answers: lastAiMsg.matterCanvas.answers,
+																service: lastAiMsg.matterCanvas.service,
+																sessionId,
+															});
+															setMessages(prev => [
+																...prev,
+																{
+																	content: submitResult.message,
+																	isUser: false,
+																	matterCanvas: submitResult.matterCanvas,
+																},
+															]);
+															if (submitResult.followupMessage) {
 																setMessages(prev => [
 																	...prev,
 																	{
-																		content: submitResult.message,
-																		isUser: false,
-																		matterCanvas: submitResult.matterCanvas,
-																	},
+																		content: submitResult.followupMessage,
+																		isUser: false
+																	}
 																]);
-																if (submitResult.followupMessage) {
-																	setMessages(prev => [
-																		...prev,
-																		{
-																			content: submitResult.followupMessage,
-																			isUser: false
-																		}
-																	]);
-																}
-															}}
-														>
-															Request Consultation
-														</Button>
-													</div>
-												);
-											}
-											return null;
-										})()}
-									</>
+															}
+														}}
+													>
+														Request Consultation
+													</Button>
+												</div>
+											);
+										}
+										return null;
+									})()}
+								</main>
+							</div>
 								) : currentTab === 'matters' ? (
 									<>
 										{selectedMatter ? (
@@ -1666,74 +1668,65 @@ export function App() {
 											/>
 										)}
 									</>
-								) : currentTab === 'review' ? (
-									<>
-										<ReviewQueue
-											teamId={teamId}
-											onRefresh={() => {
-												// Refresh matters list when review actions are taken
-												setMatters(prev => [...prev]);
-											}}
-										/>
-									</>
 								) : null}
-							</ErrorBoundary>
-						</div>
+						</ErrorBoundary>
 					</div>
 
-					{/* Right Column */}
-					<div className="grid-right">
-						<div className="team-sidebar">
-							<TeamProfile
-								name={teamConfig.name}
-								profileImage={teamConfig.profileImage}
-								teamId={teamId}
-								variant="sidebar"
-								showVerified={true}
-							/>
+					{/* Right Column - Hidden when matters tab is active for better parity with mobile */}
+					{currentTab !== 'matters' && (
+						<div className="grid-right">
+							<div className="team-sidebar">
+								<TeamProfile
+									name={teamConfig.name}
+									profileImage={teamConfig.profileImage}
+									teamId={teamId}
+									variant="sidebar"
+									showVerified={true}
+								/>
 
-							{/* Actions Row */}
-							<div className="team-actions">
-								<Button 
-									variant="primary"
-									onClick={handleViewMatter}
-									title={sidebarMatter ? "View matter details" : "Create a new matter"}
-								>
-									<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-									</svg>
-									{sidebarMatter ? 'View Matter' : 'Create Matter'}
-								</Button>
-							</div>
-
-							{/* Matter Canvas in Sidebar */}
-							{sidebarMatter && (
-								<div className="team-section">
-									<h4 className="section-title">
-										{sidebarMatter.matterNumber ? `Matter ${sidebarMatter.matterNumber}` : 'Case Summary'}
-									</h4>
-									<div className="section-content">
-										<MatterCanvas
-											matterId={sidebarMatter.matterId}
-											matterNumber={sidebarMatter.matterNumber}
-											service={sidebarMatter.service}
-											matterSummary={sidebarMatter.matterSummary}
-							
-											answers={sidebarMatter.answers}
-										/>
-									</div>
+								{/* Actions Row */}
+								<div className="team-actions">
+									<Button 
+										variant="primary"
+										onClick={handleViewMatter}
+										title={sidebarMatter ? "View matter details" : "Create a new matter"}
+									>
+										<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+										</svg>
+										{sidebarMatter ? 'View Matter' : 'Create Matter'}
+									</Button>
 								</div>
-							)}
 
-							{/* Media Section */}
-							<div className="team-section">
-								<MediaSidebar messages={messages} />
+								{/* Matter Canvas in Sidebar */}
+								{sidebarMatter && (
+									<div className="team-section">
+										<h4 className="section-title">
+											{sidebarMatter.matterNumber ? `Matter ${sidebarMatter.matterNumber}` : 'Case Summary'}
+										</h4>
+										<div className="section-content">
+											<MatterCanvas
+												matterId={sidebarMatter.matterId}
+												matterNumber={sidebarMatter.matterNumber}
+												service={sidebarMatter.service}
+												matterSummary={sidebarMatter.matterSummary}
+						
+												answers={sidebarMatter.answers}
+											/>
+										</div>
+									</div>
+								)}
+
+								{/* Media Section */}
+								<div className="team-section">
+									<MediaSidebar messages={messages} />
+								</div>
+
+								{/* Privacy & Support Section */}
+								<PrivacySupportSidebar />
 							</div>
-
-							{/* Privacy & Support Section */}
-							<PrivacySupportSidebar />
 						</div>
-					</div>
+					)}
 
 					{/* Mobile Top Navigation */}
 					<MobileTopNav
