@@ -202,7 +202,7 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 │   ├── services/        # Business logic services
 │   │   ├── AIService.ts     # Simplified team config
 │   │   ├── ReviewService.ts # Human-in-the-loop review service
-│   │   └── WebhookService.ts # Essential webhook handling
+
 │   └── utils.ts         # Essential utilities only
 ├── tests/               # Test files
 └── public/              # Static assets

@@ -263,7 +263,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
     }
   }
 
-  // POST /api/payment/webhook - Handle payment webhooks from blawby
+  // POST /api/payment/webhook - Handle payment webhooks from payment processor
   if (path === '/api/payment/webhook' && request.method === 'POST') {
     try {
       const body = await parseJsonBody(request);
@@ -340,7 +340,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
           break;
 
         default:
-          console.log('📝 Unhandled webhook event type:', eventType);
+          console.log('📝 Unhandled payment webhook event type:', eventType);
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -352,7 +352,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
       console.error('❌ Payment webhook error:', error);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Webhook processing failed' 
+        error: 'Payment webhook processing failed' 
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

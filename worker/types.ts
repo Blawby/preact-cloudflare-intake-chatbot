@@ -9,7 +9,7 @@ export interface Env {
   FILES_BUCKET?: R2Bucket;
   PAYMENT_API_KEY?: string;
   PAYMENT_API_URL?: string;
-  WEBHOOK_SECRET?: string;
+
   BLAWBY_API_URL?: string;
   BLAWBY_API_TOKEN?: string;
   BLAWBY_TEAM_ULID?: string;
@@ -83,21 +83,7 @@ export interface Team {
     accentColor: string;
     introMessage: string;
     profileImage?: string;
-    webhooks: {
-      enabled: boolean;
-      url: string;
-      secret: string;
-      events: {
-        matterCreation: boolean;
-        matterDetails: boolean;
-        contactForm: boolean;
-        appointment: boolean;
-      };
-      retryConfig: {
-        maxRetries: number;
-        retryDelay: number;
-      };
-    };
+
   };
 }
 
@@ -150,13 +136,7 @@ export interface Feedback {
   createdAt: number;
 }
 
-// Webhook types
-export interface WebhookEvent {
-  type: 'matterCreation' | 'matterDetails' | 'contactForm' | 'appointment';
-  data: any;
-  timestamp: number;
-  signature?: string;
-}
+
 
 // Request validation types
 export interface ValidatedRequest<T = any> {

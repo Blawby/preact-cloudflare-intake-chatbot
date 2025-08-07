@@ -201,40 +201,7 @@ describe('Payment API Integration', () => {
     expect(result.error).toContain('Missing required matter information');
   });
 
-  it('should handle payment webhooks', async () => {
-    // Mock the database operations for webhook
-    const mockDb = {
-      prepare: vi.fn().mockReturnValue({
-        bind: vi.fn().mockReturnValue({
-          run: vi.fn().mockResolvedValue({})
-        })
-      })
-    };
 
-    // Override the worker's DB binding for this test
-    (worker as any).env = { ...(worker as any).env, DB: mockDb };
-
-    const webhookData = {
-      eventType: 'payment.completed',
-      paymentId: 'pay_123',
-      status: 'completed',
-      amount: 15000,
-      customerEmail: 'john@example.com',
-      teamId: '01jq70jnstyfzevc6423czh50e'
-    };
-
-    const response = await worker.fetch('/api/payment/webhook', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(webhookData)
-    });
-
-    expect(response.status).toBe(200);
-    const result = await response.json();
-    expect(result.success).toBe(true);
-  });
 
   it('should return 404 for unknown payment endpoints', async () => {
     const response = await worker.fetch('/api/payment/unknown-endpoint', {

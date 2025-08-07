@@ -61,21 +61,7 @@ export const teamConfigSchema = z.object({
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   introMessage: z.string().min(1),
   profileImage: z.string().url().optional(),
-  webhooks: z.object({
-    enabled: z.boolean(),
-    url: z.string().url(),
-    secret: z.string().min(1),
-    events: z.object({
-      matterCreation: z.boolean(),
-      matterDetails: z.boolean(),
-      contactForm: z.boolean(),
-      appointment: z.boolean()
-    }),
-    retryConfig: z.object({
-      maxRetries: z.number().int().min(0).max(10),
-      retryDelay: z.number().int().min(1).max(3600)
-    })
-  })
+
 });
 
 export const teamSchema = z.object({
@@ -127,18 +113,7 @@ export const feedbackSchema = z.object({
   comment: z.string().max(500).optional()
 });
 
-// Webhook schemas
-export const webhookEventSchema = z.object({
-  type: z.enum(['matterCreation', 'matterDetails', 'contactForm', 'appointment']),
-  data: z.record(z.any()),
-  timestamp: timestampSchema,
-  signature: z.string().optional()
-});
 
-export const webhookVerificationSchema = z.object({
-  url: z.string().url(),
-  secret: z.string().min(1)
-});
 
 // Session schemas
 export const sessionSchema = z.object({

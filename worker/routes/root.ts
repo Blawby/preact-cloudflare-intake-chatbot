@@ -21,10 +21,7 @@ export async function handleRoot(request: Request, env: Env): Promise<Response> 
         <li><strong>POST</strong> /api/scheduling - Appointments</li>
         <li><strong>POST</strong> /api/feedback - AI feedback collection</li>
         <li><strong>GET</strong> /api/export - Training data export</li>
-        <li><strong>GET</strong> /api/webhooks/logs - Webhook delivery logs</li>
-        <li><strong>POST</strong> /api/webhooks/retry - Retry failed webhooks</li>
-        <li><strong>GET</strong> /api/webhooks/stats - Webhook statistics</li>
-        <li><strong>POST</strong> /api/webhooks/test - Test webhook delivery</li>
+
     </ul>
     <p>✅ API operational</p>
 </body>

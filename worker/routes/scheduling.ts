@@ -34,34 +34,7 @@ export async function handleScheduling(request: Request, env: Env, corsHeaders: 
         body.preferredDate, body.preferredTime || '', body.matterType, body.notes || ''
       ).run();
 
-      // Send appointment webhook
-      const { AIService } = await import('../services/AIService.js');
-      const { WebhookService } = await import('../services/WebhookService.js');
-      const aiService = new AIService(env.AI, env);
-      const teamConfig = await aiService.getTeamConfig(body.teamId);
-      const webhookService = new WebhookService(env);
-      // Get team info for webhook payload - use slug to find ULID
-      const teamInfo = await env.DB.prepare('SELECT id, slug, name FROM teams WHERE slug = ?').bind(body.teamId).first();
-      
-      const appointmentPayload = {
-        event: 'appointment',
-        timestamp: new Date().toISOString(),
-        teamId: teamInfo?.id || body.teamId, // Use ULID if available, fallback to slug
-        appointmentId,
-        appointment: {
-          clientEmail: body.email,
-          clientPhone: body.phoneNumber,
-          preferredDate: body.preferredDate,
-          preferredTime: body.preferredTime,
-          matterType: body.matterType,
-          notes: body.notes,
-          status: 'pending'
-        }
-      };
 
-      // Fire and forget webhook - don't wait for completion
-      webhookService.sendWebhook(body.teamId, 'appointment', appointmentPayload, teamConfig)
-        .catch(error => console.warn('Appointment webhook failed:', error));
 
       return new Response(JSON.stringify({
         success: true,
