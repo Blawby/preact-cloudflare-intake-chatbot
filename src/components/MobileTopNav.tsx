@@ -44,7 +44,7 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar }: MobileTopNavProps) => {
         aria-label="Open menu"
         className="mobile-top-nav-menu"
       >
-        <Bars3Icon className="w-6 h-6" />
+        <Bars3Icon className="w-8 h-8" />
       </Button>
     </div>
   );

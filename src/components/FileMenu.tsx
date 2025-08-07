@@ -170,7 +170,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
     };
 
     return (
-        <div className="file-menu" ref={menuRef}>
+        <div className="relative flex items-center" ref={menuRef}>
             <Button
                 type="button"
                 variant="icon"
@@ -188,7 +188,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
             
             {(isOpen || isClosing) && (
                 <div 
-                    className={`file-menu-dropdown ${isClosing ? 'closing' : ''}`}
+                    className={`absolute bottom-full left-0 mb-2 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-1 min-w-[200px] shadow-lg z-[2000] transition-all duration-200 ${isClosing ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}
                     role="menu"
                     aria-labelledby="attachment-menu"
                 >
@@ -198,7 +198,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                         onClick={handlePhotoClick}
                         role="menuitem"
                         ref={firstMenuItemRef}
-                        className="file-menu-item w-full justify-between"
+                        				className="flex items-center justify-between w-full px-3 py-3 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 text-xs sm:text-sm"
                     >
                         <span>Attach photos</span>
                         <PhotoIcon className="w-5 h-5" aria-hidden="true" />
@@ -209,7 +209,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                         variant="ghost"
                         onClick={handleCameraClick}
                         role="menuitem"
-                        className="file-menu-item w-full justify-between"
+                        className="flex items-center justify-between w-full px-3 py-3 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 text-xs sm:text-sm border-t border-gray-200 dark:border-dark-border"
                     >
                         <span>Take Photo</span>
                         <CameraIcon className="w-5 h-5" aria-hidden="true" />
@@ -220,7 +220,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                         variant="ghost"
                         onClick={handleFileClick}
                         role="menuitem"
-                        className="file-menu-item w-full justify-between"
+                        className="flex items-center justify-between w-full px-3 py-3 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 text-xs sm:text-sm border-t border-gray-200 dark:border-dark-border"
                     >
                         <span>Attach files</span>
                         <DocumentIcon className="w-5 h-5" aria-hidden="true" />
@@ -231,7 +231,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
             <input
                 type="file"
                 ref={photoInputRef}
-                className="file-input"
+                className="hidden"
                 accept="image/*"
                 multiple
                 onChange={handlePhotoChange}
@@ -241,7 +241,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
             <input
                 type="file"
                 ref={fileInputRef}
-                className="file-input"
+                className="hidden"
                 accept="application/pdf,text/plain,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,audio/*"
                 multiple
                 onChange={handleFileChange}

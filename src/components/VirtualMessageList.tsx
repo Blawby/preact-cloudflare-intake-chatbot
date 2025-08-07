@@ -133,12 +133,12 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
 
     return (
         <div 
-            class="message-list" 
+            className="flex-1 overflow-y-auto p-4 pb-40 scroll-smooth w-full scrollbar-thin scrollbar-transparent transition-scrollbar-color duration-500 touch-scrolling" 
             ref={listRef}
         >
             {/* Team Profile Header - Fixed at top of scrollable area */}
             {teamConfig && (
-                <div className="team-profile-header">
+                <div className="flex flex-col items-center py-8 px-4 pb-6 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg mb-4">
                     <TeamProfile 
                         name={teamConfig.name}
                         profileImage={teamConfig.profileImage}
@@ -151,8 +151,8 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             )}
             
             {startIndex > 0 && (
-                <div class="load-more-trigger">
-                    <div className="loading-text">Loading more messages...</div>
+                <div className="flex justify-center items-center py-4">
+                    					<div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm lg:text-base">Loading more messages...</div>
                 </div>
             )}
             <ErrorBoundary>

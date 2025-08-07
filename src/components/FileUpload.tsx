@@ -60,7 +60,7 @@ const FileUpload: FunctionComponent<FileUploadProps> = ({
 
 	return (
 		<div
-			class={`file-upload ${isDragging ? 'dragging' : ''}`}
+			className={`flex items-center relative ${isDragging ? 'after:content-[""] after:absolute after:-top-2.5 after:-left-2.5 after:-right-2.5 after:-bottom-2.5 after:border-2 after:border-dashed after:border-amber-500 after:rounded-lg after:animate-pulse' : ''}`}
 			onDragEnter={handleDragEnter}
 			onDragLeave={handleDragLeave}
 			onDragOver={handleDragOver}
@@ -69,7 +69,7 @@ const FileUpload: FunctionComponent<FileUploadProps> = ({
 			<input
 				type="file"
 				ref={fileInputRef}
-				class="file-input"
+				className="hidden"
 				accept={accept}
 				multiple={multiple}
 				onChange={handleFileInput}
@@ -78,11 +78,12 @@ const FileUpload: FunctionComponent<FileUploadProps> = ({
 				variant="icon"
 				onClick={handleButtonClick}
 				title="Upload file"
+				className="text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors duration-200"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					viewBox="0 0 24 24"
-					class="w-4 h-4"
+					className="w-4 h-4"
 				>
 					<path
 						fill="currentColor"

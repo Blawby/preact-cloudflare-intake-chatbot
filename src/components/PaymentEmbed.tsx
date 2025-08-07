@@ -127,10 +127,10 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <CreditCardIcon className="w-6 h-6" style={{ color: 'var(--accent-color)' }} />
-                  <h3 className="text-lg font-semibold m-0 !mt-0 !mb-0" style={{ color: 'var(--text-color)' }}>Complete Payment</h3>
+                  					<h3 className="text-base sm:text-lg lg:text-xl font-semibold m-0 !mt-0 !mb-0 text-gray-900 dark:text-white">Complete Payment</h3>
                   {amount && (
                     <span 
-                      className="px-3 py-1 rounded-full text-sm font-semibold"
+                      						className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold"
                       style={{
                         backgroundColor: 'var(--accent-color)',
                         color: '#1a1a1a'
@@ -160,7 +160,7 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
                       color: 'var(--text-color)'
                     }}
                   >
-                    <p className="mb-4 text-sm opacity-70">Unable to load payment form. Please use the external link below.</p>
+                    					<p className="mb-4 text-xs sm:text-sm lg:text-base opacity-70 text-gray-600 dark:text-gray-300">Unable to load payment form. Please use the external link below.</p>
                     <Button
                       variant="primary"
                       size="lg"

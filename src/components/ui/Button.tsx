@@ -21,22 +21,22 @@ export function Button({
   type = 'button',
   style,
 }: ButtonProps) {
-  const baseClasses = 'inline-flex items-center justify-start rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border-0 text-sm';
+  const baseClasses = 'inline-flex items-center justify-start rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border-0 text-xs sm:text-sm';
   
-  const iconBaseClasses = 'inline-flex items-center justify-center rounded-full font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border-0 text-sm';
+  const iconBaseClasses = 'inline-flex items-center justify-center rounded-full font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border-0 text-xs sm:text-sm';
   
   const variantClasses = {
     primary: 'bg-primary-500 text-gray-900 hover:bg-primary-600 focus:ring-primary-500 dark:bg-primary-500 dark:text-gray-900 dark:hover:bg-primary-600',
-    secondary: 'bg-light-message-bg-user dark:bg-dark-message-bg-user text-light-text dark:text-dark-text border border-light-border dark:border-dark-border hover:bg-light-hover dark:hover:bg-dark-hover focus:ring-light-border dark:focus:ring-dark-border',
-    ghost: 'bg-transparent text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover focus:ring-light-border dark:focus:ring-dark-border',
-    icon: 'bg-light-text dark:bg-dark-text text-light-bg dark:text-dark-bg hover:bg-light-hover dark:hover:bg-dark-hover focus:ring-light-border dark:focus:ring-dark-border rounded-full',
+    secondary: 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 focus:ring-gray-200 dark:focus:ring-gray-700',
+    ghost: 'bg-transparent text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-gray-200 dark:focus:ring-gray-700',
+    icon: 'bg-transparent text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-full',
   };
   
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
-    icon: 'w-8 h-8 p-0', // Special size for icon buttons
+    sm: 'px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm',
+    md: 'px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm',
+    lg: 'px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base',
+    icon: 'w-7 h-7 sm:w-8 sm:h-8 p-0', // Special size for icon buttons
   };
   
   const classes = [

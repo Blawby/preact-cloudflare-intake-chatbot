@@ -1,7 +1,6 @@
 import { FunctionComponent } from 'preact/compat';
 import { Button } from './ui/Button';
 import TeamProfile from './TeamProfile';
-import MatterCanvas from './MatterCanvas';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -14,55 +13,44 @@ interface MobileSidebarProps {
     profileImage: string | null;
     teamId: string;
   };
-  sidebarMatter: {
-    matterId?: string;
-    matterNumber?: string;
-    service: string;
-    matterSummary: string;
-    
-    answers?: Record<string, string>;
-  } | null;
   messages: any[];
-  onViewMatter: () => void;
 }
 
 const MobileSidebar = ({ 
   isOpen, 
   onClose, 
   teamConfig, 
-  sidebarMatter, 
-  messages, 
-  onViewMatter 
+  messages
 }: MobileSidebarProps) => {
   return (
     <>
       {/* Overlay */}
       <div 
-        className={`mobile-sidebar-overlay ${isOpen ? 'open' : ''}`}
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] transition-all duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
         onClick={onClose}
         aria-hidden="true"
       />
       
       {/* Sidebar Panel */}
-      <div className={`mobile-sidebar-panel ${isOpen ? 'open' : ''}`}>
+      <div className={`fixed top-0 right-0 w-[85%] max-w-[400px] h-full bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border z-[2001] flex flex-col overflow-hidden transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Header */}
-        <div className="mobile-sidebar-header">
-          <h3 className="mobile-sidebar-title">Menu</h3>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg flex-shrink-0">
+          				<h3 className="text-base sm:text-lg lg:text-xl font-semibold m-0 text-gray-900 dark:text-white">Menu</h3>
           <Button 
             variant="ghost"
             size="sm"
             onClick={onClose}
             aria-label="Close sidebar"
-            className="mobile-sidebar-close"
+            className="flex items-center justify-center w-10 h-10 border-none bg-none text-gray-900 dark:text-white cursor-pointer rounded-md transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-dark-hover"
           >
             <XMarkIcon className="w-6 h-6" />
           </Button>
         </div>
         
         {/* Content */}
-        <div className="mobile-sidebar-content">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
           {/* Team Profile */}
-          <div className="mobile-sidebar-section">
+          <div className="flex flex-col gap-3">
             <TeamProfile
               name={teamConfig.name}
               profileImage={teamConfig.profileImage}
@@ -72,49 +60,13 @@ const MobileSidebar = ({
             />
           </div>
 
-          {/* Actions Row */}
-          <div className="mobile-sidebar-section">
-            <div className="team-actions">
-              <Button 
-                variant="primary"
-                onClick={onViewMatter}
-                title={sidebarMatter ? "View matter details" : "Create a new matter"}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                {sidebarMatter ? 'View Matter' : 'Create Matter'}
-              </Button>
-              
-            </div>
-          </div>
-
-          {/* Matter Canvas */}
-          {sidebarMatter && (
-            <div className="mobile-sidebar-section">
-              <h4 className="section-title">
-                {sidebarMatter.matterNumber ? `Matter ${sidebarMatter.matterNumber}` : 'Case Summary'}
-              </h4>
-              <div className="section-content">
-                <MatterCanvas
-                  matterId={sidebarMatter.matterId}
-                  matterNumber={sidebarMatter.matterNumber}
-                  service={sidebarMatter.service}
-                  matterSummary={sidebarMatter.matterSummary}
-                  
-                  answers={sidebarMatter.answers}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Media Section */}
-          <div className="mobile-sidebar-section">
+          <div className="flex flex-col gap-3">
             <MediaSidebar messages={messages} />
           </div>
 
           {/* Privacy & Support Section */}
-          <div className="mobile-sidebar-section">
+          <div className="flex flex-col gap-3">
             <PrivacySupportSidebar />
           </div>
         </div>
