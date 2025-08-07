@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
-import { marked } from 'marked';
+import ReactMarkdown from 'react-markdown';
 import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
 import PaymentEmbed from './PaymentEmbed';
@@ -18,12 +18,6 @@ import {
 import { useState } from 'preact/hooks';
 
 // Agent handles all scheduling and matter creation - no lazy components needed
-
-// Set options for marked
-marked.setOptions({
-	breaks: true,
-	gfm: true
-});
 
 interface FileAttachment {
 	name: string;
@@ -197,7 +191,9 @@ const Message: FunctionComponent<MessageProps> = memo(({
 			<div class="message-content">
 				{/* Show content if available */}
 				{content && (
-					<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
+					<div className="prose prose-sm max-w-none dark:prose-invert">
+						<ReactMarkdown>{content}</ReactMarkdown>
+					</div>
 				)}
 				
 				{/* Show typing cursor for streaming content */}

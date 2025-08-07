@@ -9,16 +9,24 @@
 		"test:ui": "vitest --ui",
 		"test:run": "vitest run",
 		"test:coverage": "vitest --coverage",
-		"test:watch": "vitest --watch"
+		"test:watch": "vitest --watch",
+		"test:unit": "vitest tests/unit",
+		"test:integration": "vitest tests/integration",
+		"test:e2e": "vitest tests/e2e",
+		"test:worker": "vitest tests/unit/worker tests/integration/worker",
+		"test:components": "vitest tests/unit/components",
+		"test:services": "vitest tests/unit/services"
 	},
 	"dependencies": {
 		"@heroicons/react": "^2.2.0",
+		"@tailwindcss/typography": "^0.5.16",
 		"framer-motion": "^12.23.12",
 		"libphonenumber-js": "^1.12.10",
 		"preact": "^10.25.3",
 		"preact-iso": "^2.9.1",
 		"preact-markdown": "^2.1.0",
 		"preact-render-to-string": "^6.5.13",
+		"react-markdown": "^10.1.0",
 		"zod": "^4.0.5"
 	},
 	"devDependencies": {
