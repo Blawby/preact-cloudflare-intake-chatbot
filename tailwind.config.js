@@ -7,9 +7,85 @@ export default {
   darkMode: 'class', // Use class-based dark mode to match current system
   theme: {
     extend: {
-      // Preserve existing CSS custom properties
+      // Standardized color scheme matching CSS custom properties
       colors: {
-        // Map existing CSS variables to Tailwind colors
+        // Primary colors (brand colors - gold theme)
+        primary: {
+          50: '#fefce8',
+          100: '#fef9c3',
+          200: '#fef08a',
+          300: '#fde047',
+          400: '#facc15',
+          500: '#d4af37', // Exact match to --accent-color
+          600: '#ca8a04',
+          700: '#a16207',
+          800: '#854d0e',
+          900: '#713f12',
+          950: '#422006',
+        },
+        // Light theme colors (exact matches to CSS variables)
+        light: {
+          bg: '#ffffff', // --bg-color
+          text: '#1a1a1a', // --text-color
+          'message-bg-user': '#f0f0f0', // --message-bg-user
+          'message-bg-ai': '#ffffff', // --message-bg-ai
+          border: '#e5e5e5', // --border-color
+          'input-bg': '#ffffff', // --input-bg
+          hover: '#f5f5f5', // --hover-color
+          accent: '#d4af37', // --accent-color
+        },
+        // Dark theme colors (exact matches to CSS variables)
+        dark: {
+          bg: '#030712', // --bg-color
+          text: '#ffffff', // --text-color
+          'message-bg-user': '#111827', // --message-bg-user
+          'message-bg-ai': '#0a0f1a', // --message-bg-ai
+          border: '#10131a', // --border-color
+          'input-bg': '#0a0f1a', // --input-bg
+          hover: '#111827', // --hover-color
+          accent: '#d4af37', // --accent-color
+        },
+        // Semantic colors
+        success: {
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d',
+          950: '#052e16',
+        },
+        warning: {
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#f59e0b',
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
+          950: '#451a03',
+        },
+        error: {
+          50: '#fef2f2',
+          100: '#fee2e2',
+          200: '#fecaca',
+          300: '#fca5a5',
+          400: '#f87171',
+          500: '#ef4444',
+          600: '#dc2626',
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
+          950: '#450a0a',
+        },
+        // Preserve existing CSS custom properties for backward compatibility
         'bg': 'var(--bg-color)',
         'text': 'var(--text-color)',
         'message-bg-user': 'var(--message-bg-user)',
