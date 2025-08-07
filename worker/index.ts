@@ -30,7 +30,11 @@ function validateRequest(request: Request): boolean {
   // Check for valid content type on POST requests
   if (request.method === 'POST') {
     const contentType = request.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
+    if (!contentType) {
+      return false;
+    }
+    // Allow both JSON and multipart/form-data for file uploads
+    if (!contentType.includes('application/json') && !contentType.includes('multipart/form-data')) {
       return false;
     }
   }
