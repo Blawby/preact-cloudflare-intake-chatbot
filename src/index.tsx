@@ -128,35 +128,14 @@ export function App() {
 		// Could show a toast notification here
 	}, []);
 
-	// Handle bottom navigation tab changes
-	const handleTabChange = useCallback((tab: 'chats') => {
-		// Only chats tab is available now
-	}, []);
+
 
 	// Load matters from messages (convert existing matter canvases to matters)
 	useEffect(() => {
 		// Removed matter loading logic
 	}, [messages]);
 
-	// Handle matter selection
-	const handleMatterSelect = useCallback((matter: any) => {
-		// Removed matter selection logic
-	}, []);
 
-	// Handle matter creation from matters view
-	const handleCreateMatterFromList = useCallback(() => {
-		// Removed matter creation from list logic
-	}, []);
-
-	// Handle back to matters list
-	const handleBackToMatters = useCallback(() => {
-		// Removed back to matters logic
-	}, []);
-
-	// Handle edit matter (for now, just go back to chat)
-	const handleEditMatter = useCallback(() => {
-		// Removed edit matter logic
-	}, []);
 
 	// Parse URL parameters for configuration
 	useEffect(() => {
@@ -1321,7 +1300,6 @@ export function App() {
 						<div className="col-start-1 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto">
 							<LeftSidebar 
 								currentRoute={currentTab}
-								onTabChange={handleTabChange}
 								onOpenMenu={() => setIsMobileSidebarOpen(true)}
 							/>
 						</div>
@@ -1507,54 +1485,7 @@ export function App() {
 										</div>
 									)}
 								</div>
-								{(() => {
-									// Find the last AI message with a summary and confirmation prompt
-									const lastAiMsg = messages.slice().reverse().find(
-										m =>
-											!m.isUser &&
-											m.matterCanvas &&
-											m.content &&
-											m.content.includes("here's a summary of your legal matter:")
-									);
-									if (lastAiMsg && lastAiMsg.matterCanvas) {
-										return (
-																			<div className="my-4 text-center">
-									<p className="text-gray-900 dark:text-white mb-4">Does everything look correct? If so, click 'Request Consultation' to submit. If you need to make changes, just type your correction below.</p>
-												<Button
-													variant="primary"
-													onClick={async () => {
-														// Call backend with step: 'submit-intake'
-														const submitResult = await handleMatterCreationAPI('submit-intake', {
-															answers: lastAiMsg.matterCanvas.answers,
-															service: lastAiMsg.matterCanvas.service,
-															sessionId,
-														});
-														setMessages(prev => [
-															...prev,
-															{
-																content: submitResult.message,
-																isUser: false,
-																matterCanvas: submitResult.matterCanvas,
-															},
-														]);
-														if (submitResult.followupMessage) {
-															setMessages(prev => [
-																...prev,
-																{
-																	content: submitResult.followupMessage,
-																	isUser: false
-																}
-															]);
-														}
-													}}
-												>
-													Request Consultation
-												</Button>
-											</div>
-										);
-									}
-									return null;
-								})()}
+
 								</main>
 							</div>
 						</ErrorBoundary>
@@ -1594,8 +1525,7 @@ export function App() {
 
 					{/* Mobile Bottom Navigation */}
 					<BottomNavigation 
-													activeTab={currentTab}
-						onTabChange={handleTabChange}
+						activeTab={currentTab}
 					/>
 
 					{/* Mobile Sidebar */}

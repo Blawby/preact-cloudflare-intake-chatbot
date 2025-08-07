@@ -6,11 +6,10 @@ import ThemeToggle from './ThemeToggle';
 
 interface LeftSidebarProps {
   currentRoute: string;
-  onTabChange: (tab: 'chats') => void;
   onOpenMenu?: () => void;
 }
 
-const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps) => {
+const LeftSidebar = ({ currentRoute, onOpenMenu }: LeftSidebarProps) => {
   return (
     <div className="left-sidebar">
       <div className="left-sidebar-content">
@@ -20,7 +19,6 @@ const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps
           <div className="left-sidebar-section">
             <div 
               className={`left-sidebar-header ${currentRoute === 'chats' ? 'active' : ''}`}
-              onClick={() => onTabChange('chats')}
               title="Chats"
             >
               <ChatBubbleLeftRightIcon className="left-sidebar-icon" />

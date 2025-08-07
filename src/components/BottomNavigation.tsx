@@ -5,15 +5,13 @@ import { Button } from './ui/Button';
 
 interface BottomNavigationProps {
   activeTab: 'chats';
-  onTabChange: (tab: 'chats') => void;
 }
 
-const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => {
+const BottomNavigation = ({ activeTab }: BottomNavigationProps) => {
   return (
     <div className="mobile-bottom-nav">
       <Button
         variant="ghost"
-        onClick={() => onTabChange('chats')}
         aria-label="Chats"
         className={`bottom-nav-item ${activeTab === 'chats' ? 'active' : ''}`}
       >
