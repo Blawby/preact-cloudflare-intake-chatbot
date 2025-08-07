@@ -242,9 +242,10 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 2. If name provided but no location: ${locationPrompt}
 3. If name and location provided but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone provided but no email: "Thank you [name]! Now I need your email address."
-5. If ALL information collected (name, location, phone, email): Call create_matter tool immediately.
+5. If name, location, phone, and email provided but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
+6. If ALL information collected (name, location, phone, email, opposing party): Call create_matter tool immediately.
 
-**CRITICAL: After collecting all contact information (name, location, phone, email), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
+**CRITICAL: After collecting all contact information (name, location, phone, email, opposing party), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
 
 **LOCATION VALIDATION:**
 - We validate user-provided locations against our service area
@@ -264,7 +265,7 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 - If unclear or general legal help → "General Consultation"
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email)
+- create_matter: Use when you have all required information (name, location, phone, email, opposing party)
 
 **Example Tool Call:**
 TOOL_CALL: create_matter
@@ -276,7 +277,7 @@ PARAMETERS: {
   "phone": "6159990000",
   "email": "hajas@yahoo.com",
   "location": "Charlotte, NC",
-  "opposing_party": ""
+  "opposing_party": "Jane Jobs"
 }
 
 **IMPORTANT: When calling create_matter, you MUST include:**
@@ -773,9 +774,10 @@ export async function runLegalIntakeAgentStream(
 2. If name provided but no location: ${locationPrompt}
 3. If name and location provided but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone provided but no email: "Thank you [name]! Now I need your email address."
-5. If ALL information collected (name, location, phone, email): Call create_matter tool immediately.
+5. If name, location, phone, and email provided but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
+6. If ALL information collected (name, location, phone, email, opposing party): Call create_matter tool immediately.
 
-**CRITICAL: After collecting all contact information (name, location, phone, email), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
+**CRITICAL: After collecting all contact information (name, location, phone, email, opposing party), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
 
 **LOCATION VALIDATION:**
 - We validate user-provided locations against our service area
@@ -795,7 +797,7 @@ export async function runLegalIntakeAgentStream(
 - If unclear or general legal help → "General Consultation"
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email)
+- create_matter: Use when you have all required information (name, location, phone, email, opposing party)
 
 **Example Tool Call:**
 TOOL_CALL: create_matter
@@ -807,7 +809,7 @@ PARAMETERS: {
   "phone": "555-123-4567",
   "email": "john@example.com",
   "location": "Charlotte, NC",
-  "opposing_party": ""
+  "opposing_party": "ABC Company"
 }
 
 **IMPORTANT: When calling create_matter, you MUST include:**
