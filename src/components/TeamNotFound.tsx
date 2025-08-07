@@ -8,29 +8,43 @@ interface TeamNotFoundProps {
 
 export function TeamNotFound({ teamId, onRetry }: TeamNotFoundProps) {
   return (
-    <div className="error-page">
-      <div className="error-page-content">
-        <div className="error-icon">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="15" y1="9" x2="9" y2="15"/>
-            <line x1="9" y1="9" x2="15" y2="15"/>
-          </svg>
-        </div>
-        <h1 className="error-title">Page Not Found</h1>
-        <p className="error-message">
-          The team "<strong>{teamId}</strong>" could not be found. 
-          This might be due to an incorrect team ID or the team may have been removed.
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-light-bg dark:bg-dark-bg">
+      <div className="text-center max-w-lg p-12 bg-light-message-bg-ai dark:bg-dark-message-bg-ai rounded-2xl shadow-2xl border border-light-border dark:border-dark-border">
+        <h1 className="mb-6 text-4xl font-bold text-light-text dark:text-dark-text">
+          Team Not Found
+        </h1>
+        <p className="mb-10 text-lg leading-relaxed text-light-text dark:text-dark-text">
+          We couldn't find the team "<strong className="font-semibold">{teamId}</strong>". 
+          This could be because:
         </p>
-        <div className="error-actions">
+        <ul className="mb-10 text-left text-base leading-relaxed text-light-text dark:text-dark-text">
+          <li className="mb-2">• The team ID might be incorrect</li>
+          <li className="mb-2">• The team may have been moved or removed</li>
+          <li className="mb-2">• You might have an outdated link</li>
+        </ul>
+        <p className="mb-8 text-base text-light-text dark:text-dark-text">
+          Please check the URL or try again. If you continue to have issues, please visit{' '}
+          <a href="https://blawby.com/help" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline">
+            blawby.com/help
+          </a>
+          {' '}or contact us on{' '}
+          <a href="https://github.com/Blawby" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline">
+            GitHub
+          </a>
+          {' '}for support.
+        </p>
+        <div className="flex gap-4 justify-center flex-wrap">
           {onRetry && (
-            <Button onClick={onRetry} variant="primary" className="retry-button">
+            <Button onClick={onRetry} variant="primary">
               Try Again
             </Button>
           )}
-          <a href="/" className="home-link">
+          <Button 
+            variant="secondary"
+            onClick={() => window.location.href = '/'}
+          >
             Go to Home
-          </a>
+          </Button>
         </div>
       </div>
     </div>

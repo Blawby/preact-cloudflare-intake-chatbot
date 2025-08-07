@@ -21,15 +21,15 @@ export function Button({
   type = 'button',
   style,
 }: ButtonProps) {
-  const baseClasses = 'inline-flex items-center justify-start rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border-0 text-sm';
+  const baseClasses = 'inline-flex items-center justify-start rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border-0';
   
-  const iconBaseClasses = 'inline-flex items-center justify-center rounded-full font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border-0 text-sm';
+  const iconBaseClasses = 'inline-flex items-center justify-center rounded-full font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border-0';
   
   const variantClasses = {
-    primary: 'bg-[#d4af37] text-gray-900 hover:bg-[#c19b2e] focus:ring-[#d4af37] dark:bg-[#d4af37] dark:text-gray-900 dark:hover:bg-[#c19b2e]',
-    secondary: 'bg-gray-50 text-gray-900 border border-gray-300 hover:bg-gray-100 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-600',
-    ghost: 'bg-transparent text-gray-900 hover:bg-gray-100 focus:ring-gray-500 dark:text-gray-100 dark:hover:bg-gray-800',
-    icon: 'bg-[#111827] text-white hover:bg-[#1e293b] focus:ring-[#111827] rounded-full dark:bg-[#111827] dark:text-white dark:hover:bg-[#1e293b]',
+    primary: 'bg-primary-500 text-gray-900 hover:bg-primary-600 focus:ring-primary-500 dark:bg-primary-500 dark:text-gray-900 dark:hover:bg-primary-600',
+    secondary: 'bg-light-message-bg-user dark:bg-dark-message-bg-user text-light-text dark:text-dark-text border border-light-border dark:border-dark-border hover:bg-light-hover dark:hover:bg-dark-hover focus:ring-light-border dark:focus:ring-dark-border',
+    ghost: 'bg-transparent text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover focus:ring-light-border dark:focus:ring-dark-border',
+    icon: 'bg-dark-bg text-white hover:bg-dark-hover focus:ring-dark-border rounded-full dark:bg-dark-bg dark:text-white dark:hover:bg-dark-hover',
   };
   
   const sizeClasses = {
