@@ -8,15 +8,12 @@ import VirtualMessageList from './components/VirtualMessageList';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TeamNotFound } from './components/TeamNotFound';
 import TeamProfile from './components/TeamProfile';
-import MatterCanvas from './components/MatterCanvas';
 import MediaSidebar from './components/MediaSidebar';
 import PrivacySupportSidebar from './components/PrivacySupportSidebar';
 import LeftSidebar from './components/LeftSidebar';
 import BottomNavigation from './components/BottomNavigation';
 import MobileSidebar from './components/MobileSidebar';
 import MobileTopNav from './components/MobileTopNav';
-import MattersList from './components/MattersList';
-import MatterDetail from './components/MatterDetail';
 import PaymentEmbed from './components/PaymentEmbed';
 import { debounce } from './utils/debounce';
 // Removed unused useDebounce import
@@ -25,7 +22,6 @@ import { Button } from './components/ui/Button';
 import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import { getFormsEndpoint, getTeamsEndpoint, getAgentEndpoint, getAgentStreamEndpoint } from './config/api';
-import { Matter } from './types/matter';
 
 import {
 	DocumentIcon,
@@ -114,23 +110,8 @@ export function App() {
 		}
 	});
 
-	// State for sidebar matter view
-	const [sidebarMatter, setSidebarMatter] = useState<{
-		matterId?: string;
-		matterNumber?: string;
-		service: string;
-		matterSummary: string;
-		qualityScore?: any;
-		answers?: Record<string, string>;
-	} | null>(null);
-
 	// Simplified state - agent handles all conversation flow
-	const [currentTab, setCurrentTab] = useState<'chats' | 'matters'>('chats');
-	
-	// State for matters
-	const [matters, setMatters] = useState<Matter[]>([]);
-	const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
-	const [isLoadingMatters, setIsLoadingMatters] = useState(false);
+	const [currentTab, setCurrentTab] = useState<'chats'>('chats');
 	
 	// State for mobile sidebar
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -141,48 +122,6 @@ export function App() {
 	// Track drag counter for better handling of nested elements
 	const dragCounter = useRef(0);
 
-	// Function to find the most recent matter canvas from messages
-	const findMostRecentMatter = () => {
-		for (let i = messages.length - 1; i >= 0; i--) {
-			if (messages[i].matterCanvas) {
-				return messages[i].matterCanvas;
-			}
-		}
-		return null;
-	};
-
-	// Function to handle view matter button click
-	const handleViewMatter = () => {
-		const mostRecentMatter = findMostRecentMatter();
-		if (mostRecentMatter) {
-			setSidebarMatter({
-				...mostRecentMatter
-			});
-		} else {
-			// If no matter exists, start the matter creation flow
-			handleCreateMatterStart();
-		}
-	};
-
-	// Effect to automatically update sidebar matter when new matter canvases are added
-	useEffect(() => {
-		const mostRecentMatter = findMostRecentMatter();
-		if (mostRecentMatter && sidebarMatter) {
-			// Only update if the matter has actually changed (different service or summary)
-			if (mostRecentMatter.service !== sidebarMatter.service || 
-				mostRecentMatter.matterSummary !== sidebarMatter.matterSummary) {
-				setSidebarMatter({
-					...mostRecentMatter
-				});
-			}
-		} else if (mostRecentMatter && !sidebarMatter) {
-			// If there's a matter but no sidebar matter, show it
-			setSidebarMatter({
-				...mostRecentMatter
-			});
-		}
-	}, [messages]); // Watch for changes in messages
-
 	// Handle feedback submission
 	const handleFeedbackSubmit = useCallback((feedback: any) => {
 		console.log('Feedback submitted:', feedback);
@@ -190,61 +129,33 @@ export function App() {
 	}, []);
 
 	// Handle bottom navigation tab changes
-	const handleTabChange = useCallback((tab: 'chats' | 'matters') => {
-		setCurrentTab(tab);
+	const handleTabChange = useCallback((tab: 'chats') => {
+		// Only chats tab is available now
 	}, []);
 
 	// Load matters from messages (convert existing matter canvases to matters)
 	useEffect(() => {
-		const mattersFromMessages: Matter[] = messages
-			.filter(msg => msg.matterCanvas)
-			.map((msg, index) => {
-				const canvas = msg.matterCanvas!;
-				return {
-					id: canvas.matterId || `matter-${index}`,
-					matterNumber: canvas.matterNumber,
-					title: `${canvas.service} Matter`,
-					service: canvas.service,
-					status: 'submitted' as const,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					summary: canvas.matterSummary,
-	
-					answers: canvas.answers,
-					contactInfo: {
-						email: 'user@example.com', // This would come from form data
-						phone: '+1 (555) 123-4567'
-					}
-				};
-			});
-		
-		setMatters(mattersFromMessages);
+		// Removed matter loading logic
 	}, [messages]);
 
 	// Handle matter selection
-	const handleMatterSelect = useCallback((matter: Matter) => {
-		setSelectedMatter(matter);
-		setCurrentTab('matters');
+	const handleMatterSelect = useCallback((matter: any) => {
+		// Removed matter selection logic
 	}, []);
 
 	// Handle matter creation from matters view
 	const handleCreateMatterFromList = useCallback(() => {
-		setCurrentTab('chats');
-		// Start matter creation flow after a short delay to allow navigation
-		setTimeout(() => {
-			handleCreateMatterStart();
-		}, 100);
+		// Removed matter creation from list logic
 	}, []);
 
 	// Handle back to matters list
 	const handleBackToMatters = useCallback(() => {
-		setSelectedMatter(null);
-		setCurrentTab('matters');
+		// Removed back to matters logic
 	}, []);
 
 	// Handle edit matter (for now, just go back to chat)
 	const handleEditMatter = useCallback(() => {
-		setCurrentTab('chats');
+		// Removed edit matter logic
 	}, []);
 
 	// Parse URL parameters for configuration
@@ -1388,15 +1299,15 @@ export function App() {
 		<>
 			{isDragging && (
 				<div 
-					className="drag-overlay" 
+					className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-white/85 to-white/95 dark:from-dark-bg/85 dark:to-dark-bg/95 backdrop-blur-sm" 
 					role="dialog"
 					aria-label="File upload"
 					aria-modal="true"
 				>
-					<div className="drag-message">
-						<CloudArrowUpIcon className="drag-message-icon w-12 h-12" aria-hidden="true" />
-						<h3 className="drag-message-title">Drop Files to Upload</h3>
-						<p className="drag-message-subtitle">We accept images, videos, and document files</p>
+					<div className="flex flex-col items-center justify-center gap-3 text-gray-900 dark:text-white text-lg sm:text-xl lg:text-2xl text-center p-6 sm:p-10 rounded-2xl bg-white/80 dark:bg-dark-bg/80 shadow-2xl border border-gray-200 dark:border-dark-border max-w-[90%] relative z-[10000]">
+						<CloudArrowUpIcon className="w-10 h-10 sm:w-14 sm:h-14 text-amber-500 mb-1" aria-hidden="true" />
+						<h3 className="text-lg sm:text-2xl lg:text-3xl font-semibold m-0 text-gray-900 dark:text-white">Drop Files to Upload</h3>
+						<p className="text-xs sm:text-sm lg:text-base opacity-80 m-0 text-gray-600 dark:text-gray-300">We accept images, videos, and document files</p>
 					</div>
 				</div>
 			)}
@@ -1407,7 +1318,7 @@ export function App() {
 				<>
 					{/* Left Column */}
 					{features.enableLeftSidebar && (
-						<div className="grid-left">
+						<div className="col-start-1 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto">
 							<LeftSidebar 
 								currentRoute={currentTab}
 								onTabChange={handleTabChange}
@@ -1417,316 +1328,258 @@ export function App() {
 					)}
 
 					{/* Center Column - Main Content */}
-					<div className={
-						features.enableLeftSidebar 
-							? (currentTab === 'matters' ? "grid-center-full" : "grid-center") 
-							: "grid-center-full"
-					}>
+					<div className="col-start-2 bg-white dark:bg-dark-bg overflow-y-auto">
 						<ErrorBoundary>
-							{currentTab === 'chats' ? (
-								<div 
-									className="chat-container" 
-									role="application" 
-									aria-label="Main interface"
-									aria-expanded={true}
-								>
-									<main className="chat-main">
-									<VirtualMessageList
-										messages={messages}
-										onDateSelect={handleDateSelect}
-										onTimeOfDaySelect={handleTimeOfDaySelect}
-										onTimeSlotSelect={handleTimeSlotSelect}
-										onRequestMoreDates={handleRequestMoreDates}
-										onServiceSelect={handleServiceSelect}
-										onUrgencySelect={handleUrgencySelect}
-										onCreateMatter={handleCreateMatterStart}
-										onScheduleConsultation={handleScheduleStart}
-										onLearnServices={async () => {
-											const servicesMessage: ChatMessageUI = {
-												content: "Tell me about your firm's services",
-												isUser: true
-											};
-											setMessages(prev => [...prev, servicesMessage]);
+							<div 
+								className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg" 
+								role="application" 
+								aria-label="Main interface"
+								aria-expanded={true}
+							>
+								<main className="flex flex-col h-full w-full overflow-hidden relative bg-white dark:bg-dark-bg">
+								<VirtualMessageList
+									messages={messages}
+									onDateSelect={handleDateSelect}
+									onTimeOfDaySelect={handleTimeOfDaySelect}
+									onTimeSlotSelect={handleTimeSlotSelect}
+									onRequestMoreDates={handleRequestMoreDates}
+									onServiceSelect={handleServiceSelect}
+									onUrgencySelect={handleUrgencySelect}
+									onCreateMatter={handleCreateMatterStart}
+									onScheduleConsultation={handleScheduleStart}
+									onLearnServices={async () => {
+										const servicesMessage: ChatMessageUI = {
+											content: "Tell me about your firm's services",
+											isUser: true
+										};
+										setMessages(prev => [...prev, servicesMessage]);
+										
+										// Add placeholder message with loading indicator (ChatGPT style)
+										const loadingMessageId = crypto.randomUUID();
+										const loadingMessage: ChatMessageUI = {
+											content: "Let me tell you about our services...",
+											isUser: false,
+											isLoading: true,
+											id: loadingMessageId
+										};
+										setMessages(prev => [...prev, loadingMessage]);
+										
+										try {
+											// Call the actual API
+											const response = await sendMessageToAPI("Tell me about your firm's services");
 											
-											// Add placeholder message with loading indicator (ChatGPT style)
-											const loadingMessageId = crypto.randomUUID();
-											const loadingMessage: ChatMessageUI = {
-												content: "Let me tell you about our services...",
-												isUser: false,
-												isLoading: true,
-												id: loadingMessageId
-											};
-											setMessages(prev => [...prev, loadingMessage]);
-											
-											try {
-												// Call the actual API
-												const response = await sendMessageToAPI("Tell me about your firm's services");
-												
-												// Update the loading message with actual content
-												setMessages(prev => prev.map(msg => 
-													msg.id === loadingMessageId 
-														? {
-															...msg,
-															content: response,
-															isLoading: false
-														}
-														: msg
-												));
-											} catch (error) {
-												// Fallback to default response if API fails
-												setMessages(prev => prev.map(msg => 
-													msg.id === loadingMessageId 
-														? {
-															...msg,
-															content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
-															isLoading: false
-														}
-														: msg
-												));
-											}
-										}}
-										teamConfig={{
-											name: teamConfig.name,
-											profileImage: teamConfig.profileImage,
-											teamId: teamId,
-											description: teamConfig.description
-										}}
-										onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-										sessionId={sessionId}
-										teamId={teamId}
-										onFeedbackSubmit={handleFeedbackSubmit}
-									/>
-									<div className="input-area" role="form" aria-label="Message composition">
-										<div className="input-container">
-											{previewFiles.length > 0 && (
-												<div className="input-preview" role="list" aria-label="File attachments">
-													{previewFiles.map((file, index) => (
-														<div 
-															className={`input-preview-item ${file.type.startsWith('image/') ? 'image-preview' : 'file-preview'}`}
-															key={index}
-															role="listitem"
-														>
-															{file.type.startsWith('image/') ? (
-																<>
-																	<img src={file.url} alt={`Preview of ${file.name}`} />
-																</>
-															) : (
-																<>
-																	<div className="file-thumbnail" aria-hidden="true">
-																		{getFileIcon(file)}
-																	</div>
-																	<div className="file-info">
-																		<div className="file-name">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
-																		<div className="file-ext">{file.name.split('.').pop()}</div>
-																	</div>
-																</>
-															)}
-															<Button
-																type="button"
-																variant="ghost"
-																size="sm"
-																onClick={() => removePreviewFile(index)}
-																title="Remove file"
-																aria-label={`Remove ${file.name}`}
-																className="input-preview-remove"
-															>
-																<XMarkIcon className="w-4 h-4" aria-hidden="true" />
-															</Button>
-														</div>
-													))}
-												</div>
-											)}
-											<div className="textarea-wrapper">
-												<textarea
-													className="message-input"
-													placeholder="Type a message..."
-													rows={1}
-													value={inputValue}
-													onInput={handleInputChange}
-													onKeyPress={handleKeyPress}
-													disabled={false}
-													aria-label="Message input"
-													aria-multiline="true"
-													style={{ 
-														minHeight: '24px',
-														width: '100%'
-													}}
-												/>
-											</div>
-											<span id="input-instructions" className="sr-only">
-												Type your message and press Enter to send. Use the buttons below to attach files or record audio.
-											</span>
-											<div className="input-controls-row">
-												<div className="input-controls">
-													{!isRecording && (
-														<div className="input-left-controls">
-															<FileMenu
-									onPhotoSelect={handlePhotoSelect}
-									onCameraCapture={handleCameraCapture}
-									onFileSelect={handleFileSelect}
+											// Update the loading message with actual content
+											setMessages(prev => prev.map(msg => 
+												msg.id === loadingMessageId 
+													? {
+														...msg,
+														content: response,
+														isLoading: false
+													}
+													: msg
+											));
+										} catch (error) {
+											// Fallback to default response if API fails
+											setMessages(prev => prev.map(msg => 
+												msg.id === loadingMessageId 
+													? {
+														...msg,
+														content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
+														isLoading: false
+													}
+													: msg
+											));
+										}
+									}}
+									teamConfig={{
+										name: teamConfig.name,
+										profileImage: teamConfig.profileImage,
+										teamId: teamId,
+										description: teamConfig.description
+									}}
+									onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+									sessionId={sessionId}
+									teamId={teamId}
+									onFeedbackSubmit={handleFeedbackSubmit}
 								/>
-															
-															{features.enableConsultationButton && (
-																<LazyScheduleButton
-																	onClick={handleScheduleStart}
-																	disabled={false}
-																/>
-															)}
-														</div>
-													)}
-													
-													<div className="send-controls">
-														{features.enableAudioRecording && (
-															<LazyMediaControls
-																onMediaCapture={handleMediaCapture}
-																onRecordingStateChange={setIsRecording}
-															/>
+								<div className="pb-8 pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
+									<div className="flex flex-col w-full relative bg-white dark:bg-dark-input-bg border border-gray-200 dark:border-dark-border border-t-0 rounded-2xl p-3 min-h-[56px] gap-3 h-auto overflow-visible">
+										{previewFiles.length > 0 && (
+											<div className="flex flex-wrap gap-2 m-0" role="list" aria-label="File attachments">
+												{previewFiles.map((file, index) => (
+													<div 
+														className={`relative w-15 h-15 rounded-lg overflow-hidden shadow-sm bg-gray-100 dark:bg-dark-hover ${file.type.startsWith('image/') ? 'w-15 h-15' : 'w-[165px] h-15 flex items-center pr-5 gap-1'}`}
+														key={index}
+														role="listitem"
+													>
+														{file.type.startsWith('image/') ? (
+															<>
+																<img src={file.url} alt={`Preview of ${file.name}`} className="w-full h-full object-cover" />
+															</>
+														) : (
+															<>
+																<div className="w-15 h-15 flex-shrink-0 flex items-center justify-center bg-amber-500 text-white p-2" aria-hidden="true">
+																	{getFileIcon(file)}
+																</div>
+																<div className="flex-1 flex flex-col p-1 pr-2 overflow-hidden">
+																	<div className="text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis mb-1">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
+																	<div className="text-[10px] text-amber-500 uppercase font-semibold">{file.name.split('.').pop()}</div>
+																</div>
+															</>
 														)}
-														
 														<Button
-															variant="icon"
-															onClick={handleSubmit}
-															disabled={(!inputValue.trim() && previewFiles.length === 0)}
-															aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
+															type="button"
+															variant="ghost"
+															size="sm"
+															onClick={() => removePreviewFile(index)}
+															title="Remove file"
+															aria-label={`Remove ${file.name}`}
+															className="absolute top-1 right-1 w-[18px] h-[18px] rounded-full bg-black/60 text-white border-none flex items-center justify-center cursor-pointer text-base leading-none p-0 opacity-90 transition-opacity duration-200 z-[2] hover:opacity-100"
 														>
-															<ArrowUpIcon className="w-4 h-4" aria-hidden="true" />
+															<XMarkIcon className="w-3.5 h-3.5" aria-hidden="true" />
 														</Button>
 													</div>
+												))}
+											</div>
+										)}
+										<div className="w-full relative block flex-1">
+											<textarea
+												className="flex-1 min-h-6 py-2 m-0 text-sm sm:text-base leading-6 text-gray-900 dark:text-white bg-transparent border-none resize-none outline-none overflow-hidden box-border block w-full z-[1] placeholder:text-gray-500 dark:placeholder:text-gray-400"
+												placeholder="Type a message..."
+												rows={1}
+												value={inputValue}
+												onInput={handleInputChange}
+												onKeyPress={handleKeyPress}
+												disabled={false}
+												aria-label="Message input"
+												aria-multiline="true"
+												style={{ 
+													minHeight: '24px',
+													width: '100%'
+												}}
+											/>
+										</div>
+										<span id="input-instructions" className="sr-only">
+											Type your message and press Enter to send. Use the buttons below to attach files or record audio.
+										</span>
+										<div className="flex items-center gap-3 w-full p-0">
+											<div className="flex justify-between w-full items-center">
+												{!isRecording && (
+													<div className="flex items-center">
+														<FileMenu
+															onPhotoSelect={handlePhotoSelect}
+															onCameraCapture={handleCameraCapture}
+															onFileSelect={handleFileSelect}
+														/>
+														
+														{features.enableConsultationButton && (
+															<LazyScheduleButton
+																onClick={handleScheduleStart}
+																disabled={false}
+															/>
+														)}
+													</div>
+												)}
+												
+												<div className="flex items-center gap-2">
+													{features.enableAudioRecording && (
+														<LazyMediaControls
+															onMediaCapture={handleMediaCapture}
+															onRecordingStateChange={setIsRecording}
+														/>
+													)}
+													
+													<Button
+														variant="icon"
+														onClick={handleSubmit}
+														disabled={(!inputValue.trim() && previewFiles.length === 0)}
+														aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
+													>
+														<ArrowUpIcon className="w-4 h-4" aria-hidden="true" />
+													</Button>
 												</div>
 											</div>
 										</div>
-										{features.enableDisclaimerText && (
-											<div className="input-disclaimer">
-												Blawby can make mistakes. Check for important information.
-											</div>
-										)}
 									</div>
-									{(() => {
-										// Find the last AI message with a summary and confirmation prompt
-										const lastAiMsg = messages.slice().reverse().find(
-											m =>
-												!m.isUser &&
-												m.matterCanvas &&
-												m.content &&
-												m.content.includes("here's a summary of your legal matter:")
-										);
-										if (lastAiMsg && lastAiMsg.matterCanvas) {
-											return (
-												<div className="confirmation-prompt" style={{ margin: '16px 0', textAlign: 'center' }}>
-													<p>Does everything look correct? If so, click 'Request Consultation' to submit. If you need to make changes, just type your correction below.</p>
-													<Button
-														variant="primary"
-														onClick={async () => {
-															// Call backend with step: 'submit-intake'
-															const submitResult = await handleMatterCreationAPI('submit-intake', {
-																answers: lastAiMsg.matterCanvas.answers,
-																service: lastAiMsg.matterCanvas.service,
-																sessionId,
-															});
+									{features.enableDisclaimerText && (
+										<div className="text-xs text-amber-600 dark:text-amber-400 text-center py-1 opacity-80 mt-1">
+											Blawby can make mistakes. Check for important information.
+										</div>
+									)}
+								</div>
+								{(() => {
+									// Find the last AI message with a summary and confirmation prompt
+									const lastAiMsg = messages.slice().reverse().find(
+										m =>
+											!m.isUser &&
+											m.matterCanvas &&
+											m.content &&
+											m.content.includes("here's a summary of your legal matter:")
+									);
+									if (lastAiMsg && lastAiMsg.matterCanvas) {
+										return (
+																			<div className="my-4 text-center">
+									<p className="text-gray-900 dark:text-white mb-4">Does everything look correct? If so, click 'Request Consultation' to submit. If you need to make changes, just type your correction below.</p>
+												<Button
+													variant="primary"
+													onClick={async () => {
+														// Call backend with step: 'submit-intake'
+														const submitResult = await handleMatterCreationAPI('submit-intake', {
+															answers: lastAiMsg.matterCanvas.answers,
+															service: lastAiMsg.matterCanvas.service,
+															sessionId,
+														});
+														setMessages(prev => [
+															...prev,
+															{
+																content: submitResult.message,
+																isUser: false,
+																matterCanvas: submitResult.matterCanvas,
+															},
+														]);
+														if (submitResult.followupMessage) {
 															setMessages(prev => [
 																...prev,
 																{
-																	content: submitResult.message,
-																	isUser: false,
-																	matterCanvas: submitResult.matterCanvas,
-																},
+																	content: submitResult.followupMessage,
+																	isUser: false
+																}
 															]);
-															if (submitResult.followupMessage) {
-																setMessages(prev => [
-																	...prev,
-																	{
-																		content: submitResult.followupMessage,
-																		isUser: false
-																	}
-																]);
-															}
-														}}
-													>
-														Request Consultation
-													</Button>
-												</div>
-											);
-										}
-										return null;
-									})()}
+														}
+													}}
+												>
+													Request Consultation
+												</Button>
+											</div>
+										);
+									}
+									return null;
+								})()}
 								</main>
 							</div>
-								) : currentTab === 'matters' ? (
-									<>
-										{selectedMatter ? (
-											<MatterDetail
-												matter={selectedMatter}
-												onBack={handleBackToMatters}
-												onEdit={handleEditMatter}
-											/>
-										) : (
-											<MattersList
-												matters={matters}
-												onMatterSelect={handleMatterSelect}
-												onCreateMatter={handleCreateMatterFromList}
-												isLoading={isLoadingMatters}
-											/>
-										)}
-									</>
-								) : null}
 						</ErrorBoundary>
 					</div>
 
-					{/* Right Column - Hidden when matters tab is active for better parity with mobile */}
-					{currentTab !== 'matters' && (
-						<div className="grid-right">
-							<div className="team-sidebar">
-								<TeamProfile
-									name={teamConfig.name}
-									profileImage={teamConfig.profileImage}
-									teamId={teamId}
-									variant="sidebar"
-									showVerified={true}
-								/>
+					{/* Right Column - Hidden on mobile, content moved to mobile sidebar */}
+					<div className="col-start-3 bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
+						<div className="p-6 text-gray-900 dark:text-white flex flex-col gap-6">
+							<TeamProfile
+								name={teamConfig.name}
+								profileImage={teamConfig.profileImage}
+								teamId={teamId}
+								variant="sidebar"
+								showVerified={true}
+							/>
 
-								{/* Actions Row */}
-								<div className="team-actions">
-									<Button 
-										variant="primary"
-										onClick={handleViewMatter}
-										title={sidebarMatter ? "View matter details" : "Create a new matter"}
-									>
-										<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-										</svg>
-										{sidebarMatter ? 'View Matter' : 'Create Matter'}
-									</Button>
-								</div>
-
-								{/* Matter Canvas in Sidebar */}
-								{sidebarMatter && (
-									<div className="team-section">
-										<h4 className="section-title">
-											{sidebarMatter.matterNumber ? `Matter ${sidebarMatter.matterNumber}` : 'Case Summary'}
-										</h4>
-										<div className="section-content">
-											<MatterCanvas
-												matterId={sidebarMatter.matterId}
-												matterNumber={sidebarMatter.matterNumber}
-												service={sidebarMatter.service}
-												matterSummary={sidebarMatter.matterSummary}
-						
-												answers={sidebarMatter.answers}
-											/>
-										</div>
-									</div>
-								)}
-
-								{/* Media Section */}
-								<div className="team-section">
-									<MediaSidebar messages={messages} />
-								</div>
-
-								{/* Privacy & Support Section */}
-								<PrivacySupportSidebar />
+							{/* Media Section */}
+							<div className="border-t border-gray-200 dark:border-dark-border pt-4">
+								<MediaSidebar messages={messages} />
 							</div>
+
+							{/* Privacy & Support Section */}
+							<PrivacySupportSidebar />
 						</div>
-					)}
+					</div>
 
 					{/* Mobile Top Navigation */}
 					<MobileTopNav
@@ -1755,9 +1608,7 @@ export function App() {
 							teamId: teamId,
 							description: teamConfig.description
 						}}
-						sidebarMatter={sidebarMatter}
 						messages={messages}
-						onViewMatter={handleViewMatter}
 					/>
 				</>
 			)}

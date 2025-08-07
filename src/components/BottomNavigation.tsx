@@ -1,12 +1,11 @@
 import { 
-  ChatBubbleLeftRightIcon, 
-  DocumentTextIcon
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/solid';
 import { Button } from './ui/Button';
 
 interface BottomNavigationProps {
-  activeTab: 'chats' | 'matters';
-  onTabChange: (tab: 'chats' | 'matters') => void;
+  activeTab: 'chats';
+  onTabChange: (tab: 'chats') => void;
 }
 
 const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => {
@@ -20,16 +19,6 @@ const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => 
       >
         <ChatBubbleLeftRightIcon className="bottom-nav-icon" />
         <span className="bottom-nav-label">Chats</span>
-      </Button>
-      
-      <Button
-        variant="ghost"
-        onClick={() => onTabChange('matters')}
-        aria-label="Matters"
-        className={`bottom-nav-item ${activeTab === 'matters' ? 'active' : ''}`}
-      >
-        <DocumentTextIcon className="bottom-nav-icon" />
-        <span className="bottom-nav-label">Matters</span>
       </Button>
     </div>
   );

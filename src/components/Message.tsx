@@ -76,7 +76,7 @@ const getFileIcon = (file: FileAttachment) => {
 	// PDF icon
 	if (file.type === 'application/pdf' || ext === 'pdf') {
 		return (
-			<DocumentTextIcon className="message-file-icon" />
+			<DocumentTextIcon className="w-6 h-6" />
 		);
 	}
 	
@@ -85,7 +85,7 @@ const getFileIcon = (file: FileAttachment) => {
 		file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
 		ext === 'doc' || ext === 'docx') {
 		return (
-			<DocumentIcon className="message-file-icon" />
+			<DocumentIcon className="w-6 h-6" />
 		);
 	}
 	
@@ -94,41 +94,43 @@ const getFileIcon = (file: FileAttachment) => {
 		file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
 		ext === 'xls' || ext === 'xlsx' || ext === 'csv') {
 		return (
-			<TableCellsIcon className="message-file-icon" />
+			<TableCellsIcon className="w-6 h-6" />
 		);
 	}
 	
 	// Audio file icon
 	if (file.type.startsWith('audio/')) {
 		return (
-			<MusicalNoteIcon className="message-file-icon" />
+			<MusicalNoteIcon className="w-6 h-6" />
 		);
 	}
 	
 	// Video file icon
 	if (file.type.startsWith('video/')) {
 		return (
-			<VideoCameraIcon className="message-file-icon" />
+			<VideoCameraIcon className="w-6 h-6" />
 		);
 	}
 	
 	// Default file icon
 	return (
-		<DocumentIcon className="message-file-icon" />
+		<DocumentIcon className="w-6 h-6" />
 	);
 };
 
 const FilePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => {
 	return (
-		<div class="message-file">
-			{getFileIcon(file)}
-			<div class="message-file-info">
-				<div class="message-file-name">
-					<a href={file.url} target="_blank" rel="noopener noreferrer">
+		<div className="flex items-center gap-3 p-0 bg-white dark:bg-dark-input border border-gray-200 dark:border-dark-border rounded-lg my-2 w-full max-w-[300px]">
+			<div className="w-8 h-8 p-1 text-gray-900 dark:text-white bg-gray-100 dark:bg-dark-hover rounded flex-shrink-0">
+				{getFileIcon(file)}
+			</div>
+			<div className="flex-1 min-w-0 flex flex-col gap-1">
+				<div className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+					<a href={file.url} target="_blank" rel="noopener noreferrer" className="text-gray-900 dark:text-white no-underline hover:underline">
 						{file.name}
 					</a>
 				</div>
-				<div class="message-file-size">{formatFileSize(file.size)}</div>
+				<div className="text-xs text-amber-500">{formatFileSize(file.size)}</div>
 			</div>
 		</div>
 	);
@@ -206,7 +208,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 			<div class="message-content">
 				{/* Show content if available */}
 				{content && (
-					<div className="prose prose-sm max-w-none dark:prose-invert">
+					<div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
 						{isClient && ReactMarkdown ? (
 							<ReactMarkdown>{content}</ReactMarkdown>
 						) : (

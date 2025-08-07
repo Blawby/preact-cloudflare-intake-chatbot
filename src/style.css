@@ -19,32 +19,7 @@
 	grid-row-gap: 0px;
 }
 
-/* Grid column classes for content placement */
-.grid-left {
-	grid-column: 1;
-	background-color: var(--bg-color);
-	border-right: 1px solid var(--border-color);
-	overflow-y: auto;
-}
-
-.grid-center {
-	grid-column: 2;
-	background-color: var(--bg-color);
-	overflow-y: auto;
-}
-
-.grid-center-full {
-	grid-column: 1 / 3;
-	background-color: var(--bg-color);
-	overflow-y: auto;
-}
-
-.grid-right {
-	grid-column: 3;
-	background-color: var(--bg-color);
-	border-left: 1px solid var(--border-color);
-	overflow-y: auto;
-}
+/* Grid column classes removed - now using Tailwind classes directly in components */
 
 /* Sidebar content styling */
 .sidebar-content {
@@ -106,56 +81,13 @@ svg[class*="h-12"] {
 }
 
 :root {
-	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 	line-height: 1.5;
 	font-weight: 400;
 	color-scheme: light dark;
-
-	/* Light theme colors (default) */
-	--bg-color: #ffffff;
-	--bg-color-rgb: 255, 255, 255;
-	--text-color: #1a1a1a;
-	--message-bg-user: #f0f0f0;
-	--message-bg-ai: #ffffff;
-	--border-color: #e5e5e5;
-	--input-bg: #ffffff;
-	--hover-color: #f5f5f5;
-	--accent-color: #d4af37;
-	--skeleton-start: rgba(200, 200, 200, 0.1);
-	--skeleton-end: rgba(200, 200, 200, 0.3);
 }
 
-/* Dark theme */
-:root.dark {
-	--bg-color: #030712;
-	--bg-color-rgb: 3, 7, 18;
-	--text-color: #ffffff;
-	--message-bg-user: #111827;
-	--message-bg-ai: #0a0f1a;
-	--border-color: #10131a;
-	--input-bg: #0a0f1a;
-	--hover-color: #111827;
-	--accent-color: #d4af37;
-	--skeleton-start: rgba(10, 15, 26, 0.1);
-	--skeleton-end: rgba(10, 15, 26, 0.3);
-}
-
-/* System preference fallback */
-@media (prefers-color-scheme: dark) {
-	:root:not(.light):not(.dark) {
-		--bg-color: #030712;
-		--bg-color-rgb: 3, 7, 18;
-		--text-color: #ffffff;
-		--message-bg-user: #111827;
-		--message-bg-ai: #0a0f1a;
-		--border-color: #10131a;
-		--input-bg: #0a0f1a;
-		--hover-color: #111827;
-		--accent-color: #d4af37;
-		--skeleton-start: rgba(10, 15, 26, 0.1);
-		--skeleton-end: rgba(10, 15, 26, 0.3);
-	}
-}
+/* CSS custom properties removed - using Tailwind dark mode classes instead */
 
 * {
 	margin: 0;
@@ -165,8 +97,7 @@ svg[class*="h-12"] {
 }
 
 body {
-	background-color: var(--bg-color);
-	color: var(--text-color);
+	@apply bg-white dark:bg-dark-bg text-gray-900 dark:text-white;
 	min-height: 100vh;
 	margin: 0;
 }
@@ -188,63 +119,15 @@ body {
 	/* Prevent body scroll when input is focused */
 }
 
-/* Chat container styling - full width and height */
-.chat-container {
-	position: relative;
-	height: 100vh;
-	width: 100%;
-	max-width: 100%;
-	margin: 0;
-	overflow: hidden;
-	background-color: var(--bg-color);
-	box-shadow: none;
-	border: none;
-	transition: none;
-	animation: none;
-	opacity: 1;
-	transform: none;
-}
+/* Chat container styling removed - now using Tailwind classes directly in components */
 
-/* Ensure input area works properly within grid layout */
-.chat-container .input-area {
-	position: sticky;
-	bottom: 0;
-	z-index: 1001;
-	background-color: var(--bg-color);
-}
+/* Input area styling removed - now using Tailwind classes directly in components */
 
 
 
 
 
-/* Mobile adjustments */
-@media (max-width: 768px) {
-
-	/* Mobile adjustments for sticky input */
-	.input-area {
-		padding-bottom: 1rem;
-		padding-left: 16px;
-		padding-right: 16px;
-		bottom: 28px;
-		/* Slightly less space on mobile */
-	}
-
-	.message-list {
-		padding-bottom: 120px;
-		/* Account for input area on mobile */
-	}
-
-
-}
-
-@media (max-width: 480px) {
-	.input-area {
-		padding-left: 12px;
-		padding-right: 12px;
-	}
-
-
-}
+/* Mobile adjustments for input area removed - now using Tailwind classes directly in components */
 
 /* Responsive grid layout */
 @media (max-width: 1024px) {
@@ -298,61 +181,7 @@ body {
 	}
 }
 
-.drag-overlay {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 9999;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: radial-gradient(circle, rgba(var(--bg-color-rgb), 0.85) 0%, rgba(var(--bg-color-rgb), 0.95) 100%);
-	backdrop-filter: blur(3px);
-	animation: fadeIn 0.2s ease-out;
-}
-
-.drag-message {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 0.75rem;
-	color: var(--text-color);
-	font-size: 1.2rem;
-	text-align: center;
-	padding: 2.5rem 3rem;
-	border-radius: 1rem;
-	background-color: rgba(var(--bg-color-rgb), 0.8);
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-	border: 1px solid var(--border-color);
-	max-width: 90%;
-	animation: dropMessageAppear 0.4s ease-out;
-	position: relative;
-	z-index: 10000;
-}
-
-.drag-message-icon {
-	width: 58px;
-	height: 58px;
-	color: var(--accent-color);
-	margin-bottom: 0.25rem;
-}
-
-.drag-message-title {
-	font-size: 1.4rem;
-	font-weight: 600;
-	margin: 0;
-	color: var(--text-color);
-}
-
-.drag-message-subtitle {
-	font-size: 0.9rem;
-	opacity: 0.8;
-	margin: 0;
-	color: var(--text-muted);
-}
+/* Drag overlay styling removed - now using Tailwind classes directly in components */
 
 @keyframes dropMessageAppear {
 	0% {
@@ -378,15 +207,7 @@ body {
 	}
 }
 
-.chat-main {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	width: 100%;
-	overflow: hidden;
-	position: relative;
-	background-color: var(--bg-color);
-}
+/* Chat main styling removed - now using Tailwind classes directly in components */
 
 .message-list-container {
 	position: relative;
@@ -394,19 +215,7 @@ body {
 	width: 100%;
 }
 
-.message-list {
-	flex: 1;
-	overflow-y: auto;
-	padding: 1rem;
-	padding-bottom: 160px;
-	/* Add padding to account for sticky input area and disclaimer */
-	scroll-behavior: smooth;
-	width: 100%;
-	scrollbar-width: thin;
-	scrollbar-color: transparent transparent;
-	transition: scrollbar-color 0.5s ease;
-	-webkit-overflow-scrolling: touch;
-}
+/* Message list styling removed - now using Tailwind classes directly in components */
 
 .message-list:hover,
 .message-list:focus,
@@ -480,199 +289,19 @@ body {
 	}
 }
 
-.input-area {
-	padding-bottom: 2rem;
-	padding-left: 1rem;
-	padding-right: 1rem;
-	background-color: var(--bg-color);
-	height: auto;
-	display: flex;
-	flex-direction: column;
-	width: 100%;
-	position: sticky;
-	bottom: 32px;
-	/* Move input area up to make room for disclaimer */
-	z-index: 1000;
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-}
+/* Input area styling removed - now using Tailwind classes directly in components */
 
-.input-disclaimer {
-	font-size: 0.75rem;
-	color: var(--accent-color);
-	text-align: center;
-	padding: 0.25rem 0;
-	opacity: 0.8;
-	margin-top: 0.25rem;
-}
+/* Input disclaimer styling removed - now using Tailwind classes directly in components */
 
 
 
-.input-container {
-	display: flex;
-	flex-direction: column;
-	width: 100%;
-	position: relative;
-	background-color: var(--input-bg);
-	border: 1px solid var(--border-color);
-	border-top: none;
-	border-radius: 1rem;
-	padding: 0.75rem;
-	min-height: 56px;
-	gap: 0.75rem;
-	height: auto;
-	overflow: visible;
-}
+/* Input container styling removed - now using Tailwind classes directly in components */
 
-.input-preview {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.5rem;
-	margin: 0;
-}
+/* Input preview styling removed - now using Tailwind classes directly in components */
 
-.input-preview-item {
-	position: relative;
-	width: 60px;
-	height: 60px;
-	border-radius: 0.5rem;
-	overflow: hidden;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-	background-color: var(--hover-color);
-}
+/* Input preview item styling removed - now using Tailwind classes directly in components */
 
-.input-preview-item.image-preview {
-	width: 60px;
-	height: 60px;
-}
-
-.input-preview-item.file-preview {
-	width: 165px;
-	height: 60px;
-	display: flex;
-	align-items: center;
-	padding-right: 20px;
-	gap: 0.25rem;
-}
-
-.input-preview-item img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-
-.input-preview-item .file-thumbnail {
-	width: 60px;
-	height: 60px;
-	flex-shrink: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background-color: var(--accent-color);
-	color: var(--bg-color);
-	padding: 0.5rem;
-}
-
-.input-preview-item .file-thumbnail svg {
-	width: 32px;
-	height: 32px;
-}
-
-.input-preview-item .file-info {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	padding: 0.25rem;
-	padding-right: 0.5rem;
-	overflow: hidden;
-}
-
-.input-preview-item .file-name {
-	font-size: 0.75rem;
-	font-weight: 500;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	margin-bottom: 0.25rem;
-}
-
-.input-preview-item .file-ext {
-	font-size: 0.6rem;
-	color: var(--accent-color);
-	text-transform: uppermatter;
-	font-weight: 600;
-}
-
-.input-preview-remove {
-	position: absolute;
-	top: 4px;
-	right: 4px;
-	width: 18px;
-	height: 18px;
-	border-radius: 50%;
-	background-color: rgba(0, 0, 0, 0.6);
-	color: white;
-	border: none;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	font-size: 16px;
-	line-height: 1;
-	padding: 0;
-	opacity: 0.9;
-	transition: opacity 0.2s;
-	z-index: 2;
-}
-
-.input-preview-remove svg {
-	width: 14px;
-	height: 14px;
-}
-
-.input-preview-remove:hover {
-	opacity: 1;
-}
-
-.input-controls-row {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-	width: 100%;
-	padding: 0.0rem;
-}
-
-.input-controls {
-	display: flex;
-	justify-content: space-between;
-	width: 100%;
-	align-items: center;
-}
-
-/* Left side controls */
-.input-left-controls {
-	display: flex;
-	align-items: center;
-}
-
-
-
-
-
-
-
-
-
-.send-controls {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-/* When recording, send controls should take full width */
-.send-controls.recording {
-	width: 100%;
-}
+/* Input controls styling removed - now using Tailwind classes directly in components */
 
 .message {
 	display: flex;
@@ -721,51 +350,7 @@ body {
 	min-height: 24px;
 }
 
-/* File Upload Styles */
-.file-upload {
-	display: flex;
-	align-items: center;
-}
-
-.file-input {
-	display: none;
-}
-
-.file-button {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 26px;
-	height: 26px;
-	padding: 4px;
-	background: none;
-	border: 1px solid var(--accent-color);
-	border-radius: 50%;
-	cursor: pointer;
-	transition: all 0.2s;
-	color: var(--accent-color);
-}
-
-.file-button:hover {
-	background-color: var(--hover-color);
-}
-
-.file-icon {
-	width: 20px;
-	height: 20px;
-}
-
-.file-upload.dragging::after {
-	content: '';
-	position: absolute;
-	top: -10px;
-	left: -10px;
-	right: -10px;
-	bottom: -10px;
-	border: 2px dashed var(--accent-color);
-	border-radius: 8px;
-	animation: pulse 1.5s infinite;
-}
+/* File upload styling removed - now using Tailwind classes directly in components */
 
 @keyframes pulse {
 	0% {
@@ -784,60 +369,7 @@ body {
 	}
 }
 
-/* Message with file attachment styles */
-.message-file {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-	padding: 0rem;
-	background-color: var(--input-bg);
-	border: 1px solid var(--border-color);
-	border-radius: 0.5rem;
-	margin: 0.5rem 0;
-	width: 100%;
-	max-width: 300px;
-}
-
-.message-file-icon {
-	width: 32px;
-	height: 32px;
-	padding: 4px;
-	color: inherit;
-	background-color: var(--hover-color);
-	border-radius: 0.25rem;
-	flex-shrink: 0;
-}
-
-.message-file-info {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 0.25rem;
-}
-
-.message-file-name {
-	font-weight: 500;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.message-file-name a {
-	color: var(--text-color);
-	text-decoration: none;
-}
-
-.message-file-name a:hover {
-	text-decoration: underline;
-}
-
-.message-file-size {
-	font-size: 0.75rem;
-	color: var(--accent-color);
-}
-
-/* Markdown content styles */
+/* Message file styling removed - now using Tailwind classes directly in components */
 .message-content> :first-child {
 	margin-top: 0;
 }
@@ -939,24 +471,7 @@ body {
 	color: var(--text-color);
 }
 
-:root.dark .message-file-size {
-	color: var(--accent-color);
-}
-
-/* System preference fallback */
-@media (prefers-color-scheme: dark) {
-	:root:not(.light):not(.dark) .message-content blockquote {
-		color: var(--accent-color);
-	}
-
-	:root:not(.light):not(.dark) .message-content a {
-		color: var(--text-color);
-	}
-
-	:root:not(.light):not(.dark) .message-file-size {
-		color: var(--accent-color);
-	}
-}
+/* Message file dark mode styling removed - now using Tailwind classes directly in components */
 
 
 
@@ -982,12 +497,7 @@ body {
 }
 
 /* Loading Text Styles */
-.loading-text {
-	color: var(--text-muted);
-	font-size: 0.875rem;
-	text-align: center;
-	padding: 2rem 0;
-}
+/* Loading text styling removed - now using Tailwind classes directly in components */
 
 /* Media Controls Styles */
 .media-controls {
@@ -1472,104 +982,17 @@ kbd {
 	transform: scale(1.05);
 }
 
-/* File Menu Styles */
-.file-menu {
-	position: relative;
-	display: flex;
-	align-items: center;
-}
+/* File menu styling removed - now using Tailwind classes directly in components */
 
 
 
-.file-menu-dropdown {
-	position: absolute;
-	bottom: 100%;
-	left: 0;
-	margin-bottom: 0.5rem;
-	background-color: var(--bg-color);
-	border: 1px solid var(--border-color);
-	border-radius: 0.5rem;
-	padding: 0.25rem;
-	min-width: 200px;
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-	animation: slideUp 0.2s ease-out;
-	transform-origin: bottom left;
-}
+/* File menu dropdown styling removed - now using Tailwind classes directly in components */
 
-.file-menu-dropdown.closing {
-	animation: slideDown 0.15s ease-out forwards;
-	pointer-events: none;
-}
+/* File menu dropdown closing animation removed - now using Tailwind classes directly in components */
 
-@keyframes slideUp {
-	from {
-		opacity: 0;
-		transform: translateY(4px) scale(0.95);
-	}
+/* File menu animations removed - now using Tailwind classes directly in components */
 
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-}
-
-@keyframes slideDown {
-	from {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-
-	to {
-		opacity: 0;
-		transform: translateY(4px) scale(0.95);
-	}
-}
-
-.file-menu-item {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	width: 100%;
-	padding: 0.75rem;
-	border: none;
-	background: none;
-	color: var(--text-color);
-	cursor: pointer;
-	border-radius: 0.25rem;
-	transition: all 0.2s;
-	animation: fadeIn 0.2s ease-out;
-}
-
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-		transform: translateX(-4px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateX(0);
-	}
-}
-
-.file-menu-item:not(:last-child) {
-	border-bottom: 1px solid var(--border-color);
-}
-
-.file-menu-item:hover {
-	background-color: var(--hover-color);
-}
-
-.file-menu-item span {
-	font-size: 0.875rem;
-}
-
-.file-menu-item svg {
-	width: 20px;
-	height: 20px;
-	margin-left: 0.5rem;
-	color: inherit;
-}
+/* File menu item styling removed - now using Tailwind classes directly in components */
 
 /* Camera Modal Styles */
 .camera-modal {
@@ -1671,29 +1094,9 @@ kbd {
 	gap: 0.5rem;
 }
 
-.message-input {
-	flex: 1;
-	min-height: 24px;
-	padding: 8px 0;
-	margin: 0;
-	font-size: 1rem;
-	line-height: 1.5;
-	color: var(--text-color);
-	background: none;
-	border: none;
-	resize: none;
-	outline: none;
-	overflow: hidden;
-	box-sizing: border-box;
-	display: block;
-	width: 100%;
-	z-index: 1;
-}
+/* Message input styling removed - now using Tailwind classes directly in components */
 
-.message-input::placeholder {
-	color: var(--text-muted);
-	opacity: 1;
-}
+/* Message input placeholder styling removed - now using Tailwind classes directly in components */
 
 /* Animation for the drag overlay */
 @keyframes fadeIn {
@@ -2018,12 +1421,7 @@ kbd {
 
 
 
-.textarea-wrapper {
-	width: 100%;
-	position: relative;
-	display: block;
-	flex: 1;
-}
+/* Textarea wrapper styling removed - now using Tailwind classes directly in components */
 
 /* Scheduling Components Styles */
 
@@ -2671,13 +2069,7 @@ kbd {
 
 
 /* Team Sidebar Styles */
-.team-sidebar {
-	padding: 1.5rem;
-	color: var(--text-color);
-	display: flex;
-	flex-direction: column;
-	gap: 1.5rem;
-}
+/* Team sidebar styling removed - now using Tailwind classes directly in components */
 
 
 
@@ -2755,22 +2147,7 @@ kbd {
 	font-size: 1.5rem;
 }
 
-.team-profile .team-slug {
-	text-align: center;
-	color: var(--text-muted);
-	font-size: 0.875rem;
-}
-
-/* Team Slug */
-.team-slug {
-	text-align: center;
-}
-
-.team-slug span {
-	font-size: 0.9rem;
-	color: var(--accent-color);
-	font-weight: 500;
-}
+/* Team slug styling removed - now using Tailwind classes directly in components */
 
 /* Team Actions */
 .team-actions {
@@ -2808,15 +2185,7 @@ kbd {
 }
 
 /* Team Profile Header - Fixed at top of message list */
-.team-profile-header {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	padding: 2rem 1rem 1.5rem;
-	border-bottom: 1px solid var(--border-color);
-	background: var(--bg-color);
-	margin-bottom: 1rem;
-}
+/* Team profile header styling removed - now using Tailwind classes directly in components */
 
 .team-profile-header .team-profile {
 	margin-bottom: 0.5rem;
@@ -2924,39 +2293,7 @@ kbd {
 	margin-bottom: 1rem;
 }
 
-.media-sidebar .section-title {
-	font-size: 0.875rem;
-	font-weight: 600;
-	color: var(--text-color);
-	margin-bottom: 0.75rem;
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.empty-media-state {
-	text-align: center;
-	padding: 1.5rem 0;
-	color: var(--text-color);
-}
-
-.empty-icon {
-	color: var(--text-muted);
-	margin-bottom: 0.5rem;
-}
-
-.empty-text {
-	font-size: 0.875rem;
-	font-weight: 500;
-	margin-bottom: 0.25rem;
-	color: var(--text-color);
-}
-
-.empty-subtext {
-	font-size: 0.75rem;
-	opacity: 0.7;
-	color: var(--text-muted);
-}
+/* Media sidebar styling removed - now using Tailwind classes directly in components */
 
 .media-groups {
 	display: flex;
@@ -2968,14 +2305,6 @@ kbd {
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
-}
-
-.media-group-title {
-	font-size: 0.75rem;
-	font-weight: 600;
-	color: var(--text-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
 }
 
 .media-files {
@@ -3066,25 +2395,11 @@ kbd {
 	gap: 0.25rem;
 }
 
-.file-name {
-	font-size: 0.875rem;
-	font-weight: 500;
-	color: var(--text-color);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
 .file-meta {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.5rem;
-}
-
-.file-size {
-	font-size: 0.75rem;
-	color: var(--accent-color);
 }
 
 .download-button {
@@ -3477,133 +2792,18 @@ kbd {
 		padding-bottom: 60px;
 	}
 
-	.input-area {
-		bottom: 92px;
-		/* 60px bottom nav + 32px disclaimer */
-	}
+	/* Input area styling removed - now using Tailwind classes directly in components */
 
-	.message-list {
-		padding-bottom: 180px;
-		/* Account for bottom nav + input area + disclaimer */
-	}
+	/* Message list styling removed - now using Tailwind classes directly in components */
 }
 
-/* Mobile Sidebar Slide-out */
-.mobile-sidebar-overlay {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: rgba(0, 0, 0, 0.5);
-	z-index: 2000;
-	opacity: 0;
-	visibility: hidden;
-	transition: all 0.3s ease;
-	backdrop-filter: blur(2px);
-	-webkit-backdrop-filter: blur(2px);
-}
+/* Mobile sidebar styling removed - now using Tailwind classes directly in components */
 
-.mobile-sidebar-overlay.open {
-	opacity: 1;
-	visibility: visible;
-}
-
-.mobile-sidebar-panel {
-	position: fixed;
-	top: 0;
-	right: -100%;
-	width: 85%;
-	max-width: 400px;
-	height: 100%;
-	background: var(--bg-color);
-	border-left: 1px solid var(--border-color);
-	transition: right 0.3s ease;
-	z-index: 2001;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-}
-
-.mobile-sidebar-panel.open {
-	right: 0;
-}
-
-.mobile-sidebar-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 1rem;
-	border-bottom: 1px solid var(--border-color);
-	background: var(--bg-color);
-	flex-shrink: 0;
-}
-
-.mobile-sidebar-title {
-	font-size: 1.125rem;
-	font-weight: 600;
-	margin: 0;
-	color: var(--text-color);
-}
-
-.mobile-sidebar-close {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 2.5rem;
-	height: 2.5rem;
-	border: none;
-	background: none;
-	color: var(--text-color);
-	cursor: pointer;
-	border-radius: 0.375rem;
-	transition: all 0.2s ease;
-}
-
-.mobile-sidebar-close:hover {
-	background: var(--hover-bg);
-}
-
-.mobile-sidebar-content {
-	flex: 1;
-	overflow-y: auto;
-	padding: 1rem;
-	display: flex;
-	flex-direction: column;
-	gap: 1.5rem;
-}
-
-.mobile-sidebar-section {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-}
-
-/* Mobile sidebar specific adjustments */
-.mobile-sidebar-content .team-profile {
-	padding: 0;
-	border: none;
-	background: none;
-}
-
-.mobile-sidebar-content .team-actions {
-	padding: 0;
-}
-
-.mobile-sidebar-content .team-section {
-	padding: 0;
-	border: none;
-	background: none;
-}
-
-.mobile-sidebar-content .section-title {
-	font-size: 1rem;
-	margin-bottom: 0.5rem;
-}
+/* Mobile sidebar content styling removed - now using Tailwind classes directly in components */
 
 /* Hide right sidebar on mobile when slide-out is available */
 @media (max-width: 1023px) {
-	.grid-right {
+	.col-start-3 {
 		display: none;
 	}
 }

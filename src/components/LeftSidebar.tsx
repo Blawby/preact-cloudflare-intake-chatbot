@@ -1,13 +1,12 @@
 import { 
   ChatBubbleLeftRightIcon, 
-  DocumentTextIcon, 
   Bars3Icon 
 } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
 
 interface LeftSidebarProps {
   currentRoute: string;
-  onTabChange: (tab: 'chats' | 'matters') => void;
+  onTabChange: (tab: 'chats') => void;
   onOpenMenu?: () => void;
 }
 
@@ -25,17 +24,6 @@ const LeftSidebar = ({ currentRoute, onTabChange, onOpenMenu }: LeftSidebarProps
               title="Chats"
             >
               <ChatBubbleLeftRightIcon className="left-sidebar-icon" />
-            </div>
-          </div>
-
-          {/* Matters Section */}
-          <div className="left-sidebar-section">
-            <div 
-              className={`left-sidebar-header ${currentRoute === 'matters' ? 'active' : ''}`}
-              onClick={() => onTabChange('matters')}
-              title="Matters"
-            >
-              <DocumentTextIcon className="left-sidebar-icon" />
             </div>
           </div>
         </div>

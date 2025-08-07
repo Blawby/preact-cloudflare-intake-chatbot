@@ -24,11 +24,11 @@ export function TeamNotFound({ teamId, onRetry }: TeamNotFoundProps) {
         </ul>
         <p className="mb-8 text-sm sm:text-base text-light-text dark:text-dark-text">
           Please check the URL or try again. If you continue to have issues, please visit{' '}
-          <a href="https://blawby.com/help" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline">
+          <a href="https://blawby.com/help" target="_blank" rel="noopener noreferrer" className="text-accent-500 hover:underline">
             blawby.com/help
           </a>
           {' '}or contact us on{' '}
-          <a href="https://github.com/Blawby" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline">
+          <a href="https://github.com/Blawby" target="_blank" rel="noopener noreferrer" className="text-accent-500 hover:underline">
             GitHub
           </a>
           {' '}for support.

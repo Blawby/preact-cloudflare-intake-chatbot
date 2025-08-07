@@ -71,12 +71,12 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
   if (totalFiles === 0) {
     return (
       <div className="media-sidebar">
-        <h4 className="section-title">Media, Files, and Links</h4>
+        <h4 className="text-xs sm:text-sm lg:text-base font-semibold mb-3 text-gray-900 dark:text-white">Media, Files, and Links</h4>
         <div className="section-content">
-          <div className="empty-media-state flex flex-col items-center justify-center text-center">
-            <PhotoIcon className="empty-icon w-8 h-8" />
-            <p className="empty-text">No files shared yet</p>
-            <p className="empty-subtext">Files you share in the conversation will appear here</p>
+          <div className="flex flex-col items-center justify-center text-center py-6">
+            <PhotoIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 mb-2" />
+            <p className="text-xs sm:text-sm lg:text-base font-medium mb-1 text-gray-900 dark:text-white">No files shared yet</p>
+            <p className="text-xs sm:text-sm opacity-70 text-gray-500 dark:text-gray-400">Files you share in the conversation will appear here</p>
           </div>
         </div>
       </div>
@@ -86,14 +86,14 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
   return (
     <>
       <div className="media-sidebar">
-        <h4 className="section-title">
+        <h4 className="text-xs sm:text-sm lg:text-base font-semibold mb-3 text-gray-900 dark:text-white">
           Media, Files, and Links ({totalFiles})
         </h4>
         <div className="section-content">
           <div className="media-groups">
             {mediaGroups.map((group) => (
               <div key={group.category} className="media-group">
-                <h5 className="media-group-title">
+                <h5 className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   {categoryLabels[group.category]} ({group.files.length})
                 </h5>
                 <div className="media-files">
@@ -124,11 +124,11 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                         )}
                         
                         <div className="media-file-info">
-                          <div className="file-name" title={media.name}>
+                          <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" title={media.name}>
                             {media.name.length > 20 ? `${media.name.substring(0, 20)}...` : media.name}
                           </div>
                           <div className="file-meta">
-                            <span className="file-size">{formatFileSize(media.size)}</span>
+                            <span className="text-xs sm:text-xs text-accent-500">{formatFileSize(media.size)}</span>
                             <Button
                               variant="ghost"
                               size="sm"
