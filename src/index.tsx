@@ -982,7 +982,7 @@ export function App() {
 				const result = await response.json();
 				console.log('Form submitted successfully:', result);
 				
-				// Fetch team configuration to check payment requirements and webhook config
+				// Fetch team configuration to check payment requirements
 				let teamConfig = null;
 				try {
 					const teamsResponse = await fetch(getTeamsEndpoint());

@@ -28,21 +28,7 @@
       "accentColor": "#3b82f6",
       "introMessage": "Hello! I'm Blawby AI, your intelligent legal assistant. I can help you with business law, contract review, intellectual property, employment law, and general legal consultation. How can I assist you today?",
       "profileImage": null,
-      "webhooks": {
-        "enabled": false,
-        "url": "",
-        "secret": "",
-        "events": {
-          "matterCreation": false,
-          "matterDetails": false,
-          "contactForm": false,
-          "appointment": false
-        },
-        "retryConfig": {
-          "maxRetries": 3,
-          "retryDelay": 60
-        }
-      },
+
       "blawbyApi": {
         "enabled": false,
         "apiKey": null,
@@ -82,21 +68,7 @@
       "accentColor": "#10b981",
       "introMessage": "Welcome to North Carolina Legal Services! I'm here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you schedule a consultation with our experienced attorneys. How can I assist you today?",
       "profileImage": "https://app.blawby.com/storage/team-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg",
-      "webhooks": {
-        "enabled": true,
-        "url": "https://staging.blawby.com/webhooks/intake-form/01jq70jnstyfzevc6423czh50e/webhook-events",
-        "secret": "your_webhook_secret_here",
-        "events": {
-          "matterCreation": true,
-          "matterDetails": true,
-          "contactForm": true,
-          "appointment": true
-        },
-        "retryConfig": {
-          "maxRetries": 3,
-          "retryDelay": 60
-        }
-      },
+
       "blawbyApi": {
         "enabled": true,
         "apiKey": "BLAWBY_API_TOKEN",

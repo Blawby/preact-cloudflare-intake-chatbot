@@ -21,21 +21,7 @@ export interface TeamConfig {
   accentColor?: string;
   introMessage?: string;
   profileImage?: string;
-  webhooks?: {
-    enabled: boolean;
-    url: string;
-    secret: string;
-    events: {
-      matterCreation: boolean;
-      matterDetails: boolean;
-      contactForm: boolean;
-      appointment: boolean;
-    };
-    retryConfig: {
-      maxRetries: number;
-      retryDelay: number;
-    };
-  };
+
 }
 
 export interface Team {

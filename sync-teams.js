@@ -53,7 +53,7 @@ if (idsToDelete.length > 0) {
   let deleteSql = '';
   // First delete related records to avoid foreign key constraints
   idsToDelete.forEach(id => {
-    deleteSql += `DELETE FROM webhook_logs WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
+    
     deleteSql += `DELETE FROM ai_feedback WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
     deleteSql += `DELETE FROM appointments WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
     deleteSql += `DELETE FROM matters WHERE team_id = '${id.replace(/'/g, "''")}';\n`;
