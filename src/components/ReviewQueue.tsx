@@ -9,6 +9,7 @@ import {
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 import ReviewItem from './ReviewItem';
+import { componentStyles } from '../config/component-styles';
 
 interface ReviewMatter {
   id: string;
@@ -142,12 +143,11 @@ const ReviewQueue: FunctionComponent<ReviewQueueProps> = ({ teamId, onRefresh })
 
   if (loading) {
     return (
-      <div className="review-queue">
-        <div className="review-queue-header">
-          <h2 className="review-queue-title">Review Queue</h2>
-          <div className="review-queue-loading">
-            <div className="loading-spinner"></div>
-            <span>Loading review matters...</span>
+      <div className={componentStyles.pageContainer}>
+        <div className={componentStyles.headerContainer}>
+          <h2 className={componentStyles.title}>Review Queue</h2>
+          <div className={componentStyles.loadingContainer}>
+            <div className={componentStyles.loadingText}>Loading review matters...</div>
           </div>
         </div>
       </div>
@@ -155,38 +155,54 @@ const ReviewQueue: FunctionComponent<ReviewQueueProps> = ({ teamId, onRefresh })
   }
 
   return (
-    <div className="review-queue">
-      <div className="review-queue-header">
-        <h2 className="review-queue-title">Review Queue</h2>
-        <div className="review-queue-controls">
-          <div className="filter-buttons">
+    <div className={componentStyles.pageContainer}>
+      <div className={componentStyles.headerContainer}>
+        <h2 className={componentStyles.title}>Review Queue</h2>
+        <div className="flex items-center space-x-4">
+          <div className="flex space-x-2">
             <button
-              className={`filter-button ${filter === 'all' ? 'active' : ''}`}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                filter === 'all' 
+                  ? 'bg-primary text-white' 
+                  : 'bg-background border border-border text-text hover:bg-hover'
+              }`}
               onClick={() => setFilter('all')}
             >
               All ({matters.length})
             </button>
             <button
-              className={`filter-button ${filter === 'pending' ? 'active' : ''}`}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                filter === 'pending' 
+                  ? 'bg-primary text-white' 
+                  : 'bg-background border border-border text-text hover:bg-hover'
+              }`}
               onClick={() => setFilter('pending')}
             >
               Pending ({matters.filter(m => m.status === 'pending').length})
             </button>
             <button
-              className={`filter-button ${filter === 'approved' ? 'active' : ''}`}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                filter === 'approved' 
+                  ? 'bg-primary text-white' 
+                  : 'bg-background border border-border text-text hover:bg-hover'
+              }`}
               onClick={() => setFilter('approved')}
             >
               Approved ({matters.filter(m => m.status === 'approved').length})
             </button>
             <button
-              className={`filter-button ${filter === 'rejected' ? 'active' : ''}`}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                filter === 'rejected' 
+                  ? 'bg-primary text-white' 
+                  : 'bg-background border border-border text-text hover:bg-hover'
+              }`}
               onClick={() => setFilter('rejected')}
             >
               Rejected ({matters.filter(m => m.status === 'rejected').length})
             </button>
           </div>
           <button
-            className="refresh-button"
+            className="p-2 rounded-md text-text hover:bg-hover transition-colors"
             onClick={fetchReviewMatters}
             title="Refresh review queue"
           >
@@ -195,12 +211,12 @@ const ReviewQueue: FunctionComponent<ReviewQueueProps> = ({ teamId, onRefresh })
         </div>
       </div>
 
-      <div className="review-queue-content">
+      <div className="space-y-4">
         {filteredMatters.length === 0 ? (
-          <div className="empty-review-queue">
-            <EyeIcon className="w-12 h-12 text-gray-400" />
-            <h3 className="empty-title">No matters to review</h3>
-            <p className="empty-description">
+          <div className={componentStyles.emptyState}>
+            <EyeIcon className={componentStyles.emptyIcon} />
+            <h3 className={componentStyles.emptyTitle}>No matters to review</h3>
+            <p className={componentStyles.emptyDescription}>
               {filter === 'all' 
                 ? 'No matters have been submitted for review yet.'
                 : `No ${filter} matters found.`
@@ -208,45 +224,47 @@ const ReviewQueue: FunctionComponent<ReviewQueueProps> = ({ teamId, onRefresh })
             </p>
           </div>
         ) : (
-          <div className="review-matters-list">
+          <div className={componentStyles.listContainer}>
             {filteredMatters.map((matter) => (
               <div
                 key={matter.id}
-                className={`review-matter-item ${matter.status} ${selectedMatter?.id === matter.id ? 'selected' : ''}`}
+                className={`${componentStyles.listItem} ${
+                  selectedMatter?.id === matter.id ? 'border-2 border-primary' : ''
+                }`}
                 onClick={() => setSelectedMatter(matter)}
               >
-                <div className="matter-header">
-                  <div className="matter-info">
-                    <h3 className="matter-title">{matter.title}</h3>
-                    <p className="matter-number">{matter.matterNumber}</p>
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-text mb-1">{matter.title}</h3>
+                    <p className="text-sm text-muted">{matter.matterNumber}</p>
                   </div>
-                  <div className="matter-status">
+                  <div className="flex items-center space-x-2">
                     {getStatusIcon(matter.status)}
-                    <span className="status-text">{matter.status}</span>
+                    <span className="text-sm font-medium capitalize">{matter.status}</span>
                   </div>
                 </div>
                 
-                <div className="matter-details">
-                  <div className="matter-service">
-                    <span className="service-label">Service:</span>
-                    <span className="service-value">{matter.service}</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-muted">Service:</span>
+                    <span className="text-sm font-medium">{matter.service}</span>
                   </div>
                   
-                  <div className="matter-urgency">
+                  <div className="flex items-center space-x-2">
                     {getUrgencyIcon(matter.urgency)}
-                    <span className="urgency-text">{matter.urgency} priority</span>
+                    <span className="text-sm font-medium capitalize">{matter.urgency} priority</span>
                   </div>
                   
-                  <div className="matter-date">
-                    <span className="date-label">Created:</span>
-                    <span className="date-value">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-muted">Created:</span>
+                    <span className="text-sm">
                       {new Date(matter.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
                 
-                <div className="matter-description">
-                  <p className="description-text">{matter.description}</p>
+                <div className="text-sm text-text">
+                  <p className="line-clamp-2">{matter.description}</p>
                 </div>
               </div>
             ))}

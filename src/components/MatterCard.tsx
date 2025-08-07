@@ -6,6 +6,7 @@ import {
   ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
 import { Matter, MatterCardProps } from '../types/matter';
+import { componentStyles } from '../config/component-styles';
 
 const getStatusIcon = (status: Matter['status']) => {
   switch (status) {
@@ -44,17 +45,17 @@ const getStatusText = (status: Matter['status']) => {
 const getStatusColor = (status: Matter['status']) => {
   switch (status) {
     case 'draft':
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300';
     case 'submitted':
-      return 'bg-blue-100 text-blue-700';
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
     case 'in_review':
-      return 'bg-yellow-100 text-yellow-700';
+      return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300';
     case 'completed':
-      return 'bg-green-100 text-green-700';
+      return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
     case 'archived':
-      return 'bg-gray-100 text-gray-500';
+      return 'bg-gray-100 text-gray-500 dark:bg-gray-900 dark:text-gray-400';
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300';
   }
 };
 
@@ -74,7 +75,7 @@ const MatterCard = ({ matter, onClick }: MatterCardProps) => {
 
   return (
     <div 
-      className="matter-card"
+      className={componentStyles.card}
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -85,35 +86,44 @@ const MatterCard = ({ matter, onClick }: MatterCardProps) => {
         }
       }}
     >
-      <div className="matter-card-header">
-        <div className="matter-card-title">
-          <h3 className="matter-title">
+      <div className={componentStyles.cardHeader}>
+        <div className={componentStyles.cardTitle}>
+          <h3 className="text-lg font-semibold text-text">
             {matter.matterNumber ? `Matter ${matter.matterNumber}` : matter.title}
           </h3>
-          <span className={`matter-status ${getStatusColor(matter.status)}`}>
+          <span className={`${componentStyles.statusBadge} ${getStatusColor(matter.status)}`}>
             {getStatusIcon(matter.status)}
             {getStatusText(matter.status)}
           </span>
         </div>
-        <div className="matter-card-meta">
-          <span className="matter-service">{matter.service}</span>
-          <span className="matter-date">{formatDate(matter.updatedAt)}</span>
+        <div className="flex items-center justify-between text-sm text-muted">
+          <span className="font-medium">{matter.service}</span>
+          <span>{formatDate(matter.updatedAt)}</span>
         </div>
       </div>
       
-      <div className="matter-card-content">
-        <p className="matter-summary">
-          {truncateText(matter.summary, 120)}
+      <div className={componentStyles.cardContent}>
+        <p className="text-sm text-text line-clamp-3">
+          {truncateText(matter.summary, 150)}
         </p>
       </div>
       
-      {matter.urgency && (
-        <div className="matter-card-footer">
-          <span className="urgency-badge">
-            {matter.urgency}
-          </span>
+      <div className={componentStyles.cardFooter}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-muted">Created:</span>
+            <span className="text-xs font-medium">
+              {formatDate(matter.createdAt)}
+            </span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <span className="text-xs text-muted">Updated:</span>
+            <span className="text-xs font-medium">
+              {formatDate(matter.updatedAt)}
+            </span>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -2,13 +2,14 @@ import { PlusIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { MattersListProps } from '../types/matter';
 import MatterCard from './MatterCard';
 import { Button } from './ui/Button';
+import { componentStyles } from '../config/component-styles';
 
 const MattersList = ({ matters, onMatterSelect, onCreateMatter, isLoading }: MattersListProps) => {
   if (isLoading) {
     return (
-      <div className="matters-list-container">
-        <div className="matters-header">
-          <h2 className="matters-title">Matters</h2>
+      <div className={componentStyles.pageContainer}>
+        <div className={componentStyles.headerContainer}>
+          <h2 className={componentStyles.title}>Matters</h2>
           <Button 
             variant="primary"
             onClick={onCreateMatter}
@@ -18,8 +19,8 @@ const MattersList = ({ matters, onMatterSelect, onCreateMatter, isLoading }: Mat
             Create Matter
           </Button>
         </div>
-        <div className="matters-loading">
-          <div className="loading-text">Loading matters...</div>
+        <div className={componentStyles.loadingContainer}>
+          <div className={componentStyles.loadingText}>Loading matters...</div>
         </div>
       </div>
     );
@@ -27,9 +28,9 @@ const MattersList = ({ matters, onMatterSelect, onCreateMatter, isLoading }: Mat
 
   if (matters.length === 0) {
     return (
-      <div className="matters-list-container">
-        <div className="matters-header">
-          <h2 className="matters-title">Matters</h2>
+      <div className={componentStyles.pageContainer}>
+        <div className={componentStyles.headerContainer}>
+          <h2 className={componentStyles.title}>Matters</h2>
           <Button 
             variant="primary"
             onClick={onCreateMatter}
@@ -38,10 +39,10 @@ const MattersList = ({ matters, onMatterSelect, onCreateMatter, isLoading }: Mat
             Create Matter
           </Button>
         </div>
-        <div className="matters-empty">
-          <DocumentTextIcon className="empty-icon" />
-          <h3 className="empty-title">No matters yet</h3>
-          <p className="empty-description">
+        <div className={componentStyles.emptyState}>
+          <DocumentTextIcon className={componentStyles.emptyIcon} />
+          <h3 className={componentStyles.emptyTitle}>No matters yet</h3>
+          <p className={componentStyles.emptyDescription}>
             Create your first matter to get started with legal assistance.
           </p>
           <Button 
@@ -57,9 +58,9 @@ const MattersList = ({ matters, onMatterSelect, onCreateMatter, isLoading }: Mat
   }
 
   return (
-    <div className="matters-list-container">
-      <div className="matters-header">
-        <h2 className="matters-title">
+    <div className={componentStyles.pageContainer}>
+      <div className={componentStyles.headerContainer}>
+        <h2 className={componentStyles.title}>
           Matters ({matters.length})
         </h2>
         <Button 
@@ -71,7 +72,7 @@ const MattersList = ({ matters, onMatterSelect, onCreateMatter, isLoading }: Mat
         </Button>
       </div>
       
-      <div className="matters-grid">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {matters.map((matter) => (
           <MatterCard
             key={matter.id}
