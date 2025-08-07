@@ -128,6 +128,22 @@ export function App() {
 	// Simplified state - agent handles all conversation flow
 	const [currentTab, setCurrentTab] = useState<'chats' | 'matters' | 'review'>('chats');
 	
+	// Handle back button behavior for review tab
+	useEffect(() => {
+		const handlePopState = (event: PopStateEvent) => {
+			// If we're on the review tab and user hits back, go to chats instead
+			if (currentTab === 'review') {
+				event.preventDefault();
+				setCurrentTab('chats');
+				// Push a new state to prevent the back button from going to external URLs
+				window.history.pushState(null, '', window.location.pathname + window.location.search);
+			}
+		};
+
+		window.addEventListener('popstate', handlePopState);
+		return () => window.removeEventListener('popstate', handlePopState);
+	}, [currentTab]);
+	
 	// State for matters
 	const [matters, setMatters] = useState<Matter[]>([]);
 	const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
@@ -225,12 +241,12 @@ export function App() {
 	// Handle matter selection
 	const handleMatterSelect = useCallback((matter: Matter) => {
 		setSelectedMatter(matter);
-		router.navigate('matters', { id: matter.id });
+		setCurrentTab('matters');
 	}, []);
 
 	// Handle matter creation from matters view
 	const handleCreateMatterFromList = useCallback(() => {
-		router.navigate('chats');
+		setCurrentTab('chats');
 		// Start matter creation flow after a short delay to allow navigation
 		setTimeout(() => {
 			handleCreateMatterStart();
@@ -240,12 +256,12 @@ export function App() {
 	// Handle back to matters list
 	const handleBackToMatters = useCallback(() => {
 		setSelectedMatter(null);
-		router.navigate('matters');
+		setCurrentTab('matters');
 	}, []);
 
 	// Handle edit matter (for now, just go back to chat)
 	const handleEditMatter = useCallback(() => {
-		router.navigate('chats');
+		setCurrentTab('chats');
 	}, []);
 
 	// Parse URL parameters for configuration
