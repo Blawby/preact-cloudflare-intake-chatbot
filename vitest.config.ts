@@ -4,7 +4,7 @@ import { resolve } from 'path';
 export default defineConfig({
   test: {
     environment: 'happy-dom',
-    setupFiles: ['./src/__tests__/setup.ts'],
+    setupFiles: ['./tests/setup.ts'],
     globals: true,
     coverage: {
       provider: 'v8',
@@ -13,18 +13,30 @@ export default defineConfig({
         'node_modules/',
         'dist/',
         'src/__tests__/',
-        'tests/',
+        'tests/fixtures/',
         '**/*.d.ts',
         '**/*.config.*',
         '**/index.tsx',
-        '**/main.tsx'
+        '**/main.tsx',
+        '**/setup.ts'
       ]
-    }
+    },
+    include: [
+      'tests/**/*.{test,spec}.{js,ts,jsx,tsx}',
+      'src/**/*.{test,spec}.{js,ts,jsx,tsx}'
+    ],
+    exclude: [
+      'node_modules/**',
+      'dist/**',
+      'src/__tests__/**' // Legacy test directory
+    ]
   },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
-      '~': resolve(__dirname, './')
+      '~': resolve(__dirname, './'),
+      '@tests': resolve(__dirname, './tests'),
+      '@fixtures': resolve(__dirname, './tests/fixtures')
     }
   }
 }); 

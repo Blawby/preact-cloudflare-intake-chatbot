@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateEmail, validatePhone, validateMatterDetails } from '../../utils/conversationalForm';
+import { validateEmail, validatePhone, validateMatterDetails } from '../../../src/utils/conversationalForm';
 
 describe('conversationalForm', () => {
   describe('validateEmail', () => {

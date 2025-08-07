@@ -1,5 +1,6 @@
 import { render, RenderOptions } from '@testing-library/preact';
 import { h } from 'preact';
+import { vi } from 'vitest';
 import { ComponentType } from 'preact';
 
 // Custom render function with providers

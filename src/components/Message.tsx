@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
-import { marked } from 'marked';
+import { useState, useEffect } from 'preact/hooks';
+import DOMPurify from 'dompurify';
 import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
 import PaymentEmbed from './PaymentEmbed';
@@ -15,15 +16,8 @@ import {
 	VideoCameraIcon,
 	ClipboardDocumentIcon
 } from '@heroicons/react/24/outline';
-import { useState } from 'preact/hooks';
 
 // Agent handles all scheduling and matter creation - no lazy components needed
-
-// Set options for marked
-marked.setOptions({
-	breaks: true,
-	gfm: true
-});
 
 interface FileAttachment {
 	name: string;
@@ -174,6 +168,21 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	showFeedback = true,
 	onFeedbackSubmit
 }) => {
+	const [isClient, setIsClient] = useState(false);
+	const [ReactMarkdown, setReactMarkdown] = useState<any>(null);
+
+	useEffect(() => {
+		setIsClient(true);
+		// Dynamically import ReactMarkdown only on the client side
+		import('react-markdown')
+			.then((module) => {
+				setReactMarkdown(() => module.default);
+			})
+			.catch((error) => {
+				console.error('Failed to load ReactMarkdown:', error);
+				// Keep ReactMarkdown as null to use fallback rendering
+			});
+	}, []);
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
 	const audioFiles = files.filter(file => file.type.startsWith('audio/'));
 	const videoFiles = files.filter(file => file.type.startsWith('video/'));
@@ -197,7 +206,13 @@ const Message: FunctionComponent<MessageProps> = memo(({
 			<div class="message-content">
 				{/* Show content if available */}
 				{content && (
-					<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
+					<div className="prose prose-sm max-w-none dark:prose-invert">
+						{isClient && ReactMarkdown ? (
+							<ReactMarkdown>{content}</ReactMarkdown>
+						) : (
+							<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
+						)}
+					</div>
 				)}
 				
 				{/* Show typing cursor for streaming content */}
