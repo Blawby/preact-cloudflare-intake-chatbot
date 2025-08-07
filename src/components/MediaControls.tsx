@@ -133,7 +133,7 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 
 	if (isRecording) {
 		return (
-			<div className="media-controls recording" role="region" aria-label="Audio recording controls">
+			<div className="flex items-center gap-2" role="region" aria-label="Audio recording controls">
 				<AudioRecordingUI
 					isRecording={isRecording}
 					onCancel={handleCancelRecording}
@@ -145,7 +145,7 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 	}
 
 	return (
-		<div className="media-controls" role="region" aria-label="Audio recording">
+		<div className="flex items-center gap-2" role="region" aria-label="Audio recording">
 			<Button
 				variant="icon"
 				onClick={() => {

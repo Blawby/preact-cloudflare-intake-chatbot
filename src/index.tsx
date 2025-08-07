@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'preact/hooks'
 // Remove direct imports of components that will be lazy-loaded
 import FileMenu from './components/FileMenu';
 import LoadingIndicator from './components/LoadingIndicator';
-// import MediaControls from './components/MediaControls';
+import MediaControls from './components/MediaControls';
 import VirtualMessageList from './components/VirtualMessageList';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TeamNotFound } from './components/TeamNotFound';
@@ -15,6 +15,7 @@ import BottomNavigation from './components/BottomNavigation';
 import MobileSidebar from './components/MobileSidebar';
 import MobileTopNav from './components/MobileTopNav';
 import PaymentEmbed from './components/PaymentEmbed';
+import ScheduleButton from './components/scheduling/ScheduleButton';
 import { debounce } from './utils/debounce';
 // Removed unused useDebounce import
 // Removed unused LazyComponent import
@@ -1294,22 +1295,27 @@ export function App() {
 			{teamNotFound ? (
 				<TeamNotFound teamId={teamId} onRetry={handleRetryTeamConfig} />
 			) : (
-				<>
+				<div id="app" className="h-screen w-screen">
 					{/* Left Column */}
 					{features.enableLeftSidebar && (
-						<div className="col-start-1 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto">
+						<div className="grid-left bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto">
 							<LeftSidebar 
 								currentRoute={currentTab}
 								onOpenMenu={() => setIsMobileSidebarOpen(true)}
+								teamConfig={{
+									name: teamConfig.name,
+									profileImage: teamConfig.profileImage,
+									teamId: teamId
+								}}
 							/>
 						</div>
 					)}
 
 					{/* Center Column - Main Content */}
-					<div className="col-start-2 bg-white dark:bg-dark-bg overflow-y-auto">
+					<div className="grid-center bg-white dark:bg-dark-bg overflow-y-auto">
 						<ErrorBoundary>
 							<div 
-								className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg" 
+								className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg pt-16 lg:pt-0" 
 								role="application" 
 								aria-label="Main interface"
 								aria-expanded={true}
@@ -1380,7 +1386,7 @@ export function App() {
 									teamId={teamId}
 									onFeedbackSubmit={handleFeedbackSubmit}
 								/>
-								<div className="pb-8 pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
+								<div className="pb-20 lg:pb-8 pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
 									<div className="flex flex-col w-full relative bg-white dark:bg-dark-input-bg border border-gray-200 dark:border-dark-border border-t-0 rounded-2xl p-3 min-h-[56px] gap-3 h-auto overflow-visible">
 										{previewFiles.length > 0 && (
 											<div className="flex flex-wrap gap-2 m-0" role="list" aria-label="File attachments">
@@ -1451,7 +1457,7 @@ export function App() {
 														/>
 														
 														{features.enableConsultationButton && (
-															<LazyScheduleButton
+															<ScheduleButton
 																onClick={handleScheduleStart}
 																disabled={false}
 															/>
@@ -1461,7 +1467,7 @@ export function App() {
 												
 												<div className="flex items-center gap-2">
 													{features.enableAudioRecording && (
-														<LazyMediaControls
+														<MediaControls
 															onMediaCapture={handleMediaCapture}
 															onRecordingStateChange={setIsRecording}
 														/>
@@ -1472,8 +1478,9 @@ export function App() {
 														onClick={handleSubmit}
 														disabled={(!inputValue.trim() && previewFiles.length === 0)}
 														aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
+														className="flex items-center justify-center w-10 h-10 rounded-lg cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 border-none bg-transparent hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
 													>
-														<ArrowUpIcon className="w-4 h-4" aria-hidden="true" />
+														<ArrowUpIcon className="w-5 h-5" aria-hidden="true" />
 													</Button>
 												</div>
 											</div>
@@ -1492,7 +1499,7 @@ export function App() {
 					</div>
 
 					{/* Right Column - Hidden on mobile, content moved to mobile sidebar */}
-					<div className="col-start-3 bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
+					<div className="grid-right bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
 						<div className="p-6 text-gray-900 dark:text-white flex flex-col gap-6">
 							<TeamProfile
 								name={teamConfig.name}
@@ -1540,16 +1547,19 @@ export function App() {
 						}}
 						messages={messages}
 					/>
-				</>
+				</div>
 			)}
 		</>
 	);
 }
 
 if (typeof window !== 'undefined') {
-	// Initialize theme from localStorage
+	// Initialize theme from localStorage with fallback to system preference
 	const savedTheme = localStorage.getItem('theme');
-	if (savedTheme === 'dark') {
+	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+	const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+	
+	if (shouldBeDark) {
 		document.documentElement.classList.add('dark');
 	}
 	

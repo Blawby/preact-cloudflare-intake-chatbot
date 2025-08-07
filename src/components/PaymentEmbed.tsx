@@ -199,7 +199,7 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
           variant="primary"
           size="lg"
           onClick={handlePaymentClick}
-          className="flex-1"
+          style={{ backgroundColor: '#d4af37', color: '#1a1a1a' }}
         >
           <CreditCardIcon className="w-5 h-5 mr-2" />
           Pay ${amount || '0'}

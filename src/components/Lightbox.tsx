@@ -48,23 +48,23 @@ const Lightbox: FunctionComponent<LightboxProps> = ({ media, onClose }) => {
     const renderMediaContent = () => {
         if (media.category === 'video') {
             return (
-                <div className="lightbox-video-container">
+                <div className="max-w-full max-h-80vh rounded-lg overflow-hidden shadow-2xl">
                     {!isVideoPlaying ? (
-                        <div className="video-placeholder" onClick={handleVideoClick}>
+                        <div className="relative cursor-pointer max-w-full max-h-80vh" onClick={handleVideoClick}>
                             <video 
                                 src={media.url} 
-                                className="video-preview"
+                                className="w-full h-auto max-h-80vh object-contain"
                                 muted
                             />
-                            <div className="video-overlay">
-                                <PlayIcon className="play-icon w-12 h-12" />
-                                <p className="play-text">Click to play</p>
+                            <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center gap-2">
+                                <PlayIcon className="text-white w-12 h-12" />
+                                <p className="text-white text-sm font-medium">Click to play</p>
                             </div>
                         </div>
                     ) : (
                         <video 
                             src={media.url} 
-                            className="lightbox-video"
+                            className="w-full h-auto max-h-80vh"
                             controls
                             autoPlay
                         />
@@ -77,24 +77,24 @@ const Lightbox: FunctionComponent<LightboxProps> = ({ media, onClose }) => {
             <img 
                 src={media.url} 
                 alt={media.name} 
-                className="lightbox-image" 
+                className="max-w-full max-h-80vh object-contain rounded-lg shadow-2xl cursor-default" 
                 onClick={(e) => e.stopPropagation()} 
             />
         );
     };
 
     const content = (
-        <div className={`lightbox-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
-            <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+        <div className={`fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-9999 cursor-pointer animate-fadeIn ${isClosing ? 'animate-fadeOut' : ''}`} onClick={handleClose}>
+            <div className="relative max-w-90vw max-h-90vh flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
                 {renderMediaContent()}
-                <div className="lightbox-info">
-                    <h3 className="lightbox-title">{media.name}</h3>
-                    <p className="lightbox-meta">
+                <div className="text-center text-white">
+                    <h3 className="text-lg font-semibold mb-1">{media.name}</h3>
+                    <p className="text-sm opacity-80">
                         {media.type} • {Math.round(media.size / 1024)} KB
                     </p>
                 </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleClose} className="lightbox-close">
+            <Button variant="ghost" size="sm" onClick={handleClose} className="absolute top-4 right-4 w-10 h-10 border-none bg-black bg-opacity-50 text-white rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 hover:bg-black hover:bg-opacity-70 hover:scale-110 animate-fadeSlideIn">
                 <XMarkIcon className="w-6 h-6" />
             </Button>
         </div>

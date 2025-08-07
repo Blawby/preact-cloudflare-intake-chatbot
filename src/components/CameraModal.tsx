@@ -95,33 +95,34 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="" fullScreen={true}>
-            <div className="camera-modal">
+            <div className="flex flex-col h-full w-full">
                 {error && (
-                    <div className="camera-error">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm text-center absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 max-w-80">
                         <p>{error}</p>
                     </div>
                 )}
                 
-                <div className="camera-preview">
+                <div className="relative w-full h-full overflow-hidden bg-black flex-grow">
                     <video
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
+                        className="w-full h-full object-cover"
                     />
                     <canvas ref={canvasRef} style={{ display: 'none' }} />
                 </div>
                 
-                <div className="camera-controls">
+                <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center py-4 z-5">
                     <Button
                         type="button"
                         variant="primary"
                         onClick={takePhoto}
                         disabled={!isCameraReady}
                         title="Take photo"
-                        className="camera-control-btn capture"
+                        className="bg-none border-none cursor-pointer flex items-center justify-center transition-all duration-200 w-18 h-18 rounded-full bg-white bg-opacity-80 shadow-lg p-0 relative disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <CameraIcon className="w-8 h-8" />
+                        <CameraIcon className="w-16 h-16 text-accent" />
                     </Button>
                 </div>
             </div>

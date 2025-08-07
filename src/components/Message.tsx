@@ -143,7 +143,7 @@ const ImagePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => 
 				src={file.url}
 				type={file.type}
 				alt={file.name}
-				className="message-media"
+				className="w-full h-auto block cursor-pointer"
 			/>
 		</div>
 	);
@@ -203,9 +203,13 @@ const Message: FunctionComponent<MessageProps> = memo(({
 
 
 	return (
-		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
+		<div class={`flex flex-col max-w-full my-4 px-3 py-2 rounded-xl break-words relative ${
+			isUser 
+				? 'ml-auto mr-0 bg-light-message-bg-user dark:bg-dark-message-bg-user text-light-text dark:text-dark-text w-fit' 
+				: 'mr-0 ml-0 bg-light-message-bg-ai dark:bg-dark-message-bg-ai w-full min-h-12 min-w-30'
+		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`}>
 			{/* Agent handles welcome messages - no special logic needed */}
-			<div class="message-content">
+			<div class="text-base leading-6 min-h-6">
 				{/* Show content if available */}
 				{content && (
 					<div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
@@ -219,7 +223,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				
 				{/* Show typing cursor for streaming content */}
 				{isLoading && content && (
-					<span class="typing-cursor">|</span>
+					<span class="text-accent font-bold animate-blink ml-0.5">|</span>
 				)}
 				
 				{/* Then display scheduling components */}
@@ -260,22 +264,22 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					<FilePreview key={index} file={file} />
 				))}
 				{audioFiles.map((file, index) => (
-					<div class="message-media-container">
+					<div class="my-2 rounded-xl overflow-hidden max-w-75 w-full">
 						<LazyMedia
 							src={file.url}
 							type={file.type}
 							alt={file.name}
-							className="message-media"
+							className="w-full h-auto block cursor-pointer"
 						/>
 					</div>
 				))}
 				{videoFiles.map((file, index) => (
-					<div class="message-media-container">
+					<div class="my-2 rounded-xl overflow-hidden max-w-75 w-full">
 						<LazyMedia
 							src={file.url}
 							type={file.type}
 							alt={file.name}
-							className="message-media"
+							className="w-full h-auto block cursor-pointer"
 						/>
 					</div>
 				))}

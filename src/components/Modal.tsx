@@ -45,19 +45,19 @@ const Modal: FunctionComponent<ModalProps> = ({ isOpen, onClose, children, title
     if (!isOpen || !isBrowser) return null;
 
     const modalContent = (
-        <div class={`modal-overlay ${fullScreen ? 'fullscreen' : ''}`} onClick={onClose}>
-            <div class={`modal-content ${fullScreen ? 'fullscreen' : ''}`} onClick={e => e.stopPropagation()}>
+        <div class={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-1000 ${fullScreen ? 'bg-black' : ''}`} onClick={onClose}>
+            <div class={`bg-light-bg dark:bg-dark-bg rounded-2xl shadow-lg w-90 max-w-600 max-h-90vh overflow-y-auto relative ${fullScreen ? 'w-full h-full max-w-none max-h-none rounded-none overflow-y-hidden bg-black' : ''}`} onClick={e => e.stopPropagation()}>
                 {(title || !fullScreen) && (
-                    <div class="modal-header">
-                        {title && <h2 class="modal-title">{title}</h2>}
-                        <Button variant="ghost" size="sm" onClick={onClose} className="modal-close">
+                    <div class="flex items-center justify-between p-6 border-b border-light-border dark:border-dark-border">
+                        {title && <h2 class="text-2xl font-semibold m-0">{title}</h2>}
+                        <Button variant="ghost" size="sm" onClick={onClose} className="bg-none border-none p-2 cursor-pointer text-accent rounded-lg transition-colors duration-200 hover:bg-light-hover dark:hover:bg-dark-hover">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
                                 <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                             </svg>
                         </Button>
                     </div>
                 )}
-                <div class={`modal-body ${fullScreen ? 'fullscreen' : ''}`}>
+                <div class={`p-6 ${fullScreen ? 'p-0 h-full' : ''}`}>
                     {children}
                 </div>
             </div>

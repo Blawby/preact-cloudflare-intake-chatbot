@@ -15,7 +15,7 @@ const SkeletonLoader: FunctionComponent<SkeletonLoaderProps> = ({
 }) => {
     return (
         <div
-            className={`skeleton-loader ${className}`}
+            className={`bg-gradient-to-r from-skeleton-start via-skeleton-end to-skeleton-start bg-200 animate-skeleton-loading opacity-70 ${className}`}
             style={{
                 height,
                 width,

@@ -24,17 +24,17 @@ const ScheduleButton: FunctionalComponent<ScheduleButtonProps> = ({
   return (
     <Button
       type="button"
-      variant="secondary"
+      variant="primary"
       onClick={onClick}
       disabled={disabled}
       aria-label="Request Consultation"
       title="Request Consultation"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="schedule-button"
+      className="flex items-center justify-center ml-2"
     >
       <CalendarIcon isHovered={isHovered} />
-      <span className="schedule-button-text">Consultation</span>
+      <span className="text-sm font-medium">Consultation</span>
     </Button>
   );
 };
@@ -48,7 +48,7 @@ interface IconProps {
  */
 const CalendarIcon: FunctionalComponent<IconProps> = ({ isHovered }) => {
   return (
-    <HeroCalendarIcon className="calendar-icon w-4 h-4" />
+    <HeroCalendarIcon className="w-4 h-4 mr-1.5" />
   );
 };
 

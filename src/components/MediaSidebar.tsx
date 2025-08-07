@@ -70,14 +70,12 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
 
   if (totalFiles === 0) {
     return (
-      <div className="media-sidebar">
+      <div className="flex flex-col gap-3">
         <h4 className="text-xs sm:text-sm lg:text-base font-semibold mb-3 text-gray-900 dark:text-white">Media, Files, and Links</h4>
-        <div className="section-content">
-          <div className="flex flex-col items-center justify-center text-center py-6">
-            <PhotoIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 mb-2" />
-            <p className="text-xs sm:text-sm lg:text-base font-medium mb-1 text-gray-900 dark:text-white">No files shared yet</p>
-            <p className="text-xs sm:text-sm opacity-70 text-gray-500 dark:text-gray-400">Files you share in the conversation will appear here</p>
-          </div>
+        <div className="flex flex-col items-center justify-center text-center py-6">
+          <PhotoIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 mb-2" />
+          <p className="text-xs sm:text-sm lg:text-base font-medium mb-1 text-gray-900 dark:text-white">No files shared yet</p>
+          <p className="text-xs sm:text-sm opacity-70 text-gray-500 dark:text-gray-400">Files you share in the conversation will appear here</p>
         </div>
       </div>
     );
@@ -85,58 +83,58 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
 
   return (
     <>
-      <div className="media-sidebar">
+      <div className="flex flex-col gap-3">
         <h4 className="text-xs sm:text-sm lg:text-base font-semibold mb-3 text-gray-900 dark:text-white">
           Media, Files, and Links ({totalFiles})
         </h4>
-        <div className="section-content">
-          <div className="media-groups">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {mediaGroups.map((group) => (
-              <div key={group.category} className="media-group">
+              <div key={group.category} className="flex flex-col gap-2">
                 <h5 className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   {categoryLabels[group.category]} ({group.files.length})
                 </h5>
-                <div className="media-files">
+                <div className="flex flex-col gap-2">
                   {group.files.map((media) => {
                     const IconComponent = iconMap[getFileIconName(media.category, media.name) as keyof typeof iconMap] || DocumentIcon;
                     
                     return (
                       <div 
                         key={media.id} 
-                        className="media-file-item"
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover cursor-pointer transition-colors duration-200"
                         onClick={() => handleMediaClick(media)}
                       >
                         {media.category === 'image' ? (
-                          <div className="media-thumbnail image-thumbnail">
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
                             <img 
                               src={media.url} 
                               alt={media.name}
-                              className="thumbnail-image"
+                              className="w-full h-full object-cover"
                             />
-                            <div className="thumbnail-overlay">
-                              <EyeIcon className="overlay-icon w-4 h-4" />
+                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
+                              <EyeIcon className="text-white w-4 h-4" />
                             </div>
                           </div>
                         ) : (
-                          <div className="media-thumbnail file-thumbnail">
-                            <IconComponent className="file-icon w-6 h-6" />
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-dark-hover flex items-center justify-center flex-shrink-0">
+                            <IconComponent className="text-gray-600 dark:text-gray-400 w-6 h-6" />
                           </div>
                         )}
                         
-                        <div className="media-file-info">
+                        <div className="flex-1 min-w-0">
                           <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" title={media.name}>
                             {media.name.length > 20 ? `${media.name.substring(0, 20)}...` : media.name}
                           </div>
-                          <div className="file-meta">
-                            <span className="text-xs sm:text-xs text-accent-500">{formatFileSize(media.size)}</span>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-accent-500">{formatFileSize(media.size)}</span>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={(e) => handleDownload(media, e)}
                               title="Download file"
-                              className="download-button"
+                              className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
                             >
-                              <ArrowDownTrayIcon className="download-icon w-3 h-3" />
+                              <ArrowDownTrayIcon className="w-3 h-3" />
                             </Button>
                           </div>
                         </div>
