@@ -1418,7 +1418,11 @@ export function App() {
 					)}
 
 					{/* Center Column - Main Content */}
-					<div className={features.enableLeftSidebar ? "grid-center" : "grid-center-full"}>
+					<div className={
+						features.enableLeftSidebar 
+							? (currentTab === 'review' ? "grid-center-full" : "grid-center") 
+							: "grid-center-full"
+					}>
 						<div 
 							className="chat-container" 
 							role="application" 
@@ -1681,59 +1685,61 @@ export function App() {
 						</div>
 					</div>
 
-					{/* Right Column */}
-					<div className="grid-right">
-						<div className="team-sidebar">
-							<TeamProfile
-								name={teamConfig.name}
-								profileImage={teamConfig.profileImage}
-								teamId={teamId}
-								variant="sidebar"
-								showVerified={true}
-							/>
+					{/* Right Column - Hidden when review tab is active for better parity with mobile */}
+					{currentTab !== 'review' && (
+						<div className="grid-right">
+							<div className="team-sidebar">
+								<TeamProfile
+									name={teamConfig.name}
+									profileImage={teamConfig.profileImage}
+									teamId={teamId}
+									variant="sidebar"
+									showVerified={true}
+								/>
 
-							{/* Actions Row */}
-							<div className="team-actions">
-								<Button 
-									variant="primary"
-									onClick={handleViewMatter}
-									title={sidebarMatter ? "View matter details" : "Create a new matter"}
-								>
-									<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-									</svg>
-									{sidebarMatter ? 'View Matter' : 'Create Matter'}
-								</Button>
-							</div>
-
-							{/* Matter Canvas in Sidebar */}
-							{sidebarMatter && (
-								<div className="team-section">
-									<h4 className="section-title">
-										{sidebarMatter.matterNumber ? `Matter ${sidebarMatter.matterNumber}` : 'Case Summary'}
-									</h4>
-									<div className="section-content">
-										<MatterCanvas
-											matterId={sidebarMatter.matterId}
-											matterNumber={sidebarMatter.matterNumber}
-											service={sidebarMatter.service}
-											matterSummary={sidebarMatter.matterSummary}
-							
-											answers={sidebarMatter.answers}
-										/>
-									</div>
+								{/* Actions Row */}
+								<div className="team-actions">
+									<Button 
+										variant="primary"
+										onClick={handleViewMatter}
+										title={sidebarMatter ? "View matter details" : "Create a new matter"}
+									>
+										<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+										</svg>
+										{sidebarMatter ? 'View Matter' : 'Create Matter'}
+									</Button>
 								</div>
-							)}
 
-							{/* Media Section */}
-							<div className="team-section">
-								<MediaSidebar messages={messages} />
+								{/* Matter Canvas in Sidebar */}
+								{sidebarMatter && (
+									<div className="team-section">
+										<h4 className="section-title">
+											{sidebarMatter.matterNumber ? `Matter ${sidebarMatter.matterNumber}` : 'Case Summary'}
+										</h4>
+										<div className="section-content">
+											<MatterCanvas
+												matterId={sidebarMatter.matterId}
+												matterNumber={sidebarMatter.matterNumber}
+												service={sidebarMatter.service}
+												matterSummary={sidebarMatter.matterSummary}
+						
+												answers={sidebarMatter.answers}
+											/>
+										</div>
+									</div>
+								)}
+
+								{/* Media Section */}
+								<div className="team-section">
+									<MediaSidebar messages={messages} />
+								</div>
+
+								{/* Privacy & Support Section */}
+								<PrivacySupportSidebar />
 							</div>
-
-							{/* Privacy & Support Section */}
-							<PrivacySupportSidebar />
 						</div>
-					</div>
+					)}
 
 					{/* Mobile Top Navigation */}
 					<MobileTopNav
