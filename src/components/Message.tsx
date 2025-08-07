@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
-import ReactMarkdown from 'react-markdown';
+import { useState, useEffect } from 'preact/hooks';
 import LazyMedia from './LazyMedia';
 import MatterCanvas from './MatterCanvas';
 import PaymentEmbed from './PaymentEmbed';
@@ -15,7 +15,6 @@ import {
 	VideoCameraIcon,
 	ClipboardDocumentIcon
 } from '@heroicons/react/24/outline';
-import { useState } from 'preact/hooks';
 
 // Agent handles all scheduling and matter creation - no lazy components needed
 
@@ -168,6 +167,16 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	showFeedback = true,
 	onFeedbackSubmit
 }) => {
+	const [isClient, setIsClient] = useState(false);
+	const [ReactMarkdown, setReactMarkdown] = useState<any>(null);
+
+	useEffect(() => {
+		setIsClient(true);
+		// Dynamically import ReactMarkdown only on the client side
+		import('react-markdown').then((module) => {
+			setReactMarkdown(() => module.default);
+		});
+	}, []);
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
 	const audioFiles = files.filter(file => file.type.startsWith('audio/'));
 	const videoFiles = files.filter(file => file.type.startsWith('video/'));
@@ -192,7 +201,11 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				{/* Show content if available */}
 				{content && (
 					<div className="prose prose-sm max-w-none dark:prose-invert">
-						<ReactMarkdown>{content}</ReactMarkdown>
+						{isClient && ReactMarkdown ? (
+							<ReactMarkdown>{content}</ReactMarkdown>
+						) : (
+							<div dangerouslySetInnerHTML={{ __html: content }} />
+						)}
 					</div>
 				)}
 				
