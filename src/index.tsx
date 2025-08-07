@@ -128,22 +128,6 @@ export function App() {
 	// Simplified state - agent handles all conversation flow
 	const [currentTab, setCurrentTab] = useState<'chats' | 'matters' | 'review'>('chats');
 	
-	// Handle back button behavior for review tab
-	useEffect(() => {
-		const handlePopState = (event: PopStateEvent) => {
-			// If we're on the review tab and user hits back, go to chats instead
-			if (currentTab === 'review') {
-				event.preventDefault();
-				setCurrentTab('chats');
-				// Push a new state to prevent the back button from going to external URLs
-				window.history.pushState(null, '', window.location.pathname + window.location.search);
-			}
-		};
-
-		window.addEventListener('popstate', handlePopState);
-		return () => window.removeEventListener('popstate', handlePopState);
-	}, [currentTab]);
-	
 	// State for matters
 	const [matters, setMatters] = useState<Matter[]>([]);
 	const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
