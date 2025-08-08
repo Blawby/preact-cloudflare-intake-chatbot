@@ -30,7 +30,7 @@ export function App() {
 		onError: (error) => console.error('Team config error:', error)
 	});
 
-	const { messages, sendMessage, addMessage, updateMessage, cancelStreaming } = useMessageHandling({
+	const { messages, sendMessage, addMessage, cancelStreaming } = useMessageHandling({
 		teamId,
 		sessionId,
 		onError: (error) => console.error('Message handling error:', error)
@@ -143,88 +143,19 @@ export function App() {
 	const debouncedCreateMatterStart = useCallback(
 		debounce(() => {
 			// Send user's matter creation request message
-			const matterMessage: ChatMessageUI = {
-				id: crypto.randomUUID(),
-				content: "I'd like to create a matter and get help with my legal concern.",
-				isUser: true,
-				role: 'user',
-				timestamp: Date.now()
-			};
-			
-			addMessage(matterMessage);
+			sendMessage("I'd like to create a matter and get help with my legal concern.", []);
 			setInputValue('');
-			
-			// Add placeholder message with loading indicator (ChatGPT style)
-			const loadingMessageId = crypto.randomUUID();
-			const loadingMessage: ChatMessageUI = {
-				id: loadingMessageId,
-				content: "Let me set up your matter creation process...",
-				isUser: false,
-				role: 'assistant',
-				timestamp: Date.now(),
-				isLoading: true
-			};
-			addMessage(loadingMessage);
-			
-			// Start matter creation flow
-			setTimeout(() => {
-				const services = teamConfig.availableServices || [];
-				const serviceOptions = services.length > 0 
-					? services.map(service => `• ${service}`).join('\n')
-					: '• Family Law\n• Business Law\n• Employment Law\n• Real Estate\n• Criminal Law\n• Other';
-				
-				// Update the loading message with actual content
-				updateMessage(loadingMessageId, {
-							content: `I'm here to help you create a matter and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
-							isLoading: false,
-							matterCreation: {
-								type: 'service-selection',
-								availableServices: services
-							}
-				});
-			}, 1000);
 		}, 500), // 500ms debounce delay
-		[messages, teamConfig.availableServices, addMessage, updateMessage]
+		[messages, sendMessage]
 	);
 
 	const debouncedScheduleStart = useCallback(
 		debounce(() => {
 			// Send user's scheduling request message
-			const schedulingMessage: ChatMessageUI = {
-				id: crypto.randomUUID(),
-				content: "I'd like to request a consultation.",
-				isUser: true,
-				role: 'user',
-				timestamp: Date.now()
-			};
-			
-			addMessage(schedulingMessage);
+			sendMessage("I'd like to request a consultation.", []);
 			setInputValue('');
-			
-			// Add placeholder message with loading indicator (ChatGPT style)
-			const loadingMessageId = crypto.randomUUID();
-			const loadingMessage: ChatMessageUI = {
-				id: loadingMessageId,
-				content: "Let me help you schedule a consultation...",
-				isUser: false,
-				role: 'assistant',
-				timestamp: Date.now(),
-				isLoading: true
-			};
-			addMessage(loadingMessage);
-			
-			// Use our scheduling utility to create the AI response
-			setTimeout(() => {
-				const aiResponse = createSchedulingResponse('initial');
-				// Update the loading message with actual content
-				updateMessage(loadingMessageId, {
-							content: aiResponse.content,
-							isLoading: false,
-					scheduling: aiResponse.scheduling as any
-				});
-			}, 800);
 		}, 500), // 500ms debounce delay
-		[messages, addMessage, updateMessage]
+		[messages, sendMessage]
 	);
 
 	// Add matter creation handlers (now debounced)
@@ -287,17 +218,23 @@ export function App() {
 	};
 
 	// Handle media capture
-	const handleMediaCaptureWrapper = (blob: Blob, type: 'audio' | 'video') => {
-		const file = handleMediaCapture(blob, type);
-		const newMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: '',
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now(),
-			files: [file],
-		};
-		addMessage(newMessage);
+	const handleMediaCaptureWrapper = async (blob: Blob, type: 'audio' | 'video') => {
+		try {
+			// Create a File object from the blob
+			const fileName = `Recording_${new Date().toISOString()}.${type === 'audio' ? 'webm' : 'mp4'}`;
+			const file = new File([blob], fileName, { type: blob.type });
+			
+			// Upload the file to backend
+			await handleFileSelect([file]);
+			
+			// Send a message with the uploaded file
+			sendMessage(`I've recorded a ${type} message.`, []);
+			
+		} catch (error) {
+			console.error('Failed to upload captured media:', error);
+			// Show error message to user
+			sendMessage("I'm sorry, I couldn't upload the recorded media. Please try again.", []);
+		}
 	};
 
 	// Handle learn services
