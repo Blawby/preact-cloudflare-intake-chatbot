@@ -1,15 +1,40 @@
 import { FunctionComponent } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 import { CloudArrowUpIcon } from '@heroicons/react/24/outline';
 
 interface DragDropOverlayProps {
   isVisible: boolean;
+  onClose?: () => void;
 }
 
-const DragDropOverlay: FunctionComponent<DragDropOverlayProps> = ({ isVisible }) => {
+const DragDropOverlay: FunctionComponent<DragDropOverlayProps> = ({ isVisible, onClose }) => {
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isVisible && overlayRef.current) {
+      overlayRef.current.focus();
+    }
+  }, [isVisible]);
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && onClose) {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    if (isVisible) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isVisible, onClose]);
+
   if (!isVisible) return null;
 
   return (
     <div 
+      ref={overlayRef}
+      tabIndex={-1}
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-white/85 to-white/95 dark:from-dark-bg/85 dark:to-dark-bg/95 backdrop-blur-sm" 
       role="dialog"
       aria-label="File upload"

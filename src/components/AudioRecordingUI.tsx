@@ -303,7 +303,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
     };
 
     return (
-        <div className="flex items-center gap-4 w-full flex-1 p-0 m-0 bg-none border-none h-8 animate-fade-in" role="dialog" aria-label="Audio recording in progress">
+        <div className="flex items-center gap-4 w-full flex-1 p-0 m-0 bg-none border-none h-8 animate-fade-in" role="dialog" aria-modal="true" aria-label="Audio recording in progress">
             <Button 
                 variant="ghost"
                 size="sm"

@@ -21,14 +21,6 @@ export async function submitContactForm(
   const loadingMessageId = crypto.randomUUID();
   
   try {
-    const loadingMessage: ChatMessageUI = {
-      id: loadingMessageId,
-      content: "Thank you! Let me submit your information to our legal team...",
-      isUser: false,
-      role: 'assistant',
-      timestamp: Date.now(),
-      isLoading: true
-    };
     onLoadingMessage(loadingMessageId);
     
     const formPayload = formatFormData(formData, teamId);

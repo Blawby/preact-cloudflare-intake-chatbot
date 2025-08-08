@@ -39,13 +39,13 @@ export function App() {
 	const {
 		previewFiles,
 		isDragging,
+		setIsDragging,
 		handlePhotoSelect,
 		handleCameraCapture,
 		handleFileSelect,
 		handleMediaCapture,
 		removePreviewFile,
-		clearPreviewFiles,
-		setupDragHandlers
+		clearPreviewFiles
 	} = useFileUpload({
 		teamId,
 		sessionId,
@@ -84,9 +84,6 @@ export function App() {
 
 	// Setup global event handlers
 	useEffect(() => {
-		// Setup drag handlers
-		const cleanupDrag = setupDragHandlers();
-		
 		// Setup keyboard handlers
 		const cleanupKeyboard = setupGlobalKeyboardListeners({
 			onEscape: handleEscape,
@@ -97,10 +94,9 @@ export function App() {
 		});
 
 		return () => {
-			cleanupDrag?.();
 			cleanupKeyboard?.();
 		};
-	}, [setupDragHandlers, handleEscape, handleFocusInput]);
+	}, [handleEscape, handleFocusInput]);
 
 	// Setup scroll behavior
 	useEffect(() => {
@@ -412,7 +408,7 @@ export function App() {
 
 	return (
 		<>
-			<DragDropOverlay isVisible={isDragging} />
+			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
 			
 			<AppLayout
 				teamNotFound={teamNotFound}

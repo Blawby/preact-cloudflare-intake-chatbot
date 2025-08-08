@@ -263,8 +263,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     } catch (error) {
       console.error('Error sending message:', error);
       
-      // Update placeholder with error message
-      const placeholderId = Date.now().toString();
+      // Update placeholder with error message using the existing placeholderId
       setMessages(prev => prev.map(msg => 
         msg.id === placeholderId ? { 
           ...msg, 

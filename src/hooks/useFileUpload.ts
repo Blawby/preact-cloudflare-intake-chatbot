@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'preact/hooks';
+import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 import { FileAttachment } from '../../worker/types';
 
 interface UseFileUploadOptions {
@@ -33,8 +33,8 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
 
-  // Handle photo selection
-  const handlePhotoSelect = useCallback(async (files: File[]) => {
+  // Shared file upload logic
+  const uploadFiles = useCallback(async (files: File[]) => {
     if (!teamId || !sessionId) {
       const error = 'Missing team or session ID. Cannot upload files.';
       onError?.(error);
@@ -57,54 +57,21 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
       }
     }
   }, [teamId, sessionId, onError]);
+
+  // Handle photo selection
+  const handlePhotoSelect = useCallback(async (files: File[]) => {
+    await uploadFiles(files);
+  }, [uploadFiles]);
 
   // Handle camera capture
   const handleCameraCapture = useCallback(async (file: File) => {
-    if (!teamId || !sessionId) {
-      const error = 'Missing team or session ID. Cannot upload files.';
-      onError?.(error);
-      return;
-    }
-    
-    try {
-      const uploaded = await uploadFileToBackend(file, teamId, sessionId);
-      const fileAttachment: FileAttachment = {
-        name: uploaded.fileName,
-        size: uploaded.fileSize || file.size,
-        type: uploaded.fileType,
-        url: uploaded.url,
-      };
-      setPreviewFiles(prev => [...prev, fileAttachment]);
-    } catch (err: any) {
-      const error = `Failed to upload file: ${file.name}\n${err.message}`;
-      onError?.(error);
-    }
-  }, [teamId, sessionId, onError]);
+    await uploadFiles([file]);
+  }, [uploadFiles]);
 
   // Handle file selection
   const handleFileSelect = useCallback(async (files: File[]) => {
-    if (!teamId || !sessionId) {
-      const error = 'Missing team or session ID. Cannot upload files.';
-      onError?.(error);
-      return;
-    }
-    
-    for (const file of files) {
-      try {
-        const uploaded = await uploadFileToBackend(file, teamId, sessionId);
-        const fileAttachment: FileAttachment = {
-          name: uploaded.fileName,
-          size: uploaded.fileSize || file.size,
-          type: uploaded.fileType,
-          url: uploaded.url,
-        };
-        setPreviewFiles(prev => [...prev, fileAttachment]);
-      } catch (err: any) {
-        const error = `Failed to upload file: ${file.name}\n${err.message}`;
-        onError?.(error);
-      }
-    }
-  }, [teamId, sessionId, onError]);
+    await uploadFiles(files);
+  }, [uploadFiles]);
 
   // Remove preview file
   const removePreviewFile = useCallback((index: number) => {
@@ -197,8 +164,8 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
     }
   }, [handlePhotoSelect, handleFileSelect, onError]);
 
-  // Setup global drag handlers
-  const setupDragHandlers = useCallback(() => {
+  // Setup global drag handlers with automatic cleanup
+  useEffect(() => {
     if (typeof document !== 'undefined') {
       document.body.addEventListener('dragenter', handleDragEnter);
       document.body.addEventListener('dragleave', handleDragLeave);
@@ -217,12 +184,12 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
   return {
     previewFiles,
     isDragging,
+    setIsDragging,
     handlePhotoSelect,
     handleCameraCapture,
     handleFileSelect,
     handleMediaCapture,
     removePreviewFile,
-    clearPreviewFiles,
-    setupDragHandlers
+    clearPreviewFiles
   };
 }; 
