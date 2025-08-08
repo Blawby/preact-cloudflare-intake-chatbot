@@ -38,6 +38,9 @@ interface ChatContainerProps {
   handleMediaCapture: (blob: Blob, type: 'audio' | 'video') => void;
   isRecording: boolean;
   setIsRecording: (v: boolean) => void;
+  
+  // Input control prop
+  clearInput?: boolean;
 }
 
 const ChatContainer: FunctionComponent<ChatContainerProps> = ({
@@ -64,7 +67,8 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   handleFileSelect,
   handleMediaCapture,
   isRecording,
-  setIsRecording
+  setIsRecording,
+  clearInput
 }) => {
   const [inputValue, setInputValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -101,6 +105,17 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
       textareaRef.current.style.height = `${newHeight}px`;
     }
   }, []);
+
+  // Clear input when clearInput prop is true
+  useEffect(() => {
+    if (clearInput) {
+      setInputValue('');
+      if (textareaRef.current) {
+        textareaRef.current.value = '';
+        textareaRef.current.style.height = '24px';
+      }
+    }
+  }, [clearInput]);
 
   const handleSubmit = () => {
     if (!inputValue.trim() && previewFiles.length === 0) return;

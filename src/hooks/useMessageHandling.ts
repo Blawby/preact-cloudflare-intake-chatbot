@@ -123,7 +123,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                       msg.id === placeholderId ? { 
                         ...msg, 
                         content: currentContent,
-                        isLoading: false 
+                        isLoading: true 
                       } : msg
                     ));
                     break;
@@ -233,53 +233,37 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
 
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
+    // Create user message
+    const userMessage: ChatMessageUI = {
+      id: crypto.randomUUID(),
+      content: message,
+      isUser: true,
+      role: 'user',
+      timestamp: Date.now(),
+      files: attachments
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Add a placeholder AI message immediately that will be updated
+    const placeholderId = Date.now().toString();
+    const placeholderMessage: ChatMessageUI = {
+      id: placeholderId,
+      content: '',
+      isUser: false,
+      role: 'assistant',
+      timestamp: Date.now(),
+      isLoading: true
+    };
+    
+    setMessages(prev => [...prev, placeholderMessage]);
+    
+    // Create message history from existing messages
+    const messageHistory = createMessageHistory(messages, message);
+    
     try {
-      // Create user message
-      const userMessage: ChatMessageUI = {
-        id: crypto.randomUUID(),
-        content: message,
-        isUser: true,
-        role: 'user',
-        timestamp: Date.now(),
-        files: attachments
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-      
-      // Add a placeholder AI message immediately that will be updated
-      const placeholderId = Date.now().toString();
-      const placeholderMessage: ChatMessageUI = {
-        id: placeholderId,
-        content: '',
-        isUser: false,
-        role: 'assistant',
-        timestamp: Date.now(),
-        isLoading: true
-      };
-      
-      setMessages(prev => [...prev, placeholderMessage]);
-      
-      // Create message history from existing messages
-      const messageHistory = createMessageHistory(messages, message);
-      
       // Try streaming - if it fails, show a clean error message
-      try {
-        await sendMessageWithStreaming(messageHistory, placeholderId, attachments);
-      } catch (streamingError) {
-        console.warn('Streaming failed:', streamingError);
-        
-        // Show a clean error message instead of trying regular API
-        setMessages(prev => prev.map(msg => 
-          msg.id === placeholderId ? { 
-            ...msg, 
-            content: "I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact us directly if the issue persists.",
-            isLoading: false 
-          } : msg
-        ));
-        
-        onError?.('AI service connection failed');
-      }
-      
+      await sendMessageWithStreaming(messageHistory, placeholderId, attachments);
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -287,7 +271,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       setMessages(prev => prev.map(msg => 
         msg.id === placeholderId ? { 
           ...msg, 
-          content: "I'm having trouble connecting to our AI service right now. Please try again in a moment.",
+          content: "I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact us directly if the issue persists.",
           isLoading: false 
         } : msg
       ));

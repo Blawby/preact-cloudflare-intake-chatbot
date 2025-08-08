@@ -19,7 +19,7 @@ const RESIZE_DEBOUNCE_DELAY = 100;
 
 export function App() {
 	// Core state
-	const [inputValue, setInputValue] = useState('');
+	const [clearInputTrigger, setClearInputTrigger] = useState(0);
 	const [sessionId] = useState<string>(() => crypto.randomUUID());
 	const [currentTab, setCurrentTab] = useState<'chats'>('chats');
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -69,11 +69,11 @@ export function App() {
 
 	// Create stable callback references for keyboard handlers
 	const handleEscape = useCallback(() => {
-		if (inputValue.trim() || previewFiles.length > 0) {
-			setInputValue('');
+		if (previewFiles.length > 0) {
 			clearPreviewFiles();
+			setClearInputTrigger(prev => prev + 1);
 		}
-	}, [inputValue, previewFiles.length, clearPreviewFiles]);
+	}, [previewFiles.length, clearPreviewFiles]);
 
 	const handleFocusInput = useCallback(() => {
 			const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
@@ -290,6 +290,7 @@ export function App() {
 					handleMediaCapture={handleMediaCaptureWrapper}
                                     isRecording={isRecording}
                                     setIsRecording={setIsRecording}
+									clearInput={clearInputTrigger > 0}
 				/>
 			</AppLayout>
 		</>
