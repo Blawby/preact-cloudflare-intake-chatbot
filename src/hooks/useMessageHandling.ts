@@ -98,11 +98,13 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
           buffer = events.pop() || ''; // Keep incomplete event in buffer
           
           for (const event of events) {
-            // Find the data line in this event
-            const dataLine = event.split('\n').find(line => line.startsWith('data: '));
-            if (dataLine) {
+            // Collect all data lines in this event
+            const dataLines = event.split('\n').filter(line => line.startsWith('data: '));
+            if (dataLines.length > 0) {
               try {
-                const data = JSON.parse(dataLine.slice(6)); // Remove 'data: ' prefix
+                // Concatenate all data lines with newline separators
+                const combinedData = dataLines.map(line => line.slice(6)).join('\n');
+                const data = JSON.parse(combinedData);
                 
                 switch (data.type) {
                   case 'connected':
@@ -265,6 +267,12 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       // Try streaming - if it fails, show a clean error message
       await sendMessageWithStreaming(messageHistory, placeholderId, attachments);
     } catch (error) {
+      // Check if this is an AbortError (user cancelled request)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Request was cancelled by user');
+        return; // Don't show error message for user-initiated cancellation
+      }
+      
       console.error('Error sending message:', error);
       
       // Update placeholder with error message using the existing placeholderId

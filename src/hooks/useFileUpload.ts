@@ -90,8 +90,43 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
 
   // Handle file selection
   const handleFileSelect = useCallback(async (files: File[]) => {
-    await uploadFiles(files);
-  }, [uploadFiles]);
+    if (!teamId || !sessionId) {
+      const error = 'Missing team or session ID. Cannot upload files.';
+      onError?.(error);
+      return [];
+    }
+    
+    try {
+      // Upload files in parallel for better UX
+      const uploadPromises = files.map(async (file) => {
+        try {
+          const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+          return {
+            name: uploaded.fileName,
+            size: uploaded.fileSize || file.size,
+            type: uploaded.fileType,
+            url: uploaded.url,
+          } as FileAttachment;
+        } catch (err: any) {
+          const error = `Failed to upload file: ${file.name}\n${err.message}`;
+          onError?.(error);
+          return null; // Return null for failed uploads
+        }
+      });
+      
+      const results = await Promise.all(uploadPromises);
+      const successfulUploads = results.filter((result): result is FileAttachment => result !== null);
+      
+      if (successfulUploads.length > 0) {
+        setPreviewFiles(prev => [...prev, ...successfulUploads]);
+      }
+      
+      return successfulUploads;
+    } catch (error) {
+      console.error('Upload batch failed:', error);
+      return [];
+    }
+  }, [teamId, sessionId, onError]);
 
   // Remove preview file
   const removePreviewFile = useCallback((index: number) => {

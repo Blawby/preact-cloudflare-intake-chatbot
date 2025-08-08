@@ -144,7 +144,7 @@ export function App() {
 		debounce(() => {
 			// Send user's matter creation request message
 			sendMessage("I'd like to create a matter and get help with my legal concern.", []);
-			setInputValue('');
+			setClearInputTrigger(prev => prev + 1);
 		}, 500), // 500ms debounce delay
 		[messages, sendMessage]
 	);
@@ -153,7 +153,7 @@ export function App() {
 		debounce(() => {
 			// Send user's scheduling request message
 			sendMessage("I'd like to request a consultation.", []);
-			setInputValue('');
+			setClearInputTrigger(prev => prev + 1);
 		}, 500), // 500ms debounce delay
 		[messages, sendMessage]
 	);
@@ -224,11 +224,11 @@ export function App() {
 			const fileName = `Recording_${new Date().toISOString()}.${type === 'audio' ? 'webm' : 'mp4'}`;
 			const file = new File([blob], fileName, { type: blob.type });
 			
-			// Upload the file to backend
-			await handleFileSelect([file]);
+			// Upload the file to backend and get metadata
+			const uploadedFiles = await handleFileSelect([file]);
 			
-			// Send a message with the uploaded file
-			sendMessage(`I've recorded a ${type} message.`, []);
+			// Send a message with the uploaded file metadata
+			sendMessage(`I've recorded a ${type} message.`, uploadedFiles);
 			
 		} catch (error) {
 			console.error('Failed to upload captured media:', error);
