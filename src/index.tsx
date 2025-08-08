@@ -159,6 +159,15 @@ export function App() {
 							document.getElementById('status').innerHTML = '✅ Iframe loaded successfully';
 							document.getElementById('status').style.background = '#d4edda';
 							document.getElementById('status').style.color = '#155724';
+							
+							// Try to access iframe content
+							try {
+								const iframe = document.querySelector('iframe');
+								const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+								console.log('✅ Iframe content is accessible');
+							} catch (e) {
+								console.log(`❌ Iframe content is blocked: ${e.message}`);
+							}
 						}}
 						onError={() => {
 							console.error('❌ Iframe failed to load');
@@ -175,14 +184,57 @@ export function App() {
 				
 				<button 
 					onClick={() => window.open('https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E', '_blank')}
-					style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+					style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', margin: '5px' }}
 				>
 					Open in New Tab
 				</button>
 				
+				<button 
+					onClick={async () => {
+						console.log('🔍 Testing headers for payment URL...');
+						try {
+							const response = await fetch('https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E', {
+								method: 'HEAD',
+								mode: 'cors'
+							});
+							console.log(`📊 Response Status: ${response.status} ${response.statusText}`);
+							
+							// Log all headers
+							response.headers.forEach((value, key) => {
+								console.log(`📋 Header: ${key} = ${value}`);
+							});
+							
+							// Check for specific security headers
+							const securityHeaders = ['content-security-policy', 'x-frame-options', 'frame-ancestors'];
+							console.log('🔒 Security Headers Check:');
+							securityHeaders.forEach(header => {
+								const value = response.headers.get(header);
+								if (value) {
+									console.log(`✅ ${header}: ${value}`);
+								} else {
+									console.log(`❌ ${header}: Not set`);
+								}
+							});
+						} catch (error) {
+							console.error(`❌ Fetch error: ${error.message}`);
+						}
+					}}
+					style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', margin: '5px' }}
+				>
+					Test Headers
+				</button>
+				
 				<p style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
-					Check browser console (F12) for detailed error messages
+					Check browser console (F12) for detailed error messages and header information
 				</p>
+				
+				<div style={{ marginTop: '20px', padding: '15px', background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '4px', fontFamily: 'monospace', fontSize: '12px' }}>
+					<strong>Debug Info:</strong><br/>
+					Current URL: {window.location.href}<br/>
+					Current Origin: {window.location.origin}<br/>
+					User Agent: {navigator.userAgent}<br/>
+					Referrer: {document.referrer || 'None'}
+				</div>
 			</div>
 		);
 	}

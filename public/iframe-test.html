@@ -37,6 +37,23 @@
             background: #f8d7da;
             color: #721c24;
         }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .log-container {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 
@@ -55,35 +72,141 @@
     <div id="status" class="status">Loading...</div>
     <button onclick="window.open('https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E', '_blank')">Open in
         New Tab</button>
+    <button onclick="testHeaders()">Test Headers</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+
+    <div id="log-container" class="log-container">
+        <strong>Console Logs:</strong><br>
+        <div id="logs"></div>
+    </div>
 
     <script>
+        const PAYMENT_URL = 'https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E';
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            console.log(logEntry);
+
+            const logsDiv = document.getElementById('logs');
+            const logElement = document.createElement('div');
+            logElement.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#6c757d';
+            logElement.textContent = logEntry;
+            logsDiv.appendChild(logElement);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
         function handleLoad() {
+            log('✅ Iframe loaded successfully', 'success');
             document.getElementById('status').innerHTML = '✅ Iframe loaded successfully';
             document.getElementById('status').className = 'status success';
-            console.log('✅ Iframe loaded successfully');
+
+            // Try to access iframe content
+            try {
+                const iframe = document.querySelector('iframe');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                log('✅ Iframe content is accessible', 'success');
+            } catch (e) {
+                log(`❌ Iframe content is blocked: ${e.message}`, 'error');
+            }
         }
 
         function handleError() {
+            log('❌ Iframe failed to load', 'error');
             document.getElementById('status').innerHTML = '❌ Iframe failed to load';
             document.getElementById('status').className = 'status error';
-            console.error('❌ Iframe failed to load');
         }
+
+        async function testHeaders() {
+            log('🔍 Testing headers for payment URL...', 'info');
+
+            try {
+                const response = await fetch(PAYMENT_URL, {
+                    method: 'HEAD',
+                    mode: 'cors'
+                });
+
+                log(`📊 Response Status: ${response.status} ${response.statusText}`, 'info');
+
+                // Log all headers
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                    log(`📋 Header: ${key} = ${value}`, 'info');
+                });
+
+                // Check for specific security headers
+                const securityHeaders = [
+                    'content-security-policy',
+                    'x-frame-options',
+                    'frame-ancestors',
+                    'x-content-type-options',
+                    'x-xss-protection'
+                ];
+
+                log('🔒 Security Headers Check:', 'info');
+                securityHeaders.forEach(header => {
+                    const value = response.headers.get(header);
+                    if (value) {
+                        log(`✅ ${header}: ${value}`, 'success');
+                    } else {
+                        log(`❌ ${header}: Not set`, 'error');
+                    }
+                });
+
+            } catch (error) {
+                log(`❌ Fetch error: ${error.message}`, 'error');
+            }
+        }
+
+        // Log initial page load info
+        log('🚀 Page loaded', 'info');
+        log(`📍 Current URL: ${window.location.href}`, 'info');
+        log(`🌐 Current Origin: ${window.location.origin}`, 'info');
+        log(`📱 User Agent: ${navigator.userAgent}`, 'info');
+        log(`🔗 Referrer: ${document.referrer || 'None'}`, 'info');
 
         // Check for security policy violations
         window.addEventListener('securitypolicyviolation', function (event) {
-            console.error('🚨 Security Policy Violation:', event);
+            log(`🚨 Security Policy Violation: ${event.violatedDirective}`, 'error');
+            log(`🚨 Blocked URI: ${event.blockedURI}`, 'error');
+            log(`🚨 Document URI: ${event.documentURI}`, 'error');
+            log(`🚨 Source File: ${event.sourceFile}`, 'error');
+            log(`🚨 Line Number: ${event.lineNumber}`, 'error');
         });
 
-        // Check iframe accessibility after 3 seconds
+        // Monitor iframe loading and errors
+        window.addEventListener('message', function (event) {
+            log(`📨 Received message from iframe: ${JSON.stringify(event.data)}`, 'info');
+        });
+
+        // Check if iframes are blocked after a delay
         setTimeout(function () {
-            const iframe = document.querySelector('iframe');
-            try {
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                console.log('✅ Iframe is accessible');
-            } catch (e) {
-                console.log('❌ Iframe is blocked by security policy:', e.message);
-            }
+            log('🔍 Checking iframe accessibility...', 'info');
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach((iframe, index) => {
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    log(`✅ Iframe ${index + 1} is accessible`, 'success');
+                } catch (e) {
+                    log(`❌ Iframe ${index + 1} is blocked by security policy: ${e.message}`, 'error');
+                }
+            });
         }, 3000);
+
+        // Log CSP violations
+        window.addEventListener('error', function (event) {
+            if (event.message.includes('frame') || event.message.includes('CSP')) {
+                log(`🚨 Error: ${event.message}`, 'error');
+            }
+        });
+
+        // Test headers on page load
+        setTimeout(testHeaders, 1000);
     </script>
 </body>
 
