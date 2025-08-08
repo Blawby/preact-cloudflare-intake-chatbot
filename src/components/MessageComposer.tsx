@@ -100,7 +100,7 @@ const MessageComposer = ({
                   size="sm"
                   onClick={() => removePreviewFile(index)}
                   aria-label={`Remove ${file.name}`}
-                  className="absolute top-1 right-1 w-[18px] h-[18px] rounded-full bg-black/60 text-white border-none flex items-center justify-center cursor-pointer text-base leading-none p-0 opacity-90 transition-opacity duration-200 z-[2] hover:opacity-100"
+                  className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-black/60 text-white border-none flex items-center justify-center cursor-pointer text-base leading-none p-0 opacity-90 transition-opacity duration-200 z-[2] hover:opacity-100"
                 >
                   <XMarkIcon className="w-3.5 h-3.5" aria-hidden="true" />
                 </Button>

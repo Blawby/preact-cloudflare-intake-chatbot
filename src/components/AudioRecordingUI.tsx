@@ -303,18 +303,18 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
     };
 
     return (
-        <div className="flex items-center gap-4 w-full flex-1 p-0 m-0 bg-none border-none h-8 animate-fadeSlideIn" role="dialog" aria-label="Audio recording in progress">
+        <div className="flex items-center gap-4 w-full flex-1 p-0 m-0 bg-none border-none h-8 animate-fade-in" role="dialog" aria-label="Audio recording in progress">
             <Button 
                 variant="ghost"
                 size="sm"
                 onClick={onCancel}
                 aria-label="Cancel recording"
                 title="Cancel recording"
-                className="flex items-center justify-center w-8 h-8 p-1.5 border-none rounded-full bg-none cursor-pointer transition-all duration-200 text-light-text dark:text-dark-text bg-light-hover dark:bg-dark-hover animate-popIn"
+                className="flex items-center justify-center w-8 h-8 p-1.5 border-none rounded-full bg-none cursor-pointer transition-all duration-200 text-light-text dark:text-dark-text bg-light-hover dark:bg-dark-hover animate-zoom-in"
             >
                 <XMarkIcon className="w-5 h-5" aria-hidden="true" />
             </Button>
-            <div className="flex-1 flex items-center gap-4 h-8 animate-expandIn bg-transparent" aria-live="polite">
+            <div className="flex-1 flex items-center gap-4 h-8 animate-zoom-in bg-transparent" aria-live="polite">
                 <canvas ref={canvasRef} width="300" height="40" aria-hidden="true" className="flex-1 h-8 rounded block image-rendering-crisp-edges image-rendering-webkit-optimize-contrast bg-transparent" />
                 <div className="text-sm text-accent font-tabular-nums min-w-10 text-right" role="timer" aria-label={`Recording time: ${formatTime(recordingTime)}`}>
                     {formatTime(recordingTime)}
@@ -330,7 +330,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
                 aria-label="Confirm and send recording"
                 title="Confirm and send recording"
                 ref={confirmBtnRef}
-                className="flex items-center justify-center w-8 h-8 p-1.5 border-none rounded-full bg-none cursor-pointer transition-all duration-200 text-light-bg dark:text-dark-bg bg-light-text dark:bg-dark-text animate-popIn hover:scale-105"
+                className="flex items-center justify-center w-8 h-8 p-1.5 border-none rounded-full bg-none cursor-pointer transition-all duration-200 text-light-bg dark:text-dark-bg bg-light-text dark:bg-dark-text animate-zoom-in hover:scale-105"
             >
                 <CheckIcon className="w-5 h-5" aria-hidden="true" />
             </Button>

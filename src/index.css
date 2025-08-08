@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply box-border m-0 p-0;
+  }
+  
+  :root {
+    color-scheme: light dark;
+  }
+  
+  body {
+    @apply min-h-screen m-0;
+  }
+}

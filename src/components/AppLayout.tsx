@@ -43,10 +43,10 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   }
 
   return (
-    <div id="app" className="h-screen w-screen">
-      {/* Left Column */}
+    <div className="h-screen w-screen flex">
+      {/* Left Sidebar - Fixed width, hidden on mobile */}
       {features.enableLeftSidebar && (
-        <div className="grid-left bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto">
+        <div className="w-20 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
           <LeftSidebar 
             currentRoute={currentTab}
             onOpenMenu={() => onToggleMobileSidebar(true)}
@@ -59,15 +59,15 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
         </div>
       )}
 
-      {/* Center Column - Main Content */}
-      <div className="grid-center bg-white dark:bg-dark-bg overflow-y-auto">
+      {/* Main Content Area - Flex grow, full width on mobile */}
+      <div className="flex-1 bg-white dark:bg-dark-bg overflow-y-auto">
         <ErrorBoundary>
           {children}
         </ErrorBoundary>
       </div>
 
-      {/* Right Column - Hidden on mobile, content moved to mobile sidebar */}
-      <div className="grid-right bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
+      {/* Right Sidebar - Fixed width, hidden on mobile */}
+      <div className="w-80 bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
         <div className="p-6 text-gray-900 dark:text-white flex flex-col gap-6">
           <TeamProfile
             name={teamConfig.name}

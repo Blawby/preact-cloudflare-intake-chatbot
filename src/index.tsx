@@ -12,7 +12,7 @@ import { submitContactForm } from './utils/forms';
 import { debounce } from './utils/debounce';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import { ChatMessageUI } from '../worker/types';
-import './style.css';
+import './index.css';
 
 const ANIMATION_DURATION = 300;
 const RESIZE_DEBOUNCE_DELAY = 100;
@@ -224,7 +224,7 @@ export function App() {
 				updateMessage(loadingMessageId, {
 					content: aiResponse.content,
 					isLoading: false,
-					scheduling: aiResponse.scheduling
+					scheduling: aiResponse.scheduling as any
 				});
 			}, 800);
 		}, 500), // 500ms debounce delay
