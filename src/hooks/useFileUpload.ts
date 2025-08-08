@@ -1,0 +1,228 @@
+import { useState, useRef, useCallback } from 'preact/hooks';
+import { FileAttachment } from '../../worker/types';
+
+interface UseFileUploadOptions {
+  teamId: string;
+  sessionId: string;
+  onError?: (error: string) => void;
+}
+
+// Utility function to upload a file to backend
+async function uploadFileToBackend(file: File, teamId: string, sessionId: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('teamId', teamId);
+  formData.append('sessionId', sessionId);
+
+  const response = await fetch('/api/files/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({})) as any;
+    throw new Error(error?.error || 'File upload failed');
+  }
+  
+  const result = await response.json() as any;
+  return result.data;
+}
+
+export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptions) => {
+  const [previewFiles, setPreviewFiles] = useState<FileAttachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
+
+  // Handle photo selection
+  const handlePhotoSelect = useCallback(async (files: File[]) => {
+    if (!teamId || !sessionId) {
+      const error = 'Missing team or session ID. Cannot upload files.';
+      onError?.(error);
+      return;
+    }
+    
+    for (const file of files) {
+      try {
+        const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+        const fileAttachment: FileAttachment = {
+          name: uploaded.fileName,
+          size: uploaded.fileSize || file.size,
+          type: uploaded.fileType,
+          url: uploaded.url,
+        };
+        setPreviewFiles(prev => [...prev, fileAttachment]);
+      } catch (err: any) {
+        const error = `Failed to upload file: ${file.name}\n${err.message}`;
+        onError?.(error);
+      }
+    }
+  }, [teamId, sessionId, onError]);
+
+  // Handle camera capture
+  const handleCameraCapture = useCallback(async (file: File) => {
+    if (!teamId || !sessionId) {
+      const error = 'Missing team or session ID. Cannot upload files.';
+      onError?.(error);
+      return;
+    }
+    
+    try {
+      const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+      const fileAttachment: FileAttachment = {
+        name: uploaded.fileName,
+        size: uploaded.fileSize || file.size,
+        type: uploaded.fileType,
+        url: uploaded.url,
+      };
+      setPreviewFiles(prev => [...prev, fileAttachment]);
+    } catch (err: any) {
+      const error = `Failed to upload file: ${file.name}\n${err.message}`;
+      onError?.(error);
+    }
+  }, [teamId, sessionId, onError]);
+
+  // Handle file selection
+  const handleFileSelect = useCallback(async (files: File[]) => {
+    if (!teamId || !sessionId) {
+      const error = 'Missing team or session ID. Cannot upload files.';
+      onError?.(error);
+      return;
+    }
+    
+    for (const file of files) {
+      try {
+        const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+        const fileAttachment: FileAttachment = {
+          name: uploaded.fileName,
+          size: uploaded.fileSize || file.size,
+          type: uploaded.fileType,
+          url: uploaded.url,
+        };
+        setPreviewFiles(prev => [...prev, fileAttachment]);
+      } catch (err: any) {
+        const error = `Failed to upload file: ${file.name}\n${err.message}`;
+        onError?.(error);
+      }
+    }
+  }, [teamId, sessionId, onError]);
+
+  // Remove preview file
+  const removePreviewFile = useCallback((index: number) => {
+    setPreviewFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Clear all preview files
+  const clearPreviewFiles = useCallback(() => {
+    setPreviewFiles([]);
+  }, []);
+
+  // Handle media capture (audio/video)
+  const handleMediaCapture = useCallback((blob: Blob, type: 'audio' | 'video') => {
+    const url = URL.createObjectURL(blob);
+    const file: FileAttachment = {
+      name: `Recording_${new Date().toISOString()}.webm`,
+      size: blob.size,
+      type: blob.type,
+      url,
+    };
+
+    return file;
+  }, []);
+
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    dragCounter.current -= 1;
+    
+    // Only reset dragging state when we've left all drag elements
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(async (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setIsDragging(false);
+
+    // Get all files from the drop event
+    const droppedFiles = Array.from(e.dataTransfer?.files || []);
+    
+    if (droppedFiles.length === 0) return;
+
+    // Separate different types of files
+    const imageFiles = droppedFiles.filter(file => file.type.startsWith('image/'));
+    const videoFiles = droppedFiles.filter(file => file.type.startsWith('video/'));
+    const otherFiles = droppedFiles.filter(file => 
+      !file.type.startsWith('image/') && 
+      !file.type.startsWith('video/')
+    );
+
+    // Apply file type validation
+    const mediaFiles = [...imageFiles, ...videoFiles];
+    const safeOtherFiles = otherFiles.filter(file => {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      const disallowedExtensions = ['zip', 'exe', 'bat', 'cmd', 'msi', 'app'];
+      return !disallowedExtensions.includes(fileExtension || '');
+    });
+
+    // Handle media files
+    if (mediaFiles.length > 0) {
+      await handlePhotoSelect(mediaFiles);
+    }
+
+    // Handle other valid files
+    if (safeOtherFiles.length > 0) {
+      await handleFileSelect(safeOtherFiles);
+    }
+
+    // Show alert if any files were filtered out
+    if (safeOtherFiles.length < otherFiles.length) {
+      onError?.('Some files were not uploaded because they have disallowed file extensions (zip, exe, etc.)');
+    }
+  }, [handlePhotoSelect, handleFileSelect, onError]);
+
+  // Setup global drag handlers
+  const setupDragHandlers = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      document.body.addEventListener('dragenter', handleDragEnter);
+      document.body.addEventListener('dragleave', handleDragLeave);
+      document.body.addEventListener('dragover', handleDragOver);
+      document.body.addEventListener('drop', handleDrop);
+
+      return () => {
+        document.body.removeEventListener('dragenter', handleDragEnter);
+        document.body.removeEventListener('dragleave', handleDragLeave);
+        document.body.removeEventListener('dragover', handleDragOver);
+        document.body.removeEventListener('drop', handleDrop);
+      };
+    }
+  }, [handleDragEnter, handleDragLeave, handleDragOver, handleDrop]);
+
+  return {
+    previewFiles,
+    isDragging,
+    handlePhotoSelect,
+    handleCameraCapture,
+    handleFileSelect,
+    handleMediaCapture,
+    removePreviewFile,
+    clearPreviewFiles,
+    setupDragHandlers
+  };
+}; 

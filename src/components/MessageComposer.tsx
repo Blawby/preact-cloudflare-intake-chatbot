@@ -70,7 +70,7 @@ const MessageComposer = ({
   }, [inputValue]);
 
   return (
-    <div className="lg:pb-8 pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
+    <div className="pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
       <div className="flex flex-col w-full relative bg-white dark:bg-dark-input-bg border border-gray-200 dark:border-dark-border border-t-0 rounded-2xl p-3 min-h-[56px] gap-3 h-auto overflow-visible">
         {previewFiles.length > 0 && (
           <div className="flex flex-wrap gap-2 m-0" role="list" aria-label="File attachments">
