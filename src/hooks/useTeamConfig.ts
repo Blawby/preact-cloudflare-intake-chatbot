@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { getTeamsEndpoint } from '../config/api';
 
 interface TeamConfig {
@@ -24,6 +24,7 @@ interface UseTeamConfigOptions {
 export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
   const [teamId, setTeamId] = useState<string>('');
   const [teamNotFound, setTeamNotFound] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [teamConfig, setTeamConfig] = useState<TeamConfig>({
     name: 'Blawby AI',
     profileImage: '/blawby-favicon-iframe.png',
@@ -38,6 +39,9 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
       supportedCountries: ['US']
     }
   });
+
+  // Use ref to track if we've already fetched for this teamId
+  const fetchedTeamIds = useRef<Set<string>>(new Set());
 
   // Parse URL parameters for configuration
   const parseUrlParams = useCallback(() => {
@@ -71,16 +75,19 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
   }, []);
 
   // Fetch team configuration
-  const fetchTeamConfig = useCallback(async () => {
-    if (!teamId) {
-      return; // Don't fetch if no teamId (shouldn't happen with default)
+  const fetchTeamConfig = useCallback(async (currentTeamId: string) => {
+    if (!currentTeamId || fetchedTeamIds.current.has(currentTeamId)) {
+      return; // Don't fetch if no teamId or if we've already fetched for this teamId
     }
+    
+    setIsLoading(true);
+    fetchedTeamIds.current.add(currentTeamId);
     
     try {
       const response = await fetch(getTeamsEndpoint());
       if (response.ok) {
         const teamsResponse = await response.json() as any;
-        const team = teamsResponse.data.find((t: any) => t.slug === teamId || t.id === teamId);
+        const team = teamsResponse.data.find((t: any) => t.slug === currentTeamId || t.id === currentTeamId);
         if (team?.config) {
           const config: TeamConfig = {
             name: team.name || 'Blawby AI',
@@ -108,29 +115,36 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
       console.warn('Failed to fetch team config:', error);
       setTeamNotFound(true);
       onError?.('Failed to load team configuration');
+    } finally {
+      setIsLoading(false);
     }
-  }, [teamId, onError]);
+  }, [onError]);
 
   // Retry function for team config
   const handleRetryTeamConfig = useCallback(() => {
     setTeamNotFound(false);
-    fetchTeamConfig();
-  }, [fetchTeamConfig]);
+    // Remove from fetched set so we can retry
+    fetchedTeamIds.current.delete(teamId);
+    fetchTeamConfig(teamId);
+  }, [teamId, fetchTeamConfig]);
 
   // Initialize URL parameters on mount
   useEffect(() => {
     parseUrlParams();
   }, [parseUrlParams]);
 
-  // Fetch team config on mount and when teamId changes
+  // Fetch team config when teamId changes
   useEffect(() => {
-    fetchTeamConfig();
-  }, [fetchTeamConfig]);
+    if (teamId) {
+      fetchTeamConfig(teamId);
+    }
+  }, [teamId, fetchTeamConfig]);
 
   return {
     teamId,
     teamConfig,
     teamNotFound,
+    isLoading,
     handleRetryTeamConfig,
     setTeamId
   };

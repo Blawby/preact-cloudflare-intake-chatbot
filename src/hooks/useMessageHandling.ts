@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'preact/hooks';
 import { ChatMessageUI } from '../../worker/types';
-import { getAgentEndpoint, getAgentStreamEndpoint } from '../config/api';
+import { getAgentStreamEndpoint } from '../config/api';
 
 interface UseMessageHandlingOptions {
   teamId: string;
@@ -211,74 +211,6 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     }
   }, [teamId, sessionId]);
 
-  // Fallback to regular API
-  const sendMessageWithRegularAPI = useCallback(async (
-    messageHistory: any[], 
-    placeholderId: string
-  ) => {
-    const apiEndpoint = getAgentEndpoint();
-    
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: messageHistory,
-          teamId: teamId,
-          sessionId: sessionId
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API response error: ${response.status}`);
-      }
-      
-      // Handle JSON response from agent API
-      const data = await response.json() as any;
-      
-      const aiResponseText = data.data?.response || data.response || 'I apologize, but I encountered an error processing your request.';
-      
-      // Extract payment embed data from regular API response
-      const paymentEmbed = data.data?.metadata?.toolResult?.data?.payment_embed;
-      
-      if (paymentEmbed) {
-        console.log('Payment embed data received via regular API');
-      }
-      
-      // Update the placeholder message with the response
-      setMessages(prev => prev.map(msg => 
-        msg.id === placeholderId ? { 
-          ...msg, 
-          content: aiResponseText,
-          paymentEmbed: paymentEmbed || undefined,
-          isLoading: false 
-        } : msg
-      ));
-      
-      // Handle any actions returned by the agent
-      if (data.data?.actions && data.data.actions.length > 0) {
-        console.log('Agent actions:', data.data.actions);
-        // Actions are handled on the backend, but we can log them here
-      }
-      
-    } catch (error) {
-      console.error('Error fetching from Agent API:', error);
-      
-      // Update placeholder with error message
-      setMessages(prev => prev.map(msg => 
-        msg.id === placeholderId ? { 
-          ...msg, 
-          content: "Sorry, there was an error connecting to our AI service. Please try again later.",
-          isLoading: false 
-        } : msg
-      ));
-      
-      throw error;
-    }
-  }, [teamId, sessionId]);
-
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
     try {
@@ -310,12 +242,22 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       // Create message history from existing messages
       const messageHistory = createMessageHistory(messages, message);
       
-      // Try streaming first, fallback to regular API
+      // Try streaming - if it fails, show a clean error message
       try {
         await sendMessageWithStreaming(messageHistory, placeholderId);
       } catch (streamingError) {
-        console.warn('Streaming failed, falling back to regular API:', streamingError);
-        await sendMessageWithRegularAPI(messageHistory, placeholderId);
+        console.warn('Streaming failed:', streamingError);
+        
+        // Show a clean error message instead of trying regular API
+        setMessages(prev => prev.map(msg => 
+          msg.id === placeholderId ? { 
+            ...msg, 
+            content: "I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact us directly if the issue persists.",
+            isLoading: false 
+          } : msg
+        ));
+        
+        onError?.('AI service connection failed');
       }
       
     } catch (error) {
@@ -326,14 +268,14 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       setMessages(prev => prev.map(msg => 
         msg.id === placeholderId ? { 
           ...msg, 
-          content: "Sorry, there was an error processing your request. Please try again.",
+          content: "I'm having trouble connecting to our AI service right now. Please try again in a moment.",
           isLoading: false 
         } : msg
       ));
       
       onError?.(error instanceof Error ? error.message : 'Unknown error occurred');
     }
-  }, [messages, teamId, sessionId, createMessageHistory, sendMessageWithStreaming, sendMessageWithRegularAPI, onError]);
+  }, [messages, teamId, sessionId, createMessageHistory, sendMessageWithStreaming, onError]);
 
   // Add message to the list
   const addMessage = useCallback((message: ChatMessageUI) => {

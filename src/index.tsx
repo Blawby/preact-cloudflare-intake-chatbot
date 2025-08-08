@@ -67,6 +67,21 @@ export function App() {
 		}
 	}, [teamConfig.introMessage, messages.length, setMessages]);
 
+	// Create stable callback references for keyboard handlers
+	const handleEscape = useCallback(() => {
+		if (inputValue.trim() || previewFiles.length > 0) {
+			setInputValue('');
+			clearPreviewFiles();
+		}
+	}, [inputValue, previewFiles.length, clearPreviewFiles]);
+
+	const handleFocusInput = useCallback(() => {
+		const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
+		if (textarea) {
+			textarea.focus();
+		}
+	}, []);
+
 	// Setup global event handlers
 	useEffect(() => {
 		// Setup drag handlers
@@ -74,28 +89,18 @@ export function App() {
 		
 		// Setup keyboard handlers
 		const cleanupKeyboard = setupGlobalKeyboardListeners({
-			onEscape: () => {
-				if (inputValue.trim() || previewFiles.length > 0) {
-					setInputValue('');
-					clearPreviewFiles();
-				}
-			},
+			onEscape: handleEscape,
 			onSubmit: () => {
 				// This will be handled by ChatContainer
 			},
-			onFocusInput: () => {
-				const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
-				if (textarea) {
-					textarea.focus();
-				}
-			}
+			onFocusInput: handleFocusInput
 		});
 
 		return () => {
 			cleanupDrag?.();
 			cleanupKeyboard?.();
 		};
-	}, [setupDragHandlers, inputValue, previewFiles.length, clearPreviewFiles]);
+	}, [setupDragHandlers, handleEscape, handleFocusInput]);
 
 	// Setup scroll behavior
 	useEffect(() => {
