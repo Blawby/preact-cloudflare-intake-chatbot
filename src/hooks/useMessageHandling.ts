@@ -38,7 +38,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   // Streaming message handler using EventSource
   const sendMessageWithStreaming = useCallback(async (
     messageHistory: ChatMessageHistoryEntry[], 
-    placeholderId: string
+    placeholderId: string,
+    attachments: any[] = []
   ) => {
     // Abort any existing request
     if (abortControllerRef.current) {
@@ -54,7 +55,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     const requestBody = {
       messages: messageHistory,
       teamId: teamId,
-      sessionId: sessionId
+      sessionId: sessionId,
+      attachments: attachments
     };
 
     try {
@@ -91,14 +93,16 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
           // Decode the chunk and add to buffer
           buffer += decoder.decode(value, { stream: true });
           
-          // Process complete SSE events
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+          // Process complete SSE events (separated by double newlines)
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || ''; // Keep incomplete event in buffer
           
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
+          for (const event of events) {
+            // Find the data line in this event
+            const dataLine = event.split('\n').find(line => line.startsWith('data: '));
+            if (dataLine) {
               try {
-                const data = JSON.parse(line.slice(6)); // Remove 'data: ' prefix
+                const data = JSON.parse(dataLine.slice(6)); // Remove 'data: ' prefix
                 
                 switch (data.type) {
                   case 'connected':
@@ -260,7 +264,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       
       // Try streaming - if it fails, show a clean error message
       try {
-        await sendMessageWithStreaming(messageHistory, placeholderId);
+        await sendMessageWithStreaming(messageHistory, placeholderId, attachments);
       } catch (streamingError) {
         console.warn('Streaming failed:', streamingError);
         
