@@ -120,7 +120,7 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
                         onClick={takePhoto}
                         disabled={!isCameraReady}
                         title="Take photo"
-                        className="bg-none border-none cursor-pointer flex items-center justify-center transition-all duration-200 w-18 h-18 rounded-full bg-white bg-opacity-80 shadow-lg p-0 relative disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-none border-none cursor-pointer flex items-center justify-center transition-all duration-200 w-20 h-20 rounded-full bg-white bg-opacity-80 shadow-lg p-0 relative disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <CameraIcon className="w-16 h-16 text-accent" />
                     </Button>

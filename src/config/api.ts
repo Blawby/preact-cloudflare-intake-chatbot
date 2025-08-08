@@ -5,14 +5,12 @@ const API_MODE = (import.meta.env.DEV ? 'local' : 'deployed') as const;
 const API_CONFIG = {
   local: {
     baseUrl: 'http://localhost:8787',
-    agentEndpoint: '/api/agent',
     agentStreamEndpoint: '/api/agent/stream',
     teamsEndpoint: '/api/teams',
     healthEndpoint: '/api/health'
   },
   deployed: {
     baseUrl: 'https://blawby-ai-chatbot.paulchrisluke.workers.dev',
-    agentEndpoint: '/api/agent',
     agentStreamEndpoint: '/api/agent/stream',
     teamsEndpoint: '/api/teams',
     healthEndpoint: '/api/health'
@@ -21,11 +19,6 @@ const API_CONFIG = {
 
 export const getApiConfig = () => {
   return API_CONFIG[API_MODE];
-};
-
-export const getAgentEndpoint = () => {
-  const config = getApiConfig();
-  return `${config.baseUrl}${config.agentEndpoint}`;
 };
 
 export const getAgentStreamEndpoint = () => {

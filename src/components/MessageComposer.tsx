@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, RefObject } from 'preact/hooks';
 import { Button } from './ui/Button';
 import FileMenu from './FileMenu';
 import MediaControls from './MediaControls';
@@ -26,6 +26,7 @@ interface MessageComposerProps {
   setIsRecording: (v: boolean) => void;
   onSubmit: () => void;
   onKeyPress: (e: KeyboardEvent) => void;
+  textareaRef: RefObject<HTMLTextAreaElement>;
 }
 
 const MessageComposer = ({
@@ -42,8 +43,8 @@ const MessageComposer = ({
   setIsRecording,
   onSubmit,
   onKeyPress,
+  textareaRef,
 }: MessageComposerProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const handleInput = (e: Event) => {
     const target = e.currentTarget as HTMLTextAreaElement;
@@ -70,7 +71,7 @@ const MessageComposer = ({
   }, [inputValue]);
 
   return (
-    <div className="lg:pb-8 pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
+    <div className="pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
       <div className="flex flex-col w-full relative bg-white dark:bg-dark-input-bg border border-gray-200 dark:border-dark-border border-t-0 rounded-2xl p-3 min-h-[56px] gap-3 h-auto overflow-visible">
         {previewFiles.length > 0 && (
           <div className="flex flex-wrap gap-2 m-0" role="list" aria-label="File attachments">
@@ -100,7 +101,7 @@ const MessageComposer = ({
                   size="sm"
                   onClick={() => removePreviewFile(index)}
                   aria-label={`Remove ${file.name}`}
-                  className="absolute top-1 right-1 w-[18px] h-[18px] rounded-full bg-black/60 text-white border-none flex items-center justify-center cursor-pointer text-base leading-none p-0 opacity-90 transition-opacity duration-200 z-[2] hover:opacity-100"
+                  className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-black/60 text-white border-none flex items-center justify-center cursor-pointer text-base leading-none p-0 opacity-90 transition-opacity duration-200 z-[2] hover:opacity-100"
                 >
                   <XMarkIcon className="w-3.5 h-3.5" aria-hidden="true" />
                 </Button>

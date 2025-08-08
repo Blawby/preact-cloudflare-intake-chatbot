@@ -84,7 +84,7 @@ const Lightbox: FunctionComponent<LightboxProps> = ({ media, onClose }) => {
     };
 
     const content = (
-        <div className={`fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-9999 cursor-pointer animate-fadeIn ${isClosing ? 'animate-fadeOut' : ''}`} onClick={handleClose}>
+        <div className={`fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-9999 cursor-pointer animate-fade-in ${isClosing ? 'animate-fade-out' : ''}`} onClick={handleClose}>
             <div className="relative max-w-90vw max-h-90vh flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
                 {renderMediaContent()}
                 <div className="text-center text-white">
@@ -94,7 +94,7 @@ const Lightbox: FunctionComponent<LightboxProps> = ({ media, onClose }) => {
                     </p>
                 </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleClose} className="absolute top-4 right-4 w-10 h-10 border-none bg-black bg-opacity-50 text-white rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 hover:bg-black hover:bg-opacity-70 hover:scale-110 animate-fadeSlideIn">
+            <Button variant="ghost" size="sm" onClick={handleClose} className="absolute top-4 right-4 w-10 h-10 border-none bg-black bg-opacity-50 text-white rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 hover:bg-black hover:bg-opacity-70 hover:scale-110 animate-zoom-in">
                 <XMarkIcon className="w-6 h-6" />
             </Button>
         </div>
