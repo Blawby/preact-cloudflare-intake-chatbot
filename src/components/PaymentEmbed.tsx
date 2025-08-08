@@ -19,6 +19,7 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
   onClose
 }) => {
   const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -34,10 +35,14 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
   }, []);
 
   const handleIframeLoad = () => {
-    // Iframe loaded successfully
+    console.log('✅ Payment iframe loaded successfully');
+    setIsLoading(false);
+    setHasError(false);
   };
 
   const handleIframeError = () => {
+    console.error('❌ Payment iframe failed to load');
+    setIsLoading(false);
     setHasError(true);
   };
 
@@ -54,6 +59,7 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
   const handlePaymentClick = () => {
     setShowPaymentModal(true);
     setHasError(false);
+    setIsLoading(true);
   };
 
   const handlePaymentModalClose = () => {
@@ -66,6 +72,20 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
       onPaymentComplete(paymentId);
     }
   };
+
+  // Check for CSP violations
+  useEffect(() => {
+    const handleSecurityViolation = (event: SecurityPolicyViolationEvent) => {
+      console.error('🚨 Security Policy Violation:', event);
+      if (event.violatedDirective === 'frame-ancestors') {
+        setHasError(true);
+        setIsLoading(false);
+      }
+    };
+
+    window.addEventListener('securitypolicyviolation', handleSecurityViolation);
+    return () => window.removeEventListener('securitypolicyviolation', handleSecurityViolation);
+  }, []);
 
   // Shared Payment Modal/Drawer Component
   const PaymentModal = () => {
@@ -127,10 +147,10 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <CreditCardIcon className="w-6 h-6" style={{ color: 'var(--accent-color)' }} />
-                  					<h3 className="text-base sm:text-lg lg:text-xl font-semibold m-0 !mt-0 !mb-0 text-gray-900 dark:text-white">Complete Payment</h3>
+                  <h3 className="text-base sm:text-lg lg:text-xl font-semibold m-0 !mt-0 !mb-0 text-gray-900 dark:text-white">Complete Payment</h3>
                   {amount && (
                     <span 
-                      						className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold"
+                      className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold"
                       style={{
                         backgroundColor: 'var(--accent-color)',
                         color: '#1a1a1a'
@@ -152,6 +172,21 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
               
               {/* Payment iframe - Fixed height container */}
               <div className={`relative ${isMobile ? 'h-[400px]' : 'h-[500px]'}`}>
+                {isLoading && !hasError && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{
+                      backgroundColor: 'var(--bg-color)',
+                      color: 'var(--text-color)'
+                    }}
+                  >
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                      <p className="text-sm opacity-70">Loading payment form...</p>
+                    </div>
+                  </div>
+                )}
+                
                 {hasError && (
                   <div 
                     className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
@@ -160,7 +195,12 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
                       color: 'var(--text-color)'
                     }}
                   >
-                    					<p className="mb-4 text-xs sm:text-sm lg:text-base opacity-70 text-gray-600 dark:text-gray-300">Unable to load payment form. Please use the external link below.</p>
+                    <div className="mb-4">
+                      <CreditCardIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm opacity-70 text-gray-600 dark:text-gray-300">
+                        Unable to load payment form. This may be due to security restrictions.
+                      </p>
+                    </div>
                     <Button
                       variant="primary"
                       size="lg"
@@ -169,6 +209,9 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
                       <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
                       Open Payment Page
                     </Button>
+                    <p className="text-xs opacity-50 mt-2">
+                      The payment form will open in a new tab for security reasons.
+                    </p>
                   </div>
                 )}
                 

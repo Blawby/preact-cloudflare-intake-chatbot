@@ -4,11 +4,12 @@ import { ZodError } from 'zod';
 // Security headers following Cloudflare best practices
 export const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  // Use CSP frame-ancestors instead of X-Frame-Options for better control
+  'Content-Security-Policy': "frame-ancestors 'self' https://ai.blawby.com https://staging.blawby.com https://blawby.com; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.openai.com https://staging.blawby.com;"
 };
 
 // Enhanced CORS headers

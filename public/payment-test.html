@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Iframe Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .test-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .iframe-container {
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 10px 0;
+            min-height: 400px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .warning-message {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .status {
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .debug-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .csp-test {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔒 Payment Iframe Security Test</h1>
+        <p>Testing iframe embedding for:
+            <strong>https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E</strong></p>
+
+        <div class="test-section">
+            <h2>Test 1: Basic Iframe Embed</h2>
+            <p>Testing direct iframe embedding:</p>
+            <div class="iframe-container">
+                <iframe src="https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E" title="Payment Form Test"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    onload="handleIframeLoad(this, 'basic')" onerror="handleIframeError(this, 'basic')">
+                </iframe>
+            </div>
+            <div id="status-basic" class="status">⏳ Loading...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 2: Iframe with Error Handling</h2>
+            <p>Testing with error detection and fallback:</p>
+            <div class="iframe-container">
+                <iframe src="https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E"
+                    title="Payment Form Test with Error Handling"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    onload="handleIframeLoad(this, 'error-handled')" onerror="handleIframeError(this, 'error-handled')">
+                </iframe>
+            </div>
+            <div id="status-error-handled" class="status">⏳ Loading...</div>
+            <button onclick="openExternalPayment()">🌐 Open in New Tab</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 3: Security Policy Analysis</h2>
+            <p>Testing different security header configurations:</p>
+            <button onclick="testCSPFrameAncestors()">🔓 Test CSP frame-ancestors</button>
+            <button onclick="testXFrameOptions()">🚫 Test X-Frame-Options</button>
+            <button onclick="testCurrentHeaders()">🔍 Check Current Headers</button>
+            <div id="security-test-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 4: Console Debug</h2>
+            <p>Check browser console (F12) for detailed error messages:</p>
+            <button onclick="checkIframeAccess()">🔍 Check Iframe Access</button>
+            <button onclick="testCrossOrigin()">🌐 Test Cross-Origin</button>
+            <div id="debug-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Debug Information</h2>
+            <div class="debug-info">
+                <p><strong>Current URL:</strong> <span id="current-url"></span></p>
+                <p><strong>User Agent:</strong> <span id="user-agent"></span></p>
+                <p><strong>Referrer:</strong> <span id="referrer"></span></p>
+                <p><strong>Origin:</strong> <span id="origin"></span></p>
+                <p><strong>Timestamp:</strong> <span id="timestamp"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PAYMENT_URL = 'https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E';
+
+        function handleIframeLoad(iframe, testId) {
+            const statusElement = document.getElementById(`status-${testId}`);
+            statusElement.innerHTML = '<span style="color: green;">✅ Iframe loaded successfully</span>';
+            statusElement.className = 'status success-message';
+            console.log(`✅ Iframe loaded for test: ${testId}`);
+        }
+
+        function handleIframeError(iframe, testId) {
+            const statusElement = document.getElementById(`status-${testId}`);
+            statusElement.innerHTML = '<span style="color: red;">❌ Iframe failed to load</span>';
+            statusElement.className = 'status error-message';
+            console.error(`❌ Iframe error for test: ${testId}`);
+        }
+
+        function openExternalPayment() {
+            window.open(PAYMENT_URL, '_blank', 'noopener,noreferrer');
+        }
+
+        function testCSPFrameAncestors() {
+            const resultsDiv = document.getElementById('security-test-results');
+            resultsDiv.innerHTML = `
+                <div class="success-message">
+                    <h3>🔓 CSP frame-ancestors (Recommended)</h3>
+                    <p>This allows specific domains to embed the page:</p>
+                    <code>Content-Security-Policy: frame-ancestors 'self' https://ai.blawby.com https://staging.blawby.com https://blawby.com;</code>
+                    <p>✅ Allows iframe embedding from trusted domains</p>
+                    <p>✅ Prevents clickjacking attacks</p>
+                    <p>✅ More granular control than X-Frame-Options</p>
+                </div>
+            `;
+        }
+
+        function testXFrameOptions() {
+            const resultsDiv = document.getElementById('security-test-results');
+            resultsDiv.innerHTML = `
+                <div class="error-message">
+                    <h3>🚫 X-Frame-Options: DENY (Current Issue)</h3>
+                    <p>This blocks ALL iframe embedding:</p>
+                    <code>X-Frame-Options: DENY</code>
+                    <p>❌ Blocks legitimate payment iframes</p>
+                    <p>❌ No granular control</p>
+                    <p>❌ This is what's causing the current issue</p>
+                </div>
+            `;
+        }
+
+        function testCurrentHeaders() {
+            const resultsDiv = document.getElementById('security-test-results');
+            resultsDiv.innerHTML = `
+                <div class="warning-message">
+                    <h3>🔍 Current Security Headers</h3>
+                    <p>Checking what headers are currently set...</p>
+                    <p>Open browser dev tools (F12) → Network tab → Reload page → Check response headers</p>
+                    <p>Look for:</p>
+                    <ul>
+                        <li>X-Frame-Options</li>
+                        <li>Content-Security-Policy</li>
+                        <li>frame-ancestors directive</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        function checkIframeAccess() {
+            const resultsDiv = document.getElementById('debug-results');
+            const iframes = document.querySelectorAll('iframe');
+            let results = '<div class="debug-info">';
+
+            iframes.forEach((iframe, index) => {
+                try {
+                    // Try to access iframe content (this will fail if blocked)
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    results += `<p>✅ Iframe ${index + 1}: Accessible</p>`;
+                    console.log(`Iframe ${index + 1} is accessible`);
+                } catch (e) {
+                    results += `<p>❌ Iframe ${index + 1}: Blocked - ${e.message}</p>`;
+                    console.log(`Iframe ${index + 1} is blocked:`, e.message);
+                }
+            });
+
+            results += '</div>';
+            resultsDiv.innerHTML = results;
+        }
+
+        function testCrossOrigin() {
+            const resultsDiv = document.getElementById('debug-results');
+            resultsDiv.innerHTML = `
+                <div class="debug-info">
+                    <h3>🌐 Cross-Origin Test</h3>
+                    <p><strong>Current Origin:</strong> ${window.location.origin}</p>
+                    <p><strong>Payment URL Origin:</strong> https://staging.blawby.com</p>
+                    <p><strong>Cross-Origin:</strong> ${window.location.origin !== 'https://staging.blawby.com' ? 'Yes' : 'No'}</p>
+                    <p><strong>Same-Origin Policy:</strong> ${window.location.origin === 'https://staging.blawby.com' ? 'Same origin' : 'Cross-origin'}</p>
+                </div>
+            `;
+        }
+
+        // Initialize debug information
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('current-url').textContent = window.location.href;
+            document.getElementById('user-agent').textContent = navigator.userAgent;
+            document.getElementById('referrer').textContent = document.referrer || 'No referrer';
+            document.getElementById('origin').textContent = window.location.origin;
+            document.getElementById('timestamp').textContent = new Date().toISOString();
+        });
+
+        // Monitor iframe loading and errors
+        window.addEventListener('message', function (event) {
+            console.log('📨 Received message from iframe:', event);
+        });
+
+        // Check if iframes are blocked after a delay
+        setTimeout(function () {
+            console.log('🔍 Checking iframe accessibility...');
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach((iframe, index) => {
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    console.log(`✅ Iframe ${index + 1} is accessible`);
+                } catch (e) {
+                    console.log(`❌ Iframe ${index + 1} is blocked by security policy:`, e.message);
+                }
+            });
+        }, 3000);
+
+        // Monitor for security policy violations
+        window.addEventListener('securitypolicyviolation', function (event) {
+            console.error('🚨 Security Policy Violation:', event);
+        });
+    </script>
+</body>
+
+</html>

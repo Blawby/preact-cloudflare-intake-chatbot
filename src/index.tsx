@@ -138,7 +138,54 @@ export function App() {
 		// Could show a toast notification here
 	}, []);
 
+	// Check if we're in test mode
+	const isTestMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('test') === 'iframe';
 
+	// If in test mode, show the iframe test
+	if (isTestMode) {
+		return (
+			<div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+				<h1>Iframe Test Page</h1>
+				<p>Testing iframe embedding for: <strong>https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E</strong></p>
+				
+				<div style={{ border: '2px solid blue', margin: '20px 0', padding: '10px' }}>
+					<iframe 
+						src="https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E"
+						title="Payment Form Test"
+						sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+						style={{ width: '100%', height: '400px', border: 'none' }}
+						onLoad={() => {
+							console.log('✅ Iframe loaded successfully');
+							document.getElementById('status').innerHTML = '✅ Iframe loaded successfully';
+							document.getElementById('status').style.background = '#d4edda';
+							document.getElementById('status').style.color = '#155724';
+						}}
+						onError={() => {
+							console.error('❌ Iframe failed to load');
+							document.getElementById('status').innerHTML = '❌ Iframe failed to load';
+							document.getElementById('status').style.background = '#f8d7da';
+							document.getElementById('status').style.color = '#721c24';
+						}}
+					/>
+				</div>
+				
+				<div id="status" style={{ padding: '10px', margin: '10px 0', borderRadius: '4px', background: '#f8f9fa' }}>
+					Loading...
+				</div>
+				
+				<button 
+					onClick={() => window.open('https://staging.blawby.com/pay/DtOam9PORuNijS0Oklq6LVZDUQlY1t4E', '_blank')}
+					style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+				>
+					Open in New Tab
+				</button>
+				
+				<p style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
+					Check browser console (F12) for detailed error messages
+				</p>
+			</div>
+		);
+	}
 
 	// Load matters from messages (convert existing matter canvases to matters)
 	useEffect(() => {
