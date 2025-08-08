@@ -1,9 +1,7 @@
 import { hydrate, prerender as ssr } from 'preact-iso';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'preact/hooks';
 // Remove direct imports of components that will be lazy-loaded
-import FileMenu from './components/FileMenu';
-import LoadingIndicator from './components/LoadingIndicator';
-import MediaControls from './components/MediaControls';
+import MessageComposer from './components/MessageComposer';
 import VirtualMessageList from './components/VirtualMessageList';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TeamNotFound } from './components/TeamNotFound';
@@ -12,15 +10,13 @@ import MediaSidebar from './components/MediaSidebar';
 import PrivacySupportSidebar from './components/PrivacySupportSidebar';
 import LeftSidebar from './components/LeftSidebar';
 import BottomNavigation from './components/BottomNavigation';
+import features from './config/features';
 import MobileSidebar from './components/MobileSidebar';
 import MobileTopNav from './components/MobileTopNav';
 import PaymentEmbed from './components/PaymentEmbed';
-import ScheduleButton from './components/scheduling/ScheduleButton';
 import { debounce } from './utils/debounce';
 // Removed unused useDebounce import
 // Removed unused LazyComponent import
-import { Button } from './components/ui/Button';
-import features from './config/features';
 import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import { getFormsEndpoint, getTeamsEndpoint, getAgentEndpoint, getAgentStreamEndpoint } from './config/api';
 
@@ -30,9 +26,7 @@ import {
 	TableCellsIcon,
 	MusicalNoteIcon,
 	VideoCameraIcon,
-	XMarkIcon,
 	ChatBubbleLeftIcon,
-	ArrowUpIcon,
 	CloudArrowUpIcon,
 	FaceSmileIcon
 } from '@heroicons/react/24/outline';
@@ -42,11 +36,26 @@ import './style.css';
 // Agent handles all functionality - no lazy components needed
 
 // Define position type
+interface FileAttachment {
+  url: string;
+  name: string;
+  type: string;
+  size: number;
+}
 
 import { ChatMessageUI } from '../worker/types';
 
 const ANIMATION_DURATION = 300;
 const RESIZE_DEBOUNCE_DELAY = 100;
+
+// Utility function to format form data for submission
+function formatFormData(formData: any, teamId: string) {
+	return {
+		...formData,
+		teamId,
+		timestamp: new Date().toISOString()
+	};
+}
 
 // Utility function to upload a file to backend
 async function uploadFileToBackend(file: File, teamId: string, sessionId: string) {
@@ -256,8 +265,11 @@ export function App() {
 		if (teamConfig.introMessage && messages.length === 0) {
 			// Add intro message only (team profile is now a UI element)
 			const introMessage: ChatMessageUI = {
+				id: crypto.randomUUID(),
 				content: teamConfig.introMessage,
-				isUser: false
+				isUser: false,
+				role: 'assistant',
+				timestamp: Date.now()
 			};
 			setMessages([introMessage]);
 		}
@@ -279,10 +291,9 @@ export function App() {
 				const uploaded = await uploadFileToBackend(file, teamId, sessionId);
 				const fileAttachment: FileAttachment = {
 					name: uploaded.fileName,
-					size: uploaded.fileSize,
+					size: uploaded.fileSize || file.size,
 					type: uploaded.fileType,
 					url: uploaded.url,
-					backendId: uploaded.fileId,
 				};
 				setPreviewFiles(prev => [...prev, fileAttachment]);
 			} catch (err: any) {
@@ -300,10 +311,9 @@ export function App() {
 			const uploaded = await uploadFileToBackend(file, teamId, sessionId);
 			const fileAttachment: FileAttachment = {
 				name: uploaded.fileName,
-				size: uploaded.fileSize,
+				size: uploaded.fileSize || file.size,
 				type: uploaded.fileType,
 				url: uploaded.url,
-				backendId: uploaded.fileId,
 			};
 			setPreviewFiles(prev => [...prev, fileAttachment]);
 		} catch (err: any) {
@@ -321,10 +331,9 @@ export function App() {
 				const uploaded = await uploadFileToBackend(file, teamId, sessionId);
 				const fileAttachment: FileAttachment = {
 					name: uploaded.fileName,
-					size: uploaded.fileSize,
+					size: uploaded.fileSize || file.size,
 					type: uploaded.fileType,
 					url: uploaded.url,
-					backendId: uploaded.fileId,
 				};
 				setPreviewFiles(prev => [...prev, fileAttachment]);
 			} catch (err: any) {
@@ -347,8 +356,11 @@ export function App() {
 		};
 
 		const newMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: '',
 			isUser: true,
+			role: 'user',
+			timestamp: Date.now(),
 			files: [file],
 		};
 
@@ -360,8 +372,11 @@ export function App() {
 		debounce(() => {
 			// Send user's matter creation request message
 			const matterMessage: ChatMessageUI = {
+				id: crypto.randomUUID(),
 				content: "I'd like to create a matter and get help with my legal concern.",
-				isUser: true
+				isUser: true,
+				role: 'user',
+				timestamp: Date.now()
 			};
 			
 			setMessages([...messages, matterMessage]);
@@ -370,10 +385,12 @@ export function App() {
 			// Add placeholder message with loading indicator (ChatGPT style)
 			const loadingMessageId = crypto.randomUUID();
 			const loadingMessage: ChatMessageUI = {
+				id: loadingMessageId,
 				content: "Let me set up your matter creation process...",
 				isUser: false,
-				isLoading: true,
-				id: loadingMessageId
+				role: 'assistant',
+				timestamp: Date.now(),
+				isLoading: true
 			};
 			setMessages(prev => [...prev, loadingMessage]);
 			
@@ -410,8 +427,11 @@ export function App() {
 		debounce(() => {
 			// Send user's scheduling request message
 			const schedulingMessage: ChatMessageUI = {
+				id: crypto.randomUUID(),
 				content: "I'd like to request a consultation.",
-				isUser: true
+				isUser: true,
+				role: 'user',
+				timestamp: Date.now()
 			};
 			
 			setMessages([...messages, schedulingMessage]);
@@ -420,10 +440,12 @@ export function App() {
 			// Add placeholder message with loading indicator (ChatGPT style)
 			const loadingMessageId = crypto.randomUUID();
 			const loadingMessage: ChatMessageUI = {
+				id: loadingMessageId,
 				content: "Let me help you schedule a consultation...",
 				isUser: false,
-				isLoading: true,
-				id: loadingMessageId
+				role: 'assistant',
+				timestamp: Date.now(),
+				isLoading: true
 			};
 			setMessages(prev => [...prev, loadingMessage]);
 			
@@ -450,8 +472,11 @@ export function App() {
 	const handleCreateMatterStart = () => {
 		// Send matter creation request to agent
 		const matterMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: "I'd like to create a new legal matter.",
-			isUser: true
+			isUser: true,
+			role: 'user',
+			timestamp: Date.now()
 		};
 		setMessages(prev => [...prev, matterMessage]);
 		sendMessageToAPI("I'd like to create a new legal matter.", []);
@@ -460,8 +485,11 @@ export function App() {
 	// Simplified scheduling handlers - agent handles all scheduling logic
 	const handleScheduleStart = () => {
 		const scheduleMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: "I'd like to schedule a consultation.",
-			isUser: true
+			isUser: true,
+			role: 'user',
+			timestamp: Date.now()
 		};
 		setMessages(prev => [...prev, scheduleMessage]);
 		sendMessageToAPI("I'd like to schedule a consultation.", []);
@@ -475,8 +503,11 @@ export function App() {
 		}).format(date);
 		
 		const dateMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: `I'd like to be contacted on ${formattedDate} for my consultation.`,
-			isUser: true
+			isUser: true,
+			role: 'user',
+			timestamp: Date.now()
 		};
 		setMessages(prev => [...prev, dateMessage]);
 		sendMessageToAPI(`I'd like to be contacted on ${formattedDate} for my consultation.`, []);
@@ -489,8 +520,11 @@ export function App() {
 		}[timeOfDay];
 		
 		const timeMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: `I prefer to be contacted in the ${timeOfDayLabel}.`,
-			isUser: true
+			isUser: true,
+			role: 'user',
+			timestamp: Date.now()
 		};
 		setMessages(prev => [...prev, timeMessage]);
 		sendMessageToAPI(`I prefer to be contacted in the ${timeOfDayLabel}.`, []);
@@ -510,8 +544,11 @@ export function App() {
 		}).format(timeSlot);
 		
 		const timeSlotMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: `I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`,
-			isUser: true
+			isUser: true,
+			role: 'user',
+			timestamp: Date.now()
 		};
 		setMessages(prev => [...prev, timeSlotMessage]);
 		sendMessageToAPI(`I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`, []);
@@ -519,8 +556,11 @@ export function App() {
 	
 	const handleRequestMoreDates = () => {
 		const moreDatesMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: "I need to see more date options.",
-			isUser: true
+			isUser: true,
+			role: 'user',
+			timestamp: Date.now()
 		};
 		setMessages(prev => [...prev, moreDatesMessage]);
 		sendMessageToAPI("I need to see more date options.", []);
@@ -533,8 +573,11 @@ export function App() {
 		try {
 			// Create user message
 			const userMessage: ChatMessageUI = {
+				id: crypto.randomUUID(),
 				content: message,
 				isUser: true,
+				role: 'user',
+				timestamp: Date.now(),
 				files: attachments
 			};
 			
@@ -545,10 +588,12 @@ export function App() {
 			// Add a placeholder AI message immediately that will be updated
 			const placeholderId = Date.now().toString();
 			const placeholderMessage: ChatMessageUI = {
+				id: placeholderId,
 				content: '',
 				isUser: false,
-				isLoading: true,
-				id: placeholderId
+				role: 'assistant',
+				timestamp: Date.now(),
+				isLoading: true
 			};
 			
 			setMessages(prev => [...prev, placeholderMessage]);
@@ -850,10 +895,12 @@ export function App() {
 		
 		try {
 			const loadingMessage: ChatMessageUI = {
+				id: loadingMessageId,
 				content: "Thank you! Let me submit your information to our legal team...",
 				isUser: false,
-				isLoading: true,
-				id: loadingMessageId
+				role: 'assistant',
+				timestamp: Date.now(),
+				isLoading: true
 			};
 			setMessages(prev => [...prev, loadingMessage]);
 			
@@ -950,8 +997,11 @@ export function App() {
 								
 								// Show the updated matter canvas as a new message
 								const updatedMatterMessage: ChatMessageUI = {
+									id: crypto.randomUUID(),
 									content: "Here's your complete matter information with contact details:",
 									isUser: false,
+									role: 'assistant',
+									timestamp: Date.now(),
 									matterCanvas: {
 										...lastMatterCanvas,
 										matterSummary: updatedMatterSummary
@@ -981,8 +1031,11 @@ export function App() {
 							}
 							
 							const nextStepsMsg: ChatMessageUI = {
+								id: crypto.randomUUID(),
 								content: nextStepsMessage,
-								isUser: false
+								isUser: false,
+								role: 'assistant',
+								timestamp: Date.now()
 							};
 							setMessages(prev => [...prev, nextStepsMsg]);
 						}, 500);
@@ -990,11 +1043,11 @@ export function App() {
 				}
 				
 				// Reset form state
-				setFormState({
-					step: 'idle',
-					data: {},
-					isActive: false
-				});
+				// setFormState({
+				// 	step: 'idle',
+				// 	data: {},
+				// 	isActive: false
+				// });
 
 
 				
@@ -1048,8 +1101,11 @@ export function App() {
 	// Simplified service selection - agent handles all logic
 	const handleServiceSelect = (service: string) => {
 		const serviceMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: `I'm looking for legal help with my ${service} issue.`,
-			isUser: true
+			isUser: true,
+			role: 'user',
+			timestamp: Date.now()
 		};
 		setMessages(prev => [...prev, serviceMessage]);
 		sendMessageToAPI(`I'm looking for legal help with my ${service} issue.`, []);
@@ -1058,8 +1114,11 @@ export function App() {
 	// Simplified urgency selection - agent handles all logic
 	const handleUrgencySelect = (urgency: string) => {
 		const urgencyMessage: ChatMessageUI = {
+			id: crypto.randomUUID(),
 			content: `This is a ${urgency.toLowerCase()} matter.`,
-			isUser: true
+			isUser: true,
+			role: 'user',
+			timestamp: Date.now()
 		};
 		setMessages(prev => [...prev, urgencyMessage]);
 		sendMessageToAPI(`This is a ${urgency.toLowerCase()} matter.`, []);
@@ -1333,18 +1392,23 @@ export function App() {
 									onScheduleConsultation={handleScheduleStart}
 									onLearnServices={async () => {
 										const servicesMessage: ChatMessageUI = {
+											id: crypto.randomUUID(),
 											content: "Tell me about your firm's services",
-											isUser: true
+											isUser: true,
+											role: 'user',
+											timestamp: Date.now()
 										};
 										setMessages(prev => [...prev, servicesMessage]);
 										
 										// Add placeholder message with loading indicator (ChatGPT style)
 										const loadingMessageId = crypto.randomUUID();
 										const loadingMessage: ChatMessageUI = {
+											id: loadingMessageId,
 											content: "Let me tell you about our services...",
 											isUser: false,
 											isLoading: true,
-											id: loadingMessageId
+											role: 'assistant',
+											timestamp: Date.now()
 										};
 										setMessages(prev => [...prev, loadingMessage]);
 										
@@ -1386,112 +1450,21 @@ export function App() {
 									teamId={teamId}
 									onFeedbackSubmit={handleFeedbackSubmit}
 								/>
-								<div className="pb-20 lg:pb-8 pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
-									<div className="flex flex-col w-full relative bg-white dark:bg-dark-input-bg border border-gray-200 dark:border-dark-border border-t-0 rounded-2xl p-3 min-h-[56px] gap-3 h-auto overflow-visible">
-										{previewFiles.length > 0 && (
-											<div className="flex flex-wrap gap-2 m-0" role="list" aria-label="File attachments">
-												{previewFiles.map((file, index) => (
-													<div 
-														className={`relative w-15 h-15 rounded-lg overflow-hidden shadow-sm bg-gray-100 dark:bg-dark-hover ${file.type.startsWith('image/') ? 'w-15 h-15' : 'w-[165px] h-15 flex items-center pr-5 gap-1'}`}
-														key={index}
-														role="listitem"
-													>
-														{file.type.startsWith('image/') ? (
-															<>
-																<img src={file.url} alt={`Preview of ${file.name}`} className="w-full h-full object-cover" />
-															</>
-														) : (
-															<>
-																<div className="w-15 h-15 flex-shrink-0 flex items-center justify-center bg-amber-500 text-white p-2" aria-hidden="true">
-																	{getFileIcon(file)}
-																</div>
-																<div className="flex-1 flex flex-col p-1 pr-2 overflow-hidden">
-																	<div className="text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis mb-1">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
-																	<div className="text-[10px] text-amber-500 uppercase font-semibold">{file.name.split('.').pop()}</div>
-																</div>
-															</>
-														)}
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() => removePreviewFile(index)}
-															title="Remove file"
-															aria-label={`Remove ${file.name}`}
-															className="absolute top-1 right-1 w-[18px] h-[18px] rounded-full bg-black/60 text-white border-none flex items-center justify-center cursor-pointer text-base leading-none p-0 opacity-90 transition-opacity duration-200 z-[2] hover:opacity-100"
-														>
-															<XMarkIcon className="w-3.5 h-3.5" aria-hidden="true" />
-														</Button>
-													</div>
-												))}
-											</div>
-										)}
-										<div className="w-full relative block flex-1">
-											<textarea
-												className="flex-1 min-h-6 py-2 m-0 text-sm sm:text-base leading-6 text-gray-900 dark:text-white bg-transparent border-none resize-none outline-none overflow-hidden box-border block w-full z-[1] placeholder:text-gray-500 dark:placeholder:text-gray-400"
-												placeholder="Type a message..."
-												rows={1}
-												value={inputValue}
-												onInput={handleInputChange}
-												onKeyPress={handleKeyPress}
-												disabled={false}
-												aria-label="Message input"
-												aria-multiline="true"
-												style={{ 
-													minHeight: '24px',
-													width: '100%'
-												}}
-											/>
-										</div>
-										<span id="input-instructions" className="sr-only">
-											Type your message and press Enter to send. Use the buttons below to attach files or record audio.
-										</span>
-										<div className="flex items-center gap-3 w-full p-0">
-											<div className="flex justify-between w-full items-center">
-												{!isRecording && (
-													<div className="flex items-center">
-														<FileMenu
-															onPhotoSelect={handlePhotoSelect}
-															onCameraCapture={handleCameraCapture}
-															onFileSelect={handleFileSelect}
-														/>
-														
-														{features.enableConsultationButton && (
-															<ScheduleButton
-																onClick={handleScheduleStart}
-																disabled={false}
-															/>
-														)}
-													</div>
-												)}
-												
-												<div className="flex items-center gap-2">
-													{features.enableAudioRecording && (
-														<MediaControls
-															onMediaCapture={handleMediaCapture}
-															onRecordingStateChange={setIsRecording}
-														/>
-													)}
-													
-													<Button
-														variant="icon"
-														onClick={handleSubmit}
-														disabled={(!inputValue.trim() && previewFiles.length === 0)}
-														aria-label={(!inputValue.trim() && previewFiles.length === 0) ? "Send message (disabled)" : "Send message"}
-														className="flex items-center justify-center w-10 h-10 rounded-lg cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 border-none bg-transparent hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-													>
-														<ArrowUpIcon className="w-5 h-5" aria-hidden="true" />
-													</Button>
-												</div>
-											</div>
-										</div>
-									</div>
-									{features.enableDisclaimerText && (
-										<div className="text-xs text-amber-600 dark:text-amber-400 text-center py-1 opacity-80 mt-1">
-											Blawby can make mistakes. Check for important information.
-										</div>
-									)}
-								</div>
+                                <MessageComposer
+                                    inputValue={inputValue}
+                                    setInputValue={setInputValue}
+                                    previewFiles={previewFiles}
+                                    removePreviewFile={removePreviewFile}
+                                    handlePhotoSelect={handlePhotoSelect}
+                                    handleCameraCapture={handleCameraCapture}
+                                    handleFileSelect={handleFileSelect}
+                                    handleScheduleStart={handleScheduleStart}
+                                    isRecording={isRecording}
+                                    handleMediaCapture={handleMediaCapture}
+                                    setIsRecording={setIsRecording}
+                                    onSubmit={handleSubmit}
+                                    onKeyPress={handleKeyPress as any}
+                                />
 
 								</main>
 							</div>
@@ -1505,6 +1478,7 @@ export function App() {
 								name={teamConfig.name}
 								profileImage={teamConfig.profileImage}
 								teamId={teamId}
+								description={teamConfig.description}
 								variant="sidebar"
 								showVerified={true}
 							/>
@@ -1530,10 +1504,12 @@ export function App() {
 						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
 					/>
 
-					{/* Mobile Bottom Navigation */}
-					<BottomNavigation 
-						activeTab={currentTab}
-					/>
+                    {/* Mobile Bottom Navigation */}
+                    {features.enableMobileBottomNav && (
+                        <BottomNavigation 
+                            activeTab={currentTab}
+                        />
+                    )}
 
 					{/* Mobile Sidebar */}
 					<MobileSidebar

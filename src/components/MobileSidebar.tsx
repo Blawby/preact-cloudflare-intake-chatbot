@@ -12,6 +12,7 @@ interface MobileSidebarProps {
     name: string;
     profileImage: string | null;
     teamId: string;
+    description?: string;
   };
   messages: any[];
 }

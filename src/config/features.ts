@@ -53,6 +53,12 @@ interface FeatureFlags {
      * When false, the consultation request button will be hidden from welcome messages
      */
     enableConsultationButton: boolean;
+
+    /**
+     * Enable mobile bottom navigation bar
+     * When false, the bottom nav is hidden on mobile
+     */
+    enableMobileBottomNav: boolean;
 }
 
 const features: FeatureFlags = {
@@ -64,6 +70,7 @@ const features: FeatureFlags = {
     enableDisclaimerText: false, // Disable disclaimer text below input
     enableLearnServicesButton: false, // Hide learn services button
     enableConsultationButton: false, // Hide consultation request button
+    enableMobileBottomNav: false, // Temporarily hide mobile bottom nav
 };
 
 // For development environment, you can override settings
