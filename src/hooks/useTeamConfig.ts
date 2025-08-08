@@ -81,13 +81,18 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
     }
     
     setIsLoading(true);
-    fetchedTeamIds.current.add(currentTeamId);
     
     try {
-      const response = await fetch(getTeamsEndpoint());
+      const controller = new AbortController();
+      const response = await fetch(getTeamsEndpoint(), { signal: controller.signal });
+      
       if (response.ok) {
         const teamsResponse = await response.json() as any;
         const team = teamsResponse.data.find((t: any) => t.slug === currentTeamId || t.id === currentTeamId);
+        
+        // Only add to fetched set after successful fetch
+        fetchedTeamIds.current.add(currentTeamId);
+        
         if (team?.config) {
           const config: TeamConfig = {
             name: team.name || 'Blawby AI',
@@ -112,6 +117,10 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
         setTeamNotFound(true);
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Request was aborted, don't update state
+        return;
+      }
       console.warn('Failed to fetch team config:', error);
       setTeamNotFound(true);
       onError?.('Failed to load team configuration');

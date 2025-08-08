@@ -30,7 +30,7 @@ export function App() {
 		onError: (error) => console.error('Team config error:', error)
 	});
 
-	const { messages, sendMessage, addMessage, updateMessage, setMessages } = useMessageHandling({
+	const { messages, sendMessage, addMessage, updateMessage, cancelStreaming } = useMessageHandling({
 		teamId,
 		sessionId,
 		onError: (error) => console.error('Message handling error:', error)
@@ -63,9 +63,9 @@ export function App() {
 				role: 'assistant',
 				timestamp: Date.now()
 			};
-			setMessages([introMessage]);
+			addMessage(introMessage);
 		}
-	}, [teamConfig.introMessage, messages.length, setMessages]);
+	}, [teamConfig.introMessage, messages.length, addMessage]);
 
 	// Create stable callback references for keyboard handlers
 	const handleEscape = useCallback(() => {
@@ -76,10 +76,10 @@ export function App() {
 	}, [inputValue, previewFiles.length, clearPreviewFiles]);
 
 	const handleFocusInput = useCallback(() => {
-		const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
-		if (textarea) {
+			const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
+			if (textarea) {
 			textarea.focus();
-		}
+			}
 	}, []);
 
 	// Setup global event handlers
@@ -175,12 +175,12 @@ export function App() {
 				
 				// Update the loading message with actual content
 				updateMessage(loadingMessageId, {
-					content: `I'm here to help you create a matter and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
-					isLoading: false,
-					matterCreation: {
-						type: 'service-selection',
-						availableServices: services
-					}
+							content: `I'm here to help you create a matter and assess your legal situation. We provide legal services for the following areas:\n\n${serviceOptions}\n\nPlease select the type of legal matter you're dealing with, or choose "General Inquiry" if you're not sure:`,
+							isLoading: false,
+							matterCreation: {
+								type: 'service-selection',
+								availableServices: services
+							}
 				});
 			}, 1000);
 		}, 500), // 500ms debounce delay
@@ -218,8 +218,8 @@ export function App() {
 				const aiResponse = createSchedulingResponse('initial');
 				// Update the loading message with actual content
 				updateMessage(loadingMessageId, {
-					content: aiResponse.content,
-					isLoading: false,
+							content: aiResponse.content,
+							isLoading: false,
 					scheduling: aiResponse.scheduling as any
 				});
 			}, 800);
@@ -229,28 +229,11 @@ export function App() {
 
 	// Add matter creation handlers (now debounced)
 	const handleCreateMatterStart = () => {
-		// Send matter creation request to agent
-		const matterMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: "I'd like to create a new legal matter.",
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(matterMessage);
 		sendMessage("I'd like to create a new legal matter.", []);
 	};
 
 	// Simplified scheduling handlers - agent handles all scheduling logic
 	const handleScheduleStart = () => {
-		const scheduleMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: "I'd like to schedule a consultation.",
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(scheduleMessage);
 		sendMessage("I'd like to schedule a consultation.", []);
 	};
 	
@@ -261,14 +244,6 @@ export function App() {
 			day: 'numeric'
 		}).format(date);
 		
-		const dateMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: `I'd like to be contacted on ${formattedDate} for my consultation.`,
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(dateMessage);
 		sendMessage(`I'd like to be contacted on ${formattedDate} for my consultation.`, []);
 	};
 	
@@ -278,14 +253,6 @@ export function App() {
 			afternoon: 'Afternoon (12:00 PM - 5:00 PM)'
 		}[timeOfDay];
 		
-		const timeMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: `I prefer to be contacted in the ${timeOfDayLabel}.`,
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(timeMessage);
 		sendMessage(`I prefer to be contacted in the ${timeOfDayLabel}.`, []);
 	};
 	
@@ -302,52 +269,20 @@ export function App() {
 			day: 'numeric'
 		}).format(timeSlot);
 		
-		const timeSlotMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: `I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`,
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(timeSlotMessage);
 		sendMessage(`I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`, []);
 	};
 	
 	const handleRequestMoreDates = () => {
-		const moreDatesMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: "I need to see more date options.",
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(moreDatesMessage);
 		sendMessage("I need to see more date options.", []);
 	};
 
 	// Simplified service selection - agent handles all logic
 	const handleServiceSelect = (service: string) => {
-		const serviceMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: `I'm looking for legal help with my ${service} issue.`,
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(serviceMessage);
 		sendMessage(`I'm looking for legal help with my ${service} issue.`, []);
 	};
 
 	// Simplified urgency selection - agent handles all logic
 	const handleUrgencySelect = (urgency: string) => {
-		const urgencyMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: `This is a ${urgency.toLowerCase()} matter.`,
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(urgencyMessage);
 		sendMessage(`This is a ${urgency.toLowerCase()} matter.`, []);
 	};
 
@@ -367,43 +302,7 @@ export function App() {
 
 	// Handle learn services
 	const handleLearnServices = async () => {
-		const servicesMessage: ChatMessageUI = {
-			id: crypto.randomUUID(),
-			content: "Tell me about your firm's services",
-			isUser: true,
-			role: 'user',
-			timestamp: Date.now()
-		};
-		addMessage(servicesMessage);
-		
-		// Add placeholder message with loading indicator (ChatGPT style)
-		const loadingMessageId = crypto.randomUUID();
-		const loadingMessage: ChatMessageUI = {
-			id: loadingMessageId,
-			content: "Let me tell you about our services...",
-			isUser: false,
-			isLoading: true,
-			role: 'assistant',
-			timestamp: Date.now()
-		};
-		addMessage(loadingMessage);
-		
-		try {
-			// Call the actual API
-			await sendMessage("Tell me about your firm's services", []);
-			
-			// Update the loading message with actual content
-			updateMessage(loadingMessageId, {
-				content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
-				isLoading: false
-			});
-		} catch (error) {
-			// Fallback to default response if API fails
-			updateMessage(loadingMessageId, {
-				content: "Our firm specializes in several practice areas including business law, intellectual property, contract review, and regulatory compliance. We offer personalized legal counsel to help businesses navigate complex legal challenges. Would you like more details about any specific service?",
-				isLoading: false
-			});
-		}
+		await sendMessage("Tell me about your firm's services", []);
 	};
 
 	return (
@@ -417,43 +316,43 @@ export function App() {
 				currentTab={currentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
-				teamConfig={{
-					name: teamConfig.name,
-					profileImage: teamConfig.profileImage,
+								teamConfig={{
+									name: teamConfig.name,
+									profileImage: teamConfig.profileImage,
 					description: teamConfig.description
 				}}
 				messages={messages}
 			>
 				<ChatContainer
-					messages={messages}
+									messages={messages}
 					onSendMessage={sendMessage}
-					onDateSelect={handleDateSelect}
-					onTimeOfDaySelect={handleTimeOfDaySelect}
-					onTimeSlotSelect={handleTimeSlotSelect}
-					onRequestMoreDates={handleRequestMoreDates}
-					onServiceSelect={handleServiceSelect}
-					onUrgencySelect={handleUrgencySelect}
-					onCreateMatter={handleCreateMatterStart}
-					onScheduleConsultation={handleScheduleStart}
+									onDateSelect={handleDateSelect}
+									onTimeOfDaySelect={handleTimeOfDaySelect}
+									onTimeSlotSelect={handleTimeSlotSelect}
+									onRequestMoreDates={handleRequestMoreDates}
+									onServiceSelect={handleServiceSelect}
+									onUrgencySelect={handleUrgencySelect}
+									onCreateMatter={handleCreateMatterStart}
+									onScheduleConsultation={handleScheduleStart}
 					onLearnServices={handleLearnServices}
-					teamConfig={{
-						name: teamConfig.name,
-						profileImage: teamConfig.profileImage,
-						teamId: teamId,
-						description: teamConfig.description
-					}}
-					onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-					sessionId={sessionId}
-					teamId={teamId}
-					onFeedbackSubmit={handleFeedbackSubmit}
-					previewFiles={previewFiles}
-					removePreviewFile={removePreviewFile}
-					handlePhotoSelect={handlePhotoSelect}
-					handleCameraCapture={handleCameraCapture}
-					handleFileSelect={handleFileSelect}
+									teamConfig={{
+										name: teamConfig.name,
+										profileImage: teamConfig.profileImage,
+										teamId: teamId,
+										description: teamConfig.description
+									}}
+									onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+									sessionId={sessionId}
+									teamId={teamId}
+									onFeedbackSubmit={handleFeedbackSubmit}
+                                    previewFiles={previewFiles}
+                                    removePreviewFile={removePreviewFile}
+                                    handlePhotoSelect={handlePhotoSelect}
+                                    handleCameraCapture={handleCameraCapture}
+                                    handleFileSelect={handleFileSelect}
 					handleMediaCapture={handleMediaCaptureWrapper}
-					isRecording={isRecording}
-					setIsRecording={setIsRecording}
+                                    isRecording={isRecording}
+                                    setIsRecording={setIsRecording}
 				/>
 			</AppLayout>
 		</>

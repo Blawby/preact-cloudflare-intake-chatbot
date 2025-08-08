@@ -81,12 +81,11 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   // Simple resize handler for window size changes
   useEffect(() => {
     const handleResize = () => {
-      const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
-      if (textarea) {
+      if (textareaRef.current) {
         // Use the same improved auto-expand logic
-        textarea.style.height = '0';
-        const newHeight = Math.max(24, textarea.scrollHeight);
-        textarea.style.height = `${newHeight}px`;
+        textareaRef.current.style.height = 'auto';
+        const newHeight = Math.max(24, textareaRef.current.scrollHeight);
+        textareaRef.current.style.height = `${newHeight}px`;
       }
     };
 
@@ -96,11 +95,10 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
 
   // Initialize textarea height on mount
   useEffect(() => {
-    const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
-    if (textarea && textarea.value) {
-      textarea.style.height = '0';
-      const newHeight = Math.max(24, textarea.scrollHeight);
-      textarea.style.height = `${newHeight}px`;
+    if (textareaRef.current && textareaRef.current.value) {
+      textareaRef.current.style.height = 'auto';
+      const newHeight = Math.max(24, textareaRef.current.scrollHeight);
+      textareaRef.current.style.height = `${newHeight}px`;
     }
   }, []);
 
@@ -117,9 +115,8 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
     setInputValue('');
     
     // Just focus the textarea
-    const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
-    if (textarea) {
-      textarea.focus();
+    if (textareaRef.current) {
+      textareaRef.current.focus();
     }
   };
 
@@ -158,7 +155,8 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           handleMediaCapture={handleMediaCapture}
           setIsRecording={setIsRecording}
           onSubmit={handleSubmit}
-          onKeyPress={handleKeyPress as any}
+          onKeyPress={handleKeyPress}
+          textareaRef={textareaRef}
         />
       </main>
     </div>

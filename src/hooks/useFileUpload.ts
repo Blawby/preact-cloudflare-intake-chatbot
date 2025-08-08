@@ -8,24 +8,32 @@ interface UseFileUploadOptions {
 }
 
 // Utility function to upload a file to backend
-async function uploadFileToBackend(file: File, teamId: string, sessionId: string) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('teamId', teamId);
-  formData.append('sessionId', sessionId);
+async function uploadFileToBackend(file: File, teamId: string, sessionId: string, signal?: AbortSignal) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('teamId', teamId);
+    formData.append('sessionId', sessionId);
 
-  const response = await fetch('/api/files/upload', {
-    method: 'POST',
-    body: formData,
-  });
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as any;
-    throw new Error(error?.error || 'File upload failed');
+    const response = await fetch('/api/files/upload', {
+      method: 'POST',
+      body: formData,
+      signal,
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({})) as any;
+      throw new Error(error?.error || 'File upload failed');
+    }
+    
+    const result = await response.json() as any;
+    return result.data;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Upload cancelled');
+    }
+    throw error;
   }
-  
-  const result = await response.json() as any;
-  return result.data;
 }
 
 export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptions) => {
@@ -41,20 +49,32 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
       return;
     }
     
-    for (const file of files) {
-      try {
-        const uploaded = await uploadFileToBackend(file, teamId, sessionId);
-        const fileAttachment: FileAttachment = {
-          name: uploaded.fileName,
-          size: uploaded.fileSize || file.size,
-          type: uploaded.fileType,
-          url: uploaded.url,
-        };
-        setPreviewFiles(prev => [...prev, fileAttachment]);
-      } catch (err: any) {
-        const error = `Failed to upload file: ${file.name}\n${err.message}`;
-        onError?.(error);
+    try {
+      // Upload files in parallel for better UX
+      const uploadPromises = files.map(async (file) => {
+        try {
+          const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+          return {
+            name: uploaded.fileName,
+            size: uploaded.fileSize || file.size,
+            type: uploaded.fileType,
+            url: uploaded.url,
+          } as FileAttachment;
+        } catch (err: any) {
+          const error = `Failed to upload file: ${file.name}\n${err.message}`;
+          onError?.(error);
+          return null; // Return null for failed uploads
+        }
+      });
+      
+      const results = await Promise.all(uploadPromises);
+      const successfulUploads = results.filter((result): result is FileAttachment => result !== null);
+      
+      if (successfulUploads.length > 0) {
+        setPreviewFiles(prev => [...prev, ...successfulUploads]);
       }
+    } catch (error) {
+      console.error('Upload batch failed:', error);
     }
   }, [teamId, sessionId, onError]);
 

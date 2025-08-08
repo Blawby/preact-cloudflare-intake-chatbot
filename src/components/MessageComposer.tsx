@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, RefObject } from 'preact/hooks';
 import { Button } from './ui/Button';
 import FileMenu from './FileMenu';
 import MediaControls from './MediaControls';
@@ -26,6 +26,7 @@ interface MessageComposerProps {
   setIsRecording: (v: boolean) => void;
   onSubmit: () => void;
   onKeyPress: (e: KeyboardEvent) => void;
+  textareaRef: RefObject<HTMLTextAreaElement>;
 }
 
 const MessageComposer = ({
@@ -42,8 +43,8 @@ const MessageComposer = ({
   setIsRecording,
   onSubmit,
   onKeyPress,
+  textareaRef,
 }: MessageComposerProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const handleInput = (e: Event) => {
     const target = e.currentTarget as HTMLTextAreaElement;

@@ -21,7 +21,7 @@ export function createKeyboardHandlers(handlers: KeyboardHandlers) {
     }
     
     // Ctrl/Cmd + K to focus input (common chat shortcut)
-    if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+    if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handlers.onFocusInput?.();
     }

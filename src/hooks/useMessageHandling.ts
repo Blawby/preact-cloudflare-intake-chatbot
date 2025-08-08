@@ -1,6 +1,12 @@
-import { useState, useCallback } from 'preact/hooks';
+import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
 import { ChatMessageUI } from '../../worker/types';
 import { getAgentStreamEndpoint } from '../config/api';
+
+// Define proper types for message history
+interface ChatMessageHistoryEntry {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 interface UseMessageHandlingOptions {
   teamId: string;
@@ -10,11 +16,12 @@ interface UseMessageHandlingOptions {
 
 export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHandlingOptions) => {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Create message history from existing messages
-  const createMessageHistory = useCallback((messages: ChatMessageUI[], currentMessage?: string) => {
+  const createMessageHistory = useCallback((messages: ChatMessageUI[], currentMessage?: string): ChatMessageHistoryEntry[] => {
     const history = messages.map(msg => ({
-      role: msg.isUser ? 'user' : 'assistant',
+      role: msg.isUser ? 'user' : 'assistant' as const,
       content: msg.content
     }));
     
@@ -30,9 +37,17 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
 
   // Streaming message handler using EventSource
   const sendMessageWithStreaming = useCallback(async (
-    messageHistory: any[], 
+    messageHistory: ChatMessageHistoryEntry[], 
     placeholderId: string
   ) => {
+    // Abort any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    
     const apiEndpoint = getAgentStreamEndpoint();
     
     // Create the request body
@@ -49,7 +64,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: abortControllerRef.current.signal
       });
 
       if (!response.ok) {
@@ -293,12 +309,28 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     setMessages([]);
   }, []);
 
+  // Cancel any ongoing streaming request
+  const cancelStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   return {
     messages,
     sendMessage,
     addMessage,
     updateMessage,
     clearMessages,
-    setMessages
+    cancelStreaming
   };
 }; 
