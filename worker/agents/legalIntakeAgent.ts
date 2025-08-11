@@ -190,6 +190,33 @@ export const scheduleConsultation = {
   }
 };
 
+export const analyzeDocument = {
+  name: 'analyze_document',
+  description: 'Analyze an uploaded document or image to extract key information for legal intake',
+  parameters: {
+    type: 'object',
+    properties: {
+      file_id: { 
+        type: 'string', 
+        description: 'The file ID of the uploaded document to analyze',
+        pattern: '^[a-zA-Z0-9\\-_]+$'
+      },
+      analysis_type: { 
+        type: 'string', 
+        description: 'Type of analysis to perform',
+        enum: ['general', 'resume', 'legal_document', 'medical_document', 'image'],
+        default: 'general'
+      },
+      specific_question: { 
+        type: 'string', 
+        description: 'Optional specific question to ask about the document',
+        maxLength: 500
+      }
+    },
+    required: ['file_id']
+  }
+};
+
 // Shared utility function for location context and prompt construction
 function buildLocationContext(cloudflareLocation?: CloudflareLocationInfo): { locationContext: string; locationPrompt: string } {
   let locationContext = '';
@@ -253,7 +280,8 @@ export const TOOL_HANDLERS = {
   collect_contact_info: handleCollectContactInfo,
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
-  schedule_consultation: handleScheduleConsultation
+  schedule_consultation: handleScheduleConsultation,
+  analyze_document: handleAnalyzeDocument
 };
 
 // Simple validation functions
@@ -312,63 +340,8 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
     teamConfig = await getTeamConfig(env, teamId);
   }
 
-  // Check for file references in the latest user message
-  const latestUserMessage = messages.find(msg => msg.isUser);
-  let fileAnalysis = null;
-  
-  if (latestUserMessage && latestUserMessage.content) {
-    // Look for file IDs in the message (simple pattern matching)
-    const fileIdMatch = latestUserMessage.content.match(/file[_-]?id[:\s]*([a-zA-Z0-9\-_]+)/i);
-    if (fileIdMatch) {
-      const fileId = fileIdMatch[1];
-      console.log('Detected file reference in message:', fileId);
-      
-      // Try to get file metadata to determine document type
-      let documentType = 'document';
-      let customQuestion = null;
-      
-      try {
-        const stmt = env.DB.prepare(`SELECT original_name, mime_type FROM files WHERE id = ? AND is_deleted = FALSE`);
-        const fileRecord = await stmt.bind(fileId).first();
-        
-        if (fileRecord) {
-          const fileName = fileRecord.original_name?.toLowerCase() || '';
-          const mimeType = fileRecord.mime_type || '';
-          
-          // Determine document type and set appropriate analysis question
-          if (fileName.includes('resume') || fileName.includes('cv') || mimeType.includes('application/pdf')) {
-            documentType = 'resume';
-            customQuestion = "Analyze this resume/CV and extract key professional information, skills, experience, and achievements. Identify strengths and areas for improvement. Provide actionable insights for career development or job applications.";
-          } else if (fileName.includes('contract') || fileName.includes('agreement') || fileName.includes('legal')) {
-            documentType = 'legal document';
-            customQuestion = "Analyze this legal document and extract key terms, parties involved, dates, obligations, and potential legal implications. Identify any concerning clauses or areas that may need legal review.";
-          } else if (fileName.includes('medical') || fileName.includes('health') || fileName.includes('injury')) {
-            documentType = 'medical document';
-            customQuestion = "Analyze this medical document and extract key health information, diagnoses, treatments, dates, and any information relevant to legal matters such as personal injury or medical malpractice.";
-          } else if (mimeType.startsWith('image/')) {
-            documentType = 'image';
-            customQuestion = "Analyze this image and describe what you see. If it's related to a legal matter (accident scene, injury, property damage, etc.), provide detailed observations that could be relevant for legal proceedings.";
-          }
-        }
-      } catch (dbError) {
-        console.warn('Failed to get file metadata for analysis:', dbError);
-      }
-      
-      // Analyze the file with appropriate question
-      fileAnalysis = await analyzeFile(env, fileId, customQuestion);
-      if (fileAnalysis) {
-        console.log('File analysis completed:', {
-          fileId,
-          documentType,
-          confidence: fileAnalysis.confidence,
-          summaryLength: fileAnalysis.summary?.length || 0
-        });
-        
-        // Add document type to analysis for better context
-        fileAnalysis.documentType = documentType;
-      }
-    }
-  }
+  // Note: File analysis is now handled as a tool call (analyze_document)
+  // The AI will call this tool when it determines document analysis is needed
 
   // Convert messages to the format expected by Cloudflare AI
   const formattedMessages = messages.map(msg => ({
@@ -379,52 +352,10 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
   // Use shared utility function for location context and prompt construction
   const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
 
-  // Build system prompt with optional file analysis
+  // Build system prompt
   let systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
 **IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**`;
-
-  // Add file analysis context if available
-  if (fileAnalysis) {
-    systemPrompt += `
-
-**FILE ANALYSIS CONTEXT:**
-The user has uploaded a ${fileAnalysis.documentType || 'document'} that has been analyzed. Here are the key findings:
-
-**Summary:** ${fileAnalysis.summary}
-
-**Key Facts:**
-${fileAnalysis.key_facts.map(fact => `- ${fact}`).join('\n')}
-
-**Entities Found:**
-- People: ${fileAnalysis.entities.people.join(', ') || 'None identified'}
-- Organizations: ${fileAnalysis.entities.orgs.join(', ') || 'None identified'}
-- Dates: ${fileAnalysis.entities.dates.join(', ') || 'None identified'}
-
-**Action Items:**
-${fileAnalysis.action_items.map(item => `- ${item}`).join('\n')}
-
-**Analysis Confidence:** ${(fileAnalysis.confidence * 100).toFixed(1)}%
-
-**IMPORTANT: When responding to the user, you MUST:**
-1. Acknowledge that you've analyzed their document
-2. Provide a brief, helpful summary of what you found
-3. Ask relevant follow-up questions based on the document content
-4. Offer specific assistance related to the document type (resume, legal document, etc.)
-5. Be conversational and engaging - don't just list facts
-
-**Example response structure:**
-"I've analyzed your [document type] and found some interesting insights. [Brief summary of key findings]. Based on what I see, I can help you with [specific offers]. What would you like to focus on?"
-
-**Document-specific response guidance:**
-- For resumes: Focus on professional achievements, skills, and career opportunities
-- For legal documents: Highlight key terms, potential issues, and legal implications
-- For medical documents: Emphasize health information relevant to legal matters
-- For images: Describe what you see and its potential legal relevance
-- For general documents: Provide a helpful summary and ask how you can assist
-
-Use this information to help understand the client's situation and guide the intake process. If the document contains contact information, use it to fill in missing details.`;
-  }
 
   systemPrompt += `
 
@@ -540,6 +471,9 @@ PARAMETERS: {
           case 'schedule_consultation':
             toolResult = await handleScheduleConsultation(parameters, env, teamConfig);
             break;
+          case 'analyze_document':
+            toolResult = await handleAnalyzeDocument(parameters, env, teamConfig);
+            break;
           default:
             return {
               response: `I apologize, but I don't recognize the tool "${toolName}". Please try again.`,
@@ -561,17 +495,7 @@ PARAMETERS: {
             inputMessageCount: formattedMessages.length,
             lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
             sessionId,
-            teamId,
-            fileAnalysis: fileAnalysis ? {
-              confidence: fileAnalysis.confidence,
-              summaryLength: fileAnalysis.summary?.length || 0,
-              keyFactsCount: fileAnalysis.key_facts?.length || 0,
-              entitiesCount: {
-                people: fileAnalysis.entities?.people?.length || 0,
-                orgs: fileAnalysis.entities?.orgs?.length || 0,
-                dates: fileAnalysis.entities?.dates?.length || 0
-              }
-            } : null
+            teamId
           }
         };
       } else {
@@ -583,23 +507,19 @@ PARAMETERS: {
 
     // If no tool call detected, return the AI response as-is
     console.log('[MAIN] No tool call detected, returning AI response');
+    
+    // Log the final response
+    console.log('=== FINAL AI RESPONSE ===');
+    console.log('Response:', response);
+    console.log('========================');
+    
     return {
       response,
       metadata: {
         inputMessageCount: formattedMessages.length,
         lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
         sessionId,
-        teamId,
-        fileAnalysis: fileAnalysis ? {
-          confidence: fileAnalysis.confidence,
-          summaryLength: fileAnalysis.summary?.length || 0,
-          keyFactsCount: fileAnalysis.key_facts?.length || 0,
-          entitiesCount: {
-            people: fileAnalysis.entities?.people?.length || 0,
-            orgs: fileAnalysis.entities?.orgs?.length || 0,
-            dates: fileAnalysis.entities?.dates?.length || 0
-          }
-        } : null
+        teamId
       }
     };
     
@@ -949,6 +869,124 @@ export async function handleScheduleConsultation(parameters: any, env: any, team
   return {
     success: true,
     message: `I'd like to schedule a consultation with one of our experienced attorneys for your ${matter_type} matter. Would you be available to meet with us this week?`
+  };
+}
+
+export async function handleAnalyzeDocument(parameters: any, env: any, teamConfig: any) {
+  const { file_id, analysis_type, specific_question } = parameters;
+  
+  console.log('=== ANALYZE DOCUMENT TOOL CALLED ===');
+  console.log('File ID:', file_id);
+  console.log('Analysis Type:', analysis_type);
+  console.log('Specific Question:', specific_question);
+  
+  // Determine the appropriate question based on analysis type
+  let customQuestion = specific_question;
+  
+  if (!customQuestion) {
+    switch (analysis_type) {
+      case 'resume':
+        customQuestion = "Analyze this resume/CV and extract key professional information, skills, experience, and achievements. Identify strengths and areas for improvement. Provide actionable insights for career development or job applications.";
+        break;
+      case 'legal_document':
+        customQuestion = "Analyze this legal document and extract key terms, parties involved, dates, obligations, and potential legal implications. Identify any concerning clauses or areas that may need legal review.";
+        break;
+      case 'medical_document':
+        customQuestion = "Analyze this medical document and extract key health information, diagnoses, treatments, dates, and any information relevant to legal matters such as personal injury or medical malpractice.";
+        break;
+      case 'image':
+        customQuestion = "Analyze this image and describe what you see. If it's related to a legal matter (accident scene, injury, property damage, etc.), provide detailed observations that could be relevant for legal proceedings.";
+        break;
+      default:
+        customQuestion = "Analyze this document and provide a comprehensive summary with key facts, entities, and actionable insights. Focus on information relevant for legal intake or professional services.";
+    }
+  }
+  
+  // Perform the analysis
+  const fileAnalysis = await analyzeFile(env, file_id, customQuestion);
+  
+  if (!fileAnalysis) {
+    return {
+      success: false,
+      message: "I'm sorry, I couldn't analyze that document. The file may not be accessible or may not be in a supported format. Could you please try uploading it again or provide more details about what you'd like me to help you with?"
+    };
+  }
+  
+  // Add document type to analysis
+  fileAnalysis.documentType = analysis_type;
+  
+  // Log the analysis results
+  console.log('=== DOCUMENT ANALYSIS RESULTS ===');
+  console.log('Document Type:', analysis_type);
+  console.log('Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
+  console.log('Summary:', fileAnalysis.summary);
+  console.log('Key Facts:', fileAnalysis.key_facts);
+  console.log('Entities:', fileAnalysis.entities);
+  console.log('Action Items:', fileAnalysis.action_items);
+  console.log('================================');
+  
+  // Create a helpful response based on the analysis
+  let response = `I've analyzed your ${analysis_type.replace('_', ' ')} and found some interesting insights. `;
+  
+  // Add document-specific response
+  switch (analysis_type) {
+    case 'resume':
+      response += `${fileAnalysis.summary} Your background shows strong professional experience. `;
+      response += `Based on what I see, I can help you with:\n`;
+      response += `• Refining your resume for specific roles\n`;
+      response += `• Highlighting your key achievements\n`;
+      response += `• Emphasizing measurable results and impact\n`;
+      response += `• Identifying areas for improvement\n\n`;
+      response += `What specific role or industry would you like to target?`;
+      break;
+      
+    case 'legal_document':
+      response += `${fileAnalysis.summary} This appears to be a legal document with important terms. `;
+      response += `Based on my analysis, I can help you with:\n`;
+      response += `• Reviewing key terms and conditions\n`;
+      response += `• Identifying potential issues or concerns\n`;
+      response += `• Understanding your rights and obligations\n`;
+      response += `• Preparing for negotiations if needed\n\n`;
+      response += `What aspect of this document would you like me to focus on?`;
+      break;
+      
+    case 'medical_document':
+      response += `${fileAnalysis.summary} This medical document contains important health information. `;
+      response += `Based on what I see, I can help you with:\n`;
+      response += `• Understanding your medical condition and treatment plan\n`;
+      response += `• Documenting expenses for insurance or legal purposes\n`;
+      response += `• Tracking your recovery progress\n`;
+      response += `• Exploring legal options if this involves an accident\n\n`;
+      response += `Are you dealing with insurance claims or considering legal action?`;
+      break;
+      
+    case 'image':
+      response += `${fileAnalysis.summary} This image shows important visual information. `;
+      response += `Based on my analysis, I can help you with:\n`;
+      response += `• Understanding the legal implications of what's shown\n`;
+      response += `• Documenting evidence for legal proceedings\n`;
+      response += `• Identifying relevant details for your case\n`;
+      response += `• Preparing documentation for insurance or legal claims\n\n`;
+      response += `How does this image relate to your legal situation?`;
+      break;
+      
+    default:
+      response += `${fileAnalysis.summary} `;
+      response += `Based on what I see, I can help you with:\n`;
+      fileAnalysis.action_items.forEach(item => {
+        response += `• ${item}\n`;
+      });
+      response += `\nWhat would you like to focus on?`;
+  }
+  
+  console.log('=== FINAL ANALYSIS RESPONSE ===');
+  console.log('Response:', response);
+  console.log('==============================');
+  
+  return {
+    success: true,
+    message: response,
+    analysis: fileAnalysis
   };
 }
 
