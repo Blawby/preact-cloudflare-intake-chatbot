@@ -3,7 +3,11 @@ import { validateLocation as validateLocationUtil, isLocationSupported } from '.
 import { CloudflareLocationInfo, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 
 // Helper function to analyze files using the vision API
-async function analyzeFile(env: any, fileId: string, question: string = "Summarize and extract key facts for legal intake."): Promise<any> {
+async function analyzeFile(env: any, fileId: string, question?: string): Promise<any> {
+  // Determine the appropriate question based on file type or use default
+  const defaultQuestion = "Analyze this document and provide a comprehensive summary with key facts, entities, and actionable insights. Focus on information relevant for legal intake or professional services.";
+  
+  const analysisQuestion = question || defaultQuestion;
   try {
     // Get file from R2 storage
     if (!env.FILES_BUCKET) {
@@ -70,7 +74,7 @@ async function analyzeFile(env: any, fileId: string, question: string = "Summari
     // Call the analyze endpoint
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('q', question);
+    formData.append('q', analysisQuestion);
 
     const response = await fetch('http://localhost/api/analyze', {
       method: 'POST',
@@ -319,14 +323,49 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
       const fileId = fileIdMatch[1];
       console.log('Detected file reference in message:', fileId);
       
-      // Analyze the file
-      fileAnalysis = await analyzeFile(env, fileId);
+      // Try to get file metadata to determine document type
+      let documentType = 'document';
+      let customQuestion = null;
+      
+      try {
+        const stmt = env.DB.prepare(`SELECT original_name, mime_type FROM files WHERE id = ? AND is_deleted = FALSE`);
+        const fileRecord = await stmt.bind(fileId).first();
+        
+        if (fileRecord) {
+          const fileName = fileRecord.original_name?.toLowerCase() || '';
+          const mimeType = fileRecord.mime_type || '';
+          
+          // Determine document type and set appropriate analysis question
+          if (fileName.includes('resume') || fileName.includes('cv') || mimeType.includes('application/pdf')) {
+            documentType = 'resume';
+            customQuestion = "Analyze this resume/CV and extract key professional information, skills, experience, and achievements. Identify strengths and areas for improvement. Provide actionable insights for career development or job applications.";
+          } else if (fileName.includes('contract') || fileName.includes('agreement') || fileName.includes('legal')) {
+            documentType = 'legal document';
+            customQuestion = "Analyze this legal document and extract key terms, parties involved, dates, obligations, and potential legal implications. Identify any concerning clauses or areas that may need legal review.";
+          } else if (fileName.includes('medical') || fileName.includes('health') || fileName.includes('injury')) {
+            documentType = 'medical document';
+            customQuestion = "Analyze this medical document and extract key health information, diagnoses, treatments, dates, and any information relevant to legal matters such as personal injury or medical malpractice.";
+          } else if (mimeType.startsWith('image/')) {
+            documentType = 'image';
+            customQuestion = "Analyze this image and describe what you see. If it's related to a legal matter (accident scene, injury, property damage, etc.), provide detailed observations that could be relevant for legal proceedings.";
+          }
+        }
+      } catch (dbError) {
+        console.warn('Failed to get file metadata for analysis:', dbError);
+      }
+      
+      // Analyze the file with appropriate question
+      fileAnalysis = await analyzeFile(env, fileId, customQuestion);
       if (fileAnalysis) {
         console.log('File analysis completed:', {
           fileId,
+          documentType,
           confidence: fileAnalysis.confidence,
           summaryLength: fileAnalysis.summary?.length || 0
         });
+        
+        // Add document type to analysis for better context
+        fileAnalysis.documentType = documentType;
       }
     }
   }
@@ -350,7 +389,7 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
     systemPrompt += `
 
 **FILE ANALYSIS CONTEXT:**
-The user has uploaded a document that has been analyzed. Here are the key findings:
+The user has uploaded a ${fileAnalysis.documentType || 'document'} that has been analyzed. Here are the key findings:
 
 **Summary:** ${fileAnalysis.summary}
 
@@ -366,6 +405,23 @@ ${fileAnalysis.key_facts.map(fact => `- ${fact}`).join('\n')}
 ${fileAnalysis.action_items.map(item => `- ${item}`).join('\n')}
 
 **Analysis Confidence:** ${(fileAnalysis.confidence * 100).toFixed(1)}%
+
+**IMPORTANT: When responding to the user, you MUST:**
+1. Acknowledge that you've analyzed their document
+2. Provide a brief, helpful summary of what you found
+3. Ask relevant follow-up questions based on the document content
+4. Offer specific assistance related to the document type (resume, legal document, etc.)
+5. Be conversational and engaging - don't just list facts
+
+**Example response structure:**
+"I've analyzed your [document type] and found some interesting insights. [Brief summary of key findings]. Based on what I see, I can help you with [specific offers]. What would you like to focus on?"
+
+**Document-specific response guidance:**
+- For resumes: Focus on professional achievements, skills, and career opportunities
+- For legal documents: Highlight key terms, potential issues, and legal implications
+- For medical documents: Emphasize health information relevant to legal matters
+- For images: Describe what you see and its potential legal relevance
+- For general documents: Provide a helpful summary and ask how you can assist
 
 Use this information to help understand the client's situation and guide the intake process. If the document contains contact information, use it to fill in missing details.`;
   }
