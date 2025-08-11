@@ -485,6 +485,20 @@ PARAMETERS: {
             };
         }
 
+        // Log the final tool response that will be sent to user
+        console.log('=== FINAL TOOL RESPONSE TO USER ===');
+        console.log('Tool Name:', toolName);
+        console.log('User Response:', toolResult.message);
+        console.log('Response Length:', toolResult.message.length, 'characters');
+        console.log('Response Success:', toolResult.success);
+        if (toolResult.analysis) {
+          console.log('Analysis Confidence:', `${(toolResult.analysis.confidence * 100).toFixed(1)}%`);
+          console.log('Analysis Type:', toolResult.analysis.documentType);
+          console.log('Key Facts Count:', toolResult.analysis.key_facts?.length || 0);
+          console.log('Action Items Count:', toolResult.analysis.action_items?.length || 0);
+        }
+        console.log('==================================');
+
         return {
           toolCalls: [{ name: toolName, parameters }],
           response: toolResult.message,
@@ -509,9 +523,11 @@ PARAMETERS: {
     console.log('[MAIN] No tool call detected, returning AI response');
     
     // Log the final response
-    console.log('=== FINAL AI RESPONSE ===');
+    console.log('=== FINAL AI RESPONSE TO USER ===');
     console.log('Response:', response);
-    console.log('========================');
+    console.log('Response Length:', response.length, 'characters');
+    console.log('Response Type: AI-generated (no tool call)');
+    console.log('==========================================');
     
     return {
       response,
@@ -981,6 +997,9 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   
   console.log('=== FINAL ANALYSIS RESPONSE ===');
   console.log('Response:', response);
+  console.log('Response Length:', response.length, 'characters');
+  console.log('Response Type:', analysis_type);
+  console.log('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
   console.log('==============================');
   
   return {
