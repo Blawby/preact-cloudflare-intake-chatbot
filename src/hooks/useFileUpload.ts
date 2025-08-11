@@ -41,10 +41,14 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
 
+  // Check if we're ready to upload files
+  const isReadyToUpload = teamId && sessionId && teamId.trim() !== '' && sessionId.trim() !== '';
+
   // Shared file upload logic
   const uploadFiles = useCallback(async (files: File[]) => {
-    if (!teamId || !sessionId) {
-      const error = 'Missing team or session ID. Cannot upload files.';
+    if (!isReadyToUpload) {
+      const error = `Cannot upload files yet. Waiting for team configuration to load. teamId: "${teamId}", sessionId: "${sessionId}"`;
+      console.error(error);
       onError?.(error);
       return;
     }
@@ -62,6 +66,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
           } as FileAttachment;
         } catch (err: any) {
           const error = `Failed to upload file: ${file.name}\n${err.message}`;
+          console.error(error);
           onError?.(error);
           return null; // Return null for failed uploads
         }
@@ -76,22 +81,18 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
     } catch (error) {
       console.error('Upload batch failed:', error);
     }
-  }, [teamId, sessionId, onError]);
-
-  // Handle photo selection
-  const handlePhotoSelect = useCallback(async (files: File[]) => {
-    await uploadFiles(files);
-  }, [uploadFiles]);
+  }, [teamId, sessionId, isReadyToUpload, onError]);
 
   // Handle camera capture
   const handleCameraCapture = useCallback(async (file: File) => {
     await uploadFiles([file]);
   }, [uploadFiles]);
 
-  // Handle file selection
+  // Handle file selection (now handles all file types including photos)
   const handleFileSelect = useCallback(async (files: File[]) => {
-    if (!teamId || !sessionId) {
-      const error = 'Missing team or session ID. Cannot upload files.';
+    if (!isReadyToUpload) {
+      const error = `Cannot upload files yet. Waiting for team configuration to load. teamId: "${teamId}", sessionId: "${sessionId}"`;
+      console.error(error);
       onError?.(error);
       return [];
     }
@@ -109,6 +110,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
           } as FileAttachment;
         } catch (err: any) {
           const error = `Failed to upload file: ${file.name}\n${err.message}`;
+          console.error(error);
           onError?.(error);
           return null; // Return null for failed uploads
         }
@@ -126,7 +128,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
       console.error('Upload batch failed:', error);
       return [];
     }
-  }, [teamId, sessionId, onError]);
+  }, [teamId, sessionId, isReadyToUpload, onError]);
 
   // Remove preview file
   const removePreviewFile = useCallback((index: number) => {
@@ -203,21 +205,17 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
       return !disallowedExtensions.includes(fileExtension || '');
     });
 
-    // Handle media files
-    if (mediaFiles.length > 0) {
-      await handlePhotoSelect(mediaFiles);
-    }
-
-    // Handle other valid files
-    if (safeOtherFiles.length > 0) {
-      await handleFileSelect(safeOtherFiles);
+    // Handle all valid files together
+    const allValidFiles = [...mediaFiles, ...safeOtherFiles];
+    if (allValidFiles.length > 0) {
+      await handleFileSelect(allValidFiles);
     }
 
     // Show alert if any files were filtered out
     if (safeOtherFiles.length < otherFiles.length) {
       onError?.('Some files were not uploaded because they have disallowed file extensions (zip, exe, etc.)');
     }
-  }, [handlePhotoSelect, handleFileSelect, onError]);
+  }, [handleFileSelect, onError]);
 
   // Setup global drag handlers with automatic cleanup
   useEffect(() => {
@@ -240,11 +238,11 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
     previewFiles,
     isDragging,
     setIsDragging,
-    handlePhotoSelect,
     handleCameraCapture,
     handleFileSelect,
     handleMediaCapture,
     removePreviewFile,
-    clearPreviewFiles
+    clearPreviewFiles,
+    isReadyToUpload
   };
 }; 

@@ -138,6 +138,29 @@ describe('File Upload API Integration Tests', () => {
       expect(responseData.data.fileType).toBe('image/jpeg');
     });
 
+    it('should upload an SVG file successfully', async () => {
+      // Create a mock SVG file
+      const svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40" fill="red"/></svg>';
+      const file = new File([svgContent], 'test-icon.svg', { type: 'image/svg+xml' });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
+
+      const request = new Request('http://localhost/api/files/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(200);
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data.fileType).toBe('image/svg+xml');
+    });
+
     it('should upload a Word document successfully', async () => {
       // Create a mock Word document
       const fileContent = 'PK\x03\x04'; // ZIP header (Word docs are ZIP files)
@@ -166,8 +189,8 @@ describe('File Upload API Integration Tests', () => {
 
   describe('File Upload - Validation Errors', () => {
     it('should reject files that are too large', async () => {
-      // Create a large file (11MB)
-      const largeContent = 'x'.repeat(11 * 1024 * 1024);
+      // Create a large file (30MB - exceeds the 25MB limit)
+      const largeContent = 'x'.repeat(30 * 1024 * 1024);
       const file = new File([largeContent], 'large-file.txt', { type: 'text/plain' });
 
       const formData = new FormData();

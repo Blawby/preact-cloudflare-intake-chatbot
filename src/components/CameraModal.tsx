@@ -94,7 +94,7 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="" fullScreen={true}>
+        <Modal isOpen={isOpen} onClose={onClose} type="fullscreen" showCloseButton={false}>
             <div className="flex flex-col h-full w-full">
                 {error && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm text-center absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 max-w-80">

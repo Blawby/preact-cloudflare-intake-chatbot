@@ -32,12 +32,13 @@ interface ChatContainerProps {
   // File handling props
   previewFiles: FileAttachment[];
   removePreviewFile: (index: number) => void;
-  handlePhotoSelect: (files: File[]) => Promise<void>;
-  handleCameraCapture: (file: File) => Promise<void>;
+  clearPreviewFiles: () => void;
   handleFileSelect: (files: File[]) => Promise<void>;
+  handleCameraCapture: (file: File) => Promise<void>;
   handleMediaCapture: (blob: Blob, type: 'audio' | 'video') => void;
   isRecording: boolean;
   setIsRecording: (v: boolean) => void;
+  isReadyToUpload?: boolean;
   
   // Input control prop
   clearInput?: boolean;
@@ -62,12 +63,13 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   onFeedbackSubmit,
   previewFiles,
   removePreviewFile,
-  handlePhotoSelect,
-  handleCameraCapture,
+  clearPreviewFiles,
   handleFileSelect,
+  handleCameraCapture,
   handleMediaCapture,
   isRecording,
   setIsRecording,
+  isReadyToUpload,
   clearInput
 }) => {
   const [inputValue, setInputValue] = useState('');
@@ -126,6 +128,9 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
     // Send message to API
     onSendMessage(message, attachments);
     
+    // Clear preview files after sending
+    clearPreviewFiles();
+    
     // Reset input and focus
     setInputValue('');
     
@@ -162,9 +167,8 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           setInputValue={setInputValue}
           previewFiles={previewFiles}
           removePreviewFile={removePreviewFile}
-          handlePhotoSelect={handlePhotoSelect}
-          handleCameraCapture={handleCameraCapture}
           handleFileSelect={handleFileSelect}
+          handleCameraCapture={handleCameraCapture}
           handleScheduleStart={onScheduleConsultation}
           isRecording={isRecording}
           handleMediaCapture={handleMediaCapture}
@@ -172,6 +176,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           onSubmit={handleSubmit}
           onKeyPress={handleKeyPress}
           textareaRef={textareaRef}
+          isReadyToUpload={isReadyToUpload}
         />
       </main>
     </div>

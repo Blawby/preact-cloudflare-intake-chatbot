@@ -17,15 +17,32 @@ const ALLOWED_FILE_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/gif',
   'image/webp',
+  'image/svg+xml',
+  'image/svg',
+  'image/bmp',
+  'image/tiff',
+  'image/tif',
+  'image/x-icon',
+  'image/vnd.microsoft.icon',
   'video/mp4',
   'video/webm',
-  'video/quicktime'
+  'video/quicktime',
+  'video/avi',
+  'video/mov',
+  'video/m4v',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/ogg',
+  'audio/aac',
+  'audio/flac'
 ];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB (increased for larger SVG files and other media)
 
 // Disallowed file extensions for security
 const DISALLOWED_EXTENSIONS = ['exe', 'bat', 'cmd', 'com', 'pif', 'scr', 'vbs', 'js', 'jar', 'msi', 'app'];
@@ -60,6 +77,16 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
   const fileExtension = file.name.split('.').pop() || '';
   const storageKey = `uploads/${teamId}/${sessionId}/${fileId}.${fileExtension}`;
 
+  console.log('Storing file:', {
+    fileId,
+    storageKey,
+    teamId,
+    sessionId,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type
+  });
+
   // Store file in R2 bucket
   await env.FILES_BUCKET.put(storageKey, file, {
     httpMetadata: {
@@ -74,28 +101,75 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
     }
   });
 
-  // Store file metadata in database
-  const stmt = env.DB.prepare(`
-    INSERT INTO files (
-      id, team_id, session_id, original_name, file_name, file_path, 
-      file_type, file_size, mime_type, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-  `);
+  console.log('File stored in R2 successfully:', storageKey);
 
-  await stmt.bind(
-    fileId,
-    teamId,
-    sessionId,
-    file.name,
-    `${fileId}.${fileExtension}`,
-    storageKey,
-    fileExtension,
-    file.size,
-    file.type
-  ).run();
+  // Try to store file metadata in database, but don't fail if it doesn't work
+  try {
+    // First check if the team exists, if not, create a minimal entry
+    const teamCheckStmt = env.DB.prepare('SELECT id FROM teams WHERE id = ? OR slug = ?');
+    const existingTeam = await teamCheckStmt.bind(teamId, teamId).first();
+    
+    if (!existingTeam) {
+      console.log('Team not found in database, creating minimal entry:', teamId);
+      // Create a minimal team entry if it doesn't exist
+      const createTeamStmt = env.DB.prepare(`
+        INSERT OR IGNORE INTO teams (id, slug, name, config, created_at, updated_at) 
+        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+      `);
+      await createTeamStmt.bind(
+        teamId,
+        teamId,
+        `Team ${teamId}`,
+        JSON.stringify({ aiModel: 'llama', requiresPayment: false })
+      ).run();
+      console.log('Team created in database:', teamId);
+    }
+
+    // Check if the session exists, if not, create a minimal entry
+    const sessionCheckStmt = env.DB.prepare('SELECT id FROM chat_sessions WHERE id = ?');
+    const existingSession = await sessionCheckStmt.bind(sessionId).first();
+    
+    if (!existingSession) {
+      console.log('Session not found in database, creating minimal entry:', sessionId);
+      // Create a minimal session entry if it doesn't exist
+      const createSessionStmt = env.DB.prepare(`
+        INSERT OR IGNORE INTO chat_sessions (id, team_id, created_at, updated_at) 
+        VALUES (?, ?, datetime('now'), datetime('now'))
+      `);
+      await createSessionStmt.bind(sessionId, teamId).run();
+      console.log('Session created in database:', sessionId);
+    }
+
+    const stmt = env.DB.prepare(`
+      INSERT INTO files (
+        id, team_id, session_id, original_name, file_name, file_path, 
+        file_type, file_size, mime_type, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
+
+    await stmt.bind(
+      fileId,
+      teamId,
+      sessionId,
+      file.name,
+      `${fileId}.${fileExtension}`,
+      storageKey,
+      fileExtension,
+      file.size,
+      file.type
+    ).run();
+
+    console.log('File metadata stored in database successfully');
+  } catch (error) {
+    // Log the error but don't fail the upload
+    console.warn('Failed to store file metadata in database:', error);
+    // Continue with the upload since the file is already stored in R2
+  }
 
   // Generate public URL (in production, this would be a CDN URL)
   const url = `/api/files/${fileId}`;
+
+  console.log('File upload completed:', { fileId, url, storageKey });
 
   return { fileId, url };
 }
@@ -162,14 +236,19 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
         throw HttpErrors.badRequest('File ID is required');
       }
 
-      // Get file metadata from database
-      const stmt = env.DB.prepare(`
-        SELECT * FROM files WHERE id = ? AND is_deleted = FALSE
-      `);
-      const fileRecord = await stmt.bind(fileId).first();
+      console.log('File download request:', { fileId, path });
 
-      if (!fileRecord) {
-        throw HttpErrors.notFound('File not found');
+      // Try to get file metadata from database first
+      let fileRecord = null;
+      try {
+        const stmt = env.DB.prepare(`
+          SELECT * FROM files WHERE id = ? AND is_deleted = FALSE
+        `);
+        fileRecord = await stmt.bind(fileId).first();
+        console.log('Database file record:', fileRecord);
+      } catch (dbError) {
+        console.warn('Failed to get file metadata from database:', dbError);
+        // Continue without database metadata
       }
 
       // Get file from R2 bucket
@@ -177,16 +256,71 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
         throw HttpErrors.internalServerError('File storage is not configured');
       }
 
-      const fileObject = await env.FILES_BUCKET.get(fileRecord.file_path);
+      // Try to construct the file path from the fileId if we don't have database metadata
+      let filePath = fileRecord?.file_path;
+      if (!filePath) {
+        // Extract teamId and sessionId from fileId format: teamId-sessionId-timestamp-random
+        // The teamId can contain hyphens, so we need to be more careful about parsing
+        const lastHyphenIndex = fileId.lastIndexOf('-');
+        const secondLastHyphenIndex = fileId.lastIndexOf('-', lastHyphenIndex - 1);
+        
+        if (lastHyphenIndex !== -1 && secondLastHyphenIndex !== -1) {
+          // The format is: teamId-sessionId-timestamp-random
+          // We need to find where the sessionId ends and timestamp begins
+          const parts = fileId.split('-');
+          if (parts.length >= 4) {
+            // The last two parts are timestamp and random string
+            const timestamp = parts[parts.length - 2];
+            const randomString = parts[parts.length - 1];
+            
+            // Everything before the timestamp is teamId-sessionId
+            const teamIdAndSessionId = parts.slice(0, -2).join('-');
+            
+            // Find the sessionId (it's a UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+            const sessionIdMatch = teamIdAndSessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+            
+            if (sessionIdMatch) {
+              const sessionId = sessionIdMatch[0];
+              const teamId = teamIdAndSessionId.substring(0, teamIdAndSessionId.length - sessionId.length - 1); // -1 for the hyphen
+              
+              console.log('Parsed fileId:', { teamId, sessionId, timestamp, randomString });
+              
+              // Try to find the file in R2 with a pattern match
+              const prefix = `uploads/${teamId}/${sessionId}/${fileId}`;
+              console.log('Looking for file with prefix:', prefix);
+              // List objects with this prefix
+              const objects = await env.FILES_BUCKET.list({ prefix });
+              console.log('R2 objects found:', objects.objects.length);
+              if (objects.objects.length > 0) {
+                filePath = objects.objects[0].key;
+                console.log('Found file path:', filePath);
+              }
+            }
+          }
+        }
+      }
+
+      if (!filePath) {
+        console.log('No file path found for fileId:', fileId);
+        throw HttpErrors.notFound('File not found');
+      }
+
+      console.log('Attempting to get file from R2:', filePath);
+      const fileObject = await env.FILES_BUCKET.get(filePath);
       if (!fileObject) {
+        console.log('File not found in R2 storage:', filePath);
         throw HttpErrors.notFound('File not found in storage');
       }
 
+      console.log('File found in R2, returning response');
+
       // Return file with appropriate headers
       const headers = new Headers(corsHeaders);
-      headers.set('Content-Type', fileRecord.mime_type || 'application/octet-stream');
-      headers.set('Content-Disposition', `inline; filename="${fileRecord.original_name}"`);
-      headers.set('Content-Length', fileRecord.file_size.toString());
+      headers.set('Content-Type', fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream');
+      headers.set('Content-Disposition', `inline; filename="${fileRecord?.original_name || fileId}"`);
+      if (fileRecord?.file_size) {
+        headers.set('Content-Length', fileRecord.file_size.toString());
+      }
 
       return new Response(fileObject.body, {
         status: 200,
@@ -194,6 +328,7 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
       });
 
     } catch (error) {
+      console.error('File download error:', error);
       return handleError(error, corsHeaders);
     }
   }

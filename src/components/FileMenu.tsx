@@ -3,29 +3,27 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import {
 	PlusIcon,
 	PhotoIcon,
-	CameraIcon,
-	DocumentIcon
+	CameraIcon
 } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
 import CameraModal from './CameraModal';
 
 interface FileMenuProps {
-    onPhotoSelect: (files: File[]) => void;
-    onCameraCapture: (file: File) => void;
     onFileSelect: (files: File[]) => void;
+    onCameraCapture: (file: File) => void;
+    isReadyToUpload?: boolean;
 }
 
 const FileMenu: FunctionComponent<FileMenuProps> = ({
-    onPhotoSelect,
+    onFileSelect,
     onCameraCapture,
-    onFileSelect
+    isReadyToUpload = true
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
     const [showCameraModal, setShowCameraModal] = useState(false);
     const [isBrowser, setIsBrowser] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const photoInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const firstMenuItemRef = useRef<HTMLButtonElement>(null);
@@ -47,7 +45,9 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
             document.addEventListener('click', handleClickOutside);
             // Focus the first menu item when menu opens
             setTimeout(() => {
-                firstMenuItemRef.current?.focus();
+                if (firstMenuItemRef.current && typeof firstMenuItemRef.current.focus === 'function') {
+                    firstMenuItemRef.current.focus();
+                }
             }, 10);
         }
 
@@ -70,7 +70,9 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                 
                 if (document.activeElement === lastItem) {
                     event.preventDefault();
-                    firstMenuItemRef.current?.focus();
+                    if (firstMenuItemRef.current && typeof firstMenuItemRef.current.focus === 'function') {
+                        firstMenuItemRef.current.focus();
+                    }
                 }
             } else if (event.key === 'Tab' && event.shiftKey) {
                 const menuItems = menuRef.current?.querySelectorAll('button.file-menu-item');
@@ -79,7 +81,9 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                 if (document.activeElement === firstItem) {
                     event.preventDefault();
                     const lastItem = menuItems?.[menuItems.length - 1] as HTMLButtonElement;
-                    lastItem?.focus();
+                    if (lastItem && typeof lastItem.focus === 'function') {
+                        lastItem.focus();
+                    }
                 }
             }
         };
@@ -100,8 +104,8 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         }
     };
 
-    const handlePhotoClick = () => {
-        photoInputRef.current?.click();
+    const handleFileClick = () => {
+        fileInputRef.current?.click();
         handleClose();
     };
 
@@ -115,11 +119,6 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         setShowCameraModal(false);
     };
 
-    const handleFileClick = () => {
-        fileInputRef.current?.click();
-        handleClose();
-    };
-
     const filterDisallowedFiles = (files: File[]): File[] => {
         return files.filter(file => {
             	const fileExtension = file.name.split('.').pop()?.toLowerCase();
@@ -129,15 +128,6 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         });
     };
 
-    const handlePhotoChange = (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        const files = Array.from(target.files || []);
-        if (files.length > 0) {
-            onPhotoSelect(files);
-        }
-        target.value = '';
-    };
-
     const handleFileChange = (e: Event) => {
         const target = e.target as HTMLInputElement;
         const allFiles = Array.from(target.files || []);
@@ -145,24 +135,15 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         // Filter out disallowed extensions like zip and exe
         const safeFiles = filterDisallowedFiles(allFiles);
         
-        // Further filter out images and videos which should use the photo option
-        const nonMediaFiles = safeFiles.filter(file => {
-            return !file.type.startsWith('image/') && !file.type.startsWith('video/');
-        });
-        
-        if (nonMediaFiles.length > 0) {
-            onFileSelect(nonMediaFiles);
+        if (safeFiles.length > 0) {
+            onFileSelect(safeFiles);
         }
         
-        if (nonMediaFiles.length !== allFiles.length) {
+        if (safeFiles.length !== allFiles.length) {
             // Alert user if files were removed
-            const removedCount = allFiles.length - nonMediaFiles.length;
+            const removedCount = allFiles.length - safeFiles.length;
             if (removedCount > 0) {
-                if (safeFiles.length !== allFiles.length) {
-                    alert('Some files were not uploaded. ZIP and executable files are not allowed. Images and videos should use the "Attach photos" option.');
-                } else {
-                    alert('Images and videos should be uploaded using the "Attach photos" option.');
-                }
+                alert('Some files were not uploaded. ZIP and executable files are not allowed.');
             }
         }
         
@@ -175,13 +156,14 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                 type="button"
                 variant="icon"
                 size="sm"
-                onClick={() => setIsOpen(!isOpen)}
-                title="Add attachment"
+                onClick={() => isReadyToUpload && setIsOpen(!isOpen)}
+                title={isReadyToUpload ? "Add attachment" : "File upload not ready yet"}
                 aria-label="Open file attachment menu"
                 aria-haspopup="true"
                 aria-expanded={isOpen}
                 ref={triggerRef}
-                className="flex items-center justify-center w-10 h-10 rounded-lg cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200"
+                disabled={!isReadyToUpload}
+                className={`flex items-center justify-center w-10 h-10 rounded-lg cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 ${!isReadyToUpload ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
                 <PlusIcon className="w-5 h-5" aria-hidden="true" />
             </Button>
@@ -195,12 +177,12 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                     <Button 
                         type="button" 
                         variant="ghost"
-                        onClick={handlePhotoClick}
+                        onClick={handleFileClick}
                         role="menuitem"
                         ref={firstMenuItemRef}
-                        				className="flex items-center justify-between w-full px-3 py-3 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 text-xs sm:text-sm"
+                        className="file-menu-item flex items-center justify-between w-full px-3 py-3 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 text-xs sm:text-sm"
                     >
-                        <span>Attach photos</span>
+                        <span>Add photos & files</span>
                         <PhotoIcon className="w-5 h-5" aria-hidden="true" />
                     </Button>
                     
@@ -209,40 +191,19 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                         variant="ghost"
                         onClick={handleCameraClick}
                         role="menuitem"
-                        className="flex items-center justify-between w-full px-3 py-3 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 text-xs sm:text-sm border-t border-gray-200 dark:border-dark-border"
+                        className="file-menu-item flex items-center justify-between w-full px-3 py-3 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 text-xs sm:text-sm border-t border-gray-200 dark:border-dark-border"
                     >
                         <span>Take Photo</span>
                         <CameraIcon className="w-5 h-5" aria-hidden="true" />
-                    </Button>
-                    
-                    <Button 
-                        type="button" 
-                        variant="ghost"
-                        onClick={handleFileClick}
-                        role="menuitem"
-                        className="flex items-center justify-between w-full px-3 py-3 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 text-xs sm:text-sm border-t border-gray-200 dark:border-dark-border"
-                    >
-                        <span>Attach files</span>
-                        <DocumentIcon className="w-5 h-5" aria-hidden="true" />
                     </Button>
                 </div>
             )}
 
             <input
                 type="file"
-                ref={photoInputRef}
-                className="hidden"
-                accept="image/*"
-                multiple
-                onChange={handlePhotoChange}
-                aria-hidden="true"
-                tabIndex={-1}
-            />
-            <input
-                type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept="application/pdf,text/plain,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,audio/*"
+                accept="image/*,video/*,audio/*,application/pdf,text/plain,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 multiple
                 onChange={handleFileChange}
                 aria-hidden="true"

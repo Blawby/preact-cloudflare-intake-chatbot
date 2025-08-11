@@ -40,12 +40,12 @@ export function App() {
 		previewFiles,
 		isDragging,
 		setIsDragging,
-		handlePhotoSelect,
 		handleCameraCapture,
 		handleFileSelect,
 		handleMediaCapture,
 		removePreviewFile,
-		clearPreviewFiles
+		clearPreviewFiles,
+		isReadyToUpload
 	} = useFileUpload({
 		teamId,
 		sessionId,
@@ -284,13 +284,15 @@ export function App() {
 									onFeedbackSubmit={handleFeedbackSubmit}
                                     previewFiles={previewFiles}
                                     removePreviewFile={removePreviewFile}
-                                    handlePhotoSelect={handlePhotoSelect}
+                                    clearPreviewFiles={clearPreviewFiles}
+
                                     handleCameraCapture={handleCameraCapture}
                                     handleFileSelect={handleFileSelect}
 					handleMediaCapture={handleMediaCaptureWrapper}
                                     isRecording={isRecording}
                                     setIsRecording={setIsRecording}
 									clearInput={clearInputTrigger > 0}
+									isReadyToUpload={isReadyToUpload}
 				/>
 			</AppLayout>
 		</>
