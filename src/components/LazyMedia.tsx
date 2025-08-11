@@ -1,21 +1,20 @@
 import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState } from 'preact/hooks';
 import { memo } from 'preact/compat';
-import Lightbox from './Lightbox';
 
 interface LazyMediaProps {
     src: string;
     type: string;
     alt?: string;
     className?: string;
+    onClick?: () => void;
 }
 
-const LazyMedia: FunctionComponent<LazyMediaProps> = ({ src, type, alt = '', className = '' }) => {
+const LazyMedia: FunctionComponent<LazyMediaProps> = ({ src, type, alt = '', className = '', onClick }) => {
     const mediaRef = useRef<HTMLElement>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
     const [error, setError] = useState(false);
-    const [showLightbox, setShowLightbox] = useState(false);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -48,8 +47,8 @@ const LazyMedia: FunctionComponent<LazyMediaProps> = ({ src, type, alt = '', cla
     };
 
     const handleImageClick = () => {
-        if (type.startsWith('image/')) {
-            setShowLightbox(true);
+        if (onClick) {
+            onClick();
         }
     };
 
@@ -80,23 +79,24 @@ const LazyMedia: FunctionComponent<LazyMediaProps> = ({ src, type, alt = '', cla
 
             {isVisible && !error && (
                 isImage ? (
-                    <>
-                        <img
-                            src={src}
-                            alt={alt}
-                            onLoad={handleLoad}
-                            onError={handleError}
-                            onClick={handleImageClick}
-                            class={isLoaded ? 'visible' : 'hidden'}
-                        />
-                        {showLightbox && (
-                            <Lightbox
-                                src={src}
-                                alt={alt}
-                                onClose={() => setShowLightbox(false)}
-                            />
-                        )}
-                    </>
+                    <img
+                        src={src}
+                        alt={alt}
+                        onLoad={handleLoad}
+                        onError={handleError}
+                        onClick={handleImageClick}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                                e.preventDefault();
+                                handleImageClick();
+                            }
+                        }}
+                        className={isLoaded ? 'visible' : 'hidden'}
+                        loading="lazy"
+                        tabIndex={0}
+                        role="button"
+                        aria-label={onClick ? `View ${alt || 'image'}` : undefined}
+                    />
                 ) : isVideo ? (
                     <video
                         src={src}

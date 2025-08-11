@@ -17,9 +17,8 @@ interface MessageComposerProps {
   setInputValue: (v: string) => void;
   previewFiles: PreviewFile[];
   removePreviewFile: (index: number) => void;
-  handlePhotoSelect: (files: File[]) => Promise<void>;
-  handleCameraCapture: (file: File) => Promise<void>;
   handleFileSelect: (files: File[]) => Promise<void>;
+  handleCameraCapture: (file: File) => Promise<void>;
   handleScheduleStart: () => void;
   isRecording: boolean;
   handleMediaCapture: (blob: Blob, type: 'audio' | 'video') => void;
@@ -27,6 +26,7 @@ interface MessageComposerProps {
   onSubmit: () => void;
   onKeyPress: (e: KeyboardEvent) => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
+  isReadyToUpload?: boolean;
 }
 
 const MessageComposer = ({
@@ -34,9 +34,8 @@ const MessageComposer = ({
   setInputValue,
   previewFiles,
   removePreviewFile,
-  handlePhotoSelect,
-  handleCameraCapture,
   handleFileSelect,
+  handleCameraCapture,
   handleScheduleStart,
   isRecording,
   handleMediaCapture,
@@ -44,6 +43,7 @@ const MessageComposer = ({
   onSubmit,
   onKeyPress,
   textareaRef,
+  isReadyToUpload,
 }: MessageComposerProps) => {
 
   const handleInput = (e: Event) => {
@@ -74,36 +74,41 @@ const MessageComposer = ({
     <div className="pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" role="form" aria-label="Message composition">
       <div className="flex flex-col w-full relative bg-white dark:bg-dark-input-bg border border-gray-200 dark:border-dark-border border-t-0 rounded-2xl p-3 min-h-[56px] gap-3 h-auto overflow-visible">
         {previewFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 m-0" role="list" aria-label="File attachments">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 m-0" role="list" aria-label="File attachments">
             {previewFiles.map((file, index) => (
               <div
-                className={`relative w-15 h-15 rounded-lg overflow-hidden shadow-sm bg-gray-100 dark:bg-dark-hover ${file.type.startsWith('image/') ? 'w-15 h-15' : 'w-[165px] h-15 flex items-center pr-5 gap-1'}`}
+                className="relative flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
                 key={index}
                 role="listitem"
               >
                 {file.type.startsWith('image/') ? (
-                  <img src={file.url} alt={`Preview of ${file.name}`} className="w-full h-full object-cover" />
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                    <img src={file.url} alt={`Preview of ${file.name}`} className="w-full h-full object-cover" />
+                  </div>
                 ) : (
-                  <>
-                    <div className="w-15 h-15 flex-shrink-0 flex items-center justify-center bg-amber-500 text-white p-2" aria-hidden="true">
-                      {/* getFileIcon is app-level; keep previews consistent without it here */}
-                      <span className="text-xs font-semibold uppercase">{file.name.split('.').pop()}</span>
-                    </div>
-                    <div className="flex-1 flex flex-col p-1 pr-2 overflow-hidden">
-                      <div className="text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis mb-1">{file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}</div>
-                      <div className="text-[10px] text-amber-500 uppercase font-semibold">{file.name.split('.').pop()}</div>
-                    </div>
-                  </>
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">{file.name.split('.').pop()}</span>
+                  </div>
                 )}
+                
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" title={file.name}>
+                    {file.name.length > 25 ? `${file.name.substring(0, 25)}...` : file.name}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {file.type}
+                  </div>
+                </div>
+                
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => removePreviewFile(index)}
                   aria-label={`Remove ${file.name}`}
-                  className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-black/60 text-white border-none flex items-center justify-center cursor-pointer text-base leading-none p-0 opacity-90 transition-opacity duration-200 z-[2] hover:opacity-100"
+                  className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
                 >
-                  <XMarkIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                  <XMarkIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
                 </Button>
               </div>
             ))}
@@ -130,7 +135,7 @@ const MessageComposer = ({
           <div className="flex justify-between w-full items-center">
             {!isRecording && (
               <div className="flex items-center">
-                <FileMenu onPhotoSelect={handlePhotoSelect} onCameraCapture={handleCameraCapture} onFileSelect={handleFileSelect} />
+                <FileMenu onFileSelect={handleFileSelect} onCameraCapture={handleCameraCapture} isReadyToUpload={isReadyToUpload} />
                 {features.enableConsultationButton && (
                   <ScheduleButton onClick={handleScheduleStart} disabled={false} />
                 )}

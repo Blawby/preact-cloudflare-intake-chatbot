@@ -3,6 +3,9 @@ import { memo } from 'preact/compat';
 import { useState, useEffect } from 'preact/hooks';
 import DOMPurify from 'dompurify';
 import LazyMedia from './LazyMedia';
+import Modal from './Modal';
+import MediaContent from './MediaContent';
+import PaymentContent from './PaymentContent';
 import MatterCanvas from './MatterCanvas';
 import PaymentEmbed from './PaymentEmbed';
 import TeamProfile from './TeamProfile';
@@ -76,7 +79,7 @@ const getFileIcon = (file: FileAttachment) => {
 	// PDF icon
 	if (file.type === 'application/pdf' || ext === 'pdf') {
 		return (
-			<DocumentTextIcon className="w-6 h-6" />
+			<DocumentTextIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
@@ -85,7 +88,7 @@ const getFileIcon = (file: FileAttachment) => {
 		file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
 		ext === 'doc' || ext === 'docx') {
 		return (
-			<DocumentIcon className="w-6 h-6" />
+			<DocumentIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
@@ -94,56 +97,69 @@ const getFileIcon = (file: FileAttachment) => {
 		file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
 		ext === 'xls' || ext === 'xlsx' || ext === 'csv') {
 		return (
-			<TableCellsIcon className="w-6 h-6" />
+			<TableCellsIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
 	// Audio file icon
 	if (file.type.startsWith('audio/')) {
 		return (
-			<MusicalNoteIcon className="w-6 h-6" />
+			<MusicalNoteIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
 	// Video file icon
 	if (file.type.startsWith('video/')) {
 		return (
-			<VideoCameraIcon className="w-6 h-6" />
+			<VideoCameraIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
 	// Default file icon
 	return (
-		<DocumentIcon className="w-6 h-6" />
+		<DocumentIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 	);
 };
 
-const FilePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => {
+const FilePreview: FunctionComponent<{ file: FileAttachment; onFileClick: (file: FileAttachment) => void }> = ({ file, onFileClick }) => {
+	const handleKeyDown = (e: KeyboardEvent) => {
+		if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+			e.preventDefault();
+			onFileClick(file);
+		}
+	};
+
 	return (
-		<div className="flex items-center gap-3 p-0 bg-white dark:bg-dark-input border border-gray-200 dark:border-dark-border rounded-lg my-2 w-full max-w-[300px]">
-			<div className="w-8 h-8 p-1 text-gray-900 dark:text-white bg-gray-100 dark:bg-dark-hover rounded flex-shrink-0">
+		<div 
+			className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer my-2 max-w-[300px]"
+			onClick={() => onFileClick(file)}
+			onKeyDown={handleKeyDown}
+			role="button"
+			tabIndex={0}
+			aria-label={`Open ${file.name}`}
+		>
+			<div className="w-8 h-8 rounded bg-gray-100 dark:bg-dark-hover flex items-center justify-center flex-shrink-0">
 				{getFileIcon(file)}
 			</div>
-			<div className="flex-1 min-w-0 flex flex-col gap-1">
-				<div className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-					<a href={file.url} target="_blank" rel="noopener noreferrer" className="text-gray-900 dark:text-white no-underline hover:underline">
-						{file.name}
-					</a>
+			<div className="flex-1 min-w-0">
+				<div className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" title={file.name}>
+					{file.name.length > 25 ? `${file.name.substring(0, 25)}...` : file.name}
 				</div>
-				<div className="text-xs text-amber-500">{formatFileSize(file.size)}</div>
+				<div className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(file.size)}</div>
 			</div>
 		</div>
 	);
 };
 
-const ImagePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => {
+const ImagePreview: FunctionComponent<{ file: FileAttachment; onImageClick: (file: FileAttachment) => void }> = ({ file, onImageClick }) => {
 	return (
-		<div class="message-media-container">
+		<div class="message-media-container my-2">
 			<LazyMedia
 				src={file.url}
 				type={file.type}
 				alt={file.name}
-				className="w-full h-auto block cursor-pointer"
+				className="max-w-[300px] max-h-[300px] w-auto h-auto block cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700"
+				onClick={() => onImageClick(file)}
 			/>
 		</div>
 	);
@@ -172,6 +188,8 @@ const Message: FunctionComponent<MessageProps> = memo(({
 }) => {
 	const [isClient, setIsClient] = useState(false);
 	const [ReactMarkdown, setReactMarkdown] = useState<any>(null);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [selectedMedia, setSelectedMedia] = useState<any>(null);
 
 	useEffect(() => {
 		setIsClient(true);
@@ -257,11 +275,37 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				
 				{/* Display files */}
 				{imageFiles.map((file, index) => (
-					<ImagePreview key={file.url || index} file={file} />
+					<ImagePreview 
+						key={file.url || index} 
+						file={file} 
+						onImageClick={(file) => {
+							setSelectedMedia({
+								id: file.url,
+								name: file.name,
+								size: file.size,
+								type: file.type,
+								url: file.url,
+								timestamp: new Date(),
+								messageIndex: 0,
+								category: 'image' as const
+							});
+							setIsModalOpen(true);
+						}}
+					/>
 				))}
 				
 				{otherFiles.map((file, index) => (
-					<FilePreview key={index} file={file} />
+					<FilePreview 
+						key={index} 
+						file={file} 
+						onFileClick={(file) => {
+							// For documents and other files, trigger download
+							const link = document.createElement('a');
+							link.href = file.url;
+							link.download = file.name;
+							link.click();
+						}}
+					/>
 				))}
 				{audioFiles.map((file, index) => (
 					<div class="my-2 rounded-xl overflow-hidden max-w-75 w-full">
@@ -284,8 +328,20 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					</div>
 				))}
 				
-				
-				
+				{/* Modal for viewing images */}
+				{isModalOpen && selectedMedia && (
+					<Modal
+						isOpen={isModalOpen}
+						onClose={() => {
+							setIsModalOpen(false);
+							setSelectedMedia(null);
+						}}
+						type="fullscreen"
+						showCloseButton={true}
+					>
+						<MediaContent media={selectedMedia} />
+					</Modal>
+				)}
 			</div>
 		</div>
 	);

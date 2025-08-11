@@ -17,7 +17,8 @@ import {
   type AggregatedMedia 
 } from '../utils/mediaAggregation';
 import { Button } from './ui/Button';
-import Lightbox from './Lightbox';
+import Modal from './Modal';
+import MediaContent from './MediaContent';
 
 interface MediaSidebarProps {
   messages: any[];
@@ -42,7 +43,7 @@ const categoryLabels = {
 
 export default function MediaSidebar({ messages }: MediaSidebarProps) {
   const [selectedMedia, setSelectedMedia] = useState<AggregatedMedia | null>(null);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const mediaGroups = aggregateMediaFromMessages(messages);
   const totalFiles = mediaGroups.reduce((sum, group) => sum + group.files.length, 0);
@@ -50,7 +51,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
   const handleMediaClick = (media: AggregatedMedia) => {
     if (media.category === 'image' || media.category === 'video') {
       setSelectedMedia(media);
-      setIsLightboxOpen(true);
+      setIsModalOpen(true);
     } else {
       // For documents and other files, trigger download
       const link = document.createElement('a');
@@ -148,16 +149,19 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
         </div>
       </div>
 
-      {/* Lightbox for viewing images and videos */}
-      {isLightboxOpen && selectedMedia && (
-        <Lightbox
-          isOpen={isLightboxOpen}
+      {/* Modal for viewing images and videos */}
+      {isModalOpen && selectedMedia && (
+        <Modal
+          isOpen={isModalOpen}
           onClose={() => {
-            setIsLightboxOpen(false);
+            setIsModalOpen(false);
             setSelectedMedia(null);
           }}
-          media={selectedMedia}
-        />
+          type="fullscreen"
+          showCloseButton={true}
+        >
+          <MediaContent media={selectedMedia} />
+        </Modal>
       )}
     </>
   );

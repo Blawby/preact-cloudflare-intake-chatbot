@@ -41,6 +41,7 @@ The system uses a multi-tenant architecture with team-specific configurations st
 - **💰 Payment Integration**: Automated consultation fee collection ($75) with team configuration
 - **👨‍💼 Human-in-the-Loop Review**: Lawyer review queue for urgent/complex matters
 - **📱 Responsive Design**: Mobile-first interface with modern UI/UX
+- **📎 File Upload & Camera**: Support for photos, videos, audio, and documents (25MB max) with camera capture
 - **🔒 Production Security**: OWASP-compliant security headers and validation
 
 ### 🏗️ **Simplified Architecture:**
@@ -222,10 +223,18 @@ The application implements comprehensive security headers:
 
 ### Request Validation
 
-- File upload size limits (10MB max)
-- Content-type validation
+- File upload size limits (25MB max)
+- Content-type validation for images, videos, audio, and documents
+- Camera photo capture support
 - Rate limiting (60 requests/minute)
 - Input sanitization
+
+### Supported File Formats
+
+**Images**: JPEG, JPG, PNG, GIF, WebP, SVG, BMP, TIFF, ICO  
+**Videos**: MP4, WebM, QuickTime, AVI, MOV, M4V  
+**Audio**: MP3, WAV, OGG, AAC, FLAC, WebM  
+**Documents**: PDF, TXT, CSV, DOC, DOCX
 
 ### Error Handling & Monitoring
 
