@@ -63,8 +63,27 @@ export class AIService {
       console.warn('Failed to fetch team config:', error);
     }
     
-    console.log('Returning empty team config');
-    return {};
+    console.log('Returning default team config');
+    return {
+      requiresPayment: false,
+      consultationFee: 0,
+      paymentLink: null,
+      availableServices: [
+        'Family Law',
+        'Employment Law',
+        'Business Law',
+        'Intellectual Property',
+        'Personal Injury',
+        'Criminal Law',
+        'Civil Law',
+        'Tenant Rights Law',
+        'Probate and Estate Planning',
+        'Special Education and IEP Advocacy',
+        'Small Business and Nonprofits',
+        'Contract Review',
+        'General Consultation'
+      ]
+    };
   }
 
   // Clear cache for a specific team or all teams

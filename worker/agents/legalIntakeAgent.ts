@@ -252,7 +252,22 @@ async function getTeamConfig(env: any, teamId: string) {
         config: {
           requiresPayment: false,
           consultationFee: 0,
-          paymentLink: null
+          paymentLink: null,
+          availableServices: [
+            'Family Law',
+            'Employment Law',
+            'Business Law',
+            'Intellectual Property',
+            'Personal Injury',
+            'Criminal Law',
+            'Civil Law',
+            'Tenant Rights Law',
+            'Probate and Estate Planning',
+            'Special Education and IEP Advocacy',
+            'Small Business and Nonprofits',
+            'Contract Review',
+            'General Consultation'
+          ]
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -267,7 +282,22 @@ async function getTeamConfig(env: any, teamId: string) {
       config: {
         requiresPayment: false,
         consultationFee: 0,
-        paymentLink: null
+        paymentLink: null,
+        availableServices: [
+          'Family Law',
+          'Employment Law',
+          'Business Law',
+          'Intellectual Property',
+          'Personal Injury',
+          'Criminal Law',
+          'Civil Law',
+          'Tenant Rights Law',
+          'Probate and Estate Planning',
+          'Special Education and IEP Advocacy',
+          'Small Business and Nonprofits',
+          'Contract Review',
+          'General Consultation'
+        ]
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
