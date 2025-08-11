@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { HttpErrors, handleError, createSuccessResponse, SECURITY_HEADERS } from '../errorHandler';
 import { z } from 'zod';
 
 // File upload validation schema
@@ -28,6 +28,8 @@ const ALLOWED_FILE_TYPES = [
   'image/tif',
   'image/x-icon',
   'image/vnd.microsoft.icon',
+  'image/heic',
+  'image/heif',
   'video/mp4',
   'video/webm',
   'video/quicktime',
@@ -39,7 +41,8 @@ const ALLOWED_FILE_TYPES = [
   'audio/wav',
   'audio/ogg',
   'audio/aac',
-  'audio/flac'
+  'audio/flac',
+  'audio/webm'
 ];
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB (increased for larger SVG files and other media)
@@ -321,6 +324,16 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
       if (fileRecord?.file_size) {
         headers.set('Content-Length', fileRecord.file_size.toString());
       }
+      
+      // Propagate cache control from stored object if present
+      if (fileObject.httpMetadata?.cacheControl) {
+        headers.set('Cache-Control', fileObject.httpMetadata.cacheControl);
+      }
+      
+      // Add security headers
+      Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+        headers.set(key, value);
+      });
 
       return new Response(fileObject.body, {
         status: 200,

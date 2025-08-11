@@ -3,7 +3,8 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import {
 	PlusIcon,
 	PhotoIcon,
-	CameraIcon
+	CameraIcon,
+	XMarkIcon
 } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
 import CameraModal from './CameraModal';
@@ -23,6 +24,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
     const [isClosing, setIsClosing] = useState(false);
     const [showCameraModal, setShowCameraModal] = useState(false);
     const [isBrowser, setIsBrowser] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
@@ -140,10 +142,12 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         }
         
         if (safeFiles.length !== allFiles.length) {
-            // Alert user if files were removed
+            // Show inline error notification if files were removed
             const removedCount = allFiles.length - safeFiles.length;
             if (removedCount > 0) {
-                alert('Some files were not uploaded. ZIP and executable files are not allowed.');
+                setErrorMessage(`Some files were not uploaded. ZIP and executable files are not allowed.`);
+                // Auto-hide error after 5 seconds
+                setTimeout(() => setErrorMessage(null), 5000);
             }
         }
         
@@ -196,6 +200,28 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                         <span>Take Photo</span>
                         <CameraIcon className="w-5 h-5" aria-hidden="true" />
                     </Button>
+                </div>
+            )}
+
+            {/* Error notification */}
+            {errorMessage && (
+                <div 
+                    className="absolute bottom-full left-0 mb-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 min-w-[250px] shadow-lg z-[2001]"
+                    role="alert"
+                    aria-live="polite"
+                >
+                    <div className="flex items-start gap-2">
+                        <div className="flex-1 text-sm text-red-700 dark:text-red-300">
+                            {errorMessage}
+                        </div>
+                        <button
+                            onClick={() => setErrorMessage(null)}
+                            className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 transition-colors"
+                            aria-label="Dismiss error message"
+                        >
+                            <XMarkIcon className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             )}
 

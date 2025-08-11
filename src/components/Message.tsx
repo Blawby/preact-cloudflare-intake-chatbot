@@ -122,10 +122,21 @@ const getFileIcon = (file: FileAttachment) => {
 };
 
 const FilePreview: FunctionComponent<{ file: FileAttachment; onFileClick: (file: FileAttachment) => void }> = ({ file, onFileClick }) => {
+	const handleKeyDown = (e: KeyboardEvent) => {
+		if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+			e.preventDefault();
+			onFileClick(file);
+		}
+	};
+
 	return (
 		<div 
 			className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer my-2 max-w-[300px]"
 			onClick={() => onFileClick(file)}
+			onKeyDown={handleKeyDown}
+			role="button"
+			tabIndex={0}
+			aria-label={`Open ${file.name}`}
 		>
 			<div className="w-8 h-8 rounded bg-gray-100 dark:bg-dark-hover flex items-center justify-center flex-shrink-0">
 				{getFileIcon(file)}

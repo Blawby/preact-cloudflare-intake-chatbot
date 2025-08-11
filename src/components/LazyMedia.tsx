@@ -85,7 +85,17 @@ const LazyMedia: FunctionComponent<LazyMediaProps> = ({ src, type, alt = '', cla
                         onLoad={handleLoad}
                         onError={handleError}
                         onClick={handleImageClick}
-                        class={isLoaded ? 'visible' : 'hidden'}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                                e.preventDefault();
+                                handleImageClick();
+                            }
+                        }}
+                        className={isLoaded ? 'visible' : 'hidden'}
+                        loading="lazy"
+                        tabIndex={0}
+                        role="button"
+                        aria-label={onClick ? `View ${alt || 'image'}` : undefined}
                     />
                 ) : isVideo ? (
                     <video

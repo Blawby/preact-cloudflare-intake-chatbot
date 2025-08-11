@@ -229,6 +229,13 @@ The application implements comprehensive security headers:
 - Rate limiting (60 requests/minute)
 - Input sanitization
 
+### Supported File Formats
+
+**Images**: JPEG, JPG, PNG, GIF, WebP, SVG, BMP, TIFF, ICO  
+**Videos**: MP4, WebM, QuickTime, AVI, MOV, M4V  
+**Audio**: MP3, WAV, OGG, AAC, FLAC, WebM  
+**Documents**: PDF, TXT, CSV, DOC, DOCX
+
 ### Error Handling & Monitoring
 
 - Structured logging with error codes

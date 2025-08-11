@@ -222,13 +222,13 @@ export default defineConfig({
 						console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
 					});
 				},
-				// Exclude file endpoints from proxy - they should be handled by Cloudflare Worker
-				filter: (pathname, req) => {
+				// Use bypass instead of filter (which is not supported in Vite's built-in proxy)
+				bypass: (req, res, options) => {
 					// Don't proxy file upload/download endpoints
-					if (pathname.startsWith('/api/files/')) {
-						return false;
+					if (req.url?.startsWith('/api/files/')) {
+						return req.url;
 					}
-					return true;
+					return null;
 				}
 			}
 		}

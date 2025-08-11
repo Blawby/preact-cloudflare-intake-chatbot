@@ -25,7 +25,7 @@ describe('File Upload API Integration Tests', () => {
             file_name: 'test-file-123.txt',
             file_path: 'uploads/team1/session1/test-file-123.txt',
             file_type: 'txt',
-            file_size: 1024,
+            file_size: 12, // Match the actual content length
             mime_type: 'text/plain',
             is_deleted: false
           }),
@@ -366,7 +366,7 @@ describe('File Upload API Integration Tests', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('Content-Type')).toBe('text/plain');
       expect(response.headers.get('Content-Disposition')).toContain('inline; filename="test-document.txt"');
-      expect(response.headers.get('Content-Length')).toBe('1024');
+      expect(response.headers.get('Content-Length')).toBe('12');
       
       const fileContent = await response.text();
       expect(fileContent).toBe('test content');

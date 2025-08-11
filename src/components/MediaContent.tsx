@@ -10,20 +10,22 @@ interface MediaContentProps {
 const MediaContent: FunctionComponent<MediaContentProps> = ({ media }) => {
     const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
-    const handleVideoClick = () => {
+    const handleVideoClick = (e: Event) => {
+        e.stopPropagation();
         setIsVideoPlaying(true);
     };
 
     const renderMediaContent = () => {
         if (media.category === 'video') {
             return (
-                <div className="max-w-full max-h-80vh rounded-lg overflow-hidden shadow-2xl">
+                <div className="max-w-full max-h-[80vh] rounded-lg overflow-hidden shadow-2xl">
                     {!isVideoPlaying ? (
-                        <div className="relative cursor-pointer max-w-full max-h-80vh" onClick={handleVideoClick}>
+                        <div className="relative cursor-pointer max-w-full max-h-[80vh]" onClick={handleVideoClick}>
                             <video 
                                 src={media.url} 
-                                className="w-full h-auto max-h-80vh object-contain"
+                                className="w-full h-auto max-h-[80vh] object-contain"
                                 muted
+                                playsInline
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center gap-2">
                                 <PlayIcon className="text-white w-12 h-12" />
@@ -33,9 +35,10 @@ const MediaContent: FunctionComponent<MediaContentProps> = ({ media }) => {
                     ) : (
                         <video 
                             src={media.url} 
-                            className="w-full h-auto max-h-80vh"
+                            className="w-full h-auto max-h-[80vh]"
                             controls
                             autoPlay
+                            playsInline
                         />
                     )}
                 </div>
@@ -46,7 +49,7 @@ const MediaContent: FunctionComponent<MediaContentProps> = ({ media }) => {
             <img 
                 src={media.url} 
                 alt={media.name} 
-                className="max-w-full max-h-80vh object-contain rounded-lg shadow-2xl cursor-default" 
+                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl cursor-default" 
                 onClick={(e) => e.stopPropagation()} 
             />
         );
