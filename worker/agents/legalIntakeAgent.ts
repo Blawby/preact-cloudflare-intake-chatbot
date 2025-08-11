@@ -353,98 +353,36 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
   const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
 
   // Build system prompt
-  let systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
-
-**IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**`;
+  let systemPrompt = `You are a legal intake specialist. Collect client information step by step. Help with ALL legal matters - do not reject any cases.`;
 
   // Add file information to system prompt if attachments are present
   if (attachments && attachments.length > 0) {
-    systemPrompt += `\n\n**UPLOADED FILES:**
-The user has uploaded the following files that you can analyze:
-${attachments.map((file, index) => `${index + 1}. ${file.name} (${file.type}, ${file.size} bytes) - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}
-
-**IMPORTANT: When files are uploaded, you should analyze them using the analyze_document tool before proceeding with the conversation flow.**`;
+    systemPrompt += `\n\nThe user has uploaded files. Analyze them using the analyze_document tool before proceeding:
+${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}`;
   }
 
   systemPrompt += `
 
-**NAME VALIDATION:**
-- Accept any reasonable name format (first name, full name, nickname, etc.)
-- Don't be overly strict about name validation
-- If someone provides a name, accept it and move to the next step
-- Only ask for clarification if the name is clearly incomplete or invalid
-
-**CONVERSATION FLOW - Follow exactly:**
-1. If no name provided: "Can you please provide your full name?"
-2. If name provided but no location: ${locationPrompt}
-3. If name and location provided but no phone: "Thank you [name]! Now I need your phone number."
-4. If name, location, and phone provided but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email provided but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
-6. If ALL information collected (name, location, phone, email, opposing party): Call create_matter tool immediately.
-
-**CRITICAL: After collecting all contact information (name, location, phone, email, opposing party), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
-
-**LOCATION VALIDATION:**
-- We validate user-provided locations against our service area
-- If users are outside our service area, we can still help with general legal guidance
-- For specific legal representation, we may refer users to local attorneys in their area
-- Do not reject clients based on location - provide helpful guidance regardless${locationContext}
-
-**DETERMINING MATTER TYPE:**
-- If client mentions divorce, custody, family issues → "Family Law"
-- If client mentions employment, workplace, termination → "Employment Law"
-- If client mentions business, contracts, corporate → "Business Law"
-- If client mentions tenant, landlord, housing → "Tenant Rights Law"
-- If client mentions estate, probate, inheritance → "Probate and Estate Planning"
-- If client mentions special education, IEP, disability → "Special Education and IEP Advocacy"
-- If client mentions small business, nonprofit → "Small Business and Nonprofits"
-- If client mentions patent, trademark, copyright → "Intellectual Property"
-- If unclear or general legal help → "General Consultation"
+**CONVERSATION FLOW:**
+1. If no name: "Can you please provide your full name?"
+2. If name but no location: ${locationPrompt}
+3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
+4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
+5. If name, location, phone, and email but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
+6. If ALL information collected: Call create_matter tool immediately.
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, opposing party)
-- analyze_document: Use when a user has uploaded a document or image that needs analysis
-
-**FILE ANALYSIS:**
-- If a user uploads a document or image, analyze it using the analyze_document tool
-- Determine the appropriate analysis_type based on the file:
-  - resume: For resumes/CVs
-  - legal_document: For contracts, legal papers, court documents
-  - medical_document: For medical records, bills, reports
-  - image: For photos, screenshots, visual evidence
-  - general: For other documents
-- Extract the file_id from the uploaded file metadata
-- Ask a specific question if the user has a particular concern about the document
+- analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
-
 TOOL_CALL: create_matter
-PARAMETERS: {
-  "matter_type": "Family Law",
-  "description": "Client mentioned divorce - seeking legal assistance with family law matter",
-  "urgency": "medium",
-  "name": "Steve Jobs",
-  "phone": "6159990000",
-  "email": "hajas@yahoo.com",
-  "location": "Charlotte, NC",
-  "opposing_party": "Jane Jobs"
-}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: analyze_document
-PARAMETERS: {
-  "file_id": "file-abc123-def456",
-  "analysis_type": "resume",
-  "specific_question": "Analyze this resume for improvement opportunities"
-}
+PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "resume", "specific_question": "Analyze this resume for improvement opportunities"}
 
-**IMPORTANT: When calling create_matter, you MUST include:**
-- matter_type: Determine from the conversation (Family Law, Employment Law, etc.)
-- description: Brief description of the legal issue mentioned
-- urgency: "low", "medium", or "high" based on context
-- name, phone, email, location: All contact information collected
-- opposing_party: If mentioned, otherwise empty string
-
-**DO NOT provide legal advice or reject cases. Follow the conversation flow step by step.**`;
+**DO NOT provide legal advice. Follow the conversation flow step by step.**`;
 
   try {
     const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
@@ -1063,98 +1001,36 @@ export async function runLegalIntakeAgentStream(
   // Use shared utility function for location context and prompt construction
   const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
 
-  let systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
-
-**IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**`;
+  let systemPrompt = `You are a legal intake specialist. Collect client information step by step. Help with ALL legal matters - do not reject any cases.`;
 
   // Add file information to system prompt if attachments are present
   if (attachments && attachments.length > 0) {
-    systemPrompt += `\n\n**UPLOADED FILES:**
-The user has uploaded the following files that you can analyze:
-${attachments.map((file, index) => `${index + 1}. ${file.name} (${file.type}, ${file.size} bytes) - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}
-
-**IMPORTANT: When files are uploaded, you should analyze them using the analyze_document tool before proceeding with the conversation flow.**`;
+    systemPrompt += `\n\nThe user has uploaded files. Analyze them using the analyze_document tool before proceeding:
+${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}`;
   }
 
   systemPrompt += `
 
-**NAME VALIDATION:**
-- Accept any reasonable name format (first name, full name, nickname, etc.)
-- Don't be overly strict about name validation
-- If someone provides a name, accept it and move to the next step
-- Only ask for clarification if the name is clearly incomplete or invalid
-
-**CONVERSATION FLOW - Follow exactly:**
-1. If no name provided: "Can you please provide your full name?"
-2. If name provided but no location: ${locationPrompt}
-3. If name and location provided but no phone: "Thank you [name]! Now I need your phone number."
-4. If name, location, and phone provided but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email provided but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
-6. If ALL information collected (name, location, phone, email, opposing party): Call create_matter tool immediately.
-
-**CRITICAL: After collecting all contact information (name, location, phone, email, opposing party), you MUST call the create_matter tool. Do not ask for more information if you have everything.**
-
-**LOCATION VALIDATION:**
-- We validate user-provided locations against our service area
-- If users are outside our service area, we can still help with general legal guidance
-- For specific legal representation, we may refer users to local attorneys in their area
-- Do not reject clients based on location - provide helpful guidance regardless${locationContext}
-
-**DETERMINING MATTER TYPE:**
-- If client mentions divorce, custody, family issues → "Family Law"
-- If client mentions employment, workplace, termination → "Employment Law"
-- If client mentions business, contracts, corporate → "Business Law"
-- If client mentions tenant, landlord, housing → "Tenant Rights Law"
-- If client mentions estate, probate, inheritance → "Probate and Estate Planning"
-- If client mentions special education, IEP, disability → "Special Education and IEP Advocacy"
-- If client mentions small business, nonprofit → "Small Business and Nonprofits"
-- If client mentions patent, trademark, copyright → "Intellectual Property"
-- If unclear or general legal help → "General Consultation"
+**CONVERSATION FLOW:**
+1. If no name: "Can you please provide your full name?"
+2. If name but no location: ${locationPrompt}
+3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
+4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
+5. If name, location, phone, and email but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
+6. If ALL information collected: Call create_matter tool immediately.
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, opposing party)
-- analyze_document: Use when a user has uploaded a document or image that needs analysis
-
-**FILE ANALYSIS:**
-- If a user uploads a document or image, analyze it using the analyze_document tool
-- Determine the appropriate analysis_type based on the file:
-  - resume: For resumes/CVs
-  - legal_document: For contracts, legal papers, court documents
-  - medical_document: For medical records, bills, reports
-  - image: For photos, screenshots, visual evidence
-  - general: For other documents
-- Extract the file_id from the uploaded file metadata
-- Ask a specific question if the user has a particular concern about the document
+- analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
-
 TOOL_CALL: create_matter
-PARAMETERS: {
-  "matter_type": "Employment Law",
-  "description": "Client involved in workplace dispute",
-  "urgency": "medium",
-  "name": "John Doe",
-  "phone": "555-123-4567",
-  "email": "john@example.com",
-  "location": "Charlotte, NC",
-  "opposing_party": "ABC Company"
-}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: analyze_document
-PARAMETERS: {
-  "file_id": "file-abc123-def456",
-  "analysis_type": "resume",
-  "specific_question": "Analyze this resume for improvement opportunities"
-}
+PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "resume", "specific_question": "Analyze this resume for improvement opportunities"}
 
-**IMPORTANT: When calling create_matter, you MUST include:**
-- matter_type: Determine from the conversation (Family Law, Employment Law, etc.)
-- description: Brief description of the legal issue mentioned
-- urgency: "low", "medium", or "high" based on context
-- name, phone, email, location: All contact information collected
-- opposing_party: If mentioned, otherwise empty string
-
-**DO NOT provide legal advice or reject cases. Follow the conversation flow step by step.**`;
+**DO NOT provide legal advice. Follow the conversation flow step by step.**`;
 
   try {
     console.log('🔄 Starting streaming agent...');
