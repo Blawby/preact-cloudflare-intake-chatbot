@@ -274,10 +274,10 @@ wrangler deploy
 #### API Endpoints
 
 - `GET /api/teams` - List all teams
-- `GET /api/teams/{id}` - Get specific team
+- `GET /api/teams/{slugOrId}` - Get specific team (supports slug or ULID)
 - `POST /api/teams` - Create new team
-- `PUT /api/teams/{id}` - Update team
-- `DELETE /api/teams/{id}` - Delete team
+- `PUT /api/teams/{slugOrId}` - Update team (supports slug or ULID)
+- `DELETE /api/teams/{slugOrId}` - Delete team (supports slug or ULID)
 
 #### Debug Endpoints
 

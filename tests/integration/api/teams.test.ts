@@ -121,7 +121,7 @@ describe('Teams API Integration Tests', () => {
     });
   });
 
-  describe('GET /api/teams/{id}', () => {
+  describe('GET /api/teams/{slugOrId}', () => {
     it('should return specific team by ID', async () => {
       mockGetTeam.mockResolvedValue(mockTeam);
 
@@ -267,7 +267,7 @@ describe('Teams API Integration Tests', () => {
     });
   });
 
-  describe('PUT /api/teams/{id}', () => {
+  describe('PUT /api/teams/{slugOrId}', () => {
     it('should update team successfully', async () => {
       const updateData = {
         name: 'Updated Team Name',
@@ -323,7 +323,7 @@ describe('Teams API Integration Tests', () => {
     });
   });
 
-  describe('DELETE /api/teams/{id}', () => {
+  describe('DELETE /api/teams/{slugOrId}', () => {
     it('should delete team successfully', async () => {
       mockDeleteTeam.mockResolvedValue(true);
 

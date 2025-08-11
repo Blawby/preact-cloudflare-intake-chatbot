@@ -68,9 +68,9 @@ async function getDebugInfo(env: any, corsHeaders: Record<string, string>): Prom
     teamManagement: {
       create: 'POST /api/teams',
       list: 'GET /api/teams',
-      get: 'GET /api/teams/{id}',
-      update: 'PUT /api/teams/{id}',
-      delete: 'DELETE /api/teams/{id}'
+              get: 'GET /api/teams/{slugOrId}',
+        update: 'PUT /api/teams/{slugOrId}',
+        delete: 'DELETE /api/teams/{slugOrId}'
     },
     cloudflarePatterns: {
       environmentResolution: '${ENV_VAR} pattern supported',
