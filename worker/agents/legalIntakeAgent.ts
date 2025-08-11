@@ -333,7 +333,7 @@ const validateLocation = (location: string): boolean => {
 };
 
 // Create the legal intake agent using native Cloudflare AI
-export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string, cloudflareLocation?: CloudflareLocationInfo) {
+export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string, cloudflareLocation?: CloudflareLocationInfo, attachments: any[] = []) {
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
@@ -356,6 +356,15 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
   let systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
 **IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**`;
+
+  // Add file information to system prompt if attachments are present
+  if (attachments && attachments.length > 0) {
+    systemPrompt += `\n\n**UPLOADED FILES:**
+The user has uploaded the following files that you can analyze:
+${attachments.map((file, index) => `${index + 1}. ${file.name} (${file.type}, ${file.size} bytes) - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}
+
+**IMPORTANT: When files are uploaded, you should analyze them using the analyze_document tool before proceeding with the conversation flow.**`;
+  }
 
   systemPrompt += `
 
@@ -394,8 +403,21 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, opposing party)
+- analyze_document: Use when a user has uploaded a document or image that needs analysis
 
-**Example Tool Call:**
+**FILE ANALYSIS:**
+- If a user uploads a document or image, analyze it using the analyze_document tool
+- Determine the appropriate analysis_type based on the file:
+  - resume: For resumes/CVs
+  - legal_document: For contracts, legal papers, court documents
+  - medical_document: For medical records, bills, reports
+  - image: For photos, screenshots, visual evidence
+  - general: For other documents
+- Extract the file_id from the uploaded file metadata
+- Ask a specific question if the user has a particular concern about the document
+
+**Example Tool Calls:**
+
 TOOL_CALL: create_matter
 PARAMETERS: {
   "matter_type": "Family Law",
@@ -406,6 +428,13 @@ PARAMETERS: {
   "email": "hajas@yahoo.com",
   "location": "Charlotte, NC",
   "opposing_party": "Jane Jobs"
+}
+
+TOOL_CALL: analyze_document
+PARAMETERS: {
+  "file_id": "file-abc123-def456",
+  "analysis_type": "resume",
+  "specific_question": "Analyze this resume for improvement opportunities"
 }
 
 **IMPORTANT: When calling create_matter, you MUST include:**
@@ -1016,7 +1045,8 @@ export async function runLegalIntakeAgentStream(
   teamId?: string, 
   sessionId?: string,
   cloudflareLocation?: CloudflareLocationInfo,
-  controller?: ReadableStreamDefaultController
+  controller?: ReadableStreamDefaultController,
+  attachments: any[] = []
 ) {
   // Get team configuration if teamId is provided
   let teamConfig = null;
@@ -1033,9 +1063,20 @@ export async function runLegalIntakeAgentStream(
   // Use shared utility function for location context and prompt construction
   const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
 
-  const systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
+  let systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
-**IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**
+**IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**`;
+
+  // Add file information to system prompt if attachments are present
+  if (attachments && attachments.length > 0) {
+    systemPrompt += `\n\n**UPLOADED FILES:**
+The user has uploaded the following files that you can analyze:
+${attachments.map((file, index) => `${index + 1}. ${file.name} (${file.type}, ${file.size} bytes) - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}
+
+**IMPORTANT: When files are uploaded, you should analyze them using the analyze_document tool before proceeding with the conversation flow.**`;
+  }
+
+  systemPrompt += `
 
 **NAME VALIDATION:**
 - Accept any reasonable name format (first name, full name, nickname, etc.)
@@ -1072,8 +1113,21 @@ export async function runLegalIntakeAgentStream(
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, opposing party)
+- analyze_document: Use when a user has uploaded a document or image that needs analysis
 
-**Example Tool Call:**
+**FILE ANALYSIS:**
+- If a user uploads a document or image, analyze it using the analyze_document tool
+- Determine the appropriate analysis_type based on the file:
+  - resume: For resumes/CVs
+  - legal_document: For contracts, legal papers, court documents
+  - medical_document: For medical records, bills, reports
+  - image: For photos, screenshots, visual evidence
+  - general: For other documents
+- Extract the file_id from the uploaded file metadata
+- Ask a specific question if the user has a particular concern about the document
+
+**Example Tool Calls:**
+
 TOOL_CALL: create_matter
 PARAMETERS: {
   "matter_type": "Employment Law",
@@ -1084,6 +1138,13 @@ PARAMETERS: {
   "email": "john@example.com",
   "location": "Charlotte, NC",
   "opposing_party": "ABC Company"
+}
+
+TOOL_CALL: analyze_document
+PARAMETERS: {
+  "file_id": "file-abc123-def456",
+  "analysis_type": "resume",
+  "specific_question": "Analyze this resume for improvement opportunities"
 }
 
 **IMPORTANT: When calling create_matter, you MUST include:**
@@ -1172,6 +1233,9 @@ PARAMETERS: {
             break;
           case 'schedule_consultation':
             toolResult = await handleScheduleConsultation(parameters, env, teamConfig);
+            break;
+          case 'analyze_document':
+            toolResult = await handleAnalyzeDocument(parameters, env, teamConfig);
             break;
           default:
             console.warn(`❌ Unknown tool: ${toolName}`);
