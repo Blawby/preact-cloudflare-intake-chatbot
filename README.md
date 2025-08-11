@@ -76,22 +76,27 @@ curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams
 # Get team details
 curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai
 
-# Create new team
+# Create new team (requires admin token)
 curl -X POST https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{"slug": "new-team", "name": "New Team", "config": {"aiModel": "llama"}}'
 
-# Update team
+# Update team (requires admin token)
 curl -X PUT https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{"config": {"consultationFee": 75}}'
 
-# Delete team
-curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/old-team
+# Delete team (requires admin token)
+curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/old-team \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
 
 # Database access
 wrangler d1 execute blawby-ai-chatbot --command "SELECT * FROM teams;"
 ```
+
+**Note:** Mutating endpoints (POST, PUT, DELETE) require an admin token. Set `ADMIN_TOKEN` environment variable or replace `$ADMIN_TOKEN` with your actual token.
 
 ## 🛠️ **Technology Stack**
 
@@ -176,6 +181,7 @@ curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/01K0TN
 ```bash
 curl -X POST https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "slug": "new-legal-team",
     "name": "New Legal Services",
@@ -205,6 +211,7 @@ curl -X POST https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams \
 # Update team name and fee
 curl -X PUT https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "name": "Updated Team Name",
     "config": {
@@ -216,16 +223,19 @@ curl -X PUT https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby
 # Update specific fields only
 curl -X PUT https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{"config": {"consultationFee": 50}}'
 ```
 
 **Delete Team**
 ```bash
 # Delete team by slug
-curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/old-team
+curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/old-team \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
 
 # Delete team by ID
-curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/01K0TNGNKTM4Q0AG0XF0A8ST0Q
+curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/01K0TNGNKTM4Q0AG0XF0A8ST0Q \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
 **Database Commands (Wrangler CLI)**

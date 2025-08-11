@@ -125,7 +125,7 @@ describe('Teams API Integration Tests', () => {
     it('should return specific team by ID', async () => {
       mockGetTeam.mockResolvedValue(mockTeam);
 
-      const request = new Request('http://localhost/api/teams/blawby-ai', {
+      const request = new Request(`http://localhost/api/teams/${mockTeam.id}`, {
         method: 'GET'
       });
 
@@ -401,6 +401,16 @@ describe('Teams API Integration Tests', () => {
 
   describe('Environment Variable Resolution', () => {
     it('should resolve environment variables in team config', async () => {
+      // Unmock TeamService for this test to test real environment variable resolution
+      vi.unmock('../../../worker/services/TeamService');
+      
+      // Add environment variables to mockEnv
+      const testEnv = {
+        ...mockEnv,
+        BLAWBY_API_TOKEN: 'test-api-token-123',
+        BLAWBY_TEAM_ULID: 'test-team-ulid-456'
+      };
+
       const teamWithEnvVars = {
         ...mockTeam,
         config: {
@@ -413,18 +423,43 @@ describe('Teams API Integration Tests', () => {
         }
       };
 
-      mockGetTeam.mockResolvedValue(teamWithEnvVars);
+      // Mock the database response with the team containing environment variables
+      const mockDbResponse = {
+        id: teamWithEnvVars.id,
+        slug: teamWithEnvVars.slug,
+        name: teamWithEnvVars.name,
+        config: JSON.stringify(teamWithEnvVars.config),
+        created_at: teamWithEnvVars.createdAt,
+        updated_at: teamWithEnvVars.updatedAt
+      };
+
+      testEnv.DB.prepare.mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(mockDbResponse)
+        })
+      });
 
       const request = new Request('http://localhost/api/teams/blawby-ai', {
         method: 'GET'
       });
 
-      const response = await handleTeams(request, mockEnv);
+      const response = await handleTeams(request, testEnv);
       
       expect(response.status).toBe(200);
       const responseData = await response.json();
-      expect(responseData.data.config.blawbyApi).toHaveProperty('apiKey');
-      expect(responseData.data.config.blawbyApi).toHaveProperty('teamUlid');
+      expect(responseData.data.config.blawbyApi).toHaveProperty('apiKey', 'test-api-token-123');
+      expect(responseData.data.config.blawbyApi).toHaveProperty('teamUlid', 'test-team-ulid-456');
+      
+      // Restore the mock after the test
+      vi.doMock('../../../worker/services/TeamService', () => ({
+        TeamService: vi.fn().mockImplementation(() => ({
+          listTeams: mockListTeams,
+          getTeam: mockGetTeam,
+          createTeam: mockCreateTeam,
+          updateTeam: mockUpdateTeam,
+          deleteTeam: mockDeleteTeam
+        }))
+      }));
     });
   });
 });
