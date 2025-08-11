@@ -9,6 +9,7 @@ export interface Env {
   FILES_BUCKET?: R2Bucket;
   PAYMENT_API_KEY?: string;
   PAYMENT_API_URL?: string;
+  OPENAI_API_KEY?: string;
 
   BLAWBY_API_URL?: string;
   BLAWBY_API_TOKEN?: string;

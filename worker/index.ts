@@ -9,6 +9,7 @@ import {
   handleTeams,
   handleScheduling,
   handleFiles,
+  handleAnalyze,
   handleReview,
   handlePayment,
   handleDebug
@@ -88,6 +89,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handleScheduling(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/files')) {
       response = await handleFiles(request, env, CORS_HEADERS);
+    } else if (path === '/api/analyze') {
+      response = await handleAnalyze(request, env, CORS_HEADERS);
 
     } else if (path.startsWith('/api/review')) {
       response = await handleReview(request, env, CORS_HEADERS);

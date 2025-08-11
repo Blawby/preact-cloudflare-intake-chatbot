@@ -2,6 +2,96 @@ import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { validateLocation as validateLocationUtil, isLocationSupported } from '../utils/locationValidator.js';
 import { CloudflareLocationInfo, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 
+// Helper function to analyze files using the vision API
+async function analyzeFile(env: any, fileId: string, question: string = "Summarize and extract key facts for legal intake."): Promise<any> {
+  try {
+    // Get file from R2 storage
+    if (!env.FILES_BUCKET) {
+      console.warn('FILES_BUCKET not configured, skipping file analysis');
+      return null;
+    }
+
+    // Try to get file metadata from database first
+    let fileRecord = null;
+    try {
+      const stmt = env.DB.prepare(`
+        SELECT * FROM files WHERE id = ? AND is_deleted = FALSE
+      `);
+      fileRecord = await stmt.bind(fileId).first();
+    } catch (dbError) {
+      console.warn('Failed to get file metadata from database:', dbError);
+    }
+
+    // Construct file path
+    let filePath = fileRecord?.file_path;
+    if (!filePath) {
+      // Fallback path construction (same logic as in files.ts)
+      const lastHyphenIndex = fileId.lastIndexOf('-');
+      const secondLastHyphenIndex = fileId.lastIndexOf('-', lastHyphenIndex - 1);
+      
+      if (lastHyphenIndex !== -1 && secondLastHyphenIndex !== -1) {
+        const parts = fileId.split('-');
+        if (parts.length >= 4) {
+          const timestamp = parts[parts.length - 2];
+          const randomString = parts[parts.length - 1];
+          const teamIdAndSessionId = parts.slice(0, -2).join('-');
+          const sessionIdMatch = teamIdAndSessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+          
+          if (sessionIdMatch) {
+            const sessionId = sessionIdMatch[0];
+            const teamId = teamIdAndSessionId.substring(0, teamIdAndSessionId.length - sessionId.length - 1);
+            const prefix = `uploads/${teamId}/${sessionId}/${fileId}`;
+            const objects = await env.FILES_BUCKET.list({ prefix });
+            if (objects.objects.length > 0) {
+              filePath = objects.objects[0].key;
+            }
+          }
+        }
+      }
+    }
+
+    if (!filePath) {
+      console.warn('Could not determine file path for analysis:', fileId);
+      return null;
+    }
+
+    // Get file from R2
+    const fileObject = await env.FILES_BUCKET.get(filePath);
+    if (!fileObject) {
+      console.warn('File not found in R2 storage for analysis:', filePath);
+      return null;
+    }
+
+    // Create a File object for the analyze endpoint
+    const file = new File([fileObject.body], fileRecord?.original_name || fileId, {
+      type: fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream'
+    });
+
+    // Call the analyze endpoint
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('q', question);
+
+    const response = await fetch('http://localhost/api/analyze', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      console.error('Analysis API error:', error);
+      return null;
+    }
+
+    const result = await response.json();
+    return result.data?.analysis || null;
+
+  } catch (error) {
+    console.error('File analysis error:', error);
+    return null;
+  }
+}
+
 // Tool definitions with structured schemas
 export const collectContactInfo = {
   name: 'collect_contact_info',
@@ -218,6 +308,29 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
     teamConfig = await getTeamConfig(env, teamId);
   }
 
+  // Check for file references in the latest user message
+  const latestUserMessage = messages.find(msg => msg.isUser);
+  let fileAnalysis = null;
+  
+  if (latestUserMessage && latestUserMessage.content) {
+    // Look for file IDs in the message (simple pattern matching)
+    const fileIdMatch = latestUserMessage.content.match(/file[_-]?id[:\s]*([a-zA-Z0-9\-_]+)/i);
+    if (fileIdMatch) {
+      const fileId = fileIdMatch[1];
+      console.log('Detected file reference in message:', fileId);
+      
+      // Analyze the file
+      fileAnalysis = await analyzeFile(env, fileId);
+      if (fileAnalysis) {
+        console.log('File analysis completed:', {
+          fileId,
+          confidence: fileAnalysis.confidence,
+          summaryLength: fileAnalysis.summary?.length || 0
+        });
+      }
+    }
+  }
+
   // Convert messages to the format expected by Cloudflare AI
   const formattedMessages = messages.map(msg => ({
     role: msg.isUser ? 'user' : 'assistant',
@@ -227,9 +340,37 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
   // Use shared utility function for location context and prompt construction
   const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
 
-  const systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
+  // Build system prompt with optional file analysis
+  let systemPrompt = `You are a legal intake specialist. Your job is to collect client information step by step.
 
-**IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**
+**IMPORTANT: You help with ALL legal matters including sensitive ones like sexual harassment, criminal charges, divorce, etc. Do NOT reject any cases. Proceed with intake for every legal matter.**`;
+
+  // Add file analysis context if available
+  if (fileAnalysis) {
+    systemPrompt += `
+
+**FILE ANALYSIS CONTEXT:**
+The user has uploaded a document that has been analyzed. Here are the key findings:
+
+**Summary:** ${fileAnalysis.summary}
+
+**Key Facts:**
+${fileAnalysis.key_facts.map(fact => `- ${fact}`).join('\n')}
+
+**Entities Found:**
+- People: ${fileAnalysis.entities.people.join(', ') || 'None identified'}
+- Organizations: ${fileAnalysis.entities.orgs.join(', ') || 'None identified'}
+- Dates: ${fileAnalysis.entities.dates.join(', ') || 'None identified'}
+
+**Action Items:**
+${fileAnalysis.action_items.map(item => `- ${item}`).join('\n')}
+
+**Analysis Confidence:** ${(fileAnalysis.confidence * 100).toFixed(1)}%
+
+Use this information to help understand the client's situation and guide the intake process. If the document contains contact information, use it to fill in missing details.`;
+  }
+
+  systemPrompt += `
 
 **NAME VALIDATION:**
 - Accept any reasonable name format (first name, full name, nickname, etc.)
@@ -364,7 +505,17 @@ PARAMETERS: {
             inputMessageCount: formattedMessages.length,
             lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
             sessionId,
-            teamId
+            teamId,
+            fileAnalysis: fileAnalysis ? {
+              confidence: fileAnalysis.confidence,
+              summaryLength: fileAnalysis.summary?.length || 0,
+              keyFactsCount: fileAnalysis.key_facts?.length || 0,
+              entitiesCount: {
+                people: fileAnalysis.entities?.people?.length || 0,
+                orgs: fileAnalysis.entities?.orgs?.length || 0,
+                dates: fileAnalysis.entities?.dates?.length || 0
+              }
+            } : null
           }
         };
       } else {
@@ -382,7 +533,17 @@ PARAMETERS: {
         inputMessageCount: formattedMessages.length,
         lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
         sessionId,
-        teamId
+        teamId,
+        fileAnalysis: fileAnalysis ? {
+          confidence: fileAnalysis.confidence,
+          summaryLength: fileAnalysis.summary?.length || 0,
+          keyFactsCount: fileAnalysis.key_facts?.length || 0,
+          entitiesCount: {
+            people: fileAnalysis.entities?.people?.length || 0,
+            orgs: fileAnalysis.entities?.orgs?.length || 0,
+            dates: fileAnalysis.entities?.dates?.length || 0
+          }
+        } : null
       }
     };
     
