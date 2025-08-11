@@ -9,7 +9,11 @@ export interface Env {
   FILES_BUCKET?: R2Bucket;
   PAYMENT_API_KEY?: string;
   PAYMENT_API_URL?: string;
-  OPENAI_API_KEY?: string;
+  
+  // Cloudflare AI Configuration
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  CLOUDFLARE_API_TOKEN?: string;
+  CLOUDFLARE_PUBLIC_URL?: string;
 
   BLAWBY_API_URL?: string;
   BLAWBY_API_TOKEN?: string;

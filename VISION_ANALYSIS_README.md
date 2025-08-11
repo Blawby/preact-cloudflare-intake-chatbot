@@ -4,7 +4,7 @@ This document describes the implementation of vision + structured outputs for th
 
 ## Overview
 
-The vision analysis feature allows the chatbot to analyze uploaded images and documents using OpenAI's GPT-4o-mini model with guaranteed structured JSON outputs. This enables the AI to understand visual content like car crash photos, legal documents, and other relevant materials.
+The vision analysis feature allows the chatbot to analyze uploaded images and documents using Cloudflare Workers AI's `llava-1.5-7b-hf` model with structured JSON outputs. This enables the AI to understand visual content like car crash photos, legal documents, and other relevant materials.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ The vision analysis feature allows the chatbot to analyze uploaded images and do
 1. **`/api/analyze` endpoint** (`worker/routes/analyze.ts`)
    - Accepts file uploads via FormData
    - Validates file types and sizes
-   - Calls OpenAI GPT-4o-mini with JSON schema enforcement
+   - Calls Cloudflare Workers AI `llava-1.5-7b-hf` with structured prompts
    - Returns structured analysis results
 
 2. **File Analysis Integration** (`worker/agents/legalIntakeAgent.ts`)
@@ -67,8 +67,10 @@ When a user uploads a file and references it in chat (e.g., "Please analyze file
 Add to your `.env` file:
 
 ```bash
-# OpenAI Configuration (for vision analysis)
-OPENAI_API_KEY=your_openai_api_key_here
+# Cloudflare AI Configuration (for vision analysis)
+CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id_here
+CLOUDFLARE_API_TOKEN=your_cloudflare_api_token_here
+CLOUDFLARE_PUBLIC_URL=https://your-worker.your-subdomain.workers.dev
 ```
 
 ### File Limits
@@ -125,14 +127,14 @@ Tests cover:
 
 The implementation is designed for easy migration:
 
-1. **Current**: OpenAI GPT-4o-mini with JSON schema
-2. **Future**: Cloudflare Workers AI vision models
+1. **Current**: Cloudflare Workers AI `llava-1.5-7b-hf` with structured prompts
+2. **Future**: Can easily swap to other Cloudflare AI models or external providers
 3. **Schema**: Consistent JSON contract across providers
 
 ## Cost Considerations
 
-- **OpenAI GPT-4o-mini**: ~$0.0025 per 1K tokens
-- **Vision input**: Higher token usage than text
+- **Cloudflare Workers AI**: Included in your Workers plan
+- **llava-1.5-7b-hf**: No additional cost beyond standard Workers usage
 - **Rate limiting**: Implement usage quotas as needed
 - **Caching**: Store analysis results to reduce API calls
 

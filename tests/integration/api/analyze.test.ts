@@ -3,7 +3,9 @@ import { handleAnalyze } from '../../../worker/routes/analyze';
 
 // Mock environment
 const mockEnv = {
-  OPENAI_API_KEY: 'test-key',
+  CLOUDFLARE_ACCOUNT_ID: 'test-account-id',
+  CLOUDFLARE_API_TOKEN: 'test-api-token',
+  CLOUDFLARE_PUBLIC_URL: 'https://test-worker.workers.dev',
   FILES_BUCKET: null,
   DB: null,
   CHAT_SESSIONS: null,

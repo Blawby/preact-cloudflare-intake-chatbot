@@ -31,6 +31,11 @@ BLAWBY_API_URL = "https://staging.blawby.com"
 BLAWBY_TEAM_ULID = "01jq70jnstyfzevc6423czh50e"
 # BLAWBY_API_TOKEN should be set via: wrangler secret put BLAWBY_API_TOKEN
 
+# Cloudflare AI Configuration
+CLOUDFLARE_ACCOUNT_ID = "your_cloudflare_account_id_here"
+CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
+# CLOUDFLARE_API_TOKEN should be set via: wrangler secret put CLOUDFLARE_API_TOKEN
+
 # R2 bucket for file storage
 [[r2_buckets]]
 binding = "FILES_BUCKET"
