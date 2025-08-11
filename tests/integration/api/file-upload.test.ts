@@ -185,6 +185,84 @@ describe('File Upload API Integration Tests', () => {
       expect(responseData.success).toBe(true);
       expect(responseData.data.fileType).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     });
+
+    it('should upload an Excel spreadsheet successfully', async () => {
+      // Create a mock Excel file
+      const fileContent = 'PK\x03\x04'; // ZIP header (Excel files are ZIP files)
+      const file = new File([fileContent], 'test-spreadsheet.xlsx', { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
+
+      const request = new Request('http://localhost/api/files/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(200);
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data.fileType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      expect(responseData.data.fileName).toBe('test-spreadsheet.xlsx');
+    });
+
+    it('should upload an old Excel file successfully', async () => {
+      // Create a mock old Excel file (.xls)
+      const fileContent = new Uint8Array([0xD0, 0xCF, 0x11, 0xE0]); // Old Excel header
+      const file = new File([fileContent], 'test-spreadsheet.xls', { 
+        type: 'application/vnd.ms-excel' 
+      });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
+
+      const request = new Request('http://localhost/api/files/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(200);
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data.fileType).toBe('application/vnd.ms-excel');
+      expect(responseData.data.fileName).toBe('test-spreadsheet.xls');
+    });
+
+    it('should upload an MP4 video successfully', async () => {
+      // Create a mock MP4 file
+      const fileContent = new Uint8Array([0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70]); // MP4 header
+      const file = new File([fileContent], 'test-video.mp4', { 
+        type: 'video/mp4' 
+      });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('teamId', 'team1');
+      formData.append('sessionId', 'session1');
+
+      const request = new Request('http://localhost/api/files/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const response = await handleFiles(request, mockEnv, corsHeaders);
+      
+      expect(response.status).toBe(200);
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      expect(responseData.data.fileType).toBe('video/mp4');
+      expect(responseData.data.fileName).toBe('test-video.mp4');
+    });
   });
 
   describe('File Upload - Validation Errors', () => {

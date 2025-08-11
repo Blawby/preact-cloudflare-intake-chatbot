@@ -222,14 +222,7 @@ export default defineConfig({
 						console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
 					});
 				},
-				// Use bypass instead of filter (which is not supported in Vite's built-in proxy)
-				bypass: (req, res, options) => {
-					// Don't proxy file upload/download endpoints
-					if (req.url?.startsWith('/api/files/')) {
-						return req.url;
-					}
-					return null;
-				}
+
 			}
 		}
 	}
