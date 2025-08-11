@@ -19,10 +19,6 @@ export async function handleDebug(request: Request, env: any): Promise<Response>
       } else if (path === '/teams') {
         return await getTeamsInfo(env, corsHeaders);
       }
-    } else if (request.method === 'POST') {
-      if (path === '/seed-teams') {
-        return await seedTeams(env, corsHeaders);
-      }
     }
 
     return new Response('Endpoint not found', { 
@@ -46,14 +42,45 @@ export async function handleDebug(request: Request, env: any): Promise<Response>
 }
 
 async function getDebugInfo(env: any, corsHeaders: Record<string, string>): Promise<Response> {
-  const envInfo = {
-    BLAWBY_API_URL: env.BLAWBY_API_URL,
-    BLAWBY_TEAM_ULID: env.BLAWBY_TEAM_ULID,
-    BLAWBY_API_TOKEN: env.BLAWBY_API_TOKEN ? 'SET' : 'NOT SET',
-    timestamp: new Date().toISOString()
+  const info = {
+    timestamp: new Date().toISOString(),
+    environment: env.ENVIRONMENT || 'development',
+    database: 'D1 (Cloudflare)',
+    architecture: 'API-First Multi-Tenant',
+    features: {
+      teams: 'Pure API-based team management',
+      chat: 'AI-powered conversations',
+      fileUpload: 'Multi-file upload support',
+      scheduling: 'Appointment booking',
+      payments: 'Stripe integration',
+      forms: 'Contact form handling'
+    },
+    endpoints: {
+      teams: '/api/teams',
+      chat: '/api/chat',
+      agent: '/api/agent',
+      files: '/api/files',
+      scheduling: '/api/scheduling',
+      payment: '/api/payment',
+      forms: '/api/forms',
+      debug: '/api/debug'
+    },
+    teamManagement: {
+      create: 'POST /api/teams',
+      list: 'GET /api/teams',
+              get: 'GET /api/teams/{slugOrId}',
+        update: 'PUT /api/teams/{slugOrId}',
+        delete: 'DELETE /api/teams/{slugOrId}'
+    },
+    cloudflarePatterns: {
+      environmentResolution: '${ENV_VAR} pattern supported',
+      caching: '5-minute TTL cache',
+      security: 'No hardcoded secrets',
+      scaling: 'API-first architecture'
+    }
   };
-  
-  return new Response(JSON.stringify(envInfo, null, 2), {
+
+  return new Response(JSON.stringify(info, null, 2), {
     headers: {
       'Content-Type': 'application/json',
       ...corsHeaders
@@ -88,21 +115,4 @@ async function getTeamsInfo(env: any, corsHeaders: Record<string, string>): Prom
       }
     });
   }
-}
-
-async function seedTeams(env: any, corsHeaders: Record<string, string>): Promise<Response> {
-  return new Response(JSON.stringify({ 
-    success: true, 
-    message: 'Use sync-teams.js script instead',
-    instructions: [
-      'For local development: node sync-teams.js',
-      'For production: node sync-teams.js --remote',
-      'This script will sync teams from teams.json to the database'
-    ]
-  }, null, 2), {
-    headers: {
-      'Content-Type': 'application/json',
-      ...corsHeaders
-    }
-  });
 } 
