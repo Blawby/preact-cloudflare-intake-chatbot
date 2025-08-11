@@ -6,12 +6,13 @@ A production-ready legal intake chatbot built with Cloudflare Workers AI, featur
 
 ### Team Configuration Security
 
-The system uses a multi-tenant architecture with team-specific configurations stored in `teams.json`. For security:
+The system uses a multi-tenant architecture with **API-based team management** stored in the D1 database. For security:
 
 - **API Key Storage**: Team API keys are stored as environment variable references (e.g., `${BLAWBY_API_TOKEN}`)
 - **Runtime Resolution**: The `TeamService` automatically resolves these references at runtime
 - **No Hardcoded Secrets**: No sensitive credentials are stored in the codebase or database
 - **Centralized Management**: Secrets are managed via Cloudflare Workers secrets
+- **Full CRUD API**: Complete REST API for team management (`/api/teams`)
 
 #### Example Team Configuration
 ```json
@@ -30,6 +31,7 @@ The system uses a multi-tenant architecture with team-specific configurations st
 - ✅ Centralized secret management via Cloudflare
 - ✅ Team-specific API credentials supported
 - ✅ Fallback to global API token if team-specific not available
+- ✅ Full API-based team management with caching
 
 ## 🎯 **Production Status: LIVE & READY**
 
@@ -63,6 +65,33 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 ✅ **Personal Injury**: "i ran over my cousin with my golf cart" → Urgent matter classification  
 ✅ **Payment Integration**: Automatic $75 consultation fee with team config  
 ✅ **Lawyer Review**: Automatic escalation for urgent matters with review queue  
+
+## 🚀 **Quick Reference - Team Management**
+
+**Essential Commands:**
+```bash
+# List all teams
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams
+
+# Get team details
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai
+
+# Create new team
+curl -X POST https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams \
+  -H "Content-Type: application/json" \
+  -d '{"slug": "new-team", "name": "New Team", "config": {"aiModel": "llama"}}'
+
+# Update team
+curl -X PUT https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai \
+  -H "Content-Type: application/json" \
+  -d '{"config": {"consultationFee": 75}}'
+
+# Delete team
+curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/old-team
+
+# Database access
+wrangler d1 execute blawby-ai-chatbot --command "SELECT * FROM teams;"
+```
 
 ## 🛠️ **Technology Stack**
 
@@ -110,6 +139,140 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
    ```
 
 ## 🔧 **Configuration**
+
+### Team Management
+
+The system follows **Cloudflare's pure API-first approach** for multi-tenant team management. Teams are stored in the D1 database and managed entirely through REST API endpoints.
+
+#### Cloudflare-Style Architecture
+
+- ✅ **API-First**: All team operations via REST API
+- ✅ **No Seeding**: Teams created through API calls, not static files
+- ✅ **Environment Resolution**: `${ENV_VAR}` pattern for secrets
+- ✅ **Runtime Configuration**: Dynamic team management
+- ✅ **Scalable**: Multi-tenant architecture
+
+#### Team Management - Complete CRUD Commands
+
+**List Teams**
+```bash
+# List all teams
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams
+
+# List teams (local development)
+curl -X GET http://localhost:8787/api/teams
+```
+
+**Get Team Details**
+```bash
+# Get team by slug
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai
+
+# Get team by ID
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/01K0TNGNKTM4Q0AG0XF0A8ST0Q
+```
+
+**Create New Team**
+```bash
+curl -X POST https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams \
+  -H "Content-Type: application/json" \
+  -d '{
+    "slug": "new-legal-team",
+    "name": "New Legal Services",
+    "config": {
+      "aiModel": "llama",
+      "consultationFee": 75,
+      "requiresPayment": true,
+      "ownerEmail": "owner@example.com",
+      "availableServices": ["Family Law", "Employment Law"],
+      "jurisdiction": {
+        "type": "state",
+        "description": "Available in California",
+        "supportedStates": ["CA"],
+        "supportedCountries": ["US"]
+      },
+      "domain": "newteam.blawby.com",
+      "description": "New legal services team",
+      "brandColor": "#2563eb",
+      "accentColor": "#3b82f6",
+      "introMessage": "Hello! How can I help you today?"
+    }
+  }'
+```
+
+**Update Team**
+```bash
+# Update team name and fee
+curl -X PUT https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Team Name",
+    "config": {
+      "consultationFee": 100,
+      "introMessage": "Updated welcome message!"
+    }
+  }'
+
+# Update specific fields only
+curl -X PUT https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby-ai \
+  -H "Content-Type: application/json" \
+  -d '{"config": {"consultationFee": 50}}'
+```
+
+**Delete Team**
+```bash
+# Delete team by slug
+curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/old-team
+
+# Delete team by ID
+curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/01K0TNGNKTM4Q0AG0XF0A8ST0Q
+```
+
+**Database Commands (Wrangler CLI)**
+```bash
+# View all teams
+wrangler d1 execute blawby-ai-chatbot --command "SELECT id, slug, name, created_at FROM teams;"
+
+# Count teams
+wrangler d1 execute blawby-ai-chatbot --command "SELECT COUNT(*) as team_count FROM teams;"
+
+# View team config
+wrangler d1 execute blawby-ai-chatbot --command "SELECT slug, config FROM teams WHERE slug = 'blawby-ai';"
+
+# Delete team by slug
+wrangler d1 execute blawby-ai-chatbot --command "DELETE FROM teams WHERE slug = 'old-team';"
+
+# View recent teams
+wrangler d1 execute blawby-ai-chatbot --command "SELECT slug, name, created_at FROM teams ORDER BY created_at DESC LIMIT 5;"
+```
+
+**Debug & Monitoring**
+```bash
+# System status
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/debug
+
+# View all teams (debug endpoint)
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/debug/teams
+
+# View logs
+wrangler tail
+
+# Deploy changes
+wrangler deploy
+```
+
+#### API Endpoints
+
+- `GET /api/teams` - List all teams
+- `GET /api/teams/{id}` - Get specific team
+- `POST /api/teams` - Create new team
+- `PUT /api/teams/{id}` - Update team
+- `DELETE /api/teams/{id}` - Delete team
+
+#### Debug Endpoints
+
+- `GET /api/debug` - System information
+- `GET /api/debug/teams` - Team information
 
 ### Environment Variables
 
