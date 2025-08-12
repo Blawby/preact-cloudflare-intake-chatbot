@@ -59,6 +59,21 @@ interface FeatureFlags {
      * When false, the bottom nav is hidden on mobile
      */
     enableMobileBottomNav: boolean;
+
+      /**
+   * Enable Paralegal Agent for matter formation
+   * When false, all matter formation flows through the standard intake agent
+   * When true, enables the stateful paralegal agent with matter formation stages
+   */
+  enableParalegalAgent: boolean;
+
+  /**
+   * Make Paralegal Agent the default first interaction
+   * When false, uses intake-first flow (current behavior)
+   * When true, routes to Paralegal Agent first, then Intake only for human/scheduling requests
+   * Requires enableParalegalAgent to be true
+   */
+  paralegalFirst: boolean;
 }
 
 const features: FeatureFlags = {
@@ -71,6 +86,8 @@ const features: FeatureFlags = {
     enableLearnServicesButton: false, // Hide learn services button
     enableConsultationButton: false, // Hide consultation request button
     enableMobileBottomNav: false, // Temporarily hide mobile bottom nav
+    enableParalegalAgent: false, // Paralegal agent disabled by default - enable per team
+    paralegalFirst: false, // Intake-first flow by default - enable per team
 };
 
 // For development environment, you can override settings

@@ -242,6 +242,10 @@ export function App() {
 		await sendMessage("Tell me about your firm's services", []);
 	};
 
+	const handleRequestConsultation = async () => {
+		await sendMessage("I'd like to speak with a lawyer about my situation. Can you help me schedule a consultation?", []);
+	};
+
 	return (
 		<>
 			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
@@ -259,6 +263,7 @@ export function App() {
 					description: teamConfig.description
 				}}
 				messages={messages}
+				onRequestConsultation={handleRequestConsultation}
 			>
 				<ChatContainer
 									messages={messages}

@@ -15,13 +15,15 @@ interface MobileSidebarProps {
     description?: string;
   };
   messages: any[];
+  onRequestConsultation?: () => void;
 }
 
 const MobileSidebar = ({ 
   isOpen, 
   onClose, 
   teamConfig, 
-  messages
+  messages,
+  onRequestConsultation
 }: MobileSidebarProps) => {
   return (
     <>
@@ -68,7 +70,7 @@ const MobileSidebar = ({
 
           {/* Privacy & Support Section */}
           <div className="flex flex-col gap-3">
-            <PrivacySupportSidebar />
+            <PrivacySupportSidebar onRequestConsultation={onRequestConsultation} />
           </div>
         </div>
       </div>

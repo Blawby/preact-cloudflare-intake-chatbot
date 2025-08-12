@@ -10,6 +10,7 @@ import {
   handleScheduling,
   handleFiles,
   handleAnalyze,
+  handleParalegal,
   handleReview,
   handlePayment,
   handleDebug
@@ -17,6 +18,7 @@ import {
 import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
+import { ParalegalAgent } from './agents/ParalegalAgent';
 
 // Basic request validation
 function validateRequest(request: Request): boolean {
@@ -91,6 +93,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handleFiles(request, env, CORS_HEADERS);
     } else if (path === '/api/analyze') {
       response = await handleAnalyze(request, env, CORS_HEADERS);
+    } else if (path.startsWith('/api/paralegal/')) {
+      response = await handleParalegal(request, env, CORS_HEADERS);
 
     } else if (path.startsWith('/api/review')) {
       response = await handleReview(request, env, CORS_HEADERS);
@@ -125,3 +129,9 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
 }
 
 export default { fetch: handleRequest };
+
+// Export Durable Object classes
+export { ParalegalAgent };
+
+// Export queue consumers
+export { default as paralegalTasks } from './consumers/paralegal-tasks';
