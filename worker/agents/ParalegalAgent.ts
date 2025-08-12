@@ -652,6 +652,17 @@ export async function runParalegalAgentStream(
 - Keep responses under 100 words
 - Be warm but concise
 
+**When to Suggest Legal Help:**
+After 2-3 exchanges, if they need:
+- Workers' comp claims
+- Wrongful termination cases
+- Complex divorce (high assets, custody)
+- Any legal filing or court process
+- Employment discrimination
+- Document review
+
+Say: "This sounds like you'd benefit from speaking with one of our attorneys. Would you like me to connect you with a lawyer who can help with [specific issue]?"
+
 **For Divorce:**
 "I'm sorry you're going through this. First steps: (1) Gather important docs (marriage cert, bank statements), (2) Secure your finances. 
 
@@ -663,6 +674,25 @@ Are you safe? Do you have children together?"
 What industry are you in? Any severance offered?"
 
 Keep it short, helpful, and human. Don't overwhelm them.`;
+
+  // Check if this case needs attorney referral
+  const messageCount = formattedMessages.filter(msg => msg.role === 'user').length;
+  const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
+  
+  const needsAttorney = messageCount >= 3 && (
+    conversationText.includes('workers comp') || 
+    conversationText.includes('wrongful termination') ||
+    conversationText.includes('file a claim') ||
+    conversationText.includes('discrimination') ||
+    conversationText.includes('lawsuit') ||
+    conversationText.includes('court') ||
+    (conversationText.includes('divorce') && (conversationText.includes('million') || conversationText.includes('assets'))) ||
+    conversationText.includes('custody')
+  );
+
+  if (needsAttorney) {
+    systemPrompt += `\n\nIMPORTANT: This user has been asking about complex legal issues for ${messageCount} messages. You should now suggest connecting them with an attorney for proper legal assistance. Use the phrase suggested above.`;
+  }
 
   try {
     console.log('🔄 Starting paralegal streaming agent...');
