@@ -1,127 +1,334 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { handleAnalyze } from '../../../worker/routes/analyze';
 
-// Mock environment
-const mockEnv = {
+// Mock environment with realistic AI responses
+const createMockEnv = (aiResponse: string) => ({
   CLOUDFLARE_ACCOUNT_ID: 'test-account-id',
   CLOUDFLARE_API_TOKEN: 'test-api-token',
   CLOUDFLARE_PUBLIC_URL: 'https://test-worker.workers.dev',
-  FILES_BUCKET: null,
+  FILES_BUCKET: {
+    put: async (key: string, file: any, options: any) => {
+      console.log('Mock R2 put:', key, file.name, options);
+      return { key };
+    },
+    delete: async (key: string) => {
+      console.log('Mock R2 delete:', key);
+      return { key };
+    }
+  },
   DB: null,
   CHAT_SESSIONS: null,
-  RESEND_API_KEY: 'test-resend-key'
-};
+  RESEND_API_KEY: 'test-resend-key',
+  AI: {
+    run: async (model: string, options: any) => {
+      console.log('Mock AI called with model:', model, 'options:', JSON.stringify(options, null, 2));
+      return { response: aiResponse };
+    }
+  }
+});
 
-describe('Analyze API', () => {
-  it('should reject requests without files', async () => {
-    const formData = new FormData();
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      body: formData
+describe('Analyze API Endpoint - Comprehensive Tests', () => {
+  describe('POST /api/analyze', () => {
+    it('should analyze PDF files and return structured results', async () => {
+      // Create a mock PDF file
+      const pdfContent = `
+        John Doe
+        Software Engineer
+        Experience: 5 years at Tech Corp
+        Skills: JavaScript, Python, React
+        Education: BS Computer Science
+      `;
+      const pdfBlob = new Blob([pdfContent], { type: 'application/pdf' });
+      const pdfFile = new File([pdfBlob], 'resume.pdf', { type: 'application/pdf' });
+
+      const formData = new FormData();
+      formData.append('file', pdfFile);
+      formData.append('q', 'Analyze this resume for improvement opportunities');
+
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'POST',
+        body: formData
+      });
+
+      const mockEnv = createMockEnv(`{
+        "summary": "John Doe is a Software Engineer with 5 years of experience at Tech Corp",
+        "key_facts": [
+          "John Doe is a Software Engineer",
+          "5 years experience at Tech Corp",
+          "Skills include JavaScript, Python, React",
+          "BS in Computer Science"
+        ],
+        "entities": {
+          "people": ["John Doe"],
+          "orgs": ["Tech Corp"],
+          "dates": []
+        },
+        "action_items": [
+          "Consider highlighting leadership experience",
+          "Add specific project achievements"
+        ],
+        "confidence": 0.85
+      }`);
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.success).toBe(true);
+      expect(result.data.analysis).toBeDefined();
+      expect(result.data.analysis.summary).toContain('John Doe');
+      expect(result.data.analysis.key_facts).toHaveLength(4);
+      expect(result.data.analysis.entities.people).toContain('John Doe');
+      expect(result.data.analysis.entities.orgs).toContain('Tech Corp');
+      expect(result.data.analysis.confidence).toBeGreaterThan(0.5);
+      expect(result.data.metadata.fileName).toBe('resume.pdf');
+      expect(result.data.metadata.fileType).toBe('application/pdf');
     });
 
-    const response = await handleAnalyze(request, mockEnv, {});
-    const result = await response.json();
+    it('should analyze image files using vision model', async () => {
+      // Create a mock image file
+      const imageBlob = new Blob(['fake image data'], { type: 'image/jpeg' });
+      const imageFile = new File([imageBlob], 'document.jpg', { type: 'image/jpeg' });
 
-    expect(response.status).toBe(400);
-    expect(result.error).toBe('No file provided');
-  });
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('q', 'What do you see in this image?');
 
-  it('should reject unsupported file types', async () => {
-    const formData = new FormData();
-    const file = new File(['test content'], 'test.exe', { type: 'application/x-msdownload' });
-    formData.append('file', file);
-    
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      body: formData
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'POST',
+        body: formData
+      });
+
+      const mockEnv = createMockEnv(`{
+        "summary": "This appears to be a business document with text and formatting",
+        "key_facts": [
+          "Document contains business letterhead",
+          "Multiple paragraphs of text visible",
+          "Professional formatting and layout"
+        ],
+        "entities": {
+          "people": [],
+          "orgs": ["Business Corp"],
+          "dates": ["2024-01-15"]
+        },
+        "action_items": [
+          "Review document content for accuracy",
+          "Consider digital signature"
+        ],
+        "confidence": 0.78
+      }`);
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.success).toBe(true);
+      expect(result.data.analysis).toBeDefined();
+      expect(result.data.analysis.summary).toContain('business document');
+      expect(result.data.analysis.key_facts).toHaveLength(3);
+      expect(result.data.analysis.confidence).toBeGreaterThan(0.5);
+      expect(result.data.metadata.fileName).toBe('document.jpg');
+      expect(result.data.metadata.fileType).toBe('image/jpeg');
     });
 
-    const response = await handleAnalyze(request, mockEnv, {});
-    const result = await response.json();
+    it('should analyze text files properly', async () => {
+      const textContent = `
+        Legal Document
+        Client: Jane Smith
+        Case: Employment Dispute
+        Date: 2024-01-20
+        Summary: Unfair termination claim
+      `;
+      const textBlob = new Blob([textContent], { type: 'text/plain' });
+      const textFile = new File([textBlob], 'legal-doc.txt', { type: 'text/plain' });
 
-    expect(response.status).toBe(400);
-    expect(result.error).toContain('File type application/x-msdownload is not supported for analysis');
-  });
+      const formData = new FormData();
+      formData.append('file', textFile);
+      formData.append('q', 'Analyze this legal document');
 
-  it('should reject files that are too large', async () => {
-    const formData = new FormData();
-    // Create a file larger than 8MB
-    const largeContent = 'x'.repeat(9 * 1024 * 1024);
-    const file = new File([largeContent], 'large.txt', { type: 'text/plain' });
-    formData.append('file', file);
-    
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      body: formData
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'POST',
+        body: formData
+      });
+
+      const mockEnv = createMockEnv(`{
+        "summary": "Legal document for Jane Smith regarding employment dispute",
+        "key_facts": [
+          "Client: Jane Smith",
+          "Case type: Employment Dispute",
+          "Date: 2024-01-20",
+          "Issue: Unfair termination claim"
+        ],
+        "entities": {
+          "people": ["Jane Smith"],
+          "orgs": [],
+          "dates": ["2024-01-20"]
+        },
+        "action_items": [
+          "Review termination circumstances",
+          "Gather employment records",
+          "Assess potential legal claims"
+        ],
+        "confidence": 0.92
+      }`);
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.success).toBe(true);
+      expect(result.data.analysis).toBeDefined();
+      expect(result.data.analysis.summary).toContain('Jane Smith');
+      expect(result.data.analysis.entities.people).toContain('Jane Smith');
+      expect(result.data.analysis.entities.dates).toContain('2024-01-20');
+      expect(result.data.analysis.confidence).toBeGreaterThan(0.8);
     });
 
-    const response = await handleAnalyze(request, mockEnv, {});
-    const result = await response.json();
+    it('should handle missing file gracefully', async () => {
+      const formData = new FormData();
+      formData.append('q', 'Analyze this document');
 
-    expect(response.status).toBe(400);
-    expect(result.error).toContain('File size exceeds maximum limit of 8MB for analysis');
-  });
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'POST',
+        body: formData
+      });
 
-  it('should accept valid image files', async () => {
-    const formData = new FormData();
-    // Create a minimal PNG file (just the header)
-    const pngHeader = new Uint8Array([
-      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-      0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52
-    ]);
-    const file = new File([pngHeader], 'test.png', { type: 'image/png' });
-    formData.append('file', file);
-    formData.append('q', 'What is this image?');
-    
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      body: formData
+      const mockEnv = createMockEnv('');
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No file provided');
     });
 
-    const response = await handleAnalyze(request, mockEnv, {});
-    
-    // Should fail due to fetch not being available in test environment
-    expect(response.status).toBe(500);
-    const result = await response.json();
-    expect(result.error).toContain('Cannot read properties of undefined');
-  });
+    it('should handle unsupported file types', async () => {
+      const exeBlob = new Blob(['executable data'], { type: 'application/octet-stream' });
+      const exeFile = new File([exeBlob], 'malware.exe', { type: 'application/octet-stream' });
 
-  it('should accept valid text files', async () => {
-    const formData = new FormData();
-    const file = new File(['This is a test document for legal intake.'], 'test.txt', { type: 'text/plain' });
-    formData.append('file', file);
-    formData.append('q', 'Summarize this document');
-    
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      body: formData
+      const formData = new FormData();
+      formData.append('file', exeFile);
+      formData.append('q', 'What is this file?');
+
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'POST',
+        body: formData
+      });
+
+      const mockEnv = createMockEnv('');
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Unsupported file type');
     });
 
-    const response = await handleAnalyze(request, mockEnv, {});
-    
-    // Should fail due to fetch not being available in test environment
-    expect(response.status).toBe(500);
-    const result = await response.json();
-    expect(result.error).toContain('Cannot read properties of undefined');
-  });
+    it('should handle files that are too large', async () => {
+      // Create a large file (over 8MB limit)
+      const largeContent = 'x'.repeat(9 * 1024 * 1024); // 9MB
+      const largeBlob = new Blob([largeContent], { type: 'application/pdf' });
+      const largeFile = new File([largeBlob], 'large.pdf', { type: 'application/pdf' });
 
-  it('should use default question when none provided', async () => {
-    const formData = new FormData();
-    const file = new File(['Test content'], 'test.txt', { type: 'text/plain' });
-    formData.append('file', file);
-    // No 'q' parameter provided
-    
-    const request = new Request('http://localhost/api/analyze', {
-      method: 'POST',
-      body: formData
+      const formData = new FormData();
+      formData.append('file', largeFile);
+      formData.append('q', 'Analyze this document');
+
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'POST',
+        body: formData
+      });
+
+      const mockEnv = createMockEnv('');
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('File too large');
     });
 
-    const response = await handleAnalyze(request, mockEnv, {});
-    
-    // Should fail due to fetch not being available in test environment
-    expect(response.status).toBe(500);
-    const result = await response.json();
-    expect(result.error).toContain('Cannot read properties of undefined');
+    it('should handle AI analysis failures gracefully', async () => {
+      const pdfContent = 'Test PDF content';
+      const pdfBlob = new Blob([pdfContent], { type: 'application/pdf' });
+      const pdfFile = new File([pdfBlob], 'test.pdf', { type: 'application/pdf' });
+
+      const formData = new FormData();
+      formData.append('file', pdfFile);
+      formData.append('q', 'Analyze this document');
+
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'POST',
+        body: formData
+      });
+
+      // Mock AI that throws an error
+      const mockEnv = {
+        ...createMockEnv(''),
+        AI: {
+          run: async () => {
+            throw new Error('AI service unavailable');
+          }
+        }
+      };
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Analysis failed');
+    });
+
+    it('should handle missing Cloudflare AI configuration', async () => {
+      const pdfContent = 'Test PDF content';
+      const pdfBlob = new Blob([pdfContent], { type: 'application/pdf' });
+      const pdfFile = new File([pdfBlob], 'test.pdf', { type: 'application/pdf' });
+
+      const formData = new FormData();
+      formData.append('file', pdfFile);
+      formData.append('q', 'Analyze this document');
+
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'POST',
+        body: formData
+      });
+
+      // Mock env without Cloudflare AI config
+      const mockEnv = {
+        FILES_BUCKET: null,
+        DB: null,
+        CHAT_SESSIONS: null,
+        RESEND_API_KEY: 'test-resend-key',
+        AI: {
+          run: async () => ({ response: 'test' })
+        }
+      };
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Cloudflare AI not configured');
+    });
+
+    it('should reject non-POST requests', async () => {
+      const request = new Request('https://test.com/api/analyze', {
+        method: 'GET'
+      });
+
+      const mockEnv = createMockEnv('');
+
+      const response = await handleAnalyze(request, mockEnv, {});
+      const result = await response.json();
+
+      expect(response.status).toBe(405);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Only POST method is allowed');
+    });
   });
 });

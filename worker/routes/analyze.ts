@@ -1,5 +1,8 @@
 import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { rateLimit, getClientId } from '../middleware/rateLimit.js';
+import { extractPdfText } from '../lib/pdf.js';
+import { withAIRetry } from '../utils/retry.js';
 
 // JSON Schema for vision analysis results
 const VISION_ANALYSIS_SCHEMA = {
@@ -63,35 +66,28 @@ function validateAnalysisFile(file: File): { isValid: boolean; error?: string } 
   return { isValid: true };
 }
 
-async function analyzeWithCloudflareAI(file: File, question: string, env: Env): Promise<any> {
+export async function analyzeWithCloudflareAI(file: File, question: string, env: Env): Promise<any> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout for Cloudflare AI
 
   try {
     // Prepare model input based on file type
     let prompt: string;
-    let imageUrl: string | undefined;
+    let modelName: string;
+    let aiOptions: any;
     
     if (file.type.startsWith('image/')) {
-      // For images, we need to store them temporarily and get a URL
-      // For now, we'll use the existing file storage system
-      const fileId = `analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const storageKey = `analysis/${fileId}.${file.name.split('.').pop() || 'jpg'}`;
+      // Use vision model for images only (following official Cloudflare docs)
+      modelName = '@cf/llava-hf/llava-1.5-7b-hf';
+      console.log('Using vision model for image analysis:', modelName);
       
-      // Store file temporarily in R2
-      if (env.FILES_BUCKET) {
-        await env.FILES_BUCKET.put(storageKey, file, {
-          httpMetadata: {
-            contentType: file.type,
-            cacheControl: 'public, max-age=3600' // 1 hour cache
-          }
-        });
+      // Convert image file to Uint8Array for vision model (following official docs)
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
         
-        // Generate a public URL for the image
-        imageUrl = `${env.CLOUDFLARE_PUBLIC_URL || 'https://your-worker.your-subdomain.workers.dev'}/api/files/${fileId}`;
-      }
-      
-      prompt = `${question}\n\nPlease analyze this image and return a JSON response with the following structure:
+        prompt = `${question}\n\nPlease analyze this image and return a JSON response with the following structure. IMPORTANT: Do not include the JSON structure template in your response - only provide the actual analysis results:
+
 {
   "summary": "Brief summary of what you see",
   "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
@@ -103,17 +99,57 @@ async function analyzeWithCloudflareAI(file: File, question: string, env: Env): 
   "action_items": ["Action 1", "Action 2"],
   "confidence": 0.85
 }`;
-    } else {
-      // For text/PDFs, extract text content
-      let textContent = '';
-      try {
-        textContent = await file.text();
-      } catch (error) {
-        console.warn('Failed to extract text from file:', error);
-        textContent = '[Unable to extract text content from file]';
+        
+        aiOptions = {
+          image: [...uint8Array], // Convert to array of integers as per official docs
+          prompt: prompt,
+          max_tokens: 512
+        };
+        console.log('Converted image to vision format, size:', uint8Array.length);
+      } catch (conversionError) {
+        console.warn('Failed to convert image for vision analysis:', conversionError);
+        // Fallback to text model
+        modelName = '@cf/meta/llama-3.1-8b-instruct';
+        prompt = `${question}\n\nPlease analyze this image and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
+
+{
+  "summary": "Brief summary of what you see",
+  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
+  "entities": {
+    "people": ["Person names found"],
+    "orgs": ["Organization names found"],
+    "dates": ["Dates found"]
+  },
+  "action_items": ["Action 1", "Action 2"],
+  "confidence": 0.85
+}`;
+        aiOptions = { prompt: prompt };
       }
+    } else if (file.type === 'application/pdf') {
+      // For PDFs, use robust text extraction with OCR fallback
+      modelName = '@cf/meta/llama-3.1-8b-instruct';
+      console.log('Using robust PDF text extraction with OCR fallback');
       
-      prompt = `${question}\n\nDocument content:\n${textContent}\n\nPlease analyze this document and return a JSON response with the following structure:
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        console.log('PDF file size:', arrayBuffer.byteLength);
+        console.log('PDF file type:', file.type);
+        console.log('PDF file name:', file.name);
+        
+                       const extractionResult = await extractPdfText(arrayBuffer);
+               console.log('Extraction result:', extractionResult);
+               
+               const { fullText, keyInfo } = extractionResult;
+        
+                       // Use key legal info if available, otherwise truncate full text
+               const textContent = keyInfo || fullText.substring(0, 2000); // Keep well under token cap
+               console.log('Extracted PDF text length:', fullText.length);
+               console.log('Key info length:', keyInfo?.length || 0);
+               console.log('Text content length for AI:', textContent.length);
+               console.log('PDF text preview:', textContent.substring(0, 200));
+        
+        prompt = `${question}\n\nDocument content:\n${textContent}\n\nPlease analyze this PDF document and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
+
 {
   "summary": "Brief summary of the document",
   "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
@@ -125,40 +161,72 @@ async function analyzeWithCloudflareAI(file: File, question: string, env: Env): 
   "action_items": ["Action 1", "Action 2"],
   "confidence": 0.85
 }`;
-    }
+        
+        aiOptions = { prompt: prompt };
+      } catch (pdfError) {
+        console.warn('Failed to extract PDF text with enhanced extraction:', pdfError);
+        
+        // Try vision model as final fallback for PDFs
+        console.log('Attempting vision model fallback for PDF analysis');
+        modelName = '@cf/llava-hf/llava-1.5-7b-hf';
+        
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        prompt = `${question}\n\nPlease analyze this PDF document and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
 
-    // Call Cloudflare Workers AI
-    const requestBody: any = {
-      prompt: prompt
-    };
-
-    // Add image URL if we have one
-    if (imageUrl) {
-      requestBody.image = imageUrl;
-    }
-
-    const response = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/llava-1.5-7b-hf`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal
+{
+  "summary": "Brief summary of the document",
+  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
+  "entities": {
+    "people": ["Person names found"],
+    "orgs": ["Organization names found"],
+    "dates": ["Dates found"]
+  },
+  "action_items": ["Action 1", "Action 2"],
+  "confidence": 0.85
+}`;
+        
+        aiOptions = {
+          image: [...uint8Array],
+          prompt: prompt,
+          max_tokens: 512
+        };
       }
-    );
+    } else {
+      // For text files, use text model
+      modelName = '@cf/meta/llama-3.1-8b-instruct';
+      let textContent = '';
+      
+      try {
+        textContent = await file.text();
+      } catch (error) {
+        console.warn('Failed to extract text from file:', error);
+        textContent = '[Unable to extract text content from file]';
+      }
+      
+      console.log('Extracted text content length:', textContent.length);
+      console.log('Text content preview:', textContent.substring(0, 200));
+      
+      prompt = `${question}\n\nDocument content:\n${textContent}\n\nPlease analyze this document and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
 
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Cloudflare AI error: ${response.status} - ${errorData.errors?.[0]?.message || 'Unknown error'}`);
+{
+  "summary": "Brief summary of the document",
+  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
+  "entities": {
+    "people": ["Person names found"],
+    "orgs": ["Organization names found"],
+    "dates": ["Dates found"]
+  },
+  "action_items": ["Action 1", "Action 2"],
+  "confidence": 0.85
+}`;
+      
+      aiOptions = { prompt: prompt };
     }
-
-    const result = await response.json();
-    const aiResponse = result.result?.response || result.response;
+    
+    const result = await withAIRetry(() => env.AI.run(modelName, aiOptions));
+    const aiResponse = result.response;
     
     if (!aiResponse) {
       throw new Error('No content in Cloudflare AI response');
@@ -167,18 +235,40 @@ async function analyzeWithCloudflareAI(file: File, question: string, env: Env): 
     // Try to extract JSON from the response
     let parsed: any;
     try {
-      // Look for JSON in the response
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      } else {
-        // If no JSON found, create a structured response from the text
+      console.log('Raw AI response:', aiResponse);
+      
+      // First, try to parse the entire response as JSON
+      try {
+        parsed = JSON.parse(aiResponse.trim());
+        console.log('Successfully parsed full response as JSON');
+      } catch (fullParseError) {
+        // If that fails, look for JSON in the response
+        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+          console.log('Successfully parsed JSON from response match');
+        } else {
+          // If no JSON found, create a structured response from the text
+          console.log('No JSON found in response, creating fallback');
+          parsed = {
+            summary: aiResponse.substring(0, 200) + (aiResponse.length > 200 ? '...' : ''),
+            key_facts: [aiResponse],
+            entities: { people: [], orgs: [], dates: [] },
+            action_items: [],
+            confidence: 0.7
+          };
+        }
+      }
+      
+      // Validate the parsed structure
+      if (!parsed.summary || !parsed.key_facts || !parsed.entities || !parsed.action_items || parsed.confidence === undefined) {
+        console.warn('Parsed JSON missing required fields, creating fallback');
         parsed = {
           summary: aiResponse.substring(0, 200) + (aiResponse.length > 200 ? '...' : ''),
           key_facts: [aiResponse],
           entities: { people: [], orgs: [], dates: [] },
           action_items: [],
-          confidence: 0.7
+          confidence: 0.6
         };
       }
     } catch (parseError) {
@@ -192,14 +282,7 @@ async function analyzeWithCloudflareAI(file: File, question: string, env: Env): 
       };
     }
 
-    // Clean up temporary file if it was an image
-    if (imageUrl && env.FILES_BUCKET) {
-      try {
-        await env.FILES_BUCKET.delete(storageKey);
-      } catch (cleanupError) {
-        console.warn('Failed to cleanup temporary analysis file:', cleanupError);
-      }
-    }
+    // No cleanup needed - we're using direct file data
 
     return parsed;
 
@@ -224,6 +307,19 @@ async function analyzeWithCloudflareAI(file: File, question: string, env: Env): 
 export async function handleAnalyze(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
+  }
+
+  // Rate limiting for analysis endpoint
+  const clientId = getClientId(request);
+  if (!(await rateLimit(env, clientId, 30, 60))) { // 30 requests per minute
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Rate limit exceeded. Please try again later.',
+      errorCode: 'RATE_LIMITED'
+    }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   try {
@@ -264,6 +360,8 @@ export async function handleAnalyze(request: Request, env: Env, corsHeaders: Rec
       keyFactsCount: analysis.key_facts?.length || 0
     });
 
+    const disclaimer = "Blawby provides general information, not legal advice. No attorney-client relationship is formed. For advice, consult a licensed attorney in your jurisdiction.";
+    
     return createSuccessResponse({
       analysis,
       metadata: {
@@ -272,7 +370,8 @@ export async function handleAnalyze(request: Request, env: Env, corsHeaders: Rec
         fileSize: file.size,
         question: question,
         timestamp: new Date().toISOString()
-      }
+      },
+      disclaimer
     }, corsHeaders);
 
   } catch (error) {

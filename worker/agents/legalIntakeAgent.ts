@@ -29,26 +29,46 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
     // Construct file path
     let filePath = fileRecord?.file_path;
     if (!filePath) {
-      // Fallback path construction (same logic as in files.ts)
-      const lastHyphenIndex = fileId.lastIndexOf('-');
-      const secondLastHyphenIndex = fileId.lastIndexOf('-', lastHyphenIndex - 1);
+      // Handle the actual file ID format with UUID
+      // Format: team-slug-uuid-timestamp-random
+      // Example: north-carolina-legal-services-5b69514f-ef86-45ea-996d-4f2764b40d27-1754974140878-11oeburbd
       
-      if (lastHyphenIndex !== -1 && secondLastHyphenIndex !== -1) {
-        const parts = fileId.split('-');
-        if (parts.length >= 4) {
-          const timestamp = parts[parts.length - 2];
-          const randomString = parts[parts.length - 1];
-          const teamIdAndSessionId = parts.slice(0, -2).join('-');
-          const sessionIdMatch = teamIdAndSessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-          
-          if (sessionIdMatch) {
-            const sessionId = sessionIdMatch[0];
-            const teamId = teamIdAndSessionId.substring(0, teamIdAndSessionId.length - sessionId.length - 1);
-            const prefix = `uploads/${teamId}/${sessionId}/${fileId}`;
-            const objects = await env.FILES_BUCKET.list({ prefix });
-            if (objects.objects.length > 0) {
-              filePath = objects.objects[0].key;
+      // Split by hyphens and look for UUID pattern
+      const parts = fileId.split('-');
+      if (parts.length >= 6) {
+        // Find the UUID part (8-4-4-4-12 format)
+        let teamSlug = '';
+        let sessionId = '';
+        let timestamp = '';
+        let random = '';
+        
+        // Look for UUID pattern in the middle
+        for (let i = 0; i < parts.length - 2; i++) {
+          const potentialUuid = parts.slice(i, i + 5).join('-');
+          if (potentialUuid.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
+            // Found UUID, reconstruct the parts
+            teamSlug = parts.slice(0, i).join('-');
+            sessionId = potentialUuid;
+            timestamp = parts[i + 5];
+            random = parts[i + 6];
+            
+            console.log('Parsed file ID:', { teamSlug, sessionId, timestamp, random, fileId });
+            
+            // Try to find the file with this prefix
+            const prefix = `uploads/${teamSlug}/${sessionId}/${fileId}`;
+            console.log('Looking for file with prefix:', prefix);
+            
+            try {
+              const objects = await env.FILES_BUCKET.list({ prefix });
+              console.log('R2 objects found:', objects.objects.length);
+              if (objects.objects.length > 0) {
+                filePath = objects.objects[0].key;
+                console.log('Found file path:', filePath);
+              }
+            } catch (listError) {
+              console.warn('Failed to list R2 objects:', listError);
             }
+            break;
           }
         }
       }
@@ -66,29 +86,33 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
       return null;
     }
 
+    console.log('R2 file object:', {
+      size: fileObject.size,
+      etag: fileObject.etag,
+      httpMetadata: fileObject.httpMetadata,
+      customMetadata: fileObject.customMetadata
+    });
+
+    // Get the file body as ArrayBuffer
+    const fileBuffer = await fileObject.arrayBuffer();
+    console.log('File buffer size:', fileBuffer.byteLength);
+    console.log('File buffer preview (first 100 bytes):', Array.from(new Uint8Array(fileBuffer.slice(0, 100))).map(b => b.toString(16).padStart(2, '0')).join(' '));
+
     // Create a File object for the analyze endpoint
-    const file = new File([fileObject.body], fileRecord?.original_name || fileId, {
+    const file = new File([fileBuffer], fileRecord?.original_name || fileId, {
       type: fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream'
     });
 
-    // Call the analyze endpoint
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('q', analysisQuestion);
-
-    const response = await fetch('http://localhost/api/analyze', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      console.error('Analysis API error:', error);
+    // Call the analyze function directly
+    const { analyzeWithCloudflareAI } = await import('../routes/analyze.js');
+    
+    try {
+      const analysis = await analyzeWithCloudflareAI(file, analysisQuestion, env);
+      return analysis;
+    } catch (error) {
+      console.error('Analysis error:', error);
       return null;
     }
-
-    const result = await response.json();
-    return result.data?.analysis || null;
 
   } catch (error) {
     console.error('File analysis error:', error);
@@ -204,7 +228,7 @@ export const analyzeDocument = {
       analysis_type: { 
         type: 'string', 
         description: 'Type of analysis to perform',
-        enum: ['general', 'resume', 'legal_document', 'medical_document', 'image'],
+        enum: ['general', 'legal_document', 'contract', 'government_form', 'medical_document', 'image', 'resume'],
         default: 'general'
       },
       specific_question: { 
@@ -364,6 +388,10 @@ const validateLocation = (location: string): boolean => {
 
 // Create the legal intake agent using native Cloudflare AI
 export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string, cloudflareLocation?: CloudflareLocationInfo, attachments: any[] = []) {
+  console.log('=== LEGAL INTAKE AGENT START ===');
+  console.log('Attachments received:', attachments);
+  console.log('Attachments length:', attachments?.length || 0);
+  
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
@@ -387,13 +415,19 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
 
   // Add file information to system prompt if attachments are present
   if (attachments && attachments.length > 0) {
-    systemPrompt += `\n\nThe user has uploaded files. Analyze them using the analyze_document tool before proceeding:
+    console.log('📎 Adding file information to system prompt');
+    console.log('Files to analyze:', attachments.map(f => ({ name: f.name, url: f.url })));
+    
+    systemPrompt += `\n\nThe user has uploaded files. You MUST analyze them FIRST using the analyze_document tool before proceeding with any other conversation:
 ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}`;
+  } else {
+    console.log('📎 No attachments found');
   }
 
   systemPrompt += `
 
 **CONVERSATION FLOW:**
+${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files using analyze_document tool, then proceed with intake.` : ''}
 1. If no name: "Can you please provide your full name?"
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
@@ -410,9 +444,9 @@ TOOL_CALL: create_matter
 PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: analyze_document
-PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "resume", "specific_question": "Analyze this resume for improvement opportunities"}
+PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
 
-**DO NOT provide legal advice. Follow the conversation flow step by step.**`;
+**IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**`;
 
   try {
     const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
@@ -893,25 +927,31 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   console.log('Analysis Type:', analysis_type);
   console.log('Specific Question:', specific_question);
   
-  // Determine the appropriate question based on analysis type
+  // Determine the appropriate question based on analysis type for legal intake
   let customQuestion = specific_question;
   
   if (!customQuestion) {
     switch (analysis_type) {
-      case 'resume':
-        customQuestion = "Analyze this resume/CV and extract key professional information, skills, experience, and achievements. Identify strengths and areas for improvement. Provide actionable insights for career development or job applications.";
-        break;
       case 'legal_document':
-        customQuestion = "Analyze this legal document and extract key terms, parties involved, dates, obligations, and potential legal implications. Identify any concerning clauses or areas that may need legal review.";
+        customQuestion = "Analyze this legal document and identify: 1) Document type/form name (e.g., 'IRS Form 501(c)(3) application', 'Employment contract', 'Lease agreement'), 2) Key parties involved, 3) Important dates and deadlines, 4) Critical terms or obligations, 5) Potential legal issues or concerns, 6) Required next steps. Focus on information needed for legal intake and matter creation.";
+        break;
+      case 'contract':
+        customQuestion = "Analyze this contract and identify: 1) Contract type (employment, lease, service agreement, etc.), 2) Parties involved, 3) Key terms and obligations, 4) Important dates and deadlines, 5) Potential issues or unfair terms, 6) Termination clauses, 7) Dispute resolution methods. Focus on legal implications and potential concerns.";
+        break;
+      case 'government_form':
+        customQuestion = "Analyze this government form and identify: 1) Form name and number, 2) Purpose of the form, 3) Filing deadlines, 4) Required information or documentation, 5) Potential legal implications, 6) Next steps or actions required. Focus on compliance and legal requirements.";
         break;
       case 'medical_document':
-        customQuestion = "Analyze this medical document and extract key health information, diagnoses, treatments, dates, and any information relevant to legal matters such as personal injury or medical malpractice.";
+        customQuestion = "Analyze this medical document and identify: 1) Document type (medical bill, diagnosis, treatment plan, etc.), 2) Medical condition or injury, 3) Treatment received, 4) Dates of service, 5) Costs or insurance information, 6) Potential legal implications (personal injury, medical malpractice, insurance disputes). Focus on legal relevance.";
         break;
       case 'image':
-        customQuestion = "Analyze this image and describe what you see. If it's related to a legal matter (accident scene, injury, property damage, etc.), provide detailed observations that could be relevant for legal proceedings.";
+        customQuestion = "Analyze this image and identify: 1) What the image shows (accident scene, injury, property damage, document, etc.), 2) Key details relevant to legal matters, 3) Potential legal implications, 4) Type of legal case this might support (personal injury, property damage, evidence, etc.), 5) Additional documentation that might be needed.";
+        break;
+      case 'resume':
+        customQuestion = "Analyze this resume and identify: 1) Professional background and experience, 2) Skills and qualifications, 3) Employment history, 4) Education and certifications, 5) Potential legal matters this person might need help with (employment disputes, contract negotiations, business formation, etc.). Focus on legal service needs.";
         break;
       default:
-        customQuestion = "Analyze this document and provide a comprehensive summary with key facts, entities, and actionable insights. Focus on information relevant for legal intake or professional services.";
+        customQuestion = "Analyze this document and identify: 1) Document type and purpose, 2) Key parties and dates, 3) Important terms or requirements, 4) Potential legal implications, 5) Required actions or next steps. Focus on information needed for legal intake and matter creation.";
     }
   }
   
@@ -938,71 +978,88 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   console.log('Action Items:', fileAnalysis.action_items);
   console.log('================================');
   
-  // Create a helpful response based on the analysis
-  let response = `I've analyzed your ${analysis_type.replace('_', ' ')} and found some interesting insights. `;
+  // Create a legally-focused response that guides toward matter creation
+  let response = '';
   
-  // Add document-specific response
-  switch (analysis_type) {
-    case 'resume':
-      response += `${fileAnalysis.summary} Your background shows strong professional experience. `;
-      response += `Based on what I see, I can help you with:\n`;
-      response += `• Refining your resume for specific roles\n`;
-      response += `• Highlighting your key achievements\n`;
-      response += `• Emphasizing measurable results and impact\n`;
-      response += `• Identifying areas for improvement\n\n`;
-      response += `What specific role or industry would you like to target?`;
-      break;
-      
-    case 'legal_document':
-      response += `${fileAnalysis.summary} This appears to be a legal document with important terms. `;
-      response += `Based on my analysis, I can help you with:\n`;
-      response += `• Reviewing key terms and conditions\n`;
-      response += `• Identifying potential issues or concerns\n`;
-      response += `• Understanding your rights and obligations\n`;
-      response += `• Preparing for negotiations if needed\n\n`;
-      response += `What aspect of this document would you like me to focus on?`;
-      break;
-      
-    case 'medical_document':
-      response += `${fileAnalysis.summary} This medical document contains important health information. `;
-      response += `Based on what I see, I can help you with:\n`;
-      response += `• Understanding your medical condition and treatment plan\n`;
-      response += `• Documenting expenses for insurance or legal purposes\n`;
-      response += `• Tracking your recovery progress\n`;
-      response += `• Exploring legal options if this involves an accident\n\n`;
-      response += `Are you dealing with insurance claims or considering legal action?`;
-      break;
-      
-    case 'image':
-      response += `${fileAnalysis.summary} This image shows important visual information. `;
-      response += `Based on my analysis, I can help you with:\n`;
-      response += `• Understanding the legal implications of what's shown\n`;
-      response += `• Documenting evidence for legal proceedings\n`;
-      response += `• Identifying relevant details for your case\n`;
-      response += `• Preparing documentation for insurance or legal claims\n\n`;
-      response += `How does this image relate to your legal situation?`;
-      break;
-      
-    default:
-      response += `${fileAnalysis.summary} `;
-      response += `Based on what I see, I can help you with:\n`;
-      fileAnalysis.action_items.forEach(item => {
-        response += `• ${item}\n`;
-      });
-      response += `\nWhat would you like to focus on?`;
+  // Extract key information for legal intake
+  const parties = fileAnalysis.entities?.people || [];
+  const organizations = fileAnalysis.entities?.orgs || [];
+  const dates = fileAnalysis.entities?.dates || [];
+  const keyFacts = fileAnalysis.key_facts || [];
+  
+  // Determine likely matter type based on document analysis
+  let suggestedMatterType = 'General Consultation';
+  if (analysis_type === 'contract' || fileAnalysis.summary?.toLowerCase().includes('contract')) {
+    suggestedMatterType = 'Contract Review';
+  } else if (analysis_type === 'medical_document' || fileAnalysis.summary?.toLowerCase().includes('medical')) {
+    suggestedMatterType = 'Personal Injury';
+  } else if (analysis_type === 'government_form' || fileAnalysis.summary?.toLowerCase().includes('form')) {
+    suggestedMatterType = 'Administrative Law';
+  } else if (analysis_type === 'image' && (fileAnalysis.summary?.toLowerCase().includes('accident') || fileAnalysis.summary?.toLowerCase().includes('injury'))) {
+    suggestedMatterType = 'Personal Injury';
+  } else if (analysis_type === 'image' && fileAnalysis.summary?.toLowerCase().includes('property')) {
+    suggestedMatterType = 'Property Law';
   }
+  
+  // Build legally-focused response
+  response += `I've analyzed your document and here's what I found:\n\n`;
+  
+  // Document identification
+  if (fileAnalysis.summary) {
+    response += `**Document Analysis:** ${fileAnalysis.summary}\n\n`;
+  }
+  
+  // Key legal details
+  if (parties.length > 0) {
+    response += `**Parties Involved:** ${parties.join(', ')}\n`;
+  }
+  
+  if (organizations.length > 0) {
+    response += `**Organizations:** ${organizations.join(', ')}\n`;
+  }
+  
+  if (dates.length > 0) {
+    response += `**Important Dates:** ${dates.join(', ')}\n`;
+  }
+  
+  if (keyFacts.length > 0) {
+    response += `**Key Facts:**\n`;
+    keyFacts.slice(0, 3).forEach(fact => {
+      response += `• ${fact}\n`;
+    });
+  }
+  
+  response += `\n**Suggested Legal Matter Type:** ${suggestedMatterType}\n\n`;
+  
+  // Legal guidance and next steps
+  response += `Based on this analysis, I can help you:\n`;
+  response += `• Create a legal matter for attorney review\n`;
+  response += `• Identify potential legal issues or concerns\n`;
+  response += `• Determine appropriate legal services needed\n`;
+  response += `• Prepare for consultation with an attorney\n\n`;
+  
+  // Call to action
+  response += `Would you like me to create a legal matter for this ${suggestedMatterType.toLowerCase()} case? I'll need your contact information to get started.`;
   
   console.log('=== FINAL ANALYSIS RESPONSE ===');
   console.log('Response:', response);
   console.log('Response Length:', response.length, 'characters');
   console.log('Response Type:', analysis_type);
+  console.log('Suggested Matter Type:', suggestedMatterType);
   console.log('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
   console.log('==============================');
   
   return {
     success: true,
     message: response,
-    analysis: fileAnalysis
+    analysis: {
+      ...fileAnalysis,
+      suggestedMatterType,
+      parties,
+      organizations,
+      dates,
+      keyFacts
+    }
   };
 }
 
@@ -1035,13 +1092,19 @@ export async function runLegalIntakeAgentStream(
 
   // Add file information to system prompt if attachments are present
   if (attachments && attachments.length > 0) {
-    systemPrompt += `\n\nThe user has uploaded files. Analyze them using the analyze_document tool before proceeding:
+    console.log('📎 Adding file information to system prompt (streaming)');
+    console.log('Files to analyze:', attachments.map(f => ({ name: f.name, url: f.url })));
+    
+    systemPrompt += `\n\nThe user has uploaded files. You MUST analyze them FIRST using the analyze_document tool before proceeding with any other conversation:
 ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}`;
+  } else {
+    console.log('📎 No attachments found (streaming)');
   }
 
   systemPrompt += `
 
 **CONVERSATION FLOW:**
+${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files using analyze_document tool, then proceed with intake.` : ''}
 1. If no name: "Can you please provide your full name?"
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
@@ -1058,9 +1121,9 @@ TOOL_CALL: create_matter
 PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: analyze_document
-PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "resume", "specific_question": "Analyze this resume for improvement opportunities"}
+PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
 
-**DO NOT provide legal advice. Follow the conversation flow step by step.**`;
+**IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**`;
 
   try {
     console.log('🔄 Starting streaming agent...');

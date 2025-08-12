@@ -5,10 +5,24 @@ import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler'
 import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
 import { SecurityLogger } from '../utils/securityLogger.js';
 import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
+import { rateLimit, getClientId } from '../middleware/rateLimit.js';
 
 export async function handleAgent(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
+  }
+
+  // Rate limiting for agent endpoint
+  const clientId = getClientId(request);
+  if (!(await rateLimit(env, clientId, 60, 60))) { // 60 requests per minute
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Rate limit exceeded. Please try again later.',
+      errorCode: 'RATE_LIMITED'
+    }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   try {

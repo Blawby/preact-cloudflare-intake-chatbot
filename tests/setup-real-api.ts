@@ -1,10 +1,8 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-// Only mock fetch if it's not already available (for real API tests)
-if (!global.fetch) {
-  global.fetch = vi.fn();
-}
+// For real API tests, we want to use the actual fetch
+// Don't mock fetch - let it use the real implementation
 
 // Mock IntersectionObserver
 global.IntersectionObserver = vi.fn().mockImplementation(() => ({
@@ -49,4 +47,4 @@ global.FileReader = vi.fn().mockImplementation(() => ({
   onload: null,
   onerror: null,
   onloadend: null,
-})); 
+}));

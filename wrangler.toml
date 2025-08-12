@@ -10,6 +10,10 @@ binding = "AI"
 binding = "llama"
 model = "@cf/meta/llama-3.1-8b-instruct"
 
+[[ai.models]]
+binding = "llava"
+model = "@cf/llava-hf/llava-1.5-7b-hf"
+
 # Fresh resources for AI chatbot
 [[kv_namespaces]]
 binding = "CHAT_SESSIONS"
@@ -32,7 +36,7 @@ BLAWBY_TEAM_ULID = "01jq70jnstyfzevc6423czh50e"
 # BLAWBY_API_TOKEN should be set via: wrangler secret put BLAWBY_API_TOKEN
 
 # Cloudflare AI Configuration
-CLOUDFLARE_ACCOUNT_ID = "your_cloudflare_account_id_here"
+CLOUDFLARE_ACCOUNT_ID = "fa3dc6c06433f6b0ea78d95bce23ad91"
 CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
 # CLOUDFLARE_API_TOKEN should be set via: wrangler secret put CLOUDFLARE_API_TOKEN
 
@@ -40,6 +44,10 @@ CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
 [[r2_buckets]]
 binding = "FILES_BUCKET"
 bucket_name = "blawby-ai-files"
+
+# Queue for background document processing
+[queues]
+DOC_EVENTS = { name = "doc-events" }
 
 # Domain configuration for ai.blawby.com
 [env.production]
@@ -53,6 +61,9 @@ kv_namespaces = [
 ]
 d1_databases = [
   { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf", experimental_remote = true }
+]
+queues = [
+  { binding = "DOC_EVENTS", name = "doc-events" }
 ]
 # r2_buckets = [
 #   { binding = "FILES_BUCKET", bucket_name = "blawby-ai-files" }

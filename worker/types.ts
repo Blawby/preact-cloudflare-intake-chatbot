@@ -1,4 +1,4 @@
-import type { Ai, KVNamespace, R2Bucket, D1Database } from '@cloudflare/workers-types';
+import type { Ai, KVNamespace, R2Bucket, D1Database, Queue } from '@cloudflare/workers-types';
 
 // Environment interface with proper Cloudflare Workers types
 export interface Env {
@@ -7,6 +7,7 @@ export interface Env {
   CHAT_SESSIONS: KVNamespace;
   RESEND_API_KEY: string;
   FILES_BUCKET?: R2Bucket;
+  DOC_EVENTS: Queue;
   PAYMENT_API_KEY?: string;
   PAYMENT_API_URL?: string;
   

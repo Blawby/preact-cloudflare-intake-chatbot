@@ -106,6 +106,24 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
     }
   });
 
+  // Enqueue for background processing if it's an analyzable file type
+  const analyzableTypes = ['application/pdf', 'text/plain', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (analyzableTypes.includes(file.type)) {
+    try {
+      await env.DOC_EVENTS.send({
+        key: storageKey,
+        teamId,
+        sessionId,
+        mime: file.type,
+        size: file.size
+      });
+      console.log('Enqueued file for background processing:', storageKey);
+    } catch (queueError) {
+      console.warn('Failed to enqueue file for background processing:', queueError);
+      // Don't fail the upload if queue fails
+    }
+  }
+
   console.log('File stored in R2 successfully:', storageKey);
 
   // Try to store file metadata in database, but don't fail if it doesn't work
