@@ -525,10 +525,16 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email but no matter description: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
 6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
 CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
+
+**EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
+- Look through ALL previous messages for legal issues mentioned
+- Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
+- If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
+- DO NOT ask again if they already explained their legal situation
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
@@ -1226,10 +1232,16 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email but no matter description: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
 6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
 CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
+
+**EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
+- Look through ALL previous messages for legal issues mentioned
+- Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
+- If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
+- DO NOT ask again if they already explained their legal situation
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
