@@ -4,6 +4,81 @@ import { rateLimit, getClientId } from '../middleware/rateLimit.js';
 import { extractPdfText } from '../lib/pdf.js';
 import { withAIRetry } from '../utils/retry.js';
 
+// Helper function to create fallback response
+function createFallbackResponse(aiResponse: string): any {
+  return {
+    summary: aiResponse.substring(0, 200) + (aiResponse.length > 200 ? '...' : ''),
+    key_facts: [aiResponse],
+    entities: { people: [], orgs: [], dates: [] },
+    action_items: [],
+    confidence: 0.6
+  };
+}
+
+// Helper function to parse AI response with multiple fallback strategies
+function parseAIResponse(aiResponse: string): any {
+  if (!aiResponse || typeof aiResponse !== 'string') {
+    return createFallbackResponse('No response received');
+  }
+
+  // Strategy 1: Direct JSON parse
+  try {
+    const parsed = JSON.parse(aiResponse.trim());
+    if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
+      return parsed;
+    }
+  } catch (error) {
+    // Continue to next strategy
+  }
+
+  // Strategy 2: Extract substring between first '{' and last '}'
+  try {
+    const firstBrace = aiResponse.indexOf('{');
+    const lastBrace = aiResponse.lastIndexOf('}');
+    
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      const jsonSubstring = aiResponse.substring(firstBrace, lastBrace + 1);
+      const parsed = JSON.parse(jsonSubstring);
+      if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
+        return parsed;
+      }
+    }
+  } catch (error) {
+    // Continue to next strategy
+  }
+
+  // Strategy 3: Fix common escaped characters and try again
+  try {
+    const fixedResponse = aiResponse
+      .replace(/\\_/g, '_')  // Fix escaped underscores
+      .replace(/\\"/g, '"')  // Fix escaped quotes
+      .replace(/\\\\/g, '\\'); // Fix double escaped backslashes
+    
+    const parsed = JSON.parse(fixedResponse);
+    if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
+      return parsed;
+    }
+  } catch (error) {
+    // Continue to next strategy
+  }
+
+  // Strategy 4: Regex match for JSON object
+  try {
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
+        return parsed;
+      }
+    }
+  } catch (error) {
+    // Continue to fallback
+  }
+
+  // Fallback: Create structured response from text
+  return createFallbackResponse(aiResponse);
+}
+
 // JSON Schema for vision analysis results
 const VISION_ANALYSIS_SCHEMA = {
   name: "VisionDocRead",
@@ -67,14 +142,21 @@ function validateAnalysisFile(file: File): { isValid: boolean; error?: string } 
 }
 
 export async function analyzeWithCloudflareAI(file: File, question: string, env: Env): Promise<any> {
-  // Use longer timeout for vision models
+  // Configurable timeout with fallbacks
   const isImage = file.type.startsWith('image/');
-  const timeoutMs = isImage ? 60000 : 30000; // 60 seconds for images, 30 for text/PDF
+  const defaultTimeoutMs = isImage ? 60000 : 30000; // 60s for images, 30s for others
+  const timeoutMs = parseInt(env.ANALYSIS_TIMEOUT_MS || '') || defaultTimeoutMs;
+  
+  // Generate request identifier for better logging
+  const requestId = `analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => {
+    console.warn(`[${requestId}] Analysis timeout triggered after ${timeoutMs}ms for ${file.name} (${file.type}, ${file.size} bytes)`);
+    controller.abort();
+  }, timeoutMs);
   
-  console.log(`Setting timeout to ${timeoutMs}ms for ${file.type} analysis`);
+  console.log(`[${requestId}] Starting analysis: ${file.name} (${file.type}, ${file.size} bytes) with ${timeoutMs}ms timeout`);
 
   try {
     // Prepare model input based on file type
@@ -107,7 +189,7 @@ export async function analyzeWithCloudflareAI(file: File, question: string, env:
 }`;
         
         aiOptions = {
-          image: [...uint8Array], // Convert to array of integers as per official docs
+          image: uint8Array, // Pass binary directly to avoid unnecessary copy
           prompt: prompt,
           max_tokens: 512
         };
@@ -255,102 +337,10 @@ export async function analyzeWithCloudflareAI(file: File, question: string, env:
       throw new Error('No content in Cloudflare AI response');
     }
 
-    // Try to extract JSON from the response
-    let parsed: any;
-    try {
-      console.log('Raw AI response:', aiResponse);
-      
-      // First, try to parse the entire response as JSON
-      try {
-        parsed = JSON.parse(aiResponse.trim());
-        console.log('Successfully parsed full response as JSON');
-      } catch (fullParseError) {
-        console.log('Full JSON parse failed, trying to extract JSON from response');
-        console.log('Response content:', aiResponse);
-        
-        // Clean the response - remove any leading/trailing text and fix common issues
-        let cleanedResponse = aiResponse.trim();
-        
-        // Remove any leading text before the first {
-        const firstBrace = cleanedResponse.indexOf('{');
-        if (firstBrace > 0) {
-          cleanedResponse = cleanedResponse.substring(firstBrace);
-          console.log('Removed leading text, cleaned response:', cleanedResponse);
-        }
-        
-        // Remove any trailing text after the last }
-        const lastBrace = cleanedResponse.lastIndexOf('}');
-        if (lastBrace > 0 && lastBrace < cleanedResponse.length - 1) {
-          cleanedResponse = cleanedResponse.substring(0, lastBrace + 1);
-          console.log('Removed trailing text, cleaned response:', cleanedResponse);
-        }
-        
-        // Try to parse the cleaned response
-        try {
-          parsed = JSON.parse(cleanedResponse);
-          console.log('Successfully parsed cleaned response as JSON');
-        } catch (cleanedParseError) {
-          console.log('Cleaned response parse failed, trying to fix escaped characters');
-          
-          // Fix common escaped characters that Cloudflare AI might return
-          let fixedResponse = cleanedResponse
-            .replace(/\\_/g, '_')  // Fix escaped underscores
-            .replace(/\\"/g, '"')  // Fix escaped quotes
-            .replace(/\\\\/g, '\\'); // Fix double escaped backslashes
-          
-          try {
-            parsed = JSON.parse(fixedResponse);
-            console.log('Successfully parsed fixed response as JSON');
-                    } catch (fixedParseError) {
-            console.log('Fixed response parse failed, trying regex match');
-            
-            // If that fails, look for JSON in the response
-            const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              try {
-                parsed = JSON.parse(jsonMatch[0]);
-                console.log('Successfully parsed JSON from response match');
-              } catch (matchParseError) {
-                console.error('Failed to parse JSON match:', matchParseError);
-                console.log('JSON match content:', jsonMatch[0]);
-              }
-            } else {
-              console.log('No JSON pattern found in response');
-              // If no JSON found, create a structured response from the text
-              console.log('No JSON found in response, creating fallback');
-              parsed = {
-                summary: aiResponse.substring(0, 200) + (aiResponse.length > 200 ? '...' : ''),
-                key_facts: [aiResponse],
-                entities: { people: [], orgs: [], dates: [] },
-                action_items: [],
-                confidence: 0.7
-              };
-            }
-          }
-        }
-      }
-      
-      // Validate the parsed structure
-      if (!parsed.summary || !parsed.key_facts || !parsed.entities || !parsed.action_items || parsed.confidence === undefined) {
-        console.warn('Parsed JSON missing required fields, creating fallback');
-        parsed = {
-          summary: aiResponse.substring(0, 200) + (aiResponse.length > 200 ? '...' : ''),
-          key_facts: [aiResponse],
-          entities: { people: [], orgs: [], dates: [] },
-          action_items: [],
-          confidence: 0.6
-        };
-      }
-    } catch (parseError) {
-      console.warn('Failed to parse JSON from Cloudflare AI response, using fallback:', aiResponse);
-      parsed = {
-        summary: aiResponse.substring(0, 200) + (aiResponse.length > 200 ? '...' : ''),
-        key_facts: [aiResponse],
-        entities: { people: [], orgs: [], dates: [] },
-        action_items: [],
-        confidence: 0.6
-      };
-    }
+    // Parse AI response using helper function
+    console.log(`[${requestId}] Raw AI response:`, aiResponse);
+    const parsed = parseAIResponse(aiResponse);
+    console.log(`[${requestId}] Parsed response:`, parsed);
 
     // No cleanup needed - we're using direct file data
 
@@ -360,7 +350,7 @@ export async function analyzeWithCloudflareAI(file: File, question: string, env:
     clearTimeout(timeout);
     
     if (error.name === 'AbortError') {
-      console.warn('Analysis timed out, returning fallback response');
+      console.warn(`[${requestId}] Analysis timed out after ${timeoutMs}ms for ${file.name} (${file.type}, ${file.size} bytes)`);
       const fileType = file.type.startsWith('image/') ? 'image' : 'document';
       return {
         summary: `Timed out analyzing ${fileType}. The ${fileType} may be too complex or the AI service is experiencing high load.`,
@@ -371,6 +361,7 @@ export async function analyzeWithCloudflareAI(file: File, question: string, env:
       };
     }
     
+    console.error(`[${requestId}] Analysis error for ${file.name}:`, error);
     throw error;
   }
 }
@@ -395,8 +386,8 @@ export async function handleAnalyze(request: Request, env: Env, corsHeaders: Rec
 
   try {
     // Check if Cloudflare AI is configured
-    if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_API_TOKEN) {
-      throw HttpErrors.internalServerError('Cloudflare AI not configured. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN');
+    if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_API_TOKEN || !env.CLOUDFLARE_PUBLIC_URL) {
+      throw HttpErrors.internalServerError('Cloudflare AI not configured. Please set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and CLOUDFLARE_PUBLIC_URL');
     }
 
     // Parse form data
