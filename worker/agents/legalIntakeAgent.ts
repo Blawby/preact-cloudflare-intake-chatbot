@@ -4,10 +4,15 @@ import { CloudflareLocationInfo, getLocationDescription } from '../utils/cloudfl
 
 // Helper function to analyze files using the vision API
 async function analyzeFile(env: any, fileId: string, question?: string): Promise<any> {
+  console.log('=== ANALYZE FILE FUNCTION CALLED ===');
+  console.log('File ID:', fileId);
+  console.log('Question:', question);
+  
   // Determine the appropriate question based on file type or use default
   const defaultQuestion = "Analyze this document and provide a comprehensive summary with key facts, entities, and actionable insights. Focus on information relevant for legal intake or professional services.";
   
   const analysisQuestion = question || defaultQuestion;
+  
   try {
     // Get file from R2 storage
     if (!env.FILES_BUCKET) {
@@ -22,19 +27,26 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
         SELECT * FROM files WHERE id = ? AND is_deleted = FALSE
       `);
       fileRecord = await stmt.bind(fileId).first();
+      console.log('Database file record:', fileRecord);
     } catch (dbError) {
       console.warn('Failed to get file metadata from database:', dbError);
     }
 
     // Construct file path
     let filePath = fileRecord?.file_path;
+    console.log('Initial file path from database:', filePath);
+    
     if (!filePath) {
+      console.log('No file path from database, attempting to construct from file ID');
+      
       // Handle the actual file ID format with UUID
       // Format: team-slug-uuid-timestamp-random
       // Example: north-carolina-legal-services-5b69514f-ef86-45ea-996d-4f2764b40d27-1754974140878-11oeburbd
       
       // Split by hyphens and look for UUID pattern
       const parts = fileId.split('-');
+      console.log('File ID parts:', parts);
+      
       if (parts.length >= 6) {
         // Find the UUID part (8-4-4-4-12 format)
         let teamSlug = '';
@@ -45,6 +57,8 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
         // Look for UUID pattern in the middle
         for (let i = 0; i < parts.length - 2; i++) {
           const potentialUuid = parts.slice(i, i + 5).join('-');
+          console.log(`Checking potential UUID at index ${i}:`, potentialUuid);
+          
           if (potentialUuid.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
             // Found UUID, reconstruct the parts
             teamSlug = parts.slice(0, i).join('-');
@@ -52,7 +66,7 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
             timestamp = parts[i + 5];
             random = parts[i + 6];
             
-            console.log('Parsed file ID:', { teamSlug, sessionId, timestamp, random, fileId });
+            console.log('Successfully parsed file ID:', { teamSlug, sessionId, timestamp, random, fileId });
             
             // Try to find the file with this prefix
             const prefix = `uploads/${teamSlug}/${sessionId}/${fileId}`;
@@ -64,6 +78,8 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
               if (objects.objects.length > 0) {
                 filePath = objects.objects[0].key;
                 console.log('Found file path:', filePath);
+              } else {
+                console.log('No R2 objects found with prefix:', prefix);
               }
             } catch (listError) {
               console.warn('Failed to list R2 objects:', listError);
@@ -71,19 +87,57 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
             break;
           }
         }
+        
+        if (!filePath) {
+          console.log('Failed to parse UUID from file ID, trying alternative approach');
+          
+          // Alternative approach: try to find files by listing all objects and matching
+          try {
+            const allObjects = await env.FILES_BUCKET.list({ prefix: 'uploads/' });
+            console.log('Total R2 objects found:', allObjects.objects.length);
+            
+            // Look for any object that contains the fileId
+            const matchingObject = allObjects.objects.find(obj => obj.key.includes(fileId));
+            if (matchingObject) {
+              filePath = matchingObject.key;
+              console.log('Found file path by searching all objects:', filePath);
+            } else {
+              console.log('No matching object found for fileId:', fileId);
+            }
+          } catch (searchError) {
+            console.warn('Failed to search all R2 objects:', searchError);
+          }
+        }
+      } else {
+        console.log('File ID does not have enough parts for parsing:', parts.length);
       }
     }
 
     if (!filePath) {
       console.warn('Could not determine file path for analysis:', fileId);
-      return null;
+      // Return a structured error response instead of null
+      return {
+        summary: "Unable to locate the uploaded file for analysis. The file may have been moved or deleted.",
+        key_facts: ["File not found in storage system"],
+        entities: { people: [], orgs: [], dates: [] },
+        action_items: ["Please try uploading the file again", "Contact support if the issue persists"],
+        confidence: 0.0
+      };
     }
 
     // Get file from R2
+    console.log('Attempting to get file from R2:', filePath);
     const fileObject = await env.FILES_BUCKET.get(filePath);
     if (!fileObject) {
       console.warn('File not found in R2 storage for analysis:', filePath);
-      return null;
+      // Return a structured error response instead of null
+      return {
+        summary: "The uploaded file could not be retrieved from storage for analysis.",
+        key_facts: ["File not accessible in storage system"],
+        entities: { people: [], orgs: [], dates: [] },
+        action_items: ["Please try uploading the file again", "Contact support if the issue persists"],
+        confidence: 0.0
+      };
     }
 
     console.log('R2 file object:', {
@@ -107,16 +161,41 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
     const { analyzeWithCloudflareAI } = await import('../routes/analyze.js');
     
     try {
+      console.log('Calling analyzeWithCloudflareAI with file:', {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      });
+      
       const analysis = await analyzeWithCloudflareAI(file, analysisQuestion, env);
+      console.log('Analysis completed successfully:', {
+        summary: analysis.summary?.substring(0, 100) + '...',
+        confidence: analysis.confidence,
+        keyFactsCount: analysis.key_facts?.length || 0
+      });
       return analysis;
     } catch (error) {
       console.error('Analysis error:', error);
-      return null;
+      // Return a structured error response instead of null
+      return {
+        summary: "The file analysis failed due to a technical error. The AI service may be temporarily unavailable.",
+        key_facts: ["Analysis service error occurred"],
+        entities: { people: [], orgs: [], dates: [] },
+        action_items: ["Please try again in a few minutes", "Contact support if the issue persists"],
+        confidence: 0.0
+      };
     }
 
   } catch (error) {
     console.error('File analysis error:', error);
-    return null;
+    // Return a structured error response instead of null
+    return {
+      summary: "An unexpected error occurred during file analysis. Please try again or contact support.",
+      key_facts: ["Unexpected analysis error"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: ["Try uploading the file again", "Contact support if the issue persists"],
+      confidence: 0.0
+    };
   }
 }
 
@@ -962,6 +1041,14 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
     return {
       success: false,
       message: "I'm sorry, I couldn't analyze that document. The file may not be accessible or may not be in a supported format. Could you please try uploading it again or provide more details about what you'd like me to help you with?"
+    };
+  }
+  
+  // Check if the analysis returned an error response (low confidence indicates error)
+  if (fileAnalysis.confidence === 0.0) {
+    return {
+      success: false,
+      message: fileAnalysis.summary || "I'm sorry, I couldn't analyze that document. Please try uploading it again or contact support if the issue persists."
     };
   }
   
