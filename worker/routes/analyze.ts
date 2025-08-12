@@ -141,22 +141,40 @@ function validateAnalysisFile(file: File): { isValid: boolean; error?: string } 
   return { isValid: true };
 }
 
-export async function analyzeWithCloudflareAI(file: File, question: string, env: Env): Promise<any> {
+export async function analyzeWithCloudflareAI(
+  file: File,
+  question: string,
+  env: Env
+): Promise<any> {
   // Configurable timeout with fallbacks
   const isImage = file.type.startsWith('image/');
   const defaultTimeoutMs = isImage ? 60000 : 30000; // 60s for images, 30s for others
-  const timeoutMs = parseInt(env.ANALYSIS_TIMEOUT_MS || '') || defaultTimeoutMs;
+  const timeoutMs = env.ANALYSIS_TIMEOUT_MS
+    ? parseInt(env.ANALYSIS_TIMEOUT_MS, 10)
+    : defaultTimeoutMs;
+  
+  if (isNaN(timeoutMs) || timeoutMs <= 0) {
+    throw new Error(
+      `Invalid ANALYSIS_TIMEOUT_MS configuration: ${env.ANALYSIS_TIMEOUT_MS}`
+    );
+  }
   
   // Generate request identifier for better logging
-  const requestId = `analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const requestId = `analysis-${Date.now()}-${Math.random()
+    .toString(36)
+    .substr(2, 9)}`;
   
   const controller = new AbortController();
   const timeout = setTimeout(() => {
-    console.warn(`[${requestId}] Analysis timeout triggered after ${timeoutMs}ms for ${file.name} (${file.type}, ${file.size} bytes)`);
+    console.warn(
+      `[${requestId}] Analysis timeout triggered after ${timeoutMs}ms for ${file.name} (${file.type}, ${file.size} bytes)`
+    );
     controller.abort();
   }, timeoutMs);
   
-  console.log(`[${requestId}] Starting analysis: ${file.name} (${file.type}, ${file.size} bytes) with ${timeoutMs}ms timeout`);
+  console.log(
+    `[${requestId}] Starting analysis: ${file.name} (${file.type}, ${file.size} bytes) with ${timeoutMs}ms timeout`
+  );
 
   try {
     // Prepare model input based on file type
