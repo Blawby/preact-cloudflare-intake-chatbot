@@ -511,11 +511,13 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
-6. If ALL information collected: Call create_matter tool immediately.
+5. If name, location, phone, and email but no matter description: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
+
+CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, opposing party)
+- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
 - analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
@@ -1196,11 +1198,13 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
-6. If ALL information collected: Call create_matter tool immediately.
+5. If name, location, phone, and email but no matter description: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
+
+CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, opposing party)
+- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
 - analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**

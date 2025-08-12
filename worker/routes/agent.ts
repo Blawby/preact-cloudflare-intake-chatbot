@@ -32,6 +32,12 @@ class SupervisorRouter {
     
     console.log(`🤖 Routing: paralegalEnabled=${paralegalEnabled}, paralegalFirst=${paralegalFirst}`);
     
+    // 0. Check if user is already in intake flow - if so, stay in intake
+    if (this.isInIntakeFlow(messages)) {
+      console.log('📋 User is in intake flow, staying in Intake Agent');
+      return 'intake';
+    }
+    
     // 1. Check for explicit human/scheduling intent (always goes to intake)
     if (wantsHuman(text)) {
       console.log('👤 User wants human interaction, routing to Intake Agent');
@@ -160,6 +166,34 @@ class SupervisorRouter {
     return hasAttachments || analysisKeywords.some(keyword => 
       latestMessage.toLowerCase().includes(keyword)
     );
+  }
+
+  private isInIntakeFlow(messages: any[]): boolean {
+    const allContent = messages.map((msg: any) => msg.content || '').join(' ').toLowerCase();
+    
+    // Check for intake flow indicators
+    const intakeMarkers = [
+      'can you please provide your full name',
+      'thank you! now i need your phone number',
+      'thank you! now i need your email address',
+      'could you please provide a valid phone number',
+      'could you please provide a valid email address',
+      'i need your name to proceed',
+      'i have your contact information',
+      'the phone number you provided',
+      'the email address you provided'
+    ];
+    
+    // If any intake markers are present, user is in intake flow
+    const hasIntakeMarkers = intakeMarkers.some(marker => allContent.includes(marker));
+    
+    // Also check if user has already provided contact info (sign they're in intake)
+    const hasProvidedContactInfo = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(allContent) || // phone pattern
+                                   /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/.test(allContent); // email pattern
+    
+    console.log(`📋 Intake flow check: markers=${hasIntakeMarkers}, contact=${hasProvidedContactInfo}`);
+    
+    return hasIntakeMarkers || hasProvidedContactInfo;
   }
 }
 
