@@ -72,3 +72,4 @@ echo ""
 echo "📊 To monitor usage:"
 echo "   - Visit: https://dash.cloudflare.com/${ACCOUNT_ID}/workers/ai"
 echo "   - Check your Workers AI usage and costs"
+

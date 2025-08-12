@@ -1,8 +1,6 @@
-// Robust PDF extraction with OCR fallback per-page
-// Note: PDF.js is not available in Workers runtime, so we'll use basic text extraction
-// OCR functionality is currently disabled for Workers compatibility
-// import * as pdfjs from "pdfjs-dist/legacy/build/pdf.js";
-// import { createScheduler, createWorker } from "tesseract-wasm";
+// Basic PDF text extraction for Cloudflare Workers
+// Note: PDF.js and OCR libraries are not available in Workers runtime
+// This implementation uses pattern matching for text extraction
 
 export async function extractPdfText(buf: ArrayBuffer) {
   // Enhanced PDF processing using Cloudflare AI vision model for better text extraction
