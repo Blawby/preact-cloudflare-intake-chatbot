@@ -4,7 +4,7 @@ export async function withRetry<T>(
   attempts = 3,
   baseDelay = 300
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: Error | undefined;
   
   for (let i = 0; i < attempts; i++) {
     try {
@@ -20,7 +20,7 @@ export async function withRetry<T>(
     }
   }
   
-  throw lastError!;
+  throw lastError ?? new Error('Retry failed after all attempts');
 }
 
 // Specific retry wrapper for AI calls

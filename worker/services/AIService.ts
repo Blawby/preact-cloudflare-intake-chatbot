@@ -9,6 +9,28 @@ export interface Env {
   FILES_BUCKET?: R2Bucket;
 }
 
+// Default team configuration - centralized for maintainability
+const DEFAULT_TEAM_CONFIG: TeamConfig = {
+  requiresPayment: false,
+  consultationFee: 0,
+  paymentLink: null,
+  availableServices: [
+    'Family Law',
+    'Employment Law',
+    'Business Law',
+    'Intellectual Property',
+    'Personal Injury',
+    'Criminal Law',
+    'Civil Law',
+    'Tenant Rights Law',
+    'Probate and Estate Planning',
+    'Special Education and IEP Advocacy',
+    'Small Business and Nonprofits',
+    'Contract Review',
+    'General Consultation'
+  ]
+};
+
 // Optimized AI Service with caching and timeouts
 export class AIService {
   private teamConfigCache = new Map<string, { config: TeamConfig; timestamp: number }>();
@@ -64,26 +86,7 @@ export class AIService {
     }
     
     console.log('Returning default team config');
-    return {
-      requiresPayment: false,
-      consultationFee: 0,
-      paymentLink: null,
-      availableServices: [
-        'Family Law',
-        'Employment Law',
-        'Business Law',
-        'Intellectual Property',
-        'Personal Injury',
-        'Criminal Law',
-        'Civil Law',
-        'Tenant Rights Law',
-        'Probate and Estate Planning',
-        'Special Education and IEP Advocacy',
-        'Small Business and Nonprofits',
-        'Contract Review',
-        'General Consultation'
-      ]
-    };
+    return DEFAULT_TEAM_CONFIG;
   }
 
   // Clear cache for a specific team or all teams

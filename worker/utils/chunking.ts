@@ -21,19 +21,31 @@ export function chunkByTokens(text: string, size = 800, overlap = 120): string[]
 
 // Alternative chunking by semantic boundaries (sentences)
 export function chunkBySentences(text: string, maxChunkSize = 800): string[] {
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  // Use regex to capture sentences with their delimiters
+  const sentenceRegex = /[^.!?]*[.!?]+/g;
+  const sentences: string[] = [];
+  let match;
+  
+  while ((match = sentenceRegex.exec(text)) !== null) {
+    const sentence = match[0].trim();
+    if (sentence.length > 0) {
+      sentences.push(sentence);
+    }
+  }
+  
   const chunks: string[] = [];
   let currentChunk = "";
   
   for (const sentence of sentences) {
-    const trimmedSentence = sentence.trim();
-    if ((currentChunk + " " + trimmedSentence).length <= maxChunkSize) {
-      currentChunk += (currentChunk ? " " : "") + trimmedSentence;
+    // Check if adding this sentence (with its delimiter) would exceed maxChunkSize
+    const potentialChunk = currentChunk + (currentChunk ? " " : "") + sentence;
+    if (potentialChunk.length <= maxChunkSize) {
+      currentChunk = potentialChunk;
     } else {
       if (currentChunk) {
         chunks.push(currentChunk);
       }
-      currentChunk = trimmedSentence;
+      currentChunk = sentence;
     }
   }
   
@@ -53,8 +65,23 @@ export async function getEmbedding(text: string, env: any): Promise<number[]> {
     throw new Error("RAG not enabled");
   }
   
+  // Input validation
+  if (!text || typeof text !== 'string') {
+    throw new Error("Text input is required and must be a string");
+  }
+  
+  const trimmedText = text.trim();
+  if (trimmedText.length === 0) {
+    throw new Error("Text input cannot be empty or only whitespace");
+  }
+  
+  const MAX_TEXT_LENGTH = 8000; // Reasonable limit for embedding
+  if (trimmedText.length > MAX_TEXT_LENGTH) {
+    throw new Error(`Text input exceeds maximum length of ${MAX_TEXT_LENGTH} characters`);
+  }
+  
   const emb = await env.AI.run("@cf/baai/bge-large-en-v1.5", { 
-    input: text 
+    input: trimmedText 
   });
   
   return emb.data;

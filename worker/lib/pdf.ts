@@ -1,7 +1,8 @@
 // Robust PDF extraction with OCR fallback per-page
 // Note: PDF.js is not available in Workers runtime, so we'll use basic text extraction
+// OCR functionality is currently disabled for Workers compatibility
 // import * as pdfjs from "pdfjs-dist/legacy/build/pdf.js";
-import { createScheduler, createWorker } from "tesseract-wasm";
+// import { createScheduler, createWorker } from "tesseract-wasm";
 
 export async function extractPdfText(buf: ArrayBuffer) {
   // Since PDF.js is not available in Workers runtime, we'll use basic text extraction

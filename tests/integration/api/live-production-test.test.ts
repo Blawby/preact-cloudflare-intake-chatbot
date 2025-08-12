@@ -166,10 +166,72 @@ describe('Live Production System Tests', () => {
       console.log('✅ PDF analysis completed successfully');
     }, 60000);
 
-    it('should handle direct file analysis via /api/analyze endpoint', async () => {
+    it('should analyze uploaded image and provide legal intake response', async () => {
+      // Upload an image first
+      const imageBytes = Uint8Array.from(atob(TEST_IMAGE_BASE64), c => c.charCodeAt(0));
+      const imageBlob = new Blob([imageBytes], { type: 'image/png' });
+      const imageFile = new File([imageBlob], 'test-image.png', { type: 'image/png' });
+
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('teamId', TEAM_ID);
+      formData.append('sessionId', SESSION_ID);
+
+      const uploadResponse = await fetch(`${PRODUCTION_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      expect(uploadResponse.status).toBe(200);
+      const uploadResult: FileUploadResponse = await uploadResponse.json();
+      expect(uploadResult.success).toBe(true);
+
+      console.log('💬 Sending chat message with image attachment...');
+
+      const chatResponse = await fetch(`${PRODUCTION_URL}/api/agent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              content: 'Can you analyze this image?',
+              isUser: true
+            }
+          ],
+          teamId: TEAM_ID,
+          sessionId: SESSION_ID,
+          attachments: [
+            {
+              name: 'test-image.png',
+              url: uploadResult.data!.url,
+              type: 'image/png'
+            }
+          ]
+        })
+      });
+
+      expect(chatResponse.status).toBe(200);
+      
+      const chatResult: ChatResponse = await chatResponse.json();
+      console.log('💬 Image chat response:', JSON.stringify(chatResult, null, 2));
+
+      expect(chatResult.success).toBe(true);
+      expect(chatResult.data?.response).toBeDefined();
+
+      // Verify the response contains image analysis
+      const response = chatResult.data!.response;
+      expect(response).toContain("analyze_document");
+      expect(response).toContain("ANALYSIS RESULTS");
+
+      console.log('✅ Image analysis completed successfully');
+    }, 60000);
+
+    it('should handle direct PDF analysis via /api/analyze endpoint', async () => {
       expect(uploadedFileId).toBeDefined();
 
-      console.log('🔍 Testing direct file analysis...');
+      console.log('🔍 Testing direct PDF analysis...');
 
       // Create a test file for analysis
       const pdfBytes = Uint8Array.from(atob(TEST_PDF_BASE64), c => c.charCodeAt(0));
@@ -188,7 +250,7 @@ describe('Live Production System Tests', () => {
       expect(analyzeResponse.status).toBe(200);
       
       const analyzeResult = await analyzeResponse.json();
-      console.log('🔍 Analysis response:', JSON.stringify(analyzeResult, null, 2));
+      console.log('🔍 PDF Analysis response:', JSON.stringify(analyzeResult, null, 2));
 
       expect(analyzeResult.success).toBe(true);
       expect(analyzeResult.data?.analysis).toBeDefined();
@@ -197,7 +259,39 @@ describe('Live Production System Tests', () => {
       expect(analyzeResult.data?.analysis.key_facts).toBeDefined();
       expect(analyzeResult.data?.analysis.entities).toBeDefined();
 
-      console.log('✅ Direct file analysis completed successfully');
+      console.log('✅ Direct PDF analysis completed successfully');
+    }, 60000);
+
+    it('should handle direct image analysis via /api/analyze endpoint', async () => {
+      console.log('🔍 Testing direct image analysis...');
+
+      // Create a test image for analysis
+      const imageBytes = Uint8Array.from(atob(TEST_IMAGE_BASE64), c => c.charCodeAt(0));
+      const imageBlob = new Blob([imageBytes], { type: 'image/png' });
+      const imageFile = new File([imageBlob], 'test-image.png', { type: 'image/png' });
+
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('question', 'Analyze this image for legal intake purposes');
+
+      const analyzeResponse = await fetch(`${PRODUCTION_URL}/api/analyze`, {
+        method: 'POST',
+        body: formData
+      });
+
+      expect(analyzeResponse.status).toBe(200);
+      
+      const analyzeResult = await analyzeResponse.json();
+      console.log('🔍 Image Analysis response:', JSON.stringify(analyzeResult, null, 2));
+
+      expect(analyzeResult.success).toBe(true);
+      expect(analyzeResult.data?.analysis).toBeDefined();
+      expect(analyzeResult.data?.analysis.summary).toBeDefined();
+      expect(analyzeResult.data?.analysis.confidence).toBeGreaterThan(0);
+      expect(analyzeResult.data?.analysis.key_facts).toBeDefined();
+      expect(analyzeResult.data?.analysis.entities).toBeDefined();
+
+      console.log('✅ Direct image analysis completed successfully');
     }, 60000);
   });
 

@@ -31,6 +31,10 @@ if [ -z "$API_TOKEN" ]; then
     exit 1
 fi
 
+# Clear the terminal line to hide the token from scrollback
+printf '\r\033[K'
+echo "✅ API Token received"
+
 # Get Public URL
 read -p "Enter your Worker's public URL (e.g., https://your-worker.your-subdomain.workers.dev): " PUBLIC_URL
 if [ -z "$PUBLIC_URL" ]; then
@@ -56,6 +60,10 @@ echo "   Account ID: $ACCOUNT_ID"
 echo "   Public URL: $PUBLIC_URL"
 echo "   API Token: [Set as secret]"
 echo ""
+
+# Clean up sensitive data from environment
+unset API_TOKEN
+
 echo "🚀 Next steps:"
 echo "   1. Deploy your worker: wrangler deploy"
 echo "   2. Test file analysis with a real file upload"
