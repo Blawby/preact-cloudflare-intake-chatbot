@@ -503,6 +503,20 @@ ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file
     console.log('📎 No attachments found');
   }
 
+  // Check if this is an attorney referral from paralegal
+  const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
+  const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
+                            (conversationText.includes('yes') || conversationText.includes('sure') || conversationText.includes('ok'));
+
+  if (isAttorneyReferral) {
+    systemPrompt += `
+
+**ATTORNEY REFERRAL CONTEXT:**
+This user was referred by our AI Paralegal after requesting attorney help. Start with: "Perfect! I'll help you connect with one of our attorneys. To get started, I need to collect some basic information."
+
+Then proceed with the conversation flow below.`;
+  }
+
   systemPrompt += `
 
 **CONVERSATION FLOW:**
@@ -1188,6 +1202,20 @@ export async function runLegalIntakeAgentStream(
 ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}`;
   } else {
     console.log('📎 No attachments found (streaming)');
+  }
+
+  // Check if this is an attorney referral from paralegal
+  const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
+  const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
+                            (conversationText.includes('yes') || conversationText.includes('sure') || conversationText.includes('ok'));
+
+  if (isAttorneyReferral) {
+    systemPrompt += `
+
+**ATTORNEY REFERRAL CONTEXT:**
+This user was referred by our AI Paralegal after requesting attorney help. Start with: "Perfect! I'll help you connect with one of our attorneys. To get started, I need to collect some basic information."
+
+Then proceed with the conversation flow below.`;
   }
 
   systemPrompt += `

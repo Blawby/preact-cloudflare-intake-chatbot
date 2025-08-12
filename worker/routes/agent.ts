@@ -10,8 +10,29 @@ import { rateLimit, getClientId } from '../middleware/rateLimit.js';
 
 // Supervisor router for intent-based routing between agents
 // Helper functions for intent detection
-function wantsHuman(text: string): boolean {
-  return /\b(lawyer|attorney|human|person|call|phone|consult|consultation|schedule)\b/i.test(text);
+function wantsHuman(text: string, messages?: any[]): boolean {
+  // Check if user is responding "yes" to attorney referral
+  if (messages && messages.length >= 2) {
+    const previousMessage = messages[messages.length - 2]?.content?.toLowerCase() || '';
+    const currentMessage = text.toLowerCase();
+    
+    console.log('🔍 Checking attorney referral acceptance:');
+    console.log('  Previous message:', previousMessage.substring(0, 100));
+    console.log('  Current message:', currentMessage);
+    console.log('  Has attorney suggestion:', previousMessage.includes('would you like me to connect you with'));
+    console.log('  Is affirmative:', ['yes', 'yeah', 'sure', 'ok'].includes(currentMessage));
+    
+    // If previous message suggested attorney and current is affirmative
+    if (previousMessage.includes('would you like me to connect you with') && 
+        (currentMessage === 'yes' || currentMessage === 'yeah' || currentMessage === 'sure' || currentMessage === 'ok')) {
+      console.log('✅ Attorney referral accepted - routing to intake!');
+      return true;
+    }
+  }
+  
+  const regularMatch = /\b(lawyer|attorney|human|person|call|phone|consult|consultation|schedule)\b/i.test(text);
+  console.log('🔍 Regular wantsHuman check:', regularMatch, 'for text:', text);
+  return regularMatch;
 }
 
 function needsDocAnalysis(text: string, attachments?: any[]): boolean {
@@ -39,7 +60,7 @@ class SupervisorRouter {
     }
     
     // 1. Check for explicit human/scheduling intent (always goes to intake)
-    if (wantsHuman(text)) {
+    if (wantsHuman(text, messages)) {
       console.log('👤 User wants human interaction, routing to Intake Agent');
       return 'intake';
     }
