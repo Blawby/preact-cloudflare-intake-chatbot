@@ -78,6 +78,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
             description={teamConfig.description}
             variant="sidebar"
             showVerified={true}
+            onRequestConsultation={onRequestConsultation}
           />
 
           {/* Media Section */}
@@ -86,7 +87,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           </div>
 
           {/* Privacy & Support Section */}
-          <PrivacySupportSidebar onRequestConsultation={onRequestConsultation} />
+          <PrivacySupportSidebar />
         </div>
       </div>
 
