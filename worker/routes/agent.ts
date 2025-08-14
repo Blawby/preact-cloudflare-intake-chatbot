@@ -43,15 +43,16 @@ class SupervisorRouter {
   constructor(private env: Env) {}
 
   async route(body: any, teamConfig: any): Promise<'paralegal' | 'analysis' | 'intake'> {
-    // Check feature flags
-    const paralegalEnabled = teamConfig?.config?.features?.enableParalegalAgent || teamConfig?.features?.enableParalegalAgent || false;
-    const paralegalFirst = teamConfig?.config?.features?.paralegalFirst || teamConfig?.features?.paralegalFirst || false;
+    // Check feature flags - handle both boolean and numeric values
+    const paralegalEnabled = Boolean(teamConfig?.config?.features?.enableParalegalAgent || teamConfig?.features?.enableParalegalAgent || false);
+    const paralegalFirst = Boolean(teamConfig?.config?.features?.paralegalFirst || teamConfig?.features?.paralegalFirst || false);
     
     const messages = body.messages || [];
     const latestMessage = messages?.at(-1)?.content || '';
     const text = latestMessage.toLowerCase();
     
     console.log(`🤖 Routing: paralegalEnabled=${paralegalEnabled}, paralegalFirst=${paralegalFirst}`);
+    console.log(`🤖 Raw features:`, teamConfig?.config?.features);
     
     // 0. Check if user is already in intake flow - if so, stay in intake
     if (this.isInIntakeFlow(messages)) {
@@ -109,6 +110,19 @@ class SupervisorRouter {
     ];
 
     if (paralegalKeywords.some(keyword => text.toLowerCase().includes(keyword))) {
+      return true;
+    }
+
+    // Legal help keywords (general legal assistance)
+    const legalHelpKeywords = [
+      'help', 'assistance', 'advice', 'guidance', 'support',
+      'divorce', 'employment', 'landlord', 'tenant', 'eviction',
+      'contract', 'business', 'family law', 'criminal', 'personal injury',
+      'probate', 'estate', 'special education', 'iep'
+    ];
+
+    if (legalHelpKeywords.some(keyword => text.toLowerCase().includes(keyword))) {
+      console.log('🎯 Detected legal help request, routing to Paralegal Agent');
       return true;
     }
 
