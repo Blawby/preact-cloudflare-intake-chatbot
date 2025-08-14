@@ -689,6 +689,9 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 - If user says "steve jobs", use "steve jobs" in responses, NOT "John" or any other name
 - Extract the name from their response to "Can you please provide your full name?"
 - Use the exact name they provide in all subsequent responses
+- NEVER extract names from email addresses or other contact information
+- If no name was explicitly provided, ask for it before proceeding
+- The name field in create_matter tool should only contain the actual name the user provided
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
 - Look through ALL previous messages for legal issues mentioned
@@ -1364,6 +1367,68 @@ export async function runLegalIntakeAgentStream(
     teamConfig = await getTeamConfig(env, teamId);
   }
 
+  // Check if a matter was already created in this conversation
+  const conversationText = messages.map(msg => msg.content).join(' ').toLowerCase();
+  const matterAlreadyCreated = conversationText.includes('perfect! i have all the information') ||
+                              conversationText.includes('here\'s a summary of your matter') ||
+                              conversationText.includes('consultation fee') ||
+                              conversationText.includes('pay $') ||
+                              conversationText.includes('lawyer will contact you within');
+  
+  if (matterAlreadyCreated) {
+    console.log('✅ Matter already created in this conversation, handing off to paralegal');
+    
+    // Send handoff event
+    const handoffEvent = `data: ${JSON.stringify({
+      type: 'handoff_to_paralegal',
+      message: 'Matter already created, transitioning to paralegal'
+    })}\n\n`;
+    controller.enqueue(new TextEncoder().encode(handoffEvent));
+    
+    // Generate paralegal response
+    const paralegalResponse = `I see your matter has already been created and submitted for review. Here's what happens next:
+
+**Next Steps:**
+1. Complete the payment to secure your consultation
+2. Once payment is confirmed, a lawyer will contact you within 24 hours
+3. The lawyer will review your case details and schedule a consultation
+
+**What to expect:**
+- You'll receive a confirmation email once payment is processed
+- A lawyer will call you to discuss your case
+- They'll help you understand your options and next steps for your divorce
+
+**While you wait:**
+- Gather any relevant documents (marriage certificate, financial records, etc.)
+- Make a list of questions you have about the divorce process
+- Think about your goals for the divorce settlement
+
+Is there anything specific about the divorce process you'd like me to explain while you wait for the lawyer to contact you?`;
+    
+    // Stream the paralegal response
+    const paralegalChunks = paralegalResponse.split(' ');
+    for (let i = 0; i < paralegalChunks.length; i++) {
+      const chunk = paralegalChunks[i];
+      const isLastChunk = i === paralegalChunks.length - 1;
+      const separator = isLastChunk ? '' : ' ';
+      const textEvent = `data: ${JSON.stringify({
+        type: 'text',
+        text: `${chunk}${separator}`
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(textEvent));
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    
+    // Send final paralegal response
+    const finalParalegalEvent = `data: ${JSON.stringify({
+      type: 'final',
+      response: paralegalResponse,
+      workflow: 'PARALEGAL_AGENT'
+    })}\n\n`;
+    controller.enqueue(new TextEncoder().encode(finalParalegalEvent));
+    return;
+  }
+
   // Convert messages to the format expected by Cloudflare AI
   const formattedMessages = messages.map(msg => ({
     role: msg.isUser ? 'user' : 'assistant',
@@ -1420,12 +1485,17 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 - If user hasn't provided a location yet, DO NOT try to validate it
 - Follow the conversation flow step by step - don't skip steps
 - NEVER assume information was provided unless the user actually said it
+- Check if a matter was already created in this conversation - if so, DO NOT create another one
+- If matter creation was successful, DO NOT create another matter even if user sends additional messages
 
 **NAME EXTRACTION RULES:**
 - ALWAYS use the actual name the user provided
 - If user says "steve jobs", use "steve jobs" in responses, NOT "John" or any other name
 - Extract the name from their response to "Can you please provide your full name?"
 - Use the exact name they provide in all subsequent responses
+- NEVER extract names from email addresses or other contact information
+- If no name was explicitly provided, ask for it before proceeding
+- The name field in create_matter tool should only contain the actual name the user provided
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
 - Look through ALL previous messages for legal issues mentioned
@@ -1585,6 +1655,58 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
               consultation_fee: toolResult.data?.consultation_fee ?? 0,
               payment_link: toolResult.data?.payment_link || null
             }, teamId);
+            
+            // After successful matter creation, hand off to paralegal for next steps
+            console.log('✅ Matter created successfully, handing off to paralegal for next steps');
+            
+            // Send handoff event
+            const handoffEvent = `data: ${JSON.stringify({
+              type: 'handoff_to_paralegal',
+              message: 'Intake complete, transitioning to paralegal for next steps'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(handoffEvent));
+            
+            // Generate paralegal response for next steps
+            const paralegalResponse = `Great! I've successfully created your matter and submitted it for review. Here's what happens next:
+
+**Next Steps:**
+1. Complete the payment to secure your consultation
+2. Once payment is confirmed, a lawyer will contact you within 24 hours
+3. The lawyer will review your case details and schedule a consultation
+
+**What to expect:**
+- You'll receive a confirmation email once payment is processed
+- A lawyer will call you at ${parameters.phone} to discuss your case
+- They'll help you understand your options and next steps for your divorce
+
+**While you wait:**
+- Gather any relevant documents (marriage certificate, financial records, etc.)
+- Make a list of questions you have about the divorce process
+- Think about your goals for the divorce settlement
+
+Is there anything specific about the divorce process you'd like me to explain while you wait for the lawyer to contact you?`;
+            
+            // Stream the paralegal response
+            const paralegalChunks = paralegalResponse.split(' ');
+            for (let i = 0; i < paralegalChunks.length; i++) {
+              const chunk = paralegalChunks[i];
+              const isLastChunk = i === paralegalChunks.length - 1;
+              const separator = isLastChunk ? '' : ' ';
+              const textEvent = `data: ${JSON.stringify({
+                type: 'text',
+                text: `${chunk}${separator}`
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(textEvent));
+              await new Promise(resolve => setTimeout(resolve, 20));
+            }
+            
+            // Send final paralegal response
+            const finalParalegalEvent = `data: ${JSON.stringify({
+              type: 'final',
+              response: paralegalResponse,
+              workflow: 'PARALEGAL_AGENT'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(finalParalegalEvent));
           }
           
           // Return after tool execution - don't continue with fallback or regular response
