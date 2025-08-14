@@ -658,9 +658,9 @@ ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file
   }
 
   // Check if this is an attorney referral from paralegal
-  const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
-  const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
-                            (conversationText.includes('yes') || conversationText.includes('sure') || conversationText.includes('ok'));
+  const formattedConversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
+  const isAttorneyReferral = formattedConversationText.includes('would you like me to connect you with') && 
+                            (formattedConversationText.includes('yes') || formattedConversationText.includes('sure') || formattedConversationText.includes('ok'));
 
   if (isAttorneyReferral) {
     systemPrompt += `
@@ -1452,9 +1452,9 @@ ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file
   }
 
   // Check if this is an attorney referral from paralegal
-  const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
-  const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
-                            (conversationText.includes('yes') || conversationText.includes('sure') || conversationText.includes('ok'));
+  const formattedConversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
+  const isAttorneyReferral = formattedConversationText.includes('would you like me to connect you with') && 
+                            (formattedConversationText.includes('yes') || formattedConversationText.includes('sure') || formattedConversationText.includes('ok'));
 
   if (isAttorneyReferral) {
     systemPrompt += `
