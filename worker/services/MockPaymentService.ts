@@ -24,6 +24,8 @@ export class MockPaymentService {
       // Store payment history in database
       try {
         console.log('💰 [MOCK] Storing payment history in database...');
+        const consultationFeeInCents = (paymentRequest.consultationFee || 75) * 100; // Default to $75 if not provided
+        
         const result = await this.env.DB.prepare(`
           INSERT INTO payment_history (
             id, payment_id, team_id, customer_email, customer_name, customer_phone,
@@ -37,7 +39,7 @@ export class MockPaymentService {
           paymentRequest.customerInfo.email,
           paymentRequest.customerInfo.name,
           paymentRequest.customerInfo.phone,
-          5000, // Mock amount in cents ($50.00)
+          consultationFeeInCents, // Use consultation fee from request
           'pending',
           'payment.created',
           paymentRequest.matterInfo.type,

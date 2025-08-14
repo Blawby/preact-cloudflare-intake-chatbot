@@ -15,6 +15,7 @@ export interface PaymentRequest {
   };
   teamId: string;
   sessionId: string;
+  consultationFee?: number; // Consultation fee in dollars
 }
 
 export interface PaymentResponse {
@@ -142,6 +143,8 @@ export class PaymentService {
       }
 
       // Step 2: Create invoice
+      const consultationFeeInCents = (paymentRequest.consultationFee || 75) * 100; // Default to $75 if not provided
+      
       const invoiceResponse = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
         method: 'POST',
         headers: {
@@ -159,8 +162,8 @@ export class PaymentService {
             {
               description: `${paymentRequest.matterInfo.type}: ${paymentRequest.matterInfo.description}`,
               quantity: 1,
-              unit_price: 7500, // $75.00 in cents
-              line_total: 7500
+              unit_price: consultationFeeInCents, // Use consultation fee from request
+              line_total: consultationFeeInCents
             }
           ]
         })

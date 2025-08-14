@@ -883,7 +883,8 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
           opposingParty: opposing_party || ''
         },
         teamId: teamConfig?.id || env.BLAWBY_TEAM_ULID || '01jq70jnstyfzevc6423czh50e',
-        sessionId: 'session-' + Date.now()
+        sessionId: 'session-' + Date.now(),
+        consultationFee: consultationFee // Pass the consultation fee from team config
       };
       
       const paymentResult = await paymentService.createInvoice(paymentRequest);
