@@ -42,9 +42,32 @@ function wantsHuman(text: string, messages?: any[]): boolean {
     }
   }
   
-  const regularMatch = /\b(lawyer|attorney|human|person|call|phone|consult|consultation|schedule)\b/i.test(text);
-  console.log('🔍 Regular wantsHuman check:', regularMatch, 'for text:', text);
-  return regularMatch;
+  // Check for explicit lawyer/attorney requests
+  const lawyerRequestMatch = /\b(lawyer|attorney|human|person|call|phone|consult|consultation|schedule)\b/i.test(text);
+  console.log('🔍 Lawyer request check:', lawyerRequestMatch, 'for text:', text);
+  
+  // Also check for specific phrases that indicate wanting legal representation
+  const specificLawyerRequests = [
+    'need a lawyer',
+    'want a lawyer', 
+    'need an attorney',
+    'want an attorney',
+    'need legal representation',
+    'want legal representation',
+    'need legal consultation',
+    'want legal consultation',
+    'speak with a lawyer',
+    'talk to a lawyer'
+  ];
+  
+  const hasSpecificRequest = specificLawyerRequests.some(phrase => text.toLowerCase().includes(phrase));
+  
+  if (hasSpecificRequest) {
+    console.log('✅ Specific lawyer request detected - routing to intake!');
+    return true;
+  }
+  
+  return lawyerRequestMatch;
 }
 
 function needsDocAnalysis(text: string, attachments?: any[]): boolean {
@@ -125,13 +148,35 @@ class SupervisorRouter {
       return true;
     }
 
-    // Legal help keywords (general legal assistance)
+    // Legal help keywords (general legal assistance) - ONLY if not a new intake conversation
     const legalHelpKeywords = [
-      'help', 'assistance', 'advice', 'guidance', 'support',
-      'divorce', 'employment', 'landlord', 'tenant', 'eviction',
-      'contract', 'business', 'family law', 'criminal', 'personal injury',
-      'probate', 'estate', 'special education', 'iep'
+      'help', 'assistance', 'advice', 'guidance', 'support'
     ];
+
+    // Check if this is a new intake conversation (first few messages)
+    const isNewIntakeConversation = messages.length <= 3;
+    const isInitialLegalRequest = isNewIntakeConversation && (
+      allContent.includes('divorce') || 
+      allContent.includes('employment') || 
+      allContent.includes('landlord') || 
+      allContent.includes('tenant') || 
+      allContent.includes('eviction') ||
+      allContent.includes('contract') || 
+      allContent.includes('business') || 
+      allContent.includes('family law') || 
+      allContent.includes('criminal') || 
+      allContent.includes('personal injury') ||
+      allContent.includes('probate') || 
+      allContent.includes('estate') || 
+      allContent.includes('special education') || 
+      allContent.includes('iep')
+    );
+
+    // If this is an initial legal request, route to intake agent, not paralegal
+    if (isInitialLegalRequest) {
+      console.log('🎯 Detected initial legal request, routing to Intake Agent');
+      return false;
+    }
 
     if (legalHelpKeywords.some(keyword => text.toLowerCase().includes(keyword))) {
       console.log('🎯 Detected legal help request, routing to Paralegal Agent');

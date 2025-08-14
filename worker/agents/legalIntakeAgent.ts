@@ -677,12 +677,18 @@ Then proceed with the conversation flow below.`;
 ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files using analyze_document tool, then proceed with intake.` : ''}
 1. If no name: "Can you please provide your full name?"
 2. If name but no location: ${locationPrompt}
-3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
-4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+3. If name and location but no phone: "Thank you [ACTUAL_NAME]! Now I need your phone number."
+4. If name, location, and phone but no email: "Thank you [ACTUAL_NAME]! Now I need your email address."
+5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [ACTUAL_NAME]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
 6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
 CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
+
+**NAME EXTRACTION RULES:**
+- ALWAYS use the actual name the user provided
+- If user says "steve jobs", use "steve jobs" in responses, NOT "John" or any other name
+- Extract the name from their response to "Can you please provide your full name?"
+- Use the exact name they provide in all subsequent responses
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
 - Look through ALL previous messages for legal issues mentioned
@@ -698,6 +704,7 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 2. If user mentions a legal issue but missing contact info, collect the missing info first, then call create_matter
 3. NEVER ask about their legal situation if they already mentioned it in the conversation
 4. ALWAYS prioritize creating the matter once you have all required information
+5. ALWAYS use the user's actual name in responses
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
@@ -705,14 +712,15 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance with divorce", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance with divorce", "urgency": "medium", "name": "steve jobs", "phone": "555-123-4567", "email": "steve@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
 
 **IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**
 **CRITICAL: When user mentions a legal issue like "divorce", immediately classify it as the appropriate matter_type and create the matter.**
-**CRITICAL: Do not ask redundant questions. If the user has already provided information, use it immediately.**`;
+**CRITICAL: Do not ask redundant questions. If the user has already provided information, use it immediately.**
+**CRITICAL: Always use the user's actual name, not placeholder names like "John".**`;
 
   try {
     const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
@@ -1398,12 +1406,26 @@ Then proceed with the conversation flow below.`;
 ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files using analyze_document tool, then proceed with intake.` : ''}
 1. If no name: "Can you please provide your full name?"
 2. If name but no location: ${locationPrompt}
-3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
-4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+3. If name and location but no phone: "Thank you [ACTUAL_NAME]! Now I need your phone number."
+4. If name, location, and phone but no email: "Thank you [ACTUAL_NAME]! Now I need your email address."
+5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [ACTUAL_NAME]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
 6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
 CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
+
+**CONVERSATION STATE TRACKING:**
+- ONLY validate information that has actually been provided by the user
+- If user hasn't provided a phone number yet, DO NOT try to validate it
+- If user hasn't provided an email yet, DO NOT try to validate it
+- If user hasn't provided a location yet, DO NOT try to validate it
+- Follow the conversation flow step by step - don't skip steps
+- NEVER assume information was provided unless the user actually said it
+
+**NAME EXTRACTION RULES:**
+- ALWAYS use the actual name the user provided
+- If user says "steve jobs", use "steve jobs" in responses, NOT "John" or any other name
+- Extract the name from their response to "Can you please provide your full name?"
+- Use the exact name they provide in all subsequent responses
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
 - Look through ALL previous messages for legal issues mentioned
@@ -1419,6 +1441,8 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 2. If user mentions a legal issue but missing contact info, collect the missing info first, then call create_matter
 3. NEVER ask about their legal situation if they already mentioned it in the conversation
 4. ALWAYS prioritize creating the matter once you have all required information
+5. ALWAYS use the user's actual name in responses
+6. NEVER validate information that hasn't been provided yet
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
@@ -1426,14 +1450,16 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance with divorce", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance with divorce", "urgency": "medium", "name": "steve jobs", "phone": "555-123-4567", "email": "steve@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
 
 **IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**
 **CRITICAL: When user mentions a legal issue like "divorce", immediately classify it as the appropriate matter_type and create the matter.**
-**CRITICAL: Do not ask redundant questions. If the user has already provided information, use it immediately.**`;
+**CRITICAL: Do not ask redundant questions. If the user has already provided information, use it immediately.**
+**CRITICAL: Always use the user's actual name, not placeholder names like "John".**
+**CRITICAL: Only validate information that has actually been provided by the user.**`;
 
   try {
     console.log('🔄 Starting streaming agent...');

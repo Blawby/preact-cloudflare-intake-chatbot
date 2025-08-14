@@ -663,6 +663,14 @@ After 2-3 exchanges, if they need:
 
 Say: "This sounds like you'd benefit from speaking with one of our attorneys. Would you like me to connect you with a lawyer who can help with [specific issue]?"
 
+**CRITICAL: If user explicitly asks for a lawyer, attorney, or legal representation, IMMEDIATELY suggest connecting them with an attorney.**
+**Examples of lawyer requests:**
+- "need a lawyer"
+- "want an attorney"
+- "need legal representation"
+- "need a legal consultation"
+- "want to speak with a lawyer"
+
 **For Divorce:**
 "I'm sorry you're going through this. First steps: (1) Gather important docs (marriage cert, bank statements), (2) Secure your finances. 
 
@@ -679,6 +687,18 @@ Keep it short, helpful, and human. Don't overwhelm them.`;
   const messageCount = formattedMessages.filter(msg => msg.role === 'user').length;
   const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
   
+  // Check for explicit lawyer requests
+  const explicitLawyerRequest = conversationText.includes('need a lawyer') || 
+                               conversationText.includes('want a lawyer') ||
+                               conversationText.includes('need an attorney') ||
+                               conversationText.includes('want an attorney') ||
+                               conversationText.includes('need legal representation') ||
+                               conversationText.includes('want legal representation') ||
+                               conversationText.includes('need legal consultation') ||
+                               conversationText.includes('want legal consultation') ||
+                               conversationText.includes('speak with a lawyer') ||
+                               conversationText.includes('talk to a lawyer');
+  
   const needsAttorney = messageCount >= 3 && (
     conversationText.includes('workers comp') || 
     conversationText.includes('wrongful termination') ||
@@ -690,7 +710,9 @@ Keep it short, helpful, and human. Don't overwhelm them.`;
     conversationText.includes('custody')
   );
 
-  if (needsAttorney) {
+  if (explicitLawyerRequest) {
+    systemPrompt += `\n\nIMPORTANT: The user has explicitly requested a lawyer or attorney. You should immediately suggest connecting them with one of our attorneys. Say: "I understand you need legal representation. Would you like me to connect you with one of our attorneys who can help with your case?"`;
+  } else if (needsAttorney) {
     systemPrompt += `\n\nIMPORTANT: This user has been asking about complex legal issues for ${messageCount} messages. You should now suggest connecting them with an attorney for proper legal assistance. Use the phrase suggested above.`;
   }
 
