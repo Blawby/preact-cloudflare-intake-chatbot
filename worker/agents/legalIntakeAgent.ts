@@ -1271,7 +1271,7 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
         { role: 'system', content: systemPrompt },
         ...formattedMessages
       ],
-      max_tokens: 500,
+      max_tokens: 200, // Reduced from 500 for faster responses
       temperature: 0.1
     });
     
@@ -1382,7 +1382,7 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
       console.log('📝 No tool call detected, streaming regular response');
       
       // Simulate streaming by sending response in chunks
-      const chunkSize = 3;
+      const chunkSize = 5; // Increased from 3 for faster streaming
       for (let i = 0; i < response.length; i += chunkSize) {
         const chunk = response.slice(i, i + chunkSize);
         const textEvent = `data: ${JSON.stringify({
@@ -1392,7 +1392,7 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
         controller.enqueue(new TextEncoder().encode(textEvent));
         
         // Small delay to simulate streaming
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 20)); // Reduced from 50ms to 20ms
       }
       
       // Send final response
