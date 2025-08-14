@@ -58,8 +58,10 @@ const MobileSidebar = ({
               name={teamConfig.name}
               profileImage={teamConfig.profileImage}
               teamId={teamConfig.teamId}
+              description={teamConfig.description}
               variant="sidebar"
               showVerified={true}
+              onRequestConsultation={onRequestConsultation}
             />
           </div>
 
@@ -70,7 +72,7 @@ const MobileSidebar = ({
 
           {/* Privacy & Support Section */}
           <div className="flex flex-col gap-3">
-            <PrivacySupportSidebar onRequestConsultation={onRequestConsultation} />
+            <PrivacySupportSidebar />
           </div>
         </div>
       </div>

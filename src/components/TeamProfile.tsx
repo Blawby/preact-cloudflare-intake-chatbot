@@ -1,4 +1,5 @@
-import { FaceSmileIcon } from '@heroicons/react/24/outline';
+import { FaceSmileIcon, UserIcon } from '@heroicons/react/24/outline';
+import { Button } from './ui/Button';
 
 interface TeamProfileProps {
 	name: string;
@@ -7,6 +8,7 @@ interface TeamProfileProps {
 	description?: string | null;
 	variant?: 'sidebar' | 'welcome';
 	showVerified?: boolean;
+	onRequestConsultation?: () => void;
 }
 
 export default function TeamProfile({ 
@@ -15,7 +17,8 @@ export default function TeamProfile({
 	teamId, 
 	description,
 	variant = 'sidebar',
-	showVerified = true 
+	showVerified = true,
+	onRequestConsultation
 }: TeamProfileProps) {
 	const isWelcome = variant === 'welcome';
 	
@@ -55,6 +58,21 @@ export default function TeamProfile({
 			{description && (
 				<div className="text-center">
 					<p className="text-gray-500 dark:text-gray-400 text-center text-xs sm:text-sm lg:text-base leading-relaxed max-w-xs mx-auto">{description}</p>
+				</div>
+			)}
+
+			{/* Request Consultation Button */}
+			{onRequestConsultation && (
+				<div className="w-full">
+					<Button
+						variant="primary"
+						size="md"
+						onClick={onRequestConsultation}
+						className="w-full justify-center gap-2"
+					>
+						<UserIcon className="w-4 h-4" />
+						Get a Lawyer
+					</Button>
 				</div>
 			)}
 		</div>

@@ -17,6 +17,7 @@ interface ChatContainerProps {
   onUrgencySelect?: (urgency: string) => void;
   onCreateMatter?: () => void;
   onScheduleConsultation?: () => void;
+  onRequestConsultation?: () => void;
   onLearnServices?: () => void;
   teamConfig?: {
     name: string;
@@ -55,6 +56,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   onUrgencySelect,
   onCreateMatter,
   onScheduleConsultation,
+  onRequestConsultation,
   onLearnServices,
   teamConfig,
   onOpenSidebar,
@@ -170,6 +172,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           handleFileSelect={handleFileSelect}
           handleCameraCapture={handleCameraCapture}
           handleScheduleStart={onScheduleConsultation}
+          onRequestConsultation={onRequestConsultation}
           isRecording={isRecording}
           handleMediaCapture={handleMediaCapture}
           setIsRecording={setIsRecording}

@@ -2,8 +2,7 @@ import { useEffect, useRef, RefObject } from 'preact/hooks';
 import { Button } from './ui/Button';
 import FileMenu from './FileMenu';
 import MediaControls from './MediaControls';
-import ScheduleButton from './scheduling/ScheduleButton';
-import { ArrowUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowUpIcon, XMarkIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { features } from '../config/features';
 
 interface PreviewFile {
@@ -20,6 +19,7 @@ interface MessageComposerProps {
   handleFileSelect: (files: File[]) => Promise<void>;
   handleCameraCapture: (file: File) => Promise<void>;
   handleScheduleStart: () => void;
+  onRequestConsultation?: () => void;
   isRecording: boolean;
   handleMediaCapture: (blob: Blob, type: 'audio' | 'video') => void;
   setIsRecording: (v: boolean) => void;
@@ -37,6 +37,7 @@ const MessageComposer = ({
   handleFileSelect,
   handleCameraCapture,
   handleScheduleStart,
+  onRequestConsultation,
   isRecording,
   handleMediaCapture,
   setIsRecording,
@@ -134,11 +135,17 @@ const MessageComposer = ({
         <div className="flex items-center gap-3 w-full p-0">
           <div className="flex justify-between w-full items-center">
             {!isRecording && (
-              <div className="flex items-center">
+              <div className="flex items-center gap-2">
                 <FileMenu onFileSelect={handleFileSelect} onCameraCapture={handleCameraCapture} isReadyToUpload={isReadyToUpload} />
-                {features.enableConsultationButton && (
-                  <ScheduleButton onClick={handleScheduleStart} disabled={false} />
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRequestConsultation || handleScheduleStart}
+                  className="flex items-center gap-2"
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                  Get a Lawyer
+                </Button>
               </div>
             )}
 
