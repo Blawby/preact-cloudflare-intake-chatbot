@@ -142,8 +142,10 @@ export class PaymentService {
         };
       }
 
-      // Step 2: Create invoice
-      const consultationFeeInCents = Math.round((paymentRequest.consultationFee ?? 75) * 100); // Default to $75 if not provided, round to integer cents
+      // Step 2: Create invoice - validate and normalize consultation fee
+      const rawFee = Number(paymentRequest.consultationFee);
+      const consultationFee = Number.isFinite(rawFee) && rawFee >= 0 ? rawFee : 75; // Default to $75 if invalid
+      const consultationFeeInCents = Math.round(consultationFee * 100); // Convert to integer cents
       
       const invoiceResponse = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
         method: 'POST',
