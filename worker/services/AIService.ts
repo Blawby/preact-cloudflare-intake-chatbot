@@ -40,12 +40,12 @@ export class AIService {
   
   async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeout = setTimeout(() => controller.abort(), 15000); // Reduced from 30s to 15s for faster responses
     
     try {
       const result = await this.ai.run(model, {
         messages,
-        max_tokens: 500,
+        max_tokens: 200, // Reduced from 500 for faster responses
         temperature: 0.1, // Reduced from 0.4 to 0.1 for more factual responses
       });
       clearTimeout(timeout);

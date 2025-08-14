@@ -1,0 +1,30 @@
+{
+  "name": "Regional Legal Services",
+  "slug": "regional-legal-services",
+  "config": {
+    "aiModel": "llama",
+    "consultationFee": 75,
+    "requiresPayment": true,
+    "ownerEmail": "example@example.com",
+    "availableServices": [
+      "Family Law",
+      "Small Business and Nonprofits",
+      "Employment Law",
+      "Tenant Rights Law",
+      "Probate and Estate Planning",
+      "Special Education and IEP Advocacy",
+      "General Consultation"
+    ],
+    "domain": "example.domain.com",
+    "description": "Affordable, comprehensive legal services for the region. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.",
+    "paymentLink": "https://example.com/payment",
+    "brandColor": "#059669",
+    "accentColor": "#10b981",
+    "introMessage": "Welcome to Regional Legal Services! I'm here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you schedule a consultation with our experienced attorneys. How can I assist you today?",
+    "profileImage": "https://example.com/profile.jpg",
+    "features": {
+      "enableParalegalAgent": true,
+      "paralegalFirst": true
+    }
+  }
+}

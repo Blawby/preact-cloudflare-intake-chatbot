@@ -161,32 +161,64 @@ async function createTeam(teamService: TeamService, request: Request, corsHeader
 }
 
 async function updateTeam(teamService: TeamService, teamId: string, request: Request, corsHeaders: Record<string, string>): Promise<Response> {
-  const body = await request.json();
-  
-  const updatedTeam = await teamService.updateTeam(teamId, body);
-  
-  if (!updatedTeam) {
+  try {
+    const body = await request.json();
+    
+    // Validate required fields
+    if (!body.name || !body.config) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Name and config are required' 
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const updatedTeam = await teamService.updateTeam(teamId, {
+      name: body.name,
+      config: body.config,
+      slug: body.slug
+    });
+
+    if (!updatedTeam) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Team not found' 
+        }), 
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        data: updatedTeam 
+      }), 
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  } catch (error) {
+    console.error('Update team error:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Team not found' 
+        error: error instanceof Error ? error.message : 'Internal server error' 
       }), 
       { 
-        status: 404, 
+        status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   }
-
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      data: updatedTeam 
-    }), 
-    { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    }
-  );
 }
 
 async function deleteTeam(teamService: TeamService, teamId: string, corsHeaders: Record<string, string>): Promise<Response> {
