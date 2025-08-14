@@ -143,7 +143,7 @@ export class PaymentService {
       }
 
       // Step 2: Create invoice
-      const consultationFeeInCents = (paymentRequest.consultationFee || 75) * 100; // Default to $75 if not provided
+      const consultationFeeInCents = Math.round((paymentRequest.consultationFee ?? 75) * 100); // Default to $75 if not provided, round to integer cents
       
       const invoiceResponse = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
         method: 'POST',

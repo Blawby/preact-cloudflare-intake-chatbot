@@ -853,8 +853,8 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   }
   
   // Check if payment is required
-  const requiresPayment = teamConfig?.config?.requiresPayment || false;
-  const consultationFee = teamConfig?.config?.consultationFee || 0;
+  const requiresPayment = teamConfig?.config?.requiresPayment ?? false;
+  const consultationFee = teamConfig?.config?.consultationFee ?? 0;
   const paymentLink = teamConfig?.config?.paymentLink || null;
   
   // If payment is required, create invoice via payment service
@@ -1368,8 +1368,8 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
               opposing_party: parameters.opposing_party || '',
               matter_details: parameters.description,
               submitted: true,
-              requires_payment: toolResult.data?.requires_payment || false,
-              consultation_fee: toolResult.data?.consultation_fee || 0,
+              requires_payment: toolResult.data?.requires_payment ?? false,
+              consultation_fee: toolResult.data?.consultation_fee ?? 0,
               payment_link: toolResult.data?.payment_link || null
             }, teamId);
           }
