@@ -192,7 +192,7 @@ export class SecurityFilter {
       'Special Education and IEP Advocacy': /(special education|IEP|disability|accommodation|504 plan)/i,
       'Small Business and Nonprofits': /(small business|nonprofit|non-profit|entrepreneur|startup)/i,
       'Contract Review': /(contract|agreement|terms|clause|legal document)/i,
-      'General Consultation': /(legal question|legal help|legal advice|consultation|speak with.*lawyer|talk to.*lawyer|need.*lawyer|want.*lawyer|schedule.*consultation|book.*consultation|appointment|legal situation|legal matter|legal issue)/i
+      'General Consultation': /(legal question|legal help|legal advice|speak with.*\b(lawyer|attorney|counsel|solicitor|legal counsel|attorney-at-law|legal representative)\b|talk to.*\b(lawyer|attorney|counsel|solicitor|legal counsel|attorney-at-law|legal representative)\b|need.*\b(lawyer|attorney|counsel|solicitor|legal counsel|attorney-at-law|legal representative)\b|want.*\b(lawyer|attorney|counsel|solicitor|legal counsel|attorney-at-law|legal representative)\b|schedule.*\b(consultation|meeting)\b.*\b(lawyer|attorney|counsel|solicitor|legal counsel|attorney-at-law|legal representative)\b|book.*\b(consultation|meeting)\b.*\b(lawyer|attorney|counsel|solicitor|legal counsel|attorney-at-law|legal representative)\b|appointment\s+(with|to see)\s+(a\s+)?\b(lawyer|attorney|counsel|solicitor|legal counsel|attorney-at-law|legal representative)\b|(consultation|meeting).*\b(lawyer|attorney|counsel|solicitor|legal counsel|attorney-at-law|legal representative)\b|legal situation|legal matter|legal issue)/i
     };
     
     for (const [matterType, pattern] of Object.entries(legalMatterPatterns)) {
