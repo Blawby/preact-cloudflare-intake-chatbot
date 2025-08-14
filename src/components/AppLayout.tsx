@@ -8,7 +8,7 @@ import BottomNavigation from './BottomNavigation';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
 import TeamProfile from './TeamProfile';
-import features from '../config/features';
+import { features } from '../config/features';
 import { ChatMessageUI } from '../../worker/types';
 
 interface AppLayoutProps {
@@ -24,7 +24,7 @@ interface AppLayoutProps {
     description?: string | null;
   };
   messages: ChatMessageUI[];
-  onRequestConsultation?: () => void;
+  onRequestConsultation?: () => void | Promise<void>;
   children: any; // ChatContainer component
 }
 

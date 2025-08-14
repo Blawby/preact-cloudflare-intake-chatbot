@@ -20,6 +20,8 @@ export interface RiskAssessment {
 }
 
 export class RiskAssessmentService {
+  private static readonly MODEL_NAME = '@cf/meta/llama-3.1-8b-instruct';
+
   constructor(private env: Env) {}
 
   /**
@@ -97,7 +99,7 @@ export class RiskAssessmentService {
         JSON.stringify(assessment.riskFactors),
         JSON.stringify(assessment.recommendations),
         assessment.confidenceScore,
-        '@cf/meta/llama-3.1-8b-instruct',
+        RiskAssessmentService.MODEL_NAME,
         assessedBy,
         assessment.notes
       ).run();
@@ -244,7 +246,7 @@ Respond with JSON containing:
 Focus on legal risks, procedural complexities, and potential issues.`;
 
     try {
-      const result = await this.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+      const result = await this.env.AI.run(RiskAssessmentService.MODEL_NAME, {
         messages: [
           { role: 'system', content: 'You are a legal risk assessment expert. Always respond with valid JSON.' },
           { role: 'user', content: prompt }
@@ -254,7 +256,73 @@ Focus on legal risks, procedural complexities, and potential issues.`;
       });
 
       const response = result.response || result;
-      const aiAssessment = typeof response === 'string' ? JSON.parse(response) : response;
+      let aiAssessment: any;
+      
+      if (typeof response === 'string') {
+        try {
+          aiAssessment = JSON.parse(response);
+        } catch (parseError) {
+          console.error('Failed to parse AI response as JSON:', {
+            error: parseError,
+            rawResponse: response,
+            context: 'RiskAssessmentService.performAIAssessment'
+          });
+          // Return fallback assessment on parse failure
+          return {
+            overallRiskLevel: 'medium',
+            riskFactors: [],
+            recommendations: ['Manual risk assessment recommended due to AI response parse failure'],
+            confidenceScore: 0.3,
+            estimatedComplexity: 'moderate'
+          };
+        }
+      } else {
+        aiAssessment = response;
+      }
+
+      // Validate that the parsed object has expected structure
+      if (!aiAssessment || typeof aiAssessment !== 'object') {
+        console.error('AI response is not a valid object:', {
+          aiAssessment,
+          context: 'RiskAssessmentService.performAIAssessment'
+        });
+        return {
+          overallRiskLevel: 'medium',
+          riskFactors: [],
+          recommendations: ['Manual risk assessment recommended due to invalid AI response structure'],
+          confidenceScore: 0.3,
+          estimatedComplexity: 'moderate'
+        };
+      }
+
+      // Validate expected fields and types
+      const validRiskLevels = ['low', 'medium', 'high', 'critical'];
+      const validComplexityLevels = ['simple', 'moderate', 'complex', 'highly_complex'];
+      
+      if (aiAssessment.riskLevel && !validRiskLevels.includes(aiAssessment.riskLevel)) {
+        console.warn('Invalid risk level in AI response:', aiAssessment.riskLevel);
+        aiAssessment.riskLevel = 'medium'; // fallback
+      }
+      
+      if (aiAssessment.complexity && !validComplexityLevels.includes(aiAssessment.complexity)) {
+        console.warn('Invalid complexity level in AI response:', aiAssessment.complexity);
+        aiAssessment.complexity = 'moderate'; // fallback
+      }
+      
+      if (aiAssessment.riskFactors && !Array.isArray(aiAssessment.riskFactors)) {
+        console.warn('Invalid riskFactors in AI response (not array):', aiAssessment.riskFactors);
+        aiAssessment.riskFactors = [];
+      }
+      
+      if (aiAssessment.recommendations && !Array.isArray(aiAssessment.recommendations)) {
+        console.warn('Invalid recommendations in AI response (not array):', aiAssessment.recommendations);
+        aiAssessment.recommendations = [];
+      }
+      
+      if (aiAssessment.confidence && (typeof aiAssessment.confidence !== 'number' || aiAssessment.confidence < 0 || aiAssessment.confidence > 1)) {
+        console.warn('Invalid confidence score in AI response:', aiAssessment.confidence);
+        aiAssessment.confidence = 0.7; // fallback
+      }
 
       return {
         overallRiskLevel: aiAssessment.riskLevel || 'medium',

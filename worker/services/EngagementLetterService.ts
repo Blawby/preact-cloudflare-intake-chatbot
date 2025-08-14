@@ -1,4 +1,5 @@
 import type { Env } from '../types';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 export interface EngagementLetterTemplate {
   id: string;
@@ -61,7 +62,12 @@ export class EngagementLetterService {
       
       // Store in R2
       const r2Key = `drafts/${data.firmName || 'firm'}/${matterId}/engagement-${Date.now()}.pdf`;
-      await this.env.FILES_BUCKET?.put(r2Key, pdfBytes, {
+      if (!this.env.FILES_BUCKET) {
+        const message = 'FILES_BUCKET is not configured. Cannot upload engagement letter PDF.';
+        console.error(message);
+        throw new Error(message);
+      }
+      await this.env.FILES_BUCKET.put(r2Key, pdfBytes, {
         httpMetadata: {
           contentType: 'application/pdf'
         },
@@ -198,87 +204,101 @@ export class EngagementLetterService {
       '{{currentDate}}': new Date().toLocaleDateString()
     };
 
+    // Helper function to properly escape regex special characters
+    const escapeRegex = (str: string): string => {
+      return str.replace(/[\\^$*+?.()|[\]{}]/g, '\\$&');
+    };
+
     for (const [placeholder, value] of Object.entries(replacements)) {
-      content = content.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
+      const escapedPlaceholder = escapeRegex(placeholder);
+      const regex = new RegExp(escapedPlaceholder, 'g');
+      content = content.replace(regex, value);
     }
 
     return content;
   }
 
   private async generatePDF(content: string, data: EngagementLetterData): Promise<Uint8Array> {
-    // For now, we'll create a simple text-based PDF
-    // In production, you'd use a proper PDF library like pdf-lib
-    
-    const pdfContent = `
-%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
+    const pdfDoc = await PDFDocument.create();
+    let page = pdfDoc.addPage();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 12;
+    const lineHeight = 14;
+    const { width, height } = page.getSize();
+    const margin = 50;
+    const maxLineWidth = width - margin * 2;
 
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
+    let cursorY = height - margin;
 
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
-/Resources <<
-/Font <<
-/F1 5 0 R
->>
->>
->>
-endobj
+    const wrapText = (text: string): string[] => {
+      if (!text) return [''];
+      const words = text.split(/\s+/);
+      const lines: string[] = [];
+      let current = '';
+      for (const word of words) {
+        const test = current ? current + ' ' + word : word;
+        const testWidth = font.widthOfTextAtSize(test, fontSize);
+        if (testWidth <= maxLineWidth) {
+          current = test;
+        } else {
+          if (current) lines.push(current);
+          // If single word too long, hard-split
+          if (font.widthOfTextAtSize(word, fontSize) > maxLineWidth) {
+            let chunk = '';
+            for (const char of word) {
+              const next = chunk + char;
+              if (font.widthOfTextAtSize(next, fontSize) <= maxLineWidth) {
+                chunk = next;
+              } else {
+                if (chunk) lines.push(chunk);
+                chunk = char;
+              }
+            }
+            current = chunk;
+          } else {
+            current = word;
+          }
+        }
+      }
+      if (current) lines.push(current);
+      return lines;
+    };
 
-4 0 obj
-<<
-/Length ${content.length + 100}
->>
-stream
-BT
-/F1 12 Tf
-50 750 Td
-(${content.replace(/\n/g, ') Tj 0 -15 Td (')}) Tj
-ET
-endstream
-endobj
+    const sanitize = (text: string): string => {
+      try {
+        // Will throw if characters can't be encoded by the font
+        font.encodeText(text);
+        return text;
+      } catch {
+        return Array.from(text)
+          .map((ch) => {
+            try {
+              font.encodeText(ch);
+              return ch;
+            } catch {
+              return '?';
+            }
+          })
+          .join('');
+      }
+    };
 
-5 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
-endobj
+    const paragraphs = content.split(/\n/);
+    for (const para of paragraphs) {
+      const lines = wrapText(sanitize(para));
+      for (const line of lines) {
+        if (cursorY - lineHeight < margin) {
+          page = pdfDoc.addPage();
+          cursorY = page.getSize().height - margin;
+        }
+        page.drawText(line, { x: margin, y: cursorY - lineHeight, size: fontSize, font });
+        cursorY -= lineHeight;
+      }
+      // Paragraph spacing
+      cursorY -= lineHeight * 0.5;
+    }
 
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000274 00000 n 
-0000000${(400 + content.length).toString().padStart(3, '0')} 00000 n 
-trailer
-<<
-/Size 6
-/Root 1 0 R
->>
-startxref
-${500 + content.length}
-%%EOF`;
-
-    return new TextEncoder().encode(pdfContent);
+    return await pdfDoc.save();
   }
 
   private async recordInDatabase(

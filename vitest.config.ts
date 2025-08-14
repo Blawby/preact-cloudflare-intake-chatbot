@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitest/config';
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
 import { resolve } from 'path';
 
 // Frontend tests (components, utils) - use happy-dom
@@ -47,28 +46,20 @@ const frontendConfig = defineConfig({
   }
 });
 
-// Worker tests (DO, services, routes, queues) - use Workers runtime
-const workerConfig = defineWorkersConfig({
+// Unified config for all tests - temporarily using Node.js environment for worker tests
+const unifiedConfig = defineConfig({
   test: {
+    environment: 'node',
     globals: true,
-    poolOptions: {
-      workers: {
-        // Use wrangler.toml for real bindings (DO, KV, R2, D1, Queues)
-        wrangler: { configPath: "./wrangler.toml" },
-        // Isolated storage per test file
-        isolatedStorage: true,
-        // Add compatibility settings
-        miniflare: {
-          compatibilityDate: "2024-12-01",
-          compatibilityFlags: ["nodejs_compat"]
-        }
-      },
-    },
-    setupFiles: ["./tests/setup-workers.ts"],
+    setupFiles: ["./tests/setup-node.ts"],
     include: [
-      'tests/unit/worker/**/*.{test,spec}.ts',
+      'tests/unit/**/*.{test,spec}.{js,ts,jsx,tsx}',
       'tests/integration/**/*.{test,spec}.ts',
       'tests/paralegal/**/*.{test,spec}.ts'
+    ],
+    exclude: [
+      'node_modules/**',
+      'dist/**'
     ],
     coverage: {
       provider: 'v8',
@@ -84,6 +75,7 @@ const workerConfig = defineWorkersConfig({
   },
   resolve: {
     alias: {
+      '@': resolve(__dirname, './src'),
       '~': resolve(__dirname, './'),
       '@tests': resolve(__dirname, './tests'),
       '@fixtures': resolve(__dirname, './tests/fixtures')
@@ -91,5 +83,5 @@ const workerConfig = defineWorkersConfig({
   }
 });
 
-// Export worker config by default (most of our new tests will be worker tests)
-export default workerConfig; 
+// Export unified config
+export default unifiedConfig; 

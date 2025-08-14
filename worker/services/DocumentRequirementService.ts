@@ -50,25 +50,33 @@ export class DocumentRequirementService {
     const requirements = await this.getRequirements(matterType);
     
     try {
-      const stmt = this.env.DB.prepare(`
+      // Explicit transaction to ensure atomicity
+      await this.env.DB.prepare('BEGIN TRANSACTION').run();
+      const insertSql = `
         INSERT INTO document_requirements (
           id, matter_id, document_type, description, required, status, created_at
         ) VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
-      `);
+      `;
 
-      for (const req of requirements.requirements) {
-        await stmt.bind(
+      const preparedInserts = requirements.requirements.map(req =>
+        this.env.DB.prepare(insertSql).bind(
           crypto.randomUUID(),
           matterId,
           req.documentType,
           req.description,
           req.required
-        ).run();
-      }
+        )
+      );
+
+      // Execute as a batch for performance and atomicity
+      await this.env.DB.batch(preparedInserts);
+
+      await this.env.DB.prepare('COMMIT').run();
 
       console.log(`Created ${requirements.requirements.length} document requirements for matter ${matterId}`);
     } catch (error) {
       console.error('Failed to create document requirements:', error);
+      try { await this.env.DB.prepare('ROLLBACK').run(); } catch {}
       throw error;
     }
   }

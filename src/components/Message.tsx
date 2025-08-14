@@ -10,7 +10,7 @@ import MatterCanvas from './MatterCanvas';
 import PaymentEmbed from './PaymentEmbed';
 import TeamProfile from './TeamProfile';
 import { Button } from './ui/Button';
-import features from '../config/features';
+import { features } from '../config/features';
 import {
 	DocumentIcon,
 	DocumentTextIcon,

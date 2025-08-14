@@ -76,7 +76,7 @@ interface FeatureFlags {
   paralegalFirst: boolean;
 }
 
-const features: FeatureFlags = {
+const featureConfig: FeatureFlags = {
     enableAudioRecording: false, // Set to false to hide voice recording
     enableVideoRecording: false, // Not implemented yet
     enableFileAttachments: true, // File attachments are enabled
@@ -93,7 +93,7 @@ const features: FeatureFlags = {
 // For development environment, you can override settings
 if (import.meta.env.DEV) {
     // Enable all features in development if needed
-    // features.enableAudioRecording = true; 
+    // featureConfig.enableAudioRecording = true; 
 }
 
-export default features; 
+export const features = featureConfig; 
