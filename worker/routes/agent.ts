@@ -1,6 +1,18 @@
 import type { Env } from '../types';
 import { parseJsonBody } from '../utils';
 import { runLegalIntakeAgent, runLegalIntakeAgentStream } from '../agents/legalIntakeAgent';
+
+/**
+ * Converts various value types to boolean
+ * @param value - Value to convert to boolean
+ * @returns true only for true, 1, or "1"; false for false, 0, "0", null, undefined, ""
+ */
+function toBool(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') return value === '1' || value.toLowerCase() === 'true';
+  return false;
+}
 import { runParalegalAgentStream } from '../agents/ParalegalAgent';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
@@ -43,9 +55,9 @@ class SupervisorRouter {
   constructor(private env: Env) {}
 
   async route(body: any, teamConfig: any): Promise<'paralegal' | 'analysis' | 'intake'> {
-    // Check feature flags - handle both boolean and numeric values
-    const paralegalEnabled = Boolean(teamConfig?.config?.features?.enableParalegalAgent || teamConfig?.features?.enableParalegalAgent || false);
-    const paralegalFirst = Boolean(teamConfig?.config?.features?.paralegalFirst || teamConfig?.features?.paralegalFirst || false);
+    // Check feature flags using nullish coalescing and proper boolean conversion
+    const paralegalEnabled = toBool(teamConfig?.config?.features?.enableParalegalAgent ?? teamConfig?.features?.enableParalegalAgent ?? false);
+    const paralegalFirst = toBool(teamConfig?.config?.features?.paralegalFirst ?? teamConfig?.features?.paralegalFirst ?? false);
     
     const messages = body.messages || [];
     const latestMessage = messages?.at(-1)?.content || '';

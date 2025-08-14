@@ -1,0 +1,43 @@
+{
+  "name": "Example Legal Service",
+  "slug": "example-legal-service",
+  "description": "Template for basic legal service configuration",
+  "availableServices": [
+    "General Consultation",
+    "Family Law",
+    "Estate Planning",
+    "Business Law"
+  ],
+  "features": {
+    "enableParalegalAgent": true,
+    "paralegalFirst": false
+  },
+  "requiresPayment": true,
+  "consultationFee": 150,
+  "supportedLocations": ["US"],
+  "businessHours": {
+    "timezone": "America/New_York",
+    "schedule": [
+      {
+        "day": "Monday",
+        "hours": "9:00-17:00"
+      },
+      {
+        "day": "Tuesday",
+        "hours": "9:00-17:00"
+      },
+      {
+        "day": "Wednesday",
+        "hours": "9:00-17:00"
+      },
+      {
+        "day": "Thursday",
+        "hours": "9:00-17:00"
+      },
+      {
+        "day": "Friday",
+        "hours": "9:00-17:00"
+      }
+    ]
+  }
+}
