@@ -276,6 +276,7 @@ export function App() {
 									onUrgencySelect={handleUrgencySelect}
 									onCreateMatter={handleCreateMatterStart}
 									onScheduleConsultation={handleScheduleStart}
+									onRequestConsultation={handleRequestConsultation}
 					onLearnServices={handleLearnServices}
 									teamConfig={{
 										name: teamConfig.name,
