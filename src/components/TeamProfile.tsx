@@ -71,7 +71,7 @@ export default function TeamProfile({
 						className="w-full justify-center gap-2"
 					>
 						<UserIcon className="w-4 h-4" />
-						Request Consultation
+						Get a Lawyer
 					</Button>
 				</div>
 			)}

@@ -138,13 +138,13 @@ const MessageComposer = ({
               <div className="flex items-center gap-2">
                 <FileMenu onFileSelect={handleFileSelect} onCameraCapture={handleCameraCapture} isReadyToUpload={isReadyToUpload} />
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
                   onClick={onRequestConsultation || handleScheduleStart}
                   className="flex items-center gap-2"
                 >
                   <CalendarIcon className="w-4 h-4" />
-                  Consultation
+                  Get a Lawyer
                 </Button>
               </div>
             )}
