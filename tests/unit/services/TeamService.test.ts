@@ -14,12 +14,19 @@ describe('TeamService', () => {
       consultationFee: 0,
       requiresPayment: false,
       ownerEmail: 'paulchrisluke@gmail.com',
-      availableServices: ['Business Law', 'Contract Review'],
+      availableServices: {
+        "0": "Business Law",
+        "1": "Contract Review"
+      },
       jurisdiction: {
         type: 'national',
         description: 'Available nationwide',
-        supportedStates: ['all'],
-        supportedCountries: ['US']
+        supportedStates: {
+          "0": "all"
+        },
+        supportedCountries: {
+          "0": "US"
+        }
       },
       domain: 'ai.blawby.com',
       description: 'AI-powered legal assistance',
@@ -32,8 +39,6 @@ describe('TeamService', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    
     mockEnv = {
       DB: {
         prepare: vi.fn().mockReturnValue({
@@ -41,11 +46,25 @@ describe('TeamService', () => {
             run: vi.fn().mockResolvedValue({}),
             first: vi.fn().mockResolvedValue(null),
             all: vi.fn().mockResolvedValue({ results: [] })
-          })
+          }),
+          all: vi.fn().mockResolvedValue({ results: [] })
         })
       },
-      BLAWBY_API_TOKEN: 'test-api-token',
-      BLAWBY_TEAM_ULID: 'test-team-ulid'
+      CHAT_SESSIONS: {
+        put: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue(null)
+      },
+      RESEND_API_KEY: 'test-key',
+      FILES_BUCKET: {
+        put: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue({
+          body: new Blob(['test content'], { type: 'text/plain' }),
+          httpMetadata: { contentType: 'text/plain' }
+        })
+      },
+      BLAWBY_API_URL: 'https://staging.blawby.com',
+      BLAWBY_API_TOKEN: 'test-token',
+      BLAWBY_TEAM_ULID: '01jq70jnstyfzevc6423czh50e'
     };
 
     teamService = new TeamService(mockEnv);
@@ -323,8 +342,8 @@ describe('TeamService', () => {
 
       const result = await teamService.getTeam(mockTeam.id);
       
-      expect(result?.config.blawbyApi?.apiKey).toBe('test-api-token');
-      expect(result?.config.blawbyApi?.teamUlid).toBe('test-team-ulid');
+      expect(result?.config.blawbyApi?.apiKey).toBe('test-token');
+      expect(result?.config.blawbyApi?.teamUlid).toBe('01jq70jnstyfzevc6423czh50e');
     });
 
     it('should handle missing environment variables', async () => {
