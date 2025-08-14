@@ -199,6 +199,160 @@ async function analyzeFile(env: any, fileId: string, question?: string): Promise
   }
 }
 
+// Helper function to extract legal context from conversation
+function extractLegalContext(messages: any[]): { matterType: string; description: string; urgency: string } | null {
+  const allContent = messages.map(msg => msg.content).join(' ').toLowerCase();
+  
+  // Check for specific legal issues
+  if (allContent.includes('divorce') || allContent.includes('getting a divorce') || allContent.includes('separation')) {
+    return {
+      matterType: 'Family Law',
+      description: 'Client seeking legal assistance with divorce',
+      urgency: 'medium'
+    };
+  }
+  
+  if (allContent.includes('employment') || allContent.includes('work') || allContent.includes('job') || 
+      allContent.includes('termination') || allContent.includes('discrimination') || allContent.includes('harassment')) {
+    return {
+      matterType: 'Employment Law',
+      description: 'Client seeking legal assistance with employment issues',
+      urgency: 'medium'
+    };
+  }
+  
+  if (allContent.includes('landlord') || allContent.includes('tenant') || allContent.includes('eviction') || 
+      allContent.includes('lease') || allContent.includes('rent')) {
+    return {
+      matterType: 'Tenant Rights Law',
+      description: 'Client seeking legal assistance with tenant rights issues',
+      urgency: 'high'
+    };
+  }
+  
+  if (allContent.includes('business') || allContent.includes('contract') || allContent.includes('corporate')) {
+    return {
+      matterType: 'Business Law',
+      description: 'Client seeking legal assistance with business matters',
+      urgency: 'medium'
+    };
+  }
+  
+  if (allContent.includes('injury') || allContent.includes('accident') || allContent.includes('personal injury')) {
+    return {
+      matterType: 'Personal Injury',
+      description: 'Client seeking legal assistance with personal injury',
+      urgency: 'high'
+    };
+  }
+  
+  return null;
+}
+
+// Helper function to extract client information from conversation
+async function extractClientInfo(messages: any[], teamConfig: any): Promise<{ name: string; phone: string; email: string; location: string } | null> {
+  const name = messages.find(msg => msg.isUser && msg.content.includes('full name'))?.content.replace('full name', '').trim();
+  const phone = messages.find(msg => msg.isUser && msg.content.includes('phone number'))?.content.replace('phone number', '').trim();
+  const email = messages.find(msg => msg.isUser && msg.content.includes('email address'))?.content.replace('email address', '').trim();
+  const location = messages.find(msg => msg.isUser && msg.content.includes('location'))?.content.replace('location', '').trim();
+
+  if (!name && !phone && !email && !location) {
+    return null;
+  }
+
+  let extractedName = name;
+  let extractedPhone = phone;
+  let extractedEmail = email;
+  let extractedLocation = location;
+
+  // If name is not provided, try to infer it from previous messages
+  if (!extractedName) {
+    const previousMessages = messages.filter(msg => msg.isUser && !msg.content.includes('full name'));
+    const lastMessage = previousMessages[previousMessages.length - 1]?.content;
+    if (lastMessage && (lastMessage.includes('divorce') || lastMessage.includes('employment') || lastMessage.includes('tenant') || lastMessage.includes('business') || lastMessage.includes('injury'))) {
+      extractedName = lastMessage.split(' ').slice(0, 3).join(' '); // Try to extract name from last message
+    }
+  }
+
+  // If phone is not provided, try to infer it from previous messages
+  if (!extractedPhone) {
+    const previousMessages = messages.filter(msg => msg.isUser && !msg.content.includes('phone number'));
+    const lastMessage = previousMessages[previousMessages.length - 1]?.content;
+    if (lastMessage && (lastMessage.includes('555') || lastMessage.includes('123') || lastMessage.includes('456') || lastMessage.includes('789'))) {
+      extractedPhone = lastMessage.replace('phone number', '').trim();
+    }
+  }
+
+  // If email is not provided, try to infer it from previous messages
+  if (!extractedEmail) {
+    const previousMessages = messages.filter(msg => msg.isUser && !msg.content.includes('email address'));
+    const lastMessage = previousMessages[previousMessages.length - 1]?.content;
+    if (lastMessage && lastMessage.includes('@')) {
+      extractedEmail = lastMessage.replace('email address', '').trim();
+    }
+  }
+
+  // If location is not provided, try to infer it from previous messages
+  if (!extractedLocation) {
+    const previousMessages = messages.filter(msg => msg.isUser && !msg.content.includes('location'));
+    const lastMessage = previousMessages[previousMessages.length - 1]?.content;
+    if (lastMessage && (lastMessage.includes('Charlotte') || lastMessage.includes('North Carolina') || lastMessage.includes('NC') || lastMessage.includes('United States') || lastMessage.includes('US'))) {
+      extractedLocation = lastMessage.replace('location', '').trim();
+    }
+  }
+
+  // Validate extracted information
+  const nameValidation = validateName(extractedName);
+  const phoneValidation = validatePhone(extractedPhone);
+  const emailValidation = validateEmail(extractedEmail);
+  const locationValidation = validateLocation(extractedLocation);
+
+  if (!nameValidation) {
+    return null;
+  }
+
+  if (!phoneValidation.isValid) {
+    return null;
+  }
+
+  if (!emailValidation) {
+    return null;
+  }
+
+  if (!locationValidation) {
+    return null;
+  }
+
+  // First, verify jurisdiction if location is provided
+  if (extractedLocation) {
+    const jurisdiction = teamConfig?.config?.jurisdiction;
+    if (jurisdiction && jurisdiction.type) {
+      // Use the new location validator
+      const supportedStates = Array.isArray(jurisdiction.supportedStates) ? jurisdiction.supportedStates : [];
+      const supportedCountries = Array.isArray(jurisdiction.supportedCountries) ? jurisdiction.supportedCountries : [];
+      
+      const isSupported = isLocationSupported(extractedLocation, supportedStates, supportedCountries);
+      
+      if (!isSupported) {
+        return {
+          name: extractedName,
+          phone: extractedPhone,
+          email: extractedEmail,
+          location: extractedLocation,
+          message: `I understand you're located in ${extractedLocation}. While we primarily serve ${jurisdiction.description || 'our service area'}, I can still help you with general legal guidance and information. For specific legal representation in your area, I'd recommend contacting a local attorney. However, I'm happy to continue helping you with your legal questions and can assist with general consultation.`
+        };
+      }
+    }
+  }
+
+  return {
+    name: extractedName,
+    phone: extractedPhone,
+    email: extractedEmail,
+    location: extractedLocation
+  };
+}
+
 // Tool definitions with structured schemas
 export const collectContactInfo = {
   name: 'collect_contact_info',
@@ -535,6 +689,15 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 - Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
 - If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
 - DO NOT ask again if they already explained their legal situation
+- IMPORTANT: If user says "divorce", "getting a divorce", "separation", etc., this is a Family Law matter
+- If user mentions work issues, termination, discrimination, etc., this is Employment Law
+- If user mentions landlord, tenant, eviction, etc., this is Tenant Rights Law
+
+**CRITICAL DECISION POINTS:**
+1. If user mentions a legal issue (like "divorce") AND you have their contact info, IMMEDIATELY call create_matter
+2. If user mentions a legal issue but missing contact info, collect the missing info first, then call create_matter
+3. NEVER ask about their legal situation if they already mentioned it in the conversation
+4. ALWAYS prioritize creating the matter once you have all required information
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
@@ -542,12 +705,14 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance with divorce", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
 
-**IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**`;
+**IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**
+**CRITICAL: When user mentions a legal issue like "divorce", immediately classify it as the appropriate matter_type and create the matter.**
+**CRITICAL: Do not ask redundant questions. If the user has already provided information, use it immediately.**`;
 
   try {
     const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
@@ -1245,6 +1410,15 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 - Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
 - If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
 - DO NOT ask again if they already explained their legal situation
+- IMPORTANT: If user says "divorce", "getting a divorce", "separation", etc., this is a Family Law matter
+- If user mentions work issues, termination, discrimination, etc., this is Employment Law
+- If user mentions landlord, tenant, eviction, etc., this is Tenant Rights Law
+
+**CRITICAL DECISION POINTS:**
+1. If user mentions a legal issue (like "divorce") AND you have their contact info, IMMEDIATELY call create_matter
+2. If user mentions a legal issue but missing contact info, collect the missing info first, then call create_matter
+3. NEVER ask about their legal situation if they already mentioned it in the conversation
+4. ALWAYS prioritize creating the matter once you have all required information
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
@@ -1252,12 +1426,14 @@ CRITICAL: Once you have name, phone, email, location, and a description of their
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance with divorce", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
 
-**IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**`;
+**IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**
+**CRITICAL: When user mentions a legal issue like "divorce", immediately classify it as the appropriate matter_type and create the matter.**
+**CRITICAL: Do not ask redundant questions. If the user has already provided information, use it immediately.**`;
 
   try {
     console.log('🔄 Starting streaming agent...');
@@ -1294,15 +1470,24 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(typingEvent));
       
-      // Parse tool call
-      const toolCallMatch = response.match(/TOOL_CALL:\s*(\w+)/);
-      const parametersMatch = response.match(/PARAMETERS:\s*(\{[\s\S]*?\})/);
+      // Parse tool call - more flexible regex patterns
+      const toolCallMatch = response.match(/TOOL_CALL:\s*(\w+)/i);
+      const parametersMatch = response.match(/PARAMETERS:\s*(\{[\s\S]*?\})/i);
       
-      if (toolCallMatch && parametersMatch) {
-        const toolName = toolCallMatch[1].toLowerCase();
+      // Alternative patterns for different AI response formats
+      const altToolCallMatch = response.match(/create_matter|analyze_document|collect_contact_info/i);
+      const altParametersMatch = response.match(/\{[^{}]*"matter_type"[^{}]*\}/i) || 
+                                response.match(/\{[^{}]*"file_id"[^{}]*\}/i) ||
+                                response.match(/\{[^{}]*"name"[^{}]*\}/i);
+      
+      const finalToolCall = toolCallMatch?.[1] || altToolCallMatch?.[0];
+      const finalParameters = parametersMatch?.[1] || altParametersMatch?.[0];
+      
+      if (finalToolCall && finalParameters) {
+        const toolName = finalToolCall.toLowerCase();
         let parameters;
         try {
-          parameters = JSON.parse(parametersMatch[1]);
+          parameters = JSON.parse(finalParameters);
           console.log(`🔧 Tool: ${toolName}, Parameters:`, parameters);
         } catch (error) {
           console.error('❌ Failed to parse tool parameters:', error);
