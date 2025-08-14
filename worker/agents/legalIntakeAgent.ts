@@ -503,6 +503,20 @@ ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file
     console.log('📎 No attachments found');
   }
 
+  // Check if this is an attorney referral from paralegal
+  const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
+  const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
+                            (conversationText.includes('yes') || conversationText.includes('sure') || conversationText.includes('ok'));
+
+  if (isAttorneyReferral) {
+    systemPrompt += `
+
+**ATTORNEY REFERRAL CONTEXT:**
+This user was referred by our AI Paralegal after requesting attorney help. Start with: "Perfect! I'll help you connect with one of our attorneys. To get started, I need to collect some basic information."
+
+Then proceed with the conversation flow below.`;
+  }
+
   systemPrompt += `
 
 **CONVERSATION FLOW:**
@@ -511,11 +525,19 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
-6. If ALL information collected: Call create_matter tool immediately.
+5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
+
+CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
+
+**EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
+- Look through ALL previous messages for legal issues mentioned
+- Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
+- If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
+- DO NOT ask again if they already explained their legal situation
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, opposing party)
+- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
 - analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
@@ -1188,6 +1210,20 @@ ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file
     console.log('📎 No attachments found (streaming)');
   }
 
+  // Check if this is an attorney referral from paralegal
+  const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
+  const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
+                            (conversationText.includes('yes') || conversationText.includes('sure') || conversationText.includes('ok'));
+
+  if (isAttorneyReferral) {
+    systemPrompt += `
+
+**ATTORNEY REFERRAL CONTEXT:**
+This user was referred by our AI Paralegal after requesting attorney help. Start with: "Perfect! I'll help you connect with one of our attorneys. To get started, I need to collect some basic information."
+
+Then proceed with the conversation flow below.`;
+  }
+
   systemPrompt += `
 
 **CONVERSATION FLOW:**
@@ -1196,11 +1232,19 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email but no opposing party: "Thank you [name]! For legal matters, it's helpful to know if there's an opposing party involved. Who is the other party in this situation? (If none, you can say 'none' or 'not applicable')"
-6. If ALL information collected: Call create_matter tool immediately.
+5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
+
+CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
+
+**EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
+- Look through ALL previous messages for legal issues mentioned
+- Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
+- If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
+- DO NOT ask again if they already explained their legal situation
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, opposing party)
+- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
 - analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**

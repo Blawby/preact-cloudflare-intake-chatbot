@@ -2,7 +2,7 @@ import { FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import AudioRecordingUI from './AudioRecordingUI';
 import { MicrophoneIcon } from '@heroicons/react/24/outline';
-import features from '../config/features';
+import { features } from '../config/features';
 import { Button } from './ui/Button';
 
 interface MediaControlsProps {

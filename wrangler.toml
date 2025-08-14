@@ -45,9 +45,31 @@ CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
 binding = "FILES_BUCKET"
 bucket_name = "blawby-ai-files"
 
-# Queue for background document processing
-[queues]
-DOC_EVENTS = { name = "doc-events" }
+# Queue producers for background processing
+[[queues.producers]]
+queue = "doc-events"
+binding = "DOC_EVENTS"
+
+[[queues.producers]]
+queue = "paralegal-tasks"
+binding = "PARALEGAL_TASKS"
+
+# Queue consumers (disabled for now - consumers not implemented)
+# [[queues.consumers]]
+# queue = "doc-events"
+
+# [[queues.consumers]]
+# queue = "paralegal-tasks"
+
+# Durable Object for Paralegal Agent state machine
+[[durable_objects.bindings]]
+name = "PARALEGAL_AGENT"
+class_name = "ParalegalAgent"
+
+# Durable Object migrations
+[[migrations]]
+tag = "v1"
+new_classes = ["ParalegalAgent"]
 
 # Domain configuration for ai.blawby.com
 [env.production]
@@ -62,9 +84,14 @@ kv_namespaces = [
 d1_databases = [
   { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf", experimental_remote = true }
 ]
-queues = [
-  { binding = "DOC_EVENTS", name = "doc-events" }
-]
+# Updated to use modern nested producers syntax
+[[env.production.queues.producers]]
+queue = "doc-events"
+binding = "DOC_EVENTS"
+
+[[env.production.queues.producers]]
+queue = "paralegal-tasks"
+binding = "PARALEGAL_TASKS"
 # r2_buckets = [
 #   { binding = "FILES_BUCKET", bucket_name = "blawby-ai-files" }
 # ] 

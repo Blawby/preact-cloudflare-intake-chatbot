@@ -8,7 +8,7 @@ import BottomNavigation from './BottomNavigation';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
 import TeamProfile from './TeamProfile';
-import features from '../config/features';
+import { features } from '../config/features';
 import { ChatMessageUI } from '../../worker/types';
 
 interface AppLayoutProps {
@@ -24,6 +24,7 @@ interface AppLayoutProps {
     description?: string | null;
   };
   messages: ChatMessageUI[];
+  onRequestConsultation?: () => void | Promise<void>;
   children: any; // ChatContainer component
 }
 
@@ -36,6 +37,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   onToggleMobileSidebar,
   teamConfig,
   messages,
+  onRequestConsultation,
   children
 }) => {
   if (teamNotFound) {
@@ -84,7 +86,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           </div>
 
           {/* Privacy & Support Section */}
-          <PrivacySupportSidebar />
+          <PrivacySupportSidebar onRequestConsultation={onRequestConsultation} />
         </div>
       </div>
 
@@ -117,6 +119,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           description: teamConfig.description
         }}
         messages={messages}
+        onRequestConsultation={onRequestConsultation}
       />
     </div>
   );

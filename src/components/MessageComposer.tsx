@@ -4,7 +4,7 @@ import FileMenu from './FileMenu';
 import MediaControls from './MediaControls';
 import ScheduleButton from './scheduling/ScheduleButton';
 import { ArrowUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import features from '../config/features';
+import { features } from '../config/features';
 
 interface PreviewFile {
   url: string;
