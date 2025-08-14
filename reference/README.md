@@ -36,8 +36,8 @@ This directory contains reference and example configurations for the application
 
 3. **Schema Validation**:
    ```bash
-   # Validate your config against examples
-   node scripts/validate-team-config.js my-config.json
+   # Validate your config using the update script (it validates before updating)
+   node scripts/update-team-config.js TEAM_ID my-config.json
    ```
 
 ## Maintaining Examples

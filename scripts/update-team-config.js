@@ -31,50 +31,60 @@ function validateTeamConfig(config) {
     return errors;
   }
 
-  // Required string fields
-  const requiredStrings = ['name', 'slug', 'description'];
-  requiredStrings.forEach(field => {
+  // Required root-level string fields
+  const requiredRootStrings = ['name', 'slug'];
+  requiredRootStrings.forEach(field => {
     if (!config[field] || typeof config[field] !== 'string') {
       errors.push(`Missing or invalid required string field: ${field}`);
     }
   });
 
-  // Required array fields
-  const requiredArrays = ['availableServices'];
-  requiredArrays.forEach(field => {
-    if (!Array.isArray(config[field]) || config[field].length === 0) {
-      errors.push(`Missing or invalid required array field: ${field}`);
-    } else {
-      // Check array elements are strings
-      const invalidElements = config[field].filter(item => typeof item !== 'string');
-      if (invalidElements.length > 0) {
-        errors.push(`Array ${field} must contain only strings`);
-      }
+  // Check that config object exists
+  if (!config.config || typeof config.config !== 'object' || Array.isArray(config.config)) {
+    errors.push('Missing or invalid required config object');
+    return errors;
+  }
+
+  const configObj = config.config;
+
+  // Required config-level string fields
+  if (!configObj.description || typeof configObj.description !== 'string') {
+    errors.push('Missing or invalid required string field: config.description');
+  }
+
+  // Required config-level array fields
+  if (!Array.isArray(configObj.availableServices) || configObj.availableServices.length === 0) {
+    errors.push('Missing or invalid required array field: config.availableServices');
+  } else {
+    // Check array elements are strings
+    const invalidElements = configObj.availableServices.filter(item => typeof item !== 'string');
+    if (invalidElements.length > 0) {
+      errors.push('Array config.availableServices must contain only strings');
     }
-  });
+  }
 
   // Check features object if present
-  if (config.features) {
-    if (typeof config.features !== 'object' || Array.isArray(config.features)) {
-      errors.push('features must be an object');
+  if (configObj.features) {
+    if (typeof configObj.features !== 'object' || Array.isArray(configObj.features)) {
+      errors.push('config.features must be an object');
     } else {
       // Validate boolean feature flags
       const booleanFlags = ['enableParalegalAgent', 'paralegalFirst'];
       booleanFlags.forEach(flag => {
-        if (flag in config.features && typeof config.features[flag] !== 'boolean') {
-          errors.push(`Feature flag ${flag} must be a boolean`);
+        if (flag in configObj.features && typeof configObj.features[flag] !== 'boolean') {
+          errors.push(`Feature flag config.features.${flag} must be a boolean`);
         }
       });
     }
   }
 
   // Check payment configuration if present
-  if ('requiresPayment' in config) {
-    if (typeof config.requiresPayment !== 'boolean') {
-      errors.push('requiresPayment must be a boolean');
+  if ('requiresPayment' in configObj) {
+    if (typeof configObj.requiresPayment !== 'boolean') {
+      errors.push('config.requiresPayment must be a boolean');
     }
-    if (config.requiresPayment && (!config.consultationFee || typeof config.consultationFee !== 'number')) {
-      errors.push('consultationFee must be a number when requiresPayment is true');
+    if (configObj.requiresPayment && (!configObj.consultationFee || typeof configObj.consultationFee !== 'number')) {
+      errors.push('config.consultationFee must be a number when config.requiresPayment is true');
     }
   }
 
