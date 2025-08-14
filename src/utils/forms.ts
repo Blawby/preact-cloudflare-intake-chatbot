@@ -60,8 +60,8 @@ export async function submitContactForm(
       } else {
         // Regular form submission
         if (teamConfig?.config?.requiresPayment) {
-          const fee = teamConfig.config.consultationFee;
-          const paymentLink = teamConfig.config.paymentLink;
+          const fee = teamConfig.config.consultationFee ?? 0;
+          const paymentLink = teamConfig.config.paymentLink ?? 'Payment link will be sent shortly';
           
           confirmationContent = `✅ Thank you! Your information has been submitted successfully.\n\n` +
             `💰 **Consultation Fee**: $${fee}\n\n` +

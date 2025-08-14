@@ -852,10 +852,12 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
     };
   }
   
-  // Check if payment is required
-  const requiresPayment = teamConfig?.config?.requiresPayment || false;
-  const consultationFee = teamConfig?.config?.consultationFee || 0;
-  const paymentLink = teamConfig?.config?.paymentLink || null;
+  // Check if payment is required - defensively coerce values that may be strings after env resolution
+  const requiresPayment = (teamConfig?.config?.requiresPayment === true || 
+    String(teamConfig?.config?.requiresPayment).toLowerCase() === 'true');
+  const consultationFee = Number(teamConfig?.config?.consultationFee) || 0;
+  const paymentLink = teamConfig?.config?.paymentLink ? 
+    String(teamConfig?.config?.paymentLink) : null;
   
   // If payment is required, create invoice via payment service
   let invoiceUrl = null;
@@ -942,7 +944,7 @@ Please complete the payment to secure your consultation. If you have any questio
 Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
 
 **Next Steps:**
-1. Please complete the payment using this link: ${paymentLink || 'Payment link will be sent shortly'}
+1. Please complete the payment using this link: ${paymentLink ?? 'Payment link will be sent shortly'}
 2. Once payment is confirmed, a lawyer will contact you within 24 hours
 
 Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
@@ -967,7 +969,7 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
       opposing_party,
       requires_payment: requiresPayment,
       consultation_fee: consultationFee,
-      payment_link: invoiceUrl || paymentLink,
+      payment_link: invoiceUrl ?? paymentLink,
       payment_embed: invoiceUrl ? {
         paymentUrl: invoiceUrl,
         amount: consultationFee,
@@ -1368,8 +1370,8 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
               opposing_party: parameters.opposing_party || '',
               matter_details: parameters.description,
               submitted: true,
-              requires_payment: toolResult.data?.requires_payment || false,
-              consultation_fee: toolResult.data?.consultation_fee || 0,
+              requires_payment: toolResult.data?.requires_payment ?? false,
+              consultation_fee: toolResult.data?.consultation_fee ?? 0,
               payment_link: toolResult.data?.payment_link || null
             }, teamId);
           }

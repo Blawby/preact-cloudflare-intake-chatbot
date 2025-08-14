@@ -91,6 +91,55 @@ export class TeamService {
   }
 
   /**
+   * Normalizes config values to their expected types after environment variable resolution
+   * Converts string values back to their proper types (boolean, number) for known config keys
+   */
+  private normalizeConfigTypes(config: any): any {
+    if (typeof config !== 'object' || config === null) {
+      return config;
+    }
+
+    const normalized = { ...config };
+    
+    // Normalize boolean values
+    if ('requiresPayment' in normalized) {
+      normalized.requiresPayment = (normalized.requiresPayment === true || 
+        String(normalized.requiresPayment).toLowerCase() === 'true');
+    }
+    
+    if ('enableParalegalAgent' in normalized) {
+      normalized.enableParalegalAgent = (normalized.enableParalegalAgent === true || 
+        String(normalized.enableParalegalAgent).toLowerCase() === 'true');
+    }
+    
+    if ('paralegalFirst' in normalized) {
+      normalized.paralegalFirst = (normalized.paralegalFirst === true || 
+        String(normalized.paralegalFirst).toLowerCase() === 'true');
+    }
+    
+    // Normalize number values
+    if ('consultationFee' in normalized) {
+      const fee = Number(normalized.consultationFee);
+      normalized.consultationFee = Number.isFinite(fee) && fee >= 0 ? fee : 0;
+    }
+    
+    // Normalize nested features object
+    if (normalized.features && typeof normalized.features === 'object') {
+      if ('enableParalegalAgent' in normalized.features) {
+        normalized.features.enableParalegalAgent = (normalized.features.enableParalegalAgent === true || 
+          String(normalized.features.enableParalegalAgent).toLowerCase() === 'true');
+      }
+      
+      if ('paralegalFirst' in normalized.features) {
+        normalized.features.paralegalFirst = (normalized.features.paralegalFirst === true || 
+          String(normalized.features.paralegalFirst).toLowerCase() === 'true');
+      }
+    }
+    
+    return normalized;
+  }
+
+  /**
    * Constant-time string comparison to prevent timing attacks
    * Compares two strings in a way that doesn't reveal information about the strings
    * Always processes both strings fully to avoid timing leaks
@@ -139,12 +188,13 @@ export class TeamService {
       if (teamRow) {
         const rawConfig = JSON.parse(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
+        const normalizedConfig = this.normalizeConfigTypes(resolvedConfig);
         
         const team: Team = {
           id: teamRow.id as string,
           slug: teamRow.slug as string,
           name: teamRow.name as string,
-          config: resolvedConfig,
+          config: normalizedConfig,
           createdAt: teamRow.created_at as string,
           updatedAt: teamRow.updated_at as string
         };
