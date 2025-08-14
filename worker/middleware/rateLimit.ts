@@ -1,9 +1,20 @@
 import type { Env } from '../types';
 
 export async function rateLimit(env: Env, key: string, limit = 60, windowSec = 60): Promise<boolean> {
-  // Skip rate limiting if CHAT_SESSIONS is not available (e.g., in test environments)
+  // Check if we're in a test environment
+  const isTestEnv = process.env.NODE_ENV === 'test' || env.ENV_TEST === 'true';
+
+  // Handle missing CHAT_SESSIONS
   if (!env.CHAT_SESSIONS) {
-    return true;
+    if (isTestEnv) {
+      // In test environment, silently bypass rate limiting
+      return true;
+    } else {
+      // In non-test environment, log warning about misconfiguration
+      console.warn('⚠️ Rate limiting is disabled: CHAT_SESSIONS binding is not available. This is a security risk in production!');
+      // Still allow the request to proceed to maintain service availability
+      return true;
+    }
   }
   
   const bucketKey = `rl:${key}:${Math.floor(Date.now() / (windowSec * 1000))}`;

@@ -113,6 +113,32 @@ export class TeamService {
     return result === 0;
   }
 
+  /**
+   * Normalizes fields that should be arrays but might be objects
+   * @param config The team configuration to normalize
+   * @returns Normalized team configuration with array fields
+   */
+  private normalizeConfigArrays(config: any): TeamConfig {
+    const normalized = { ...config };
+
+    // Normalize availableServices
+    if (normalized.availableServices && !Array.isArray(normalized.availableServices)) {
+      normalized.availableServices = Object.values(normalized.availableServices);
+    }
+
+    // Normalize jurisdiction fields if they exist
+    if (normalized.jurisdiction) {
+      if (normalized.jurisdiction.supportedStates && !Array.isArray(normalized.jurisdiction.supportedStates)) {
+        normalized.jurisdiction.supportedStates = Object.values(normalized.jurisdiction.supportedStates);
+      }
+      if (normalized.jurisdiction.supportedCountries && !Array.isArray(normalized.jurisdiction.supportedCountries)) {
+        normalized.jurisdiction.supportedCountries = Object.values(normalized.jurisdiction.supportedCountries);
+      }
+    }
+
+    return normalized;
+  }
+
   async getTeam(teamId: string): Promise<Team | null> {
     console.log('TeamService.getTeam called with teamId:', teamId);
     
@@ -139,12 +165,13 @@ export class TeamService {
       if (teamRow) {
         const rawConfig = JSON.parse(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
+        const normalizedConfig = this.normalizeConfigArrays(resolvedConfig);
         
         const team: Team = {
           id: teamRow.id as string,
           slug: teamRow.slug as string,
           name: teamRow.name as string,
-          config: resolvedConfig,
+          config: normalizedConfig,
           createdAt: teamRow.created_at as string,
           updatedAt: teamRow.updated_at as string
         };
