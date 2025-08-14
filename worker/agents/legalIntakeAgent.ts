@@ -1656,23 +1656,44 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
               payment_link: toolResult.data?.payment_link || null
             }, teamId);
             
-            // After successful matter creation, hand off to paralegal for next steps
-            console.log('✅ Matter created successfully, handing off to paralegal for next steps');
+            // First, stream the original matter creation response (with payment info)
+            console.log('✅ Matter created successfully, streaming original response with payment info');
+            
+            const originalResponse = toolResult.message;
+            const originalChunks = originalResponse.split(' ');
+            for (let i = 0; i < originalChunks.length; i++) {
+              const chunk = originalChunks[i];
+              const isLastChunk = i === originalChunks.length - 1;
+              const separator = isLastChunk ? '' : ' ';
+              const textEvent = `data: ${JSON.stringify({
+                type: 'text',
+                text: `${chunk}${separator}`
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(textEvent));
+              await new Promise(resolve => setTimeout(resolve, 20));
+            }
+            
+            // Send the original response completion
+            const originalFinalEvent = `data: ${JSON.stringify({
+              type: 'final',
+              response: originalResponse,
+              workflow: 'INTAKE_AGENT',
+              data: toolResult.data
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(originalFinalEvent));
+            
+            // Then, after a brief pause, add paralegal guidance
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second pause
             
             // Send handoff event
             const handoffEvent = `data: ${JSON.stringify({
               type: 'handoff_to_paralegal',
-              message: 'Intake complete, transitioning to paralegal for next steps'
+              message: 'Intake complete, adding paralegal guidance'
             })}\n\n`;
             controller.enqueue(new TextEncoder().encode(handoffEvent));
             
             // Generate paralegal response for next steps
-            const paralegalResponse = `Great! I've successfully created your matter and submitted it for review. Here's what happens next:
-
-**Next Steps:**
-1. Complete the payment to secure your consultation
-2. Once payment is confirmed, a lawyer will contact you within 24 hours
-3. The lawyer will review your case details and schedule a consultation
+            const paralegalResponse = `\n\n**Additional Guidance While You Wait:**
 
 **What to expect:**
 - You'll receive a confirmation email once payment is processed
