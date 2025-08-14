@@ -425,7 +425,9 @@ const validateEmail = (email: string): boolean => {
 };
 
 const validatePhone = (phone: string): { isValid: boolean; error?: string } => {
-  if (!phone) return { isValid: false, error: 'Phone number is required' };
+  if (!phone || phone.trim() === '') {
+    return { isValid: false, error: 'Phone number is required' };
+  }
   
   try {
     // Use libphonenumber-js for comprehensive phone validation
@@ -528,7 +530,10 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
 6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
-CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
+CRITICAL: 
+- Do NOT call collect_contact_info tool unless the user has actually provided contact information
+- Only call create_matter tool when you have ALL required information (name, phone, email, location, matter description)
+- If information is missing, ask for it directly in your response - don't call tools
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
 - Look through ALL previous messages for legal issues mentioned
@@ -736,7 +741,7 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
   }
   
   // Validate phone if provided
-  if (phone) {
+  if (phone && phone.trim() !== '') {
     const phoneValidation = validatePhone(phone);
     if (!phoneValidation.isValid) {
       return { 
@@ -827,7 +832,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   }
   
   // Validate phone if provided
-  if (phone) {
+  if (phone && phone.trim() !== '') {
     const phoneValidation = validatePhone(phone);
     if (!phoneValidation.isValid) {
       return { 
@@ -1235,7 +1240,10 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
 6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
-CRITICAL: Once you have name, phone, email, location, and a description of their legal issue, you MUST call the create_matter tool. Do not ask more questions - create the matter immediately.
+CRITICAL: 
+- Do NOT call collect_contact_info tool unless the user has actually provided contact information
+- Only call create_matter tool when you have ALL required information (name, phone, email, location, matter description)
+- If information is missing, ask for it directly in your response - don't call tools
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
 - Look through ALL previous messages for legal issues mentioned

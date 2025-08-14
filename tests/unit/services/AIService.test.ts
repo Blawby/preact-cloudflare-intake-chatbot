@@ -79,8 +79,27 @@ describe('AIService', () => {
 
       const config = await aiService.getTeamConfig(teamId);
       
-      // The actual implementation returns an empty object when no team is found
-      expect(config).toEqual({});
+      // The actual implementation returns a default config object when no team is found
+      expect(config).toEqual({
+        requiresPayment: false,
+        consultationFee: 0,
+        paymentLink: null,
+        availableServices: [
+          'Family Law',
+          'Employment Law',
+          'Business Law',
+          'Intellectual Property',
+          'Personal Injury',
+          'Criminal Law',
+          'Civil Law',
+          'Tenant Rights Law',
+          'Probate and Estate Planning',
+          'Special Education and IEP Advocacy',
+          'Small Business and Nonprofits',
+          'Contract Review',
+          'General Consultation'
+        ]
+      });
     });
   });
 
