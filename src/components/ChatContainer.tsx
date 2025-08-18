@@ -28,7 +28,7 @@ interface ChatContainerProps {
   sessionId?: string;
   teamId?: string;
   onFeedbackSubmit?: (feedback: any) => void;
-  
+
   // File handling props
   previewFiles: FileAttachment[];
   removePreviewFile: (index: number) => void;
@@ -39,7 +39,7 @@ interface ChatContainerProps {
   isRecording: boolean;
   setIsRecording: (v: boolean) => void;
   isReadyToUpload?: boolean;
-  
+
   // Input control prop
   clearInput?: boolean;
 }
@@ -78,7 +78,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   const handleInputChange = (e: Event) => {
     const target = e.currentTarget as HTMLTextAreaElement;
     setInputValue(target.value);
-    
+
     // Simple approach: reset height then set to scrollHeight
     target.style.height = '24px'; // Reset to default height first
     target.style.height = `${Math.max(24, target.scrollHeight)}px`;
@@ -124,16 +124,16 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
 
     const message = inputValue.trim();
     const attachments = [...previewFiles];
-    
+
     // Send message to API
     onSendMessage(message, attachments);
-    
+
     // Clear preview files after sending
     clearPreviewFiles();
-    
+
     // Reset input and focus
     setInputValue('');
-    
+
     // Just focus the textarea
     if (textareaRef.current) {
       textareaRef.current.focus();
@@ -143,7 +143,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   const handleKeyPress = createKeyPressHandler(handleSubmit);
 
   return (
-    <div className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg pt-16 lg:pt-0">
+    <div className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg pt-8 lg:pt-0">
       <main className="flex flex-col h-full w-full overflow-hidden relative bg-white dark:bg-dark-bg">
         <VirtualMessageList
           messages={messages}

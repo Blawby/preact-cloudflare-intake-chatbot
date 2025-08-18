@@ -10,6 +10,7 @@ import PrivacySupportSidebar from './PrivacySupportSidebar';
 import TeamProfile from './TeamProfile';
 import { features } from '../config/features';
 import { ChatMessageUI } from '../../worker/types';
+import { useEffect, useState } from 'preact/hooks';
 
 interface AppLayoutProps {
   teamNotFound: boolean;
@@ -44,12 +45,29 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     return <TeamNotFound teamId={teamId} onRetry={onRetryTeamConfig} />;
   }
 
+  const [scrollDirection, setScrollDirection] = useState<'up' | 'down' | null>(null);
+
+  useEffect(() => {
+    const handleNavbarScroll = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const direction = customEvent.detail?.direction as 'up' | 'down';
+      setScrollDirection(direction);
+    };
+
+    window.addEventListener('navbar-scroll', handleNavbarScroll);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('navbar-scroll', handleNavbarScroll);
+    };
+  }, []); // No dependencies needed since we're just setting up/cleaning up the listener
+
   return (
     <div className="h-screen w-screen flex">
       {/* Left Sidebar - Fixed width, hidden on mobile */}
       {features.enableLeftSidebar && (
         <div className="w-20 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
-          <LeftSidebar 
+          <LeftSidebar
             currentRoute={currentTab}
             onOpenMenu={() => onToggleMobileSidebar(true)}
             teamConfig={{
@@ -62,7 +80,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       )}
 
       {/* Main Content Area - Flex grow, full width on mobile */}
-      <div className="flex-1 bg-white dark:bg-dark-bg overflow-y-auto">
+      <div className={`flex-1 bg-white dark:bg-dark-bg overflow-y-auto ${scrollDirection === 'down' ? 'fixed top-0 left-0 right-0' : ''}`} >
         <ErrorBoundary>
           {children}
         </ErrorBoundary>
@@ -90,20 +108,23 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
         </div>
       </div>
 
-      {/* Mobile Top Navigation */}
-      <MobileTopNav
-        teamConfig={{
-          name: teamConfig.name,
-          profileImage: teamConfig.profileImage,
-          teamId: teamId,
-          description: teamConfig.description
-        }}
-        onOpenSidebar={() => onToggleMobileSidebar(true)}
-      />
+
+      {scrollDirection !== 'down' && (
+
+        <MobileTopNav
+          teamConfig={{
+            name: teamConfig.name,
+            profileImage: teamConfig.profileImage,
+            teamId: teamId,
+            description: teamConfig.description
+          }}
+          onOpenSidebar={() => onToggleMobileSidebar(true)}
+        />)
+      }
 
       {/* Mobile Bottom Navigation */}
       {features.enableMobileBottomNav && (
-        <BottomNavigation 
+        <BottomNavigation
           activeTab={currentTab}
         />
       )}

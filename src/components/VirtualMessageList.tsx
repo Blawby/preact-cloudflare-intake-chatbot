@@ -36,8 +36,8 @@ const BATCH_SIZE = 20;
 const SCROLL_THRESHOLD = 100;
 const DEBOUNCE_DELAY = 150;
 
-const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({ 
-    messages, 
+const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
+    messages,
     onDateSelect,
     onTimeOfDaySelect,
     onTimeSlotSelect,
@@ -61,6 +61,23 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
 
     const checkIfScrolledToBottom = useCallback((element: HTMLElement) => {
         const { scrollTop, scrollHeight, clientHeight } = element;
+
+        // Determine scroll direction and dispatch appropriate event
+        const currentScrollTop = element.scrollTop;
+        if (currentScrollTop > (element as any).lastScrollTop || 0) {
+            // Scrolling down
+            window.dispatchEvent(new CustomEvent('navbar-scroll', { detail: { direction: 'down' } }));
+
+            console.log('scrolling down')
+        } else if (currentScrollTop < (element as any).lastScrollTop) {
+            // Scrolling up
+            window.dispatchEvent(new CustomEvent('navbar-scroll', { detail: { direction: 'up' } }));
+
+            console.log('scrolling up')
+        }
+        (element as any).lastScrollTop = currentScrollTop;
+
+
         return Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
     }, []);
 
@@ -75,7 +92,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         if (element.scrollTop < SCROLL_THRESHOLD && startIndex > 0) {
             const newStartIndex = Math.max(0, startIndex - BATCH_SIZE);
             setStartIndex(newStartIndex);
-            
+
             // Maintain scroll position when loading more messages
             requestAnimationFrame(() => {
                 if (listRef.current) {
@@ -132,14 +149,14 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     const visibleMessages = messages.slice(startIndex, endIndex);
 
     return (
-        <div 
-            className="flex-1 overflow-y-auto p-4 pb-40 scroll-smooth w-full scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600" 
+        <div
+            className="flex-1 overflow-y-auto p-4 pb-40 scroll-smooth w-full scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
             ref={listRef}
         >
             {/* Team Profile Header - Fixed at top of scrollable area */}
             {teamConfig && (
                 <div className="flex flex-col items-center py-8 px-4 pb-6 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg mb-4">
-                    <TeamProfile 
+                    <TeamProfile
                         name={teamConfig.name}
                         profileImage={teamConfig.profileImage}
                         teamId={teamId}
@@ -149,10 +166,10 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                     />
                 </div>
             )}
-            
+
             {startIndex > 0 && (
                 <div className="flex justify-center items-center py-4">
-                    					<div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm lg:text-base">Loading more messages...</div>
+                    <div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm lg:text-base">Loading more messages...</div>
                 </div>
             )}
             <ErrorBoundary>
