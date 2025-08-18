@@ -49,16 +49,16 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
       const urlParams = new URLSearchParams(window.location.search);
       const teamIdParam = urlParams.get('teamId');
       const hostname = window.location.hostname;
-      
+
       // Domain-based team routing
       if (hostname === 'northcarolinalegalservices.blawby.com') {
         setTeamId('north-carolina-legal-services');
         return;
       }
-      
+
       // Check if we're on the root domain with no parameters - redirect to Blawby AI
-      if (hostname === 'ai.blawby.com' && 
-        window.location.pathname === '/' && 
+      if (hostname === 'ai.blawby.com' &&
+        window.location.pathname === '/' &&
         !teamIdParam) {
         // Redirect to Blawby AI
         window.location.href = 'https://ai.blawby.com/?teamId=blawby-ai';
@@ -79,20 +79,20 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
     if (!currentTeamId || fetchedTeamIds.current.has(currentTeamId)) {
       return; // Don't fetch if no teamId or if we've already fetched for this teamId
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const controller = new AbortController();
       const response = await fetch(getTeamsEndpoint(), { signal: controller.signal });
-      
+
       if (response.ok) {
         const teamsResponse = await response.json() as any;
         const team = teamsResponse.data.find((t: any) => t.slug === currentTeamId || t.id === currentTeamId);
-        
+
         // Only add to fetched set after successful fetch
         fetchedTeamIds.current.add(currentTeamId);
-        
+
         if (team?.config) {
           const config: TeamConfig = {
             name: team.name || 'Blawby AI',
@@ -147,7 +147,7 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
     if (teamId) {
       fetchTeamConfig(teamId);
     }
-  }, [teamId, fetchTeamConfig]);
+  }, [teamId]);
 
   return {
     teamId,
