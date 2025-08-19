@@ -85,18 +85,13 @@ const Modal: FunctionComponent<ModalProps> = ({
                     
                     {/* Content */}
                     <motion.div 
-                        className={`shadow-2xl overflow-hidden ${
+                        className={`shadow-2xl overflow-hidden bg-white dark:bg-dark-bg text-gray-900 dark:text-white border border-gray-200 dark:border-dark-border ${
                             shouldUseDrawer 
                                 ? 'fixed bottom-0 left-0 right-0 rounded-t-2xl max-h-[90vh]' 
                                 : shouldUseFullscreen
                                 ? 'fixed inset-0 w-full h-full'
                                 : 'relative rounded-xl max-w-4xl w-full max-h-[90vh]'
                         }`}
-                        style={{
-                            backgroundColor: shouldUseFullscreen ? 'black' : 'var(--bg-color)',
-                            color: shouldUseFullscreen ? 'white' : 'var(--text-color)',
-                            border: shouldUseFullscreen ? 'none' : '1px solid var(--border-color)'
-                        }}
                         initial={shouldUseDrawer ? { y: "100%" } : { scale: 0.95 }}
                         animate={shouldUseDrawer ? { y: 0 } : { scale: 1 }}
                         exit={shouldUseDrawer ? { y: "100%" } : { scale: 0.95 }}
@@ -113,25 +108,18 @@ const Modal: FunctionComponent<ModalProps> = ({
                         {/* Handle for mobile drawer */}
                         {shouldUseDrawer && (
                             <div className="flex justify-center pt-4 pb-2">
-                                <div className="w-12 h-1 rounded-full" style={{ backgroundColor: 'var(--border-color)' }}></div>
+                                <div className="w-12 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>
                             </div>
                         )}
                         
                         {/* Header */}
                         {(title || showCloseButton) && !shouldUseFullscreen && (
-                            <div 
-                                className="flex justify-between items-center p-4 border-b"
-                                style={{
-                                    backgroundColor: 'var(--input-bg)',
-                                    borderColor: 'var(--border-color)'
-                                }}
-                            >
-                                {title && <h3 className="text-base sm:text-lg lg:text-xl font-semibold m-0">{title}</h3>}
+                            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-gray-800">
+                                {title && <h3 className="text-base sm:text-lg lg:text-xl font-semibold m-0 text-gray-900 dark:text-white">{title}</h3>}
                                 {showCloseButton && (
                                     <button
                                         onClick={onClose}
-                                        className="p-1 rounded-md transition-colors"
-                                        style={{ color: 'var(--text-color)' }}
+                                        className="p-1 rounded-md transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                                         aria-label="Close modal"
                                     >
                                         <XMarkIcon className="w-6 h-6" />

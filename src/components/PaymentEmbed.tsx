@@ -3,6 +3,7 @@ import { ArrowTopRightOnSquareIcon, CreditCardIcon } from '@heroicons/react/24/o
 import { Button } from './ui/Button';
 import Modal from './Modal';
 import PaymentContent from './PaymentContent';
+import { features } from '../config/features';
 
 interface PaymentEmbedProps {
   paymentUrl: string;
@@ -44,41 +45,59 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
   return (
     <>
       <div className="flex flex-col sm:flex-row gap-3 my-4 w-full">
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={handlePaymentClick}
-          style={{ backgroundColor: '#d4af37', color: '#1a1a1a' }}
-        >
-          <CreditCardIcon className="w-5 h-5 mr-2" />
-          Pay ${amount || '0'}
-        </Button>
-        
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={handleExternalLink}
-          className="flex-1 sm:flex-none"
-        >
-          <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
-          Open in Browser
-        </Button>
+        {features.enablePaymentIframe ? (
+          // Show both buttons when iframe is enabled
+          <>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handlePaymentClick}
+              className="bg-accent-500 text-gray-900 hover:bg-accent-600"
+            >
+              <CreditCardIcon className="w-5 h-5 mr-2" />
+              Pay ${amount || '0'}
+            </Button>
+            
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={handleExternalLink}
+              className="flex-1 sm:flex-none"
+            >
+              <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
+              Open in Browser
+            </Button>
+          </>
+        ) : (
+          // Show only the primary payment button when iframe is disabled
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={handleExternalLink}
+            className="bg-accent-500 text-gray-900 hover:bg-accent-600 w-full sm:w-auto"
+          >
+            <CreditCardIcon className="w-5 h-5 mr-2" />
+            Pay ${amount || '0'}
+          </Button>
+        )}
       </div>
       
-      <Modal
-        isOpen={showPaymentModal}
-        onClose={handlePaymentModalClose}
-        type="drawer"
-        mobileBehavior="drawer"
-        showCloseButton={true}
-      >
-        <PaymentContent
-          paymentUrl={paymentUrl}
-          amount={amount}
-          description={description}
-          onPaymentComplete={handlePaymentComplete}
-        />
-      </Modal>
+      {features.enablePaymentIframe && (
+        <Modal
+          isOpen={showPaymentModal}
+          onClose={handlePaymentModalClose}
+          type="drawer"
+          mobileBehavior="drawer"
+          showCloseButton={true}
+        >
+          <PaymentContent
+            paymentUrl={paymentUrl}
+            amount={amount}
+            description={description}
+            onPaymentComplete={handlePaymentComplete}
+          />
+        </Modal>
+      )}
     </>
   );
 };
