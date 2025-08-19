@@ -60,6 +60,13 @@ interface FeatureFlags {
      */
     enableMobileBottomNav: boolean;
 
+    /**
+     * Enable payment iframe/drawer functionality
+     * When false, only the "Open in Browser" button will be shown
+     * When true, both "Pay" button (opens drawer) and "Open in Browser" button will be shown
+     */
+    enablePaymentIframe: boolean;
+
       /**
    * Enable Paralegal Agent for matter formation
    * When false, all matter formation flows through the standard intake agent
@@ -86,6 +93,7 @@ const featureConfig: FeatureFlags = {
     enableLearnServicesButton: false, // Hide learn services button
     enableConsultationButton: false, // Hide consultation request button
     enableMobileBottomNav: false, // Temporarily hide mobile bottom nav
+    enablePaymentIframe: false, // Disable payment iframe/drawer - only show "Open in Browser" button
     enableParalegalAgent: false, // Paralegal agent disabled by default - enable per team
     paralegalFirst: false, // Intake-first flow by default - enable per team
 };
