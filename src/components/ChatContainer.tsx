@@ -143,7 +143,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   const handleKeyPress = createKeyPressHandler(handleSubmit);
 
   return (
-    <div className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg pt-8 lg:pt-0">
+    <div className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg">
       <main className="flex flex-col h-full w-full overflow-hidden relative bg-white dark:bg-dark-bg">
         <VirtualMessageList
           messages={messages}

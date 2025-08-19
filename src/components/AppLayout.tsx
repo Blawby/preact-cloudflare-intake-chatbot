@@ -11,12 +11,13 @@ import TeamProfile from './TeamProfile';
 import { features } from '../config/features';
 import { ChatMessageUI } from '../../worker/types';
 import { useEffect, useState } from 'preact/hooks';
+import { useNavbarScroll } from '../hooks/useChatScroll';
 
 interface AppLayoutProps {
   teamNotFound: boolean;
   teamId: string;
   onRetryTeamConfig: () => void;
-  currentTab: string;
+  currentTab: 'chats';
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: (open: boolean) => void;
   teamConfig: {
@@ -45,22 +46,10 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     return <TeamNotFound teamId={teamId} onRetry={onRetryTeamConfig} />;
   }
 
-  const [scrollDirection, setScrollDirection] = useState<'up' | 'down' | null>(null);
-
-  useEffect(() => {
-    const handleNavbarScroll = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const direction = customEvent.detail?.direction as 'up' | 'down';
-      setScrollDirection(direction);
-    };
-
-    window.addEventListener('navbar-scroll', handleNavbarScroll);
-
-    // Cleanup listener on unmount
-    return () => {
-      window.removeEventListener('navbar-scroll', handleNavbarScroll);
-    };
-  }, []); // No dependencies needed since we're just setting up/cleaning up the listener
+  const { isNavbarVisible } = useNavbarScroll({ 
+    threshold: 200, 
+    debounceMs: 100
+  });
 
   return (
     <div className="h-screen w-screen flex">
@@ -80,7 +69,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       )}
 
       {/* Main Content Area - Flex grow, full width on mobile */}
-      <div className={`flex-1 bg-white dark:bg-dark-bg overflow-y-auto ${scrollDirection === 'down' ? 'fixed top-0 left-0 right-0' : ''}`} >
+      <div className="flex-1 bg-white dark:bg-dark-bg overflow-y-auto">
         <ErrorBoundary>
           {children}
         </ErrorBoundary>
@@ -109,18 +98,16 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       </div>
 
 
-      {scrollDirection !== 'down' && (
-
-        <MobileTopNav
-          teamConfig={{
-            name: teamConfig.name,
-            profileImage: teamConfig.profileImage,
-            teamId: teamId,
-            description: teamConfig.description
-          }}
-          onOpenSidebar={() => onToggleMobileSidebar(true)}
-        />)
-      }
+      <MobileTopNav
+        teamConfig={{
+          name: teamConfig.name,
+          profileImage: teamConfig.profileImage,
+          teamId: teamId,
+          description: teamConfig.description
+        }}
+        onOpenSidebar={() => onToggleMobileSidebar(true)}
+        isVisible={isNavbarVisible}
+      />
 
       {/* Mobile Bottom Navigation */}
       {features.enableMobileBottomNav && (

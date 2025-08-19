@@ -30,6 +30,8 @@ interface VirtualMessageListProps {
     sessionId?: string;
     teamId?: string;
     onFeedbackSubmit?: (feedback: any) => void;
+    
+
 }
 
 const BATCH_SIZE = 20;
@@ -61,23 +63,6 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
 
     const checkIfScrolledToBottom = useCallback((element: HTMLElement) => {
         const { scrollTop, scrollHeight, clientHeight } = element;
-
-        // Determine scroll direction and dispatch appropriate event
-        const currentScrollTop = element.scrollTop;
-        if (currentScrollTop > (element as any).lastScrollTop || 0) {
-            // Scrolling down
-            window.dispatchEvent(new CustomEvent('navbar-scroll', { detail: { direction: 'down' } }));
-
-            console.log('scrolling down')
-        } else if (currentScrollTop < (element as any).lastScrollTop) {
-            // Scrolling up
-            window.dispatchEvent(new CustomEvent('navbar-scroll', { detail: { direction: 'up' } }));
-
-            console.log('scrolling up')
-        }
-        (element as any).lastScrollTop = currentScrollTop;
-
-
         return Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
     }, []);
 
@@ -87,6 +72,19 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         const element = listRef.current;
         const isBottom = checkIfScrolledToBottom(element);
         setIsScrolledToBottom(isBottom);
+
+        // Dispatch scroll event for navbar visibility
+        const currentScrollTop = element.scrollTop;
+        const lastScrollTop = (element as any).lastScrollTop || 0;
+        const scrollDelta = Math.abs(currentScrollTop - lastScrollTop);
+        
+        if (scrollDelta > 0) {
+            window.dispatchEvent(new CustomEvent('chat-scroll', {
+                detail: { scrollTop: currentScrollTop, scrollDelta }
+            }));
+        }
+        
+        (element as any).lastScrollTop = currentScrollTop;
 
         // Load more messages when scrolling up
         if (element.scrollTop < SCROLL_THRESHOLD && startIndex > 0) {
@@ -121,6 +119,8 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             }
         };
     }, [debouncedHandleScroll]);
+
+
 
     useEffect(() => {
         // Update indices when new messages are added
@@ -179,21 +179,8 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         content={message.content}
                         isUser={message.isUser}
                         files={message.files}
-                        scheduling={message.scheduling}
-                        matterCreation={message.matterCreation}
-                        welcomeMessage={message.welcomeMessage}
                         matterCanvas={message.matterCanvas}
                         paymentEmbed={message.paymentEmbed}
-                        qualityScore={message.qualityScore}
-                        onDateSelect={onDateSelect}
-                        onTimeOfDaySelect={onTimeOfDaySelect}
-                        onTimeSlotSelect={onTimeSlotSelect}
-                        onRequestMoreDates={onRequestMoreDates}
-                        onServiceSelect={onServiceSelect}
-                        onUrgencySelect={onUrgencySelect}
-                        onCreateMatter={onCreateMatter}
-                        onScheduleConsultation={onScheduleConsultation}
-                        onLearnServices={onLearnServices}
                         teamConfig={teamConfig}
                         onOpenSidebar={onOpenSidebar}
                         isLoading={message.isLoading}

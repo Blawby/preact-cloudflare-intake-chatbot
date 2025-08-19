@@ -106,4 +106,69 @@ export const useChatScroll = (options: UseChatScrollOptions = {}) => {
     scrollToBottom: forceScrollToBottom,
     scrollOnNewMessage
   };
+};
+
+// New hook for navbar scroll behavior with threshold
+interface UseNavbarScrollOptions {
+  threshold?: number; // Minimum scroll distance to trigger navbar visibility
+  debounceMs?: number; // Debounce delay for scroll events
+}
+
+export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
+  const {
+    threshold = 200,
+    debounceMs = 100
+  } = options;
+
+  const [isNavbarVisible, setIsNavbarVisible] = useState(true);
+  const lastScrollTop = useRef(0);
+  const lastScrollDirection = useRef<'up' | 'down' | null>(null);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleScrollEvent = useCallback((event: CustomEvent) => {
+    const { scrollTop, scrollDelta } = event.detail;
+    
+    // Clear existing timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    // Only process if scroll distance is significant
+    if (scrollDelta > threshold) {
+      const direction = scrollTop < lastScrollTop.current ? 'up' : 'down';
+      
+      // Only change direction if it's different from last time
+      if (direction !== lastScrollDirection.current) {
+        lastScrollDirection.current = direction;
+        
+        // Debounce the navbar visibility change
+        debounceTimeout.current = setTimeout(() => {
+          setIsNavbarVisible(direction === 'up');
+        }, debounceMs);
+      }
+    }
+    
+    lastScrollTop.current = scrollTop;
+  }, [threshold, debounceMs]);
+
+  // Set up scroll event listener
+  useEffect(() => {
+    const scrollHandler = (event: Event) => {
+      handleScrollEvent(event as CustomEvent);
+    };
+
+    window.addEventListener('chat-scroll', scrollHandler);
+    
+    return () => {
+      window.removeEventListener('chat-scroll', scrollHandler);
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [handleScrollEvent]);
+
+  return {
+    isNavbarVisible,
+    lastScrollDirection: lastScrollDirection.current
+  };
 }; 
