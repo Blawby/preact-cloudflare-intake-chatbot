@@ -3,7 +3,7 @@ import { Button } from './ui/Button';
 import TeamProfile from './TeamProfile';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserIcon } from '@heroicons/react/24/outline';
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -63,6 +63,20 @@ const MobileSidebar = ({
             />
           </div>
 
+          {/* Request Consultation Button - Primary Action */}
+          {onRequestConsultation && (
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={onRequestConsultation}
+                variant="primary"
+                size="lg"
+                icon={<UserIcon className="w-4 h-4" />}
+              >
+                Find Lawyer
+              </Button>
+            </div>
+          )}
+
           {/* Media Section */}
           <div className="flex flex-col gap-3">
             <MediaSidebar messages={messages} />
@@ -70,7 +84,7 @@ const MobileSidebar = ({
 
           {/* Privacy & Support Section */}
           <div className="flex flex-col gap-3">
-            <PrivacySupportSidebar onRequestConsultation={onRequestConsultation} />
+            <PrivacySupportSidebar />
           </div>
         </div>
       </div>

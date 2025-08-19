@@ -158,25 +158,27 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         <div className="relative flex items-center" ref={menuRef}>
             <Button
                 type="button"
-                variant="icon"
-                size="sm"
+                variant="ghost"
+                size="md"
                 onClick={() => isReadyToUpload && setIsOpen(!isOpen)}
                 title={isReadyToUpload ? "Add attachment" : "File upload not ready yet"}
                 aria-label="Open file attachment menu"
-                aria-haspopup="true"
+                id="attachment-menu-button"
+                aria-haspopup="menu"
+                aria-controls="attachment-menu"
                 aria-expanded={isOpen}
                 ref={triggerRef}
                 disabled={!isReadyToUpload}
-                className={`flex items-center justify-center w-10 h-10 rounded-lg cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 ${!isReadyToUpload ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-                <PlusIcon className="w-5 h-5" aria-hidden="true" />
-            </Button>
+                icon={<PlusIcon className="w-5 h-5" aria-hidden="true" />}
+                className={`${!isReadyToUpload ? 'opacity-50 cursor-not-allowed' : ''}`}
+            />
             
             {(isOpen || isClosing) && (
                 <div 
                     className={`absolute bottom-full left-0 mb-2 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-1 min-w-[200px] shadow-lg z-[2000] transition-all duration-200 ${isClosing ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}
                     role="menu"
-                    aria-labelledby="attachment-menu"
+                    id="attachment-menu"
+                    aria-labelledby="attachment-menu-button"
                 >
                     <Button 
                         type="button" 

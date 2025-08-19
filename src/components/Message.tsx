@@ -19,15 +19,9 @@ import {
 	VideoCameraIcon,
 	ClipboardDocumentIcon
 } from '@heroicons/react/24/outline';
+import { FileAttachment } from '../../worker/types';
 
 // Agent handles all scheduling and matter creation - no lazy components needed
-
-interface FileAttachment {
-	name: string;
-	size: number;
-	type: string;
-	url: string;
-}
 
 // Agent handles all scheduling and matter creation - no interfaces needed
 
