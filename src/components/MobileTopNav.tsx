@@ -1,6 +1,7 @@
-import { Bars3Icon } from '@heroicons/react/24/outline';
+import { Bars3Icon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import ThemeToggle from './ThemeToggle';
+import { Button } from './ui/Button';
+import { useTheme } from '../hooks/useTheme';
 
 interface MobileTopNavProps {
   teamConfig: {
@@ -14,6 +15,8 @@ interface MobileTopNavProps {
 }
 
 const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTopNavProps) => {
+  const { isDark, toggleTheme } = useTheme();
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -31,10 +34,11 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
         >
           <div className="flex items-center justify-between px-4">
             {/* Team Profile Section */}
-            <button
+            <Button
+              variant="ghost"
               onClick={onOpenSidebar}
               aria-label="Open team menu"
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 border-none bg-transparent"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover"
             >
               <div className="flex items-center gap-3">
                 <img 
@@ -52,18 +56,24 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
                   <span className="text-xs text-gray-500 dark:text-gray-400">Online</span>
                 </div>
               </div>
-            </button>
+            </Button>
 
             {/* Right Section - Theme Toggle and Menu */}
             <div className="flex items-center">
-              <ThemeToggle />
-              <button
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={toggleTheme}
+                icon={isDark ? <SunIcon className="w-6 h-6" /> : <MoonIcon className="w-6 h-6" />}
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              />
+              <Button
+                variant="ghost"
+                size="lg"
                 onClick={onOpenSidebar}
+                icon={<Bars3Icon className="w-6 h-6" />}
                 aria-label="Open menu"
-                className="flex items-center justify-center w-12 h-12 rounded-lg cursor-pointer text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 border-none bg-transparent leading-none p-0"
-              >
-                <Bars3Icon className="w-6 h-6 block" />
-              </button>
+              />
             </div>
           </div>
         </motion.div>

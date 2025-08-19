@@ -257,47 +257,47 @@ export function App() {
 				currentTab={currentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
-								teamConfig={{
-									name: teamConfig.name,
-									profileImage: teamConfig.profileImage,
+				teamConfig={{
+					name: teamConfig.name,
+					profileImage: teamConfig.profileImage,
 					description: teamConfig.description
 				}}
 				messages={messages}
 				onRequestConsultation={handleRequestConsultation}
 			>
 				<ChatContainer
-									messages={messages}
+					messages={messages}
 					onSendMessage={sendMessage}
-									onDateSelect={handleDateSelect}
-									onTimeOfDaySelect={handleTimeOfDaySelect}
-									onTimeSlotSelect={handleTimeSlotSelect}
-									onRequestMoreDates={handleRequestMoreDates}
-									onServiceSelect={handleServiceSelect}
-									onUrgencySelect={handleUrgencySelect}
-									onCreateMatter={handleCreateMatterStart}
-									onScheduleConsultation={handleScheduleStart}
+					onDateSelect={handleDateSelect}
+					onTimeOfDaySelect={handleTimeOfDaySelect}
+					onTimeSlotSelect={handleTimeSlotSelect}
+					onRequestMoreDates={handleRequestMoreDates}
+					onServiceSelect={handleServiceSelect}
+					onUrgencySelect={handleUrgencySelect}
+					onCreateMatter={handleCreateMatterStart}
+					onScheduleConsultation={handleRequestConsultation}
 					onLearnServices={handleLearnServices}
-									teamConfig={{
-										name: teamConfig.name,
-										profileImage: teamConfig.profileImage,
-										teamId: teamId,
-										description: teamConfig.description
-									}}
-									onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-									sessionId={sessionId}
-									teamId={teamId}
-									onFeedbackSubmit={handleFeedbackSubmit}
-                                    previewFiles={previewFiles}
-                                    removePreviewFile={removePreviewFile}
-                                    clearPreviewFiles={clearPreviewFiles}
+					teamConfig={{
+						name: teamConfig.name,
+						profileImage: teamConfig.profileImage,
+						teamId: teamId,
+						description: teamConfig.description
+					}}
+					onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+					sessionId={sessionId}
+					teamId={teamId}
+					onFeedbackSubmit={handleFeedbackSubmit}
+                    previewFiles={previewFiles}
+                    removePreviewFile={removePreviewFile}
+                    clearPreviewFiles={clearPreviewFiles}
 
-                                    handleCameraCapture={handleCameraCapture}
-                                    handleFileSelect={handleFileSelect}
+                    handleCameraCapture={handleCameraCapture}
+                    handleFileSelect={handleFileSelect}
 					handleMediaCapture={handleMediaCaptureWrapper}
-                                    isRecording={isRecording}
-                                    setIsRecording={setIsRecording}
-									clearInput={clearInputTrigger > 0}
-									isReadyToUpload={isReadyToUpload}
+                    isRecording={isRecording}
+                    setIsRecording={setIsRecording}
+					clearInput={clearInputTrigger > 0}
+					isReadyToUpload={isReadyToUpload}
 				/>
 			</AppLayout>
 		</>

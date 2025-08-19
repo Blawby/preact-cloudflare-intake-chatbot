@@ -12,6 +12,8 @@ import { features } from '../config/features';
 import { ChatMessageUI } from '../../worker/types';
 import { useEffect, useState } from 'preact/hooks';
 import { useNavbarScroll } from '../hooks/useChatScroll';
+import { UserIcon } from '@heroicons/react/24/outline';
+import { Button } from './ui/Button';
 
 interface AppLayoutProps {
   teamNotFound: boolean;
@@ -87,13 +89,26 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
             showVerified={true}
           />
 
+          {/* Request Consultation Button - Primary Action */}
+          {onRequestConsultation && (
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={onRequestConsultation}
+                variant="primary"
+                icon={<UserIcon className="w-4 h-4" />}
+              >
+                Find Lawyer
+              </Button>
+            </div>
+          )}
+
           {/* Media Section */}
           <div className="border-t border-gray-200 dark:border-dark-border pt-4">
             <MediaSidebar messages={messages} />
           </div>
 
           {/* Privacy & Support Section */}
-          <PrivacySupportSidebar onRequestConsultation={onRequestConsultation} />
+          <PrivacySupportSidebar />
         </div>
       </div>
 
