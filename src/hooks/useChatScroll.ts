@@ -6,6 +6,12 @@ interface UseChatScrollOptions {
   autoScrollOnNewMessage?: boolean;
 }
 
+// Strongly-typed event detail for chat scroll events
+type ChatScrollDetail = { 
+  scrollTop: number; 
+  scrollDelta: number 
+};
+
 export const useChatScroll = (options: UseChatScrollOptions = {}) => {
   const {
     threshold = 50,
@@ -122,10 +128,10 @@ export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
 
   const [isNavbarVisible, setIsNavbarVisible] = useState(true);
   const lastScrollTop = useRef(0);
-  const lastScrollDirection = useRef<'up' | 'down' | null>(null);
-  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const latestDirection = useRef<'up' | 'down' | null>(null);
+  const debounceTimeout = useRef<number | null>(null);
 
-  const handleScrollEvent = useCallback((event: CustomEvent) => {
+  const handleScrollEvent = useCallback((event: CustomEvent<ChatScrollDetail>) => {
     const { scrollTop, scrollDelta } = event.detail;
     
     // Clear existing timeout
@@ -137,15 +143,13 @@ export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
     if (scrollDelta > threshold) {
       const direction = scrollTop < lastScrollTop.current ? 'up' : 'down';
       
-      // Only change direction if it's different from last time
-      if (direction !== lastScrollDirection.current) {
-        lastScrollDirection.current = direction;
-        
-        // Debounce the navbar visibility change
-        debounceTimeout.current = setTimeout(() => {
-          setIsNavbarVisible(direction === 'up');
-        }, debounceMs);
-      }
+      // Always update the latest direction
+      latestDirection.current = direction;
+      
+      // Always reschedule the debounce with the latest direction
+      debounceTimeout.current = setTimeout(() => {
+        setIsNavbarVisible(latestDirection.current === 'up');
+      }, debounceMs);
     }
     
     lastScrollTop.current = scrollTop;
@@ -154,7 +158,7 @@ export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
   // Set up scroll event listener
   useEffect(() => {
     const scrollHandler = (event: Event) => {
-      handleScrollEvent(event as CustomEvent);
+      handleScrollEvent(event as CustomEvent<ChatScrollDetail>);
     };
 
     window.addEventListener('chat-scroll', scrollHandler);
@@ -169,6 +173,6 @@ export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
 
   return {
     isNavbarVisible,
-    lastScrollDirection: lastScrollDirection.current
+    lastScrollDirection: latestDirection.current
   };
 }; 
