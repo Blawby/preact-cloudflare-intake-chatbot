@@ -35,7 +35,7 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
             {/* Team Profile Section */}
             <Button
               variant="ghost"
-              size="icon"
+              size="md"
               onClick={onOpenSidebar}
               aria-label={`Open ${teamConfig.name || 'team'} menu`}
             >

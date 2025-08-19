@@ -1,10 +1,11 @@
 import { ComponentChildren, toChildArray, cloneElement } from 'preact';
+import type { JSX } from 'preact';
+import { forwardRef } from 'preact/compat';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends JSX.HTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
-  onClick?: () => void;
   children: ComponentChildren;
   className?: string;
   type?: 'button' | 'submit' | 'reset';
@@ -19,7 +20,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   title?: string;
 }
 
-export function Button({
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   variant = 'primary',
   size = 'md',
   disabled = false,
@@ -37,13 +38,13 @@ export function Button({
   'aria-describedby': ariaDescribedby,
   title,
   ...rest
-}: ButtonProps) {
+}, ref) {
   // Check if this is an icon-only button (no children, only icon)
   const hasChildren = toChildArray(children).length > 0;
   const isIconOnly = !hasChildren && Boolean(icon);
   
   // Development-time accessibility warning for icon-only buttons
-  if (process.env.NODE_ENV !== 'production' && isIconOnly) {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && isIconOnly) {
     const hasAccessibleLabel = Boolean(ariaLabel || rest['aria-labelledby'] || title);
     if (!hasAccessibleLabel) {
       console.warn(
@@ -115,6 +116,7 @@ export function Button({
   
   return (
     <button
+      ref={ref}
       type={type}
       className={classes}
       disabled={disabled}
@@ -130,4 +132,4 @@ export function Button({
       {renderContent()}
     </button>
   );
-} 
+}); 
