@@ -6,6 +6,12 @@ interface UseChatScrollOptions {
   autoScrollOnNewMessage?: boolean;
 }
 
+// Strongly-typed event detail for chat scroll events
+type ChatScrollDetail = { 
+  scrollTop: number; 
+  scrollDelta: number 
+};
+
 export const useChatScroll = (options: UseChatScrollOptions = {}) => {
   const {
     threshold = 50,
@@ -105,5 +111,68 @@ export const useChatScroll = (options: UseChatScrollOptions = {}) => {
     isAtBottom,
     scrollToBottom: forceScrollToBottom,
     scrollOnNewMessage
+  };
+};
+
+// New hook for navbar scroll behavior with threshold
+interface UseNavbarScrollOptions {
+  threshold?: number; // Minimum scroll distance to trigger navbar visibility
+  debounceMs?: number; // Debounce delay for scroll events
+}
+
+export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
+  const {
+    threshold = 200,
+    debounceMs = 100
+  } = options;
+
+  const [isNavbarVisible, setIsNavbarVisible] = useState(true);
+  const lastScrollTop = useRef(0);
+  const latestDirection = useRef<'up' | 'down' | null>(null);
+  const debounceTimeout = useRef<number | null>(null);
+
+  const handleScrollEvent = useCallback((event: CustomEvent<ChatScrollDetail>) => {
+    const { scrollTop, scrollDelta } = event.detail;
+    
+    // Clear existing timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    // Only process if scroll distance is significant
+    if (scrollDelta > threshold) {
+      const direction = scrollTop < lastScrollTop.current ? 'up' : 'down';
+      
+      // Always update the latest direction
+      latestDirection.current = direction;
+      
+      // Always reschedule the debounce with the latest direction
+      debounceTimeout.current = setTimeout(() => {
+        setIsNavbarVisible(latestDirection.current === 'up');
+      }, debounceMs);
+    }
+    
+    lastScrollTop.current = scrollTop;
+  }, [threshold, debounceMs]);
+
+  // Set up scroll event listener
+  useEffect(() => {
+    const scrollHandler = (event: Event) => {
+      handleScrollEvent(event as CustomEvent<ChatScrollDetail>);
+    };
+
+    window.addEventListener('chat-scroll', scrollHandler);
+    
+    return () => {
+      window.removeEventListener('chat-scroll', scrollHandler);
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [handleScrollEvent]);
+
+  return {
+    isNavbarVisible,
+    lastScrollDirection: latestDirection.current
   };
 }; 

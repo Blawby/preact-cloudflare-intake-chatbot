@@ -30,14 +30,16 @@ interface VirtualMessageListProps {
     sessionId?: string;
     teamId?: string;
     onFeedbackSubmit?: (feedback: any) => void;
+    
+
 }
 
 const BATCH_SIZE = 20;
 const SCROLL_THRESHOLD = 100;
 const DEBOUNCE_DELAY = 150;
 
-const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({ 
-    messages, 
+const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
+    messages,
     onDateSelect,
     onTimeOfDaySelect,
     onTimeSlotSelect,
@@ -71,11 +73,24 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         const isBottom = checkIfScrolledToBottom(element);
         setIsScrolledToBottom(isBottom);
 
+        // Dispatch scroll event for navbar visibility
+        const currentScrollTop = element.scrollTop;
+        const lastScrollTop = (element as any).lastScrollTop || 0;
+        const scrollDelta = Math.abs(currentScrollTop - lastScrollTop);
+        
+        if (scrollDelta > 0) {
+            window.dispatchEvent(new CustomEvent('chat-scroll', {
+                detail: { scrollTop: currentScrollTop, scrollDelta }
+            }));
+        }
+        
+        (element as any).lastScrollTop = currentScrollTop;
+
         // Load more messages when scrolling up
         if (element.scrollTop < SCROLL_THRESHOLD && startIndex > 0) {
             const newStartIndex = Math.max(0, startIndex - BATCH_SIZE);
             setStartIndex(newStartIndex);
-            
+
             // Maintain scroll position when loading more messages
             requestAnimationFrame(() => {
                 if (listRef.current) {
@@ -105,6 +120,8 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         };
     }, [debouncedHandleScroll]);
 
+
+
     useEffect(() => {
         // Update indices when new messages are added
         if (isScrolledToBottom || messages[messages.length - 1]?.isUser) {
@@ -132,14 +149,14 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     const visibleMessages = messages.slice(startIndex, endIndex);
 
     return (
-        <div 
-            className="flex-1 overflow-y-auto p-4 pb-40 scroll-smooth w-full scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600" 
+        <div
+            className="flex-1 overflow-y-auto p-4 pb-40 scroll-smooth w-full scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
             ref={listRef}
         >
             {/* Team Profile Header - Fixed at top of scrollable area */}
             {teamConfig && (
                 <div className="flex flex-col items-center py-8 px-4 pb-6 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg mb-4">
-                    <TeamProfile 
+                    <TeamProfile
                         name={teamConfig.name}
                         profileImage={teamConfig.profileImage}
                         teamId={teamId}
@@ -149,10 +166,10 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                     />
                 </div>
             )}
-            
+
             {startIndex > 0 && (
                 <div className="flex justify-center items-center py-4">
-                    					<div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm lg:text-base">Loading more messages...</div>
+                    <div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm lg:text-base">Loading more messages...</div>
                 </div>
             )}
             <ErrorBoundary>
@@ -162,21 +179,8 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         content={message.content}
                         isUser={message.isUser}
                         files={message.files}
-                        scheduling={message.scheduling}
-                        matterCreation={message.matterCreation}
-                        welcomeMessage={message.welcomeMessage}
                         matterCanvas={message.matterCanvas}
                         paymentEmbed={message.paymentEmbed}
-                        qualityScore={message.qualityScore}
-                        onDateSelect={onDateSelect}
-                        onTimeOfDaySelect={onTimeOfDaySelect}
-                        onTimeSlotSelect={onTimeSlotSelect}
-                        onRequestMoreDates={onRequestMoreDates}
-                        onServiceSelect={onServiceSelect}
-                        onUrgencySelect={onUrgencySelect}
-                        onCreateMatter={onCreateMatter}
-                        onScheduleConsultation={onScheduleConsultation}
-                        onLearnServices={onLearnServices}
                         teamConfig={teamConfig}
                         onOpenSidebar={onOpenSidebar}
                         isLoading={message.isLoading}

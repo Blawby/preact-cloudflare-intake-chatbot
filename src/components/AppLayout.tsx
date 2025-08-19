@@ -10,12 +10,14 @@ import PrivacySupportSidebar from './PrivacySupportSidebar';
 import TeamProfile from './TeamProfile';
 import { features } from '../config/features';
 import { ChatMessageUI } from '../../worker/types';
+import { useEffect, useState } from 'preact/hooks';
+import { useNavbarScroll } from '../hooks/useChatScroll';
 
 interface AppLayoutProps {
   teamNotFound: boolean;
   teamId: string;
   onRetryTeamConfig: () => void;
-  currentTab: string;
+  currentTab: 'chats';
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: (open: boolean) => void;
   teamConfig: {
@@ -44,12 +46,17 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     return <TeamNotFound teamId={teamId} onRetry={onRetryTeamConfig} />;
   }
 
+  const { isNavbarVisible } = useNavbarScroll({ 
+    threshold: 200, 
+    debounceMs: 100
+  });
+
   return (
     <div className="h-screen w-screen flex">
       {/* Left Sidebar - Fixed width, hidden on mobile */}
       {features.enableLeftSidebar && (
         <div className="w-20 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
-          <LeftSidebar 
+          <LeftSidebar
             currentRoute={currentTab}
             onOpenMenu={() => onToggleMobileSidebar(true)}
             teamConfig={{
@@ -90,7 +97,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
         </div>
       </div>
 
-      {/* Mobile Top Navigation */}
+
       <MobileTopNav
         teamConfig={{
           name: teamConfig.name,
@@ -99,11 +106,12 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           description: teamConfig.description
         }}
         onOpenSidebar={() => onToggleMobileSidebar(true)}
+        isVisible={isNavbarVisible}
       />
 
       {/* Mobile Bottom Navigation */}
       {features.enableMobileBottomNav && (
-        <BottomNavigation 
+        <BottomNavigation
           activeTab={currentTab}
         />
       )}
