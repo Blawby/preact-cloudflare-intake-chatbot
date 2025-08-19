@@ -10,6 +10,7 @@ import { useTheme } from '../hooks/useTheme';
 interface LeftSidebarProps {
   currentRoute: string;
   onOpenMenu?: () => void;
+  onGoToChats?: () => void;
   teamConfig?: {
     name: string;
     profileImage: string | null;
@@ -17,7 +18,7 @@ interface LeftSidebarProps {
   };
 }
 
-const LeftSidebar = ({ currentRoute, onOpenMenu, teamConfig }: LeftSidebarProps) => {
+const LeftSidebar = ({ currentRoute, onOpenMenu, onGoToChats, teamConfig }: LeftSidebarProps) => {
   const { isDark, toggleTheme } = useTheme();
 
   return (
@@ -32,6 +33,8 @@ const LeftSidebar = ({ currentRoute, onOpenMenu, teamConfig }: LeftSidebarProps)
               size="lg"
               icon={<ChatBubbleOvalLeftIcon className="w-6 h-6" />}
               title="Chats"
+              onClick={onGoToChats}
+              aria-current={currentRoute === 'chats' ? 'page' : undefined}
             />
           </div>
         </div>
@@ -44,13 +47,16 @@ const LeftSidebar = ({ currentRoute, onOpenMenu, teamConfig }: LeftSidebarProps)
             onClick={toggleTheme}
             icon={isDark ? <SunIcon className="w-6 h-6" /> : <MoonIcon className="w-6 h-6" />}
             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-pressed={isDark}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           />
           <Button
             variant="ghost"
             size="lg"
-            onClick={onOpenMenu}
+            onClick={() => onOpenMenu?.()}
             icon={<Bars3Icon className="w-6 h-6" />}
             title="Menu"
+            aria-label="Open menu"
           />
         </div>
       </div>

@@ -28,17 +28,16 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
           transition={{ 
             type: "spring", 
             stiffness: 300, 
-            damping: 30,
-            duration: 0.3
+            damping: 30
           }}
         >
           <div className="flex items-center justify-between px-4">
             {/* Team Profile Section */}
             <Button
               variant="ghost"
+              size="icon"
               onClick={onOpenSidebar}
-              aria-label="Open team menu"
-              className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover"
+              aria-label={`Open ${teamConfig.name || 'team'} menu`}
             >
               <div className="flex items-center gap-3">
                 <img 
@@ -59,19 +58,21 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
             </Button>
 
             {/* Right Section - Theme Toggle and Menu */}
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="lg"
                 onClick={toggleTheme}
-                icon={isDark ? <SunIcon className="w-6 h-6" /> : <MoonIcon className="w-6 h-6" />}
+                icon={isDark ? <SunIcon className="w-6 h-6" aria-hidden="true" /> : <MoonIcon className="w-6 h-6" aria-hidden="true" />}
+                aria-label="Toggle theme"
+                aria-pressed={isDark}
                 title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               />
               <Button
                 variant="ghost"
                 size="lg"
                 onClick={onOpenSidebar}
-                icon={<Bars3Icon className="w-6 h-6" />}
+                icon={<Bars3Icon className="w-6 h-6" aria-hidden="true" focusable="false" />}
                 aria-label="Open menu"
               />
             </div>

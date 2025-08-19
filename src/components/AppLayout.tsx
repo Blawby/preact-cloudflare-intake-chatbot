@@ -15,6 +15,11 @@ import { useNavbarScroll } from '../hooks/useChatScroll';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
 
+// Simple messages object for localization
+const messages = {
+  findLawyer: 'Find Lawyer'
+};
+
 interface AppLayoutProps {
   teamNotFound: boolean;
   teamId: string;
@@ -22,6 +27,7 @@ interface AppLayoutProps {
   currentTab: 'chats';
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: (open: boolean) => void;
+  onGoToChats?: () => void;
   teamConfig: {
     name: string;
     profileImage: string | null;
@@ -39,8 +45,9 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   currentTab,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
+  onGoToChats,
   teamConfig,
-  messages,
+  messages: chatMessages,
   onRequestConsultation,
   children
 }) => {
@@ -53,6 +60,19 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     debounceMs: 100
   });
 
+  // Async-safe wrapper for consultation request
+  const handleRequestConsultation = async () => {
+    if (!onRequestConsultation) return;
+    
+    try {
+      await onRequestConsultation();
+    } catch (error) {
+      console.error('Error requesting consultation:', error);
+      // Surface error to user - could be enhanced with a toast notification
+      // For now, just log to console
+    }
+  };
+
   return (
     <div className="h-screen w-screen flex">
       {/* Left Sidebar - Fixed width, hidden on mobile */}
@@ -61,6 +81,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           <LeftSidebar
             currentRoute={currentTab}
             onOpenMenu={() => onToggleMobileSidebar(true)}
+            onGoToChats={onGoToChats}
             teamConfig={{
               name: teamConfig.name,
               profileImage: teamConfig.profileImage,
@@ -93,18 +114,19 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           {onRequestConsultation && (
             <div className="flex flex-col gap-3">
               <Button
-                onClick={onRequestConsultation}
+                onClick={handleRequestConsultation}
                 variant="primary"
+                type="button"
                 icon={<UserIcon className="w-4 h-4" />}
               >
-                Find Lawyer
+                {messages.findLawyer}
               </Button>
             </div>
           )}
 
           {/* Media Section */}
           <div className="border-t border-gray-200 dark:border-dark-border pt-4">
-            <MediaSidebar messages={messages} />
+            <MediaSidebar messages={chatMessages} />
           </div>
 
           {/* Privacy & Support Section */}
@@ -128,6 +150,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       {features.enableMobileBottomNav && (
         <BottomNavigation
           activeTab={currentTab}
+          onGoToChats={onGoToChats}
         />
       )}
 
@@ -141,7 +164,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           teamId: teamId,
           description: teamConfig.description
         }}
-        messages={messages}
+        messages={chatMessages}
         onRequestConsultation={onRequestConsultation}
       />
     </div>

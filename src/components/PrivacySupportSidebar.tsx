@@ -11,7 +11,7 @@ interface PrivacySupportSidebarProps {
 const PrivacySupportSidebar = ({ className }: PrivacySupportSidebarProps) => {
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className={`flex flex-col gap-6 ${className || ''}`}>
       {/* Privacy & Support Section */}
       <div className="flex flex-col gap-3">
         <h4 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-900 dark:text-white">Privacy & Support</h4>

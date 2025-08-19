@@ -163,7 +163,9 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                 onClick={() => isReadyToUpload && setIsOpen(!isOpen)}
                 title={isReadyToUpload ? "Add attachment" : "File upload not ready yet"}
                 aria-label="Open file attachment menu"
-                aria-haspopup="true"
+                id="attachment-menu-button"
+                aria-haspopup="menu"
+                aria-controls="attachment-menu"
                 aria-expanded={isOpen}
                 ref={triggerRef}
                 disabled={!isReadyToUpload}
@@ -175,7 +177,8 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                 <div 
                     className={`absolute bottom-full left-0 mb-2 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-1 min-w-[200px] shadow-lg z-[2000] transition-all duration-200 ${isClosing ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}
                     role="menu"
-                    aria-labelledby="attachment-menu"
+                    id="attachment-menu"
+                    aria-labelledby="attachment-menu-button"
                 >
                     <Button 
                         type="button" 
