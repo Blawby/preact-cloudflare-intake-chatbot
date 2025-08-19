@@ -1,61 +1,57 @@
 import { env, applyD1Migrations, fetchMock } from "cloudflare:test";
-import { readD1Migrations } from "@cloudflare/vitest-pool-workers/config";
-import { beforeAll, afterAll } from "vitest";
-import path from "node:path";
-import type { Env } from "../worker/types";
+import { getTestTeamConfigForDB } from './fixtures/agent-test-data';
 
 // Type augmentation for cloudflare:test
 declare module "cloudflare:test" {
   interface ProvidedEnv extends Env {}
 }
 
-export async function setupDB() {
-  console.log('Setting up database migrations...');
+// Apply migrations to the test database
+await applyD1Migrations(env.DB, { migrationsFolder: "./migrations" });
+
+// Set up test data in the database
+const testTeams = [
+  'test-team-1',
+  'test-team-disabled', 
+  'blawby-ai'
+];
+
+for (const teamId of testTeams) {
+  const teamConfig = getTestTeamConfigForDB(teamId);
   
-  try {
-    // Read and apply D1 migrations
-    const migrations = await readD1Migrations(path.join(process.cwd(), "migrations"));
-    await applyD1Migrations(env.DB, migrations);
-    console.log(`Applied ${migrations.length} database migrations`);
-    
-    // Create test teams for testing
-    await env.DB.prepare(`
-      INSERT OR IGNORE INTO teams (id, slug, name, config) 
-      VALUES (?, ?, ?, ?)
-    `).bind(
-      'test-team-1',
-      'test-team',
-      'Test Team',
-      JSON.stringify({
-        features: { enableParalegalAgent: true },
-        aiModel: 'llama',
-        consultationFee: 0,
-        requiresPayment: false
-      })
-    ).run();
-
-    await env.DB.prepare(`
-      INSERT OR IGNORE INTO teams (id, slug, name, config) 
-      VALUES (?, ?, ?, ?)
-    `).bind(
-      'test-team-disabled',
-      'test-team-disabled',
-      'Test Team (Paralegal Disabled)',
-      JSON.stringify({
-        features: { enableParalegalAgent: false },
-        aiModel: 'llama',
-        consultationFee: 0,
-        requiresPayment: false
-      })
-    ).run();
-
-    console.log('Created test teams');
-    
-  } catch (error) {
-    console.error('Database setup failed:', error);
-    throw error;
-  }
+  // Insert test team into database
+  await env.DB.prepare(`
+    INSERT OR REPLACE INTO teams (id, slug, name, config, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(
+    teamConfig.id,
+    teamConfig.slug,
+    teamConfig.name,
+    teamConfig.config,
+    teamConfig.created_at,
+    teamConfig.updated_at
+  ).run();
+  
+  console.log(`✅ Created test team: ${teamConfig.name} (${teamConfig.id})`);
 }
+
+// Set up mock fetch for external API calls
+fetchMock.activate();
+fetchMock.disableNetConnect();
+
+// Mock external API responses
+fetchMock
+  .post('https://api.resend.com/emails', { id: 'test-email-id' })
+  .post('https://staging.blawby.com/api/matters', { 
+    success: true, 
+    matter: { id: 'test-matter-id' } 
+  })
+  .get('https://staging.blawby.com/api/teams/*', { 
+    success: true, 
+    team: { id: 'test-team-1' } 
+  });
+
+console.log('🚀 Test environment setup complete!');
 
 export async function seedTestData() {
   // Create test matter for conflict checking

@@ -55,7 +55,8 @@ const unifiedConfig = defineConfig({
     include: [
       'tests/unit/**/*.{test,spec}.{js,ts,jsx,tsx}',
       'tests/integration/**/*.{test,spec}.ts',
-      'tests/paralegal/**/*.{test,spec}.ts'
+      'tests/paralegal/**/*.{test,spec}.ts',
+      'tests/llm-judge/**/*.{test,spec}.ts'
     ],
     exclude: [
       'node_modules/**',
