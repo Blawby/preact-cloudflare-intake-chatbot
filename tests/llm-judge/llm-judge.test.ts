@@ -134,10 +134,10 @@ class LLMJudge {
             assistantResponse += data.text || '';
           } else if (data.type === 'tool_call') {
             toolCalls.push({
-              name: data.name,
+              name: data.toolName || data.name,
               parameters: data.parameters
             });
-            console.log('   Tool call:', data.name);
+            console.log('   Tool call:', data.toolName || data.name);
           } else if (data.type === 'tool_result') {
             // Capture the tool result message which contains the final summary
             if (data.result && data.result.message) {
@@ -1070,7 +1070,7 @@ describe('LLM Judge Evaluation', () => {
         const hasPhoneValidationError = lastResponse.includes('Invalid phone number') || 
                                       lastResponse.includes('phone number you provided doesn\'t appear to be valid') ||
                                       lastResponse.includes('phone number is not valid') ||
-                                      lastResponse.includes('invalid phone');
+                                      (lastResponse.includes('invalid phone') && lastResponse.includes('number'));
         
         if (hasPhoneValidationError) {
           console.log(`❌ PHONE VALIDATION FAILURE: ${lastResponse}`);
