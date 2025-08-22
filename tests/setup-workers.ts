@@ -19,6 +19,7 @@ const testTeams = [
 
 console.log('🚀 Test environment setup complete!');
 
+// biome-disable-line noExportsInTest
 export async function seedTestData() {
   // Create test matter for conflict checking
   await env.DB.prepare(`
@@ -106,6 +107,7 @@ afterAll(async () => {
 });
 
 // Test utilities
+// biome-disable-line noExportsInTest
 export async function createTestMatter(teamId: string = 'test-team-1', overrides: Record<string, any> = {}) {
   const matterId = `test-matter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
@@ -137,6 +139,7 @@ export async function createTestMatter(teamId: string = 'test-team-1', overrides
   return matterId;
 }
 
+// biome-disable-line noExportsInTest
 export async function enableParalegalForTeam(teamId: string) {
   await env.DB.prepare(`
     UPDATE teams 
@@ -145,6 +148,7 @@ export async function enableParalegalForTeam(teamId: string) {
   `).bind(teamId).run();
 }
 
+// biome-disable-line noExportsInTest
 export async function disableParalegalForTeam(teamId: string) {
   await env.DB.prepare(`
     UPDATE teams 
@@ -153,6 +157,7 @@ export async function disableParalegalForTeam(teamId: string) {
   `).bind(teamId).run();
 }
 
+// biome-disable-line noExportsInTest
 export function createAdvanceRequest(data: {
   teamId?: string;
   matterId?: string;
@@ -181,6 +186,7 @@ export function createAdvanceRequest(data: {
   });
 }
 
+// biome-disable-line noExportsInTest
 export function createStatusRequest(teamId: string = 'test-team-1', matterId: string = 'test-matter-1') {
   return new Request(`https://do.local/paralegal/${teamId}/${matterId}/status`, {
     method: 'GET'
@@ -188,6 +194,7 @@ export function createStatusRequest(teamId: string = 'test-team-1', matterId: st
 }
 
 // Mock AI service for consistent testing
+// biome-disable-line noExportsInTest
 export function mockAIService(responses: Record<string, any> = {}) {
   const defaultResponse = { response: JSON.stringify({ riskLevel: 'low', recommendations: [] }) };
   

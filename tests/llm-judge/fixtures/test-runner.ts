@@ -278,6 +278,7 @@ Provide scores for each criterion and overall feedback.
   }
 }
 
+// biome-disable-line noExportsInTest
 export async function runTestsAndGenerateReport(): Promise<string> {
   const apiUrl = process.env.TEST_API_URL || 'http://localhost:8787';
   const teamId = process.env.TEST_TEAM_ID || 'blawby-ai';

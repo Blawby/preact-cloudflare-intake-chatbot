@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fetch from 'node-fetch';
 import conversations from './fixtures/conversations.json';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import type { ToolCall } from '../../worker/routes/judge';
 
 // Helper function to escape HTML content
@@ -42,6 +42,8 @@ interface TestResult {
     feedback: string;
     criticalIssues: string[];
     suggestions: string[];
+    flags: Record<string, boolean>;
+    conversationAnalysis?: any;
   };
   passed: boolean;
   responseTime: number;
@@ -62,7 +64,8 @@ interface JudgeEvaluation {
   suggestions: string[];
   scores: Record<string, number>;
   averageScore: number;
-  flags: string[];
+  flags: Record<string, boolean>;
+  conversationAnalysis?: any;
 }
 
 class LLMJudge {
@@ -241,16 +244,52 @@ class LLMJudge {
       body: JSON.stringify(requestBody)
     });
 
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorBody = await response.json();
+        errorMessage += ` - ${JSON.stringify(errorBody)}`;
+      } catch (parseError) {
+        try {
+          const errorText = await response.text();
+          errorMessage += ` - ${errorText}`;
+        } catch (textError) {
+          // If we can't parse the error body, just use the status
+        }
+      }
+      throw new Error(`Judge evaluation failed: ${errorMessage}`);
+    }
+
     const result = await response.json() as any;
     
     console.log('🔍 Judge response:', JSON.stringify(result, null, 2));
     
     if (!result.success) {
-      throw new Error(`Judge evaluation failed: ${result.error}`);
+      const errorDetails = result.error || result.message || 'Unknown error';
+      throw new Error(`Judge evaluation failed: ${errorDetails}`);
     }
 
-    // The judge response is nested in data.scores
-    return result.data?.scores || result.scores;
+    // Normalize the response to a stable shape
+    const data = result.data || result;
+    const normalizedResponse = {
+      scores: data.scores || data,
+      feedback: data.feedback || '',
+      flags: data.flags || {},
+      averageScore: data.averageScore || 0,
+      conversationAnalysis: data.conversationAnalysis || null
+    };
+
+    console.log('Normalized judge response:', JSON.stringify(normalizedResponse, null, 2));
+
+    // Return scores plus feedback fields for reporting
+    return {
+      ...(normalizedResponse.scores || {}),
+      feedback: normalizedResponse.feedback,
+      criticalIssues: data.criticalIssues || [],
+      suggestions: data.suggestions || [],
+      flags: normalizedResponse.flags,
+      conversationAnalysis: normalizedResponse.conversationAnalysis
+    };
   }
 
   async runConversationTest(conversation: any): Promise<TestResult> {
@@ -355,7 +394,7 @@ class LLMJudge {
           const emailMatch = emailMessage.content.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
           nextUserMessage = emailMatch ? `My email is ${emailMatch[1]}.` : emailMessage.content;
         }
-      } else if (response.includes('describe what you need help with') || response.includes('briefly describe') || response.includes('what you need help with')) {
+      } else if (response.includes('describe what you need help with') || response.includes('briefly describe') || response.includes('what you need help with') || response.includes('legal situation')) {
         // Agent is asking for matter description - provide just the description
         const descriptionMessage = conversation.messages.find(m => 
           m.role === 'user' && 
@@ -363,6 +402,9 @@ class LLMJudge {
         );
         if (descriptionMessage) {
           nextUserMessage = descriptionMessage.content;
+        } else {
+          // For minimal information cases, provide a generic response
+          nextUserMessage = "I need legal help but I'm not sure what specific type of legal issue I have. I'd like to speak with a lawyer to understand my options.";
         }
       }
       
@@ -1084,13 +1126,20 @@ describe('LLM Judge Evaluation', () => {
     // Generate HTML report after all tests complete
     if (testResults.length > 0) {
       const htmlReport = generateHTMLReport(testResults);
+      
+      // Ensure test-results directory exists
+      try {
+        await mkdir('test-results', { recursive: true });
+      } catch (error) {
+        console.error('Error creating test-results directory:', error);
+      }
+      
       await writeFile('test-results/llm-judge-report.html', htmlReport);
       console.log(`\n📊 HTML Report generated: test-results/llm-judge-report.html`);
       
       // Auto-open the HTML report
       try {
-        const { exec } = require('child_process');
-        const open = require('open');
+        const open = (await import('open')).default;
         await open('test-results/llm-judge-report.html');
         console.log('🌐 HTML report opened in browser');
       } catch (error) {

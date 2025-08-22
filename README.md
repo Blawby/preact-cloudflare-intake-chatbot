@@ -85,9 +85,9 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 
 **Running Tests:**
 ```bash
-# Start the API server
+# Start the development servers (required for tests)
 npm run dev  # Vite frontend
-npx wrangler dev  # Cloudflare Worker API
+npx wrangler dev  # Cloudflare Worker API (required for integration tests)
 
 # Run LLM Judge tests
 npm run test:llm-judge
@@ -168,9 +168,13 @@ wrangler d1 execute blawby-ai-chatbot --command "SELECT * FROM teams;"
    wrangler deploy
    ```
 
-5. **Start development server**
+5. **Start development servers**
    ```bash
+   # Start the frontend development server
    npm run dev
+   
+   # In a separate terminal, start the Cloudflare Worker API server
+   npx wrangler dev
    ```
 
 ## 🔧 **Configuration**
@@ -351,6 +355,30 @@ The `wrangler.toml` file is pre-configured with:
 - Proper CORS and security headers
 
 ## 🧪 **Testing**
+
+### Running Tests
+
+**Prerequisites:**
+```bash
+# Start both development servers (required for integration tests)
+npm run dev  # Frontend server
+npx wrangler dev  # Cloudflare Worker API server
+```
+
+**Available Test Commands:**
+```bash
+# Run unit tests
+npm run test:unit
+
+# Run integration tests (requires wrangler dev server)
+npm run test:integration
+
+# Run LLM Judge tests (requires wrangler dev server)
+npm run test:llm-judge
+
+# Run all tests
+npm test
+```
 
 ### Manual Testing
 
