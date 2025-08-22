@@ -1,4 +1,6 @@
 import conversations from './conversations.json';
+import type { ToolCall } from '../../../worker/routes/judge';
+import type { ReadableStream } from 'stream/web';
 
 // Simple LLMJudge class for the test runner
 class LLMJudge {
@@ -12,7 +14,7 @@ class LLMJudge {
 
   async generateAssistantResponse(messages: any[], sessionId: string): Promise<{
     response: string;
-    toolCalls: any[];
+    toolCalls: ToolCall[];
     responseTime: number;
   }> {
     const startTime = Date.now();
@@ -39,14 +41,26 @@ class LLMJudge {
     }
 
     let assistantResponse = '';
-    let toolCalls: any[] = [];
+    let toolCalls: ToolCall[] = [];
 
     // Handle the streaming response
     const chunks: string[] = [];
     
-    // Collect all chunks
-    for await (const chunk of response.body as any) {
-      chunks.push(chunk.toString());
+    // Collect all chunks with proper typing
+    const stream = response.body as ReadableStream<Uint8Array>;
+    const reader = stream.getReader();
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        // Convert Uint8Array to string using Buffer
+        const chunk = Buffer.from(value).toString();
+        chunks.push(chunk);
+      }
+    } finally {
+      reader.releaseLock();
     }
     
     const fullResponse = chunks.join('');
@@ -85,7 +99,7 @@ class LLMJudge {
     };
   }
 
-  async evaluateResponse(conversation: any, userMessage: string, assistantResponse: string, toolCalls: any[]): Promise<any> {
+  async evaluateResponse(conversation: any, userMessage: string, assistantResponse: string, toolCalls: ToolCall[]): Promise<any> {
     const evaluationPrompt = `
 You are an expert legal AI evaluator. Rate the following AI assistant response on a scale of 1-10 for each criterion:
 
@@ -138,15 +152,18 @@ Provide scores for each criterion and overall feedback.
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       try {
-        const errorBody = await response.json();
-        errorMessage += ` - ${JSON.stringify(errorBody)}`;
-      } catch (parseError) {
+        // Read the response body once
+        const responseText = await response.text();
         try {
-          const errorText = await response.text();
-          errorMessage += ` - ${errorText}`;
-        } catch (textError) {
-          // If we can't parse the error body, just use the status
+          // Try to parse as JSON first
+          const errorBody = JSON.parse(responseText);
+          errorMessage += ` - ${JSON.stringify(errorBody)}`;
+        } catch (jsonError) {
+          // If JSON parsing fails, use the raw text
+          errorMessage += ` - ${responseText}`;
         }
+      } catch (textError) {
+        // If we can't read the response body at all, just use the status
       }
       throw new Error(`Judge evaluation failed: ${errorMessage}`);
     }
@@ -188,7 +205,7 @@ Provide scores for each criterion and overall feedback.
   async runConversationTest(conversation: any): Promise<any> {
     const sessionId = `test-${conversation.id}-${Date.now()}`;
     const actualResponses: string[] = [];
-    const actualToolCalls: any[] = [];
+    const actualToolCalls: ToolCall[] = [];
     let totalResponseTime = 0;
     const conversationHistory: Array<{role: 'user' | 'assistant', content: string}> = [];
 

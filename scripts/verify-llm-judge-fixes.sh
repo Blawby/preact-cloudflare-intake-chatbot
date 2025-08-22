@@ -54,31 +54,31 @@ echo ""
 echo "📋 Checking for implemented fixes..."
 
 # Check for proper slice usage with length check
-check_pattern "conversation\\.expectedToolCalls\\.length === 0" \
+check_pattern "conversation\\.expectedToolCalls\\.length\\s*===\s*0" \
     "Proper slice usage with length check" \
     "tests/**/*.{ts,tsx}" \
     "true"
 
 # Check for HTTP status checks
-check_pattern "if \\(!response\\.ok\\)" \
+check_pattern "if\\s*\\(\\s*!response\\.ok\\s*\\)" \
     "HTTP status checks implemented" \
     "tests/**/*.{ts,tsx}" \
     "true"
 
 # Check for proper conversation history management
-check_pattern "const conversationHistory: Array<" \
+check_pattern "const\\s+conversationHistory\\s*:\\s*Array<" \
     "Proper conversation history management" \
     "tests/**/*.{ts,tsx}" \
     "true"
 
 # Check for HTML escaping function
-check_pattern "function escapeHtml" \
+check_pattern "function\\s+escapeHtml" \
     "HTML escaping function implemented" \
     "tests/**/*.{ts,tsx}" \
     "true"
 
 # Check for use of escapeHtml in content
-check_pattern "escapeHtml\\(.*\\.content\\)" \
+check_pattern "escapeHtml\\s*\\(\\s*.*\\.content\\s*\\)" \
     "HTML escaping applied to content" \
     "tests/**/*.{ts,tsx}" \
     "true"

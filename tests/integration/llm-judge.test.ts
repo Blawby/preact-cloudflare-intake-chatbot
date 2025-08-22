@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fetch from 'node-fetch';
 import conversations from '../llm-judge/fixtures/conversations.json';
 import { writeFile, mkdir } from 'fs/promises';
+import type { ToolCall } from '../../worker/routes/judge';
 
 // Configuration
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:8787';
@@ -18,8 +19,8 @@ interface TestResult {
     timestamp?: string;
   }>;
   actualResponses: string[];
-  expectedToolCalls: any[];
-  actualToolCalls: any[];
+  expectedToolCalls: ToolCall[];
+  actualToolCalls: ToolCall[];
   evaluation: {
     scores: Record<string, number>;
     averageScore: number;
@@ -57,7 +58,7 @@ export class LLMJudge {
 
   async generateAssistantResponse(messages: any[], sessionId: string): Promise<{
     response: string;
-    toolCalls: any[];
+    toolCalls: ToolCall[];
     responseTime: number;
   }> {
     const startTime = Date.now();
@@ -84,7 +85,7 @@ export class LLMJudge {
     }
 
     let assistantResponse = '';
-    let toolCalls: any[] = [];
+    let toolCalls: ToolCall[] = [];
     let hasError = false;
     let errorMessage = '';
 
@@ -146,7 +147,7 @@ export class LLMJudge {
     testCase: any,
     userMessage: string,
     assistantResponse: string,
-    toolCalls: any[]
+    toolCalls: ToolCall[]
   ): Promise<JudgeEvaluation> {
     const evaluationPrompt = `
 TEST CASE: ${testCase.scenario}
@@ -187,13 +188,33 @@ RESPONSE FORMAT (JSON only):
 }
 `;
 
+    // Format the testCase object to match the expected structure
+    const formattedTestCase = {
+      testCaseId: testCase.id,
+      scenario: testCase.scenario,
+      expectedBehavior: [
+        'Collect client information efficiently and naturally',
+        'Create matter with appropriate parameters and urgency assessment',
+        'Provide clear next steps and guidance',
+        'Maintain professional and empathetic tone throughout'
+      ],
+      criticalRequirements: [
+        'Must collect name, phone, email, location, and matter description',
+        'Must call create_matter tool with correct parameters',
+        'Must provide summary and next steps after matter creation',
+        'Must NOT mention costs or pricing unless specifically asked',
+        'Must NOT assume legal issue types without user confirmation'
+      ],
+      minScore: 7.0
+    };
+
     const response = await fetch(`${this.apiUrl}/api/judge`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        testCase,
+        testCase: formattedTestCase,
         userMessage,
         agentResponse: assistantResponse,
         toolCalls,
@@ -237,7 +258,7 @@ RESPONSE FORMAT (JSON only):
   async runConversationTest(conversation: any): Promise<TestResult> {
     const sessionId = `test-${conversation.id}-${Date.now()}`;
     const actualResponses: string[] = [];
-    const actualToolCalls: any[] = [];
+    const actualToolCalls: ToolCall[] = [];
     let totalResponseTime = 0;
     const conversationHistory: Array<{role: 'user' | 'assistant', content: string}> = [];
 
@@ -292,6 +313,11 @@ RESPONSE FORMAT (JSON only):
     const averageScore = numericScores.length > 0 ? numericScores.reduce((sum, score) => sum + score, 0) / numericScores.length : 0;
     const passed = averageScore >= 7.0; // Minimum passing score
 
+    // Extract only numeric score values for the scores field
+    const scoresOnly = Object.fromEntries(
+      Object.entries(evaluation).filter(([_, value]) => typeof value === 'number')
+    );
+
     return {
       conversationId: conversation.id,
       user: conversation.user,
@@ -301,7 +327,7 @@ RESPONSE FORMAT (JSON only):
       expectedToolCalls: conversation.expectedToolCalls,
       actualToolCalls: finalToolCalls,
       evaluation: {
-        scores: evaluation,
+        scores: scoresOnly,
         averageScore,
         feedback: evaluation.feedback,
         criticalIssues: evaluation.criticalIssues,

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fetch from 'node-fetch';
 import conversations from './fixtures/conversations.json';
 import { writeFile } from 'fs/promises';
+import type { ToolCall } from '../../worker/routes/judge';
 
 // Configuration
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:8787';
@@ -23,8 +24,8 @@ interface TestResult {
     content: string;
     timestamp?: string;
   }>;
-  expectedToolCalls: any[];
-  actualToolCalls: any[];
+  expectedToolCalls: ToolCall[];
+  actualToolCalls: ToolCall[];
   evaluation: {
     scores: Record<string, number>;
     averageScore: number;
@@ -62,7 +63,7 @@ class LLMJudge {
 
   async generateAssistantResponse(messages: any[], sessionId: string): Promise<{
     response: string;
-    toolCalls: any[];
+    toolCalls: ToolCall[];
     responseTime: number;
   }> {
     const startTime = Date.now();
@@ -102,7 +103,7 @@ class LLMJudge {
     }
 
     let assistantResponse = '';
-    let toolCalls: any[] = [];
+    let toolCalls: ToolCall[] = [];
     let hasError = false;
     let errorMessage = '';
 
@@ -180,7 +181,7 @@ class LLMJudge {
     testCase: any,
     userMessage: string,
     assistantResponse: string,
-    toolCalls: any[]
+    toolCalls: ToolCall[]
   ): Promise<JudgeEvaluation> {
     // Create the testCase object in the format expected by the judge endpoint
     const judgeTestCase = {
@@ -242,7 +243,7 @@ class LLMJudge {
   async runConversationTest(conversation: any): Promise<TestResult> {
     const sessionId = `test-${conversation.id}-${Date.now()}`;
     const actualResponses: string[] = [];
-    const actualToolCalls: any[] = [];
+    const actualToolCalls: ToolCall[] = [];
     const conversationFlow: Array<{role: 'user' | 'assistant', content: string}> = [];
     let totalResponseTime = 0;
     let conversationHistory = [];

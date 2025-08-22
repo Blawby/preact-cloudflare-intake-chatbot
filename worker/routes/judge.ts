@@ -1,6 +1,16 @@
 import type { Env } from '../types';
 import { createSuccessResponse } from '../errorHandler';
 
+// Tool call interface for type safety
+export interface ToolCall {
+  name: string;
+  parameters: Record<string, any>;
+  result?: any;
+  error?: string;
+  timestamp?: number;
+  metadata?: Record<string, any>;
+}
+
 // TypeScript interfaces for the validated request shape
 interface JudgeTestCase {
   testCaseId: string;
@@ -14,8 +24,23 @@ interface JudgeRequest {
   testCase: JudgeTestCase;
   userMessage: string;
   agentResponse: string;
-  toolCalls?: any[];
+  toolCalls?: ToolCall[];
   prompt?: string;
+}
+
+// Validation function to check if a value is a valid ToolCall
+function isValidToolCall(value: any): value is ToolCall {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof value.name === 'string' &&
+    typeof value.parameters === 'object' &&
+    value.parameters !== null &&
+    (value.result === undefined || true) && // result can be any type
+    (value.error === undefined || typeof value.error === 'string') &&
+    (value.timestamp === undefined || typeof value.timestamp === 'number') &&
+    (value.metadata === undefined || (typeof value.metadata === 'object' && value.metadata !== null))
+  );
 }
 
 // Validation function to check if a value is a valid JudgeTestCase
@@ -25,8 +50,8 @@ function isValidTestCase(value: any): value is JudgeTestCase {
     value !== null &&
     typeof value.testCaseId === 'string' &&
     typeof value.scenario === 'string' &&
-    (value.expectedBehavior === undefined || Array.isArray(value.expectedBehavior)) &&
-    (value.criticalRequirements === undefined || Array.isArray(value.criticalRequirements)) &&
+    (value.expectedBehavior === undefined || (Array.isArray(value.expectedBehavior) && value.expectedBehavior.every(el => typeof el === 'string'))) &&
+    (value.criticalRequirements === undefined || (Array.isArray(value.criticalRequirements) && value.criticalRequirements.every(el => typeof el === 'string'))) &&
     (value.minScore === undefined || typeof value.minScore === 'number')
   );
 }
@@ -39,7 +64,7 @@ function isValidJudgeRequest(value: any): value is JudgeRequest {
     isValidTestCase(value.testCase) &&
     typeof value.userMessage === 'string' &&
     typeof value.agentResponse === 'string' &&
-    (value.toolCalls === undefined || Array.isArray(value.toolCalls)) &&
+    (value.toolCalls === undefined || (Array.isArray(value.toolCalls) && value.toolCalls.every(tc => isValidToolCall(tc)))) &&
     (value.prompt === undefined || typeof value.prompt === 'string')
   );
 }
@@ -98,6 +123,11 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
       }
       if (body.toolCalls && !Array.isArray(body.toolCalls)) {
         typeErrors.push('toolCalls must be an array');
+      } else if (body.toolCalls && Array.isArray(body.toolCalls)) {
+        const invalidToolCalls = body.toolCalls.filter((tc: any, index: number) => !isValidToolCall(tc));
+        if (invalidToolCalls.length > 0) {
+          typeErrors.push(`toolCalls array contains invalid tool call objects at indices: ${invalidToolCalls.map((_, index) => body.toolCalls.findIndex(tc => !isValidToolCall(tc))).join(', ')}`);
+        }
       }
       if (body.prompt && typeof body.prompt !== 'string') {
         typeErrors.push('prompt must be a string');
