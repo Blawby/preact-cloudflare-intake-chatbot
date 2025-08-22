@@ -1238,8 +1238,7 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 3. If name but no location: ${locationPrompt}
 4. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 5. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-6. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
-7. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
+6. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?" If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
 **PRICING QUESTIONS:**
 - If user asks about pricing, costs, consultation fees, or financial concerns, ALWAYS respond with pricing information and then ask for their name

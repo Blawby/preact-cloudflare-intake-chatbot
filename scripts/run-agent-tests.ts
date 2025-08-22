@@ -3,7 +3,7 @@
 // Script to run AI agent tests and generate HTML report
 // Usage: npm run test:agent-report
 
-import { runTestsAndGenerateReport } from '../tests/fixtures/test-runner';
+import { runTestsAndGenerateReport } from '../tests/llm-judge/fixtures/test-runner.js';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 

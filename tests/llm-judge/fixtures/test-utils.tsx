@@ -25,9 +25,27 @@ export const mockApiResponse = (data: any, status = 200) => {
   });
 };
 
-// Mock API error
+// Mock API error - returns a resolved Promise that mimics a fetch Response with ok: false
 export const mockApiError = (status = 500, message = 'Internal Server Error') => {
-  return Promise.reject(new Error(message));
+  const errorPayload = { error: message, status };
+  
+  return Promise.resolve({
+    ok: false,
+    status,
+    statusText: message,
+    json: () => Promise.resolve(errorPayload),
+    text: () => Promise.resolve(message),
+    body: {
+      getReader: () => ({
+        read: () => Promise.resolve({ done: true, value: new TextEncoder().encode(message) })
+      })
+    }
+  });
+};
+
+// Mock network error - returns a rejected Promise to simulate true network failures
+export const mockNetworkError = (message = 'Network Error') => {
+  return Promise.reject(new TypeError(message));
 };
 
 // Test data factories

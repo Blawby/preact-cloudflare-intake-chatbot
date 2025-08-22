@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fetch from 'node-fetch';
-import conversations from '../fixtures/conversations.json';
-import { writeFile } from 'fs/promises';
+import conversations from '../llm-judge/fixtures/conversations.json';
+import { writeFile, mkdir } from 'fs/promises';
 
 // Configuration
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:8787';
-const TEAM_ID = process.env.TEST_TEAM_ID || 'test-team-1';
+const TEAM_ID = process.env.TEST_TEAM_ID || 'blawby-ai';
 const JUDGE_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 
 interface TestResult {
@@ -46,7 +46,7 @@ interface JudgeEvaluation {
   suggestions: string[];
 }
 
-class LLMJudge {
+export class LLMJudge {
   private apiUrl: string;
   private teamId: string;
 
@@ -207,8 +207,14 @@ RESPONSE FORMAT (JSON only):
       throw new Error(`Judge evaluation failed: ${result.error}`);
     }
 
-    // The judge response is nested in data.scores
-    return result.data?.scores || result.scores;
+    // Return scores plus feedback fields for reporting
+    const data = result.data || result;
+    return {
+      ...(data.scores || {}),
+      feedback: data.feedback,
+      criticalIssues: data.criticalIssues,
+      suggestions: data.suggestions
+    };
   }
 
   async runConversationTest(conversation: any): Promise<TestResult> {
@@ -639,6 +645,14 @@ describe('LLM Judge Evaluation', () => {
     // Generate HTML report after all tests complete
     if (testResults.length > 0) {
       const htmlReport = generateHTMLReport(testResults);
+      
+      // Ensure test-results directory exists
+      try {
+        await mkdir('test-results', { recursive: true });
+      } catch (error) {
+        console.error('Error creating test-results directory:', error);
+      }
+      
       await writeFile('test-results/llm-judge-report.html', htmlReport);
       console.log(`\n📊 HTML Report generated: test-results/llm-judge-report.html`);
     }

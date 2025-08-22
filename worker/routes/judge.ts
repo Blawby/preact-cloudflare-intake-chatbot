@@ -1,7 +1,53 @@
 import type { Env } from '../types';
 import { createSuccessResponse } from '../errorHandler';
 
+// TypeScript interfaces for the validated request shape
+interface JudgeTestCase {
+  testCaseId: string;
+  scenario: string;
+  expectedBehavior?: string[];
+  criticalRequirements?: string[];
+  minScore?: number;
+}
+
+interface JudgeRequest {
+  testCase: JudgeTestCase;
+  userMessage: string;
+  agentResponse: string;
+  toolCalls?: any[];
+  prompt?: string;
+}
+
+// Validation function to check if a value is a valid JudgeTestCase
+function isValidTestCase(value: any): value is JudgeTestCase {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof value.testCaseId === 'string' &&
+    typeof value.scenario === 'string' &&
+    (value.expectedBehavior === undefined || Array.isArray(value.expectedBehavior)) &&
+    (value.criticalRequirements === undefined || Array.isArray(value.criticalRequirements)) &&
+    (value.minScore === undefined || typeof value.minScore === 'number')
+  );
+}
+
+// Validation function to check if a value is a valid JudgeRequest
+function isValidJudgeRequest(value: any): value is JudgeRequest {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    isValidTestCase(value.testCase) &&
+    typeof value.userMessage === 'string' &&
+    typeof value.agentResponse === 'string' &&
+    (value.toolCalls === undefined || Array.isArray(value.toolCalls)) &&
+    (value.prompt === undefined || typeof value.prompt === 'string')
+  );
+}
+
 export async function handleJudge(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: { ...corsHeaders } });
+  }
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({
       success: false,
@@ -14,19 +60,69 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
   }
 
   try {
-    const body = await request.json();
-    const { testCase, userMessage, agentResponse, toolCalls, prompt } = body;
-
-    if (!testCase || !agentResponse) {
+    // Parse JSON with error handling
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (parseError) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Missing required fields: testCase, agentResponse',
-        errorCode: 'MISSING_FIELDS'
+        error: 'Invalid JSON in request body',
+        errorCode: 'INVALID_JSON',
+        details: parseError instanceof Error ? parseError.message : 'JSON parse error'
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    // Validate the request structure and types
+    if (!isValidJudgeRequest(body)) {
+      const missingFields: string[] = [];
+      const typeErrors: string[] = [];
+
+      // Check required fields
+      if (!body.testCase) missingFields.push('testCase');
+      if (!body.userMessage) missingFields.push('userMessage');
+      if (!body.agentResponse) missingFields.push('agentResponse');
+
+      // Check field types
+      if (body.testCase && !isValidTestCase(body.testCase)) {
+        typeErrors.push('testCase must be an object with testCaseId (string) and scenario (string)');
+      }
+      if (body.userMessage && typeof body.userMessage !== 'string') {
+        typeErrors.push('userMessage must be a string');
+      }
+      if (body.agentResponse && typeof body.agentResponse !== 'string') {
+        typeErrors.push('agentResponse must be a string');
+      }
+      if (body.toolCalls && !Array.isArray(body.toolCalls)) {
+        typeErrors.push('toolCalls must be an array');
+      }
+      if (body.prompt && typeof body.prompt !== 'string') {
+        typeErrors.push('prompt must be a string');
+      }
+
+      const errorMessage = missingFields.length > 0 
+        ? `Missing required fields: ${missingFields.join(', ')}`
+        : `Invalid field types: ${typeErrors.join('; ')}`;
+
+      return new Response(JSON.stringify({
+        success: false,
+        error: errorMessage,
+        errorCode: 'VALIDATION_ERROR',
+        details: {
+          missingFields: missingFields.length > 0 ? missingFields : undefined,
+          typeErrors: typeErrors.length > 0 ? typeErrors : undefined
+        }
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // At this point, body is validated and typed as JudgeRequest
+    const { testCase, userMessage, agentResponse, toolCalls, prompt }: JudgeRequest = body;
 
     console.log('🧑‍⚖️ Judge evaluation request:', {
       testCaseId: testCase.testCaseId,
@@ -44,9 +140,9 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
 EVALUATION SCENARIO:
 Test Case: ${testCase.testCaseId}
 Scenario: ${testCase.scenario}
-Expected Behavior: ${testCase.expectedBehavior.join(', ')}
-Critical Requirements: ${testCase.criticalRequirements.join(', ')}
-Minimum Score Required: ${testCase.minScore}/10
+Expected Behavior: ${testCase.expectedBehavior?.join(', ') || 'Standard behavior expected'}
+Critical Requirements: ${testCase.criticalRequirements?.join(', ') || 'Standard requirements'}
+Minimum Score Required: ${testCase.minScore || 7}/10
 
 CONVERSATION:
 User: "${userMessage}"
@@ -205,7 +301,7 @@ Provide only the JSON response, no additional text.`;
       (technicalScores.reduce((sum, score) => sum + score, 0) / technicalScores.length) * technicalWeight
     );
 
-    const passed = averageScore >= testCase.minScore;
+    const passed = averageScore >= (testCase.minScore || 7);
 
     const result = {
       success: true,

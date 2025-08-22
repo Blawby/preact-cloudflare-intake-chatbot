@@ -19,7 +19,7 @@
         },
         {
           "role": "user",
-          "content": "My phone is 704-555-0123 and email is sarah.johnson@email.com."
+          "content": "My phone is 704-555-0123 and email is sarah.johnson@example.com."
         }
       ],
       "expectedToolCalls": [
@@ -31,7 +31,7 @@
             "urgency": "medium",
             "name": "Sarah Johnson",
             "phone": "704-555-0123",
-            "email": "sarah.johnson@email.com",
+            "email": "sarah.johnson@example.com",
             "location": "Charlotte, North Carolina"
           }
         }
@@ -56,7 +56,7 @@
         },
         {
           "role": "user",
-          "content": "My phone is 919-555-0123 and email is michael.chen@email.com."
+          "content": "My phone is 919-555-0123 and email is michael.chen@example.com."
         }
       ],
       "expectedToolCalls": [
@@ -68,7 +68,7 @@
             "urgency": "high",
             "name": "Michael Chen",
             "phone": "919-555-0123",
-            "email": "michael.chen@email.com",
+            "email": "michael.chen@example.com",
             "location": "Raleigh, North Carolina"
           }
         }
@@ -93,19 +93,19 @@
         },
         {
           "role": "user",
-          "content": "My phone is 919-555-0124 and email is david.rodriguez@email.com."
+          "content": "My phone is 919-555-0124 and email is david.rodriguez@example.com."
         }
       ],
       "expectedToolCalls": [
         {
           "name": "create_matter",
           "parameters": {
-            "matter_type": "Business Law",
+            "matter_type": "Civil Law",
             "description": "Complex multi-issue case involving business dispute, employment issues, and tax problems",
             "urgency": "medium",
             "name": "David Rodriguez",
             "phone": "919-555-0124",
-            "email": "david.rodriguez@email.com",
+            "email": "david.rodriguez@example.com",
             "location": "Durham, North Carolina"
           }
         }
@@ -126,7 +126,7 @@
         },
         {
           "role": "user",
-          "content": "My name is Maria Garcia, phone 415-555-0123, email maria.garcia@email.com."
+          "content": "My name is Maria Garcia, phone 415-555-0123, email maria.garcia@example.com."
         }
       ],
       "expectedToolCalls": [
@@ -138,7 +138,7 @@
             "urgency": "medium",
             "name": "Maria Garcia",
             "phone": "415-555-0123",
-            "email": "maria.garcia@email.com",
+            "email": "maria.garcia@example.com",
             "location": "California"
           }
         }
@@ -163,19 +163,19 @@
         },
         {
           "role": "user",
-          "content": "My phone is 336-555-0123 and email is thomas.brown@email.com."
+          "content": "My phone is 336-555-0123 and email is thomas.brown@example.com."
         }
       ],
       "expectedToolCalls": [
         {
           "name": "create_matter",
           "parameters": {
-            "matter_type": "Landlord/Tenant",
+            "matter_type": "Civil Law",
             "description": "Landlord-tenant dispute",
             "urgency": "medium",
             "name": "Thomas Brown",
             "phone": "336-555-0123",
-            "email": "thomas.brown@email.com",
+            "email": "thomas.brown@example.com",
             "location": "Greensboro, North Carolina"
           }
         }
@@ -200,19 +200,19 @@
         },
         {
           "role": "user",
-          "content": "My phone is 704-555-9999 and email is alex.thompson@email.com."
+          "content": "My phone is 704-555-9999 and email is alex.thompson@example.com."
         }
       ],
       "expectedToolCalls": [
         {
           "name": "create_matter",
           "parameters": {
-            "matter_type": "General Legal Consultation",
+            "matter_type": "General Consultation",
             "description": "Client seeking general legal assistance - specific issue not yet identified",
             "urgency": "medium",
             "name": "Alex Thompson",
             "phone": "704-555-9999",
-            "email": "alex.thompson@email.com",
+            "email": "alex.thompson@example.com",
             "location": "Charlotte, North Carolina"
           }
         }

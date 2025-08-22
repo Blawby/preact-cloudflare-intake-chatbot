@@ -9,7 +9,7 @@ The test system evaluates AI agents (ParalegalAgent and LegalIntakeAgent) across
 ## 📁 File Structure
 
 ```
-tests/fixtures/
+tests/llm-judge/fixtures/
 ├── README.md                    # This file
 ├── agent-test-data.ts          # Test team configurations and legacy data
 ├── judge-llm.ts                # LLM judge evaluation system
@@ -24,7 +24,7 @@ tests/fixtures/
 │   ├── family-law-case.ts      # Legacy family law cases
 │   ├── business-law-case.ts    # Legacy business law cases
 │   └── general-legal-case.ts   # Legacy general legal cases
-└── scripts/
+└── ../scripts/
     └── run-agent-tests.ts      # Script to run tests and generate report
 ```
 

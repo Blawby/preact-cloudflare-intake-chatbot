@@ -1,5 +1,6 @@
 import { env, applyD1Migrations, fetchMock } from "cloudflare:test";
-import { getTestTeamConfigForDB } from './fixtures/agent-test-data';
+import { getTestTeamConfigForDB } from './llm-judge/fixtures/agent-test-data';
+import type { Env } from '../worker/types';
 
 // Type augmentation for cloudflare:test
 declare module "cloudflare:test" {
@@ -9,47 +10,12 @@ declare module "cloudflare:test" {
 // Apply migrations to the test database
 await applyD1Migrations(env.DB, { migrationsFolder: "./migrations" });
 
-// Set up test data in the database
+// Test team IDs for reuse across test setup
 const testTeams = [
   'test-team-1',
   'test-team-disabled', 
   'blawby-ai'
 ];
-
-for (const teamId of testTeams) {
-  const teamConfig = getTestTeamConfigForDB(teamId);
-  
-  // Insert test team into database
-  await env.DB.prepare(`
-    INSERT OR REPLACE INTO teams (id, slug, name, config, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(
-    teamConfig.id,
-    teamConfig.slug,
-    teamConfig.name,
-    teamConfig.config,
-    teamConfig.created_at,
-    teamConfig.updated_at
-  ).run();
-  
-  console.log(`✅ Created test team: ${teamConfig.name} (${teamConfig.id})`);
-}
-
-// Set up mock fetch for external API calls
-fetchMock.activate();
-fetchMock.disableNetConnect();
-
-// Mock external API responses
-fetchMock
-  .post('https://api.resend.com/emails', { id: 'test-email-id' })
-  .post('https://staging.blawby.com/api/matters', { 
-    success: true, 
-    matter: { id: 'test-matter-id' } 
-  })
-  .get('https://staging.blawby.com/api/teams/*', { 
-    success: true, 
-    team: { id: 'test-team-1' } 
-  });
 
 console.log('🚀 Test environment setup complete!');
 
@@ -76,13 +42,43 @@ export async function seedTestData() {
 beforeAll(async () => {
   console.log('🧪 Setting up Workers test environment...');
   
-  // Setup database
-  await setupDB();
+  // Ensure test teams are created
+  for (const teamId of testTeams) {
+    const teamConfig = getTestTeamConfigForDB(teamId);
+    
+    // Insert test team into database
+    await env.DB.prepare(`
+      INSERT OR REPLACE INTO teams (id, slug, name, config, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      teamConfig.id,
+      teamConfig.slug,
+      teamConfig.name,
+      teamConfig.config,
+      teamConfig.created_at,
+      teamConfig.updated_at
+    ).run();
+    
+    console.log(`✅ Created test team in beforeAll: ${teamConfig.name} (${teamConfig.id})`);
+  }
+  
   await seedTestData();
   
   // Setup fetch mocking for external HTTP calls
   fetchMock.activate();
   fetchMock.disableNetConnect();
+  
+  // Mock external API responses
+  fetchMock
+    .post('https://api.resend.com/emails', { id: 'test-email-id' })
+    .post('https://staging.blawby.com/api/matters', { 
+      success: true, 
+      matter: { id: 'test-matter-id' } 
+    })
+    .get('https://staging.blawby.com/api/teams/*', { 
+      success: true, 
+      team: { id: 'test-team-1' } 
+    });
   
   // Mock external AI calls if needed
   fetchMock.get('https://api.cloudflare.com/client/v4/accounts/*/ai/run/*').intercept({
@@ -105,7 +101,7 @@ afterAll(async () => {
     console.warn('Pending fetch interceptors:', error);
   }
   
-  fetchMock.deactivate();
+  fetchMock.restore();
   console.log('✅ Workers test cleanup complete');
 });
 
