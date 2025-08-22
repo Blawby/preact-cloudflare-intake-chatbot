@@ -66,6 +66,36 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 ✅ **Payment Integration**: Automatic $75 consultation fee with team config  
 ✅ **Lawyer Review**: Automatic escalation for urgent matters with review queue  
 
+### 🤖 **LLM Judge Testing Framework:**
+
+**Advanced AI Agent Evaluation:**
+- **Automated Conversation Testing**: Tests agent responses across multiple legal scenarios
+- **Phone Validation**: Fixed test data to use valid phone numbers (555- numbers are invalid)
+- **Sequential Message Flow**: Tests send messages one-by-one, waiting for agent responses
+- **Strict Assertions**: No fallbacks - tests fail on phone validation errors, wrong matter types, missing tool calls
+- **HTML Report Generation**: Auto-generated reports with conversation flow visualization
+- **Auto-Open Reports**: Browser automatically opens test results after completion
+
+**Test Scenarios:**
+- Standard legal intake with family law matter
+- Urgent legal matter requiring immediate escalation  
+- Complex legal situation requiring specialized expertise
+- Location service area verification and matter creation
+- Pricing concerns and financial discussion
+
+**Running Tests:**
+```bash
+# Start the development servers (required for tests)
+npm run dev  # Vite frontend
+npx wrangler dev  # Cloudflare Worker API (required for integration tests)
+
+# Run LLM Judge tests
+npm run test:llm-judge
+
+# View HTML report (auto-opens in browser)
+# Manual: open test-results/llm-judge-report.html
+```  
+
 ## 🚀 **Quick Reference - Team Management**
 
 **Essential Commands:**
@@ -138,9 +168,13 @@ wrangler d1 execute blawby-ai-chatbot --command "SELECT * FROM teams;"
    wrangler deploy
    ```
 
-5. **Start development server**
+5. **Start development servers**
    ```bash
+   # Start the frontend development server
    npm run dev
+   
+   # In a separate terminal, start the Cloudflare Worker API server
+   npx wrangler dev
    ```
 
 ## 🔧 **Configuration**
@@ -321,6 +355,30 @@ The `wrangler.toml` file is pre-configured with:
 - Proper CORS and security headers
 
 ## 🧪 **Testing**
+
+### Running Tests
+
+**Prerequisites:**
+```bash
+# Start both development servers (required for integration tests)
+npm run dev  # Frontend server
+npx wrangler dev  # Cloudflare Worker API server
+```
+
+**Available Test Commands:**
+```bash
+# Run unit tests
+npm run test:unit
+
+# Run integration tests (requires wrangler dev server)
+npm run test:integration
+
+# Run LLM Judge tests (requires wrangler dev server)
+npm run test:llm-judge
+
+# Run all tests
+npm test
+```
 
 ### Manual Testing
 

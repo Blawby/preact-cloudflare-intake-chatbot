@@ -41,7 +41,9 @@ const frontendConfig = defineConfig({
       '@': resolve(__dirname, './src'),
       '~': resolve(__dirname, './'),
       '@tests': resolve(__dirname, './tests'),
-      '@fixtures': resolve(__dirname, './tests/fixtures')
+      '@fixtures': resolve(__dirname, './tests/fixtures'),
+      'worker_threads': resolve(__dirname, './tests/stubs/worker_threads.ts'),
+      'node:worker_threads': resolve(__dirname, './tests/stubs/worker_threads.ts')
     }
   }
 });
@@ -55,7 +57,8 @@ const unifiedConfig = defineConfig({
     include: [
       'tests/unit/**/*.{test,spec}.{js,ts,jsx,tsx}',
       'tests/integration/**/*.{test,spec}.ts',
-      'tests/paralegal/**/*.{test,spec}.ts'
+      'tests/paralegal/**/*.{test,spec}.ts',
+      'tests/llm-judge/**/*.{test,spec}.ts'
     ],
     exclude: [
       'node_modules/**',

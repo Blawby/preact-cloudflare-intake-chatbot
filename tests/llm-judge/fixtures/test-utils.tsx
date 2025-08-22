@@ -25,9 +25,43 @@ export const mockApiResponse = (data: any, status = 200) => {
   });
 };
 
-// Mock API error
+// Mock API error - returns a resolved Promise with a proper Response object
 export const mockApiError = (status = 500, message = 'Internal Server Error') => {
-  return Promise.reject(new Error(message));
+  const errorPayload = { error: message, status };
+  const errorText = JSON.stringify(errorPayload);
+  
+  // Check if ReadableStream is available in the test environment
+  if (typeof ReadableStream !== 'undefined') {
+    // Create a proper ReadableStream for the error body
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(errorText));
+        controller.close();
+      }
+    });
+    
+    return Promise.resolve(new Response(stream, {
+      status,
+      statusText: message,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }));
+  } else {
+    // Fallback for environments without Web Streams
+    return Promise.resolve(new Response(errorText, {
+      status,
+      statusText: message,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }));
+  }
+};
+
+// Mock network error - returns a rejected Promise to simulate true network failures
+export const mockNetworkError = (message = 'Network Error') => {
+  return Promise.reject(new TypeError(message));
 };
 
 // Test data factories

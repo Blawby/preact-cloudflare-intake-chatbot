@@ -202,6 +202,14 @@ export default defineConfig({
 	optimizeDeps: {
 		include: ['preact', 'preact/hooks', 'preact/compat', 'preact/jsx-runtime'],
 	},
+	resolve: {
+		alias: {
+			'react': 'preact/compat',
+			'react-dom': 'preact/compat',
+			'worker_threads': resolve(__dirname, 'tests/stubs/worker_threads.ts'),
+			'node:worker_threads': resolve(__dirname, 'tests/stubs/worker_threads.ts')
+		}
+	},
 	server: {
 		// Enable compression in development server
 		compress: true,

@@ -257,7 +257,7 @@ export const createMatter = {
       location: { type: 'string', description: 'Client location (city and state)' },
       opposing_party: { type: 'string', description: 'Opposing party name if applicable' }
     },
-    required: ['matter_type', 'description', 'urgency', 'name']
+    required: ['matter_type', 'description', 'name']
   }
 };
 
@@ -542,12 +542,15 @@ CRITICAL:
 - DO NOT ask again if they already explained their legal situation
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
+- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
 - analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+
+TOOL_CALL: create_matter
+PARAMETERS: {"matter_type": "Unknown", "description": "Client seeking legal assistance", "urgency": "unknown", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "None"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
@@ -808,12 +811,15 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
   // Validate required fields
-  if (!matter_type || !description || !urgency || !name) {
+  if (!matter_type || !description || !name) {
     return { 
       success: false, 
       message: "I'm missing some essential information. Could you please provide your name, contact information, and describe your legal issue?" 
     };
   }
+  
+  // Set default urgency if not provided
+  const finalUrgency = urgency || 'unknown';
   
   // Validate name format
   if (!validateName(name)) {
@@ -884,7 +890,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
         matterInfo: {
           type: matter_type,
           description: description,
-          urgency: urgency,
+          urgency: finalUrgency,
           opposingParty: opposing_party || ''
         },
         teamId: teamConfig?.id || env.BLAWBY_TEAM_ULID || '01jq70jnstyfzevc6423czh50e',
@@ -927,7 +933,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
 **Matter Details:**
 - Type: ${matter_type}
 - Description: ${description}
-- Urgency: ${urgency}`;
+- Urgency: ${finalUrgency}`;
 
   if (requiresPayment && consultationFee > 0) {
     if (invoiceUrl) {
@@ -963,7 +969,7 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
     data: {
       matter_type,
       description,
-      urgency,
+      urgency: finalUrgency,
       name,
       phone,
       email,
@@ -1233,12 +1239,17 @@ Then proceed with the conversation flow below.`;
 
 **CONVERSATION FLOW:**
 ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files using analyze_document tool, then proceed with intake.` : ''}
-1. If no name: "Can you please provide your full name?"
-2. If name but no location: ${locationPrompt}
-3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
-4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
-6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
+1. If user asks about pricing/costs/consultation fees: "I understand you're concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case. Let me collect your information first so I can provide you with accurate pricing details. Can you please provide your full name?"
+2. If no name: "Can you please provide your full name?"
+3. If name but no location: ${locationPrompt}
+4. If name and location but no phone: "Thank you [name]! Now I need your phone number."
+5. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
+6. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?" If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
+
+**PRICING QUESTIONS:**
+- If user asks about pricing, costs, consultation fees, or financial concerns, ALWAYS respond with pricing information and then ask for their name
+- Do NOT ignore pricing questions or give empty responses
+- Always acknowledge the pricing concern and provide basic information before proceeding with intake
 
 CRITICAL: 
 - Do NOT call collect_contact_info tool unless the user has actually provided contact information
@@ -1252,12 +1263,15 @@ CRITICAL:
 - DO NOT ask again if they already explained their legal situation
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
+- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
 - analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+
+TOOL_CALL: create_matter
+PARAMETERS: {"matter_type": "Unknown", "description": "Client seeking legal assistance", "urgency": "unknown", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "None"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}

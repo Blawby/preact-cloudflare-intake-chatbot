@@ -25,7 +25,10 @@ global.console = {
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 
-// Mock fetch for API calls
-global.fetch = vi.fn();
+// Use real fetch for integration tests, but provide a mock for unit tests
+if (!global.fetch) {
+  // Only mock if fetch doesn't exist (shouldn't happen in Node 18+)
+  global.fetch = vi.fn();
+}
 
 export {};

@@ -10,4 +10,5 @@ export { handleParalegal } from './paralegal';
 
 export { handleReview } from './review';
 export { handlePayment } from './payment';
+export { handleJudge } from './judge';
 export { handleDebug } from './debug'; 

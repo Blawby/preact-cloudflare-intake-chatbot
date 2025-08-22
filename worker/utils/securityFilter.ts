@@ -81,7 +81,9 @@ export class SecurityFilter {
       
       // General Knowledge/Research
       /(write.*document|create.*document|research.*)/i,
-      /(tell me about|explain|describe)/i,
+      /(tell me about.*geography|tell me about.*history|tell me about.*science|tell me about.*technology|tell me about.*politics)/i,
+      /(explain.*geography|explain.*history|explain.*science|explain.*technology|explain.*politics)/i,
+      /(describe.*geography|describe.*history|describe.*science|describe.*technology|describe.*politics)/i,
       /(geography|history|science|technology|politics)/i,
       /(write.*story|create.*content|generate.*)/i,
       
@@ -91,7 +93,9 @@ export class SecurityFilter {
       
       // Content Generation
       /(write.*about|create.*document|generate.*content)/i,
-      /(tell me about|explain|describe)/i
+      /(tell me about.*geography|tell me about.*history|tell me about.*science|tell me about.*technology|tell me about.*politics)/i,
+      /(explain.*geography|explain.*history|explain.*science|explain.*technology|explain.*politics)/i,
+      /(describe.*geography|describe.*history|describe.*science|describe.*technology|describe.*politics)/i
     ];
     
     return nonLegalPatterns.some(pattern => pattern.test(content));

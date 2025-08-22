@@ -1,0 +1,407 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Test Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .summary { padding: 30px; border-bottom: 1px solid #eee; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+        .summary-card { background: #f8f9fa; padding: 20px; border-radius: 6px; text-align: center; }
+        .summary-card h3 { margin: 0 0 10px 0; color: #333; }
+        .summary-card .value { font-size: 2em; font-weight: bold; }
+        .passed { color: #28a745; }
+        .failed { color: #dc3545; }
+        .results { padding: 30px; }
+        .test-result { margin-bottom: 30px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+        .test-header { padding: 15px 20px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+        .test-header h3 { margin: 0; }
+        .test-content { padding: 20px; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .badge.passed { background: #d4edda; color: #155724; }
+        .badge.failed { background: #f8d7da; color: #721c24; }
+        .scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 15px 0; }
+        .score-item { background: #f8f9fa; padding: 10px; border-radius: 4px; text-align: center; }
+        .score-value { font-size: 1.2em; font-weight: bold; color: #333; }
+        .conversation { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .message { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .message.user { background: #e3f2fd; border-left: 4px solid #2196f3; }
+        .message.assistant { background: #f3e5f5; border-left: 4px solid #9c27b0; }
+        .tool-calls { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Agent Test Report</h1>
+            <p>Comprehensive evaluation of AI agent performance and conversation quality</p>
+        </div>
+        
+        <div class="summary">
+            <h2>📊 Test Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>Total Tests</h3>
+                    <div class="value">6</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Passed</h3>
+                    <div class="value passed">0</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Failed</h3>
+                    <div class="value failed">6</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Success Rate</h3>
+                    <div class="value">0.0%</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Average Score</h3>
+                    <div class="value">0.00/10</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Avg Response Time</h3>
+                    <div class="value">0ms</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="results">
+            <h2>📋 Detailed Results</h2>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>Standard legal intake with family law matter</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
+                            
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: Error: Judge evaluation failed: Missing required fields: testCase, agentResponse</p>
+                        
+                        
+                        
+                            <h4>Critical Issues:</h4>
+                            <ul>
+                                <li>Test failed: Error: Judge evaluation failed: Missing required fields: testCase, agentResponse</li>
+                            </ul>
+                        
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I need legal help but I'm not sure what kind. Can you help me?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My name is Sarah Johnson and I think I need help with a family law issue. My husband and I are considering divorce.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I live in Charlotte, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My phone is 704-555-0123 and email is sarah.johnson@email.com.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>Urgent legal matter requiring immediate escalation</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
+                            
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: TypeError: terminated</p>
+                        
+                        
+                        
+                            <h4>Critical Issues:</h4>
+                            <ul>
+                                <li>Test failed: TypeError: terminated</li>
+                            </ul>
+                        
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I have an urgent legal problem and I need help immediately.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I'm safe, but I just received a restraining order and I need to respond within 24 hours. My name is Michael Chen.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I live in Raleigh, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My phone is 919-555-0123 and email is michael.chen@email.com.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>Complex legal situation requiring specialized expertise</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
+                            
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: TypeError: fetch failed</p>
+                        
+                        
+                        
+                            <h4>Critical Issues:</h4>
+                            <ul>
+                                <li>Test failed: TypeError: fetch failed</li>
+                            </ul>
+                        
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I have a complicated legal situation that involves multiple issues and I don't know where to start.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I'm David Rodriguez. I have a business dispute, employment issues, and potential tax problems all related to the same situation.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I live in Durham, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My phone is 919-555-0124 and email is david.rodriguez@email.com.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>Location service area verification and matter creation</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
+                            
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: TypeError: fetch failed</p>
+                        
+                        
+                        
+                            <h4>Critical Issues:</h4>
+                            <ul>
+                                <li>Test failed: TypeError: fetch failed</li>
+                            </ul>
+                        
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I need legal help but I'm not sure if you provide services in my area.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I'm in California and I need help with a personal injury case from a car accident.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My name is Maria Garcia, phone 415-555-0123, email maria.garcia@email.com.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>Pricing concerns and financial discussion</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
+                            
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: TypeError: fetch failed</p>
+                        
+                        
+                        
+                            <h4>Critical Issues:</h4>
+                            <ul>
+                                <li>Test failed: TypeError: fetch failed</li>
+                            </ul>
+                        
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I need legal help but I'm concerned about the cost. Can you tell me about your pricing?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My name is Thomas Brown and I need help with a landlord-tenant dispute.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I live in Greensboro, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My phone is 336-555-0123 and email is thomas.brown@email.com.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>Minimal information provided - AI should not hallucinate details</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
+                            
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: TypeError: fetch failed</p>
+                        
+                        
+                        
+                            <h4>Critical Issues:</h4>
+                            <ul>
+                                <li>Test failed: TypeError: fetch failed</li>
+                            </ul>
+                        
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I need legal help.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My name is Alex Thompson.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>I live in Charlotte, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <strong>👤 User:</strong>
+                                    <div>My phone is 704-555-9999 and email is alex.thompson@email.com.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+        </div>
+    </div>
+</body>
+</html>
+  
