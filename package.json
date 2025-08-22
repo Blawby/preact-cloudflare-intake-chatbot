@@ -17,7 +17,8 @@
 		"test:components": "vitest tests/unit/components",
 		"test:services": "vitest tests/unit/services",
 		"test:agent-report": "tsx scripts/run-agent-tests.ts",
-		"test:llm-judge": "./scripts/run-llm-judge-tests.sh"
+		"test:llm-judge": "./scripts/run-llm-judge-tests.sh",
+		"verify:llm-judge": "./scripts/verify-llm-judge-fixes.sh"
 	},
 	"dependencies": {
 		"@heroicons/react": "^2.2.0",

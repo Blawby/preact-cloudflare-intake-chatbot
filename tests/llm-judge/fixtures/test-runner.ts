@@ -45,7 +45,7 @@ class LLMJudge {
     const chunks: string[] = [];
     
     // Collect all chunks
-    for await (const chunk of response.body) {
+    for await (const chunk of response.body as any) {
       chunks.push(chunk.toString());
     }
     
@@ -135,16 +135,45 @@ Provide scores for each criterion and overall feedback.
       })
     });
 
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(`Judge evaluation failed: ${result.error}`);
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorBody = await response.json();
+        errorMessage += ` - ${JSON.stringify(errorBody)}`;
+      } catch (parseError) {
+        try {
+          const errorText = await response.text();
+          errorMessage += ` - ${errorText}`;
+        } catch (textError) {
+          // If we can't parse the error body, just use the status
+        }
+      }
+      throw new Error(`Judge evaluation failed: ${errorMessage}`);
     }
 
-    // The judge response is nested in result.data
-    const data = result.data;
-    if (!data || !data.success) {
-      throw new Error(`Judge evaluation failed: ${data?.error || 'Invalid response structure'}`);
+    const result = await response.json();
+    
+    // Validate the response structure
+    if (!result || typeof result !== 'object') {
+      throw new Error('Judge evaluation failed: Invalid response structure');
+    }
+
+    // Check for success flag at top level
+    if (!result.success) {
+      const errorDetails = result.error || result.message || 'Unknown error';
+      throw new Error(`Judge evaluation failed: ${errorDetails}`);
+    }
+
+    // Extract data - could be nested or at top level
+    const data = result.data || result;
+    
+    // Validate required fields
+    if (!data.scores || typeof data.scores !== 'object') {
+      throw new Error('Judge evaluation failed: Missing or invalid scores in response');
+    }
+    
+    if (typeof data.feedback !== 'string') {
+      throw new Error('Judge evaluation failed: Missing or invalid feedback in response');
     }
 
     // Return scores plus feedback fields for reporting
@@ -161,21 +190,14 @@ Provide scores for each criterion and overall feedback.
     const actualResponses: string[] = [];
     const actualToolCalls: any[] = [];
     let totalResponseTime = 0;
+    const conversationHistory: Array<{role: 'user' | 'assistant', content: string}> = [];
 
     // Run through each user message and generate assistant response
     for (let i = 0; i < conversation.messages.length; i++) {
       const message = conversation.messages[i];
       
       if (message.role === 'user') {
-        // Build conversation history up to this point
-        const conversationHistory = conversation.messages
-          .slice(0, i)
-          .map(m => ({
-            role: m.role,
-            content: m.content
-          }));
-
-        // Add the current user message
+        // Add the current user message to running conversation history
         conversationHistory.push({
           role: 'user',
           content: message.content
@@ -205,7 +227,9 @@ Provide scores for each criterion and overall feedback.
       .pop()?.content || '';
     
     const lastAssistantResponse = actualResponses[actualResponses.length - 1] || '';
-    const finalToolCalls = actualToolCalls.slice(-conversation.expectedToolCalls.length);
+    const finalToolCalls = conversation.expectedToolCalls.length === 0 
+      ? [] 
+      : actualToolCalls.slice(-conversation.expectedToolCalls.length);
 
     const evaluation = await this.evaluateResponse(
       conversation,
@@ -276,6 +300,15 @@ export async function runTestsAndGenerateReport(): Promise<string> {
   }
   
   return generateHTMLReport(results);
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function generateHTMLReport(results: any[]): string {
@@ -363,7 +396,7 @@ function generateHTMLReport(results: any[]): string {
             ${results.map(result => `
                 <div class="test-result">
                     <div class="test-header">
-                        <h3>${result.scenario}</h3>
+                        <h3>${escapeHtml(result.scenario)}</h3>
                         <span class="badge ${result.passed ? 'passed' : 'failed'}">${result.passed ? 'PASSED' : 'FAILED'}</span>
                         <span>Score: ${result.evaluation.averageScore.toFixed(2)}/10</span>
                         <span>Response Time: ${result.responseTime}ms</span>
@@ -380,20 +413,20 @@ function generateHTMLReport(results: any[]): string {
                         
                         ${result.evaluation.feedback ? `
                             <h4>Feedback:</h4>
-                            <p>${result.evaluation.feedback}</p>
+                            <p>${escapeHtml(result.evaluation.feedback)}</p>
                         ` : ''}
                         
                         ${result.evaluation.criticalIssues && result.evaluation.criticalIssues.length > 0 ? `
                             <h4>Critical Issues:</h4>
                             <ul>
-                                ${result.evaluation.criticalIssues.map(issue => `<li>${issue}</li>`).join('')}
+                                ${result.evaluation.criticalIssues.map(issue => `<li>${escapeHtml(issue)}</li>`).join('')}
                             </ul>
                         ` : ''}
                         
                         ${result.evaluation.suggestions && result.evaluation.suggestions.length > 0 ? `
                             <h4>Suggestions:</h4>
                             <ul>
-                                ${result.evaluation.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
+                                ${result.evaluation.suggestions.map(suggestion => `<li>${escapeHtml(suggestion)}</li>`).join('')}
                             </ul>
                         ` : ''}
                         
@@ -402,7 +435,7 @@ function generateHTMLReport(results: any[]): string {
                             ${result.messages.map((message: any) => `
                                 <div class="message ${message.role}">
                                     <strong>${message.role === 'user' ? '👤 User' : '🤖 Assistant'}:</strong>
-                                    <div>${message.content}</div>
+                                    <div>${escapeHtml(message.content)}</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -410,7 +443,7 @@ function generateHTMLReport(results: any[]): string {
                         ${result.actualToolCalls && result.actualToolCalls.length > 0 ? `
                             <h4>Tool Calls:</h4>
                             <div class="tool-calls">
-                                <pre>${JSON.stringify(result.actualToolCalls, null, 2)}</pre>
+                                <pre>${escapeHtml(JSON.stringify(result.actualToolCalls, null, 2))}</pre>
                             </div>
                         ` : ''}
                     </div>

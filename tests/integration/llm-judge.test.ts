@@ -201,10 +201,27 @@ RESPONSE FORMAT (JSON only):
       })
     });
 
-    const result = await response.json();
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorBody = await response.json();
+        errorMessage += ` - ${JSON.stringify(errorBody)}`;
+      } catch (parseError) {
+        try {
+          const errorText = await response.text();
+          errorMessage += ` - ${errorText}`;
+        } catch (textError) {
+          // If we can't parse the error body, just use the status
+        }
+      }
+      throw new Error(`Judge evaluation failed: ${errorMessage}`);
+    }
+
+    const result = await response.json() as any;
     
     if (!result.success) {
-      throw new Error(`Judge evaluation failed: ${result.error}`);
+      const errorDetails = result.error || result.message || 'Unknown error';
+      throw new Error(`Judge evaluation failed: ${errorDetails}`);
     }
 
     // Return scores plus feedback fields for reporting
@@ -222,21 +239,14 @@ RESPONSE FORMAT (JSON only):
     const actualResponses: string[] = [];
     const actualToolCalls: any[] = [];
     let totalResponseTime = 0;
+    const conversationHistory: Array<{role: 'user' | 'assistant', content: string}> = [];
 
     // Run through each user message and generate assistant response
     for (let i = 0; i < conversation.messages.length; i++) {
       const message = conversation.messages[i];
       
       if (message.role === 'user') {
-        // Build conversation history up to this point
-        const conversationHistory = conversation.messages
-          .slice(0, i)
-          .map(m => ({
-            role: m.role,
-            content: m.content
-          }));
-
-        // Add the current user message
+        // Add the current user message to running conversation history
         conversationHistory.push({
           role: 'user',
           content: message.content
@@ -266,7 +276,9 @@ RESPONSE FORMAT (JSON only):
       .pop()?.content || '';
     
     const lastAssistantResponse = actualResponses[actualResponses.length - 1] || '';
-    const finalToolCalls = actualToolCalls.slice(-conversation.expectedToolCalls.length);
+    const finalToolCalls = conversation.expectedToolCalls.length === 0 
+      ? [] 
+      : actualToolCalls.slice(-conversation.expectedToolCalls.length);
 
     const evaluation = await this.evaluateResponse(
       conversation,
@@ -289,13 +301,25 @@ RESPONSE FORMAT (JSON only):
       expectedToolCalls: conversation.expectedToolCalls,
       actualToolCalls: finalToolCalls,
       evaluation: {
-        ...evaluation,
-        averageScore
+        scores: evaluation,
+        averageScore,
+        feedback: evaluation.feedback,
+        criticalIssues: evaluation.criticalIssues,
+        suggestions: evaluation.suggestions
       },
       passed,
       responseTime: totalResponseTime
     };
   }
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function generateHTMLReport(results: TestResult[]): string {
@@ -543,8 +567,8 @@ function generateHTMLReport(results: TestResult[]): string {
                 <div class="test-card">
                     <div class="test-header">
                         <div class="test-title">
-                            <h3>${result.scenario}</h3>
-                            <p>User: ${result.user}</p>
+                            <h3>${escapeHtml(result.scenario)}</h3>
+                            <p>User: ${escapeHtml(result.user)}</p>
                         </div>
                         <div class="test-status ${result.passed ? 'passed' : 'failed'}">
                             ${result.passed ? 'PASS' : 'FAIL'}
@@ -571,14 +595,14 @@ function generateHTMLReport(results: TestResult[]): string {
                             ${result.messages.map(message => `
                                 <div class="message ${message.role}">
                                     <div class="message-role">${message.role}</div>
-                                    <div>${message.content}</div>
+                                    <div>${escapeHtml(message.content)}</div>
                                 </div>
                             `).join('')}
                             
                             ${result.actualResponses.map((response, index) => `
                                 <div class="message assistant">
                                     <div class="message-role">assistant (response ${index + 1})</div>
-                                    <div>${response}</div>
+                                    <div>${escapeHtml(response)}</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -588,8 +612,8 @@ function generateHTMLReport(results: TestResult[]): string {
                                 <h4>Tool Calls Made</h4>
                                 ${result.actualToolCalls.map(toolCall => `
                                     <div class="tool-call">
-                                        <strong>${toolCall.name}</strong><br>
-                                        ${JSON.stringify(toolCall.parameters, null, 2)}
+                                        <strong>${escapeHtml(toolCall.name)}</strong><br>
+                                        <pre>${escapeHtml(JSON.stringify(toolCall.parameters, null, 2))}</pre>
                                     </div>
                                 `).join('')}
                             </div>
@@ -598,7 +622,7 @@ function generateHTMLReport(results: TestResult[]): string {
                         ${result.evaluation.feedback ? `
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>${result.evaluation.feedback}</p>
+                                <p>${escapeHtml(result.evaluation.feedback)}</p>
                             </div>
                         ` : ''}
                         
@@ -606,7 +630,7 @@ function generateHTMLReport(results: TestResult[]): string {
                             <div class="issues">
                                 <h4>Critical Issues</h4>
                                 <ul>
-                                    ${result.evaluation.criticalIssues.map(issue => `<li>${issue}</li>`).join('')}
+                                    ${result.evaluation.criticalIssues.map(issue => `<li>${escapeHtml(issue)}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
@@ -615,7 +639,7 @@ function generateHTMLReport(results: TestResult[]): string {
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    ${result.evaluation.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
+                                    ${result.evaluation.suggestions.map(suggestion => `<li>${escapeHtml(suggestion)}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
