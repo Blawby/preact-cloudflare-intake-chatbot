@@ -8,7 +8,6 @@ import { useMessageHandling } from './hooks/useMessageHandling';
 import { useFileUpload } from './hooks/useFileUpload';
 import { useTeamConfig } from './hooks/useTeamConfig';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
-import { debounce } from './utils/debounce';
 import { ChatMessageUI } from '../worker/types';
 import './index.css';
 
