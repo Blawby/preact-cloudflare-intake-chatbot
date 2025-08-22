@@ -180,6 +180,43 @@
           }
         }
       ]
+    },
+    {
+      "id": "minimal-information-no-hallucination",
+      "user": "Alex Thompson",
+      "scenario": "Minimal information provided - AI should not hallucinate details",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I need legal help."
+        },
+        {
+          "role": "user",
+          "content": "My name is Alex Thompson."
+        },
+        {
+          "role": "user",
+          "content": "I live in Charlotte, North Carolina."
+        },
+        {
+          "role": "user",
+          "content": "My phone is 704-555-9999 and email is alex.thompson@email.com."
+        }
+      ],
+      "expectedToolCalls": [
+        {
+          "name": "create_matter",
+          "parameters": {
+            "matter_type": "General Legal Consultation",
+            "description": "Client seeking general legal assistance - specific issue not yet identified",
+            "urgency": "medium",
+            "name": "Alex Thompson",
+            "phone": "704-555-9999",
+            "email": "alex.thompson@email.com",
+            "location": "Charlotte, North Carolina"
+          }
+        }
+      ]
     }
   ]
 }

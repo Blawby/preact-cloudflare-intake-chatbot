@@ -204,6 +204,73 @@
             font-size: 0.8rem;
             margin-top: 10px;
         }
+        
+        .flags {
+            background: #fef7ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .flag-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .flag-item {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .flag-item.warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+        
+        .flag-item.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        
+        .conversation-analysis {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .analysis-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .analysis-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+        
+        .analysis-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
     </style>
 </head>
 <body>
@@ -215,15 +282,15 @@
         
         <div class="summary-grid">
             <div class="summary-card">
-                <h3>1/1</h3>
+                <h3>4/4</h3>
                 <p>Tests Passed</p>
             </div>
             <div class="summary-card">
-                <h3>7.1/10</h3>
+                <h3>8.4/10</h3>
                 <p>Average Score</p>
             </div>
             <div class="summary-card">
-                <h3>30184ms</h3>
+                <h3>15237ms</h3>
                 <p>Avg Response Time</p>
             </div>
             <div class="summary-card">
@@ -237,8 +304,8 @@
                 <div class="test-card">
                     <div class="test-header">
                         <div class="test-title">
-                            <h3>Location service area verification and matter creation</h3>
-                            <p>User: Maria Garcia</p>
+                            <h3>Standard legal intake with family law matter</h3>
+                            <p>User: Sarah Johnson</p>
                         </div>
                         <div class="test-status passed">
                             PASS
@@ -249,18 +316,98 @@
                         <div class="score-grid">
                             
                                     <div class="score-item">
-                                        <div class="score-label">averageScore</div>
-                                        <div class="score-value">7.111111111111111/10</div>
+                                        <div class="score-label">empathy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">accuracy</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">completeness</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">relevance</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">professionalism</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">actionability</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">legalAccuracy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">conversationFlow</div>
+                                        <div class="score-value">7.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">toolUsage</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
+                        
+                        
+                            <div class="flags">
+                                <h4>Evaluation Flags</h4>
+                                <div class="flag-grid">
+                                    
+                                    
+                                    
+                                    
+                                        <div class="flag-item success">
+                                            <span>✅ No Critical Issues</span>
+                                        </div>
+                                    
+                                </div>
+                            </div>
+                        
+                        
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">12</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">0%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        
                         
                         <div class="conversation">
                             <h4>Conversation Flow</h4>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 1)</div>
-                                    <div>I need legal help but I'm not sure if you provide services in my area.</div>
+                                    <div>I need legal help but I'm not sure what kind. Can you help me?</div>
                                 </div>
                             
                                 <div class="message assistant">
@@ -270,56 +417,64 @@
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 3)</div>
-                                    <div>My name is Maria Garcia.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>Thank you Maria Garcia! Now I need your city and state. This will help me determine if we can assist you with your legal matter.</div>
+                                    <div>Thank you, Sarah Johnson! Now I need your city and state.</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 5)</div>
-                                    <div>I'm in California and I need help with a personal injury case from a car accident.</div>
+                                    <div>I live in Charlotte, North Carolina.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 6)</div>
-                                    <div>Thank you Maria Garcia! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?
-
-(Note: I've already collected your name, location, and a general idea of your legal issue, so I'm ready to call the create_matter tool once you provide a brief description of your case.)</div>
+                                    <div>Thank you, Sarah Johnson! Now I need your phone number.</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 7)</div>
-                                    <div>My name is Maria Garcia.</div>
+                                    <div>My phone number is 704-555-0123.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 8)</div>
-                                    <div>You've already given me your name, Maria Garcia. I need to clarify that I've already collected your name, location, and a general idea of your legal issue. Now I need a brief description of your case. Please provide more details about your personal injury case from the car accident.</div>
+                                    <div>Thank you, Sarah Johnson! Now I need your email address.</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 9)</div>
-                                    <div>My name is Maria Garcia.</div>
+                                    <div>My email is sarah.johnson@email.com.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 10)</div>
-                                    <div>You've already given me your name, Maria Garcia. I need to clarify that I've already collected your name, location, and a general idea of your legal issue. Now I need a brief description of your case. Please provide more details about your personal injury case from the car accident.
-
-If you don't provide a description, I won't be able to call the create_matter tool.</div>
+                                    <div>Thank you, Sarah Johnson! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 11)</div>
-                                    <div>My name is Maria Garcia.</div>
+                                    <div>My name is Sarah Johnson and I think I need help with a family law issue. My husband and I are considering divorce.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 12)</div>
-                                    <div>The phone number you provided doesn't appear to be valid: Invalid phone number. Could you please provide a valid phone number?</div>
+                                    <div>Perfect! I have all the information I need. Here's a summary of your matter:
+
+**Client Information:**
+- Name: Sarah Johnson
+- Contact: 704-555-0123, sarah.johnson@email.com, Charlotte, NC
+- Opposing Party: Husband's name
+
+**Matter Details:**
+- Type: Family Law
+- Description: Client seeking legal assistance with divorce
+- Urgency: medium
+
+I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to schedule a consultation.</div>
                                 </div>
                             
                         </div>
@@ -331,13 +486,225 @@ If you don't provide a description, I won't be able to call the create_matter to
                                     <div class="tool-call">
                                         <strong>create_matter</strong><br>
                                         {
-  "matter_type": "Personal Injury",
-  "description": "Client seeking legal assistance for a car accident",
+  "matter_type": "Family Law",
+  "description": "Client seeking legal assistance with divorce",
   "urgency": "medium",
-  "name": "Maria Garcia",
-  "phone": "555-123-4567",
-  "email": "maria@example.com",
-  "location": "California",
+  "name": "Sarah Johnson",
+  "phone": "704-555-0123",
+  "email": "sarah.johnson@email.com",
+  "location": "Charlotte, NC",
+  "opposing_party": "Husband's name"
+}
+                                    </div>
+                                
+                            </div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <div class="timestamp">
+                            Response Time: 13622ms | 
+                            Average Score: 8.2/10
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="test-card">
+                    <div class="test-header">
+                        <div class="test-title">
+                            <h3>Urgent legal matter requiring immediate escalation</h3>
+                            <p>User: Michael Chen</p>
+                        </div>
+                        <div class="test-status passed">
+                            PASS
+                        </div>
+                    </div>
+                    
+                    <div class="test-content">
+                        <div class="score-grid">
+                            
+                                    <div class="score-item">
+                                        <div class="score-label">empathy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">accuracy</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">completeness</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">relevance</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">professionalism</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">actionability</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">legalAccuracy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">conversationFlow</div>
+                                        <div class="score-value">7.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">toolUsage</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                        </div>
+                        
+                        
+                            <div class="flags">
+                                <h4>Evaluation Flags</h4>
+                                <div class="flag-grid">
+                                    
+                                    
+                                    
+                                    
+                                        <div class="flag-item success">
+                                            <span>✅ No Critical Issues</span>
+                                        </div>
+                                    
+                                </div>
+                            </div>
+                        
+                        
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">12</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">0%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                        
+                        <div class="conversation">
+                            <h4>Conversation Flow</h4>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 1)</div>
+                                    <div>I have an urgent legal problem and I need help immediately.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 2)</div>
+                                    <div>I understand you're concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case. Let me collect your information first so I can provide you with accurate pricing details. Can you please provide your full name?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 3)</div>
+                                    <div>My name is Michael Chen.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 4)</div>
+                                    <div>Thank you Michael Chen! Now I need your city and state.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 5)</div>
+                                    <div>I live in Raleigh, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 6)</div>
+                                    <div>Thank you Michael Chen! Now I need your phone number.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 7)</div>
+                                    <div>My phone number is 919-555-0123.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 8)</div>
+                                    <div>Thank you Michael Chen! Now I need your email address.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 9)</div>
+                                    <div>My email is michael.chen@email.com.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 10)</div>
+                                    <div>Thank you Michael Chen! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 11)</div>
+                                    <div>I'm safe, but I just received a restraining order and I need to respond within 24 hours. My name is Michael Chen.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 12)</div>
+                                    <div>Perfect! I have all the information I need. Here's a summary of your matter:
+
+**Client Information:**
+- Name: Michael Chen
+- Contact: 919-555-0123, michael.chen@email.com, Raleigh, NC
+- Opposing Party: Unknown
+
+**Matter Details:**
+- Type: Family Law
+- Description: Client seeking legal assistance with restraining order response
+- Urgency: high
+
+I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to schedule a consultation.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        {
+  "matter_type": "Family Law",
+  "description": "Client seeking legal assistance with restraining order response",
+  "urgency": "high",
+  "name": "Michael Chen",
+  "phone": "919-555-0123",
+  "email": "michael.chen@email.com",
+  "location": "Raleigh, NC",
   "opposing_party": "Unknown"
 }
                                     </div>
@@ -352,8 +719,436 @@ If you don't provide a description, I won't be able to call the create_matter to
                         
                         
                         <div class="timestamp">
-                            Response Time: 30184ms | 
-                            Average Score: 7.1/10
+                            Response Time: 14277ms | 
+                            Average Score: 8.4/10
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="test-card">
+                    <div class="test-header">
+                        <div class="test-title">
+                            <h3>Complex legal situation requiring specialized expertise</h3>
+                            <p>User: David Rodriguez</p>
+                        </div>
+                        <div class="test-status passed">
+                            PASS
+                        </div>
+                    </div>
+                    
+                    <div class="test-content">
+                        <div class="score-grid">
+                            
+                                    <div class="score-item">
+                                        <div class="score-label">empathy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">accuracy</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">completeness</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">relevance</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">professionalism</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">actionability</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">legalAccuracy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">conversationFlow</div>
+                                        <div class="score-value">7.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">toolUsage</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                        </div>
+                        
+                        
+                            <div class="flags">
+                                <h4>Evaluation Flags</h4>
+                                <div class="flag-grid">
+                                    
+                                    
+                                    
+                                    
+                                        <div class="flag-item success">
+                                            <span>✅ No Critical Issues</span>
+                                        </div>
+                                    
+                                </div>
+                            </div>
+                        
+                        
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">12</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">0%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                        
+                        <div class="conversation">
+                            <h4>Conversation Flow</h4>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 1)</div>
+                                    <div>I have a complicated legal situation that involves multiple issues and I don't know where to start.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 2)</div>
+                                    <div>Thank you for sharing that with me. I have your matter description. Now I need to understand your contact information. Can you please provide your full name?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 3)</div>
+                                    <div>My name is David Rodriguez.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 4)</div>
+                                    <div>Thank you David Rodriguez! Now I need your city and state.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 5)</div>
+                                    <div>I live in Durham, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 6)</div>
+                                    <div>Thank you David Rodriguez! Now I need your phone number.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 7)</div>
+                                    <div>My phone number is 919-555-0124.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 8)</div>
+                                    <div>Thank you David Rodriguez! Now I need your email address. 
+
+Also, I understand you're concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 9)</div>
+                                    <div>My email is david.rodriguez@email.com.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 10)</div>
+                                    <div>Thank you David Rodriguez! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?
+
+(Also, I'll check our conversation history for any legal issues you may have mentioned earlier.)</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 11)</div>
+                                    <div>I'm David Rodriguez. I have a business dispute, employment issues, and potential tax problems all related to the same situation.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 12)</div>
+                                    <div>Perfect! I have all the information I need. Here's a summary of your matter:
+
+**Client Information:**
+- Name: David Rodriguez
+- Contact: 919-555-0124, david.rodriguez@email.com, Durham, NC
+- Opposing Party: Unknown
+
+**Matter Details:**
+- Type: Business Law
+- Description: Client seeking legal assistance with business dispute, employment issues, and potential tax problems
+- Urgency: high
+
+I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to schedule a consultation.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        {
+  "matter_type": "Business Law",
+  "description": "Client seeking legal assistance with business dispute, employment issues, and potential tax problems",
+  "urgency": "high",
+  "name": "David Rodriguez",
+  "phone": "919-555-0124",
+  "email": "david.rodriguez@email.com",
+  "location": "Durham, NC",
+  "opposing_party": "Unknown"
+}
+                                    </div>
+                                
+                            </div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <div class="timestamp">
+                            Response Time: 16371ms | 
+                            Average Score: 8.2/10
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="test-card">
+                    <div class="test-header">
+                        <div class="test-title">
+                            <h3>Pricing concerns and financial discussion</h3>
+                            <p>User: Thomas Brown</p>
+                        </div>
+                        <div class="test-status passed">
+                            PASS
+                        </div>
+                    </div>
+                    
+                    <div class="test-content">
+                        <div class="score-grid">
+                            
+                                    <div class="score-item">
+                                        <div class="score-label">empathy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">accuracy</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">completeness</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">relevance</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">professionalism</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">actionability</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">legalAccuracy</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">conversationFlow</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">toolUsage</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                        </div>
+                        
+                        
+                            <div class="flags">
+                                <h4>Evaluation Flags</h4>
+                                <div class="flag-grid">
+                                    
+                                    
+                                    
+                                    
+                                        <div class="flag-item success">
+                                            <span>✅ No Critical Issues</span>
+                                        </div>
+                                    
+                                </div>
+                            </div>
+                        
+                        
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">12</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">0%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                        
+                        <div class="conversation">
+                            <h4>Conversation Flow</h4>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 1)</div>
+                                    <div>I need legal help but I'm concerned about the cost. Can you tell me about your pricing?</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 2)</div>
+                                    <div>I understand you're concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case. Let me collect your information first so I can provide you with accurate pricing details. Can you please provide your full name?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 3)</div>
+                                    <div>My name is Thomas Brown.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 4)</div>
+                                    <div>Thank you Thomas Brown! Now I need your city and state.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 5)</div>
+                                    <div>I live in Greensboro, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 6)</div>
+                                    <div>Thank you Thomas Brown! Now I need your phone number.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 7)</div>
+                                    <div>My phone number is 336-555-0123.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 8)</div>
+                                    <div>Thank you Thomas Brown! Now I need your email address.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 9)</div>
+                                    <div>My email is thomas.brown@email.com.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 10)</div>
+                                    <div>Thank you Thomas Brown! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 11)</div>
+                                    <div>My name is Thomas Brown and I need help with a landlord-tenant dispute.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 12)</div>
+                                    <div>Perfect! I have all the information I need. Here's a summary of your matter:
+
+**Client Information:**
+- Name: Thomas Brown
+- Contact: 336-555-0123, thomas.brown@email.com, Greensboro, NC
+- Opposing Party: Landlord's Name
+
+**Matter Details:**
+- Type: Landlord-Tenant
+- Description: Client seeking assistance with landlord-tenant dispute
+- Urgency: medium
+
+I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to schedule a consultation.</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        {
+  "matter_type": "Landlord-Tenant",
+  "description": "Client seeking assistance with landlord-tenant dispute",
+  "urgency": "medium",
+  "name": "Thomas Brown",
+  "phone": "336-555-0123",
+  "email": "thomas.brown@email.com",
+  "location": "Greensboro, NC",
+  "opposing_party": "Landlord's Name"
+}
+                                    </div>
+                                
+                            </div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <div class="timestamp">
+                            Response Time: 16676ms | 
+                            Average Score: 8.7/10
                         </div>
                     </div>
                 </div>
