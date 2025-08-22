@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
-import { getTeamsEndpoint } from '../config/api';
+// API endpoints - moved inline since api.ts was removed
+const getTeamsEndpoint = () => '/api/teams';
 
 interface TeamConfig {
   name: string;

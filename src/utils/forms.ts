@@ -1,4 +1,6 @@
-import { getFormsEndpoint, getTeamsEndpoint } from '../config/api';
+// API endpoints - moved inline since api.ts was removed
+const getFormsEndpoint = () => '/api/forms';
+const getTeamsEndpoint = () => '/api/teams';
 import { ChatMessageUI } from '../../worker/types';
 
 // Utility function to format form data for submission

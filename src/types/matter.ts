@@ -15,22 +15,4 @@ export interface Matter {
     email?: string;
     phone?: string;
   };
-}
-
-export interface MattersListProps {
-  matters: Matter[];
-  onMatterSelect: (matter: Matter) => void;
-  onCreateMatter: () => void;
-  isLoading?: boolean;
-}
-
-export interface MatterCardProps {
-  matter: Matter;
-  onClick: () => void;
-}
-
-export interface MatterDetailProps {
-  matter: Matter;
-  onBack: () => void;
-  onEdit: () => void;
 } 

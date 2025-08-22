@@ -8,14 +8,10 @@ import { useMessageHandling } from './hooks/useMessageHandling';
 import { useFileUpload } from './hooks/useFileUpload';
 import { useTeamConfig } from './hooks/useTeamConfig';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
-import { submitContactForm } from './utils/forms';
-import { debounce } from './utils/debounce';
-import { detectSchedulingIntent, createSchedulingResponse } from './utils/scheduling';
 import { ChatMessageUI } from '../worker/types';
 import './index.css';
 
-const ANIMATION_DURATION = 300;
-const RESIZE_DEBOUNCE_DELAY = 100;
+
 
 export function App() {
 	// Core state
@@ -139,82 +135,11 @@ export function App() {
 		// Could show a toast notification here
 	}, []);
 
-	// Create debounced welcome button handlers to prevent spam clicks
-	const debouncedCreateMatterStart = useCallback(
-		debounce(() => {
-			// Send user's matter creation request message
-			sendMessage("I'd like to create a matter and get help with my legal concern.", []);
-			setClearInputTrigger(prev => prev + 1);
-		}, 500), // 500ms debounce delay
-		[messages, sendMessage]
-	);
 
-	const debouncedScheduleStart = useCallback(
-		debounce(() => {
-			// Send user's scheduling request message
-			sendMessage("I'd like to request a consultation.", []);
-			setClearInputTrigger(prev => prev + 1);
-		}, 500), // 500ms debounce delay
-		[messages, sendMessage]
-	);
 
-	// Add matter creation handlers (now debounced)
-	const handleCreateMatterStart = () => {
-		sendMessage("I'd like to create a new legal matter.", []);
-	};
-
-	// Simplified scheduling handlers - agent handles all scheduling logic
+	// Simplified scheduling handler - agent handles all scheduling logic
 	const handleScheduleStart = () => {
 		sendMessage("I'd like to schedule a consultation.", []);
-	};
-	
-	const handleDateSelect = (date: Date) => {
-		const formattedDate = new Intl.DateTimeFormat('en-US', {
-			weekday: 'long',
-			month: 'long',
-			day: 'numeric'
-		}).format(date);
-		
-		sendMessage(`I'd like to be contacted on ${formattedDate} for my consultation.`, []);
-	};
-	
-	const handleTimeOfDaySelect = (timeOfDay: 'morning' | 'afternoon') => {
-		const timeOfDayLabel = {
-			morning: 'Morning (8:00 AM - 12:00 PM)',
-			afternoon: 'Afternoon (12:00 PM - 5:00 PM)'
-		}[timeOfDay];
-		
-		sendMessage(`I prefer to be contacted in the ${timeOfDayLabel}.`, []);
-	};
-	
-	const handleTimeSlotSelect = (timeSlot: Date) => {
-		const formattedTime = new Intl.DateTimeFormat('en-US', {
-			hour: 'numeric',
-			minute: 'numeric',
-			hour12: true
-		}).format(timeSlot);
-		
-		const formattedDate = new Intl.DateTimeFormat('en-US', {
-			weekday: 'long',
-			month: 'long',
-			day: 'numeric'
-		}).format(timeSlot);
-		
-		sendMessage(`I'll be available for a consultation at ${formattedTime} on ${formattedDate}.`, []);
-	};
-	
-	const handleRequestMoreDates = () => {
-		sendMessage("I need to see more date options.", []);
-	};
-
-	// Simplified service selection - agent handles all logic
-	const handleServiceSelect = (service: string) => {
-		sendMessage(`I'm looking for legal help with my ${service} issue.`, []);
-	};
-
-	// Simplified urgency selection - agent handles all logic
-	const handleUrgencySelect = (urgency: string) => {
-		sendMessage(`This is a ${urgency.toLowerCase()} matter.`, []);
 	};
 
 	// Handle media capture
@@ -237,10 +162,7 @@ export function App() {
 		}
 	};
 
-	// Handle learn services
-	const handleLearnServices = async () => {
-		await sendMessage("Tell me about your firm's services", []);
-	};
+
 
 	const handleRequestConsultation = async () => {
 		await sendMessage("I'd like to speak with a lawyer about my situation. Can you help me schedule a consultation?", []);
@@ -274,15 +196,7 @@ export function App() {
 				<ChatContainer
 					messages={messages}
 					onSendMessage={sendMessage}
-					onDateSelect={handleDateSelect}
-					onTimeOfDaySelect={handleTimeOfDaySelect}
-					onTimeSlotSelect={handleTimeSlotSelect}
-					onRequestMoreDates={handleRequestMoreDates}
-					onServiceSelect={handleServiceSelect}
-					onUrgencySelect={handleUrgencySelect}
-					onCreateMatter={handleCreateMatterStart}
 					onScheduleConsultation={handleRequestConsultation}
-					onLearnServices={handleLearnServices}
 					teamConfig={{
 						name: teamConfig.name,
 						profileImage: teamConfig.profileImage,
