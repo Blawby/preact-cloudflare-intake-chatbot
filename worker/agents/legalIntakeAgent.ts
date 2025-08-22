@@ -542,12 +542,15 @@ CRITICAL:
 - DO NOT ask again if they already explained their legal situation
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
+- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
 - analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+
+TOOL_CALL: create_matter
+PARAMETERS: {"matter_type": "Unknown", "description": "Client seeking legal assistance", "urgency": "unknown", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "None"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
@@ -1257,12 +1260,15 @@ CRITICAL:
 - DO NOT ask again if they already explained their legal situation
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description, urgency
+- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
 - analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "555-123-4567", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+
+TOOL_CALL: create_matter
+PARAMETERS: {"matter_type": "Unknown", "description": "Client seeking legal assistance", "urgency": "unknown", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "None"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}

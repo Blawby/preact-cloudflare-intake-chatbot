@@ -124,9 +124,14 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
       if (body.toolCalls && !Array.isArray(body.toolCalls)) {
         typeErrors.push('toolCalls must be an array');
       } else if (body.toolCalls && Array.isArray(body.toolCalls)) {
-        const invalidToolCalls = body.toolCalls.filter((tc: any, index: number) => !isValidToolCall(tc));
-        if (invalidToolCalls.length > 0) {
-          typeErrors.push(`toolCalls array contains invalid tool call objects at indices: ${invalidToolCalls.map((_, index) => body.toolCalls.findIndex(tc => !isValidToolCall(tc))).join(', ')}`);
+        const invalidIndices: number[] = [];
+        body.toolCalls.forEach((tc: any, index: number) => {
+          if (!isValidToolCall(tc)) {
+            invalidIndices.push(index);
+          }
+        });
+        if (invalidIndices.length > 0) {
+          typeErrors.push(`toolCalls array contains invalid tool call objects at indices: ${invalidIndices.join(', ')}`);
         }
       }
       if (body.prompt && typeof body.prompt !== 'string') {

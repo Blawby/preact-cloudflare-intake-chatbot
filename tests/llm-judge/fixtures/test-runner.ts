@@ -450,12 +450,35 @@ function generateHTMLReport(results: any[]): string {
                         
                         <h4>Conversation Flow:</h4>
                         <div class="conversation">
-                            ${result.messages.map((message: any) => `
-                                <div class="message ${message.role}">
-                                    <strong>${message.role === 'user' ? '👤 User' : '🤖 Assistant'}:</strong>
-                                    <div>${escapeHtml(message.content)}</div>
-                                </div>
-                            `).join('')}
+                            ${(() => {
+                                let messageIndex = 1;
+                                let output = '';
+                                
+                                // Show all original test messages first
+                                for (let i = 0; i < result.messages.length; i++) {
+                                    const message = result.messages[i];
+                                    output += `
+                                        <div class="message ${message.role}">
+                                            <div class="message-role">${message.role} (message ${messageIndex})</div>
+                                            <div>${escapeHtml(message.content)}</div>
+                                        </div>
+                                    `;
+                                    messageIndex++;
+                                }
+                                
+                                // Then show all assistant responses
+                                for (let i = 0; i < result.actualResponses.length; i++) {
+                                    output += `
+                                        <div class="message assistant">
+                                            <div class="message-role">assistant (message ${messageIndex})</div>
+                                            <div>${escapeHtml(result.actualResponses[i])}</div>
+                                        </div>
+                                    `;
+                                    messageIndex++;
+                                }
+                                
+                                return output;
+                            })()}
                         </div>
                         
                         ${result.actualToolCalls && result.actualToolCalls.length > 0 ? `

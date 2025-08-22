@@ -28,14 +28,14 @@ check_pattern() {
     
     echo "🔍 Checking: $description"
     
-    if rg -P -g "$files" "$pattern" > /dev/null 2>&1; then
+    if rg -P --no-heading --line-number -g "$files" -e "$pattern" > /dev/null 2>&1; then
         if [ "$should_exist" = "true" ]; then
             echo "✅ Found expected pattern: $pattern"
             return 0
         else
             echo "❌ Found problematic pattern: $pattern"
             echo "   Files containing this pattern:"
-            rg -P -g "$files" "$pattern" --no-heading --line-number
+            rg -P --no-heading --line-number -g "$files" -e "$pattern"
             return 1
         fi
     else

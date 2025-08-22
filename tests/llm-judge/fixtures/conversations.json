@@ -122,11 +122,15 @@
         },
         {
           "role": "user",
+          "content": "My name is Maria Garcia."
+        },
+        {
+          "role": "user",
           "content": "I'm in California and I need help with a personal injury case from a car accident."
         },
         {
           "role": "user",
-          "content": "My name is Maria Garcia, phone 415-555-0123, email maria.garcia@example.com."
+          "content": "My phone is 415-555-0123 and email is maria.garcia@example.com."
         }
       ],
       "expectedToolCalls": [
