@@ -21,7 +21,11 @@ export interface TeamConfig {
   accentColor?: string;
   introMessage?: string;
   profileImage?: string;
-
+  blawbyApi?: {
+    enabled: boolean;
+    apiKey: string;
+    teamUlid: string;
+  };
 }
 
 export interface Team {

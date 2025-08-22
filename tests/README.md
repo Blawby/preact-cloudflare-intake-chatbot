@@ -1,6 +1,6 @@
 # Testing Structure
 
-This directory follows Cloudflare best practices for testing Cloudflare Workers and frontend applications.
+This directory follows Cloudflare best practices for testing Cloudflare Workers and frontend applications. It includes comprehensive test coverage from unit tests to AI-powered evaluation tests.
 
 ## Directory Structure
 
@@ -48,6 +48,93 @@ tests/
 - **Paralegal service testing**: Tests paralegal agent functionality
 - **Queue processing**: Tests task queue handling
 - **Service integration**: Tests paralegal service integration
+
+## 🎯 LLM Judge Testing Framework
+
+### What These Tests Do
+
+1. **Real API Testing**: Calls your actual `/api/agent/stream` endpoint
+2. **AI-Powered Evaluation**: Uses your `/api/judge` endpoint to evaluate responses
+3. **Conversation Flow Testing**: Tests multi-turn conversations
+4. **Tool Call Validation**: Checks if expected tools are called
+5. **HTML Report Generation**: Creates beautiful reports with detailed results
+
+### Test Scenarios
+
+The system includes 47+ test scenarios across multiple categories:
+
+- **Standard legal intake** - Basic family law matter
+- **Urgent legal matter** - High-priority escalation
+- **Complex legal situation** - Multi-issue cases
+- **Location verification** - Service area checks
+- **Pricing concerns** - Financial discussions
+- **Legal practice areas** - Broad legal scenarios
+- **Location service cases** - Jurisdiction and service area issues
+- **Pricing requests** - Financial and pricing inquiries
+
+### Evaluation Criteria
+
+Each response is evaluated on 10 criteria (1-10 scale):
+
+1. **Empathy** - Understanding and compassion
+2. **Accuracy** - Correct legal information
+3. **Completeness** - Comprehensive coverage
+4. **Relevance** - Appropriate to scenario
+5. **Professionalism** - Professional tone
+6. **Actionability** - Clear next steps
+7. **Legal Accuracy** - Legal knowledge
+8. **Conversation Flow** - Natural progression
+9. **Tool Usage** - Appropriate tool calls
+10. **Handoff Decision** - Proper escalation when needed
+
+### Reports
+
+After running tests, an HTML report is generated at:
+`test-results/llm-judge-report.html`
+
+The report includes:
+- Summary statistics
+- Individual test results
+- Conversation flows
+- Tool calls made
+- Judge feedback and suggestions
+- Performance metrics
+
+### Configuration
+
+Tests use these environment variables:
+- `TEST_API_URL` - API endpoint (default: http://localhost:8787)
+- `TEST_TEAM_ID` - Team ID for testing (default: test-team-1)
+
+### Performance Benchmarks
+- Response time: < 5 seconds
+- Token usage: < 1000 tokens
+- Tool usage: Appropriate escalation
+
+### Score Interpretation
+- **9-10**: Excellent response, meets all requirements
+- **7-8**: Good response, minor improvements needed
+- **5-6**: Acceptable response, significant improvements needed
+- **1-4**: Poor response, major issues identified
+
+### Adding New Test Scenarios
+
+1. Add new conversation objects to `tests/llm-judge/fixtures/conversations.json`
+2. Include user messages and expected tool calls
+3. Run tests to see how the AI performs
+
+### Customization
+
+#### Adding New Test Cases
+1. Create a new file in `tests/llm-judge/fixtures/test-cases/` or add to existing files
+2. Define test cases using the `TestCaseEvaluation` interface
+3. Export from `tests/llm-judge/fixtures/test-cases/index.ts`
+4. Run tests to see results
+
+#### Modifying Evaluation Criteria
+1. Update criteria in `tests/llm-judge/fixtures/judge-llm.ts`
+2. Adjust scoring weights and thresholds
+3. Modify judge prompts for different evaluation focus
 
 ## Running Tests
 

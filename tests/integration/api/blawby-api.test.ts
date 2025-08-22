@@ -1,45 +1,97 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { TeamService } from '../../../worker/services/TeamService.js';
 
 // Real Blawby API configuration for integration testing
 const BLAWBY_API_URL = 'https://staging.blawby.com';
-const BLAWBY_API_TOKEN = 'B3aCXQkQiXy81PJ8jhTtnzP2Dn4j0LcK2PG1U3RGa81e67e2';
-const BLAWBY_TEAM_ULID = '01jq70jnstyfzevc6423czh50e';
+const BLAWBY_TEAM_SLUG = 'blawby-ai';
 
 // Test context for managing test data and state
 interface TestContext {
   customerIds: string[];
+  apiToken?: string;
+  teamUlid?: string;
 }
 
 describe('Blawby API Integration Tests - Real API Calls', () => {
   let testContext: TestContext;
+  let teamService: TeamService;
 
-  beforeAll(() => {
-    // Verify we have the required environment variables
-    if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
-      console.warn('⚠️  BLAWBY_API_TOKEN not configured for real API testing');
-      console.warn('   Tests will be skipped. Set BLAWBY_API_TOKEN to run real integration tests.');
+  beforeAll(async () => {
+    // Initialize team service to get credentials from database
+    console.log('🔍 Setting up Blawby API integration tests...');
+    
+    // TODO: In a proper test setup with a test database, you would:
+    // 1. Set up a test database with the migration: migrations/add_blawby_api_token.sql
+    // 2. Initialize TeamService with the test database environment
+    // 3. Get the team configuration from the database:
+    //    const team = await teamService.getTeam('blawby-ai');
+    //    testContext.apiToken = team?.config.blawbyApi?.apiKey;
+    //    testContext.teamUlid = team?.config.blawbyApi?.teamUlid;
+    
+    // For now, we'll use the known values from the database configuration
+    // These should match what's configured in the database via the migration
+    testContext = {
+      customerIds: [],
+      apiToken: 'B3aCXQkQiXy81PJ8jhTtnzP2Dn4j0LcK2PG1U3RGa81e67e2',
+      teamUlid: '01jq70jnstyfzevc6423czh50e'
+    };
+    
+    if (!testContext.apiToken || testContext.apiToken === 'test-token') {
+      console.warn('⚠️  Blawby API token not available for testing');
+      console.warn('   Tests will be skipped. Ensure blawby-ai team is configured in database.');
+      console.warn('   Run migration: migrations/add_blawby_api_token.sql');
     }
   });
 
   beforeEach(() => {
     // Initialize test context for each test to ensure isolation
-    testContext = {
-      customerIds: []
-    };
+    testContext.customerIds = [];
+  });
+
+  afterEach(async () => {
+    // Skip if no real API token or no test data
+    if (!testContext.apiToken || testContext.apiToken === 'test-token' || !testContext.customerIds.length) {
+      console.log('⏭️  Skipping cleanup - no valid token or test data');
+      return;
+    }
+    
+    for (const customerId of testContext.customerIds) {
+      try {
+        console.log(`🧹 Cleaning up test customer: ${customerId}`);
+        
+        const deleteResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer/${customerId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${testContext.apiToken}`,
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (deleteResponse.ok) {
+          console.log(`✅ Successfully deleted test customer: ${customerId}`);
+        } else if (deleteResponse.status === 404) {
+          console.log(`ℹ️  Test customer ${customerId} already deleted (404)`);
+        } else {
+          console.warn(`⚠️  Failed to delete test customer ${customerId}: ${deleteResponse.status} ${deleteResponse.statusText}`);
+        }
+      } catch (error) {
+        console.warn(`❌ Error cleaning up test customer ${customerId}:`, error);
+      }
+    }
   });
 
   describe('API Authentication', () => {
     it('should successfully authenticate with the Blawby API', async () => {
       // Skip if no real API token
-      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
 
-      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customers`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customers`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${testContext.apiToken}`,
           'Accept': 'application/json'
         }
       });
@@ -52,12 +104,12 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
     it('should reject requests without proper authentication', async () => {
       // Skip if no real API token
-      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
 
-      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customers`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customers`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json'
@@ -71,7 +123,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
   describe('Customer Creation', () => {
     it('should successfully create a customer', async () => {
       // Skip if no real API token
-      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -85,17 +137,17 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         phone: '+13322097232',
         currency: 'USD',
         status: 'Lead',
-        team_id: BLAWBY_TEAM_ULID,
+        team_id: testContext.teamUlid,
         address_line_1: '123 Test St',
         city: 'Test City',
         state: 'TS',
         zip: '12345'
       };
 
-      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customer`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${testContext.apiToken}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -164,10 +216,10 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         team_id: BLAWBY_TEAM_ULID
       };
 
-      const customerResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customer`, {
+      const customerResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${testContext.apiToken}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -200,10 +252,10 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         ]
       };
 
-      const invoiceResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/invoice`, {
+      const invoiceResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/invoice`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${testContext.apiToken}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -258,7 +310,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         await fetch('https://invalid-url-that-does-not-exist.com/api/test', {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
+            'Authorization': `Bearer ${testContext.apiToken}`,
             'Accept': 'application/json'
           },
           signal: AbortSignal.timeout(3000) // 3 second timeout
@@ -280,10 +332,10 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
       // Make multiple rapid requests to test rate limiting
       const promises = Array.from({ length: 5 }, () =>
-        fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customers`, {
+        fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customers`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
+            'Authorization': `Bearer ${testContext.apiToken}`,
             'Accept': 'application/json'
           }
         })
@@ -298,35 +350,4 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
     });
   });
 
-  describe('Cleanup', () => {
-    it('should clean up test data', async () => {
-      // Skip if no real API token or no test data
-      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token' || !testContext.customerIds.length) {
-        console.log('⏭️  Skipping cleanup - no valid token or test data');
-        return;
-      }
-      
-      for (const customerId of testContext.customerIds) {
-        try {
-          console.log(`🧹 Cleaning up test customer: ${customerId}`);
-          
-          const deleteResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customer/${customerId}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
-              'Accept': 'application/json'
-            }
-          });
-          
-          if (deleteResponse.ok) {
-            console.log(`✅ Successfully deleted test customer: ${customerId}`);
-          } else {
-            console.warn(`⚠️  Failed to delete test customer ${customerId}: ${deleteResponse.status} ${deleteResponse.statusText}`);
-          }
-        } catch (error) {
-          console.error(`❌ Error cleaning up test customer ${customerId}:`, error);
-        }
-      }
-    });
-  });
 }); 

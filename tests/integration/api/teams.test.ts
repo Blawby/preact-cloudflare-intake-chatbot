@@ -3,6 +3,67 @@ import { describe, it, expect, beforeAll } from 'vitest';
 // Configuration for real worker testing
 const WORKER_URL = 'http://localhost:8787';
 
+// Helper function to create a test team
+async function createTestTeam() {
+  const newTeam = {
+    slug: `test-team-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: 'Test Legal Team',
+    config: {
+      aiModel: 'llama',
+      consultationFee: 150,
+      requiresPayment: true,
+      ownerEmail: 'test@example.com',
+      availableServices: ['Family Law', 'Business Law'],
+      jurisdiction: {
+        type: 'state',
+        description: 'North Carolina only',
+        supportedStates: ['NC'],
+        supportedCountries: ['US']
+      }
+    }
+  };
+
+  const response = await fetch(`${WORKER_URL}/api/teams`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newTeam)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create test team: ${response.status} ${response.statusText}`);
+  }
+
+  const responseData = await response.json();
+  return responseData.data;
+}
+
+// Helper function to validate teams data and create test team if needed
+async function getValidTeamData() {
+  const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
+  const teamsData = await teamsResponse.json();
+  
+  // Validate response structure
+  if (!teamsData || typeof teamsData !== 'object') {
+    throw new Error('Invalid teams response: response is not an object');
+  }
+  
+  if (!teamsData.success) {
+    throw new Error(`Teams API request failed: ${teamsData.error || 'Unknown error'}`);
+  }
+  
+  if (!Array.isArray(teamsData.data)) {
+    throw new Error('Invalid teams response: data is not an array');
+  }
+  
+  if (teamsData.data.length === 0) {
+    console.log('⚠️  No teams found, creating a test team...');
+    const testTeam = await createTestTeam();
+    return { data: [testTeam] };
+  }
+  
+  return teamsData;
+}
+
 describe('Teams API Integration Tests - Real Worker', () => {
   beforeAll(async () => {
     console.log('🧪 Testing teams API against real worker at:', WORKER_URL);
@@ -61,8 +122,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
   describe('GET /api/teams/{slugOrId}', () => {
     it('should return specific team by ID', async () => {
       // First get all teams to find a valid ID
-      const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
-      const teamsData = await teamsResponse.json();
+      const teamsData = await getValidTeamData();
       const validTeamId = teamsData.data[0].id;
       
       const response = await fetch(`${WORKER_URL}/api/teams/${validTeamId}`, {
@@ -81,8 +141,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
 
     it('should return specific team by slug', async () => {
       // First get all teams to find a valid slug
-      const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
-      const teamsData = await teamsResponse.json();
+      const teamsData = await getValidTeamData();
       const validTeamSlug = teamsData.data[0].slug;
       
       const response = await fetch(`${WORKER_URL}/api/teams/${validTeamSlug}`, {

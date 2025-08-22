@@ -95,7 +95,9 @@ npm run test:llm-judge   # Legacy: Uses shell script
 
 # View HTML report (auto-opens in browser)
 # Manual: open test-results/llm-judge-report.html
-```  
+```
+
+**📖 For detailed testing documentation, see [tests/README.md](tests/README.md)**  
 
 ## 🚀 **Quick Reference - Team Management**
 
@@ -368,43 +370,36 @@ npx wrangler dev  # Cloudflare Worker API server
 
 **Available Test Commands:**
 ```bash
-# Run fast tests (unit, integration, paralegal - excludes slow LLM judge tests)
+# Run all tests with real API calls (requires wrangler dev server)
 npm test
-npm run test:fast
 
-# Run slow tests (LLM judge tests only - requires wrangler dev server)
-npm run test:slow
+# Run tests in watch mode
+npm run test:watch
 
-# Run specific test categories
-npm run test:unit        # Unit tests only
-npm run test:integration # Integration tests only (requires wrangler dev server)
-npm run test:coverage    # Run tests with coverage report
-npm run test:watch       # Run tests in watch mode
-npm run test:ui          # Run tests with UI interface
+# Run tests with coverage report
+npm run test:coverage
 
-# Legacy LLM judge test script (alternative to test:slow)
+# Run tests with UI interface
+npm run test:ui
+
+# Legacy LLM judge test script
 npm run test:llm-judge
 ```
 
 ### Test Configuration
 
-The project uses separate test configurations to handle different test speeds:
+The project uses a unified test configuration that runs all tests against real API endpoints:
 
-**Fast Tests** (`vitest.config.ts`):
-- Unit tests, integration tests, paralegal tests
-- 30-second timeout per test
-- Excludes slow LLM judge tests
-- Suitable for CI/CD and regular development
-
-**Slow Tests** (`vitest.slow.config.ts`):
-- LLM judge tests only
-- 5-minute timeout per test
-- Requires Wrangler dev server running
-- Used for comprehensive AI agent evaluation
+**Unified Tests** (`vitest.config.ts`):
+- All tests use real API calls to the worker
+- 60-second timeout per test
+- Automatically starts/stops wrangler dev server
+- Tests actual behavior, not mocked responses
+- Includes unit, integration, and LLM judge tests
 
 **Test Results:**
-- Fast tests: ~113 tests, ~13 seconds
-- Slow tests: ~9 tests, ~160 seconds (LLM judge tests)
+- All tests: ~122 tests, ~2-3 minutes (real API calls)
+- Tests actual worker behavior and database operations
 
 ### Manual Testing
 
