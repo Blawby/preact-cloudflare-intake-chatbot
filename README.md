@@ -89,8 +89,9 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 npm run dev  # Vite frontend
 npx wrangler dev  # Cloudflare Worker API (required for integration tests)
 
-# Run LLM Judge tests
-npm run test:llm-judge
+# Run LLM Judge tests (choose one):
+npm run test:slow        # New: Uses vitest.slow.config.ts
+npm run test:llm-judge   # Legacy: Uses shell script
 
 # View HTML report (auto-opens in browser)
 # Manual: open test-results/llm-judge-report.html
@@ -367,22 +368,45 @@ npx wrangler dev  # Cloudflare Worker API server
 
 **Available Test Commands:**
 ```bash
-# Run unit tests
-npm run test:unit
-
-# Run integration tests (requires wrangler dev server)
-npm run test:integration
-
-# Run LLM Judge tests (requires wrangler dev server)
-npm run test:llm-judge
-
-# Run all tests
+# Run fast tests (unit, integration, paralegal - excludes slow LLM judge tests)
 npm test
+npm run test:fast
+
+# Run slow tests (LLM judge tests only - requires wrangler dev server)
+npm run test:slow
+
+# Run specific test categories
+npm run test:unit        # Unit tests only
+npm run test:integration # Integration tests only (requires wrangler dev server)
+npm run test:coverage    # Run tests with coverage report
+npm run test:watch       # Run tests in watch mode
+npm run test:ui          # Run tests with UI interface
+
+# Legacy LLM judge test script (alternative to test:slow)
+npm run test:llm-judge
 ```
 
-### Manual Testing
+### Test Configuration
 
-Test the agent API directly:
+The project uses separate test configurations to handle different test speeds:
+
+**Fast Tests** (`vitest.config.ts`):
+- Unit tests, integration tests, paralegal tests
+- 30-second timeout per test
+- Excludes slow LLM judge tests
+- Suitable for CI/CD and regular development
+
+**Slow Tests** (`vitest.slow.config.ts`):
+- LLM judge tests only
+- 5-minute timeout per test
+- Requires Wrangler dev server running
+- Used for comprehensive AI agent evaluation
+
+**Test Results:**
+- Fast tests: ~113 tests, ~13 seconds
+- Slow tests: ~9 tests, ~160 seconds (LLM judge tests)
+
+### Manual Testing
 
 ```bash
 # Test initial contact
@@ -437,6 +461,12 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 
 │   └── utils.ts         # Essential utilities only
 ├── tests/               # Test files
+│   ├── unit/           # Unit tests
+│   ├── integration/    # Integration tests
+│   ├── llm-judge/      # LLM judge evaluation tests
+│   └── paralegal/      # Paralegal service tests
+├── vitest.config.ts     # Fast tests configuration
+├── vitest.slow.config.ts # Slow tests configuration (LLM judge)
 └── public/              # Static assets
 ```
 
