@@ -283,7 +283,7 @@ class LLMJudge {
     let attempts = 0;
     const maxAttempts = 10;
     
-    while (attempts < maxAttempts && toolCalls.length === 0) {
+    while (attempts < maxAttempts) {
       attempts++;
       console.log(`\n🔄 Conversation round ${attempts}/${maxAttempts}`);
       
@@ -383,10 +383,49 @@ class LLMJudge {
           role: 'assistant',
           content: response
         });
+        
+        // Check if we have a create_matter tool call - if so, we're done
+        const hasCreateMatterCall = toolCalls.some(tc => tc.name === 'create_matter');
+        if (hasCreateMatterCall) {
+          console.log(`✅ create_matter tool call found - conversation complete`);
+          break;
+        }
       } else {
-        // No specific response found, try to move conversation forward
-        console.log(`📝 No specific response found, moving conversation forward...`);
-        break;
+        // No specific response found - this is a test failure
+        console.log(`❌ TEST FAILURE: Agent response not recognized`);
+        console.log(`   Agent response: ${response}`);
+        console.log(`   Expected: Agent to ask for specific information (name, location, phone, email, or matter description)`);
+        
+        // Return a failed result immediately
+        return {
+          conversationId: conversation.id,
+          user: conversation.user,
+          scenario: conversation.scenario,
+          messages: conversation.messages,
+          actualResponses,
+          conversationFlow,
+          expectedToolCalls: conversation.expectedToolCalls,
+          actualToolCalls: [],
+          evaluation: {
+            scores: {
+              empathy: 0,
+              accuracy: 0,
+              completeness: 0,
+              relevance: 0,
+              professionalism: 0,
+              actionability: 0,
+              legalAccuracy: 0,
+              conversationFlow: 0,
+              toolUsage: 0
+            },
+            averageScore: 0,
+            feedback: 'Agent response not recognized - no fallbacks allowed',
+            criticalIssues: ['Agent did not follow expected conversation flow'],
+            suggestions: ['Fix agent conversation flow logic']
+          },
+          passed: false,
+          responseTime: totalResponseTime
+        };
       }
     }
 
@@ -402,83 +441,43 @@ class LLMJudge {
     console.log(`   Tool calls: ${actualToolCalls.length}`);
     console.log(`   Last response preview: ${lastResponse.substring(0, 200)}...`);
     
-    // Continue conversation until matter is created (if needed)
-    let fallbackAttempts = 0;
-    const fallbackMaxAttempts = 5; // Increased max attempts
-    
-    while (!hasSummary && actualToolCalls.length === 0 && fallbackAttempts < fallbackMaxAttempts) {
-      fallbackAttempts++;
-      console.log(`🔄 Continuing conversation (attempt ${fallbackAttempts}/${fallbackMaxAttempts})...`);
+    // NO FALLBACKS - If the agent didn't complete the conversation properly, the test should fail
+    if (!hasSummary && actualToolCalls.length === 0) {
+      console.log(`❌ TEST FAILURE: Agent did not complete the conversation properly`);
+      console.log(`   Expected: Summary or tool calls`);
+      console.log(`   Got: No summary and no tool calls`);
+      console.log(`   Last response: ${lastResponse}`);
       
-      // Determine what information the agent is asking for and provide it
-      let nextUserMessage = '';
-      
-      if (lastResponse.includes('describe what you need help with') || 
-          lastResponse.includes('briefly describe') ||
-          lastResponse.includes('what you need help with')) {
-        // Agent is asking for matter description
-        nextUserMessage = 'I need help with a divorce. My husband and I are considering divorce and I need legal guidance.';
-      } else if (lastResponse.includes('phone number') && !lastResponse.includes('email')) {
-        // Agent is asking for phone number
-        nextUserMessage = 'My phone number is 555-123-4567.';
-      } else if (lastResponse.includes('email') && !lastResponse.includes('phone')) {
-        // Agent is asking for email
-        nextUserMessage = 'My email is sarah.johnson@email.com.';
-      } else if (lastResponse.includes('city and state') || 
-                 lastResponse.includes('location') ||
-                 lastResponse.includes('where you live')) {
-        // Agent is asking for location
-        nextUserMessage = 'I live in Charlotte, North Carolina.';
-      } else if (lastResponse.includes('full name') || 
-                 lastResponse.includes('your name')) {
-        // Agent is asking for name
-        nextUserMessage = 'My name is Sarah Johnson.';
-      } else {
-        // Default response to move conversation forward
-        nextUserMessage = 'Yes, that\'s all the information I have. Please proceed with creating my matter.';
-      }
-      
-      console.log(`📝 Providing response: ${nextUserMessage.substring(0, 100)}...`);
-      
-      const finalUserMessage = {
-        role: 'user',
-        content: nextUserMessage
+      // Return a failed result immediately
+      return {
+        conversationId: conversation.id,
+        user: conversation.user,
+        scenario: conversation.scenario,
+        messages: conversation.messages,
+        actualResponses,
+        conversationFlow,
+        expectedToolCalls: conversation.expectedToolCalls,
+        actualToolCalls: [],
+        evaluation: {
+          scores: {
+            empathy: 0,
+            accuracy: 0,
+            completeness: 0,
+            relevance: 0,
+            professionalism: 0,
+            actionability: 0,
+            legalAccuracy: 0,
+            conversationFlow: 0,
+            toolUsage: 0
+          },
+          averageScore: 0,
+          feedback: 'Agent failed to complete conversation - no fallbacks allowed',
+          criticalIssues: ['Agent did not provide summary or create matter'],
+          suggestions: ['Fix agent conversation flow logic']
+        },
+        passed: false,
+        responseTime: totalResponseTime
       };
-      
-      conversationHistory.push(finalUserMessage);
-      
-      // Add to conversation flow
-      conversationFlow.push({
-        role: 'user',
-        content: nextUserMessage
-      });
-      
-      const { response, toolCalls, responseTime } = await this.generateAssistantResponse(
-        conversationHistory,
-        sessionId
-      );
-      
-      console.log(`🤖 Final assistant response (attempt ${attempts}): ${response.substring(0, 200)}...`);
-      console.log(`🔧 Final tool calls (attempt ${attempts}): ${toolCalls.length}`);
-      
-      actualResponses.push(response);
-      actualToolCalls.push(...toolCalls);
-      totalResponseTime += responseTime;
-      
-      // Check if we now have a summary or tool calls
-      const newLastResponse = response;
-      const newHasSummary = newLastResponse.includes('summary of your matter') || 
-                           newLastResponse.includes('consultation fee') || 
-                           newLastResponse.includes('lawyer will contact you') ||
-                           newLastResponse.includes('Perfect! I have all the information');
-      
-      if (newHasSummary || toolCalls.length > 0) {
-        console.log(`✅ Conversation completed with ${newHasSummary ? 'summary' : 'tool calls'}`);
-        break;
-      }
-      
-      // Update lastResponse for next iteration
-      lastResponse = newLastResponse;
     }
 
     // Evaluate the final response
@@ -1067,8 +1066,11 @@ describe('LLM Judge Evaluation', () => {
         
         // 1. Check for phone validation failures
         const lastResponse = result.actualResponses[result.actualResponses.length - 1] || '';
+        console.log(`🔍 Last response: "${lastResponse}"`);
         const hasPhoneValidationError = lastResponse.includes('Invalid phone number') || 
-                                      lastResponse.includes('phone number you provided doesn\'t appear to be valid');
+                                      lastResponse.includes('phone number you provided doesn\'t appear to be valid') ||
+                                      lastResponse.includes('phone number is not valid') ||
+                                      lastResponse.includes('invalid phone');
         
         if (hasPhoneValidationError) {
           console.log(`❌ PHONE VALIDATION FAILURE: ${lastResponse}`);
