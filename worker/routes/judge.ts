@@ -36,7 +36,6 @@ function isValidToolCall(value: any): value is ToolCall {
     typeof value.name === 'string' &&
     typeof value.parameters === 'object' &&
     value.parameters !== null &&
-    (value.result === undefined || typeof value.result === 'object') && // result can be undefined or any object
     (value.error === undefined || typeof value.error === 'string') &&
     (value.timestamp === undefined || typeof value.timestamp === 'number') &&
     (value.metadata === undefined || (typeof value.metadata === 'object' && value.metadata !== null))
@@ -107,9 +106,9 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
       const typeErrors: string[] = [];
 
       // Check required fields
-      if (!body.testCase) missingFields.push('testCase');
-      if (!body.userMessage) missingFields.push('userMessage');
-      if (!body.agentResponse) missingFields.push('agentResponse');
+      if (body.testCase == null) missingFields.push('testCase');
+      if (body.userMessage == null) missingFields.push('userMessage');
+      if (body.agentResponse == null) missingFields.push('agentResponse');
 
       // Check field types
       if (body.testCase && !isValidTestCase(body.testCase)) {

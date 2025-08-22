@@ -84,7 +84,7 @@ export class LLMJudge {
             assistantResponse += data.text || '';
           } else if (data.type === 'tool_call') {
             // Schema-agnostic tool call parsing
-            const toolName = data.name || data.tool?.name || data.function?.name;
+            const toolName = data.name || data.tool?.name || data.function?.name || data.toolName || data.tool_name;
             let parameters = data.parameters || data.arguments || data.args;
             
             // Handle stringified parameters
