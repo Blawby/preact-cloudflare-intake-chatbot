@@ -33,6 +33,10 @@ tests/llm-judge/fixtures/
 ### Run All Tests and Generate Report
 
 ```bash
+# New method (recommended):
+npm run test:slow
+
+# Legacy method:
 npm run test:agent-report
 ```
 

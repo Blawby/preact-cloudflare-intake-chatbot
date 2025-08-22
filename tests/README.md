@@ -13,11 +13,11 @@ tests/
 │   └── worker/            # Worker function tests
 ├── integration/            # Integration tests
 │   ├── api/               # API integration tests
-│   └── worker/            # Worker integration tests
-├── e2e/                   # End-to-end tests
-│   ├── chat-flow.test.ts
-│   ├── payment-flow.test.ts
-│   └── file-upload.test.ts
+│   └── services/          # Service integration tests
+├── llm-judge/              # LLM judge evaluation tests (slow)
+│   ├── fixtures/          # Test data and scenarios
+│   └── llm-judge.test.ts  # Main test runner
+├── paralegal/              # Paralegal service tests
 ├── fixtures/              # Test data and mocks
 │   ├── test-utils.tsx     # Shared test utilities
 │   └── mock-data.ts       # Test data factories
@@ -37,20 +37,31 @@ tests/
 - **API**: Test API endpoints with mocked dependencies
 - **Worker**: Test worker functions with real Cloudflare bindings
 
-### End-to-End Tests (`tests/e2e/`)
-- **Complete flows**: Test entire user journeys
-- **Cross-service integration**: Test interactions between multiple services
-- **Real environment**: Use actual Cloudflare Workers runtime
+### LLM Judge Tests (`tests/llm-judge/`)
+- **AI-powered evaluation**: Uses LLM judge to evaluate agent responses
+- **Real API testing**: Calls actual `/api/agent/stream` endpoint
+- **Conversation flow testing**: Tests multi-turn conversations
+- **HTML report generation**: Creates detailed reports with results
+- **Slow tests**: Take 160+ seconds, require separate configuration
+
+### Paralegal Tests (`tests/paralegal/`)
+- **Paralegal service testing**: Tests paralegal agent functionality
+- **Queue processing**: Tests task queue handling
+- **Service integration**: Tests paralegal service integration
 
 ## Running Tests
 
 ```bash
-# Run all tests
+# Run fast tests (unit, integration, paralegal - excludes slow LLM judge tests)
 npm test
+npm run test:fast
+
+# Run slow tests (LLM judge tests only - requires wrangler dev server)
+npm run test:slow
 
 # Run specific test types
 npm run test:unit        # Unit tests only
-npm run test:integration # Integration tests only
+npm run test:integration # Integration tests only (requires wrangler dev server)
 npm run test:e2e        # E2E tests only
 
 # Run with coverage
@@ -61,6 +72,9 @@ npm run test:watch
 
 # Run tests with UI
 npm run test:ui
+
+# Legacy LLM judge test script (alternative to test:slow)
+npm run test:llm-judge
 ```
 
 ## Test Utilities

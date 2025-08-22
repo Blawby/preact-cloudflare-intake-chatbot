@@ -23,12 +23,15 @@ tests/llm-judge/
 ## Running the Tests
 
 ```bash
-# Run tests and generate HTML report
-npm run test:llm-judge
+# Run tests and generate HTML report (choose one):
+npm run test:slow        # New: Uses vitest.slow.config.ts
+npm run test:llm-judge   # Legacy: Uses shell script
 
 # Or run directly with vitest
 npx vitest run tests/llm-judge/
 ```
+
+**Note**: These tests take 160+ seconds and require the Wrangler dev server to be running (`npx wrangler dev`).
 
 ## Test Scenarios
 
