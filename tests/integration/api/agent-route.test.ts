@@ -235,8 +235,15 @@ PARAMETERS: {
       });
 
       const mockEnv = createMockEnv('Test response');
-      const response = await handleAgent(request, mockEnv, {});
-      expect(response.status).toBe(405); // Method Not Allowed
+      
+      // The handleAgent function throws an HttpError for method not allowed
+      try {
+        await handleAgent(request, mockEnv, {});
+        expect.fail('Expected handleAgent to throw an error');
+      } catch (error: any) {
+        expect(error.message).toContain('Only POST method is allowed');
+        expect(error.status).toBe(405);
+      }
     });
 
     it('should reject requests without messages', async () => {

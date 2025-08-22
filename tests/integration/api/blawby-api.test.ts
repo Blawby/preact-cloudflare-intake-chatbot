@@ -1,32 +1,24 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
-// Mock fetch globally
-global.fetch = vi.fn();
-
-// Mock environment variables for testing
-const mockEnv = {
-  BLAWBY_API_URL: 'https://staging.blawby.com',
-  BLAWBY_API_TOKEN: 'test-token',
-  BLAWBY_TEAM_ULID: '01jq70jnstyfzevc6423czh50e'
-};
+// Real Blawby API configuration for integration testing
+const BLAWBY_API_URL = 'https://staging.blawby.com';
+const BLAWBY_API_TOKEN = 'B3aCXQkQiXy81PJ8jhTtnzP2Dn4j0LcK2PG1U3RGa81e67e2';
+const BLAWBY_TEAM_ULID = '01jq70jnstyfzevc6423czh50e';
 
 // Test context for managing test data and state
 interface TestContext {
   customerIds: string[];
 }
 
-describe('Blawby API Integration Tests', () => {
+describe('Blawby API Integration Tests - Real API Calls', () => {
   let testContext: TestContext;
 
   beforeAll(() => {
-    // Mock successful authentication response
-    (fetch as any).mockResolvedValue({
-      status: 200,
-      json: async () => ({
-        ulid: mockEnv.BLAWBY_TEAM_ULID,
-        customers: []
-      })
-    });
+    // Verify we have the required environment variables
+    if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+      console.warn('⚠️  BLAWBY_API_TOKEN not configured for real API testing');
+      console.warn('   Tests will be skipped. Set BLAWBY_API_TOKEN to run real integration tests.');
+    }
   });
 
   beforeEach(() => {
@@ -34,23 +26,20 @@ describe('Blawby API Integration Tests', () => {
     testContext = {
       customerIds: []
     };
-    vi.clearAllMocks();
   });
 
   describe('API Authentication', () => {
     it('should successfully authenticate with the Blawby API', async () => {
-      (fetch as any).mockResolvedValueOnce({
-        status: 200,
-        json: async () => ({
-          ulid: mockEnv.BLAWBY_TEAM_ULID,
-          customers: []
-        })
-      });
+      // Skip if no real API token
+      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+        console.log('⏭️  Skipping real API test - no valid token');
+        return;
+      }
 
-      const response = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/customers`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customers`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${mockEnv.BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
           'Accept': 'application/json'
         }
       });
@@ -62,12 +51,13 @@ describe('Blawby API Integration Tests', () => {
     });
 
     it('should reject requests without proper authentication', async () => {
-      (fetch as any).mockResolvedValueOnce({
-        status: 401,
-        json: async () => ({ error: 'Unauthorized' })
-      });
+      // Skip if no real API token
+      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+        console.log('⏭️  Skipping real API test - no valid token');
+        return;
+      }
 
-      const response = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/customers`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customers`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json'
@@ -80,40 +70,32 @@ describe('Blawby API Integration Tests', () => {
 
   describe('Customer Creation', () => {
     it('should successfully create a customer', async () => {
+      // Skip if no real API token
+      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+        console.log('⏭️  Skipping real API test - no valid token');
+        return;
+      }
+
       const timestamp = Date.now();
-      const customerId = `customer-${timestamp}`;
       const email = `test-api-${timestamp}@example.com`;
       
-      (fetch as any).mockResolvedValueOnce({
-        status: 200,
-        json: async () => ({
-          message: 'Customer created successfully.',
-          data: {
-            id: customerId,
-            name: 'Test Customer API',
-            email: email,
-            phone: '+13322097232'
-          }
-        })
-      });
-
       const customerData = {
         name: 'Test Customer API',
         email: email,
         phone: '+13322097232',
         currency: 'USD',
         status: 'Lead',
-        team_id: mockEnv.BLAWBY_TEAM_ULID,
+        team_id: BLAWBY_TEAM_ULID,
         address_line_1: '123 Test St',
         city: 'Test City',
         state: 'TS',
         zip: '12345'
       };
 
-      const response = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/customer`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customer`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${mockEnv.BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -133,13 +115,11 @@ describe('Blawby API Integration Tests', () => {
     });
 
     it('should reject customer creation with invalid data', async () => {
-      (fetch as any).mockResolvedValueOnce({
-        status: 422,
-        json: async () => ({
-          message: 'Validation error',
-          errors: ['Invalid email format']
-        })
-      });
+      // Skip if no real API token
+      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+        console.log('⏭️  Skipping real API test - no valid token');
+        return;
+      }
 
       const invalidCustomerData = {
         name: 'Test Customer',
@@ -147,10 +127,10 @@ describe('Blawby API Integration Tests', () => {
         phone: 'invalid-phone'
       };
 
-      const response = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/customer`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customer`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${mockEnv.BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -165,46 +145,29 @@ describe('Blawby API Integration Tests', () => {
 
   describe('Invoice Creation', () => {
     it('should successfully create an invoice for a customer', async () => {
-      const customerId = `customer-${Date.now()}`;
-      const invoiceId = `invoice-${Date.now()}`;
-
-      // Mock customer creation
-      (fetch as any).mockResolvedValueOnce({
-        status: 200,
-        json: async () => ({
-          message: 'Customer created successfully.',
-          data: { id: customerId }
-        })
-      });
-
-      // Mock invoice creation
-      (fetch as any).mockResolvedValueOnce({
-        status: 200,
-        json: async () => ({
-          message: 'Invoice created successfully.',
-          data: {
-            id: invoiceId,
-            customer_id: customerId,
-            amount: 150.00,
-            status: 'draft'
-          }
-        })
-      });
+      // Skip if no real API token
+      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+        console.log('⏭️  Skipping real API test - no valid token');
+        return;
+      }
 
       // Create customer first
+      const timestamp = Date.now();
+      const email = `test-invoice-${timestamp}@example.com`;
+      
       const customerData = {
         name: 'Test Customer for Invoice',
-        email: `test-invoice-${Date.now()}@example.com`,
+        email: email,
         phone: '+13322097232',
         currency: 'USD',
         status: 'Lead',
-        team_id: mockEnv.BLAWBY_TEAM_ULID
+        team_id: BLAWBY_TEAM_ULID
       };
 
-      const customerResponse = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/customer`, {
+      const customerResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customer`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${mockEnv.BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -224,59 +187,146 @@ describe('Blawby API Integration Tests', () => {
         amount: 150.00,
         currency: 'USD',
         description: 'Legal consultation services',
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: 'draft', // Required field
+        line_items: [ // Required field
+          {
+            description: 'Legal consultation services',
+            quantity: 1,
+            unit_price: 150.00,
+            amount: 150.00,
+            line_total: 150.00 // Required field
+          }
+        ]
       };
 
-      const invoiceResponse = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/invoice`, {
+      const invoiceResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/invoice`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${mockEnv.BLAWBY_API_TOKEN}`,
+          'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify(invoiceData)
       });
 
-      expect(invoiceResponse.status).toBe(200);
+      console.log('📊 Invoice Response Status:', invoiceResponse.status);
+      console.log('📊 Invoice Response Headers:', Object.fromEntries(invoiceResponse.headers.entries()));
+      
       const invoiceResult = await invoiceResponse.json();
+      console.log('📊 Invoice Response Body:', JSON.stringify(invoiceResult, null, 2));
+      
+      if (invoiceResponse.status !== 200) {
+        console.log('❌ Invoice creation failed with validation error');
+        console.log('📋 Invoice data sent:', JSON.stringify(invoiceData, null, 2));
+        console.log('👤 Customer ID used:', customerIdResult);
+      }
+      
+      if (invoiceResponse.status !== 200) {
+        console.error('❌ Invoice creation failed!');
+        console.error('Status:', invoiceResponse.status);
+        console.error('Response:', JSON.stringify(invoiceResult, null, 2));
+        console.error('Invoice data sent:', JSON.stringify(invoiceData, null, 2));
+        console.error('Customer ID:', customerIdResult);
+        throw new Error(`Invoice creation failed with status ${invoiceResponse.status}: ${JSON.stringify(invoiceResult)}`);
+      }
+      
+      expect(invoiceResponse.status).toBe(200);
       expect(invoiceResult).toHaveProperty('message', 'Invoice created successfully.');
       expect(invoiceResult).toHaveProperty('data');
       expect(invoiceResult.data).toHaveProperty('id');
       expect(invoiceResult.data).toHaveProperty('customer_id', customerIdResult);
-      expect(invoiceResult.data).toHaveProperty('amount', 150.00);
+      
+      // Log the actual response structure to understand the API
+      console.log('✅ Invoice created successfully!');
+      console.log('📊 Invoice response structure:', JSON.stringify(invoiceResult.data, null, 2));
+      
+      // The API returns amount_due instead of amount, and invoice_line_items instead of line_items
+      expect(invoiceResult.data).toHaveProperty('amount_due', 150);
+      expect(invoiceResult.data).toHaveProperty('invoice_line_items');
+      expect(invoiceResult.data.invoice_line_items).toHaveLength(1);
+      expect(invoiceResult.data.invoice_line_items[0]).toHaveProperty('line_total', 150);
+      
+      console.log('✅ Invoice created successfully with correct structure!');
     });
   });
 
-  afterAll(async () => {
-    // Clean up test data - mock the delete requests
-    if (!testContext || !testContext.customerIds.length) {
-      return;
-    }
-    
-    for (const customerId of testContext.customerIds) {
+  describe('Error Handling', () => {
+    it('should handle network errors gracefully', async () => {
+      // Test with invalid URL to simulate network error
       try {
-        console.log(`🧹 Cleaning up test customer: ${customerId}`);
-        (fetch as any).mockResolvedValueOnce({
-          status: 200,
-          json: async () => ({ message: 'Customer deleted successfully' })
-        });
-        
-        const deleteResponse = await fetch(`${mockEnv.BLAWBY_API_URL}/api/v1/teams/${mockEnv.BLAWBY_TEAM_ULID}/customer/${customerId}`, {
-          method: 'DELETE',
+        await fetch('https://invalid-url-that-does-not-exist.com/api/test', {
+          method: 'GET',
           headers: {
-            'Authorization': `Bearer ${mockEnv.BLAWBY_API_TOKEN}`,
+            'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
+            'Accept': 'application/json'
+          },
+          signal: AbortSignal.timeout(3000) // 3 second timeout
+        });
+        // If we get here, the test should fail
+        expect.fail('Expected network error but request succeeded');
+      } catch (error) {
+        // Expected network error
+        expect(error).toBeDefined();
+      }
+    }, 10000); // 10 second test timeout
+
+    it('should handle rate limiting', async () => {
+      // Skip if no real API token
+      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token') {
+        console.log('⏭️  Skipping real API test - no valid token');
+        return;
+      }
+
+      // Make multiple rapid requests to test rate limiting
+      const promises = Array.from({ length: 5 }, () =>
+        fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customers`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
             'Accept': 'application/json'
           }
-        });
-        
-        if (deleteResponse.ok) {
-          console.log(`✅ Successfully deleted test customer: ${customerId}`);
-        } else {
-          console.warn(`⚠️ Failed to delete test customer ${customerId}: ${deleteResponse.status} ${deleteResponse.statusText}`);
-        }
-      } catch (error) {
-        console.error(`❌ Error cleaning up test customer ${customerId}:`, error);
+        })
+      );
+
+      const responses = await Promise.all(promises);
+      
+      // All requests should either succeed or be rate limited (429)
+      responses.forEach(response => {
+        expect([200, 429]).toContain(response.status);
+      });
+    });
+  });
+
+  describe('Cleanup', () => {
+    it('should clean up test data', async () => {
+      // Skip if no real API token or no test data
+      if (!BLAWBY_API_TOKEN || BLAWBY_API_TOKEN === 'test-token' || !testContext.customerIds.length) {
+        console.log('⏭️  Skipping cleanup - no valid token or test data');
+        return;
       }
-    }
+      
+      for (const customerId of testContext.customerIds) {
+        try {
+          console.log(`🧹 Cleaning up test customer: ${customerId}`);
+          
+          const deleteResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${BLAWBY_TEAM_ULID}/customer/${customerId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${BLAWBY_API_TOKEN}`,
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (deleteResponse.ok) {
+            console.log(`✅ Successfully deleted test customer: ${customerId}`);
+          } else {
+            console.warn(`⚠️  Failed to delete test customer ${customerId}: ${deleteResponse.status} ${deleteResponse.statusText}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error cleaning up test customer ${customerId}:`, error);
+        }
+      }
+    });
   });
 }); 
