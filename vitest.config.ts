@@ -81,9 +81,7 @@ const unifiedConfig = defineConfig({
       '@': resolve(__dirname, './src'),
       '~': resolve(__dirname, './'),
       '@tests': resolve(__dirname, './tests'),
-      '@fixtures': resolve(__dirname, './tests/fixtures'),
-      'worker_threads': resolve(__dirname, './tests/stubs/worker_threads.ts'),
-      'node:worker_threads': resolve(__dirname, './tests/stubs/worker_threads.ts')
+      '@fixtures': resolve(__dirname, './tests/fixtures')
     }
   }
 });

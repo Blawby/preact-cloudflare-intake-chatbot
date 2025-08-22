@@ -204,6 +204,8 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: {
+			'react': 'preact/compat',
+			'react-dom': 'preact/compat',
 			'worker_threads': resolve(__dirname, 'tests/stubs/worker_threads.ts'),
 			'node:worker_threads': resolve(__dirname, 'tests/stubs/worker_threads.ts')
 		}

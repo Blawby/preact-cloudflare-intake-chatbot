@@ -257,7 +257,7 @@ export const createMatter = {
       location: { type: 'string', description: 'Client location (city and state)' },
       opposing_party: { type: 'string', description: 'Opposing party name if applicable' }
     },
-    required: ['matter_type', 'description', 'urgency', 'name']
+    required: ['matter_type', 'description', 'name']
   }
 };
 
@@ -811,12 +811,15 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
   // Validate required fields
-  if (!matter_type || !description || !urgency || !name) {
+  if (!matter_type || !description || !name) {
     return { 
       success: false, 
       message: "I'm missing some essential information. Could you please provide your name, contact information, and describe your legal issue?" 
     };
   }
+  
+  // Set default urgency if not provided
+  const finalUrgency = urgency || 'unknown';
   
   // Validate name format
   if (!validateName(name)) {
@@ -887,7 +890,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
         matterInfo: {
           type: matter_type,
           description: description,
-          urgency: urgency,
+          urgency: finalUrgency,
           opposingParty: opposing_party || ''
         },
         teamId: teamConfig?.id || env.BLAWBY_TEAM_ULID || '01jq70jnstyfzevc6423czh50e',
@@ -930,7 +933,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
 **Matter Details:**
 - Type: ${matter_type}
 - Description: ${description}
-- Urgency: ${urgency}`;
+- Urgency: ${finalUrgency}`;
 
   if (requiresPayment && consultationFee > 0) {
     if (invoiceUrl) {
@@ -966,7 +969,7 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
     data: {
       matter_type,
       description,
-      urgency,
+      urgency: finalUrgency,
       name,
       phone,
       email,
