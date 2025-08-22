@@ -4,6 +4,16 @@ import conversations from './fixtures/conversations.json';
 import { writeFile } from 'fs/promises';
 import type { ToolCall } from '../../worker/routes/judge';
 
+// Helper function to escape HTML content
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Configuration
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:8787';
 const TEAM_ID = process.env.TEST_TEAM_ID || 'test-team-1';
@@ -50,6 +60,9 @@ interface JudgeEvaluation {
   feedback: string;
   criticalIssues: string[];
   suggestions: string[];
+  scores: Record<string, number>;
+  averageScore: number;
+  flags: string[];
 }
 
 class LLMJudge {
@@ -208,7 +221,7 @@ class LLMJudge {
         'Must demonstrate conversation flow efficiency and context retention',
         'Must handle validation errors gracefully and provide helpful guidance'
       ],
-      minScore: 7.0
+      minScore: testCase.minScore || 7.0
     };
 
     const requestBody = {
@@ -530,7 +543,8 @@ class LLMJudge {
       };
     }
 
-    const passed = averageScore >= 7.0; // Minimum passing score
+    const minScore = conversation.minScore || 7.0;
+    const passed = averageScore >= minScore; // Minimum passing score
 
     // Analyze conversation flow for additional insights
     const conversationAnalysis = this.analyzeConversationFlow(conversationFlow, actualResponses);
@@ -913,8 +927,8 @@ function generateHTMLReport(results: TestResult[]): string {
                 <div class="test-card">
                     <div class="test-header">
                         <div class="test-title">
-                            <h3>${result.scenario}</h3>
-                            <p>User: ${result.user}</p>
+                            <h3>${escapeHtml(result.scenario)}</h3>
+                            <p>User: ${escapeHtml(result.user)}</p>
                         </div>
                         <div class="test-status ${result.passed ? 'passed' : 'failed'}">
                             ${result.passed ? 'PASS' : 'FAIL'}
@@ -927,7 +941,7 @@ function generateHTMLReport(results: TestResult[]): string {
                               if (typeof value === 'number') {
                                 return `
                                     <div class="score-item">
-                                        <div class="score-label">${key}</div>
+                                        <div class="score-label">${escapeHtml(key)}</div>
                                         <div class="score-value">${value.toFixed(1)}/10</div>
                                     </div>
                                 `;
@@ -937,7 +951,7 @@ function generateHTMLReport(results: TestResult[]): string {
                               if (typeof value === 'number') {
                                 return `
                                     <div class="score-item">
-                                        <div class="score-label">${key}</div>
+                                        <div class="score-label">${escapeHtml(key)}</div>
                                         <div class="score-value">${value}/10</div>
                                     </div>
                                 `;
@@ -1003,7 +1017,7 @@ function generateHTMLReport(results: TestResult[]): string {
                             ${result.conversationFlow.map((message, index) => `
                                 <div class="message ${message.role}">
                                     <div class="message-role">${message.role} (message ${index + 1})</div>
-                                    <div>${message.content}</div>
+                                    <div>${escapeHtml(message.content)}</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -1013,8 +1027,8 @@ function generateHTMLReport(results: TestResult[]): string {
                                 <h4>Tool Calls Made</h4>
                                 ${result.actualToolCalls.map(toolCall => `
                                     <div class="tool-call">
-                                        <strong>${toolCall.name}</strong><br>
-                                        ${JSON.stringify(toolCall.parameters, null, 2)}
+                                        <strong>${escapeHtml(toolCall.name)}</strong><br>
+                                        <pre>${escapeHtml(JSON.stringify(toolCall.parameters, null, 2))}</pre>
                                     </div>
                                 `).join('')}
                             </div>
@@ -1023,7 +1037,7 @@ function generateHTMLReport(results: TestResult[]): string {
                         ${result.evaluation.feedback ? `
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>${result.evaluation.feedback}</p>
+                                <p>${escapeHtml(result.evaluation.feedback)}</p>
                             </div>
                         ` : ''}
                         
@@ -1031,7 +1045,7 @@ function generateHTMLReport(results: TestResult[]): string {
                             <div class="issues">
                                 <h4>Critical Issues</h4>
                                 <ul>
-                                    ${result.evaluation.criticalIssues.map(issue => `<li>${issue}</li>`).join('')}
+                                    ${result.evaluation.criticalIssues.map(issue => `<li>${escapeHtml(issue)}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
@@ -1040,7 +1054,7 @@ function generateHTMLReport(results: TestResult[]): string {
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    ${result.evaluation.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
+                                    ${result.evaluation.suggestions.map(suggestion => `<li>${escapeHtml(suggestion)}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
@@ -1331,7 +1345,8 @@ describe('LLM Judge Evaluation', () => {
           console.log(`⚠️  Zero score detected - this might be legitimate for minimal information scenarios`);
         }
         
-        console.log(`\n📊 Test Result: ${result.passed ? '✅ PASS' : '❌ FAIL'} (${result.evaluation.averageScore >= 7.0 ? 'meets' : 'below'} 7.0 threshold)`);
+        const minScore = conversation.minScore || 7.0;
+        console.log(`\n📊 Test Result: ${result.passed ? '✅ PASS' : '❌ FAIL'} (${result.evaluation.averageScore >= minScore ? 'meets' : 'below'} ${minScore} threshold)`);
         
         // Log tool call comparison
         if (result.expectedToolCalls.length > 0) {

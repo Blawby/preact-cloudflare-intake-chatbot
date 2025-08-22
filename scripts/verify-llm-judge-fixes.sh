@@ -3,7 +3,7 @@
 # Verification script for LLM Judge test fixes
 # This script uses ripgrep to verify that the fixes have been properly implemented
 
-set -e
+set -euo pipefail
 
 echo "🔍 Verifying LLM Judge test fixes..."
 
@@ -28,14 +28,14 @@ check_pattern() {
     
     echo "🔍 Checking: $description"
     
-    if rg -g "$files" "$pattern" > /dev/null 2>&1; then
+    if rg -P -g "$files" "$pattern" > /dev/null 2>&1; then
         if [ "$should_exist" = "true" ]; then
             echo "✅ Found expected pattern: $pattern"
             return 0
         else
             echo "❌ Found problematic pattern: $pattern"
             echo "   Files containing this pattern:"
-            rg -g "$files" "$pattern" --no-heading --line-number
+            rg -P -g "$files" "$pattern" --no-heading --line-number
             return 1
         fi
     else
@@ -54,7 +54,7 @@ echo ""
 echo "📋 Checking for implemented fixes..."
 
 # Check for proper slice usage with length check
-check_pattern "conversation\\.expectedToolCalls\\.length\\s*===\s*0" \
+check_pattern "conversation\\.expectedToolCalls\\.length\\s*===\\s*0" \
     "Proper slice usage with length check" \
     "tests/**/*.{ts,tsx}" \
     "true"

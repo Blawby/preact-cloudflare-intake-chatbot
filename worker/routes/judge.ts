@@ -36,7 +36,7 @@ function isValidToolCall(value: any): value is ToolCall {
     typeof value.name === 'string' &&
     typeof value.parameters === 'object' &&
     value.parameters !== null &&
-    (value.result === undefined || true) && // result can be any type
+    (value.result === undefined || typeof value.result === 'object') && // result can be undefined or any object
     (value.error === undefined || typeof value.error === 'string') &&
     (value.timestamp === undefined || typeof value.timestamp === 'number') &&
     (value.metadata === undefined || (typeof value.metadata === 'object' && value.metadata !== null))
@@ -165,6 +165,7 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
     const aiService = new AIService(env.AI, env);
 
     // Create the evaluation prompt
+    const minScore = Number.isFinite(Number(testCase.minScore)) ? Number(testCase.minScore) : 7;
     const evaluationPrompt = prompt || `You are an expert legal AI evaluator. Your job is to evaluate an AI legal assistant's response to a client inquiry.
 
 EVALUATION SCENARIO:
@@ -172,7 +173,7 @@ Test Case: ${testCase.testCaseId}
 Scenario: ${testCase.scenario}
 Expected Behavior: ${testCase.expectedBehavior?.join(', ') || 'Standard behavior expected'}
 Critical Requirements: ${testCase.criticalRequirements?.join(', ') || 'Standard requirements'}
-Minimum Score Required: ${testCase.minScore || 7}/10
+Minimum Score Required: ${minScore}/10
 
 CONVERSATION:
 User: "${userMessage}"
@@ -282,32 +283,36 @@ Provide only the JSON response, no additional text.`;
     }
 
     // Calculate scores with comprehensive criteria
+    const toScore = (v: unknown, fallback = 7) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.max(0, Math.min(10, n)) : fallback;
+    };
     const scores = {
       // Core competencies
-      empathy: evaluation.empathy || 7,
-      accuracy: evaluation.accuracy || 7,
-      completeness: evaluation.completeness || 7,
-      relevance: evaluation.relevance || 7,
-      professionalism: evaluation.professionalism || 7,
+      empathy: toScore(evaluation.empathy),
+      accuracy: toScore(evaluation.accuracy),
+      completeness: toScore(evaluation.completeness),
+      relevance: toScore(evaluation.relevance),
+      professionalism: toScore(evaluation.professionalism),
       
       // Conversation quality
-      actionability: evaluation.actionability || 7,
-      legalAccuracy: evaluation.legalAccuracy || 7,
-      conversationFlow: evaluation.conversationFlow || 7,
-      toolUsage: evaluation.toolUsage || 7,
-      contextAwareness: evaluation.contextAwareness || 7,
+      actionability: toScore(evaluation.actionability),
+      legalAccuracy: toScore(evaluation.legalAccuracy),
+      conversationFlow: toScore(evaluation.conversationFlow),
+      toolUsage: toScore(evaluation.toolUsage),
+      contextAwareness: toScore(evaluation.contextAwareness),
       
       // User experience
-      clarity: evaluation.clarity || 7,
-      efficiency: evaluation.efficiency || 7,
-      helpfulness: evaluation.helpfulness || 7,
-      responsiveness: evaluation.responsiveness || 7,
+      clarity: toScore(evaluation.clarity),
+      efficiency: toScore(evaluation.efficiency),
+      helpfulness: toScore(evaluation.helpfulness),
+      responsiveness: toScore(evaluation.responsiveness),
       
       // Technical performance
-      matterClassification: evaluation.matterClassification || 7,
-      urgencyAssessment: evaluation.urgencyAssessment || 7,
-      informationCollection: evaluation.informationCollection || 7,
-      errorHandling: evaluation.errorHandling || 7
+      matterClassification: toScore(evaluation.matterClassification),
+      urgencyAssessment: toScore(evaluation.urgencyAssessment),
+      informationCollection: toScore(evaluation.informationCollection),
+      errorHandling: toScore(evaluation.errorHandling)
     };
 
     // Calculate weighted average score (emphasizing critical criteria)
@@ -331,7 +336,7 @@ Provide only the JSON response, no additional text.`;
       (technicalScores.reduce((sum, score) => sum + score, 0) / technicalScores.length) * technicalWeight
     );
 
-    const passed = averageScore >= (testCase.minScore || 7);
+    const passed = averageScore >= minScore;
 
     const result = {
       success: true,

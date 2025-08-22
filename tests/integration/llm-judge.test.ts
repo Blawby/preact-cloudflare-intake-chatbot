@@ -603,7 +603,7 @@ function generateHTMLReport(results: TestResult[]): string {
                     
                     <div class="test-content">
                         <div class="score-grid">
-                            ${Object.entries(result.evaluation).map(([key, value]) => {
+                            ${Object.entries(result.evaluation.scores).map(([key, value]) => {
                               if (typeof value === 'number') {
                                 return `
                                     <div class="score-item">
