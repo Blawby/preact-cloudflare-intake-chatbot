@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
 import { ChatMessageUI } from '../../worker/types';
-import { getAgentStreamEndpoint } from '../config/api';
+// API endpoints - moved inline since api.ts was removed
+const getAgentStreamEndpoint = () => '/api/agent';
 
 // Define proper types for message history
 interface ChatMessageHistoryEntry {

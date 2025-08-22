@@ -9,15 +9,7 @@ import { ChatMessageUI } from '../../worker/types';
 
 interface VirtualMessageListProps {
     messages: ChatMessageUI[];
-    onDateSelect?: (date: Date) => void;
-    onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
-    onTimeSlotSelect?: (timeSlot: Date) => void;
-    onRequestMoreDates?: () => void;
-    onServiceSelect?: (service: string) => void;
-    onUrgencySelect?: (urgency: string) => void;
-    onCreateMatter?: () => void;
     onScheduleConsultation?: () => void;
-    onLearnServices?: () => void;
     teamConfig?: {
         name: string;
         profileImage: string | null;
@@ -30,8 +22,6 @@ interface VirtualMessageListProps {
     sessionId?: string;
     teamId?: string;
     onFeedbackSubmit?: (feedback: any) => void;
-    
-
 }
 
 const BATCH_SIZE = 20;
@@ -40,18 +30,9 @@ const DEBOUNCE_DELAY = 150;
 
 const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     messages,
-    onDateSelect,
-    onTimeOfDaySelect,
-    onTimeSlotSelect,
-    onRequestMoreDates,
-    onServiceSelect,
-    onUrgencySelect,
-    onCreateMatter,
     onScheduleConsultation,
-    onLearnServices,
     teamConfig,
     onOpenSidebar,
-
     sessionId,
     teamId,
     onFeedbackSubmit

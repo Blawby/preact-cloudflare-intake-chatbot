@@ -9,15 +9,7 @@ import { createKeyPressHandler } from '../utils/keyboard';
 interface ChatContainerProps {
   messages: ChatMessageUI[];
   onSendMessage: (message: string, attachments: FileAttachment[]) => void;
-  onDateSelect?: (date: Date) => void;
-  onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
-  onTimeSlotSelect?: (timeSlot: Date) => void;
-  onRequestMoreDates?: () => void;
-  onServiceSelect?: (service: string) => void;
-  onUrgencySelect?: (urgency: string) => void;
-  onCreateMatter?: () => void;
   onScheduleConsultation?: () => void;
-  onLearnServices?: () => void;
   teamConfig?: {
     name: string;
     profileImage: string | null;
@@ -47,15 +39,7 @@ interface ChatContainerProps {
 const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   messages,
   onSendMessage,
-  onDateSelect,
-  onTimeOfDaySelect,
-  onTimeSlotSelect,
-  onRequestMoreDates,
-  onServiceSelect,
-  onUrgencySelect,
-  onCreateMatter,
   onScheduleConsultation,
-  onLearnServices,
   teamConfig,
   onOpenSidebar,
   sessionId,
@@ -147,15 +131,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
       <main className="flex flex-col h-full w-full overflow-hidden relative bg-white dark:bg-dark-bg">
         <VirtualMessageList
           messages={messages}
-          onDateSelect={onDateSelect}
-          onTimeOfDaySelect={onTimeOfDaySelect}
-          onTimeSlotSelect={onTimeSlotSelect}
-          onRequestMoreDates={onRequestMoreDates}
-          onServiceSelect={onServiceSelect}
-          onUrgencySelect={onUrgencySelect}
-          onCreateMatter={onCreateMatter}
           onScheduleConsultation={onScheduleConsultation}
-          onLearnServices={onLearnServices}
           teamConfig={teamConfig}
           onOpenSidebar={onOpenSidebar}
           sessionId={sessionId}
