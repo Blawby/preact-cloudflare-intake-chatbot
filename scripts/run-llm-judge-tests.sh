@@ -23,7 +23,7 @@ echo "  Team ID: $TEAM_ID"
 
 # Check if the API is running
 echo "🔍 Checking if API is available..."
-if ! curl -s "$API_URL/health" > /dev/null 2>&1; then
+if ! curl -s --max-time 5 "$API_URL/api/health" > /dev/null 2>&1; then
     echo "❌ Error: API is not running at $API_URL"
     echo "💡 Please start your development server first:"
     echo "   npm run dev"

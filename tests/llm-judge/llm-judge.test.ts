@@ -18,6 +18,11 @@ interface TestResult {
     timestamp?: string;
   }>;
   actualResponses: string[];
+  conversationFlow: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp?: string;
+  }>;
   expectedToolCalls: any[];
   actualToolCalls: any[];
   evaluation: {
@@ -229,42 +234,159 @@ class LLMJudge {
     const sessionId = `test-${conversation.id}-${Date.now()}`;
     const actualResponses: string[] = [];
     const actualToolCalls: any[] = [];
+    const conversationFlow: Array<{role: 'user' | 'assistant', content: string}> = [];
     let totalResponseTime = 0;
     let conversationHistory = [];
 
     console.log(`\n🔄 Starting conversation test for: ${conversation.scenario}`);
 
-    // Run through each user message and generate assistant response
-    for (let i = 0; i < conversation.messages.length; i++) {
-      const message = conversation.messages[i];
+    // Start with just the initial message and let the agent guide the conversation
+    const initialMessage = conversation.messages[0];
+    console.log(`\n👤 Initial user message: ${initialMessage.content.substring(0, 100)}...`);
+    
+    conversationHistory.push({
+      role: 'user',
+      content: initialMessage.content
+    });
+    
+    // Add to conversation flow
+    conversationFlow.push({
+      role: 'user',
+      content: initialMessage.content
+    });
+
+    // Generate first assistant response
+    let { response, toolCalls, responseTime } = await this.generateAssistantResponse(
+      conversationHistory,
+      sessionId
+    );
+
+    console.log(`🤖 First assistant response: ${response.substring(0, 200)}...`);
+    console.log(`🔧 Tool calls: ${toolCalls.length}`);
+
+    actualResponses.push(response);
+    actualToolCalls.push(...toolCalls);
+    totalResponseTime += responseTime;
+
+    conversationHistory.push({
+      role: 'assistant',
+      content: response
+    });
+    
+    // Add to conversation flow
+    conversationFlow.push({
+      role: 'assistant',
+      content: response
+    });
+
+    // Now respond to what the agent asks for, using the conversation data
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts && toolCalls.length === 0) {
+      attempts++;
+      console.log(`\n🔄 Conversation round ${attempts}/${maxAttempts}`);
       
-      if (message.role === 'user') {
-        console.log(`\n👤 User message ${i + 1}: ${message.content.substring(0, 100)}...`);
+      // Determine what the agent is asking for
+      let nextUserMessage = '';
+      
+      if (response.includes('full name') || response.includes('your name')) {
+        // Agent is asking for name - provide just the name
+        const firstName = conversation.user.split(' ')[0];
+        nextUserMessage = `My name is ${conversation.user}.`;
+      } else if (response.includes('city and state') || response.includes('location') || response.includes('where you live')) {
+        // Agent is asking for location - provide just the location
+        const locationMessage = conversation.messages.find(m => 
+          m.role === 'user' && 
+          (m.content.includes('live in') || m.content.includes('Charlotte') || m.content.includes('Raleigh') || m.content.includes('Durham') || m.content.includes('California') || m.content.includes('Greensboro'))
+        );
+        if (locationMessage) {
+          // Extract just the location part
+          if (locationMessage.content.includes('live in')) {
+            const locationMatch = locationMessage.content.match(/live in ([^.]+)/i);
+            nextUserMessage = locationMatch ? `I live in ${locationMatch[1].trim()}.` : locationMessage.content;
+          } else {
+            nextUserMessage = locationMessage.content;
+          }
+        }
+      } else if (response.includes('phone number') && !response.includes('email')) {
+        // Agent is asking for phone number - provide just the phone
+        const phoneMessage = conversation.messages.find(m => 
+          m.role === 'user' && 
+          (m.content.includes('704-') || m.content.includes('919-') || m.content.includes('415-') || m.content.includes('336-') || m.content.includes('phone'))
+        );
+        if (phoneMessage) {
+          // Extract just the phone part
+          const phoneMatch = phoneMessage.content.match(/(\d{3}-\d{3}-\d{4})/);
+          nextUserMessage = phoneMatch ? `My phone number is ${phoneMatch[1]}.` : phoneMessage.content;
+        }
+      } else if (response.includes('email') && !response.includes('phone')) {
+        // Agent is asking for email - provide just the email
+        const emailMessage = conversation.messages.find(m => 
+          m.role === 'user' && 
+          (m.content.includes('@') || m.content.includes('email'))
+        );
+        if (emailMessage) {
+          // Extract just the email part
+          const emailMatch = emailMessage.content.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+          nextUserMessage = emailMatch ? `My email is ${emailMatch[1]}.` : emailMessage.content;
+        }
+      } else if (response.includes('describe what you need help with') || response.includes('briefly describe') || response.includes('what you need help with')) {
+        // Agent is asking for matter description - provide just the description
+        const descriptionMessage = conversation.messages.find(m => 
+          m.role === 'user' && 
+          (m.content.includes('family law') || m.content.includes('divorce') || m.content.includes('business dispute') || m.content.includes('employment') || m.content.includes('personal injury') || m.content.includes('landlord-tenant') || m.content.includes('restraining order'))
+        );
+        if (descriptionMessage) {
+          nextUserMessage = descriptionMessage.content;
+        }
+      }
+      
+      // If we found a response, send it
+      if (nextUserMessage) {
+        console.log(`📝 Responding to agent: ${nextUserMessage.substring(0, 100)}...`);
         
-        // Add the current user message to conversation history
         conversationHistory.push({
           role: 'user',
-          content: message.content
+          content: nextUserMessage
+        });
+        
+        // Add to conversation flow
+        conversationFlow.push({
+          role: 'user',
+          content: nextUserMessage
         });
 
-        // Generate assistant response using actual API
-        const { response, toolCalls, responseTime } = await this.generateAssistantResponse(
+        const result = await this.generateAssistantResponse(
           conversationHistory,
           sessionId
         );
+        
+        response = result.response;
+        toolCalls = result.toolCalls;
+        responseTime = result.responseTime;
 
-        console.log(`🤖 Assistant response ${i + 1}: ${response.substring(0, 200)}...`);
+        console.log(`🤖 Agent response: ${response.substring(0, 200)}...`);
         console.log(`🔧 Tool calls: ${toolCalls.length}`);
 
         actualResponses.push(response);
         actualToolCalls.push(...toolCalls);
         totalResponseTime += responseTime;
 
-        // Add the generated response to conversation history for next iteration
         conversationHistory.push({
           role: 'assistant',
           content: response
         });
+        
+        // Add to conversation flow
+        conversationFlow.push({
+          role: 'assistant',
+          content: response
+        });
+      } else {
+        // No specific response found, try to move conversation forward
+        console.log(`📝 No specific response found, moving conversation forward...`);
+        break;
       }
     }
 
@@ -280,13 +402,13 @@ class LLMJudge {
     console.log(`   Tool calls: ${actualToolCalls.length}`);
     console.log(`   Last response preview: ${lastResponse.substring(0, 200)}...`);
     
-    // Continue conversation until matter is created
-    let attempts = 0;
-    const maxAttempts = 5; // Increased max attempts
+    // Continue conversation until matter is created (if needed)
+    let fallbackAttempts = 0;
+    const fallbackMaxAttempts = 5; // Increased max attempts
     
-    while (!hasSummary && actualToolCalls.length === 0 && attempts < maxAttempts) {
-      attempts++;
-      console.log(`🔄 Continuing conversation (attempt ${attempts}/${maxAttempts})...`);
+    while (!hasSummary && actualToolCalls.length === 0 && fallbackAttempts < fallbackMaxAttempts) {
+      fallbackAttempts++;
+      console.log(`🔄 Continuing conversation (attempt ${fallbackAttempts}/${fallbackMaxAttempts})...`);
       
       // Determine what information the agent is asking for and provide it
       let nextUserMessage = '';
@@ -324,6 +446,12 @@ class LLMJudge {
       };
       
       conversationHistory.push(finalUserMessage);
+      
+      // Add to conversation flow
+      conversationFlow.push({
+        role: 'user',
+        content: nextUserMessage
+      });
       
       const { response, toolCalls, responseTime } = await this.generateAssistantResponse(
         conversationHistory,
@@ -420,6 +548,7 @@ class LLMJudge {
       scenario: conversation.scenario,
       messages: conversation.messages,
       actualResponses,
+      conversationFlow,
       expectedToolCalls: conversation.expectedToolCalls,
       actualToolCalls: finalToolCalls,
       evaluation: {
@@ -715,17 +844,10 @@ function generateHTMLReport(results: TestResult[]): string {
                         
                         <div class="conversation">
                             <h4>Conversation Flow</h4>
-                            ${result.messages.map(message => `
+                            ${result.conversationFlow.map((message, index) => `
                                 <div class="message ${message.role}">
-                                    <div class="message-role">${message.role}</div>
+                                    <div class="message-role">${message.role} (message ${index + 1})</div>
                                     <div>${message.content}</div>
-                                </div>
-                            `).join('')}
-                            
-                            ${result.actualResponses.map((response, index) => `
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (response ${index + 1})</div>
-                                    <div>${response}</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -794,6 +916,17 @@ describe('LLM Judge Evaluation', () => {
       const htmlReport = generateHTMLReport(testResults);
       await writeFile('test-results/llm-judge-report.html', htmlReport);
       console.log(`\n📊 HTML Report generated: test-results/llm-judge-report.html`);
+      
+      // Auto-open the HTML report
+      try {
+        const { exec } = require('child_process');
+        const open = require('open');
+        await open('test-results/llm-judge-report.html');
+        console.log('🌐 HTML report opened in browser');
+      } catch (error) {
+        console.log('⚠️  Could not auto-open HTML report:', error.message);
+        console.log('📁 Please open manually: test-results/llm-judge-report.html');
+      }
     }
   });
 
@@ -930,18 +1063,72 @@ describe('LLM Judge Evaluation', () => {
           result.evaluation.suggestions.forEach(suggestion => console.log(`  - ${suggestion}`));
         }
 
-        // Assertions
-        expect(result.responseTime).toBeLessThan(60000); // 60 seconds max
-        expect(result.evaluation.averageScore).toBeGreaterThan(0); // Should have some score
-        expect(result.actualResponses.length).toBeGreaterThan(0); // Should have responses
+        // STRICT ASSERTIONS - No fallbacks!
         
-        // Log whether test would pass with stricter criteria
+        // 1. Check for phone validation failures
+        const lastResponse = result.actualResponses[result.actualResponses.length - 1] || '';
+        const hasPhoneValidationError = lastResponse.includes('Invalid phone number') || 
+                                      lastResponse.includes('phone number you provided doesn\'t appear to be valid');
+        
+        if (hasPhoneValidationError) {
+          console.log(`❌ PHONE VALIDATION FAILURE: ${lastResponse}`);
+          expect(hasPhoneValidationError).toBe(false); // This will fail the test
+        }
+        
+        // 2. Check for correct matter type classification
+        if (result.actualToolCalls.length > 0) {
+          const createMatterCall = result.actualToolCalls.find(tc => tc.name === 'create_matter');
+          if (createMatterCall) {
+            const actualMatterType = createMatterCall.parameters.matter_type;
+            const expectedMatterType = result.expectedToolCalls[0]?.parameters.matter_type;
+            
+            console.log(`🔍 Matter Type Check: Expected "${expectedMatterType}", Got "${actualMatterType}"`);
+            
+            // Check for specific matter type mismatches
+            if (conversation.id === 'complex-legal-matter' && actualMatterType === 'Family Law') {
+              console.log(`❌ WRONG MATTER TYPE: Business/employment/tax issues classified as "Family Law"`);
+              expect(actualMatterType).not.toBe('Family Law');
+            }
+            
+            if (conversation.id === 'location-service-area' && actualMatterType === 'Family Law') {
+              console.log(`❌ WRONG MATTER TYPE: Personal injury classified as "Family Law"`);
+              expect(actualMatterType).not.toBe('Family Law');
+            }
+            
+            if (conversation.id === 'pricing-concerns' && actualMatterType === 'Family Law') {
+              console.log(`❌ WRONG MATTER TYPE: Landlord-tenant classified as "Family Law"`);
+              expect(actualMatterType).not.toBe('Family Law');
+            }
+          }
+        }
+        
+        // 3. Check for missing tool calls when expected
+        if (result.expectedToolCalls.length > 0 && result.actualToolCalls.length === 0) {
+          console.log(`❌ MISSING TOOL CALLS: Expected ${result.expectedToolCalls.length}, Got 0`);
+          expect(result.actualToolCalls.length).toBeGreaterThan(0);
+        }
+        
+        // 4. Check for incomplete responses
+        const hasEmptyResponse = result.actualResponses.some(response => response.trim().length === 0);
+        if (hasEmptyResponse) {
+          console.log(`❌ EMPTY RESPONSE DETECTED`);
+          expect(hasEmptyResponse).toBe(false);
+        }
+        
+        // 5. Check for missing responses
+        expect(result.actualResponses.length).toBeGreaterThan(0);
+        
+        // 6. Check response time
+        expect(result.responseTime).toBeLessThan(60000); // 60 seconds max
+        
+        // 7. Check for minimum score (but don't fail on this alone)
+        expect(result.evaluation.averageScore).toBeGreaterThan(0);
+        
         console.log(`\n📊 Test Result: ${result.passed ? '✅ PASS' : '❌ FAIL'} (${result.evaluation.averageScore >= 7.0 ? 'meets' : 'below'} 7.0 threshold)`);
         
-        // Check if expected tool calls were made (loose matching)
+        // Log tool call comparison
         if (result.expectedToolCalls.length > 0) {
           console.log(`\n🔧 Tool Call Check: Expected ${result.expectedToolCalls.length}, Got ${result.actualToolCalls.length}`);
-          // Don't fail on tool calls for now - this is informational
         }
 
       } catch (error) {
