@@ -3,7 +3,6 @@ import type { JSX } from 'preact';
 import { forwardRef } from 'preact/compat';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'icon';
-type EffectiveVariant = ButtonVariant;
 
 interface ButtonProps extends JSX.HTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -46,8 +45,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const hasChildren = toChildArray(children).length > 0;
   const isIconOnly = !hasChildren && Boolean(icon);
   
-  // Use the requested variant, but allow icon-only styling for any variant
-  const effectiveVariant: EffectiveVariant = variant;
+
   
   // Development-time accessibility warning for icon-only buttons
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && isIconOnly) {
@@ -62,7 +60,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   
   const baseClasses = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border';
   
-  const variantClasses: Record<EffectiveVariant, string> = {
+  const variantClasses: Record<ButtonVariant, string> = {
     primary: 'bg-accent-500 text-gray-900 hover:bg-accent-600 focus:ring-accent-500 border-accent-500',
     secondary: 'bg-transparent text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-gray-200 dark:focus:ring-gray-700',
     ghost: 'bg-transparent text-gray-900 dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-dark-hover focus:ring-gray-200 dark:focus:ring-gray-700',
@@ -77,7 +75,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   
   const classes = [
     baseClasses,
-    variantClasses[effectiveVariant],
+    variantClasses[variant],
     sizeClasses[size],
     className
   ].filter(Boolean).join(' ');
