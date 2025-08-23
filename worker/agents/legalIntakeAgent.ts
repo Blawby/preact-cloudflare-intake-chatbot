@@ -96,19 +96,7 @@ export const requestLawyerReview = {
   }
 };
 
-export const scheduleConsultation = {
-  name: 'schedule_consultation',
-  description: 'Schedule a consultation with an attorney',
-  parameters: {
-    type: 'object',
-    properties: {
-      preferred_date: { type: 'string', description: 'Preferred consultation date' },
-      preferred_time: { type: 'string', description: 'Preferred consultation time' },
-      matter_type: { type: 'string', description: 'Type of legal matter' }
-    },
-    required: ['matter_type']
-  }
-};
+
 
 export const analyzeDocument = {
   name: 'analyze_document',
@@ -142,7 +130,7 @@ export const TOOL_HANDLERS = {
   collect_contact_info: handleCollectContactInfo,
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
-  schedule_consultation: handleScheduleConsultation,
+
   analyze_document: handleAnalyzeDocument
 };
 
@@ -619,7 +607,7 @@ Please complete the payment to secure your consultation. If you have any questio
   } else {
     summaryMessage += `
 
-I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to schedule a consultation.`;
+I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.`;
   }
   
   const result = createSuccessResponse(summaryMessage, {
@@ -666,11 +654,7 @@ export async function handleRequestLawyerReview(parameters: any, env: any, teamC
   return createSuccessResponse("I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further.");
 }
 
-export async function handleScheduleConsultation(parameters: any, env: any, teamConfig: any) {
-  const { preferred_date, preferred_time, matter_type } = parameters;
-  
-  return createSuccessResponse(`I'd like to schedule a consultation with one of our experienced attorneys for your ${matter_type} matter. Would you be available to meet with us this week?`);
-}
+
 
 export async function handleAnalyzeDocument(parameters: any, env: any, teamConfig: any) {
   const { file_id, analysis_type, specific_question } = parameters;

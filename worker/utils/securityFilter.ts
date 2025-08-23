@@ -7,7 +7,7 @@ export class SecurityFilter {
     'client information collection',
     'matter classification', 
     'team routing',
-    'consultation scheduling',
+
     'jurisdiction verification',
     'contact information gathering'
   ];

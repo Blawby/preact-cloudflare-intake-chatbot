@@ -30,7 +30,7 @@ function wantsHuman(text: string, messages?: any[]): boolean {
     }
   }
   
-  const regularMatch = /\b(lawyer|attorney|human|person|call|phone|consult|consultation|schedule)\b/i.test(text);
+  const regularMatch = /\b(lawyer|attorney|human|person|call|phone|consult|consultation)\b/i.test(text);
   console.log('🔍 Regular wantsHuman check:', regularMatch, 'for text:', text);
   return regularMatch;
 }
@@ -59,7 +59,7 @@ class SupervisorRouter {
       return 'intake';
     }
     
-    // 1. Check for explicit human/scheduling intent (always goes to intake)
+    // 1. Check for explicit human intent (always goes to intake)
     if (wantsHuman(text, messages)) {
       console.log('👤 User wants human interaction, routing to Intake Agent');
       return 'intake';
@@ -144,7 +144,7 @@ class SupervisorRouter {
       'payment using the embedded',
       'lawyer will contact you within',
       'matter created',
-      'consultation scheduled'
+
     ];
     
     return intakeCompletionMarkers.some(marker => allContent.includes(marker));

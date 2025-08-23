@@ -22,9 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FileAttachment } from '../../worker/types';
 
-// Agent handles all scheduling and matter creation - no lazy components needed
 
-// Agent handles all scheduling and matter creation - no interfaces needed
 
 interface MessageProps {
 	content: string;
@@ -244,8 +242,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					/>
 				)}
 				
-				{/* Then display scheduling components */}
-				{/* Agent handles all scheduling - no components needed */}
+
 				
 				{/* Display matter canvas */}
 				{matterCanvas && (

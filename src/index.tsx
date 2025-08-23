@@ -137,10 +137,7 @@ export function App() {
 
 
 
-	// Simplified scheduling handler - agent handles all scheduling logic
-	const handleScheduleStart = () => {
-		sendMessage("I'd like to schedule a consultation.", []);
-	};
+
 
 	// Handle media capture
 	const handleMediaCaptureWrapper = async (blob: Blob, type: 'audio' | 'video') => {
@@ -164,9 +161,7 @@ export function App() {
 
 
 
-	const handleRequestConsultation = async () => {
-		await sendMessage("I'd like to speak with a lawyer about my situation. Can you help me schedule a consultation?", []);
-	};
+
 
 	// Handle navigation to chats - removed since bottom nav is disabled
 
@@ -187,12 +182,12 @@ export function App() {
 					description: teamConfig.description
 				}}
 				messages={messages}
-				onRequestConsultation={handleRequestConsultation}
+
 			>
 				<ChatContainer
 					messages={messages}
 					onSendMessage={sendMessage}
-					onScheduleConsultation={handleRequestConsultation}
+
 					teamConfig={{
 						name: teamConfig.name,
 						profileImage: teamConfig.profileImage,

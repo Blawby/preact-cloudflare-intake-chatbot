@@ -48,7 +48,7 @@ async function getDebugInfo(env: Env): Promise<Response> {
       teams: 'Pure API-based team management',
       chat: 'AI-powered conversations',
       fileUpload: 'Multi-file upload support',
-      scheduling: 'Appointment booking',
+
       payments: 'Stripe integration',
       forms: 'Contact form handling'
     },
@@ -57,7 +57,7 @@ async function getDebugInfo(env: Env): Promise<Response> {
       chat: '/api/chat',
       agent: '/api/agent',
       files: '/api/files',
-      scheduling: '/api/scheduling',
+
       payment: '/api/payment',
       forms: '/api/forms',
       debug: '/api/debug'

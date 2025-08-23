@@ -18,7 +18,7 @@ export async function handleRoot(request: Request, env: Env): Promise<Response> 
         <li><strong>GET</strong> /api/teams - Available teams</li>
         <li><strong>POST</strong> /api/matter-creation - Matter building flow</li>
         <li><strong>POST</strong> /api/forms - Contact submissions</li>
-        <li><strong>POST</strong> /api/scheduling - Appointments</li>
+
         <li><strong>POST</strong> /api/feedback - AI feedback collection</li>
         <li><strong>GET</strong> /api/export - Training data export</li>
 

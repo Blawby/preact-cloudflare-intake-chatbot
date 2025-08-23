@@ -9,7 +9,6 @@ import { createKeyPressHandler } from '../utils/keyboard';
 interface ChatContainerProps {
   messages: ChatMessageUI[];
   onSendMessage: (message: string, attachments: FileAttachment[]) => void;
-  onScheduleConsultation?: () => void;
   teamConfig?: {
     name: string;
     profileImage: string | null;
@@ -39,7 +38,6 @@ interface ChatContainerProps {
 const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   messages,
   onSendMessage,
-  onScheduleConsultation,
   teamConfig,
   onOpenSidebar,
   sessionId,
@@ -139,7 +137,6 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
       <main className="flex flex-col h-full w-full overflow-hidden relative bg-white dark:bg-dark-bg">
         <VirtualMessageList
           messages={messages}
-          onScheduleConsultation={onScheduleConsultation}
           teamConfig={teamConfig}
           onOpenSidebar={onOpenSidebar}
           sessionId={sessionId}
@@ -153,7 +150,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           removePreviewFile={removePreviewFile}
           handleFileSelect={handleFileSelect}
           handleCameraCapture={handleCameraCapture}
-          handleScheduleStart={onScheduleConsultation}
+
           isRecording={isRecording}
           handleMediaCapture={handleMediaCapture}
           setIsRecording={setIsRecording}

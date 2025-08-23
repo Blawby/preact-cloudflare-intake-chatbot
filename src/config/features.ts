@@ -77,7 +77,7 @@ interface FeatureFlags {
   /**
    * Make Paralegal Agent the default first interaction
    * When false, uses intake-first flow (current behavior)
-   * When true, routes to Paralegal Agent first, then Intake only for human/scheduling requests
+   * When true, routes to Paralegal Agent first, then Intake only for human requests
    * Requires enableParalegalAgent to be true
    */
   paralegalFirst: boolean;
