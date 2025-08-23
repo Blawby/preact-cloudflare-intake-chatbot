@@ -6,12 +6,13 @@ A production-ready legal intake chatbot built with Cloudflare Workers AI, featur
 
 ### Team Configuration Security
 
-The system uses a multi-tenant architecture with **API-based team management** stored in the D1 database. For security:
+The system uses a multi-tenant architecture with **secure API token management** stored in the D1 database. For security:
 
-- **API Key Storage**: Team API keys are stored as environment variable references (e.g., `${BLAWBY_API_TOKEN}`)
-- **Runtime Resolution**: The `TeamService` automatically resolves these references at runtime
-- **No Hardcoded Secrets**: No sensitive credentials are stored in the codebase or database
-- **Centralized Management**: Secrets are managed via Cloudflare Workers secrets
+- **Secure Token Storage**: API tokens are stored as SHA-256 hashes in the `team_api_tokens` table
+- **Metadata-Only Config**: Team config contains only metadata (enabled status, team ULID, etc.)
+- **Hash-Based Validation**: Token validation uses secure constant-time comparison
+- **No Plaintext Storage**: No sensitive credentials are stored in plaintext anywhere
+- **Token Lifecycle Management**: Full CRUD operations for API tokens with audit trails
 - **Full CRUD API**: Complete REST API for team management (`/api/teams`)
 
 #### Example Team Configuration
@@ -19,19 +20,18 @@ The system uses a multi-tenant architecture with **API-based team management** s
 {
   "blawbyApi": {
     "enabled": true,
-    "apiKey": "${BLAWBY_API_TOKEN}",
     "teamUlid": "01jq70jnstyfzevc6423czh50e"
   }
 }
 ```
 
 #### Security Benefits
-- ✅ No hardcoded API keys in database or code
-- ✅ Environment variable resolution at runtime
-- ✅ Centralized secret management via Cloudflare
-- ✅ Team-specific API credentials supported
-- ✅ Fallback to global API token if team-specific not available
-- ✅ Full API-based team management with caching
+- ✅ API tokens stored as SHA-256 hashes, never plaintext
+- ✅ Constant-time comparison prevents timing attacks
+- ✅ Separation of configuration metadata from credentials
+- ✅ Token lifecycle management with permissions and expiration
+- ✅ Audit trail with creation timestamps and usage tracking
+- ✅ Full API-based team management with secure token validation
 
 ## 🎯 **Production Status: LIVE & READY**
 
@@ -283,13 +283,22 @@ wrangler d1 execute blawby-ai-chatbot --command "SELECT id, slug, name, created_
 # Count teams
 wrangler d1 execute blawby-ai-chatbot --command "SELECT COUNT(*) as team_count FROM teams;"
 
-# View team config (masked for security)
-wrangler d1 execute blawby-ai-chatbot --command "SELECT slug, json_extract(config, '$.blawbyApi.enabled') as api_enabled, json_extract(config, '$.blawbyApi.teamUlid') as team_ulid, CASE WHEN json_extract(config, '$.blawbyApi.apiKey') IS NOT NULL THEN '***' || substr(json_extract(config, '$.blawbyApi.apiKey'), -4) ELSE 'NOT SET' END as api_key_masked FROM teams WHERE slug = 'blawby-ai';"
+# View team config (secure - no API keys stored)
+wrangler d1 execute blawby-ai-chatbot --command "SELECT slug, json_extract(config, '$.blawbyApi.enabled') as api_enabled, json_extract(config, '$.blawbyApi.teamUlid') as team_ulid, CASE WHEN json_extract(config, '$.blawbyApi.apiKey') IS NOT NULL THEN 'INSECURE' ELSE 'SECURE' END as security_status FROM teams WHERE slug = 'blawby-ai';"
 
-# Setup Blawby API configuration (secure)
+# View secure API tokens (hashed)
+wrangler d1 execute blawby-ai-chatbot --command "SELECT id, token_name, permissions, active, created_at FROM team_api_tokens WHERE team_id = '01K0TNGNKTM4Q0AG0XF0A8ST0Q';"
+
+# Setup Blawby API configuration (secure token storage)
 export BLAWBY_API_KEY='your-actual-api-key'
 export BLAWBY_TEAM_ULID='your-team-ulid'  # Optional, defaults to 01jq70jnstyfzevc6423czh50e
 ./scripts/setup-blawby-api.sh
+
+# The setup script will:
+# 1. Create a SHA-256 hash of your API key
+# 2. Store the hash securely in the team_api_tokens table
+# 3. Update team config with only metadata (no sensitive data)
+# 4. Verify the secure setup was successful
 
 # Delete team by slug
 wrangler d1 execute blawby-ai-chatbot --command "DELETE FROM teams WHERE slug = 'old-team';"

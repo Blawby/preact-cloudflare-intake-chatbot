@@ -10,19 +10,34 @@ describe('Payment API Integration - Real Worker Tests', () => {
   beforeAll(async () => {
     // Get API credentials from database using the existing working API
     try {
-      const response = await fetch(`${WORKER_URL}/api/teams/blawby-ai`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      
+      const response = await fetch(`${WORKER_URL}/api/teams/blawby-ai`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const result = await response.json();
         const team = result.data;
         
         if (team?.config?.blawbyApi?.enabled) {
-          apiCredentials = {
-            apiToken: team.config.blawbyApi.apiKey,
-            teamUlid: team.config.blawbyApi.teamUlid
-          };
-          console.log('✅ Retrieved API credentials for payment test');
-          console.log(`   Team ULID: ${apiCredentials.teamUlid}`);
-          console.log(`   API Token: ${apiCredentials.apiToken ? '***' + apiCredentials.apiToken.slice(-4) : 'NOT SET'}`);
+          const apiKey = team.config.blawbyApi.apiKey;
+          const teamUlid = team.config.blawbyApi.teamUlid;
+          
+          // Validate credentials before using them
+          if (
+            apiKey && typeof apiKey === 'string' && apiKey.trim() !== '' &&
+            teamUlid && typeof teamUlid === 'string' && teamUlid.trim() !== ''
+          ) {
+            apiCredentials = { apiToken: apiKey, teamUlid: teamUlid };
+            console.log('✅ Retrieved API credentials for payment test');
+            console.log(`   Team ULID: ${apiCredentials.teamUlid}`);
+            console.log(`   API Token: ${apiCredentials.apiToken ? '***' + apiCredentials.apiToken.slice(-4) : 'NOT SET'}`);
+          } else {
+            console.warn('⚠️  Retrieved credentials are invalid or empty');
+          }
         } else {
           console.warn('⚠️  Blawby API not enabled for blawby-ai team');
         }
@@ -30,7 +45,11 @@ describe('Payment API Integration - Real Worker Tests', () => {
         console.error(`❌ Failed to fetch team configuration: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      console.error('❌ Failed to retrieve API credentials:', error);
+      if ((error as any).name === 'AbortError') {
+        console.error('❌ Credential fetch timed out after 10 seconds');
+      } else {
+        console.error('❌ Failed to retrieve API credentials:', error);
+      }
     }
 
     // Start the worker with retrieved credentials

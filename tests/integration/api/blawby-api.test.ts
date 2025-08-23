@@ -21,13 +21,22 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
     
     try {
       // Get the team configuration from the database via the API
-      const response = await fetch(`${WORKER_URL}/api/teams/${BLAWBY_TEAM_SLUG}`);
+      const response = await fetch(`${WORKER_URL}/api/teams/${BLAWBY_TEAM_SLUG}`, {
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
       
       if (response.ok) {
         const result = await response.json();
         const team = result.data; // API returns { success: true, data: team }
         
         if (team?.config?.blawbyApi?.enabled) {
+          if (!team.config.blawbyApi.apiKey || !team.config.blawbyApi.teamUlid) {
+            throw new Error('Invalid team configuration: missing apiKey or teamUlid');
+          }
+          
           testContext = {
             customerIds: [],
             apiToken: team.config.blawbyApi.apiKey,
@@ -53,18 +62,9 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
     if (!testContext.apiToken || testContext.apiToken === 'test-token') {
       console.warn('⚠️  Blawby API token not available for testing');
       console.warn('   Tests will be skipped. Ensure blawby-ai team is configured in database.');
-      console.warn('   Run setup script: ./scripts/setup-blawby-api.sh');
-    }
-  });
-
-  beforeEach(() => {
-    // Initialize test context for each test to ensure isolation
-    testContext.customerIds = [];
-  });
-
   afterEach(async () => {
     // Skip if no real API token or no test data
-    if (!testContext.apiToken || testContext.apiToken === 'test-token' || !testContext.customerIds.length) {
+    if (!testContext.apiToken || !testContext.customerIds.length) {
       console.log('⏭️  Skipping cleanup - no valid token or test data');
       return;
     }
@@ -73,20 +73,26 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
       try {
         console.log(`🧹 Cleaning up test customer: ${customerId}`);
         
-        const deleteResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer/${customerId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${testContext.apiToken}`,
-            'Accept': 'application/json'
+        const deleteResponse = await fetch(
+          `${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer/${customerId}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${testContext.apiToken}`,
+              'Accept': 'application/json'
+            },
+            signal: AbortSignal.timeout(5000) // 5 second timeout for cleanup
           }
-        });
+        );
         
         if (deleteResponse.ok) {
           console.log(`✅ Successfully deleted test customer: ${customerId}`);
         } else if (deleteResponse.status === 404) {
           console.log(`ℹ️  Test customer ${customerId} already deleted (404)`);
         } else {
-          console.warn(`⚠️  Failed to delete test customer ${customerId}: ${deleteResponse.status} ${deleteResponse.statusText}`);
+          console.warn(
+            `⚠️  Failed to delete test customer ${customerId}: ${deleteResponse.status} ${deleteResponse.statusText}`
+          );
         }
       } catch (error) {
         console.warn(`❌ Error cleaning up test customer ${customerId}:`, error);

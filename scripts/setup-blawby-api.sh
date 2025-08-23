@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # Setup script for Blawby API configuration
-# This script demonstrates how to properly apply the migration with real API credentials
+# This script creates a secure API token in the team_api_tokens table
+# and updates the team config with only metadata (no sensitive data)
 
 set -e
 
-echo "🔧 Setting up Blawby API configuration..."
+echo "🔧 Setting up Blawby API configuration securely..."
 
 # Check if required environment variables are set
 if [ -z "$BLAWBY_API_KEY" ]; then
@@ -22,55 +23,30 @@ fi
 echo "✅ Using API key: ***${BLAWBY_API_KEY: -4}"
 echo "✅ Using team ULID: $BLAWBY_TEAM_ULID"
 
-# Create a temporary migration file with real values
-TEMP_MIGRATION=$(mktemp)
-cat > "$TEMP_MIGRATION" << EOF
--- Temporary migration with real API credentials
--- This file is auto-generated and should not be committed to version control
+# Generate a SHA-256 hash of the API key for secure storage
+API_KEY_HASH=$(echo -n "$BLAWBY_API_KEY" | openssl dgst -sha256 -binary | base64)
 
-UPDATE teams 
-SET config = json_set(
-  config,
-  '$.blawbyApi',
-  json_object(
-    'enabled', true,
-    'apiKey', '$BLAWBY_API_KEY',
-    'teamUlid', '$BLAWBY_TEAM_ULID'
-  )
-)
-WHERE slug = 'blawby-ai';
+# Create a temporary SQL file with the actual values
+TEMP_SQL_FILE=$(mktemp)
+sed "s|__API_KEY_HASH__|$API_KEY_HASH|g; s|__TEAM_ULID__|$BLAWBY_TEAM_ULID|g" scripts/setup-blawby-api.sql > "$TEMP_SQL_FILE"
 
--- Verify the update was successful
-SELECT 
-  id,
-  slug,
-  name,
-  json_extract(config, '$.blawbyApi.enabled') as api_enabled,
-  json_extract(config, '$.blawbyApi.teamUlid') as team_ulid,
-  CASE 
-    WHEN json_extract(config, '$.blawbyApi.apiKey') IS NOT NULL 
-    THEN '***' || substr(json_extract(config, '$.blawbyApi.apiKey'), -4)
-    ELSE 'NOT SET'
-  END as api_key_masked
-FROM teams 
-WHERE slug = 'blawby-ai';
-EOF
+# Apply the secure migration
+echo "🚀 Applying secure migration to local database..."
+npx wrangler d1 execute DB --file "$TEMP_SQL_FILE"
 
-echo "📝 Created temporary migration file: $TEMP_MIGRATION"
+echo "🚀 Applying secure migration to remote database..."
+npx wrangler d1 execute DB --remote --file "$TEMP_SQL_FILE"
 
-# Apply the migration
-echo "🚀 Applying migration to local database..."
-npx wrangler d1 execute DB --file "$TEMP_MIGRATION"
+# Clean up temporary file
+rm "$TEMP_SQL_FILE"
 
-echo "🚀 Applying migration to remote database..."
-npx wrangler d1 execute DB --remote --file "$TEMP_MIGRATION"
-
-# Clean up
-rm "$TEMP_MIGRATION"
-echo "🧹 Cleaned up temporary migration file"
-
-echo "✅ Blawby API configuration completed successfully!"
+echo "✅ Blawby API configuration completed securely!"
+echo ""
+echo "🔒 Security improvements:"
+echo "   - API key stored as SHA-256 hash in team_api_tokens table"
+echo "   - Team config contains only metadata (no sensitive data)"
+echo "   - Token validation uses secure hash comparison"
 echo ""
 echo "📋 Next steps:"
 echo "   1. Test the configuration with: npm test -- tests/integration/api/blawby-api.test.ts"
-echo "   2. Verify the setup with: npx wrangler d1 execute DB --command \"SELECT slug, json_extract(config, '$.blawbyApi.enabled') as api_enabled FROM teams WHERE slug = 'blawby-ai';\""
+echo "   2. Verify the secure setup with: npx wrangler d1 execute DB --command \"SELECT slug, json_extract(config, '$.blawbyApi.enabled') as api_enabled, CASE WHEN json_extract(config, '$.blawbyApi.apiKey') IS NOT NULL THEN 'INSECURE' ELSE 'SECURE' END as status FROM teams WHERE slug = 'blawby-ai';\""
