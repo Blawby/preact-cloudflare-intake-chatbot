@@ -114,12 +114,12 @@ const Modal: FunctionComponent<ModalProps> = ({
                         
                         {/* Header */}
                         {(title || showCloseButton) && !shouldUseFullscreen && (
-                            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-gray-800">
+                            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg">
                                 {title && <h3 className="text-base sm:text-lg lg:text-xl font-semibold m-0 text-gray-900 dark:text-white">{title}</h3>}
                                 {showCloseButton && (
                                     <button
                                         onClick={onClose}
-                                        className="p-1 rounded-md transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        className="p-1 rounded-md transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover"
                                         aria-label="Close modal"
                                     >
                                         <XMarkIcon className="w-6 h-6" />

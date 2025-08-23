@@ -1,6 +1,7 @@
 import { LightBulbIcon, Cog6ToothIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import DOMPurify from 'dompurify';
 import type { ComponentType, SVGProps } from 'react';
+import type { VNode } from 'preact';
 
 // Define allowed variant types
 export type AIThinkingVariant = 'thinking' | 'processing' | 'generating';
@@ -43,7 +44,7 @@ export function AIThinkingIndicator({
   variant = 'thinking',
   className = '',
   content
-}: AIThinkingIndicatorProps): JSX.Element {
+}: AIThinkingIndicatorProps): VNode {
   const config = variantConfig[variant];
   const IconComponent: IconComponentType = config.icon;
   const displayMessage = message ?? config.defaultMessage;
@@ -70,7 +71,7 @@ export function AIThinkingIndicator({
     >
       <div className="flex items-center gap-2 motion-safe:animate-pulse motion-reduce:animate-none">
         <IconComponent 
-          className="w-4 h-4 flex-shrink-0" 
+          className="w-4 h-4 flex-shrink-0 text-gray-600 dark:text-gray-300" 
           aria-hidden="true"
         />
         <div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
