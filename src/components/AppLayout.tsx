@@ -56,8 +56,8 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   }
 
   const { isNavbarVisible } = useNavbarScroll({ 
-    threshold: 200, 
-    debounceMs: 100
+    threshold: 50, 
+    debounceMs: 0
   });
 
   // Async-safe wrapper for consultation request
