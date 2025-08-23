@@ -24,29 +24,116 @@ export class ToolCallParser {
 
     // Parse tool call
     const toolCallMatch = response.match(/TOOL_CALL:\s*([\w_]+)/);
-    const parametersMatch = response.match(/PARAMETERS:\s*(\{[\s\S]*?\}(?:\n|$))/);
-
-    if (!toolCallMatch || !parametersMatch) {
+    // Find the start of PARAMETERS
+    const parametersIndex = response.indexOf('PARAMETERS:');
+    if (parametersIndex === -1) {
       return { 
         success: false, 
-        error: 'Incomplete tool call format - missing tool name or parameters' 
+        error: 'Incomplete tool call format - missing parameters' 
       };
     }
-
-    const toolName = toolCallMatch[1].toLowerCase();
     
-    try {
-      // Clean the JSON string before parsing
-      const jsonStr = parametersMatch[1].trim();
-      const parameters = JSON.parse(jsonStr);
+    // Extract everything after PARAMETERS:
+    const afterParameters = response
+      .substring(parametersIndex + 'PARAMETERS:'.length)
+      .trim();
+    
+    // Find the matching closing brace by counting braces
+    let braceCount = 0;
+    let endIndex = -1;
+    let inString = false;
+    let escapeNext = false;
+    
+    for (let i = 0; i < afterParameters.length; i++) {
+      const char = afterParameters[i];
       
-      Logger.debug(`Tool call parsed: ${toolName}`, parameters);
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
       
-      return {
-        success: true,
-        toolCall: {
-          toolName,
-          parameters
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === '"' && !escapeNext) {
+        inString = !inString;
+        continue;
+      }
+      
+      if (!inString) {
+        if (char === '{') {
+          braceCount++;
+        } else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (endIndex === -1) {
+      return { 
+        success: false, 
+        error: 'Incomplete tool call format - invalid JSON structure' 
+      };
+    }
+    
+    const parametersMatch = afterParameters.substring(0, endIndex);
+    // Create a safe copy without prototype‐pollution risk
+    const sanitized = Object.create(null);
+    for (const [key, value] of Object.entries(parameters)) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        continue;
+      }
+      sanitized[key] = value;
+    }
+    
+    const sensitiveFields = ['email', 'phone', 'password', 'token', 'secret', 'key'];
+
+    // Recursive function to sanitize nested objects
+    const sanitizeValue = (obj: any, depth = 0): any => {
+      if (depth > 10) return '***DEPTH_LIMIT***'; // Prevent infinite recursion
+      
+      if (Array.isArray(obj)) {
+        return obj.map(item => sanitizeValue(item, depth + 1));
+      }
+      
+      if (obj && typeof obj === 'object') {
+        const result = Object.create(null);
+        for (const [key, value] of Object.entries(obj)) {
+          if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+            continue;
+          }
+          
+          const lowerKey = key.toLowerCase();
+          const isSensitive = sensitiveFields.some(field => lowerKey.includes(field));
+          
+          if (isSensitive && typeof value === 'string') {
+            if (value.includes('@')) {
+              const [local, domain] = value.split('@');
+              result[key] = `${local.substring(0, 2)}***@${domain}`;
+            } else if (value.length > 4) {
+              result[key] = `${value.substring(0, 2)}***${value.substring(value.length - 2)}`;
+            } else {
+              result[key] = '***REDACTED***';
+            }
+          } else if (isSensitive) {
+            result[key] = '***REDACTED***';
+          } else {
+            result[key] = sanitizeValue(value, depth + 1);
+          }
+        }
+        return result;
+      }
+      
+      return obj;
+    };
+    
+    return sanitizeValue(sanitized);
         }
       };
     } catch (error) {

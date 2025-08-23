@@ -25,6 +25,11 @@ export class Logger {
    * Safely logs team configuration data by redacting sensitive information
    */
   static logTeamConfig(team: any, includeConfig: boolean = false): void {
+    if (!team) {
+      this.warn('logTeamConfig called with null/undefined team');
+      return;
+    }
+
     const safeTeamData = {
       id: team.id,
       slug: team.slug,
@@ -36,7 +41,7 @@ export class Logger {
     if (includeConfig && this.isDebugEnabled()) {
       // Create a sanitized version of the config
       const sanitizedConfig = this.sanitizeConfig(team.config);
-      safeTeamData['config'] = sanitizedConfig;
+      (safeTeamData as any).config = sanitizedConfig;
     }
 
     this.info('Team data:', safeTeamData);
@@ -57,10 +62,18 @@ export class Logger {
       'apiUrl', 'url', 'endpoint', 'webhook',
       'privateKey', 'publicKey', 'certificate'
     ];
-
-    for (const field of sensitiveFields) {
-      if (sanitized[field]) {
-        if (typeof sanitized[field] === 'string') {
+          if (value.includes('@')) {
+            // Email-like field
+            const atIndex = value.lastIndexOf('@');
+            if (atIndex > 0) {
+              const local = value.substring(0, atIndex);
+              const domain = value.substring(atIndex + 1);
+              const maskedLocal = local.length > 2 ? `${local.substring(0, 2)}***` : '***';
+              sanitized[field] = `${maskedLocal}@${domain}`;
+            } else {
+              sanitized[field] = '***REDACTED***';
+            }
+          }
           const value = sanitized[field] as string;
           if (value.includes('@')) {
             // Email-like field
