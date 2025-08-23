@@ -143,9 +143,8 @@ const MessageComposer = ({
               size="sm"
               disabled={!inputValue.trim() && previewFiles.length === 0}
               aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
-            >
-              <ArrowUpIcon className="w-4 h-4" aria-hidden="true" />
-            </Button>
+              icon={<ArrowUpIcon className="w-4 h-4" aria-hidden="true" />}
+            />
           </div>
         </div>
       </div>
