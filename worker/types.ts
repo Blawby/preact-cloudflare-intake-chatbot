@@ -214,31 +214,41 @@ export interface PaymentEmbedData {
  */
 export type AiState = 'thinking' | 'processing' | 'generating';
 
+/**
+ * Centralized constant for AI loading states.
+ * Use this for UI logic to determine when AI is actively processing.
+ */
+export const AI_LOADING_STATES: readonly AiState[] = ['thinking', 'processing', 'generating'] as const;
+
+// Shared UI fields that can be attached to chat messages
+export interface UIMessageExtras {
+  files?: FileAttachment[];
+  scheduling?: SchedulingData;
+  matterCreation?: MatterCreationData;
+  welcomeMessage?: WelcomeMessageData;
+  matterCanvas?: MatterCanvasData;
+  paymentEmbed?: PaymentEmbedData;
+  /** @deprecated Prefer deriving loading from aiState. */
+  isLoading?: boolean;
+}
+
 // UI-specific ChatMessage interface that extends the base ChatMessage
 export type ChatMessageUI = 
-  | (ChatMessage & {
+  | (ChatMessage & UIMessageExtras & {
+      role: 'user'; // Explicitly constrain role to 'user' for user messages
       isUser: true;
-      files?: FileAttachment[];
-      scheduling?: SchedulingData;
-      matterCreation?: MatterCreationData;
-      welcomeMessage?: WelcomeMessageData;
-      matterCanvas?: MatterCanvasData;
-      paymentEmbed?: PaymentEmbedData;
-      /** @deprecated Prefer deriving loading from aiState. */
-      isLoading?: boolean;
       aiState?: never; // User messages cannot have aiState
     })
-  | (ChatMessage & {
+  | (ChatMessage & UIMessageExtras & {
+      role: 'assistant'; // Explicitly constrain role to 'assistant' for assistant messages
       isUser: false;
-      files?: FileAttachment[];
-      scheduling?: SchedulingData;
-      matterCreation?: MatterCreationData;
-      welcomeMessage?: WelcomeMessageData;
-      matterCanvas?: MatterCanvasData;
-      paymentEmbed?: PaymentEmbedData;
-      /** @deprecated Prefer deriving loading from aiState. */
-      isLoading?: boolean;
-      aiState?: AiState; // AI messages can have aiState
+      aiState?: AiState; // Assistant messages can have aiState
+    })
+  | (ChatMessage & {
+      role: 'system'; // Explicitly constrain role to 'system' for system messages
+      isUser: false;
+      // System messages typically don't need most of these fields
+      // Keep only what makes sense for system messages
     });
 
 // Case brief interface for handoff between Paralegal and Intake agents

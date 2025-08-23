@@ -1,5 +1,5 @@
-import { FunctionComponent } from 'preact';
-import { useRef, useEffect, useState, useCallback } from 'preact/hooks';
+import { FunctionComponent, useMemo } from 'preact';
+import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'preact/hooks';
 import Message from './Message';
 import TeamProfile from './TeamProfile';
 import { memo } from 'preact/compat';
@@ -92,33 +92,37 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     useEffect(() => {
         const list = listRef.current;
         if (list) {
-            list.addEventListener('scroll', debouncedHandleScroll);
+            list.addEventListener('scroll', debouncedHandleScroll, { passive: true });
         }
         return () => {
             if (list) {
                 list.removeEventListener('scroll', debouncedHandleScroll);
             }
+            // Cancel any pending debounced calls to prevent delayed state updates after unmount
+            debouncedHandleScroll.cancel();
         };
     }, [debouncedHandleScroll]);
 
-
+    // Compute last message's isUser property to ensure effects re-run when it changes
+    const lastIsUser = useMemo(() => {
+        return messages[messages.length - 1]?.isUser;
+    }, [messages]);
 
     useEffect(() => {
         // Update indices when new messages are added
-        if (isScrolledToBottom || messages[messages.length - 1]?.isUser) {
+        if (isScrolledToBottom || lastIsUser) {
             setEndIndex(messages.length);
             setStartIndex(Math.max(0, messages.length - BATCH_SIZE));
         }
-    }, [messages.length, isScrolledToBottom]);
+    }, [messages.length, isScrolledToBottom, lastIsUser]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         // Scroll to bottom when new messages are added and we're at the bottom
         // Also scroll when new messages are added (for button clicks, etc.)
-        if (listRef.current && (isScrolledToBottom || messages[messages.length - 1]?.isUser)) {
-            listRef.current.scrollTop = listRef.current.scrollHeight;
+        if (listRef.current && (isScrolledToBottom || lastIsUser)) {
+            listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'auto' });
         }
-    }, [messages, endIndex, isScrolledToBottom]);
-
+    }, [messages, endIndex, isScrolledToBottom, lastIsUser]);
 
 
     const visibleMessages = messages.slice(startIndex, endIndex);
@@ -150,7 +154,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             <ErrorBoundary>
                 {visibleMessages.map((message, index) => (
                     <Message
-                        key={startIndex + index}
+                        key={message.id}
                         content={message.content}
                         isUser={message.isUser}
                         files={message.files}

@@ -2,10 +2,10 @@ export function debounce<T extends (...args: any[]) => void>(
     func: T,
     wait: number,
     immediate: boolean = false
-): (...args: Parameters<T>) => void {
+): ((...args: Parameters<T>) => void) & { cancel: () => void } {
     let timeout: ReturnType<typeof setTimeout> | null = null;
 
-    return function executedFunction(...args: Parameters<T>) {
+    const executedFunction = function(...args: Parameters<T>) {
         const later = () => {
             timeout = null;
             if (!immediate) func.apply(this, args);
@@ -23,6 +23,15 @@ export function debounce<T extends (...args: any[]) => void>(
             func.apply(this, args);
         }
     };
+
+    executedFunction.cancel = () => {
+        if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+        }
+    };
+
+    return executedFunction;
 }
 
 export function throttle<T extends (...args: any[]) => void>(

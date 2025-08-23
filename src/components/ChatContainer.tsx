@@ -124,7 +124,15 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
     }
   };
 
-  const handleKeyPress = createKeyPressHandler(handleSubmit);
+  const baseKeyHandler = createKeyPressHandler(handleSubmit);
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // @ts-ignore - isComposing is not in TypeScript's KeyboardEvent but exists at runtime
+    if ((e as any).isComposing || e.repeat) {
+      return;
+    }
+    baseKeyHandler(e);
+  };
 
   return (
     <div className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg">
@@ -150,7 +158,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           handleMediaCapture={handleMediaCapture}
           setIsRecording={setIsRecording}
           onSubmit={handleSubmit}
-          onKeyDown={handleKeyPress}
+          onKeyDown={handleKeyDown}
           textareaRef={textareaRef}
           isReadyToUpload={isReadyToUpload}
         />

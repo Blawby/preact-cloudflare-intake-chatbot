@@ -1,25 +1,18 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 import { TextEncoder as NodeTextEncoder, TextDecoder as NodeTextDecoder } from 'node:util';
+import { randomUUID } from 'node:crypto';
 
 // Mock Cloudflare Workers environment for Node.js tests
-// Only add randomUUID if it doesn't exist, preserving existing crypto methods
+// Use Node's real UUID generator and avoid Object.defineProperty
 if (!global.crypto) {
   // Create minimal crypto object if it doesn't exist
-  Object.defineProperty(global, 'crypto', {
-    value: {
-      randomUUID: () => `test-uuid-${Date.now()}-${Math.random()}`,
-    },
-    writable: true,
-    configurable: true,
-  });
+  global.crypto = {
+    randomUUID,
+  };
 } else if (!global.crypto.randomUUID) {
   // Add randomUUID to existing crypto object if it's missing
-  Object.defineProperty(global.crypto, 'randomUUID', {
-    value: () => `test-uuid-${Date.now()}-${Math.random()}`,
-    writable: true,
-    configurable: true,
-  });
+  global.crypto.randomUUID = randomUUID;
 }
 
 // Mock console methods to avoid noise in tests
@@ -34,8 +27,8 @@ global.console = {
 };
 
 // Mock TextEncoder/TextDecoder for Node.js compatibility
-global.TextEncoder = global.TextEncoder ?? NodeTextEncoder;
-global.TextDecoder = global.TextDecoder ?? NodeTextDecoder;
+globalThis.TextEncoder ||= NodeTextEncoder;
+globalThis.TextDecoder ||= NodeTextDecoder;
 
 // Use real fetch for integration tests, but provide a mock for unit tests
 if (!global.fetch) {
