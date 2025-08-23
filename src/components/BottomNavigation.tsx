@@ -9,7 +9,7 @@ interface BottomNavigationProps {
 
 const BottomNavigation = ({ activeTab, onGoToChats }: BottomNavigationProps) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 lg:hidden z-[1200]">
+    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-dark-bg border-t border-gray-200 dark:border-dark-border lg:hidden z-[1200]">
       <div className="flex items-center justify-center p-3">
         <button
           aria-label="Chats"

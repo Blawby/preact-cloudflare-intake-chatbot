@@ -22,7 +22,7 @@ const LeftSidebar = ({ currentRoute, onOpenMenu, onGoToChats, teamConfig }: Left
   const { isDark, toggleTheme } = useTheme();
 
   return (
-    <div className="flex flex-col h-full w-full bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-dark-border">
+    <div className="flex flex-col h-full w-full bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border">
       <div className="flex flex-col h-full justify-between p-4">
         {/* Top Section */}
         <div className="flex flex-col items-center gap-6">
