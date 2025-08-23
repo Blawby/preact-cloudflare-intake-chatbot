@@ -24,7 +24,9 @@ export interface TeamConfig {
   blawbyApi?: {
     enabled: boolean;
     apiKey: string;
+    apiKeyHash?: string;
     teamUlid: string;
+    apiUrl?: string;
   };
 }
 
@@ -290,10 +292,18 @@ export class TeamService {
       const hashedToken = await this.hashToken(apiToken);
 
       // Check if the team's config contains API tokens
-      if (team.config.blawbyApi?.apiKey) {
-        // Compare with the team's configured API key using constant-time comparison
-        if (this.constantTimeCompare(team.config.blawbyApi.apiKey, apiToken)) {
-          console.log(`✅ API token validated for team: ${teamId}`);
+      if (team.config.blawbyApi?.enabled) {
+        // First, try to validate against the hashed API key if available
+        if (team.config.blawbyApi.apiKeyHash) {
+          if (this.constantTimeCompare(team.config.blawbyApi.apiKeyHash, hashedToken)) {
+            console.log(`✅ API token validated via hash for team: ${teamId}`);
+            return true;
+          }
+        }
+        
+        // Fall back to plaintext comparison for backward compatibility
+        if (team.config.blawbyApi.apiKey && this.constantTimeCompare(team.config.blawbyApi.apiKey, apiToken)) {
+          console.log(`✅ API token validated via plaintext for team: ${teamId}`);
           return true;
         }
       }
@@ -387,15 +397,58 @@ export class TeamService {
 
   /**
    * Hash a token for secure storage and comparison
-   * In production, use a proper cryptographic hash function
+   * Uses SHA-256 for consistent hashing across the application
    */
   private async hashToken(token: string): Promise<string> {
-    // For now, use a simple hash. In production, use crypto.subtle.digest
     const encoder = new TextEncoder();
     const data = encoder.encode(token);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /**
+   * Generate and store a hash for an existing API key
+   * This method can be used to migrate teams from plaintext to hashed API keys
+   */
+  async generateApiKeyHash(teamId: string): Promise<boolean> {
+    try {
+      const team = await this.getTeam(teamId);
+      if (!team || !team.config.blawbyApi?.apiKey) {
+        console.log(`❌ Team not found or no API key configured: ${teamId}`);
+        return false;
+      }
+
+      // Generate hash for the existing API key
+      const apiKeyHash = await this.hashToken(team.config.blawbyApi.apiKey);
+      
+      // Update the team config to include the hash
+      const updatedConfig = {
+        ...team.config,
+        blawbyApi: {
+          ...team.config.blawbyApi,
+          apiKeyHash
+        }
+      };
+
+      // Update the team in the database
+      const result = await this.env.DB.prepare(`
+        UPDATE teams SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(JSON.stringify(updatedConfig), teamId).run();
+
+      if (result.changes > 0) {
+        // Clear the cache for this team
+        this.clearCache(teamId);
+        console.log(`✅ API key hash generated and stored for team: ${teamId}`);
+        return true;
+      }
+
+      console.log(`❌ Failed to update team config for: ${teamId}`);
+      return false;
+    } catch (error) {
+      console.error(`❌ Error generating API key hash for ${teamId}:`, error);
+      return false;
+    }
   }
 
   /**

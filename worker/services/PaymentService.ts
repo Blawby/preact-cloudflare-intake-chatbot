@@ -86,15 +86,35 @@ export class PaymentService {
         };
       }
       
-      // Use team-specific API credentials
-      const apiToken = team.config.blawbyApi?.apiKey || this.env.BLAWBY_API_TOKEN;
-      const teamUlid = team.config.blawbyApi?.teamUlid || teamId;
+      // Use team-specific API credentials with proper error handling
+      const apiToken = team.config.blawbyApi?.apiKey;
+      const teamUlid = team.config.blawbyApi?.teamUlid;
+      
+      if (!apiToken) {
+        console.error('❌ CRITICAL: No API token available for payment processing');
+        console.error('   - team.config.blawbyApi?.apiKey:', team.config.blawbyApi?.apiKey ? 'SET' : 'NOT SET');
+        console.error('   - env.BLAWBY_API_TOKEN:', this.env.BLAWBY_API_TOKEN ? 'SET' : 'NOT SET');
+        console.error('   - Team configuration should include blawbyApi.apiKey for team:', team.slug);
+        return {
+          success: false,
+          error: 'API token not configured - cannot process payment. Check team configuration in database.'
+        };
+      }
+      
+      if (!teamUlid) {
+        console.error('❌ CRITICAL: No team ULID available for payment processing');
+        console.error('   - team.config.blawbyApi?.teamUlid:', team.config.blawbyApi?.teamUlid ? 'SET' : 'NOT SET');
+        console.error('   - Team configuration should include blawbyApi.teamUlid for team:', team.slug);
+        return {
+          success: false,
+          error: 'Team ULID not configured - cannot process payment. Check team configuration in database.'
+        };
+      }
       
       console.log('💰 Team API configuration:', {
         enabled: team.config.blawbyApi?.enabled,
-        hasApiKey: !!team.config.blawbyApi?.apiKey,
-        teamUlid: teamUlid,
-        globalToken: this.env.BLAWBY_API_TOKEN ? 'SET' : 'NOT SET'
+        hasApiKey: !!apiToken,
+        teamUlid: teamUlid
       });
       
       // Step 1: Create customer

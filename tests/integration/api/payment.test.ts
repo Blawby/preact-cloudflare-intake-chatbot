@@ -1,19 +1,47 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { unstable_dev } from 'wrangler';
 import type { UnstableDevWorker } from 'wrangler';
+import { WORKER_URL } from '../../setup-real-api.js';
 
 describe('Payment API Integration - Real Worker Tests', () => {
   let worker: UnstableDevWorker;
+  let apiCredentials: { apiToken?: string; teamUlid?: string } = {};
 
   beforeAll(async () => {
+    // Get API credentials from database using the existing working API
+    try {
+      const response = await fetch(`${WORKER_URL}/api/teams/blawby-ai`);
+      if (response.ok) {
+        const result = await response.json();
+        const team = result.data;
+        
+        if (team?.config?.blawbyApi?.enabled) {
+          apiCredentials = {
+            apiToken: team.config.blawbyApi.apiKey,
+            teamUlid: team.config.blawbyApi.teamUlid
+          };
+          console.log('✅ Retrieved API credentials for payment test');
+          console.log(`   Team ULID: ${apiCredentials.teamUlid}`);
+          console.log(`   API Token: ${apiCredentials.apiToken ? '***' + apiCredentials.apiToken.slice(-4) : 'NOT SET'}`);
+        } else {
+          console.warn('⚠️  Blawby API not enabled for blawby-ai team');
+        }
+      } else {
+        console.error(`❌ Failed to fetch team configuration: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to retrieve API credentials:', error);
+    }
+
+    // Start the worker with retrieved credentials
     worker = await unstable_dev('worker/index.ts', {
       experimental: { disableExperimentalWarning: true },
       vars: {
         PAYMENT_API_KEY: 'test-key',
         RESEND_API_KEY: 'test-resend-key',
         BLAWBY_API_URL: 'https://staging.blawby.com',
-        BLAWBY_API_TOKEN: 'B3aCXQkQiXy81PJ8jhTtnzP2Dn4j0LcK2PG1U3RGa81e67e2',
-        BLAWBY_TEAM_ULID: '01jq70jnstyfzevc6423czh50e'
+        BLAWBY_API_TOKEN: apiCredentials.apiToken || 'test-token',
+        BLAWBY_TEAM_ULID: apiCredentials.teamUlid || 'test-team-ulid'
       }
     });
   });
@@ -25,6 +53,12 @@ describe('Payment API Integration - Real Worker Tests', () => {
   });
 
   it('should create payment invoice successfully', async () => {
+    // Skip if no valid credentials
+    if (!apiCredentials.apiToken || apiCredentials.apiToken === 'test-token') {
+      console.log('⏭️  Skipping payment test - no valid API credentials');
+      return;
+    }
+
     const paymentRequest = {
       customerInfo: {
         name: 'John Doe',
@@ -38,7 +72,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
         urgency: 'high',
         opposingParty: 'ABC Company'
       },
-      teamId: '01jq70jnstyfzevc6423czh50e',
+      teamId: apiCredentials.teamUlid || 'blawby-ai',
       sessionId: 'session-123'
     };
 
@@ -80,7 +114,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
         description: 'Terminated for downloading porn on work laptop',
         urgency: 'high'
       },
-      teamId: '01jq70jnstyfzevc6423czh50e',
+      teamId: apiCredentials.teamUlid || 'blawby-ai',
       sessionId: 'session-123'
     };
 
@@ -111,7 +145,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
         type: '',
         description: ''
       },
-      teamId: '01jq70jnstyfzevc6423czh50e',
+      teamId: apiCredentials.teamUlid || 'blawby-ai',
       sessionId: 'session-123'
     };
 

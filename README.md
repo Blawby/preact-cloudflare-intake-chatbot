@@ -125,8 +125,8 @@ curl -X PUT https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/blawby
 curl -X DELETE https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/teams/old-team \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 
-# Database access
-wrangler d1 execute blawby-ai-chatbot --command "SELECT * FROM teams;"
+# Database access (safe queries only)
+wrangler d1 execute blawby-ai-chatbot --command "SELECT id, slug, name, created_at FROM teams;"
 ```
 
 **Note:** Mutating endpoints (POST, PUT, DELETE) require an admin token. Set `ADMIN_TOKEN` environment variable or replace `$ADMIN_TOKEN` with your actual token.
@@ -283,8 +283,13 @@ wrangler d1 execute blawby-ai-chatbot --command "SELECT id, slug, name, created_
 # Count teams
 wrangler d1 execute blawby-ai-chatbot --command "SELECT COUNT(*) as team_count FROM teams;"
 
-# View team config
-wrangler d1 execute blawby-ai-chatbot --command "SELECT slug, config FROM teams WHERE slug = 'blawby-ai';"
+# View team config (masked for security)
+wrangler d1 execute blawby-ai-chatbot --command "SELECT slug, json_extract(config, '$.blawbyApi.enabled') as api_enabled, json_extract(config, '$.blawbyApi.teamUlid') as team_ulid, CASE WHEN json_extract(config, '$.blawbyApi.apiKey') IS NOT NULL THEN '***' || substr(json_extract(config, '$.blawbyApi.apiKey'), -4) ELSE 'NOT SET' END as api_key_masked FROM teams WHERE slug = 'blawby-ai';"
+
+# Setup Blawby API configuration (secure)
+export BLAWBY_API_KEY='your-actual-api-key'
+export BLAWBY_TEAM_ULID='your-team-ulid'  # Optional, defaults to 01jq70jnstyfzevc6423czh50e
+./scripts/setup-blawby-api.sh
 
 # Delete team by slug
 wrangler d1 execute blawby-ai-chatbot --command "DELETE FROM teams WHERE slug = 'old-team';"

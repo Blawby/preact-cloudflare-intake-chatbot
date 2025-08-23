@@ -68,38 +68,76 @@ if (typeof FileReader !== 'undefined') {
 
 // Helper function to start wrangler dev
 async function startWranglerDev(): Promise<void> {
+  // Preflight health check - if server is already running and healthy, return early
+  try {
+    const preflightResponse = await fetch(`${WORKER_URL}/api/health`);
+    if (preflightResponse.ok) {
+      console.log('✅ Wrangler dev server is already running and healthy');
+      return;
+    }
+  } catch (error) {
+    // Server not running, proceed to spawn
+  }
+
+  // If wranglerProcess is already set, check if it's healthy
   if (wranglerProcess) {
-    console.log('Wrangler dev already running');
-    return;
+    try {
+      const healthResponse = await fetch(`${WORKER_URL}/api/health`);
+      if (healthResponse.ok) {
+        console.log('✅ Existing wrangler dev server is healthy');
+        return;
+      }
+    } catch (error) {
+      // Existing process is not healthy, terminate and respawn
+      console.log('⚠️ Existing wrangler dev server is not responding, terminating...');
+      await stopWranglerDev();
+    }
   }
 
   console.log('🚀 Starting wrangler dev server...');
   
-  wranglerProcess = spawn('npx', ['wrangler', 'dev', '--port', WORKER_PORT.toString()], {
-    stdio: 'pipe',
-    shell: true
-  });
+  try {
+    wranglerProcess = spawn('npx', ['wrangler', 'dev', '--port', WORKER_PORT.toString()], {
+      stdio: 'pipe',
+      shell: true
+    });
 
-  // Wait for server to start
-  let attempts = 0;
-  const maxAttempts = 30; // 30 seconds timeout
-  
-  while (attempts < maxAttempts) {
-    try {
-      const response = await fetch(`${WORKER_URL}/api/health`);
-      if (response.ok) {
-        console.log('✅ Wrangler dev server is ready');
-        return;
+    // Attach exit and error listeners to detect failures
+    wranglerProcess.on('exit', (code, signal) => {
+      console.log(`❌ Wrangler dev server exited with code ${code} and signal ${signal}`);
+      wranglerProcess = null;
+    });
+
+    wranglerProcess.on('error', (error) => {
+      console.error('❌ Wrangler dev server error:', error);
+      wranglerProcess = null;
+    });
+
+    // Wait for server to start
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds timeout
+    
+    while (attempts < maxAttempts) {
+      try {
+        const response = await fetch(`${WORKER_URL}/api/health`);
+        if (response.ok) {
+          console.log('✅ Wrangler dev server is ready');
+          return;
+        }
+      } catch (error) {
+        // Server not ready yet
       }
-    } catch (error) {
-      // Server not ready yet
+      
+      await setTimeout(1000); // Wait 1 second
+      attempts++;
     }
     
-    await setTimeout(1000); // Wait 1 second
-    attempts++;
+    throw new Error(`Wrangler dev server failed to start within ${maxAttempts} seconds`);
+  } catch (error) {
+    console.error('❌ Failed to spawn wrangler dev server:', error);
+    wranglerProcess = null;
+    throw error;
   }
-  
-  throw new Error(`Wrangler dev server failed to start within ${maxAttempts} seconds`);
 }
 
 // Helper function to stop wrangler dev

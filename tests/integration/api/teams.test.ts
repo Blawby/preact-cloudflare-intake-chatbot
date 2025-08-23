@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-
-// Configuration for real worker testing
-const WORKER_URL = 'http://localhost:8787';
+import { WORKER_URL } from '../../setup-real-api';
 
 // Helper function to create a test team
 async function createTestTeam() {

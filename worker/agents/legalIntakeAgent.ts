@@ -893,7 +893,20 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
           urgency: finalUrgency,
           opposingParty: opposing_party || ''
         },
-        teamId: teamConfig?.id || env.BLAWBY_TEAM_ULID || '01jq70jnstyfzevc6423czh50e',
+        teamId: (() => {
+          if (teamConfig?.id) {
+            return teamConfig.id;
+          }
+          if (env.BLAWBY_TEAM_ULID) {
+            console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
+            return env.BLAWBY_TEAM_ULID;
+          }
+          console.error('❌ CRITICAL: No team ID available for payment processing');
+          console.error('   - teamConfig?.id:', teamConfig?.id);
+          console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
+          console.error('   - Team configuration should be set in database for team:', teamConfig?.slug || 'unknown');
+          throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
+        })(),
         sessionId: 'session-' + Date.now()
       };
       
@@ -905,12 +918,16 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
         console.log('✅ Invoice created successfully:', { invoiceUrl, paymentId });
       } else {
         console.error('❌ Failed to create invoice:', paymentResult.error);
+        console.error('   Payment service returned error - falling back to team payment link');
+        console.error('   Team payment link:', paymentLink);
         // Fallback to team payment link
         invoiceUrl = paymentLink;
         console.log('✅ Using team payment link as fallback:', invoiceUrl);
       }
     } catch (error) {
       console.error('❌ Payment service error:', error);
+      console.error('   Payment service threw exception - falling back to team payment link');
+      console.error('   Team payment link:', paymentLink);
       // Fallback to team payment link
       invoiceUrl = paymentLink;
       console.log('✅ Using team payment link as fallback:', invoiceUrl);
