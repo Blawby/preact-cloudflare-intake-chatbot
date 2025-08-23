@@ -124,13 +124,18 @@ export class SecurityFilter {
     // Extract legal matter type from content
     const legalMatterType = this.extractLegalMatterType(content);
     
-    // Only validate if we found a specific legal matter type AND have team config
-    // Allow General Consultation to handle most legal questions
+    // If no specific legal matter type is found, allow the request (let the agent handle it)
+    if (!legalMatterType) {
+      return null;
+    }
+    
+    // If the team offers General Consultation, allow most legal questions
+    if (availableServices.includes('General Consultation')) {
+      return null; // Allow general consultation to handle the request
+    }
+    
+    // Only validate if we found a specific legal matter type AND have team config AND team doesn't offer General Consultation
     if (legalMatterType && teamConfig && !availableServices.includes(legalMatterType)) {
-      // If the team offers General Consultation, allow most legal questions
-      if (availableServices.includes('General Consultation')) {
-        return null; // Allow general consultation to handle the request
-      }
       return 'service_not_offered';
     }
     
@@ -196,7 +201,7 @@ export class SecurityFilter {
       'Special Education and IEP Advocacy': /(special education|IEP|disability|accommodation|504 plan)/i,
       'Small Business and Nonprofits': /(small business|nonprofit|non-profit|entrepreneur|startup)/i,
       'Contract Review': /(contract|agreement|terms|clause|legal document)/i,
-      'General Consultation': /(legal question|legal help|legal advice|consultation)/i
+      'General Consultation': /(legal question|legal help|legal advice|consultation|lawyer|attorney|legal situation|legal matter|legal issue)/i
     };
     
     for (const [matterType, pattern] of Object.entries(legalMatterPatterns)) {

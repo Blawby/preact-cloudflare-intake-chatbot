@@ -1,7 +1,59 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
 
+// Helper function to handle streaming responses
+async function handleStreamingResponse(response: Response, timeoutMs: number = 30000) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body reader available');
+  }
+  
+  let responseData = '';
+  let done = false;
+  const startTime = Date.now();
+  
+  while (!done) {
+    // Check for timeout
+    if (Date.now() - startTime > timeoutMs) {
+      reader.releaseLock();
+      throw new Error(`Streaming response timeout after ${timeoutMs}ms`);
+    }
+    
+    const { value, done: streamDone } = await reader.read();
+    done = streamDone;
+    if (value) {
+      responseData += new TextDecoder().decode(value);
+    }
+    
+    // Check if we have a completion event
+    if (responseData.includes('"type":"complete"')) {
+      break;
+    }
+  }
+  
+  reader.releaseLock();
+  
+  // Parse SSE data
+  const events = responseData
+    .split('\n\n')
+    .filter(chunk => chunk.trim().startsWith('data: '))
+    .map(chunk => {
+      const jsonStr = chunk.replace('data: ', '').trim();
+      try {
+        return JSON.parse(jsonStr);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+  
+  return events;
+}
+
 describe('Agent Route Integration - Real API', () => {
+  // Increase timeout for streaming tests
+  const TEST_TIMEOUT = 30000; // 30 seconds
+  
   beforeAll(async () => {
     console.log('🧪 Testing agent API against real worker at:', WORKER_URL);
     
@@ -48,12 +100,20 @@ describe('Agent Route Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
-
-      // Should have a response from the real AI service
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      expect(result.data.response).toBeDefined();
+      
+      // Handle streaming response
+      const events = await handleStreamingResponse(response);
+      
+      // Should have streaming events
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for connection event
+      const connectionEvent = events.find(e => e.type === 'connected');
+      expect(connectionEvent).toBeDefined();
+      
+      // Check for completion event
+      const completionEvent = events.find(e => e.type === 'complete');
+      expect(completionEvent).toBeDefined();
     });
 
     it('should handle requests without attachments', async () => {
@@ -79,12 +139,20 @@ describe('Agent Route Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
-
-      // Should have a response from the real AI service
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      expect(result.data.response).toBeDefined();
+      
+      // Handle streaming response with longer timeout
+      const events = await handleStreamingResponse(response, 15000);
+      
+      // Should have streaming events
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for connection event
+      const connectionEvent = events.find(e => e.type === 'connected');
+      expect(connectionEvent).toBeDefined();
+      
+      // Check for completion event
+      const completionEvent = events.find(e => e.type === 'complete');
+      expect(completionEvent).toBeDefined();
     });
 
     it('should handle requests with missing attachments field', async () => {
@@ -110,11 +178,20 @@ describe('Agent Route Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
-
-      // Should handle missing attachments gracefully
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
+      
+      // Handle streaming response
+      const events = await handleStreamingResponse(response);
+      
+      // Should have streaming events
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for connection event
+      const connectionEvent = events.find(e => e.type === 'connected');
+      expect(connectionEvent).toBeDefined();
+      
+      // Check for completion event
+      const completionEvent = events.find(e => e.type === 'complete');
+      expect(completionEvent).toBeDefined();
     });
   });
 
@@ -155,11 +232,20 @@ describe('Agent Route Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
-
-      // Should handle multiple file types
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
+      
+      // Handle streaming response with longer timeout
+      const events = await handleStreamingResponse(response, 15000);
+      
+      // Should have streaming events
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for connection event
+      const connectionEvent = events.find(e => e.type === 'connected');
+      expect(connectionEvent).toBeDefined();
+      
+      // Check for completion event
+      const completionEvent = events.find(e => e.type === 'complete');
+      expect(completionEvent).toBeDefined();
     });
   });
 
@@ -181,9 +267,17 @@ describe('Agent Route Integration - Real API', () => {
       });
 
       // Should return validation error
-      expect(response.status).toBe(400);
-      const result = await response.json();
-      expect(result.success).toBe(false);
+      expect(response.status).toBe(200); // Streaming responses return 200 even for validation errors
+      
+      // Handle streaming response for validation error
+      const events = await handleStreamingResponse(response);
+      
+      // Should have validation error event
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for error event
+      const errorEvent = events.find(e => e.type === 'error' || e.type === 'security_block');
+      expect(errorEvent).toBeDefined();
     });
 
     it('should handle malformed JSON', async () => {
@@ -196,7 +290,17 @@ describe('Agent Route Integration - Real API', () => {
       });
 
       // Should return error for malformed JSON
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(200); // Streaming responses return 200 even for validation errors
+      
+      // Handle streaming response for validation error
+      const events = await handleStreamingResponse(response);
+      
+      // Should have validation error event
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for error event
+      const errorEvent = events.find(e => e.type === 'error' || e.type === 'security_block');
+      expect(errorEvent).toBeDefined();
     });
 
     it('should handle missing Content-Type header', async () => {
@@ -219,7 +323,7 @@ describe('Agent Route Integration - Real API', () => {
       });
 
       // Should handle missing Content-Type
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(400); // Request validation catches this before streaming
     });
   });
 
@@ -247,10 +351,20 @@ describe('Agent Route Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
-
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
+      
+      // Handle streaming response
+      const events = await handleStreamingResponse(response);
+      
+      // Should have streaming events
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for connection event
+      const connectionEvent = events.find(e => e.type === 'connected');
+      expect(connectionEvent).toBeDefined();
+      
+      // Check for completion event
+      const completionEvent = events.find(e => e.type === 'complete');
+      expect(completionEvent).toBeDefined();
     });
 
     it('should handle non-existent team gracefully', async () => {
@@ -277,9 +391,20 @@ describe('Agent Route Integration - Real API', () => {
 
       // Should handle non-existent team gracefully by using default config
       expect(response.status).toBe(200);
-      const result = await response.json();
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
+      
+      // Handle streaming response with longer timeout
+      const events = await handleStreamingResponse(response, 15000);
+      
+      // Should have streaming events
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for connection event
+      const connectionEvent = events.find(e => e.type === 'connected');
+      expect(connectionEvent).toBeDefined();
+      
+      // Check for completion event
+      const completionEvent = events.find(e => e.type === 'complete');
+      expect(completionEvent).toBeDefined();
     });
   });
 
@@ -309,8 +434,20 @@ describe('Agent Route Integration - Real API', () => {
 
       // Should handle large payloads
       expect(response.status).toBe(200);
-      const result = await response.json();
-      expect(result.success).toBe(true);
+      
+      // Handle streaming response with longer timeout
+      const events = await handleStreamingResponse(response, 15000);
+      
+      // Should have streaming events
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Check for connection event
+      const connectionEvent = events.find(e => e.type === 'connected');
+      expect(connectionEvent).toBeDefined();
+      
+      // Check for completion event
+      const completionEvent = events.find(e => e.type === 'complete');
+      expect(completionEvent).toBeDefined();
     });
 
     it('should handle concurrent requests', async () => {
@@ -341,9 +478,23 @@ describe('Agent Route Integration - Real API', () => {
       const responses = await Promise.all(promises);
       
       // All requests should succeed
-      responses.forEach(response => {
+      for (const response of responses) {
         expect(response.status).toBe(200);
-      });
+        
+        // Handle streaming response with longer timeout
+        const events = await handleStreamingResponse(response, 15000);
+        
+        // Should have streaming events
+        expect(events.length).toBeGreaterThan(0);
+        
+        // Check for connection event
+        const connectionEvent = events.find(e => e.type === 'connected');
+        expect(connectionEvent).toBeDefined();
+        
+        // Check for completion event
+        const completionEvent = events.find(e => e.type === 'complete');
+        expect(completionEvent).toBeDefined();
+      }
     });
   });
 });
