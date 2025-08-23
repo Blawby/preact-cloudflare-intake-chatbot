@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import '@testing-library/jest-dom';
 
 // Mock Cloudflare Workers environment for Node.js tests
 Object.defineProperty(global, 'crypto', {

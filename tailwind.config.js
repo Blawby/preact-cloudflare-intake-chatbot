@@ -60,6 +60,7 @@ export default {
           accent: '#d4af37',
         },
       },
+
     },
   },
   plugins: [

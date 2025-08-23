@@ -165,6 +165,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         teamConfig={teamConfig}
                         onOpenSidebar={onOpenSidebar}
                         isLoading={message.isLoading}
+                        aiState={message.aiState}
                         id={message.id}
                         sessionId={sessionId}
                         teamId={teamId}

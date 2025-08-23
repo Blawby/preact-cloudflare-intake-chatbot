@@ -10,6 +10,7 @@ import MatterCanvas from './MatterCanvas';
 import PaymentEmbed from './PaymentEmbed';
 import TeamProfile from './TeamProfile';
 import { Button } from './ui/Button';
+import { AIThinkingIndicator } from './AIThinkingIndicator';
 import { features } from '../config/features';
 import {
 	DocumentIcon,
@@ -50,6 +51,7 @@ interface MessageProps {
 	};
 	onOpenSidebar?: () => void;
 	isLoading?: boolean;
+	aiState?: 'thinking' | 'processing' | 'generating';
 	// Feedback props
 	id?: string;
 	sessionId?: string;
@@ -174,6 +176,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	teamConfig,
 	onOpenSidebar,
 	isLoading,
+	aiState,
 	id,
 	sessionId,
 	teamId,
@@ -215,15 +218,15 @@ const Message: FunctionComponent<MessageProps> = memo(({
 
 
 	return (
-		<div class={`flex flex-col max-w-full my-4 px-3 py-2 rounded-xl break-words relative ${
+		<div className={`flex flex-col max-w-full my-4 px-3 py-2 rounded-xl break-words relative ${
 			isUser 
 				? 'ml-auto mr-0 bg-light-message-bg-user dark:bg-dark-message-bg-user text-light-text dark:text-dark-text w-fit' 
 				: 'mr-0 ml-0 bg-light-message-bg-ai dark:bg-dark-message-bg-ai w-full min-h-12 min-w-30'
 		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`}>
 			{/* Agent handles welcome messages - no special logic needed */}
-			<div class="text-base leading-6 min-h-6">
-				{/* Show content if available */}
-				{content && (
+			<div className="text-base leading-6 min-h-6">
+				{/* Show content if available and not loading */}
+				{content && !isLoading && (
 					<div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
 						{isClient && ReactMarkdown ? (
 							<ReactMarkdown>{content}</ReactMarkdown>
@@ -233,9 +236,12 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					</div>
 				)}
 				
-				{/* Show typing cursor for streaming content */}
-				{isLoading && content && (
-					<span class="text-accent font-bold animate-blink ml-0.5">|</span>
+				{/* Show AI thinking indicator for all loading states */}
+				{isLoading && (
+					<AIThinkingIndicator 
+						variant={aiState || 'thinking'} 
+						content={content || undefined}
+					/>
 				)}
 				
 				{/* Then display scheduling components */}

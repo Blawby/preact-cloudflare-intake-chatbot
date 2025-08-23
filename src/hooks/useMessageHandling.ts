@@ -109,12 +109,13 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                 
                 switch (data.type) {
                   case 'connected':
-                    // Connection established, start showing typing indicator
+                    // Connection established, start showing thinking indicator
                     setMessages(prev => prev.map(msg => 
                       msg.id === placeholderId ? { 
                         ...msg, 
-                        content: 'AI is thinking...',
-                        isLoading: true 
+                        content: '',
+                        isLoading: true,
+                        aiState: 'thinking'
                       } : msg
                     ));
                     break;
@@ -126,7 +127,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                       msg.id === placeholderId ? { 
                         ...msg, 
                         content: currentContent,
-                        isLoading: true 
+                        isLoading: true,
+                        aiState: 'generating'
                       } : msg
                     ));
                     break;
@@ -147,8 +149,9 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     setMessages(prev => prev.map(msg => 
                       msg.id === placeholderId ? { 
                         ...msg, 
-                        content: currentContent + '\n\nProcessing your request...',
-                        isLoading: true 
+                        content: currentContent,
+                        isLoading: true,
+                        aiState: 'processing'
                       } : msg
                     ));
                     break;

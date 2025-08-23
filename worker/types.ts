@@ -218,6 +218,7 @@ export interface ChatMessageUI extends ChatMessage {
   matterCanvas?: MatterCanvasData;
   paymentEmbed?: PaymentEmbedData;
   isLoading?: boolean;
+  aiState?: 'thinking' | 'processing' | 'generating';
 }
 
 // Case brief interface for handoff between Paralegal and Intake agents
