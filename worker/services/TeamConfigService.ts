@@ -1,3 +1,5 @@
+import { Logger } from '../utils/logger.js';
+
 export interface TeamConfig {
   id: string;
   slug: string;
@@ -86,19 +88,18 @@ export class TeamConfigService {
     try {
       const { TeamService } = await import('./TeamService.js');
       const teamService = new TeamService(env);
-      console.log('Retrieving team for teamId:', teamId);
+      Logger.debug('Retrieving team for teamId:', teamId);
       
       const team = await teamService.getTeam(teamId);
       if (team) {
-        console.log('Retrieved team:', { id: team.id, slug: team.slug, name: team.name });
-        console.log('Team config:', JSON.stringify(team.config, null, 2));
+        Logger.logTeamConfig(team, true); // Include sanitized config in debug mode
         return team;
       } else {
-        console.log('No team found, returning Blawby AI default config');
+        Logger.info('No team found, returning Blawby AI default config');
         return this.getDefaultTeamConfig(teamId, env);
       }
     } catch (error) {
-      console.warn('Failed to get team config:', error);
+      Logger.warn('Failed to get team config:', error);
       return this.getDefaultTeamConfig(teamId, env);
     }
   }

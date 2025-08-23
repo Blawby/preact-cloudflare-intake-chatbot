@@ -1,5 +1,6 @@
 // Import TeamConfig from TeamService instead of defining it here
 import { TeamConfig } from './TeamService.js';
+import { Logger } from '../utils/logger.js';
 
 export interface Env {
   AI: any;
@@ -65,10 +66,10 @@ export class AIService {
   }
   
   async getTeamConfig(teamId: string): Promise<TeamConfig> {
-    console.log('AIService.getTeamConfig called with teamId:', teamId);
+    Logger.debug('AIService.getTeamConfig called with teamId:', teamId);
     const cached = this.teamConfigCache.get(teamId);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      console.log('Returning cached team config');
+      Logger.debug('Returning cached team config');
       return cached.config;
     }
 
@@ -79,21 +80,20 @@ export class AIService {
       const team = await teamService.getTeam(teamId);
       
       if (team) {
-        console.log('Found team:', { id: team.id, slug: team.slug, name: team.name });
-        console.log('Team config:', JSON.stringify(team.config, null, 2));
+        Logger.logTeamConfig(team, true); // Include sanitized config in debug mode
         this.teamConfigCache.set(teamId, { config: team.config, timestamp: Date.now() });
         return team.config;
       } else {
-        console.log('No team found in database');
-        console.log('Available teams:');
+        Logger.info('No team found in database');
+        Logger.debug('Available teams:');
         const allTeams = await teamService.listTeams();
-        console.log('All teams:', allTeams.map(t => ({ id: t.id, slug: t.slug })));
+        Logger.debug('All teams:', allTeams.map(t => ({ id: t.id, slug: t.slug })));
       }
     } catch (error) {
-      console.warn('Failed to fetch team config:', error);
+      Logger.warn('Failed to fetch team config:', error);
     }
     
-    console.log('Returning default team config');
+    Logger.info('Returning default team config');
     return DEFAULT_TEAM_CONFIG;
   }
 

@@ -52,8 +52,8 @@ ${fileList}`;
    * Adds attorney referral context
    */
   static addAttorneyReferralPrompt(basePrompt: string, conversationText: string): string {
-    const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
-                              (conversationText.includes('yes') || conversationText.includes('sure') || conversationText.includes('ok'));
+-    const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
+    const isAttorneyReferral = this.detectAttorneyReferral(conversationText);
 
     if (!isAttorneyReferral) {
       return basePrompt;
@@ -65,6 +65,15 @@ ${fileList}`;
 This user was referred by our AI Paralegal after requesting attorney help. Start with: "Perfect! I'll help you connect with one of our attorneys. To get started, I need to collect some basic information."
 
 Then proceed with the conversation flow below.`;
+  }
+
+  private static detectAttorneyReferral(text: string): boolean {
+    const referralPatterns = [
+      /would you like me to connect you with.*?(yes|sure|ok|absolutely|please)/i,
+      /connect.*?attorney.*?(yes|sure|ok|absolutely|please)/i,
+    ];
+    
+    return referralPatterns.some(pattern => pattern.test(text));
   }
 
   /**

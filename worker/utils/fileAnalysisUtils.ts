@@ -70,7 +70,8 @@ export async function analyzeFile(env: any, fileId: string, question?: string): 
     // Get the file body as ArrayBuffer
     const fileBuffer = await fileObject.arrayBuffer();
     console.log('File buffer size:', fileBuffer.byteLength);
-    console.log('File buffer preview (first 100 bytes):', Array.from(new Uint8Array(fileBuffer.slice(0, 100))).map(b => b.toString(16).padStart(2, '0')).join(' '));
+    // Only log buffer size, not content
+    console.log('File buffer size:', fileBuffer.byteLength);
 
     // Create a File object for the analyze endpoint
     const file = new File([fileBuffer], fileRecord?.original_name || fileId, {
@@ -89,7 +90,9 @@ export async function analyzeFile(env: any, fileId: string, question?: string): 
       
       const analysis = await analyzeWithCloudflareAI(file, analysisQuestion, env);
       console.log('Analysis completed successfully:', {
-        summary: analysis.summary?.substring(0, 100) + '...',
+        confidence: analysis.confidence,
+        keyFactsCount: analysis.key_facts?.length || 0
+      });
         confidence: analysis.confidence,
         keyFactsCount: analysis.key_facts?.length || 0
       });
@@ -164,8 +167,16 @@ async function findFilePathInR2(env: any, fileId: string): Promise<string | null
         break;
       }
     }
-    
-    // Alternative approach: try to find files by listing all objects and matching
+      // Limit the search to avoid performance issues
+      const allObjects = await env.FILES_BUCKET.list({
+        prefix: 'uploads/',
+        limit: 1000  // Add reasonable limit
+      });
+      console.log('Total R2 objects found:', allObjects.objects.length);
+
+      if (allObjects.truncated) {
+        console.warn('R2 listing was truncated, some files may not be searched');
+      }
     try {
       const allObjects = await env.FILES_BUCKET.list({ prefix: 'uploads/' });
       console.log('Total R2 objects found:', allObjects.objects.length);

@@ -59,27 +59,26 @@ export class ValidationService {
    * Checks if contact information contains placeholder values
    */
   static hasPlaceholderValues(phone?: string, email?: string): boolean {
-    const placeholderPatterns = [
-      /\[user_phone\]/i,
-      /\[USER_PHONE\]/i,
-      /\[user_email\]/i,
-      /\[USER_EMAIL\]/i
-    ];
-
-    const emptyValues = ['', 'None', 'null'];
+    const placeholderPatterns = [/\[user_phone\]/i, /\[user_email\]/i];
+    const emptyTokens = new Set(['', 'none', 'null', 'n/a', 'na', 'tbd', 'unknown']);
+    const isEmptyish = (v?: string) => {
+      if (v == null) return false;
+      const t = v.trim().toLowerCase();
+      return emptyTokens.has(t);
+    };
 
     // Check phone for placeholders
     if (phone) {
       const trimmedPhone = phone.trim();
-      if (emptyValues.includes(trimmedPhone)) return true;
-      if (placeholderPatterns.some(pattern => pattern.test(phone))) return true;
+      if (isEmptyish(trimmedPhone)) return true;
+      if (placeholderPatterns.some(pattern => pattern.test(trimmedPhone))) return true;
     }
 
     // Check email for placeholders
     if (email) {
       const trimmedEmail = email.trim();
-      if (emptyValues.includes(trimmedEmail)) return true;
-      if (placeholderPatterns.some(pattern => pattern.test(email))) return true;
+      if (isEmptyish(trimmedEmail)) return true;
+      if (placeholderPatterns.some(pattern => pattern.test(trimmedEmail))) return true;
     }
 
     return false;

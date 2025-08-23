@@ -7,6 +7,15 @@ import { PaymentServiceFactory } from '../services/PaymentServiceFactory.js';
 import { createToolResponse, createValidationError, createSuccessResponse } from '../utils/responseUtils.js';
 import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
 import { PromptBuilder } from '../utils/promptBuilder.js';
+import { Logger } from '../utils/logger.js';
+import { ToolCallParser } from '../utils/toolCallParser.js';
+
+// AI Model Configuration
+const AI_MODEL_CONFIG = {
+  model: '@cf/meta/llama-3.1-8b-instruct',
+  maxTokens: 500,
+  temperature: 0.1
+} as const;
 
 // Tool definitions with structured schemas
 export const collectContactInfo = {
@@ -171,7 +180,7 @@ export async function runLegalIntakeAgentStream(
   let parameters: any = null;
   
   try {
-    console.log('🔄 Starting agent...');
+    Logger.debug('🔄 Starting agent...');
     
     // Send initial connection event for streaming
     if (controller) {
@@ -179,25 +188,27 @@ export async function runLegalIntakeAgentStream(
     }
     
     // Use AI call
-    console.log('🤖 Calling AI model...');
+    Logger.debug('🤖 Calling AI model...');
     
-    const aiResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    const aiResult = await env.AI.run(AI_MODEL_CONFIG.model, {
       messages: [
         { role: 'system', content: systemPrompt },
         ...formattedMessages
       ],
-      max_tokens: 500,
-      temperature: 0.1
+      max_tokens: AI_MODEL_CONFIG.maxTokens,
+      temperature: AI_MODEL_CONFIG.temperature
     });
     
-    console.log('✅ AI result:', aiResult);
+    Logger.debug('✅ AI result:', aiResult);
     
     const response = aiResult.response || 'I apologize, but I encountered an error processing your request.';
-    console.log('📝 Full response:', response);
+    Logger.debug('📝 Full response:', response);
     
-    // Check for tool call indicators
-    if (response.includes('TOOL_CALL:')) {
-      console.log('Tool call detected in response');
+    // Parse tool call using ToolCallParser
+    const parseResult = ToolCallParser.parseToolCall(response);
+    
+    if (parseResult.success && parseResult.toolCall) {
+      Logger.debug('Tool call detected in response');
       
       // Handle streaming case
       if (controller) {
@@ -208,38 +219,25 @@ export async function runLegalIntakeAgentStream(
         controller.enqueue(new TextEncoder().encode(typingEvent));
       }
       
-      // Parse tool call
-      toolCallMatch = response.match(/TOOL_CALL:\s*([\w_]+)/);
-      // Use a more robust approach for JSON extraction
-      parametersMatch = response.match(/PARAMETERS:\s*(\{[^]*?\}(?:\n|$))/);
-      
-      if (toolCallMatch && parametersMatch) {
-        toolName = toolCallMatch[1].toLowerCase();
-        try {
-          // Clean the JSON string before parsing
-          const jsonStr = parametersMatch[1].trim();
-          parameters = JSON.parse(jsonStr);
-          console.log(`Tool: ${toolName}, Parameters:`, parameters);
-        } catch (error) {
-          console.error('Failed to parse tool parameters:', error);
-          console.error('Raw parameters string:', parametersMatch[1]);
-          if (controller) {
-            const errorEvent = `data: ${JSON.stringify({
-              type: 'error',
-              message: 'Failed to parse tool parameters. Please try rephrasing your request.'
-            })}\n\n`;
-            controller.enqueue(new TextEncoder().encode(errorEvent));
-          }
-          return {
-            response: 'I encountered an error processing your request. Please try rephrasing your request.',
-            metadata: { error: 'Failed to parse tool parameters', rawParameters: parametersMatch[1] }
-          };
-        }
+      toolName = parseResult.toolCall.toolName;
+      parameters = parseResult.toolCall.parameters;
+    } else if (parseResult.error && parseResult.error !== 'No tool call detected') {
+      Logger.error('Tool call parsing failed:', parseResult.error);
+      if (controller) {
+        const errorEvent = `data: ${JSON.stringify({
+          type: 'error',
+          message: 'Failed to parse tool parameters. Please try rephrasing your request.'
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(errorEvent));
       }
+      return {
+        response: 'I encountered an error processing your request. Please try rephrasing your request.',
+        metadata: { error: parseResult.error, rawParameters: parseResult.rawParameters }
+      };
     }
     
     // Check if we have valid tool call data
-    if (toolCallMatch && parametersMatch && toolName && parameters) {
+    if (toolName && parameters) {
       // Handle streaming case
       if (controller) {
         const toolEvent = `data: ${JSON.stringify({
@@ -250,37 +248,29 @@ export async function runLegalIntakeAgentStream(
         controller.enqueue(new TextEncoder().encode(toolEvent));
       }
       
-      // Execute the tool handler
+      // Execute the tool handler using the mapping
+      const handler = TOOL_HANDLERS[toolName as keyof typeof TOOL_HANDLERS];
+      if (!handler) {
+        Logger.warn(`❌ Unknown tool: ${toolName}`);
+        if (controller) {
+          const errorEvent = `data: ${JSON.stringify({
+            type: 'error',
+            message: `Unknown tool: ${toolName}`
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(errorEvent));
+        }
+        return {
+          response: `I encountered an error: Unknown tool ${toolName}`,
+          metadata: { error: `Unknown tool: ${toolName}` }
+        };
+      }
+      
+      // Call the appropriate handler with correct parameters
       let toolResult;
-      switch (toolName) {
-        case 'create_matter':
-          toolResult = await handleCreateMatter(parameters, env, teamConfig);
-          break;
-        case 'collect_contact_info':
-          toolResult = await handleCollectContactInfo(parameters, env, teamConfig);
-          break;
-        case 'request_lawyer_review':
-          toolResult = await handleRequestLawyerReview(parameters, env, teamId);
-          break;
-        case 'schedule_consultation':
-          toolResult = await handleScheduleConsultation(parameters, env, teamConfig);
-          break;
-        case 'analyze_document':
-          toolResult = await handleAnalyzeDocument(parameters, env, teamConfig);
-          break;
-        default:
-          console.warn(`❌ Unknown tool: ${toolName}`);
-          if (controller) {
-            const errorEvent = `data: ${JSON.stringify({
-              type: 'error',
-              message: `Unknown tool: ${toolName}`
-            })}\n\n`;
-            controller.enqueue(new TextEncoder().encode(errorEvent));
-          }
-          return {
-            response: `I encountered an error: Unknown tool ${toolName}`,
-            metadata: { error: `Unknown tool: ${toolName}` }
-          };
+      if (toolName === 'request_lawyer_review') {
+        toolResult = await handler(parameters, env, teamId);
+      } else {
+        toolResult = await handler(parameters, env, teamConfig);
       }
       
       // Handle streaming case
@@ -336,7 +326,7 @@ export async function runLegalIntakeAgentStream(
     }
     
     // If no tool call detected, handle the regular response
-    console.log('📝 No tool call detected, handling regular response');
+          Logger.debug('📝 No tool call detected, handling regular response');
     
     if (controller) {
       // Streaming case: simulate streaming by sending response in chunks
@@ -403,7 +393,7 @@ export async function runLegalIntakeAgentStream(
 
 // Helper function to handle lawyer approval
 async function handleLawyerApproval(env: any, params: any, teamId: string) {
-  console.log('Lawyer approval requested:', params);
+          Logger.debug('Lawyer approval requested:', params);
   
   try {
     // Get team config for notification
@@ -422,7 +412,7 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
         text: `A new legal matter requires your review.\n\nMatter Details: ${JSON.stringify(params, null, 2)}`
       });
     } else {
-      console.log('Email service not configured - skipping email notification');
+      Logger.info('Email service not configured - skipping email notification');
     }
   } catch (error) {
     console.warn('Failed to send lawyer approval email:', error);
@@ -501,8 +491,8 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
 }
 
 export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
-  console.log('[handleCreateMatter] parameters:', parameters);
-  console.log('[handleCreateMatter] teamConfig:', JSON.stringify(teamConfig, null, 2));
+  Logger.debug('[handleCreateMatter] parameters:', parameters);
+  Logger.logTeamConfig(teamConfig, true); // Include sanitized config in debug mode
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
   // Check for placeholder values
@@ -653,35 +643,26 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
     } : null
   });
   
-  console.log('[handleCreateMatter] result:', JSON.stringify(result, null, 2));
+  Logger.debug('[handleCreateMatter] result created successfully');
   return result;
 }
 
 export async function handleRequestLawyerReview(parameters: any, env: any, teamConfig: any) {
   const { urgency, complexity, matter_type } = parameters;
   
-  try {
-    const { EmailService } = await import('../services/EmailService.js');
-    const emailService = new EmailService(env);
-    
-    const ownerEmail = teamConfig?.config?.ownerEmail;
-    if (ownerEmail) {
-      await emailService.send({
-        from: 'noreply@blawby.com',
-        to: ownerEmail,
-        subject: `Urgent Legal Matter Review Required - ${matter_type}`,
-        text: `A new urgent legal matter requires immediate review:
-
-Matter Type: ${matter_type}
-Urgency: ${urgency}
-Complexity: ${complexity || 'Standard'}
-
-Please review this matter as soon as possible.`
-      });
+  // Send notification using NotificationService
+  const { NotificationService } = await import('../services/NotificationService.js');
+  const notificationService = new NotificationService(env);
+  
+  await notificationService.sendLawyerReviewNotification({
+    type: 'lawyer_review',
+    teamConfig,
+    matterInfo: {
+      type: matter_type,
+      urgency,
+      complexity
     }
-  } catch (error) {
-    console.log('Email service not configured - skipping email notification');
-  }
+  });
   
   return createSuccessResponse("I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further.");
 }
@@ -695,10 +676,10 @@ export async function handleScheduleConsultation(parameters: any, env: any, team
 export async function handleAnalyzeDocument(parameters: any, env: any, teamConfig: any) {
   const { file_id, analysis_type, specific_question } = parameters;
   
-  console.log('=== ANALYZE DOCUMENT TOOL CALLED ===');
-  console.log('File ID:', file_id);
-  console.log('Analysis Type:', analysis_type);
-  console.log('Specific Question:', specific_question);
+  Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
+  Logger.debug('File ID:', file_id);
+  Logger.debug('Analysis Type:', analysis_type);
+  Logger.debug('Specific Question:', specific_question);
   
   // Get the appropriate analysis question
   const customQuestion = getAnalysisQuestion(analysis_type, specific_question);
@@ -719,14 +700,14 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   fileAnalysis.documentType = analysis_type;
   
   // Log the analysis results
-  console.log('=== DOCUMENT ANALYSIS RESULTS ===');
-  console.log('Document Type:', analysis_type);
-  console.log('Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
-  console.log('Summary:', fileAnalysis.summary);
-  console.log('Key Facts:', fileAnalysis.key_facts);
-  console.log('Entities:', fileAnalysis.entities);
-  console.log('Action Items:', fileAnalysis.action_items);
-  console.log('================================');
+  Logger.debug('=== DOCUMENT ANALYSIS RESULTS ===');
+  Logger.debug('Document Type:', analysis_type);
+  Logger.debug('Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
+  Logger.debug('Summary:', fileAnalysis.summary);
+  Logger.debug('Key Facts:', fileAnalysis.key_facts);
+  Logger.debug('Entities:', fileAnalysis.entities);
+  Logger.debug('Action Items:', fileAnalysis.action_items);
+  Logger.debug('================================');
   
   // Create a legally-focused response that guides toward matter creation
   let response = '';
@@ -791,13 +772,13 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   // Call to action
   response += `Would you like me to create a legal matter for this ${suggestedMatterType.toLowerCase()} case? I'll need your contact information to get started.`;
   
-  console.log('=== FINAL ANALYSIS RESPONSE ===');
-  console.log('Response:', response);
-  console.log('Response Length:', response.length, 'characters');
-  console.log('Response Type:', analysis_type);
-  console.log('Suggested Matter Type:', suggestedMatterType);
-  console.log('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
-  console.log('==============================');
+  Logger.debug('=== FINAL ANALYSIS RESPONSE ===');
+  Logger.debug('Response:', response);
+  Logger.debug('Response Length:', response.length, 'characters');
+  Logger.debug('Response Type:', analysis_type);
+  Logger.debug('Suggested Matter Type:', suggestedMatterType);
+  Logger.debug('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
+  Logger.debug('==============================');
   
   return createSuccessResponse(response, {
     ...fileAnalysis,
