@@ -224,7 +224,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				: 'mr-0 ml-0 bg-light-message-bg-ai dark:bg-dark-message-bg-ai w-full min-h-12 min-w-30'
 		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`}>
 			{/* Agent handles welcome messages - no special logic needed */}
-			<div className="text-base leading-6 min-h-[1.5rem]">
+			<div className="text-base leading-6 min-h-4">
 				{/* Show content if available and not loading */}
 				{content && !isLoading && (
 					<div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">

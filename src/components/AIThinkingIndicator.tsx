@@ -51,7 +51,7 @@ export function AIThinkingIndicator({
   // For streaming content, return wrapped prose div to match final state
   if (content) {
     return (
-      <div className={`text-base leading-6 min-h-[1.5rem] ${className}`}>
+      <div className={`text-base leading-6 min-h-4 ${className}`}>
         <div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
           <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
         </div>
@@ -62,7 +62,7 @@ export function AIThinkingIndicator({
   // For thinking indicators, use the full wrapper
   return (
     <div 
-      className={`text-base leading-6 min-h-[1.5rem] ${className}`}
+      className={`text-base leading-6 min-h-4 ${className}`}
       role="status"
       aria-live="polite"
       aria-busy="true"
