@@ -447,13 +447,31 @@ export async function runLegalIntakeAgentStream(
             inputMessageCount: formattedMessages.length,
             lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
             sessionId,
-            teamId
+            teamId,
+            allowRetry: !toolResult.success && toolName === 'create_matter'
           }
         };
       }
       
-      // For streaming case, send the tool result as the final response
+      // For streaming case, send the tool result as the response
       const finalResponse = toolResult.message || toolResult.response || 'Tool executed successfully.';
+      
+      // Check if the tool failed and we should allow retry
+      if (!toolResult.success && toolName === 'create_matter') {
+        // Tool failed - send error message but don't close the conversation
+        const errorEvent = `data: ${JSON.stringify({
+          type: 'tool_error',
+          response: finalResponse,
+          toolName: toolName,
+          allowRetry: true
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(errorEvent));
+        
+        // Don't close the controller - let the conversation continue
+        return;
+      }
+      
+      // Tool succeeded or it's not create_matter - send final response and close
       const finalEvent = `data: ${JSON.stringify({
         type: 'final',
         response: finalResponse
