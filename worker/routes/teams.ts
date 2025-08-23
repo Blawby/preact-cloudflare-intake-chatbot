@@ -1,16 +1,11 @@
 import { TeamService, Team, TeamConfig } from '../services/TeamService.js';
 import { ValidatedRequest } from '../types.js';
 import { HttpError } from '../types.js';
+import { CORS_HEADERS } from '../errorHandler.js';
 
 export async function handleTeams(request: Request, env: any): Promise<Response> {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
-
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
   const url = new URL(request.url);
@@ -30,32 +25,32 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
         // Validate that the team exists
         const team = await teamService.getTeam(teamId);
         if (!team) {
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: 'Team not found' 
-            }), 
-            { 
-              status: 404, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
+                      return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: 'Team not found' 
+              }), 
+              { 
+                status: 404, 
+                headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+              }
+            );
         }
         
         if (pathParts.length === 2) {
           // /{teamId}/tokens
           switch (request.method) {
             case 'GET':
-              return await listTeamTokens(teamService, teamId, corsHeaders);
+              return await listTeamTokens(teamService, teamId);
             case 'POST':
-              return await createTeamToken(teamService, teamId, request, corsHeaders);
+              return await createTeamToken(teamService, teamId, request);
           }
         } else if (pathParts.length === 3) {
           // /{teamId}/tokens/{tokenId}
           const tokenId = pathParts[2];
           switch (request.method) {
             case 'DELETE':
-              return await revokeTeamToken(teamService, teamId, tokenId, corsHeaders);
+              return await revokeTeamToken(teamService, teamId, tokenId);
           }
         }
       }
@@ -68,7 +63,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
         const teamId = pathParts[0];
         
         if (request.method === 'POST') {
-          return await validateTeamToken(teamService, teamId, request, corsHeaders);
+          return await validateTeamToken(teamService, teamId, request);
         }
       }
     }
@@ -80,7 +75,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
         const teamId = pathParts[0];
         
         if (request.method === 'POST') {
-          return await validateApiKey(teamService, teamId, request, corsHeaders);
+          return await validateApiKey(teamService, teamId, request);
         }
       }
     }
@@ -92,7 +87,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
         const teamId = pathParts[0];
         
         if (request.method === 'POST') {
-          return await generateApiKeyHash(teamService, teamId, corsHeaders);
+          return await generateApiKeyHash(teamService, teamId);
         }
       }
     }
@@ -100,22 +95,22 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
     switch (request.method) {
       case 'GET':
         if (path === '' || path === '/') {
-          return await listTeams(teamService, corsHeaders);
+          return await listTeams(teamService);
         } else {
           const teamId = path.substring(1);
-          return await getTeam(teamService, teamId, corsHeaders);
+          return await getTeam(teamService, teamId);
         }
       
       case 'POST':
         if (path === '' || path === '/') {
-          return await createTeam(teamService, request, corsHeaders);
+          return await createTeam(teamService, request);
         }
         break;
       
       case 'PUT':
         if (path.startsWith('/')) {
           const teamId = path.substring(1);
-          return await updateTeam(teamService, teamId, request, corsHeaders);
+          return await updateTeam(teamService, teamId, request);
         }
         break;
       
@@ -124,7 +119,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
         if (path.startsWith('/')) {
           const teamId = path.substring(1);
           console.log('DELETE teamId:', teamId);
-          return await deleteTeam(teamService, teamId, corsHeaders);
+          return await deleteTeam(teamService, teamId);
         }
         console.log('DELETE path does not start with /');
         break;
@@ -132,7 +127,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
 
     return new Response('Method not allowed', { 
       status: 405, 
-      headers: corsHeaders 
+      headers: CORS_HEADERS 
     });
 
   } catch (error) {
@@ -144,13 +139,13 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
       }), 
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
 }
 
-async function listTeams(teamService: TeamService, corsHeaders: Record<string, string>): Promise<Response> {
+async function listTeams(teamService: TeamService): Promise<Response> {
   const teams = await teamService.listTeams();
   
   return new Response(
@@ -159,25 +154,25 @@ async function listTeams(teamService: TeamService, corsHeaders: Record<string, s
       data: teams 
     }), 
     { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
 
-async function getTeam(teamService: TeamService, teamId: string, corsHeaders: Record<string, string>): Promise<Response> {
+async function getTeam(teamService: TeamService, teamId: string): Promise<Response> {
   const team = await teamService.getTeam(teamId);
   
   if (!team) {
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: 'Team not found' 
-      }), 
-      { 
-        status: 404, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+          return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Team not found' 
+        }), 
+        { 
+          status: 404, 
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        }
+      );
   }
 
   // Redact sensitive data from the response
@@ -187,9 +182,8 @@ async function getTeam(teamService: TeamService, teamId: string, corsHeaders: Re
       ...team.config,
       blawbyApi: team.config?.blawbyApi ? {
         enabled: team.config.blawbyApi.enabled,
-        apiKeyHash: team.config.blawbyApi.apiKeyHash,
         apiUrl: team.config.blawbyApi.apiUrl
-        // Note: apiKey and teamUlid are intentionally excluded for security
+        // Note: apiKey, apiKeyHash, and teamUlid are intentionally excluded for security
       } : undefined
     }
   };
@@ -200,17 +194,24 @@ async function getTeam(teamService: TeamService, teamId: string, corsHeaders: Re
       data: sanitizedTeam 
     }), 
     { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
 
-async function createTeam(teamService: TeamService, request: Request, corsHeaders: Record<string, string>): Promise<Response> {
-  const body = await request.json() as {
-    slug: string;
-    name: string;
-    config: TeamConfig;
-  };
+async function createTeam(teamService: TeamService, request: Request): Promise<Response> {
+  let body;
+  try {
+    body = await request.json() as {
+      slug: string;
+      name: string;
+      config: TeamConfig;
+    };
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
+      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  }
   
   // Validate required fields
   if (!body.slug || !body.name || !body.config) {
@@ -221,7 +222,7 @@ async function createTeam(teamService: TeamService, request: Request, corsHeader
       }), 
       { 
         status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -236,7 +237,7 @@ async function createTeam(teamService: TeamService, request: Request, corsHeader
       }), 
       { 
         status: 409, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -254,13 +255,20 @@ async function createTeam(teamService: TeamService, request: Request, corsHeader
     }), 
     { 
       status: 201,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
 
-async function updateTeam(teamService: TeamService, teamId: string, request: Request, corsHeaders: Record<string, string>): Promise<Response> {
-  const body = await request.json();
+async function updateTeam(teamService: TeamService, teamId: string, request: Request): Promise<Response> {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
+      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  }
   
   const updatedTeam = await teamService.updateTeam(teamId, body);
   
@@ -272,7 +280,7 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
       }), 
       { 
         status: 404, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -283,12 +291,12 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
       data: updatedTeam 
     }), 
     { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
 
-async function deleteTeam(teamService: TeamService, teamId: string, corsHeaders: Record<string, string>): Promise<Response> {
+async function deleteTeam(teamService: TeamService, teamId: string): Promise<Response> {
   const deleted = await teamService.deleteTeam(teamId);
   
   if (!deleted) {
@@ -299,7 +307,7 @@ async function deleteTeam(teamService: TeamService, teamId: string, corsHeaders:
       }), 
       { 
         status: 404, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -310,12 +318,12 @@ async function deleteTeam(teamService: TeamService, teamId: string, corsHeaders:
       message: 'Team deleted successfully' 
     }), 
     { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
 
-async function listTeamTokens(teamService: TeamService, teamId: string, corsHeaders: Record<string, string>): Promise<Response> {
+async function listTeamTokens(teamService: TeamService, teamId: string): Promise<Response> {
   const tokens = await teamService.listApiTokens(teamId);
   
   return new Response(
@@ -324,28 +332,63 @@ async function listTeamTokens(teamService: TeamService, teamId: string, corsHead
       data: tokens 
     }), 
     { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
 
-async function createTeamToken(teamService: TeamService, teamId: string, request: Request, corsHeaders: Record<string, string>): Promise<Response> {
-  const body = await request.json() as {
-    tokenName: string;
-    permissions?: string[];
-    createdBy?: string;
-  };
+async function createTeamToken(teamService: TeamService, teamId: string, request: Request): Promise<Response> {
+  let body;
+  try {
+    body = await request.json() as {
+      tokenName: string;
+      permissions?: string[];
+      createdBy?: string;
+    };
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
+      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  }
   
   // Validate required fields
-  if (!body.tokenName) {
+  if (!body.tokenName || typeof body.tokenName !== 'string') {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Missing required field: tokenName' 
+        error: 'Missing or invalid required field: tokenName' 
       }), 
       { 
         status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Validate permissions array if provided
+  if (body.permissions !== undefined && (!Array.isArray(body.permissions) || !body.permissions.every(p => typeof p === 'string'))) {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Invalid permissions: must be an array of strings' 
+      }), 
+      { 
+        status: 400, 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Validate createdBy if provided
+  if (body.createdBy !== undefined && typeof body.createdBy !== 'string') {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Invalid createdBy: must be a string' 
+      }), 
+      { 
+        status: 400, 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -368,7 +411,7 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
     }), 
     { 
       status: 201,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -376,8 +419,7 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
 async function revokeTeamToken(
   teamService: TeamService,
   teamId: string,
-  tokenId: string,
-  corsHeaders: Record<string, string>
+  tokenId: string
 ): Promise<Response> {
   // First verify the token belongs to this team
   const tokens = await teamService.listApiTokens(teamId);
@@ -391,7 +433,7 @@ async function revokeTeamToken(
       }),
       {
         status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       }
     );
   }
@@ -406,7 +448,7 @@ async function revokeTeamToken(
       }),
       {
         status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       }
     );
   }
@@ -421,7 +463,7 @@ async function revokeTeamToken(
       data: { success: true, message }
     }),
     {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
     }
   );
 }
@@ -429,22 +471,28 @@ async function revokeTeamToken(
 async function validateTeamToken(
   teamService: TeamService,
   teamId: string,
-  request: Request,
-  corsHeaders: Record<string, string>
+  request: Request
 ): Promise<Response> {
-  const body = await request.json() as {
-    token: string;
-  };
+  let body;
+  try {
+    body = await request.json() as {
+      token: string;
+    };
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
+      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  }
   
-  if (!body.token) {
+  if (!body.token || typeof body.token !== 'string') {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Missing required field: token' 
+        error: 'Missing or invalid required field: token' 
       }), 
       { 
         status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -457,7 +505,7 @@ async function validateTeamToken(
       data: { valid: isValid } 
     }), 
     { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -465,22 +513,28 @@ async function validateTeamToken(
 async function validateApiKey(
   teamService: TeamService,
   teamId: string,
-  request: Request,
-  corsHeaders: Record<string, string>
+  request: Request
 ): Promise<Response> {
-  const body = await request.json() as {
-    apiKey: string;
-  };
+  let body;
+  try {
+    body = await request.json() as {
+      apiKey: string;
+    };
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
+      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  }
   
-  if (!body.apiKey) {
+  if (!body.apiKey || typeof body.apiKey !== 'string') {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Missing required field: apiKey' 
+        error: 'Missing or invalid required field: apiKey' 
       }), 
       { 
         status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -493,15 +547,14 @@ async function validateApiKey(
       data: { valid: isValid } 
     }), 
     { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }
 
 async function generateApiKeyHash(
   teamService: TeamService,
-  teamId: string,
-  corsHeaders: Record<string, string>
+  teamId: string
 ): Promise<Response> {
   const success = await teamService.generateApiKeyHash(teamId);
 
@@ -513,7 +566,7 @@ async function generateApiKeyHash(
       }), 
       { 
         status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -524,7 +577,7 @@ async function generateApiKeyHash(
       data: { success: true } 
     }), 
     { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
     }
   );
 }

@@ -17,8 +17,23 @@ export const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
   'Access-Control-Max-Age': '86400',
-  'Access-Control-Allow-Credentials': 'true'
+  'Access-Control-Allow-Credentials': 'false'
 };
+
+// Helper function to get CORS headers with proper origin handling
+export function getCorsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('Origin');
+  
+  // If credentials are needed, echo the origin instead of using '*'
+  // For now, we're setting credentials to false globally as per the review
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'false'
+  };
+}
 
 // Structured logging for better observability
 export function logError(error: unknown, context: Record<string, any> = {}) {

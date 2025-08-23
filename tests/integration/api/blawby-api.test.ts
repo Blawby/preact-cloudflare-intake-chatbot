@@ -81,13 +81,14 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
   });
 
   afterEach(async () => {
-    // Skip if no real API token or no test data
-    if (!testContext.apiToken || !testContext.customerIds.length) {
-      console.log('⏭️  Skipping cleanup - no valid token or test data');
+    // Skip if no real API token, team ULID, or no test data
+    if (!testContext.apiToken || !testContext.teamUlid || !testContext.customerIds.length) {
+      console.log('⏭️  Skipping cleanup - no valid token, team ULID, or test data');
       return;
     }
     
-    for (const customerId of testContext.customerIds) {
+    // Use Promise.allSettled for bounded parallelism to speed up cleanup
+    const cleanupPromises = testContext.customerIds.map(async (customerId) => {
       try {
         console.log(`🧹 Cleaning up test customer: ${customerId}`);
         
@@ -115,7 +116,10 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
       } catch (error) {
         console.warn(`❌ Error cleaning up test customer ${customerId}:`, error);
       }
-    }
+    });
+    
+    // Wait for all cleanup operations to complete (with parallelism)
+    await Promise.allSettled(cleanupPromises);
   });
 
   describe('API Authentication', () => {
@@ -343,21 +347,30 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
   describe('Error Handling', () => {
     it('should handle network errors gracefully', async () => {
-      // Test with invalid URL to simulate network error
+      // Test network error by hitting a safe local endpoint and aborting immediately
+      // This avoids sending sensitive credentials to external domains
       try {
-        await fetch('https://invalid-url-that-does-not-exist.com/api/test', {
+        const controller = new AbortController();
+        
+        // Start the request to a safe local endpoint (no sensitive data)
+        const fetchPromise = fetch(`${WORKER_URL}/api/health`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${testContext.apiToken}`,
             'Accept': 'application/json'
           },
-          signal: AbortSignal.timeout(3000) // 3 second timeout
+          signal: controller.signal
         });
+        
+        // Abort immediately to simulate network failure
+        controller.abort();
+        
+        await fetchPromise;
         // If we get here, the test should fail
         expect.fail('Expected network error but request succeeded');
       } catch (error) {
-        // Expected network error
+        // Expected network error (AbortError)
         expect(error).toBeDefined();
+        expect(error.name).toBe('AbortError');
       }
     }, 10000); // 10 second test timeout
 
