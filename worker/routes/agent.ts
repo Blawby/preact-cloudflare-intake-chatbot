@@ -357,25 +357,25 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
           // Send completion event
           controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));
           controller.close();
-                  } catch (error) {
-            console.error('❌ Streaming error:', error);
-            const errorEvent = `data: ${JSON.stringify({
-              type: 'error',
-              message: 'An error occurred while processing your request'
-            })}\n\n`;
-            controller.enqueue(new TextEncoder().encode(errorEvent));
-            controller.close();
-          }
+        } catch (error) {
+          console.error('❌ Streaming error:', error);
+          const errorEvent = `data: ${JSON.stringify({
+            type: 'error',
+            message: 'An error occurred while processing your request'
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(errorEvent));
+          controller.close();
         }
-      });
+      }
+    });
 
-      return new Response(stream, { headers });
-    } catch (error) {
-      console.error('❌ Route error:', error);
-      const errorEvent = `data: ${JSON.stringify({
-        type: 'error',
-        message: error.message || 'An error occurred'
-      })}\n\n`;
-      return new Response(errorEvent, { headers });
-    }
+    return new Response(stream, { headers });
+  } catch (error) {
+    console.error('❌ Route error:', error);
+    const errorEvent = `data: ${JSON.stringify({
+      type: 'error',
+      message: error.message || 'An error occurred'
+    })}\n\n`;
+    return new Response(errorEvent, { headers });
   }
+}

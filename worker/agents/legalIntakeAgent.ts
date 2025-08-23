@@ -612,7 +612,7 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
     
     // Check for tool call indicators
     if (response.includes('TOOL_CALL:')) {
-      console.log('🔧 Tool call detected in response');
+      console.log('Tool call detected in response');
       
       // Handle streaming case
       if (controller) {
@@ -624,29 +624,35 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
       }
       
       // Parse tool call
-      const toolCallMatch = response.match(/TOOL_CALL:\s*(\w+)/);
-      const parametersMatch = response.match(/PARAMETERS:\s*(\{[\s\S]*?\})/);
+      const toolCallMatch = response.match(/TOOL_CALL:\s*([\w_]+)/);
+      // Use a more robust approach for JSON extraction
+      const parametersMatch = response.match(/PARAMETERS:\s*(\{[^]*?\}(?:\n|$))/);
       
       if (toolCallMatch && parametersMatch) {
         const toolName = toolCallMatch[1].toLowerCase();
         let parameters;
         try {
-          parameters = JSON.parse(parametersMatch[1]);
-          console.log(`🔧 Tool: ${toolName}, Parameters:`, parameters);
+          // Clean the JSON string before parsing
+          const jsonStr = parametersMatch[1].trim();
+          parameters = JSON.parse(jsonStr);
+          console.log(`Tool: ${toolName}, Parameters:`, parameters);
         } catch (error) {
-          console.error('❌ Failed to parse tool parameters:', error);
+          console.error('Failed to parse tool parameters:', error);
+          console.error('Raw parameters string:', parametersMatch[1]);
           if (controller) {
             const errorEvent = `data: ${JSON.stringify({
               type: 'error',
-              message: 'Failed to parse tool parameters'
+              message: 'Failed to parse tool parameters. Please try rephrasing your request.'
             })}\n\n`;
             controller.enqueue(new TextEncoder().encode(errorEvent));
           }
           return {
-            response: 'I encountered an error processing your request. Please try again.',
-            metadata: { error: 'Failed to parse tool parameters' }
+            response: 'I encountered an error processing your request. Please try rephrasing your request.',
+            metadata: { error: 'Failed to parse tool parameters', rawParameters: parametersMatch[1] }
           };
         }
+      }
+    }
         
         // Handle streaming case
         if (controller) {
@@ -702,11 +708,17 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
         }
         
         // If tool was successful and created a matter, trigger lawyer approval
+        // If tool was successful and created a matter, trigger lawyer approval
         if (toolResult.success && toolName === 'create_matter') {
+          const lastMessage = formattedMessages[formattedMessages.length - 1];
+          if (!lastMessage || !lastMessage.content) {
+            console.warn('No last message found for lawyer approval');
+          }
+
           await handleLawyerApproval(env, {
             matter_type: parameters.matter_type,
             urgency: parameters.urgency,
-            client_message: formattedMessages[formattedMessages.length - 1]?.content || '',
+            client_message: lastMessage?.content || '',
             client_name: parameters.name,
             client_phone: parameters.phone,
             client_email: parameters.email,
@@ -776,29 +788,34 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
       };
     }
   } catch (error) {
-    console.error('❌ Agent error:', error);
-    const errorMessage = 'An error occurred while processing your request';
-    
-    if (controller) {
-      const errorEvent = `data: ${JSON.stringify({
-        type: 'error',
-        message: errorMessage
-      })}\n\n`;
-      controller.enqueue(new TextEncoder().encode(errorEvent));
-      controller.close();
-    } else {
-      return {
-        response: "I'm here to help with your legal needs. What can I assist you with?",
-        metadata: {
-          error: error.message,
-          inputMessageCount: formattedMessages.length,
-          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
-          sessionId,
-          teamId
-        }
-      };
-    }
-  }
+   } catch (error) {
+     console.error('Agent error:', error);
+     const errorMessage = error.message || 'An error occurred while processing your request';
+
+     if (controller) {
+       const errorEvent = `data: ${JSON.stringify({
+         type: 'error',
+         message: errorMessage
+       })}\n\n`;
+       controller.enqueue(new TextEncoder().encode(errorEvent));
+       try {
+         controller.close();
+       } catch (closeError) {
+         console.error('Error closing controller:', closeError);
+       }
+     } else {
+       return {
+         response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
+         metadata: {
+           error: error.message,
+           inputMessageCount: formattedMessages.length,
+           lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+           sessionId,
+           teamId
+         }
+       };
+     }
+   }
 }
 
 // Helper function to handle lawyer approval

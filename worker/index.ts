@@ -74,8 +74,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     
     console.log('🔍 Route matching for path:', path);
     
-    if (path === '/api/agent/stream' || path.startsWith('/api/agent') || path === '/api/chat') {
-      console.log('✅ Matched agent route (streaming)');
+    if (path === '/api/agent/stream') {
+      console.log('✅ Matched agent route');
       response = await handleAgentStream(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/teams')) {
       response = await handleTeams(request, env);
