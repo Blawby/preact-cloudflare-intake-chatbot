@@ -129,7 +129,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
 
     return (
         <div
-            className="flex-1 overflow-y-auto p-4 pb-40 scroll-smooth w-full scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
+            className="flex-1 overflow-y-auto p-4 pt-16 lg:pt-4 pb-20 scroll-smooth w-full scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
             ref={listRef}
         >
             {/* Team Profile Header - Fixed at top of scrollable area */}

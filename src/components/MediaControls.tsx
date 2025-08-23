@@ -148,6 +148,7 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 		<div className="flex items-center gap-2" role="region" aria-label="Audio recording">
 			<Button
 				variant="icon"
+				size="sm"
 				onClick={() => {
 					if (!isRecording) {
 						startRecording();
@@ -158,8 +159,9 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 				aria-label="Record audio message"
 				aria-pressed={isRecording}
 				disabled={permissionDenied}
+				className="w-8 h-8 p-0 rounded-full"
 			>
-				<MicrophoneIcon className="w-5 h-5" aria-hidden="true" />
+				<MicrophoneIcon className="w-4 h-4" aria-hidden="true" />
 			</Button>
 			{permissionDenied && (
 				<div className="sr-only" role="alert">

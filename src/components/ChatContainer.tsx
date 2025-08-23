@@ -135,7 +135,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg">
+    <div className="flex flex-col h-screen md:h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg">
       <main className="flex flex-col h-full w-full overflow-hidden relative bg-white dark:bg-dark-bg">
         <VirtualMessageList
           messages={messages}

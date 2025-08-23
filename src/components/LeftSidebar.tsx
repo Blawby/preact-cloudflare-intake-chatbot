@@ -33,7 +33,7 @@ const LeftSidebar = ({ currentRoute, onOpenMenu, onGoToChats, teamConfig }: Left
               size="lg"
               icon={<ChatBubbleOvalLeftIcon className="w-6 h-6" />}
               title="Chats"
-              onClick={onGoToChats}
+              onClick={onGoToChats || (() => {})}
               aria-current={currentRoute === 'chats' ? 'page' : undefined}
             />
           </div>

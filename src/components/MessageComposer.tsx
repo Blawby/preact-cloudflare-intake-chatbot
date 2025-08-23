@@ -63,14 +63,14 @@ const MessageComposer = ({
 
     return (
     <form 
-      className="pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-8 z-[1000] backdrop-blur-md" 
+      className="pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-0 z-[1000] backdrop-blur-md" 
       aria-label="Message composition"
       onSubmit={(e) => {
         e.preventDefault();
         handleSubmit();
       }}
     >
-      <div className="flex flex-col w-full relative bg-white dark:bg-dark-input-bg border border-gray-200 dark:border-dark-border rounded-2xl p-2 min-h-[48px] gap-2 h-auto overflow-visible">
+      <div className="flex flex-col w-full relative bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-2xl p-2 min-h-[48px] gap-2 h-auto overflow-visible">
         {previewFiles.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 m-0" role="list" aria-label="File attachments">
             {previewFiles.map((file, index) => (
@@ -143,7 +143,8 @@ const MessageComposer = ({
               size="sm"
               disabled={!inputValue.trim() && previewFiles.length === 0}
               aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
-              icon={<ArrowUpIcon className="w-4 h-4" aria-hidden="true" />}
+              className="w-8 h-8 p-0 rounded-full"
+              icon={<ArrowUpIcon className="w-3.5 h-3.5" aria-hidden="true" />}
             />
           </div>
         </div>

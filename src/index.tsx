@@ -168,10 +168,7 @@ export function App() {
 		await sendMessage("I'd like to speak with a lawyer about my situation. Can you help me schedule a consultation?", []);
 	};
 
-	// Handle navigation to chats
-	const handleGoToChats = () => {
-		setCurrentTab('chats');
-	};
+	// Handle navigation to chats - removed since bottom nav is disabled
 
 	return (
 		<>
@@ -184,7 +181,6 @@ export function App() {
 				currentTab={currentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
-				onGoToChats={handleGoToChats}
 				teamConfig={{
 					name: teamConfig.name,
 					profileImage: teamConfig.profileImage,

@@ -4,7 +4,6 @@ import { TeamNotFound } from './TeamNotFound';
 import LeftSidebar from './LeftSidebar';
 import MobileSidebar from './MobileSidebar';
 import MobileTopNav from './MobileTopNav';
-import BottomNavigation from './BottomNavigation';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
 import TeamProfile from './TeamProfile';
@@ -27,7 +26,6 @@ interface AppLayoutProps {
   currentTab: 'chats';
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: (open: boolean) => void;
-  onGoToChats?: () => void;
   teamConfig: {
     name: string;
     profileImage: string | null;
@@ -45,7 +43,6 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   currentTab,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
-  onGoToChats,
   teamConfig,
   messages: chatMessages,
   onRequestConsultation,
@@ -74,14 +71,13 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   };
 
   return (
-    <div className="h-screen w-screen flex">
+    <div className="h-screen md:h-screen w-screen flex">
       {/* Left Sidebar - Fixed width, hidden on mobile */}
       {features.enableLeftSidebar && (
         <div className="w-20 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
           <LeftSidebar
             currentRoute={currentTab}
             onOpenMenu={() => onToggleMobileSidebar(true)}
-            onGoToChats={onGoToChats}
             teamConfig={{
               name: teamConfig.name,
               profileImage: teamConfig.profileImage,
@@ -146,13 +142,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
         isVisible={isNavbarVisible}
       />
 
-      {/* Mobile Bottom Navigation */}
-      {features.enableMobileBottomNav && (
-        <BottomNavigation
-          activeTab={currentTab}
-          onGoToChats={onGoToChats}
-        />
-      )}
+      {/* Mobile Bottom Navigation - Removed to fix scrolling issues */}
 
       {/* Mobile Sidebar */}
       <MobileSidebar

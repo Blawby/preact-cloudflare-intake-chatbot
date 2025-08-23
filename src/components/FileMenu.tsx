@@ -152,14 +152,14 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         aria-controls="attachment-menu"
         aria-expanded={isOpen}
         className="
-          w-10 h-10 rounded-full shadow
+          w-8 h-8 rounded-full shadow
           bg-light-message-bg-user border border-light-border text-light-text
           hover:bg-light-hover
           disabled:opacity-60 disabled:cursor-not-allowed
           dark:bg-dark-message-bg-user dark:border-dark-border dark:text-dark-text
           dark:hover:bg-dark-hover
         "
-        icon={<PlusIcon className="w-5 h-5" aria-hidden="true" />}
+        icon={<PlusIcon className="w-4 h-4" aria-hidden="true" />}
       />
 
       {(isOpen || isClosing) && (
