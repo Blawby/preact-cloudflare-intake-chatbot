@@ -17,7 +17,6 @@ export default defineConfig({
     exclude: [
       'node_modules/**',
       'dist/**',
-      'tests/llm-judge/**',  // Exclude LLM judge tests from main test run
       'tests/integration/llm-judge.test.ts'  // Exclude LLM judge integration test
     ],
     coverage: {

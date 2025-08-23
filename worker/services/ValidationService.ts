@@ -16,13 +16,20 @@ export class ValidationService {
     }
     
     try {
-      const phoneNumber = parsePhoneNumber(phone, 'US');
+      // Clean the phone number - remove all non-digit characters
+      const cleaned = phone.replace(/\D/g, '');
       
-      if (!phoneNumber) {
-        return { isValid: false, error: 'Invalid phone number format' };
+      // Check if it's a valid US phone number (10 digits)
+      if (cleaned.length === 10) {
+        return { isValid: true };
       }
       
-      return { isValid: true };
+      // Check if it's a valid US phone number with country code (11 digits starting with 1)
+      if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        return { isValid: true };
+      }
+      
+      return { isValid: false, error: 'Invalid phone number format' };
     } catch (error) {
       return { isValid: false, error: 'Phone validation error' };
     }

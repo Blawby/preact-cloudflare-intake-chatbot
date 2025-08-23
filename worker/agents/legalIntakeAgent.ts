@@ -9,6 +9,51 @@ import { PromptBuilder } from '../utils/promptBuilder.js';
 import { Logger } from '../utils/logger.js';
 import { ToolCallParser } from '../utils/toolCallParser.js';
 
+/**
+ * Redacts sensitive information from tool parameters for safe logging
+ */
+function redactParameters(parameters: any): any {
+  if (!parameters || typeof parameters !== 'object') {
+    return parameters;
+  }
+
+  const redacted = { ...parameters };
+  
+  // Fields that commonly contain PII or sensitive data
+  const sensitiveFields = [
+    'name', 'email', 'phone', 'address', 'location', 'ssn', 'social_security',
+    'credit_card', 'card_number', 'account_number', 'routing_number',
+    'password', 'token', 'secret', 'key', 'credential',
+    'description', 'details', 'notes', 'comments', 'message',
+    'opposing_party', 'client_info', 'personal_info'
+  ];
+
+  for (const field of sensitiveFields) {
+    if (redacted[field]) {
+      const value = redacted[field];
+      if (typeof value === 'string') {
+        if (value.includes('@')) {
+          // Email-like field
+          const [local, domain] = value.split('@');
+          redacted[field] = `${local.substring(0, 2)}***@${domain}`;
+        } else if (value.length > 8) {
+          // Long string - show first and last few characters
+          redacted[field] = `${value.substring(0, 3)}***${value.substring(value.length - 3)}`;
+        } else {
+          redacted[field] = '***REDACTED***';
+        }
+      } else if (typeof value === 'object' && value !== null) {
+        // Recursively redact nested objects
+        redacted[field] = redactParameters(value);
+      } else {
+        redacted[field] = '***REDACTED***';
+      }
+    }
+  }
+
+  return redacted;
+}
+
 // AI Model Configuration
 const AI_MODEL_CONFIG = {
   model: '@cf/meta/llama-3.1-8b-instruct',
@@ -173,17 +218,26 @@ export async function runLegalIntakeAgentStream(
   // Check if we've already completed a matter creation in this conversation
   const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
   
-  // Only check for actual tool calls, not just keywords
-  const hasCompletedMatter = conversationText.includes('create_matter') && 
-                             (conversationText.includes('matter created') ||
-                              conversationText.includes('consultation fee') ||
-                              conversationText.includes('lawyer will contact you'));
+  // Check for completion cues in conversation text or last assistant message
+  const hasCompletionCues = conversationText.includes('matter created') ||
+                            conversationText.includes('consultation fee') ||
+                            conversationText.includes('lawyer will contact you') ||
+                            conversationText.includes('already helped you create a matter') ||
+                            conversationText.includes('conversation is complete');
+  
+  // Check for actual tool invocations in message history
+  const hasToolInvocation = messages.some(msg => 
+    msg.metadata?.toolName === 'create_matter' || 
+    msg.metadata?.toolCall?.toolName === 'create_matter' ||
+    (msg.content && msg.content.includes('TOOL_CALL: create_matter'))
+  );
   
   // Also check if the last assistant message was a completion message
   const lastAssistantMessage = formattedMessages.filter(msg => msg.role === 'assistant').pop();
   const isAlreadyCompleted = lastAssistantMessage?.content?.includes('already helped you create a matter');
   
-  if (hasCompletedMatter && isAlreadyCompleted) {
+  // Trigger if either completion cues are detected OR actual tool invocation is found
+  if ((hasCompletionCues || hasToolInvocation) && isAlreadyCompleted) {
     const completionMessage = "I've already helped you create a matter for your case. A lawyer will contact you within 24 hours to discuss your situation further. Is there anything else I can help you with?";
     
     if (controller) {
@@ -192,6 +246,7 @@ export async function runLegalIntakeAgentStream(
         response: completionMessage
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(finalEvent));
+      controller.close();
     } else {
       return {
         response: completionMessage,
@@ -283,7 +338,7 @@ export async function runLegalIntakeAgentStream(
       toolName = parseResult.toolCall.toolName;
       parameters = parseResult.toolCall.parameters;
       
-      Logger.debug('Parsed tool call:', { toolName, parameters });
+      Logger.debug('Parsed tool call:', { toolName, parameters: redactParameters(parameters) });
     } else if (parseResult.error && parseResult.error !== 'No tool call detected') {
       Logger.error('Tool call parsing failed:', parseResult.error);
       if (controller) {
@@ -321,14 +376,14 @@ export async function runLegalIntakeAgentStream(
             message: `Unknown tool: ${toolName}`
           })}\n\n`;
           controller.enqueue(new TextEncoder().encode(errorEvent));
+          controller.close();
         }
         return {
-          response: `I encountered an error: Unknown tool ${toolName}`,
+          response: `I'm sorry, but I don't know how to handle that type of request.`,
           metadata: { error: `Unknown tool: ${toolName}` }
         };
       }
       
-      // Call the appropriate handler with correct parameters
       let toolResult;
       try {
         toolResult = await handler(parameters, env, teamConfig);
@@ -341,10 +396,11 @@ export async function runLegalIntakeAgentStream(
             message: 'Tool execution failed. Please try again.'
           })}\n\n`;
           controller.enqueue(new TextEncoder().encode(errorEvent));
+          try { controller.close(); } catch {}
         }
         return {
           response: 'I encountered an error while processing your request. Please try again.',
-          metadata: { error: error.message }
+          metadata: { error: error instanceof Error ? error.message : String(error) }
         };
       }
       
@@ -404,6 +460,9 @@ export async function runLegalIntakeAgentStream(
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(finalEvent));
       
+      // Close the stream after sending final event
+      controller.close();
+      
       // Return after tool execution for streaming case
       return;
     }
@@ -432,6 +491,9 @@ export async function runLegalIntakeAgentStream(
         response: response
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(finalEvent));
+      
+      // Close the stream after sending final event
+      controller.close();
     } else {
       // Non-streaming case: return the response directly
       return {
@@ -476,7 +538,7 @@ export async function runLegalIntakeAgentStream(
 
 // Helper function to handle lawyer approval
 async function handleLawyerApproval(env: any, params: any, teamId: string) {
-          Logger.debug('Lawyer approval requested:', params);
+          Logger.debug('Lawyer approval requested:', redactParameters(params));
   
   try {
     // Get team config for notification
@@ -574,7 +636,7 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
 }
 
 export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
-  Logger.debug('[handleCreateMatter] parameters:', parameters);
+  Logger.debug('[handleCreateMatter] parameters:', redactParameters(parameters));
   Logger.logTeamConfig(teamConfig, true); // Include sanitized config in debug mode
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
@@ -760,9 +822,9 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   const { file_id, analysis_type, specific_question } = parameters;
   
   Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
-  Logger.debug('File ID:', file_id);
-  Logger.debug('Analysis Type:', analysis_type);
-  Logger.debug('Specific Question:', specific_question);
+  Logger.debug('File ID:', redactParameters(file_id));
+  Logger.debug('Analysis Type:', redactParameters(analysis_type));
+  Logger.debug('Specific Question:', redactParameters(specific_question));
   
   // Get the appropriate analysis question
   const customQuestion = getAnalysisQuestion(analysis_type, specific_question);
@@ -784,12 +846,12 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   
   // Log the analysis results
   Logger.debug('=== DOCUMENT ANALYSIS RESULTS ===');
-  Logger.debug('Document Type:', analysis_type);
+  Logger.debug('Document Type:', redactParameters(analysis_type));
   Logger.debug('Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
-  Logger.debug('Summary:', fileAnalysis.summary);
-  Logger.debug('Key Facts:', fileAnalysis.key_facts);
-  Logger.debug('Entities:', fileAnalysis.entities);
-  Logger.debug('Action Items:', fileAnalysis.action_items);
+  Logger.debug('Summary:', redactParameters(fileAnalysis.summary));
+  Logger.debug('Key Facts:', redactParameters(fileAnalysis.key_facts));
+  Logger.debug('Entities:', redactParameters(fileAnalysis.entities));
+  Logger.debug('Action Items:', redactParameters(fileAnalysis.action_items));
   Logger.debug('================================');
   
   // Create a legally-focused response that guides toward matter creation
@@ -856,10 +918,10 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   response += `Would you like me to create a legal matter for this ${suggestedMatterType.toLowerCase()} case? I'll need your contact information to get started.`;
   
   Logger.debug('=== FINAL ANALYSIS RESPONSE ===');
-  Logger.debug('Response:', response);
+  Logger.debug('Response:', redactParameters(response));
   Logger.debug('Response Length:', `${response.length} characters`);
-  Logger.debug('Response Type:', analysis_type);
-  Logger.debug('Suggested Matter Type:', suggestedMatterType);
+  Logger.debug('Response Type:', redactParameters(analysis_type));
+  Logger.debug('Suggested Matter Type:', redactParameters(suggestedMatterType));
   Logger.debug('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
   Logger.debug('==============================');
   

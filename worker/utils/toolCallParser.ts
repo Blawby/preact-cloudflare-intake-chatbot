@@ -13,6 +13,50 @@ export interface ToolCallParseResult {
 }
 
 export class ToolCallParser {
+  private static readonly sensitiveFields = ['email', 'phone', 'password', 'token', 'secret', 'key'];
+
+  /**
+   * Recursively sanitizes values for logging (removes sensitive data)
+   * @private
+   */
+  private static sanitizeValue(obj: any, depth = 0): any {
+    if (depth > 10) return '***DEPTH_LIMIT***'; // Prevent infinite recursion
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.sanitizeValue(item, depth + 1));
+    }
+    
+    if (obj && typeof obj === 'object') {
+      const result = Object.create(null);
+      for (const [key, value] of Object.entries(obj)) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+          continue;
+        }
+        
+        const lowerKey = key.toLowerCase();
+        const isSensitive = this.sensitiveFields.some(field => lowerKey.includes(field));
+        
+        if (isSensitive && typeof value === 'string') {
+          if (value.includes('@')) {
+            const [local, domain] = value.split('@');
+            result[key] = `${local.substring(0, 2)}***@${domain}`;
+          } else if (value.length > 4) {
+            result[key] = `${value.substring(0, 2)}***${value.substring(value.length - 2)}`;
+          } else {
+            result[key] = '***REDACTED***';
+          }
+        } else if (isSensitive) {
+          result[key] = '***REDACTED***';
+        } else {
+          result[key] = this.sanitizeValue(value, depth + 1);
+        }
+      }
+      return result;
+    }
+    
+    return obj;
+  }
+
   /**
    * Parses tool call information from AI response
    */
@@ -106,64 +150,17 @@ export class ToolCallParser {
       };
     }
     
-    // Validate parameters is an object
-    if (!parameters || typeof parameters !== 'object') {
+    // Validate parameters is an object (not null, not array, and is an object)
+    if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
       return { 
         success: false, 
-        error: 'Tool parameters must be an object',
+        error: 'Tool parameters must be a plain object (not an array)',
         rawParameters: parametersJson
       };
     }
     
-    // Create a safe copy without prototype‐pollution risk
-    const sanitized = Object.create(null);
-    for (const [key, value] of Object.entries(parameters)) {
-      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-        continue;
-      }
-      sanitized[key] = value;
-    }
-    
-    const sensitiveFields = ['email', 'phone', 'password', 'token', 'secret', 'key'];
-
-    // Recursive function to sanitize nested objects
-    const sanitizeValue = (obj: any, depth = 0): any => {
-      if (depth > 10) return '***DEPTH_LIMIT***'; // Prevent infinite recursion
-      
-      if (Array.isArray(obj)) {
-        return obj.map(item => sanitizeValue(item, depth + 1));
-      }
-      
-      if (obj && typeof obj === 'object') {
-        const result = Object.create(null);
-        for (const [key, value] of Object.entries(obj)) {
-          if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-            continue;
-          }
-          
-          const lowerKey = key.toLowerCase();
-          const isSensitive = sensitiveFields.some(field => lowerKey.includes(field));
-          
-          if (isSensitive && typeof value === 'string') {
-            if (value.includes('@')) {
-              const [local, domain] = value.split('@');
-              result[key] = `${local.substring(0, 2)}***@${domain}`;
-            } else if (value.length > 4) {
-              result[key] = `${value.substring(0, 2)}***${value.substring(value.length - 2)}`;
-            } else {
-              result[key] = '***REDACTED***';
-            }
-          } else if (isSensitive) {
-            result[key] = '***REDACTED***';
-          } else {
-            result[key] = sanitizeValue(value, depth + 1);
-          }
-        }
-        return result;
-      }
-      
-      return obj;
-    };
+    // Create a safe copy without prototype‐pollution risk and sanitize for logging
+    const sanitized = this.sanitizeValue(parameters);
     
     // Return the parsed tool call with sanitized parameters for logging
     return {
@@ -194,35 +191,14 @@ export class ToolCallParser {
 
   /**
    * Sanitizes tool parameters for logging (removes sensitive data)
+   * Returns a deep-copied sanitized structure without mutating the original
    */
   static sanitizeParameters(parameters: any): any {
     if (!parameters || typeof parameters !== 'object') {
       return parameters;
     }
 
-    const sanitized = { ...parameters };
-    const sensitiveFields = ['email', 'phone', 'password', 'token', 'secret', 'key'];
-
-    for (const field of sensitiveFields) {
-      if (sanitized[field]) {
-        if (typeof sanitized[field] === 'string') {
-          const value = sanitized[field] as string;
-          if (value.includes('@')) {
-            // Email-like field
-            const [local, domain] = value.split('@');
-            sanitized[field] = `${local.substring(0, 2)}***@${domain}`;
-          } else if (value.length > 4) {
-            // Long string (likely phone/token)
-            sanitized[field] = `${value.substring(0, 2)}***${value.substring(value.length - 2)}`;
-          } else {
-            sanitized[field] = '***REDACTED***';
-          }
-        } else {
-          sanitized[field] = '***REDACTED***';
-        }
-      }
-    }
-
-    return sanitized;
+    // Use the existing recursive sanitizeValue function for consistent behavior
+    return this.sanitizeValue(parameters);
   }
 }
