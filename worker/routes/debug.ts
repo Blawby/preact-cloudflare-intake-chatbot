@@ -1,12 +1,9 @@
-export async function handleDebug(request: Request, env: Env): Promise<Response> {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+import type { Env } from '../types.js';
+import { CORS_HEADERS } from '../errorHandler.js';
 
+export async function handleDebug(request: Request, env: Env): Promise<Response> {
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
   const url = new URL(request.url);
@@ -23,28 +20,28 @@ export async function handleDebug(request: Request, env: Env): Promise<Response>
 
     return new Response('Endpoint not found', { 
       status: 404, 
-      headers: corsHeaders 
+      headers: CORS_HEADERS 
     });
 
   } catch (error) {
     console.error('Debug API error:', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
-      }), 
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+          return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Internal server error' 
+        }), 
+        { 
+          status: 500, 
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        }
+      );
   }
 }
 
-async function getDebugInfo(env: any): Promise<Response> {
+async function getDebugInfo(env: Env): Promise<Response> {
   const info = {
     timestamp: new Date().toISOString(),
-    environment: env.ENVIRONMENT || 'development',
+    environment: 'Cloudflare Workers',
     database: 'D1 (Cloudflare)',
     architecture: 'API-First Multi-Tenant',
     features: {
@@ -88,7 +85,7 @@ async function getDebugInfo(env: any): Promise<Response> {
   });
 }
 
-async function getTeamsInfo(env: any): Promise<Response> {
+async function getTeamsInfo(env: Env): Promise<Response> {
   try {
     const { TeamService } = await import('../services/TeamService.js');
     const teamService = new TeamService(env);

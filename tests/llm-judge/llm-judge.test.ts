@@ -1002,33 +1002,25 @@ function generateHTMLReport(results: TestResult[]): string {
                             }).join('')}
                         </div>
                         
-                        ${result.evaluation.flags ? `
+                        ${result.evaluation.criticalIssues && result.evaluation.criticalIssues.length > 0 ? `
                             <div class="flags">
                                 <h4>Evaluation Flags</h4>
                                 <div class="flag-grid">
-                                    ${result.evaluation.flags.hallucinationDetected ? `
-                                        <div class="flag-item warning">
-                                            <span>⚠️ Hallucination Detected</span>
-                                        </div>
-                                    ` : ''}
-                                    ${result.evaluation.flags.repetitiveResponses ? `
-                                        <div class="flag-item warning">
-                                            <span>🔄 Repetitive Responses</span>
-                                        </div>
-                                    ` : ''}
-                                    ${result.evaluation.flags.contextIgnored ? `
-                                        <div class="flag-item warning">
-                                            <span>🧠 Context Ignored</span>
-                                        </div>
-                                    ` : ''}
-                                    ${!result.evaluation.flags.hallucinationDetected && !result.evaluation.flags.repetitiveResponses && !result.evaluation.flags.contextIgnored ? `
-                                        <div class="flag-item success">
-                                            <span>✅ No Critical Issues</span>
-                                        </div>
-                                    ` : ''}
+                                    <div class="flag-item warning">
+                                        <span>⚠️ Critical Issues: ${result.evaluation.criticalIssues.length}</span>
+                                    </div>
                                 </div>
                             </div>
-                        ` : ''}
+                        ` : `
+                            <div class="flags">
+                                <h4>Evaluation Flags</h4>
+                                <div class="flag-grid">
+                                    <div class="flag-item success">
+                                        <span>✅ No Critical Issues</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `}
                         
                         ${result.evaluation.conversationAnalysis ? `
                             <div class="conversation-analysis">

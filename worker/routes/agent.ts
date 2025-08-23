@@ -2,7 +2,7 @@ import type { Env } from '../types';
 import { parseJsonBody } from '../utils';
 import { runLegalIntakeAgent, runLegalIntakeAgentStream } from '../agents/legalIntakeAgent';
 import { runParalegalAgentStream } from '../agents/ParalegalAgent';
-import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { HttpErrors, handleError, createSuccessResponse, CORS_HEADERS } from '../errorHandler';
 import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
 import { SecurityLogger } from '../utils/securityLogger.js';
 import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.js';

@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { HttpErrors, handleError, createSuccessResponse, CORS_HEADERS } from '../errorHandler';
 import { parseJsonBody } from '../utils';
 
 export async function handleScheduling(request: Request, env: Env): Promise<Response> {
@@ -65,6 +65,6 @@ export async function handleScheduling(request: Request, env: Env): Promise<Resp
 
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
     status: 405,
-    headers: { ...env.CORS_HEADERS, 'Content-Type': 'application/json' }
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Allow': 'GET, POST, OPTIONS' }
   });
 } 

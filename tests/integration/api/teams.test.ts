@@ -288,7 +288,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
   });
 
   describe('DELETE /api/teams/{slugOrId}', () => {
-    it.skip('should delete team successfully', async () => {
+    it('should delete team successfully', async () => {
       // First create a team to delete
       const createRequest = {
         name: 'Test Team for Deletion',

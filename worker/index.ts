@@ -113,14 +113,27 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       throw HttpErrors.notFound('Endpoint not found');
     }
 
-    // Add CORS and security headers to all responses centrally
+    // Don't reconstruct 101 Switching Protocols responses as it breaks WebSocket upgrades
+    if (response.status === 101) {
+      return response;
+    }
+
+    // Add CORS and security headers to all other responses centrally
     const headers = new Headers(response.headers);
-    Object.entries(CORS_HEADERS).forEach(([key, value]) => {
-      headers.set(key, value);
-    });
-    Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-      headers.set(key, value);
-    });
+    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+      if (key.toLowerCase() === 'vary') {
+        headers.append('Vary', value);
+      } else {
+        headers.set(key, value);
+      }
+    }
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      if (key.toLowerCase() === 'vary') {
+        headers.append('Vary', value);
+      } else {
+        headers.set(key, value);
+      }
+    }
 
     return new Response(response.body, {
       status: response.status,
@@ -129,7 +142,24 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     });
 
   } catch (error) {
-    return handleError(error);
+    const errResp = handleError(error);
+    if (errResp.status === 101) {
+      return errResp;
+    }
+    const headers = new Headers(errResp.headers);
+    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+      if (key.toLowerCase() === 'vary') headers.append('Vary', value);
+      else headers.set(key, value);
+    }
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      if (key.toLowerCase() === 'vary') headers.append('Vary', value);
+      else headers.set(key, value);
+    }
+    return new Response(errResp.body, {
+      status: errResp.status,
+      statusText: errResp.statusText,
+      headers
+    });
   }
 }
 

@@ -55,9 +55,17 @@ async function handleProcessReview(request: Request, env: Env): Promise<Response
       throw HttpErrors.internalServerError('Failed to process review');
     }
 
+    // Map actions to their correct past-tense forms
+    const actionPastTenseMap: Record<string, string> = {
+      approve: 'approved',
+      reject: 'rejected'
+    };
+
+    const pastTenseAction = actionPastTenseMap[action] || 'processed';
+
     return createSuccessResponse({
       success: true,
-      message: `Matter ${action}ed successfully`
+      message: `Matter ${pastTenseAction} successfully`
     });
   } catch (error) {
     return handleError(error);
