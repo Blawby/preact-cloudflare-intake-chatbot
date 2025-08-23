@@ -459,17 +459,11 @@ export class TeamService {
       UPDATE team_api_tokens SET active = 0 WHERE id = ? AND active = 1
     `).bind(tokenId).run();
     
-    if (result.success) {
+    // Check if rows were actually updated using meta.changes
+    if (result.meta?.changes && result.meta.changes > 0) {
       // Token was successfully revoked
       return { success: true };
     }
-    
-    // Log detailed error information for debugging
-    console.error(`❌ Failed to revoke API token ${tokenId}:`, {
-      tokenId,
-      result,
-      operation: 'revokeApiToken'
-    });
     
     // No rows updated - check if token exists
     const token = await this.env.DB.prepare(`
@@ -610,7 +604,8 @@ export class TeamService {
         UPDATE teams SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
       `).bind(JSON.stringify(updatedConfig), teamId).run();
 
-      if (result.success) {
+      // Check if rows were actually updated using meta.changes
+      if (result.meta?.changes && result.meta.changes > 0) {
         // Clear the cache for this team
         this.clearCache(teamId);
         console.log(`✅ API key hash generated and stored for team: ${teamId}`);

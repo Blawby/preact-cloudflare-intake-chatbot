@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { createSuccessResponse } from '../errorHandler';
+import { createSuccessResponse, CORS_HEADERS } from '../errorHandler';
 
 // Tool call interface for type safety
 export interface ToolCall {

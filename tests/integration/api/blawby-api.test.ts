@@ -20,9 +20,10 @@ interface TestContext {
 describe('Blawby API Integration Tests - Real API Calls', () => {
   let testContext: TestContext;
 
-  // Helper function to check if tests should be skipped due to missing API token
+  // Helper function to check if tests should be skipped due to missing API token or team ULID
   const shouldSkipTest = (): boolean => {
-    return !testContext.apiToken || testContext.apiToken.trim() === '';
+    return !testContext.apiToken || testContext.apiToken.trim() === '' || 
+           !testContext.teamUlid || testContext.teamUlid.trim() === '';
   };
 
   beforeAll(async () => {
@@ -80,8 +81,8 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
     }
     
     if (shouldSkipTest()) {
-      console.warn('⚠️  Blawby API token not available for testing');
-      console.warn('   Tests will be skipped. Set BLAWBY_API_TOKEN environment variable for real API testing.');
+      console.warn('⚠️  Blawby API credentials not available for testing');
+      console.warn('   Tests will be skipped. Set BLAWBY_API_TOKEN and BLAWBY_TEAM_ULID environment variables for real API testing.');
     }
   });
 
@@ -129,9 +130,9 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
   describe('API Authentication', () => {
     it('should successfully authenticate with the Blawby API', async () => {
-      // Skip if no real API token
+      // Skip if no real API credentials
       if (shouldSkipTest()) {
-        console.log('⏭️  Skipping real API test - no valid token');
+        console.log('⏭️  Skipping real API test - no valid credentials');
         return;
       }
 
@@ -150,9 +151,9 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
     });
 
     it('should reject requests without proper authentication', async () => {
-      // Skip if no real API token
+      // Skip if no real API credentials
       if (shouldSkipTest()) {
-        console.log('⏭️  Skipping real API test - no valid token');
+        console.log('⏭️  Skipping real API test - no valid credentials');
         return;
       }
 
@@ -169,9 +170,9 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
   describe('Customer Creation', () => {
     it('should successfully create a customer', async () => {
-      // Skip if no real API token
+      // Skip if no real API credentials
       if (shouldSkipTest()) {
-        console.log('⏭️  Skipping real API test - no valid token');
+        console.log('⏭️  Skipping real API test - no valid credentials');
         return;
       }
 
@@ -214,9 +215,9 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
     });
 
     it('should reject customer creation with invalid data', async () => {
-      // Skip if no real API token
+      // Skip if no real API credentials
       if (shouldSkipTest()) {
-        console.log('⏭️  Skipping real API test - no valid token');
+        console.log('⏭️  Skipping real API test - no valid credentials');
         return;
       }
 
@@ -244,9 +245,9 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
   describe('Invoice Creation', () => {
     it('should successfully create an invoice for a customer', async () => {
-      // Skip if no real API token
+      // Skip if no real API credentials
       if (shouldSkipTest()) {
-        console.log('⏭️  Skipping real API test - no valid token');
+        console.log('⏭️  Skipping real API test - no valid credentials');
         return;
       }
 
@@ -380,9 +381,9 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
     }, 10000); // 10 second test timeout
 
     it('should handle rate limiting', async () => {
-      // Skip if no real API token
+      // Skip if no real API credentials
       if (shouldSkipTest()) {
-        console.log('⏭️  Skipping real API test - no valid token');
+        console.log('⏭️  Skipping real API test - no valid credentials');
         return;
       }
 
