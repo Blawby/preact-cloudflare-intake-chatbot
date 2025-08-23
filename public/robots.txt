@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://ai.blawby.com/sitemap.xml
+
+# Disallow API endpoints from being indexed
+Disallow: /api/
+
+# Allow static assets
+Allow: /assets/
+Allow: /favicon.ico
+Allow: /favicon.svg
+Allow: /blawby-favicon-iframe.png
+Allow: /team-profile-demo.png
+
+# Crawl delay (optional)
+Crawl-delay: 1

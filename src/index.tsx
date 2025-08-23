@@ -4,6 +4,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
 import AppLayout from './components/AppLayout';
+import { SEOHead } from './components/SEOHead';
 import { useMessageHandling } from './hooks/useMessageHandling';
 import { useFileUpload } from './hooks/useFileUpload';
 import { useTeamConfig } from './hooks/useTeamConfig';
@@ -172,6 +173,10 @@ export function App() {
 
 	return (
 		<>
+			<SEOHead 
+				teamConfig={teamConfig}
+				currentUrl={typeof window !== 'undefined' ? window.location.href : undefined}
+			/>
 			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
 			
 			<AppLayout
