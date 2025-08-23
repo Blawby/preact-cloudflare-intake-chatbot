@@ -25,21 +25,53 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const firstMenuItemRef = useRef<HTMLButtonElement>(null);
+  const focusAnimationFrameRef = useRef<number | null>(null);
 
   useEffect(() => setIsBrowser(true), []);
+
+  const handleClickOutside = (e: Event) => {
+    const target = e.target as Node;
+    if (menuRef.current && !menuRef.current.contains(target)) {
+      handleClose();
+    }
+  };
+
+  const handleClose = () => {
+    if (isOpen && !isClosing) {
+      setIsClosing(true);
+      setTimeout(() => { setIsOpen(false); setIsClosing(false); }, 150);
+    }
+  };
+
+  const handleFileClick = () => {
+    // Batch file input click and menu close operations
+    fileInputRef.current?.click();
+    handleClose();
+  };
 
   useEffect(() => {
     if (!isBrowser) return;
 
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) handleClose();
-    };
-
     if (isOpen) {
       document.addEventListener('click', handleClickOutside);
-      setTimeout(() => firstMenuItemRef.current?.focus?.(), 10);
+      
+      // Replace setTimeout with requestAnimationFrame for more reliable focus scheduling
+      focusAnimationFrameRef.current = requestAnimationFrame(() => {
+        // Use a second requestAnimationFrame for extra reliability on slow devices
+        focusAnimationFrameRef.current = requestAnimationFrame(() => {
+          firstMenuItemRef.current?.focus?.();
+        });
+      });
     }
-    return () => document.removeEventListener('click', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      // Clean up any scheduled animation frame if component unmounts
+      if (focusAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(focusAnimationFrameRef.current);
+        focusAnimationFrameRef.current = null;
+      }
+    };
   }, [isOpen, isBrowser]);
 
   // trap simple Tab focus within menu
@@ -69,26 +101,32 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, isBrowser]);
 
-  const handleClose = () => {
-    if (isOpen && !isClosing) {
-      setIsClosing(true);
-      setTimeout(() => { setIsOpen(false); setIsClosing(false); }, 150);
-    }
-  };
-
-  const handleFileClick = () => { fileInputRef.current?.click(); handleClose(); };
-  const openCamera = () => { setShowCameraModal(true); handleClose(); };
-  const handleCapture = (file: File) => { onCameraCapture(file); setShowCameraModal(false); };
-
   const filterDisallowedFiles = (files: File[]) => {
     const disallowed = ['zip', 'exe', 'bat', 'cmd', 'msi', 'app'];
-    return files.filter(f => !disallowed.includes((f.name.split('.').pop() || '').toLowerCase()));
+    return files.filter(f => {
+      const lastDotIndex = f.name.lastIndexOf('.');
+      if (lastDotIndex === -1 || lastDotIndex === f.name.length - 1) return true;
+      const ext = f.name.slice(lastDotIndex + 1).toLowerCase();
+      return !disallowed.includes(ext);
+    });
+  };
+
+  const openCamera = () => { 
+    setShowCameraModal(true); 
+    handleClose(); 
+  };
+  
+  const handleCapture = (file: File) => { 
+    onCameraCapture(file); 
+    setShowCameraModal(false); 
   };
 
   const onFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     const all = Array.from(target.files || []);
     const safe = filterDisallowedFiles(all);
+    
+    // Batch file selection and error handling
     if (safe.length) onFileSelect(safe);
     if (safe.length !== all.length) {
       setErrorMessage('Some files were not uploaded. ZIP and executable files are not allowed.');

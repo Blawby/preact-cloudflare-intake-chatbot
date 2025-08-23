@@ -43,6 +43,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const hasChildren = toChildArray(children).length > 0;
   const isIconOnly = !hasChildren && Boolean(icon);
   
+  // Compute effective variant - auto-select 'icon' variant for icon-only buttons
+  const effectiveVariant = isIconOnly ? 'icon' : variant;
+  
   // Development-time accessibility warning for icon-only buttons
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && isIconOnly) {
     const hasAccessibleLabel = Boolean(ariaLabel || rest['aria-labelledby'] || title);
@@ -54,7 +57,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     }
   }
   
-  const baseClasses = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border';
+  const baseClasses = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border rounded-lg';
   
   const variantClasses = {
     primary: 'bg-accent-500 text-gray-900 hover:bg-accent-600 focus:ring-accent-500 border-accent-500',
@@ -64,14 +67,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   };
   
   const sizeClasses = {
-    sm: isIconOnly ? 'w-8 h-8 p-0 leading-none rounded-full' : 'px-3 py-1.5 text-xs rounded-lg',
-    md: isIconOnly ? 'w-10 h-10 p-0 leading-none rounded-full' : 'px-4 py-2 text-sm rounded-lg',
-    lg: isIconOnly ? 'w-12 h-12 p-0 leading-none rounded-full' : 'px-6 py-3 text-base rounded-lg',
+    sm: isIconOnly ? 'w-8 h-8 p-0 leading-none rounded-full' : 'px-3 py-1.5 text-xs',
+    md: isIconOnly ? 'w-10 h-10 p-0 leading-none rounded-full' : 'px-4 py-2 text-sm',
+    lg: isIconOnly ? 'w-12 h-12 p-0 leading-none rounded-full' : 'px-6 py-3 text-base',
   };
   
   const classes = [
     baseClasses,
-    variantClasses[variant],
+    variantClasses[effectiveVariant as keyof typeof variantClasses],
     sizeClasses[size],
     className
   ].filter(Boolean).join(' ');
