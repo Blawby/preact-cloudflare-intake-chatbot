@@ -21,8 +21,7 @@ interface MessageComposerProps {
   onKeyDown: (e: KeyboardEvent) => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
   isReadyToUpload?: boolean;
-  /** @deprecated This prop is deprecated as scheduling is now handled by the agent. Will be removed in the next major release. */
-  handleScheduleStart?: () => void;
+
 }
 
 const MessageComposer = ({

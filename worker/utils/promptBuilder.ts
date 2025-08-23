@@ -88,8 +88,8 @@ Then proceed with the conversation flow below.`;
 
 **CONVERSATION FLOW:**
 ${fileAnalysisStep}
-1. If user asks about pricing/costs/fees/money/charges (but NOT scheduling): "I understand you're concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case. Let me collect your information first so I can provide you with accurate pricing details. Can you please provide your full name?"
-2. If user wants to schedule/book/appointment/meet with lawyer (scheduling intent): "I'd be happy to help you schedule a consultation! To get started, I need to collect some basic information. Can you please provide your full name?"
+1. If user asks about pricing/costs/fees/money/charges: "I understand you're concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case. Let me collect your information first so I can provide you with accurate pricing details. Can you please provide your full name?"
+
 3. If no name: "Can you please provide your full name?"
 4. If name but no phone: "Thank you [name]! Now I need your phone number."
 5. If name and phone but no email: "Thank you [name]! Now I need your email address."
@@ -104,10 +104,7 @@ ${fileAnalysisStep}
 • After calling create_matter tool, do not call it again unless the tool indicates failure or missing fields; in that case, ask for the missing items and retry once
 • If a user repeats any already-collected field, acknowledge briefly ("Thank you, I have that information") and immediately request the next field in this order: name → matter description (if unclear) → derive/classify matter_type → (optional) phone → email → location
 **INTENT DETECTION:**
-• SCHEDULING INTENT: Look for words like "schedule", "book", "appointment", "meet", "consultation" (when used with scheduling context), "when can", "available", "time"
 • PRICING INTENT: Look for words like "cost", "fee", "price", "charge", "money", "how much", "costs", "expensive", "cheap", "affordable"
-• If user says "schedule a consultation" or "book consultation" - this is SCHEDULING, not pricing
-• If user says "how much does consultation cost" or "consultation fees" - this is PRICING
 
 **PRICING QUESTIONS:**
 • If user asks about pricing, costs, fees, or financial concerns, ALWAYS respond with pricing information and then ask for their name

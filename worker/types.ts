@@ -107,7 +107,7 @@ export interface ContactForm {
   createdAt: number;
 }
 
-// Scheduling types
+
 export interface Appointment {
   id: string;
   teamId: string;
@@ -161,12 +161,7 @@ export interface FileAttachment {
   url: string;
 }
 
-export interface SchedulingData {
-  type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
-  selectedDate?: Date;
-  timeOfDay?: 'morning' | 'afternoon';
-  scheduledDateTime?: Date;
-}
+
 
 export interface MatterCreationData {
   type: 'service-selection';
@@ -223,7 +218,7 @@ export const AI_LOADING_STATES: readonly AiState[] = ['thinking', 'processing', 
 // Shared UI fields that can be attached to chat messages
 export interface UIMessageExtras {
   files?: FileAttachment[];
-  scheduling?: SchedulingData;
+
   matterCreation?: MatterCreationData;
   welcomeMessage?: WelcomeMessageData;
   matterCanvas?: MatterCanvasData;

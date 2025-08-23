@@ -79,22 +79,7 @@ export const contactFormSchema = z.object({
   urgency: z.string().optional()
 });
 
-// Scheduling schemas
-export const appointmentSchema = z.object({
-  teamId: idSchema,
-  name: z.string().min(1).max(100),
-  email: emailSchema,
-  phone: phoneSchema,
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  time: z.string().regex(/^\d{2}:\d{2}$/),
-  service: z.string().min(1),
-  notes: z.string().max(500).optional()
-});
 
-export const appointmentUpdateSchema = z.object({
-  status: z.enum(['pending', 'confirmed', 'cancelled']).optional(),
-  notes: z.string().max(500).optional()
-});
 
 // File upload schemas
 export const fileUploadSchema = z.object({

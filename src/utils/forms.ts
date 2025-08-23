@@ -67,7 +67,7 @@ export async function submitContactForm(
           
           confirmationContent = `✅ Thank you! Your information has been submitted successfully.\n\n` +
             `💰 **Consultation Fee**: $${fee}\n\n` +
-            `To schedule your consultation with our lawyer, please complete the payment first. ` +
+            `To proceed with your consultation, please complete the payment first. ` +
             `This helps us prioritize your matter and ensures we can provide you with the best legal assistance.\n\n` +
             `🔗 **Payment Link**: ${paymentLink}\n\n` +
             `Once payment is completed, a lawyer will review your matter and contact you within 24 hours. ` +

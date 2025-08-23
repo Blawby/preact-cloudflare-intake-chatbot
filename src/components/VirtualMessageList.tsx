@@ -9,7 +9,6 @@ import { ChatMessageUI } from '../../worker/types';
 
 interface VirtualMessageListProps {
     messages: ChatMessageUI[];
-    onScheduleConsultation?: () => void;
     teamConfig?: {
         name: string;
         profileImage: string | null;
@@ -30,7 +29,6 @@ const DEBOUNCE_DELAY = 50;
 
 const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     messages,
-    onScheduleConsultation,
     teamConfig,
     onOpenSidebar,
     sessionId,

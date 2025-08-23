@@ -6,7 +6,7 @@ import {
   handleAgentStream,
   handleForms,
   handleTeams,
-  handleScheduling,
+
   handleFiles,
   handleAnalyze,
   handleParalegal,
@@ -81,8 +81,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handleTeams(request, env);
     } else if (path.startsWith('/api/forms')) {
       response = await handleForms(request, env);
-    } else if (path.startsWith('/api/scheduling')) {
-      response = await handleScheduling(request, env);
+
     } else if (path.startsWith('/api/files')) {
       response = await handleFiles(request, env);
     } else if (path === '/api/analyze') {
