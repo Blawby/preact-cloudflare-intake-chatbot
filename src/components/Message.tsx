@@ -221,7 +221,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 		<div className={`flex flex-col max-w-full my-4 px-3 py-2 rounded-xl break-words relative ${
 			isUser 
 				? 'ml-auto mr-0 bg-light-message-bg-user dark:bg-dark-message-bg-user text-light-text dark:text-dark-text w-fit' 
-				: 'mr-0 ml-0 bg-light-message-bg-ai dark:bg-dark-message-bg-ai w-full min-h-12 min-w-30'
+				: 'mr-0 ml-0 w-full min-h-12 min-w-30'
 		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`}>
 			{/* Agent handles welcome messages - no special logic needed */}
 			<div className="text-base leading-6 min-h-4">
