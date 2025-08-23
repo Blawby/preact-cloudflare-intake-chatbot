@@ -24,7 +24,7 @@ export class ToolCallParser {
 
     // Parse tool call
     const toolCallMatch = response.match(/TOOL_CALL:\s*([\w_]+)/);
-    const parametersMatch = response.match(/PARAMETERS:\s*(\{[^]*?\}(?:\n|$))/);
+    const parametersMatch = response.match(/PARAMETERS:\s*(\{[\s\S]*?\}(?:\n|$))/);
 
     if (!toolCallMatch || !parametersMatch) {
       return { 

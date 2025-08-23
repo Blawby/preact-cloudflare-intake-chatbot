@@ -93,9 +93,6 @@ export async function analyzeFile(env: any, fileId: string, question?: string): 
         confidence: analysis.confidence,
         keyFactsCount: analysis.key_facts?.length || 0
       });
-        confidence: analysis.confidence,
-        keyFactsCount: analysis.key_facts?.length || 0
-      });
       return analysis;
     } catch (error) {
       console.error('Analysis error:', error);
@@ -167,19 +164,18 @@ async function findFilePathInR2(env: any, fileId: string): Promise<string | null
         break;
       }
     }
-      // Limit the search to avoid performance issues
+    
+    // Fallback: search all uploads with bounded listing
+    try {
       const allObjects = await env.FILES_BUCKET.list({
         prefix: 'uploads/',
-        limit: 1000  // Add reasonable limit
+        limit: 1000  // Add reasonable limit to avoid performance issues
       });
       console.log('Total R2 objects found:', allObjects.objects.length);
 
       if (allObjects.truncated) {
         console.warn('R2 listing was truncated, some files may not be searched');
       }
-    try {
-      const allObjects = await env.FILES_BUCKET.list({ prefix: 'uploads/' });
-      console.log('Total R2 objects found:', allObjects.objects.length);
       
       // Look for any object that contains the fileId
       const matchingObject = allObjects.objects.find(obj => obj.key.includes(fileId));

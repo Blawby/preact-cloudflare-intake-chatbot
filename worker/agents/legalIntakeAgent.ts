@@ -1,10 +1,9 @@
-import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
-import { validateLocation as validateLocationUtil, isLocationSupported } from '../utils/locationValidator.js';
+import { isLocationSupported } from '../utils/locationValidator.js';
 import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.js';
 import { ValidationService } from '../services/ValidationService.js';
-import { TeamConfigService } from '../services/TeamConfigService.js';
+import { TeamService } from '../services/TeamService.js';
 import { PaymentServiceFactory } from '../services/PaymentServiceFactory.js';
-import { createToolResponse, createValidationError, createSuccessResponse } from '../utils/responseUtils.js';
+import { createValidationError, createSuccessResponse } from '../utils/responseUtils.js';
 import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
 import { PromptBuilder } from '../utils/promptBuilder.js';
 import { Logger } from '../utils/logger.js';
@@ -160,7 +159,9 @@ export async function runLegalIntakeAgentStream(
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
-    teamConfig = await TeamConfigService.getTeamConfig(env, teamId);
+    const teamService = new TeamService(env);
+    const team = await teamService.getTeam(teamId);
+    teamConfig = team || null;
   }
 
   // Convert messages to the format expected by Cloudflare AI
@@ -174,8 +175,6 @@ export async function runLegalIntakeAgentStream(
   const systemPrompt = PromptBuilder.buildSystemPrompt(cloudflareLocation, attachments, conversationText);
 
   // Hoist tool parsing variables to function scope
-  let toolCallMatch: RegExpMatchArray | null = null;
-  let parametersMatch: RegExpMatchArray | null = null;
   let toolName: string | null = null;
   let parameters: any = null;
   
@@ -268,7 +267,7 @@ export async function runLegalIntakeAgentStream(
       // Call the appropriate handler with correct parameters
       let toolResult;
       if (toolName === 'request_lawyer_review') {
-        toolResult = await handler(parameters, env, teamId);
+        toolResult = await handler(parameters, env, teamConfig);
       } else {
         toolResult = await handler(parameters, env, teamConfig);
       }
@@ -326,7 +325,7 @@ export async function runLegalIntakeAgentStream(
     }
     
     // If no tool call detected, handle the regular response
-          Logger.debug('📝 No tool call detected, handling regular response');
+    Logger.debug('📝 No tool call detected, handling regular response');
     
     if (controller) {
       // Streaming case: simulate streaming by sending response in chunks
@@ -774,7 +773,7 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   
   Logger.debug('=== FINAL ANALYSIS RESPONSE ===');
   Logger.debug('Response:', response);
-  Logger.debug('Response Length:', response.length, 'characters');
+  Logger.debug('Response Length:', `${response.length} characters`);
   Logger.debug('Response Type:', analysis_type);
   Logger.debug('Suggested Matter Type:', suggestedMatterType);
   Logger.debug('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);

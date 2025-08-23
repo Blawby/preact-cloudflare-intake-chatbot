@@ -52,7 +52,6 @@ ${fileList}`;
    * Adds attorney referral context
    */
   static addAttorneyReferralPrompt(basePrompt: string, conversationText: string): string {
--    const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
     const isAttorneyReferral = this.detectAttorneyReferral(conversationText);
 
     if (!isAttorneyReferral) {
@@ -99,32 +98,32 @@ ${fileAnalysisStep}
 7. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?" If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
 **INTENT DETECTION:**
-- SCHEDULING INTENT: Look for words like "schedule", "book", "appointment", "meet", "consultation" (when used with scheduling context), "when can", "available", "time"
-- PRICING INTENT: Look for words like "cost", "fee", "price", "charge", "money", "how much", "costs", "expensive", "cheap", "affordable"
-- If user says "schedule a consultation" or "book consultation" - this is SCHEDULING, not pricing
-- If user says "how much does consultation cost" or "consultation fees" - this is PRICING
+• SCHEDULING INTENT: Look for words like "schedule", "book", "appointment", "meet", "consultation" (when used with scheduling context), "when can", "available", "time"
+• PRICING INTENT: Look for words like "cost", "fee", "price", "charge", "money", "how much", "costs", "expensive", "cheap", "affordable"
+• If user says "schedule a consultation" or "book consultation" - this is SCHEDULING, not pricing
+• If user says "how much does consultation cost" or "consultation fees" - this is PRICING
 
 **PRICING QUESTIONS:**
-- If user asks about pricing, costs, fees, or financial concerns, ALWAYS respond with pricing information and then ask for their name
-- Do NOT ignore pricing questions or give empty responses
-- Always acknowledge the pricing concern and provide basic information before proceeding with intake
+• If user asks about pricing, costs, fees, or financial concerns, ALWAYS respond with pricing information and then ask for their name
+• Do NOT ignore pricing questions or give empty responses
+• Always acknowledge the pricing concern and provide basic information before proceeding with intake
 
 CRITICAL: 
-- Do NOT call collect_contact_info tool unless the user has actually provided contact information
-- Only call create_matter tool when you have ALL required information (name, phone, email, location, matter description)
-- If information is missing, ask for it directly in your response - don't call tools
+• Do NOT call collect_contact_info tool unless the user has actually provided contact information
+• Only call create_matter tool when you have ALL required information (name, phone, email, location, matter description)
+• If information is missing, ask for it directly in your response - don't call tools
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
-- Look through ALL previous messages for legal issues mentioned
-- Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
-- If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
-- DO NOT ask again if they already explained their legal situation
+• Look through ALL previous messages for legal issues mentioned
+• Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
+• If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
+• DO NOT ask again if they already explained their legal situation
 ${MATTER_TYPE_CLASSIFICATION}
-- If user mentions multiple legal issues, ask them to specify which one to focus on first
+• If user mentions multiple legal issues, ask them to specify which one to focus on first
 
 **Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
-- analyze_document: Use when files are uploaded
+• create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
+• analyze_document: Use when files are uploaded
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter

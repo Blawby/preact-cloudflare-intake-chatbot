@@ -13,16 +13,32 @@ async function handleStreamingResponse(response: Response, timeoutMs: number = 3
   const startTime = Date.now();
   
   while (!done) {
-    // Check for timeout
-    if (Date.now() - startTime > timeoutMs) {
+    // Calculate remaining timeout for this read operation
+    const elapsed = Date.now() - startTime;
+    const remainingTimeout = Math.max(0, timeoutMs - elapsed);
+    
+    if (remainingTimeout === 0) {
+      reader.cancel();
       reader.releaseLock();
       throw new Error(`Streaming response timeout after ${timeoutMs}ms`);
     }
     
-    const { value, done: streamDone } = await reader.read();
-    done = streamDone;
-    if (value) {
-      responseData += new TextDecoder().decode(value);
+    // Race the read operation against a timeout
+    const readPromise = reader.read();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Read timeout after ${remainingTimeout}ms`)), remainingTimeout);
+    });
+    
+    try {
+      const { value, done: streamDone } = await Promise.race([readPromise, timeoutPromise]);
+      done = streamDone;
+      if (value) {
+        responseData += new TextDecoder().decode(value);
+      }
+    } catch (error) {
+      reader.cancel();
+      reader.releaseLock();
+      throw new Error(`Streaming response timeout after ${timeoutMs}ms: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
     
     // Check if we have a completion event
@@ -69,7 +85,7 @@ describe('Agent Route Integration - Real API', () => {
     }
   });
 
-  describe('POST /api/agent with file attachments', () => {
+  describe('POST /api/agent/stream with file attachments', () => {
     it('should handle requests with file attachments', async () => {
       const requestBody = {
         messages: [
@@ -91,7 +107,7 @@ describe('Agent Route Integration - Real API', () => {
         ]
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -102,7 +118,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200);
       
       // Handle streaming response
-      const events = await handleStreamingResponse(response);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have streaming events
       expect(events.length).toBeGreaterThan(0);
@@ -114,7 +130,7 @@ describe('Agent Route Integration - Real API', () => {
       // Check for completion event
       const completionEvent = events.find(e => e.type === 'complete');
       expect(completionEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle requests without attachments', async () => {
       const requestBody = {
@@ -130,7 +146,7 @@ describe('Agent Route Integration - Real API', () => {
         attachments: []
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -141,7 +157,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200);
       
       // Handle streaming response with longer timeout
-      const events = await handleStreamingResponse(response, 15000);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have streaming events
       expect(events.length).toBeGreaterThan(0);
@@ -153,7 +169,7 @@ describe('Agent Route Integration - Real API', () => {
       // Check for completion event
       const completionEvent = events.find(e => e.type === 'complete');
       expect(completionEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle requests with missing attachments field', async () => {
       const requestBody = {
@@ -169,7 +185,7 @@ describe('Agent Route Integration - Real API', () => {
         // No attachments field
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -180,7 +196,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200);
       
       // Handle streaming response
-      const events = await handleStreamingResponse(response);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have streaming events
       expect(events.length).toBeGreaterThan(0);
@@ -192,10 +208,10 @@ describe('Agent Route Integration - Real API', () => {
       // Check for completion event
       const completionEvent = events.find(e => e.type === 'complete');
       expect(completionEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
   });
 
-  describe('POST /api/agent with multiple file types', () => {
+  describe('POST /api/agent/stream with multiple file types', () => {
     it('should handle requests with multiple file types', async () => {
       const requestBody = {
         messages: [
@@ -223,7 +239,7 @@ describe('Agent Route Integration - Real API', () => {
         ]
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -234,7 +250,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200);
       
       // Handle streaming response with longer timeout
-      const events = await handleStreamingResponse(response, 15000);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have streaming events
       expect(events.length).toBeGreaterThan(0);
@@ -246,10 +262,10 @@ describe('Agent Route Integration - Real API', () => {
       // Check for completion event
       const completionEvent = events.find(e => e.type === 'complete');
       expect(completionEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
   });
 
-  describe('POST /api/agent validation', () => {
+  describe('POST /api/agent/stream validation', () => {
     it('should validate required fields', async () => {
       const requestBody = {
         // Missing required fields
@@ -258,7 +274,7 @@ describe('Agent Route Integration - Real API', () => {
         sessionId: ''
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -270,7 +286,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200); // Streaming responses return 200 even for validation errors
       
       // Handle streaming response for validation error
-      const events = await handleStreamingResponse(response);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have validation error event
       expect(events.length).toBeGreaterThan(0);
@@ -278,10 +294,10 @@ describe('Agent Route Integration - Real API', () => {
       // Check for error event
       const errorEvent = events.find(e => e.type === 'error' || e.type === 'security_block');
       expect(errorEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle malformed JSON', async () => {
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -293,7 +309,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200); // Streaming responses return 200 even for validation errors
       
       // Handle streaming response for validation error
-      const events = await handleStreamingResponse(response);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have validation error event
       expect(events.length).toBeGreaterThan(0);
@@ -301,7 +317,7 @@ describe('Agent Route Integration - Real API', () => {
       // Check for error event
       const errorEvent = events.find(e => e.type === 'error' || e.type === 'security_block');
       expect(errorEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle missing Content-Type header', async () => {
       const requestBody = {
@@ -316,7 +332,7 @@ describe('Agent Route Integration - Real API', () => {
         sessionId: 'session-123'
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         body: JSON.stringify(requestBody)
         // Missing Content-Type header
@@ -324,10 +340,10 @@ describe('Agent Route Integration - Real API', () => {
 
       // Should handle missing Content-Type
       expect(response.status).toBe(400); // Request validation catches this before streaming
-    });
+    }, TEST_TIMEOUT);
   });
 
-  describe('POST /api/agent with different team configurations', () => {
+  describe('POST /api/agent/stream with different team configurations', () => {
     it('should work with different team IDs', async () => {
       const requestBody = {
         messages: [
@@ -342,7 +358,7 @@ describe('Agent Route Integration - Real API', () => {
         attachments: []
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -353,7 +369,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200);
       
       // Handle streaming response
-      const events = await handleStreamingResponse(response);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have streaming events
       expect(events.length).toBeGreaterThan(0);
@@ -365,7 +381,7 @@ describe('Agent Route Integration - Real API', () => {
       // Check for completion event
       const completionEvent = events.find(e => e.type === 'complete');
       expect(completionEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle non-existent team gracefully', async () => {
       const requestBody = {
@@ -381,7 +397,7 @@ describe('Agent Route Integration - Real API', () => {
         attachments: []
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -393,7 +409,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200);
       
       // Handle streaming response with longer timeout
-      const events = await handleStreamingResponse(response, 15000);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have streaming events
       expect(events.length).toBeGreaterThan(0);
@@ -405,10 +421,10 @@ describe('Agent Route Integration - Real API', () => {
       // Check for completion event
       const completionEvent = events.find(e => e.type === 'complete');
       expect(completionEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
   });
 
-  describe('POST /api/agent error handling', () => {
+  describe('POST /api/agent/stream error handling', () => {
     it('should handle large message payloads', async () => {
       const largeMessage = 'A'.repeat(10000); // 10KB message
       const requestBody = {
@@ -424,7 +440,7 @@ describe('Agent Route Integration - Real API', () => {
         attachments: []
       };
 
-      const response = await fetch(`${WORKER_URL}/api/agent`, {
+      const response = await fetch(`${WORKER_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -436,7 +452,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(response.status).toBe(200);
       
       // Handle streaming response with longer timeout
-      const events = await handleStreamingResponse(response, 15000);
+      const events = await handleStreamingResponse(response, TEST_TIMEOUT);
       
       // Should have streaming events
       expect(events.length).toBeGreaterThan(0);
@@ -448,7 +464,7 @@ describe('Agent Route Integration - Real API', () => {
       // Check for completion event
       const completionEvent = events.find(e => e.type === 'complete');
       expect(completionEvent).toBeDefined();
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle concurrent requests', async () => {
       const requestBody = {
@@ -466,7 +482,7 @@ describe('Agent Route Integration - Real API', () => {
 
       // Make multiple concurrent requests
       const promises = Array.from({ length: 3 }, () =>
-        fetch(`${WORKER_URL}/api/agent`, {
+        fetch(`${WORKER_URL}/api/agent/stream`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -482,7 +498,7 @@ describe('Agent Route Integration - Real API', () => {
         expect(response.status).toBe(200);
         
         // Handle streaming response with longer timeout
-        const events = await handleStreamingResponse(response, 15000);
+        const events = await handleStreamingResponse(response, TEST_TIMEOUT);
         
         // Should have streaming events
         expect(events.length).toBeGreaterThan(0);
@@ -495,6 +511,6 @@ describe('Agent Route Integration - Real API', () => {
         const completionEvent = events.find(e => e.type === 'complete');
         expect(completionEvent).toBeDefined();
       }
-    });
+    }, TEST_TIMEOUT);
   });
 });
