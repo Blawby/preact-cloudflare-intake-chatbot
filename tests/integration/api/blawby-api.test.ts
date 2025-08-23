@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { WORKER_URL } from '../../setup-real-api.js';
+import { WORKER_URL } from '../../setup-real-api';
 
 // Real Blawby API configuration for integration testing
 const BLAWBY_API_URL = 'https://staging.blawby.com';
@@ -10,17 +10,40 @@ interface TestContext {
   customerIds: string[];
   apiToken?: string;
   teamUlid?: string;
+  teamMetadata?: {
+    name: string;
+    slug: string;
+    config: any;
+  };
 }
 
 describe('Blawby API Integration Tests - Real API Calls', () => {
   let testContext: TestContext;
 
   beforeAll(async () => {
-    // Initialize team service to get credentials from database
     console.log('🔍 Setting up Blawby API integration tests...');
     
+    // Read sensitive credentials from environment variables (secure approach)
+    const apiToken = process.env.BLAWBY_API_TOKEN;
+    const teamUlid = process.env.BLAWBY_TEAM_ULID;
+    
+    testContext = {
+      customerIds: [],
+      apiToken: apiToken,
+      teamUlid: teamUlid
+    };
+    
+    if (apiToken && teamUlid) {
+      console.log('✅ Retrieved Blawby API credentials from environment variables');
+      console.log(`   Team ULID: ${testContext.teamUlid}`);
+      console.log(`   API Token: ${testContext.apiToken ? '***' + testContext.apiToken.slice(-4) : 'NOT SET'}`);
+    } else {
+      console.warn('⚠️  Blawby API credentials not available in environment variables');
+      console.warn('   Set BLAWBY_API_TOKEN and BLAWBY_TEAM_ULID for real API testing');
+    }
+    
+    // Fetch non-sensitive team metadata from API (credentials are redacted server-side)
     try {
-      // Get the team configuration from the database via the API
       const response = await fetch(`${WORKER_URL}/api/teams/${BLAWBY_TEAM_SLUG}`, {
         signal: AbortSignal.timeout(10000), // 10 second timeout
         headers: {
@@ -32,36 +55,31 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         const result = await response.json();
         const team = result.data; // API returns { success: true, data: team }
         
-        if (team?.config?.blawbyApi?.enabled) {
-          if (!team.config.blawbyApi.apiKey || !team.config.blawbyApi.teamUlid) {
-            throw new Error('Invalid team configuration: missing apiKey or teamUlid');
-          }
-          
-          testContext = {
-            customerIds: [],
-            apiToken: team.config.blawbyApi.apiKey,
-            teamUlid: team.config.blawbyApi.teamUlid
+        if (team) {
+          // Store non-sensitive metadata (apiKey and teamUlid are redacted server-side)
+          testContext.teamMetadata = {
+            name: team.name,
+            slug: team.slug,
+            config: team.config
           };
           
-          console.log('✅ Retrieved Blawby API credentials from database');
-          console.log(`   Team ULID: ${testContext.teamUlid}`);
-          console.log(`   API Token: ${testContext.apiToken ? '***' + testContext.apiToken.slice(-4) : 'NOT SET'}`);
-        } else {
-          console.warn('⚠️  Blawby API not enabled for blawby-ai team');
-          testContext = { customerIds: [] };
+          console.log('✅ Retrieved team metadata from database');
+          console.log(`   Team Name: ${testContext.teamMetadata.name}`);
+          console.log(`   Blawby API Enabled: ${testContext.teamMetadata.config?.blawbyApi?.enabled || false}`);
         }
       } else {
-        console.error(`❌ Failed to fetch team configuration: ${response.status} ${response.statusText}`);
-        testContext = { customerIds: [] };
+        console.warn(`⚠️  Failed to fetch team metadata: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      console.error('❌ Failed to retrieve team configuration:', error);
-      testContext = { customerIds: [] };
+      console.warn('⚠️  Failed to retrieve team metadata:', error);
     }
     
-    if (!testContext.apiToken || testContext.apiToken === 'test-token') {
+    if (!testContext.apiToken || testContext.apiToken.trim() === '') {
       console.warn('⚠️  Blawby API token not available for testing');
-      console.warn('   Tests will be skipped. Ensure blawby-ai team is configured in database.');
+      console.warn('   Tests will be skipped. Set BLAWBY_API_TOKEN environment variable for real API testing.');
+    }
+  });
+
   afterEach(async () => {
     // Skip if no real API token or no test data
     if (!testContext.apiToken || !testContext.customerIds.length) {
@@ -103,7 +121,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
   describe('API Authentication', () => {
     it('should successfully authenticate with the Blawby API', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -124,7 +142,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
     it('should reject requests without proper authentication', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -143,7 +161,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
   describe('Customer Creation', () => {
     it('should successfully create a customer', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -188,7 +206,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
     it('should reject customer creation with invalid data', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -218,7 +236,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
   describe('Invoice Creation', () => {
     it('should successfully create an invoice for a customer', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -345,7 +363,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
     it('should handle rate limiting', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken === 'test-token') {
+      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -369,5 +387,4 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
       });
     });
   });
-
-}); 
+});

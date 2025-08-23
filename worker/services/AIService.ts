@@ -11,8 +11,10 @@ export interface Env {
 
 // Default team configuration - centralized for maintainability
 const DEFAULT_TEAM_CONFIG: TeamConfig = {
+  aiModel: 'llama',
   requiresPayment: false,
   consultationFee: 0,
+  ownerEmail: 'default@example.com',
   paymentLink: null,
   availableServices: [
     'Family Law',
@@ -28,7 +30,13 @@ const DEFAULT_TEAM_CONFIG: TeamConfig = {
     'Small Business and Nonprofits',
     'Contract Review',
     'General Consultation'
-  ]
+  ],
+  jurisdiction: {
+    type: 'national',
+    description: 'Available nationwide',
+    supportedStates: ['all'],
+    supportedCountries: ['US']
+  }
 };
 
 // Optimized AI Service with caching and timeouts

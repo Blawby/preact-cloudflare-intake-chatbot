@@ -275,10 +275,11 @@ describe('Agent Route Integration - Real API', () => {
         body: JSON.stringify(requestBody)
       });
 
-      // Should handle non-existent team gracefully
-      expect(response.status).toBe(404);
+      // Should handle non-existent team gracefully by using default config
+      expect(response.status).toBe(200);
       const result = await response.json();
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
     });
   });
 

@@ -34,15 +34,16 @@ tests/
 - **Worker**: Test individual worker functions and utilities
 
 ### Integration Tests (`tests/integration/`)
-- **API**: Test API endpoints with mocked dependencies
-- **Worker**: Test worker functions with real Cloudflare bindings
+- **API**: Test API endpoints with real wrangler dev server
+- **Services**: Test service integration with real Cloudflare bindings
+- **LLM Judge**: Test LLM judge evaluation (included in main test run)
 
 ### LLM Judge Tests (`tests/llm-judge/`)
 - **AI-powered evaluation**: Uses LLM judge to evaluate agent responses
 - **Real API testing**: Calls actual `/api/agent/stream` endpoint
 - **Conversation flow testing**: Tests multi-turn conversations
 - **HTML report generation**: Creates detailed reports with results
-- **Slow tests**: Take 160+ seconds, require separate configuration
+- **Slow tests**: Take 160+ seconds, require separate configuration (`vitest.slow.config.ts`)
 
 ### Paralegal Tests (`tests/paralegal/`)
 - **Paralegal service testing**: Tests paralegal agent functionality
@@ -138,31 +139,42 @@ Tests use these environment variables:
 
 ## Running Tests
 
+### Prerequisites
+Before running tests, you need to start the wrangler dev server:
 ```bash
-# Run fast tests (unit, integration, paralegal - excludes slow LLM judge tests)
+npx wrangler dev
+```
+
+### Test Commands
+
+```bash
+# Run all tests (unit, integration, paralegal - excludes slow LLM judge tests)
 npm test
-npm run test:fast
 
 # Run slow tests (LLM judge tests only - requires wrangler dev server)
 npm run test:slow
 
 # Run specific test types
-npm run test:unit        # Unit tests only
-npm run test:integration # Integration tests only (requires wrangler dev server)
-npm run test:e2e        # E2E tests only
-
-# Run with coverage
-npm run test:coverage
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with UI
-npm run test:ui
+npm run test:watch     # Run tests in watch mode
+npm run test:ui        # Run tests with UI
+npm run test:coverage  # Run tests with coverage
 
 # Legacy LLM judge test script (alternative to test:slow)
 npm run test:llm-judge
+
+# Agent report tests
+npm run test:agent-report
+
+# Verify LLM judge fixes
+npm run verify:llm-judge
 ```
+
+### Test Configuration
+
+- **Main tests** (`npm test`): Uses `vitest.config.ts` - runs unit, integration, and paralegal tests
+- **Slow tests** (`npm run test:slow`): Uses `vitest.slow.config.ts` - runs only LLM judge tests
+- **Integration tests**: Require `npx wrangler dev` to be running on port 8787
+- **LLM judge tests**: Take 160+ seconds and require the wrangler dev server
 
 ## Test Utilities
 

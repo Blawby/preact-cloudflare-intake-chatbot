@@ -86,28 +86,27 @@ export class PaymentService {
         };
       }
       
-      // Use team-specific API credentials with proper error handling
-      const apiToken = team.config.blawbyApi?.apiKey;
-      const teamUlid = team.config.blawbyApi?.teamUlid;
+      // Use secure API credentials from environment variables
+      const apiToken = this.env.BLAWBY_API_TOKEN;
+      const teamUlid = this.env.BLAWBY_TEAM_ULID;
       
       if (!apiToken) {
         console.error('❌ CRITICAL: No API token available for payment processing');
-        console.error('   - team.config.blawbyApi?.apiKey:', team.config.blawbyApi?.apiKey ? 'SET' : 'NOT SET');
         console.error('   - env.BLAWBY_API_TOKEN:', this.env.BLAWBY_API_TOKEN ? 'SET' : 'NOT SET');
-        console.error('   - Team configuration should include blawbyApi.apiKey for team:', team.slug);
+        console.error('   - Set BLAWBY_API_TOKEN environment variable for secure payment processing');
         return {
           success: false,
-          error: 'API token not configured - cannot process payment. Check team configuration in database.'
+          error: 'API token not configured - cannot process payment. Set BLAWBY_API_TOKEN environment variable.'
         };
       }
       
       if (!teamUlid) {
         console.error('❌ CRITICAL: No team ULID available for payment processing');
-        console.error('   - team.config.blawbyApi?.teamUlid:', team.config.blawbyApi?.teamUlid ? 'SET' : 'NOT SET');
-        console.error('   - Team configuration should include blawbyApi.teamUlid for team:', team.slug);
+        console.error('   - env.BLAWBY_TEAM_ULID:', this.env.BLAWBY_TEAM_ULID ? 'SET' : 'NOT SET');
+        console.error('   - Set BLAWBY_TEAM_ULID environment variable for secure payment processing');
         return {
           success: false,
-          error: 'Team ULID not configured - cannot process payment. Check team configuration in database.'
+          error: 'Team ULID not configured - cannot process payment. Set BLAWBY_TEAM_ULID environment variable.'
         };
       }
       

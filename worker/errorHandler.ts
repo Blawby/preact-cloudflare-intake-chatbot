@@ -52,6 +52,10 @@ export function handleError(error: unknown, corsHeaders: Record<string, string>)
     message = 'Validation error';
     details = error.errors;
     errorCode = 'VALIDATION_ERROR';
+  } else if (error instanceof SyntaxError) {
+    status = 400;
+    message = 'Invalid JSON format';
+    errorCode = 'INVALID_JSON';
   } else if (error instanceof Error) {
     message = error.message;
     errorCode = 'GENERIC_ERROR';

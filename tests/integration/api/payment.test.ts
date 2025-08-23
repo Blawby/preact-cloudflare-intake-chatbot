@@ -3,53 +3,34 @@ import { unstable_dev } from 'wrangler';
 import type { UnstableDevWorker } from 'wrangler';
 import { WORKER_URL } from '../../setup-real-api.js';
 
+/**
+ * SECURITY NOTE: The teams API must not return plaintext credentials.
+ * This test loads credentials from environment variables to avoid
+ * exfiltrating secrets at runtime. Never rely on API endpoints for
+ * secret retrieval in tests or production code.
+ */
 describe('Payment API Integration - Real Worker Tests', () => {
   let worker: UnstableDevWorker;
   let apiCredentials: { apiToken?: string; teamUlid?: string } = {};
 
   beforeAll(async () => {
-    // Get API credentials from database using the existing working API
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-      
-      const response = await fetch(`${WORKER_URL}/api/teams/blawby-ai`, {
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const result = await response.json();
-        const team = result.data;
-        
-        if (team?.config?.blawbyApi?.enabled) {
-          const apiKey = team.config.blawbyApi.apiKey;
-          const teamUlid = team.config.blawbyApi.teamUlid;
-          
-          // Validate credentials before using them
-          if (
-            apiKey && typeof apiKey === 'string' && apiKey.trim() !== '' &&
-            teamUlid && typeof teamUlid === 'string' && teamUlid.trim() !== ''
-          ) {
-            apiCredentials = { apiToken: apiKey, teamUlid: teamUlid };
-            console.log('✅ Retrieved API credentials for payment test');
-            console.log(`   Team ULID: ${apiCredentials.teamUlid}`);
-            console.log(`   API Token: ${apiCredentials.apiToken ? '***' + apiCredentials.apiToken.slice(-4) : 'NOT SET'}`);
-          } else {
-            console.warn('⚠️  Retrieved credentials are invalid or empty');
-          }
-        } else {
-          console.warn('⚠️  Blawby API not enabled for blawby-ai team');
-        }
-      } else {
-        console.error(`❌ Failed to fetch team configuration: ${response.status} ${response.statusText}`);
-      }
-    } catch (error) {
-      if ((error as any).name === 'AbortError') {
-        console.error('❌ Credential fetch timed out after 10 seconds');
-      } else {
-        console.error('❌ Failed to retrieve API credentials:', error);
-      }
+    // Load API credentials from environment variables (secure approach)
+    const apiToken = process.env.BLAWBY_API_TOKEN;
+    const teamUlid = process.env.BLAWBY_TEAM_ULID;
+    
+    // Validate credentials before using them
+    if (
+      apiToken && typeof apiToken === 'string' && apiToken.trim() !== '' &&
+      teamUlid && typeof teamUlid === 'string' && teamUlid.trim() !== ''
+    ) {
+      apiCredentials = { apiToken: apiToken, teamUlid: teamUlid };
+      console.log('✅ Retrieved API credentials for payment test from environment variables');
+      console.log(`   Team ULID: ${apiCredentials.teamUlid}`);
+      console.log(`   API Token: ${apiCredentials.apiToken ? '***' + apiCredentials.apiToken.slice(-4) : 'NOT SET'}`);
+    } else {
+      console.warn('⚠️  Blawby API credentials not available in environment variables');
+      console.warn('   Set BLAWBY_API_TOKEN and BLAWBY_TEAM_ULID for real API testing');
+      console.warn('   Tests will be skipped if credentials are not provided');
     }
 
     // Start the worker with retrieved credentials
@@ -75,6 +56,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
     // Skip if no valid credentials
     if (!apiCredentials.apiToken || apiCredentials.apiToken === 'test-token') {
       console.log('⏭️  Skipping payment test - no valid API credentials');
+      console.log('   Set BLAWBY_API_TOKEN and BLAWBY_TEAM_ULID environment variables for real API testing');
       return;
     }
 
