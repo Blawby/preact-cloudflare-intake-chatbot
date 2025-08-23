@@ -122,8 +122,8 @@ interface UseNavbarScrollOptions {
 
 export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
   const {
-    threshold = 200,
-    debounceMs = 100
+    threshold = 50,
+    debounceMs = 0
   } = options;
 
   const [isNavbarVisible, setIsNavbarVisible] = useState(true);

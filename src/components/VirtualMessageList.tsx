@@ -26,7 +26,7 @@ interface VirtualMessageListProps {
 
 const BATCH_SIZE = 20;
 const SCROLL_THRESHOLD = 100;
-const DEBOUNCE_DELAY = 150;
+const DEBOUNCE_DELAY = 50;
 
 const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     messages,
