@@ -191,6 +191,7 @@ CRITICAL EVALUATION RULES:
 4. FACTUAL BASIS: Every claim in the response must have a factual basis in the conversation
 5. CONTEXT AWARENESS: The AI should reference and build upon previous conversation elements
 6. CONVERSATION EFFICIENCY: Avoid repetitive responses and circular conversations
+7. CRITICAL ISSUES: Only list actual problems or violations. If no critical issues are found, return an empty array for criticalIssues.
 
 COMPREHENSIVE EVALUATION CRITERIA (Rate each 1-10):
 
@@ -253,7 +254,7 @@ RESPONSE FORMAT (JSON):
   "informationCollection": <score 1-10>,
   "errorHandling": <score 1-10>,
   "feedback": "<brief feedback on performance>",
-  "criticalIssues": ["<list any critical issues including hallucinations>"],
+  "criticalIssues": ["<list any critical issues including hallucinations. If no critical issues found, return empty array []>"],
   "suggestions": ["<list improvement suggestions>"],
   "hallucinationDetected": <boolean>,
   "repetitiveResponses": <boolean>,

@@ -20,10 +20,9 @@ interface TestContext {
 describe('Blawby API Integration Tests - Real API Calls', () => {
   let testContext: TestContext;
 
-  // Helper function to check if tests should be skipped due to missing API token or team ULID
+  // Helper: skip when token/ULID missing or blank (whitespace-only)
   const shouldSkipTest = (): boolean => {
-    return !testContext.apiToken || testContext.apiToken.trim() === '' || 
-           !testContext.teamUlid || testContext.teamUlid.trim() === '';
+    return !testContext.apiToken?.trim() || !testContext.teamUlid?.trim();
   };
 
   beforeAll(async () => {
