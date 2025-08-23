@@ -161,6 +161,12 @@ class LLMJudge {
               assistantResponse = data.result.message;
               console.log('   Tool result message:', data.result.message.substring(0, 200));
             }
+          } else if (data.type === 'final') {
+            // Final response from the agent
+            if (data.response) {
+              assistantResponse = data.response;
+              console.log('   Final response:', data.response.substring(0, 200));
+            }
           } else if (data.type === 'complete') {
             // Stream completed successfully
             console.log('   Stream completed');
@@ -514,7 +520,8 @@ class LLMJudge {
           averageScore: 0,
           feedback: 'Agent failed to complete conversation - no fallbacks allowed',
           criticalIssues: ['Agent did not provide summary or create matter'],
-          suggestions: ['Fix agent conversation flow logic']
+          suggestions: ['Fix agent conversation flow logic'],
+          flags: {}
         },
         passed: false,
         responseTime: totalResponseTime
@@ -1404,7 +1411,7 @@ describe('LLM Judge Evaluation', () => {
           console.log(`⚠️  Zero score detected - this might be legitimate for minimal information scenarios`);
         }
         
-        const minScore = conversation.minScore || 7.0;
+        const minScore = (conversation as any).minScore || 7.0;
         console.log(`\n📊 Test Result: ${result.passed ? '✅ PASS' : '❌ FAIL'} (${result.evaluation.averageScore >= minScore ? 'meets' : 'below'} ${minScore} threshold)`);
         
         // Log tool call comparison

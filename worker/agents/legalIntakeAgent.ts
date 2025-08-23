@@ -170,8 +170,44 @@ export async function runLegalIntakeAgentStream(
     content: msg.content
   }));
 
-  // Build system prompt using the new PromptBuilder
+  // Check if we've already completed a matter creation in this conversation
   const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
+  
+  // Only check for actual tool calls, not just keywords
+  const hasCompletedMatter = conversationText.includes('create_matter') && 
+                             (conversationText.includes('matter created') ||
+                              conversationText.includes('consultation fee') ||
+                              conversationText.includes('lawyer will contact you'));
+  
+  // Also check if the last assistant message was a completion message
+  const lastAssistantMessage = formattedMessages.filter(msg => msg.role === 'assistant').pop();
+  const isAlreadyCompleted = lastAssistantMessage?.content?.includes('already helped you create a matter');
+  
+  if (hasCompletedMatter && isAlreadyCompleted) {
+    const completionMessage = "I've already helped you create a matter for your case. A lawyer will contact you within 24 hours to discuss your situation further. Is there anything else I can help you with?";
+    
+    if (controller) {
+      const finalEvent = `data: ${JSON.stringify({
+        type: 'final',
+        response: completionMessage
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(finalEvent));
+    } else {
+      return {
+        response: completionMessage,
+        metadata: {
+          conversationComplete: true,
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+          sessionId,
+          teamId
+        }
+      };
+    }
+    return;
+  }
+
+  // Build system prompt using the new PromptBuilder
   const systemPrompt = PromptBuilder.buildSystemPrompt(cloudflareLocation, attachments, conversationText);
 
   // Hoist tool parsing variables to function scope
@@ -203,6 +239,32 @@ export async function runLegalIntakeAgentStream(
     const response = aiResult.response || 'I apologize, but I encountered an error processing your request.';
     Logger.debug('📝 Full response:', response);
     
+    // Check if response is empty or too short
+    if (!response || response.trim().length < 10) {
+      Logger.error('❌ AI returned empty or very short response:', response);
+      const fallbackResponse = 'I apologize, but I encountered an error processing your request. Please try again.';
+      
+      if (controller) {
+        const errorEvent = `data: ${JSON.stringify({
+          type: 'final',
+          response: fallbackResponse
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(errorEvent));
+      } else {
+        return {
+          response: fallbackResponse,
+          metadata: {
+            error: 'Empty AI response',
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+            sessionId,
+            teamId
+          }
+        };
+      }
+      return;
+    }
+    
     // Parse tool call using ToolCallParser
     const parseResult = ToolCallParser.parseToolCall(response);
     
@@ -220,6 +282,8 @@ export async function runLegalIntakeAgentStream(
       
       toolName = parseResult.toolCall.toolName;
       parameters = parseResult.toolCall.parameters;
+      
+      Logger.debug('Parsed tool call:', { toolName, parameters });
     } else if (parseResult.error && parseResult.error !== 'No tool call detected') {
       Logger.error('Tool call parsing failed:', parseResult.error);
       if (controller) {
@@ -266,10 +330,22 @@ export async function runLegalIntakeAgentStream(
       
       // Call the appropriate handler with correct parameters
       let toolResult;
-      if (toolName === 'request_lawyer_review') {
+      try {
         toolResult = await handler(parameters, env, teamConfig);
-      } else {
-        toolResult = await handler(parameters, env, teamConfig);
+        Logger.debug('Tool execution result:', toolResult);
+      } catch (error) {
+        Logger.error('Tool execution failed:', error);
+        if (controller) {
+          const errorEvent = `data: ${JSON.stringify({
+            type: 'error',
+            message: 'Tool execution failed. Please try again.'
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(errorEvent));
+        }
+        return {
+          response: 'I encountered an error while processing your request. Please try again.',
+          metadata: { error: error.message }
+        };
       }
       
       // Handle streaming case
@@ -319,6 +395,14 @@ export async function runLegalIntakeAgentStream(
           }
         };
       }
+      
+      // For streaming case, send the tool result as the final response
+      const finalResponse = toolResult.message || toolResult.response || 'Tool executed successfully.';
+      const finalEvent = `data: ${JSON.stringify({
+        type: 'final',
+        response: finalResponse
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(finalEvent));
       
       // Return after tool execution for streaming case
       return;

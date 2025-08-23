@@ -24,6 +24,15 @@ export class ToolCallParser {
 
     // Parse tool call
     const toolCallMatch = response.match(/TOOL_CALL:\s*([\w_]+)/);
+    if (!toolCallMatch) {
+      return { 
+        success: false, 
+        error: 'Invalid tool call format - could not extract tool name' 
+      };
+    }
+    
+    const toolName = toolCallMatch[1];
+    
     // Find the start of PARAMETERS
     const parametersIndex = response.indexOf('PARAMETERS:');
     if (parametersIndex === -1) {
@@ -82,7 +91,30 @@ export class ToolCallParser {
       };
     }
     
-    const parameters = afterParameters.substring(0, endIndex);
+    const parametersJson = afterParameters.substring(0, endIndex);
+    
+    // Parse the JSON parameters
+    let parameters;
+    try {
+      parameters = JSON.parse(parametersJson);
+    } catch (parseError) {
+      Logger.error('Failed to parse tool parameters JSON:', parseError);
+      return { 
+        success: false, 
+        error: 'Invalid JSON in tool parameters',
+        rawParameters: parametersJson
+      };
+    }
+    
+    // Validate parameters is an object
+    if (!parameters || typeof parameters !== 'object') {
+      return { 
+        success: false, 
+        error: 'Tool parameters must be an object',
+        rawParameters: parametersJson
+      };
+    }
+    
     // Create a safe copy without prototype‐pollution risk
     const sanitized = Object.create(null);
     for (const [key, value] of Object.entries(parameters)) {
@@ -133,7 +165,15 @@ export class ToolCallParser {
       return obj;
     };
     
-    return sanitizeValue(sanitized);
+    // Return the parsed tool call with sanitized parameters for logging
+    return {
+      success: true,
+      toolCall: {
+        toolName,
+        parameters: sanitized
+      },
+      rawParameters: parametersJson
+    };
   }
 
   /**
