@@ -11,47 +11,86 @@ import { ToolCallParser } from '../utils/toolCallParser.js';
 
 /**
  * Redacts sensitive information from tool parameters for safe logging
+ * Recursively walks the entire value tree and redacts sensitive data based on field names and value patterns
  */
 function redactParameters(parameters: any): any {
-  if (!parameters || typeof parameters !== 'object') {
-    return parameters;
-  }
+  return redactValue(parameters);
+}
 
-  const redacted = { ...parameters };
+/**
+ * Recursively redacts sensitive values throughout the entire object tree
+ * @private
+ */
+function redactValue(obj: any, depth = 0): any {
+  // Prevent infinite recursion
+  if (depth > 10) return '***DEPTH_LIMIT***';
   
-  // Fields that commonly contain PII or sensitive data
-  const sensitiveFields = [
-    'name', 'email', 'phone', 'address', 'location', 'ssn', 'social_security',
-    'credit_card', 'card_number', 'account_number', 'routing_number',
-    'password', 'token', 'secret', 'key', 'credential',
-    'description', 'details', 'notes', 'comments', 'message',
-    'opposing_party', 'client_info', 'personal_info'
-  ];
-
-  for (const field of sensitiveFields) {
-    if (redacted[field]) {
-      const value = redacted[field];
-      if (typeof value === 'string') {
-        if (value.includes('@')) {
-          // Email-like field
-          const [local, domain] = value.split('@');
-          redacted[field] = `${local.substring(0, 2)}***@${domain}`;
-        } else if (value.length > 8) {
-          // Long string - show first and last few characters
-          redacted[field] = `${value.substring(0, 3)}***${value.substring(value.length - 3)}`;
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => redactValue(item, depth + 1));
+  }
+  
+  // Handle objects
+  if (obj && typeof obj === 'object') {
+    const result = Object.create(null);
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip prototype pollution attempts
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        continue;
+      }
+      
+      const lowerKey = key.toLowerCase();
+      
+      // Check if key matches sensitive field patterns
+      const sensitiveFields = [
+        'name', 'email', 'phone', 'address', 'location', 'ssn', 'social_security',
+        'credit_card', 'card_number', 'account_number', 'routing_number',
+        'password', 'token', 'secret', 'key', 'credential',
+        'description', 'details', 'notes', 'comments', 'message',
+        'opposing_party', 'client_info', 'personal_info'
+      ];
+      
+      const isSensitiveKey = sensitiveFields.some(field => lowerKey.includes(field));
+      
+      // Check if value matches sensitive patterns
+      const isSensitiveValue = typeof value === 'string' && (
+        // Email pattern
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ||
+        // Phone number pattern (various formats)
+        /^[\+]?[0-9\s\-\(\)]{7,20}$/.test(value) ||
+        // SSN pattern
+        /^\d{3}-?\d{2}-?\d{4}$/.test(value) ||
+        // Credit card pattern
+        /^\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}$/.test(value) ||
+        // Token/secret pattern (long alphanumeric strings)
+        /^[a-zA-Z0-9]{20,}$/.test(value)
+      );
+      
+      if (isSensitiveKey || isSensitiveValue) {
+        if (typeof value === 'string') {
+          if (value.includes('@')) {
+            // Email-like field - mask local part
+            const [local, domain] = value.split('@');
+            result[key] = `${local.substring(0, 2)}***@${domain}`;
+          } else if (value.length > 4) {
+            // Long string - show first and last few characters
+            result[key] = `${value.substring(0, 2)}***${value.substring(value.length - 2)}`;
+          } else {
+            result[key] = '***REDACTED***';
+          }
         } else {
-          redacted[field] = '***REDACTED***';
+          result[key] = '***REDACTED***';
         }
-      } else if (typeof value === 'object' && value !== null) {
-        // Recursively redact nested objects
-        redacted[field] = redactParameters(value);
       } else {
-        redacted[field] = '***REDACTED***';
+        // Recursively process non-sensitive values
+        result[key] = redactValue(value, depth + 1);
       }
     }
+    return result;
   }
-
-  return redacted;
+  
+  // Return primitives as-is
+  return obj;
 }
 
 // AI Model Configuration
@@ -305,6 +344,9 @@ export async function runLegalIntakeAgentStream(
           response: fallbackResponse
         })}\n\n`;
         controller.enqueue(new TextEncoder().encode(errorEvent));
+        
+        // Close the stream after sending fallback response
+        controller.close();
       } else {
         return {
           response: fallbackResponse,
@@ -338,7 +380,10 @@ export async function runLegalIntakeAgentStream(
       toolName = parseResult.toolCall.toolName;
       parameters = parseResult.toolCall.parameters;
       
-      Logger.debug('Parsed tool call:', { toolName, parameters: redactParameters(parameters) });
+      Logger.debug('Parsed tool call:', { 
+        toolName, 
+        parameters: parseResult.toolCall.sanitizedParameters || redactParameters(parameters) 
+      });
     } else if (parseResult.error && parseResult.error !== 'No tool call detected') {
       Logger.error('Tool call parsing failed:', parseResult.error);
       if (controller) {
@@ -361,7 +406,7 @@ export async function runLegalIntakeAgentStream(
         const toolEvent = `data: ${JSON.stringify({
           type: 'tool_call',
           toolName: toolName,
-          parameters: parameters
+          parameters: parseResult.toolCall.sanitizedParameters || redactParameters(parameters)
         })}\n\n`;
         controller.enqueue(new TextEncoder().encode(toolEvent));
       }
@@ -556,7 +601,7 @@ export async function runLegalIntakeAgentStream(
 
 // Helper function to handle lawyer approval
 async function handleLawyerApproval(env: any, params: any, teamId: string) {
-          Logger.debug('Lawyer approval requested:', redactParameters(params));
+          Logger.debug('Lawyer approval requested:', ToolCallParser.sanitizeParameters(params));
   
   try {
     // Get team config for notification
@@ -634,17 +679,9 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
     return createValidationError("I need your name to proceed. Could you please provide your full name?");
   }
   
-  // Check if we have both phone and email
+  // Check if we have at least one contact method
   if (!phone && !email) {
-    return createValidationError("I have your name, but I need both your phone number and email address to contact you. Could you provide both?");
-  }
-  
-  if (!phone) {
-    return createValidationError(`Thank you ${name}! I have your email address. Could you also provide your phone number?`);
-  }
-  
-  if (!email) {
-    return createValidationError(`Thank you ${name}! I have your phone number. Could you also provide your email address?`);
+    return createValidationError("I have your name, but I need at least one way to contact you. Could you provide either your phone number or email address?");
   }
   
   return createSuccessResponse(
@@ -654,7 +691,7 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
 }
 
 export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
-  Logger.debug('[handleCreateMatter] parameters:', redactParameters(parameters));
+  Logger.debug('[handleCreateMatter] parameters:', ToolCallParser.sanitizeParameters(parameters));
   Logger.logTeamConfig(teamConfig, true); // Include sanitized config in debug mode
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
@@ -700,7 +737,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   }
   
   if (!phone && !email) {
-    return createValidationError("I need both your phone number and email address to proceed. Could you provide both contact methods?");
+    return createValidationError("I need at least one way to contact you to proceed. Could you provide either your phone number or email address?");
   }
   
   // Process payment using the PaymentServiceFactory
@@ -840,9 +877,9 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   const { file_id, analysis_type, specific_question } = parameters;
   
   Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
-  Logger.debug('File ID:', redactParameters(file_id));
-  Logger.debug('Analysis Type:', redactParameters(analysis_type));
-  Logger.debug('Specific Question:', redactParameters(specific_question));
+  Logger.debug('File ID:', ToolCallParser.sanitizeParameters(file_id));
+  Logger.debug('Analysis Type:', ToolCallParser.sanitizeParameters(analysis_type));
+  Logger.debug('Specific Question:', ToolCallParser.sanitizeParameters(specific_question));
   
   // Get the appropriate analysis question
   const customQuestion = getAnalysisQuestion(analysis_type, specific_question);
@@ -864,12 +901,12 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   
   // Log the analysis results
   Logger.debug('=== DOCUMENT ANALYSIS RESULTS ===');
-  Logger.debug('Document Type:', redactParameters(analysis_type));
+  Logger.debug('Document Type:', ToolCallParser.sanitizeParameters(analysis_type));
   Logger.debug('Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
-  Logger.debug('Summary:', redactParameters(fileAnalysis.summary));
-  Logger.debug('Key Facts:', redactParameters(fileAnalysis.key_facts));
-  Logger.debug('Entities:', redactParameters(fileAnalysis.entities));
-  Logger.debug('Action Items:', redactParameters(fileAnalysis.action_items));
+  Logger.debug('Summary:', ToolCallParser.sanitizeParameters(fileAnalysis.summary));
+  Logger.debug('Key Facts:', ToolCallParser.sanitizeParameters(fileAnalysis.key_facts));
+  Logger.debug('Entities:', ToolCallParser.sanitizeParameters(fileAnalysis.entities));
+  Logger.debug('Action Items:', ToolCallParser.sanitizeParameters(fileAnalysis.action_items));
   Logger.debug('================================');
   
   // Create a legally-focused response that guides toward matter creation
@@ -936,10 +973,10 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   response += `Would you like me to create a legal matter for this ${suggestedMatterType.toLowerCase()} case? I'll need your contact information to get started.`;
   
   Logger.debug('=== FINAL ANALYSIS RESPONSE ===');
-  Logger.debug('Response:', redactParameters(response));
+  Logger.debug('Response:', ToolCallParser.sanitizeParameters(response));
   Logger.debug('Response Length:', `${response.length} characters`);
-  Logger.debug('Response Type:', redactParameters(analysis_type));
-  Logger.debug('Suggested Matter Type:', redactParameters(suggestedMatterType));
+  Logger.debug('Response Type:', ToolCallParser.sanitizeParameters(analysis_type));
+  Logger.debug('Suggested Matter Type:', ToolCallParser.sanitizeParameters(suggestedMatterType));
   Logger.debug('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
   Logger.debug('==============================');
   

@@ -8,7 +8,7 @@ export interface ValidationResult {
 
 export class ValidationService {
   /**
-   * Validates a phone number using libphonenumber-js
+   * Validates a phone number using NANP (North American Numbering Plan) rules
    */
   static validatePhone(phone: string): ValidationResult {
     if (!phone || phone.trim() === '') {
@@ -16,20 +16,46 @@ export class ValidationService {
     }
     
     try {
+      // Remove extension suffixes (e.g., "x123", "ext.123", "ext 123")
+      const withoutExtension = phone.replace(/\s*(?:x|ext\.?|extension)\s*\d+$/i, '');
+      
       // Clean the phone number - remove all non-digit characters
-      const cleaned = phone.replace(/\D/g, '');
+      const cleaned = withoutExtension.replace(/\D/g, '');
       
-      // Check if it's a valid US phone number (10 digits)
-      if (cleaned.length === 10) {
-        return { isValid: true };
-      }
+      // NANP validation patterns
+      // Area code: [2-9]\d{2} (starts with 2-9, followed by 2 digits)
+      // Exchange code: [2-9]\d{2} (starts with 2-9, followed by 2 digits)  
+      // Subscriber number: \d{4} (4 digits)
       
-      // Check if it's a valid US phone number with country code (11 digits starting with 1)
+      let normalizedNumber: string;
+      
+      // Handle 11-digit numbers with country code
       if (cleaned.length === 11 && cleaned.startsWith('1')) {
-        return { isValid: true };
+        normalizedNumber = cleaned.substring(1); // Remove leading '1'
+      } else if (cleaned.length === 10) {
+        normalizedNumber = cleaned;
+      } else {
+        return { isValid: false, error: 'Invalid phone number format' };
       }
       
-      return { isValid: false, error: 'Invalid phone number format' };
+      // Validate NANP structure: area code + exchange + subscriber
+      const nanpPattern = /^([2-9]\d{2})([2-9]\d{2})(\d{4})$/;
+      const match = normalizedNumber.match(nanpPattern);
+      
+      if (!match) {
+        return { isValid: false, error: 'Invalid phone number format' };
+      }
+      
+      // Additional validation: ensure area code and exchange code are valid
+      const [, areaCode, exchangeCode] = match;
+      
+      // Area code cannot be 0 or 1, and exchange code cannot be 0 or 1
+      if (areaCode.startsWith('0') || areaCode.startsWith('1') || 
+          exchangeCode.startsWith('0') || exchangeCode.startsWith('1')) {
+        return { isValid: false, error: 'Invalid phone number format' };
+      }
+      
+      return { isValid: true };
     } catch (error) {
       return { isValid: false, error: 'Phone validation error' };
     }

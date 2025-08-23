@@ -250,7 +250,7 @@ class LLMJudge {
         'Must demonstrate conversation flow efficiency and context retention',
         'Must handle validation errors gracefully and provide helpful guidance'
       ],
-      minScore: testCase.minScore || 7.0
+      minScore: testCase.minScore ?? 7.0
     };
 
     const requestBody = {
