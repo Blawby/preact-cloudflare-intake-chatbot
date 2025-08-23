@@ -7,9 +7,10 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: ["./tests/setup-real-api.ts"],
-    timeout: 60000, // 60 seconds for real API tests
+    testTimeout: 60000, // 60 seconds for real API tests
     hookTimeout: 60000, // 60 seconds for hooks (beforeAll/afterAll)
     threads: false, // Disable worker threads to prevent multiple wrangler dev instances from colliding
+    fileParallelism: false, // Force single-file execution to prevent file-level parallelism
     include: [
       'tests/**/*.{test,spec}.{js,ts,jsx,tsx}'
     ],

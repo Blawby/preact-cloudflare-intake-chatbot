@@ -7,8 +7,8 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: ["./tests/setup-real-api.ts"],
-    timeout: 120000, // 2 minutes for slow LLM judge tests
-    hookTimeout: 120000, // 2 minutes for hooks (beforeAll/afterAll)
+    testTimeout: 120_000, // 2 minutes for slow LLM judge tests
+    hookTimeout: 120_000, // 2 minutes for hooks (beforeAll/afterAll)
     include: [
       'tests/llm-judge/**/*.{test,spec}.{js,ts,jsx,tsx}'
     ],

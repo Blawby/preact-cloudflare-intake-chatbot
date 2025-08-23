@@ -1,214 +1,12 @@
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { validateLocation as validateLocationUtil, isLocationSupported } from '../utils/locationValidator.js';
-import { CloudflareLocationInfo, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
-
-// Matter type classification constant to avoid duplication
-const MATTER_TYPE_CLASSIFICATION = `- MATTER TYPE CLASSIFICATION:
-  * "Family Law" - for divorce, custody, adoption, family disputes
-  * "Employment Law" - for workplace issues, discrimination, wrongful termination
-  * "Landlord/Tenant" - for rental disputes, eviction, lease issues
-  * "Personal Injury" - for accidents, medical malpractice, product liability
-  * "Business Law" - for contracts, partnerships, corporate issues
-  * "Criminal Law" - for criminal charges, traffic violations
-  * "General Consultation" - when legal issue is unclear or user needs general advice
-  * "Civil Law" - for general civil disputes not fitting other categories`;
-
-// Helper function to analyze files using the vision API
-async function analyzeFile(env: any, fileId: string, question?: string): Promise<any> {
-  console.log('=== ANALYZE FILE FUNCTION CALLED ===');
-  console.log('File ID:', fileId);
-  console.log('Question:', question);
-  
-  // Determine the appropriate question based on file type or use default
-  const defaultQuestion = "Analyze this document and provide a comprehensive summary with key facts, entities, and actionable insights. Focus on information relevant for legal intake or professional services.";
-  
-  const analysisQuestion = question || defaultQuestion;
-  
-  try {
-    // Get file from R2 storage
-    if (!env.FILES_BUCKET) {
-      console.warn('FILES_BUCKET not configured, skipping file analysis');
-      return null;
-    }
-
-    // Try to get file metadata from database first
-    let fileRecord = null;
-    try {
-      const stmt = env.DB.prepare(`
-        SELECT * FROM files WHERE id = ? AND is_deleted = FALSE
-      `);
-      fileRecord = await stmt.bind(fileId).first();
-      console.log('Database file record:', fileRecord);
-    } catch (dbError) {
-      console.warn('Failed to get file metadata from database:', dbError);
-    }
-
-    // Construct file path
-    let filePath = fileRecord?.file_path;
-    console.log('Initial file path from database:', filePath);
-    
-    if (!filePath) {
-      console.log('No file path from database, attempting to construct from file ID');
-      
-      // Handle the actual file ID format with UUID
-      // Format: team-slug-uuid-timestamp-random
-      // Example: north-carolina-legal-services-5b69514f-ef86-45ea-996d-4f2764b40d27-1754974140878-11oeburbd
-      
-      // Split by hyphens and look for UUID pattern
-      const parts = fileId.split('-');
-      console.log('File ID parts:', parts);
-      
-      if (parts.length >= 6) {
-        // Find the UUID part (8-4-4-4-12 format)
-        let teamSlug = '';
-        let sessionId = '';
-        let timestamp = '';
-        let random = '';
-        
-        // Look for UUID pattern in the middle
-        for (let i = 0; i < parts.length - 2; i++) {
-          const potentialUuid = parts.slice(i, i + 5).join('-');
-          console.log(`Checking potential UUID at index ${i}:`, potentialUuid);
-          
-          if (potentialUuid.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
-            // Found UUID, reconstruct the parts
-            teamSlug = parts.slice(0, i).join('-');
-            sessionId = potentialUuid;
-            timestamp = parts[i + 5];
-            random = parts[i + 6];
-            
-            console.log('Successfully parsed file ID:', { teamSlug, sessionId, timestamp, random, fileId });
-            
-            // Try to find the file with this prefix
-            const prefix = `uploads/${teamSlug}/${sessionId}/${fileId}`;
-            console.log('Looking for file with prefix:', prefix);
-            
-            try {
-              const objects = await env.FILES_BUCKET.list({ prefix });
-              console.log('R2 objects found:', objects.objects.length);
-              if (objects.objects.length > 0) {
-                filePath = objects.objects[0].key;
-                console.log('Found file path:', filePath);
-              } else {
-                console.log('No R2 objects found with prefix:', prefix);
-              }
-            } catch (listError) {
-              console.warn('Failed to list R2 objects:', listError);
-            }
-            break;
-          }
-        }
-        
-        if (!filePath) {
-          console.log('Failed to parse UUID from file ID, trying alternative approach');
-          
-          // Alternative approach: try to find files by listing all objects and matching
-          try {
-            const allObjects = await env.FILES_BUCKET.list({ prefix: 'uploads/' });
-            console.log('Total R2 objects found:', allObjects.objects.length);
-            
-            // Look for any object that contains the fileId
-            const matchingObject = allObjects.objects.find(obj => obj.key.includes(fileId));
-            if (matchingObject) {
-              filePath = matchingObject.key;
-              console.log('Found file path by searching all objects:', filePath);
-            } else {
-              console.log('No matching object found for fileId:', fileId);
-            }
-          } catch (searchError) {
-            console.warn('Failed to search all R2 objects:', searchError);
-          }
-        }
-      } else {
-        console.log('File ID does not have enough parts for parsing:', parts.length);
-      }
-    }
-
-    if (!filePath) {
-      console.warn('Could not determine file path for analysis:', fileId);
-      // Return a structured error response instead of null
-      return {
-        summary: "Unable to locate the uploaded file for analysis. The file may have been moved or deleted.",
-        key_facts: ["File not found in storage system"],
-        entities: { people: [], orgs: [], dates: [] },
-        action_items: ["Please try uploading the file again", "Contact support if the issue persists"],
-        confidence: 0.0
-      };
-    }
-
-    // Get file from R2
-    console.log('Attempting to get file from R2:', filePath);
-    const fileObject = await env.FILES_BUCKET.get(filePath);
-    if (!fileObject) {
-      console.warn('File not found in R2 storage for analysis:', filePath);
-      // Return a structured error response instead of null
-      return {
-        summary: "The uploaded file could not be retrieved from storage for analysis.",
-        key_facts: ["File not accessible in storage system"],
-        entities: { people: [], orgs: [], dates: [] },
-        action_items: ["Please try uploading the file again", "Contact support if the issue persists"],
-        confidence: 0.0
-      };
-    }
-
-    console.log('R2 file object:', {
-      size: fileObject.size,
-      etag: fileObject.etag,
-      httpMetadata: fileObject.httpMetadata,
-      customMetadata: fileObject.customMetadata
-    });
-
-    // Get the file body as ArrayBuffer
-    const fileBuffer = await fileObject.arrayBuffer();
-    console.log('File buffer size:', fileBuffer.byteLength);
-    console.log('File buffer preview (first 100 bytes):', Array.from(new Uint8Array(fileBuffer.slice(0, 100))).map(b => b.toString(16).padStart(2, '0')).join(' '));
-
-    // Create a File object for the analyze endpoint
-    const file = new File([fileBuffer], fileRecord?.original_name || fileId, {
-      type: fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream'
-    });
-
-    // Call the analyze function directly
-    const { analyzeWithCloudflareAI } = await import('../routes/analyze.js');
-    
-    try {
-      console.log('Calling analyzeWithCloudflareAI with file:', {
-        name: file.name,
-        type: file.type,
-        size: file.size
-      });
-      
-      const analysis = await analyzeWithCloudflareAI(file, analysisQuestion, env);
-      console.log('Analysis completed successfully:', {
-        summary: analysis.summary?.substring(0, 100) + '...',
-        confidence: analysis.confidence,
-        keyFactsCount: analysis.key_facts?.length || 0
-      });
-      return analysis;
-    } catch (error) {
-      console.error('Analysis error:', error);
-      // Return a structured error response instead of null
-      return {
-        summary: "The file analysis failed due to a technical error. The AI service may be temporarily unavailable.",
-        key_facts: ["Analysis service error occurred"],
-        entities: { people: [], orgs: [], dates: [] },
-        action_items: ["Please try again in a few minutes", "Contact support if the issue persists"],
-        confidence: 0.0
-      };
-    }
-
-  } catch (error) {
-    console.error('File analysis error:', error);
-    // Return a structured error response instead of null
-    return {
-      summary: "An unexpected error occurred during file analysis. Please try again or contact support.",
-      key_facts: ["Unexpected analysis error"],
-      entities: { people: [], orgs: [], dates: [] },
-      action_items: ["Try uploading the file again", "Contact support if the issue persists"],
-      confidence: 0.0
-    };
-  }
-}
+import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.js';
+import { ValidationService } from '../services/ValidationService.js';
+import { TeamConfigService } from '../services/TeamConfigService.js';
+import { PaymentServiceFactory } from '../services/PaymentServiceFactory.js';
+import { createToolResponse, createValidationError, createSuccessResponse } from '../utils/responseUtils.js';
+import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
+import { PromptBuilder } from '../utils/promptBuilder.js';
 
 // Tool definitions with structured schemas
 export const collectContactInfo = {
@@ -254,7 +52,7 @@ export const createMatter = {
       matter_type: { 
         type: 'string', 
         description: 'Type of legal matter',
-        enum: ['Family Law', 'Employment Law', 'Personal Injury', 'Criminal Law', 'Civil Law', 'General Consultation']
+        enum: ['Family Law', 'Employment Law', 'Landlord/Tenant', 'Personal Injury', 'Business Law', 'Criminal Law', 'Civil Law', 'Contract Review', 'Property Law', 'Administrative Law', 'General Consultation']
       },
       description: { type: 'string', description: 'Brief description of the legal issue' },
       urgency: { 
@@ -331,94 +129,6 @@ export const analyzeDocument = {
   }
 };
 
-// Shared utility function for location context and prompt construction
-function buildLocationContext(cloudflareLocation?: CloudflareLocationInfo): { locationContext: string; locationPrompt: string } {
-  let locationContext = '';
-  let locationPrompt = '';
-  
-  if (cloudflareLocation && cloudflareLocation.isValid) {
-    locationContext = `\n**JURISDICTION VALIDATION:** We can validate your location against our service area.`;
-    locationPrompt = '"Can you please tell me your city and state?"';
-  } else {
-    locationPrompt = '"Can you please tell me your city and state?"';
-  }
-  
-  return { locationContext, locationPrompt };
-}
-
-// Helper function to get team configuration
-async function getTeamConfig(env: any, teamId: string) {
-  try {
-    const { TeamService } = await import('../services/TeamService.js');
-    const teamService = new TeamService(env);
-    console.log('Retrieving team for teamId:', teamId);
-    const team = await teamService.getTeam(teamId);
-    if (team) {
-      console.log('Retrieved team:', { id: team.id, slug: team.slug, name: team.name });
-      console.log('Team config:', JSON.stringify(team.config, null, 2));
-      return team;
-    } else {
-      console.log('No team found, returning default config');
-      return {
-        id: teamId,
-        slug: 'default',
-        name: 'Default Team',
-        config: {
-          requiresPayment: false,
-          consultationFee: 0,
-          paymentLink: null,
-          availableServices: [
-            'Family Law',
-            'Employment Law',
-            'Business Law',
-            'Intellectual Property',
-            'Personal Injury',
-            'Criminal Law',
-            'Civil Law',
-            'Tenant Rights Law',
-            'Probate and Estate Planning',
-            'Special Education and IEP Advocacy',
-            'Small Business and Nonprofits',
-            'Contract Review',
-            'General Consultation'
-          ]
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-    }
-  } catch (error) {
-    console.warn('Failed to get team config:', error);
-    return {
-      id: teamId,
-      slug: 'default',
-      name: 'Default Team',
-      config: {
-        requiresPayment: false,
-        consultationFee: 0,
-        paymentLink: null,
-        availableServices: [
-          'Family Law',
-          'Employment Law',
-          'Business Law',
-          'Intellectual Property',
-          'Personal Injury',
-          'Criminal Law',
-          'Civil Law',
-          'Tenant Rights Law',
-          'Probate and Estate Planning',
-          'Special Education and IEP Advocacy',
-          'Small Business and Nonprofits',
-          'Contract Review',
-          'General Consultation'
-        ]
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-  }
-}
-
 // Tool handlers mapping
 export const TOOL_HANDLERS = {
   collect_contact_info: handleCollectContactInfo,
@@ -427,59 +137,6 @@ export const TOOL_HANDLERS = {
   schedule_consultation: handleScheduleConsultation,
   analyze_document: handleAnalyzeDocument
 };
-
-// Simple validation functions
-const validateEmail = (email: string): boolean => {
-  if (!email) return false;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email.trim());
-};
-
-const validatePhone = (phone: string): { isValid: boolean; error?: string } => {
-  if (!phone || phone.trim() === '') {
-    return { isValid: false, error: 'Phone number is required' };
-  }
-  
-  try {
-    // Use libphonenumber-js for comprehensive phone validation
-    const phoneNumber = parsePhoneNumber(phone, 'US');
-    
-    if (!phoneNumber) {
-      return { isValid: false, error: 'Invalid phone number format' };
-    }
-    
-    if (!isValidPhoneNumber(phone, 'US')) {
-      return { isValid: false, error: 'Invalid phone number' };
-    }
-    
-    // Additional validation for US numbers
-    if (phoneNumber.country === 'US') {
-      const nationalNumber = phoneNumber.nationalNumber;
-      if (nationalNumber.length !== 10) {
-        return { isValid: false, error: 'US phone numbers must be 10 digits' };
-      }
-    }
-    
-    return { isValid: true };
-  } catch (error) {
-    return { isValid: false, error: 'Phone validation error' };
-  }
-};
-
-const validateName = (name: string): boolean => {
-  if (!name) return false;
-  const trimmedName = name.trim();
-  return trimmedName.length >= 2 && trimmedName.length <= 100;
-};
-
-const validateLocation = (location: string): boolean => {
-  if (!location) return false;
-  const locationInfo = validateLocationUtil(location);
-  return locationInfo.isValid;
-};
-
-
-
 
 // Unified legal intake agent that handles both streaming and non-streaming responses
 export async function runLegalIntakeAgentStream(
@@ -494,7 +151,7 @@ export async function runLegalIntakeAgentStream(
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
-    teamConfig = await getTeamConfig(env, teamId);
+    teamConfig = await TeamConfigService.getTeamConfig(env, teamId);
   }
 
   // Convert messages to the format expected by Cloudflare AI
@@ -503,88 +160,16 @@ export async function runLegalIntakeAgentStream(
     content: msg.content
   }));
 
-  // Use shared utility function for location context and prompt construction
-  const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
-
-  let systemPrompt = `You are a legal intake specialist. Collect client information step by step. Help with ALL legal matters - do not reject any cases.`;
-
-  // Add file information to system prompt if attachments are present
-  if (attachments && attachments.length > 0) {
-    console.log('📎 Adding file information to system prompt (streaming)');
-    console.log('Files to analyze:', attachments.map(f => ({ name: f.name, url: f.url })));
-    
-    systemPrompt += `\n\nThe user has uploaded files. You MUST analyze them FIRST using the analyze_document tool before proceeding with any other conversation:
-${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}`;
-  } else {
-    console.log('📎 No attachments found (streaming)');
-  }
-
-  // Check if this is an attorney referral from paralegal
+  // Build system prompt using the new PromptBuilder
   const conversationText = formattedMessages.map(msg => msg.content).join(' ').toLowerCase();
-  const isAttorneyReferral = conversationText.includes('would you like me to connect you with') && 
-                            (conversationText.includes('yes') || conversationText.includes('sure') || conversationText.includes('ok'));
+  const systemPrompt = PromptBuilder.buildSystemPrompt(cloudflareLocation, attachments, conversationText);
 
-  if (isAttorneyReferral) {
-    systemPrompt += `
-
-**ATTORNEY REFERRAL CONTEXT:**
-This user was referred by our AI Paralegal after requesting attorney help. Start with: "Perfect! I'll help you connect with one of our attorneys. To get started, I need to collect some basic information."
-
-Then proceed with the conversation flow below.`;
-  }
-
-  systemPrompt += `
-
-**CONVERSATION FLOW:**
-${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files using analyze_document tool, then proceed with intake.` : ''}
-1. If user asks about pricing/costs/fees/money/charges (but NOT scheduling): "I understand you're concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case. Let me collect your information first so I can provide you with accurate pricing details. Can you please provide your full name?"
-2. If user wants to schedule/book/appointment/meet with lawyer (scheduling intent): "I'd be happy to help you schedule a consultation! To get started, I need to collect some basic information. Can you please provide your full name?"
-3. If no name: "Can you please provide your full name?"
-4. If name but no location: ${locationPrompt}
-5. If name and location but no phone: "Thank you [name]! Now I need your phone number."
-6. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-7. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?" If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
-
-**INTENT DETECTION:**
-- SCHEDULING INTENT: Look for words like "schedule", "book", "appointment", "meet", "consultation" (when used with scheduling context), "when can", "available", "time"
-- PRICING INTENT: Look for words like "cost", "fee", "price", "charge", "money", "how much", "costs", "expensive", "cheap", "affordable"
-- If user says "schedule a consultation" or "book consultation" - this is SCHEDULING, not pricing
-- If user says "how much does consultation cost" or "consultation fees" - this is PRICING
-
-**PRICING QUESTIONS:**
-- If user asks about pricing, costs, fees, or financial concerns, ALWAYS respond with pricing information and then ask for their name
-- Do NOT ignore pricing questions or give empty responses
-- Always acknowledge the pricing concern and provide basic information before proceeding with intake
-
-CRITICAL: 
-- Do NOT call collect_contact_info tool unless the user has actually provided contact information
-- Only call create_matter tool when you have ALL required information (name, phone, email, location, matter description)
-- If information is missing, ask for it directly in your response - don't call tools
-
-**EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
-- Look through ALL previous messages for legal issues mentioned
-- Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
-- If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
-- DO NOT ask again if they already explained their legal situation
-${MATTER_TYPE_CLASSIFICATION}
-- If user mentions multiple legal issues, ask them to specify which one to focus on first
-
-**Available Tools:**
-- create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
-- analyze_document: Use when files are uploaded
-
-**Example Tool Calls:**
-TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking divorce assistance", "urgency": "medium", "name": "John Doe", "phone": "704-555-0123", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
-
-TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Personal Injury", "description": "Car accident personal injury case", "urgency": "unknown", "name": "Jane Smith", "phone": "919-555-0123", "email": "jane.smith@example.com", "location": "Raleigh, NC", "opposing_party": "None"}
-
-TOOL_CALL: analyze_document
-PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
-
-**IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**`;
-
+  // Hoist tool parsing variables to function scope
+  let toolCallMatch: RegExpMatchArray | null = null;
+  let parametersMatch: RegExpMatchArray | null = null;
+  let toolName: string | null = null;
+  let parameters: any = null;
+  
   try {
     console.log('🔄 Starting agent...');
     
@@ -624,13 +209,12 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
       }
       
       // Parse tool call
-      const toolCallMatch = response.match(/TOOL_CALL:\s*([\w_]+)/);
+      toolCallMatch = response.match(/TOOL_CALL:\s*([\w_]+)/);
       // Use a more robust approach for JSON extraction
-      const parametersMatch = response.match(/PARAMETERS:\s*(\{[^]*?\}(?:\n|$))/);
+      parametersMatch = response.match(/PARAMETERS:\s*(\{[^]*?\}(?:\n|$))/);
       
       if (toolCallMatch && parametersMatch) {
-        const toolName = toolCallMatch[1].toLowerCase();
-        let parameters;
+        toolName = toolCallMatch[1].toLowerCase();
         try {
           // Clean the JSON string before parsing
           const jsonStr = parametersMatch[1].trim();
@@ -653,102 +237,102 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
         }
       }
     }
-        
-        // Handle streaming case
-        if (controller) {
-          const toolEvent = `data: ${JSON.stringify({
-            type: 'tool_call',
-            toolName: toolName,
-            parameters: parameters
-          })}\n\n`;
-          controller.enqueue(new TextEncoder().encode(toolEvent));
-        }
-        
-        // Execute the tool handler
-        let toolResult;
-        switch (toolName) {
-          case 'create_matter':
-            toolResult = await handleCreateMatter(parameters, env, teamConfig);
-            break;
-          case 'collect_contact_info':
-            toolResult = await handleCollectContactInfo(parameters, env, teamConfig);
-            break;
-          case 'request_lawyer_review':
-            toolResult = await handleRequestLawyerReview(parameters, env, teamId);
-            break;
-          case 'schedule_consultation':
-            toolResult = await handleScheduleConsultation(parameters, env, teamConfig);
-            break;
-          case 'analyze_document':
-            toolResult = await handleAnalyzeDocument(parameters, env, teamConfig);
-            break;
-          default:
-            console.warn(`❌ Unknown tool: ${toolName}`);
-            if (controller) {
-              const errorEvent = `data: ${JSON.stringify({
-                type: 'error',
-                message: `Unknown tool: ${toolName}`
-              })}\n\n`;
-              controller.enqueue(new TextEncoder().encode(errorEvent));
-            }
-            return {
-              response: `I encountered an error: Unknown tool ${toolName}`,
-              metadata: { error: `Unknown tool: ${toolName}` }
-            };
-        }
-        
-        // Handle streaming case
-        if (controller) {
-          const resultEvent = `data: ${JSON.stringify({
-            type: 'tool_result',
-            toolName: toolName,
-            result: toolResult
-          })}\n\n`;
-          controller.enqueue(new TextEncoder().encode(resultEvent));
-        }
-        
-        // If tool was successful and created a matter, trigger lawyer approval
-        // If tool was successful and created a matter, trigger lawyer approval
-        if (toolResult.success && toolName === 'create_matter') {
-          const lastMessage = formattedMessages[formattedMessages.length - 1];
-          if (!lastMessage || !lastMessage.content) {
-            console.warn('No last message found for lawyer approval');
-          }
-
-          await handleLawyerApproval(env, {
-            matter_type: parameters.matter_type,
-            urgency: parameters.urgency,
-            client_message: lastMessage?.content || '',
-            client_name: parameters.name,
-            client_phone: parameters.phone,
-            client_email: parameters.email,
-            opposing_party: parameters.opposing_party || '',
-            matter_details: parameters.description,
-            submitted: true,
-            requires_payment: toolResult.data?.requires_payment || false,
-            consultation_fee: toolResult.data?.consultation_fee || 0,
-            payment_link: toolResult.data?.payment_link || null
-          }, teamId);
-        }
-        
-        // Return tool result for non-streaming case
-        if (!controller) {
-          return {
-            response: toolResult.message || toolResult.response || 'Tool executed successfully.',
-            metadata: {
-              toolName,
-              toolResult,
-              inputMessageCount: formattedMessages.length,
-              lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
-              sessionId,
-              teamId
-            }
-          };
-        }
-        
-        // Return after tool execution for streaming case
-        return;
+    
+    // Check if we have valid tool call data
+    if (toolCallMatch && parametersMatch && toolName && parameters) {
+      // Handle streaming case
+      if (controller) {
+        const toolEvent = `data: ${JSON.stringify({
+          type: 'tool_call',
+          toolName: toolName,
+          parameters: parameters
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(toolEvent));
       }
+      
+      // Execute the tool handler
+      let toolResult;
+      switch (toolName) {
+        case 'create_matter':
+          toolResult = await handleCreateMatter(parameters, env, teamConfig);
+          break;
+        case 'collect_contact_info':
+          toolResult = await handleCollectContactInfo(parameters, env, teamConfig);
+          break;
+        case 'request_lawyer_review':
+          toolResult = await handleRequestLawyerReview(parameters, env, teamId);
+          break;
+        case 'schedule_consultation':
+          toolResult = await handleScheduleConsultation(parameters, env, teamConfig);
+          break;
+        case 'analyze_document':
+          toolResult = await handleAnalyzeDocument(parameters, env, teamConfig);
+          break;
+        default:
+          console.warn(`❌ Unknown tool: ${toolName}`);
+          if (controller) {
+            const errorEvent = `data: ${JSON.stringify({
+              type: 'error',
+              message: `Unknown tool: ${toolName}`
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+          }
+          return {
+            response: `I encountered an error: Unknown tool ${toolName}`,
+            metadata: { error: `Unknown tool: ${toolName}` }
+          };
+      }
+      
+      // Handle streaming case
+      if (controller) {
+        const resultEvent = `data: ${JSON.stringify({
+          type: 'tool_result',
+          toolName: toolName,
+          result: toolResult
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(resultEvent));
+      }
+      
+      // If tool was successful and created a matter, trigger lawyer approval
+      if (toolResult.success && toolName === 'create_matter') {
+        const lastMessage = formattedMessages[formattedMessages.length - 1];
+        if (!lastMessage || !lastMessage.content) {
+          console.warn('No last message found for lawyer approval');
+        }
+
+        await handleLawyerApproval(env, {
+          matter_type: parameters.matter_type,
+          urgency: parameters.urgency,
+          client_message: lastMessage?.content || '',
+          client_name: parameters.name,
+          client_phone: parameters.phone,
+          client_email: parameters.email,
+          opposing_party: parameters.opposing_party || '',
+          matter_details: parameters.description,
+          submitted: true,
+          requires_payment: toolResult.data?.requires_payment || false,
+          consultation_fee: toolResult.data?.consultation_fee || 0,
+          payment_link: toolResult.data?.payment_link || null
+        }, teamId);
+      }
+      
+      // Return tool result for non-streaming case
+      if (!controller) {
+        return {
+          response: toolResult.message || toolResult.response || 'Tool executed successfully.',
+          metadata: {
+            toolName,
+            toolResult,
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+            sessionId,
+            teamId
+          }
+        };
+      }
+      
+      // Return after tool execution for streaming case
+      return;
     }
     
     // If no tool call detected, handle the regular response
@@ -788,34 +372,33 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
       };
     }
   } catch (error) {
-   } catch (error) {
-     console.error('Agent error:', error);
-     const errorMessage = error.message || 'An error occurred while processing your request';
+    console.error('Agent error:', error);
+    const errorMessage = error.message || 'An error occurred while processing your request';
 
-     if (controller) {
-       const errorEvent = `data: ${JSON.stringify({
-         type: 'error',
-         message: errorMessage
-       })}\n\n`;
-       controller.enqueue(new TextEncoder().encode(errorEvent));
-       try {
-         controller.close();
-       } catch (closeError) {
-         console.error('Error closing controller:', closeError);
-       }
-     } else {
-       return {
-         response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
-         metadata: {
-           error: error.message,
-           inputMessageCount: formattedMessages.length,
-           lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
-           sessionId,
-           teamId
-         }
-       };
-     }
-   }
+    if (controller) {
+      const errorEvent = `data: ${JSON.stringify({
+        type: 'error',
+        message: errorMessage
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(errorEvent));
+      try {
+        controller.close();
+      } catch (closeError) {
+        console.error('Error closing controller:', closeError);
+      }
+    } else {
+      return {
+        response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
+        metadata: {
+          error: error.message,
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+          sessionId,
+          teamId
+        }
+      };
+    }
+  }
 }
 
 // Helper function to handle lawyer approval
@@ -851,97 +434,70 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
 export async function handleCollectContactInfo(parameters: any, env: any, teamConfig: any) {
   const { name, phone, email, location } = parameters;
   
-  // Prevent placeholder values from being used
-  if (phone && (phone.includes('[user_phone]') || phone.includes('[USER_PHONE]') || phone.trim() === '' || phone === 'None' || phone === 'null')) {
-    return {
-      success: false,
-      message: "I need your actual phone number to proceed. Could you please provide your phone number?"
-    };
-  }
-  
-  if (email && (email.includes('[user_email]') || email.includes('[USER_EMAIL]') || email.trim() === '' || email === 'None' || email === 'null')) {
-    return {
-      success: false,
-      message: "I need your actual email address to proceed. Could you please provide your email address?"
-    };
+  // Check for placeholder values
+  if (ValidationService.hasPlaceholderValues(phone, email)) {
+    return createValidationError("I need your actual contact information to proceed. Could you please provide your real phone number and email address?");
   }
   
   // Validate name if provided
-  if (name && !validateName(name)) {
-    return { 
-      success: false, 
-      message: "I need your full name to proceed. Could you please provide your complete name?" 
-    };
+  if (name && !ValidationService.validateName(name)) {
+    return createValidationError("I need your full name to proceed. Could you please provide your complete name?");
   }
   
   // Validate email if provided
-  if (email && !validateEmail(email)) {
-    return { 
-      success: false, 
-      message: "The email address you provided doesn't appear to be valid. Could you please provide a valid email address?" 
-    };
+  if (email && !ValidationService.validateEmail(email)) {
+    return createValidationError("The email address you provided doesn't appear to be valid. Could you please provide a valid email address?");
   }
   
   // Validate phone if provided
   if (phone && phone.trim() !== '') {
-    const phoneValidation = validatePhone(phone);
+    const phoneValidation = ValidationService.validatePhone(phone);
     if (!phoneValidation.isValid) {
-      return { 
-        success: false, 
-        message: `The phone number you provided doesn't appear to be valid: ${phoneValidation.error}. Could you please provide a valid phone number?` 
-      };
+      return createValidationError(`The phone number you provided doesn't appear to be valid: ${phoneValidation.error}. Could you please provide a valid phone number?`);
     }
   }
   
   // Validate location if provided
-  if (location && !validateLocation(location)) {
-    return { 
-      success: false, 
-      message: "Could you please provide your city and state or country?" 
-    };
+  if (location && !ValidationService.validateLocation(location)) {
+    return createValidationError("Could you please provide your city and state or country?");
   }
   
   // First, verify jurisdiction if location is provided
   if (location) {
     const jurisdiction = teamConfig?.config?.jurisdiction;
     if (jurisdiction && jurisdiction.type) {
-      // Use the new location validator
       const supportedStates = Array.isArray(jurisdiction.supportedStates) ? jurisdiction.supportedStates : [];
       const supportedCountries = Array.isArray(jurisdiction.supportedCountries) ? jurisdiction.supportedCountries : [];
       
       const isSupported = isLocationSupported(location, supportedStates, supportedCountries);
       
       if (!isSupported) {
-        return {
-          success: false,
-          message: `I understand you're located in ${location}. While we primarily serve ${jurisdiction.description || 'our service area'}, I can still help you with general legal guidance and information. For specific legal representation in your area, I'd recommend contacting a local attorney. However, I'm happy to continue helping you with your legal questions and can assist with general consultation.`
-        };
+        return createValidationError(`I understand you're located in ${location}. While we primarily serve ${jurisdiction.description || 'our service area'}, I can still help you with general legal guidance and information. For specific legal representation in your area, I'd recommend contacting a local attorney. However, I'm happy to continue helping you with your legal questions and can assist with general consultation.`);
       }
     }
   }
   
   if (!name) {
-    return { success: false, message: "I need your name to proceed. Could you please provide your full name?" };
+    return createValidationError("I need your name to proceed. Could you please provide your full name?");
   }
   
   // Check if we have both phone and email
   if (!phone && !email) {
-    return { success: false, message: "I have your name, but I need both your phone number and email address to contact you. Could you provide both?" };
+    return createValidationError("I have your name, but I need both your phone number and email address to contact you. Could you provide both?");
   }
   
   if (!phone) {
-    return { success: false, message: `Thank you ${name}! I have your email address. Could you also provide your phone number?` };
+    return createValidationError(`Thank you ${name}! I have your email address. Could you also provide your phone number?`);
   }
   
   if (!email) {
-    return { success: false, message: `Thank you ${name}! I have your phone number. Could you also provide your email address?` };
+    return createValidationError(`Thank you ${name}! I have your phone number. Could you also provide your email address?`);
   }
   
-  return { 
-    success: true, 
-    message: `Thank you ${name}! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?`,
-    data: { name, phone, email, location }
-  };
+  return createSuccessResponse(
+    `Thank you ${name}! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?`,
+    { name, phone, email, location }
+  );
 }
 
 export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
@@ -949,152 +505,87 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   console.log('[handleCreateMatter] teamConfig:', JSON.stringify(teamConfig, null, 2));
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
-  // Prevent placeholder values from being used
-  if (phone && (phone.includes('[user_phone]') || phone.includes('[USER_PHONE]') || phone.trim() === '' || phone === 'None' || phone === 'null')) {
-    return {
-      success: false,
-      message: "I need your actual phone number to proceed. Could you please provide your phone number?"
-    };
-  }
-  
-  if (email && (email.includes('[user_email]') || email.includes('[USER_EMAIL]') || email.trim() === '' || email === 'None' || email === 'null')) {
-    return {
-      success: false,
-      message: "I need your actual email address to proceed. Could you please provide your email address?"
-    };
+  // Check for placeholder values
+  if (ValidationService.hasPlaceholderValues(phone, email)) {
+    return createValidationError("I need your actual contact information to proceed. Could you please provide your real phone number and email address?");
   }
   
   // Validate required fields
   if (!matter_type || !description || !name) {
-    return { 
-      success: false, 
-      message: "I'm missing some essential information. Could you please provide your name, contact information, and describe your legal issue?" 
-    };
+    return createValidationError("I'm missing some essential information. Could you please provide your name, contact information, and describe your legal issue?");
   }
   
-  // Validate matter type - prevent "Unknown" from being used
-  if (matter_type === 'Unknown' || matter_type === 'unknown') {
-    return {
-      success: false,
-      message: "I need to understand your legal situation better. Could you please describe what type of legal help you need? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or general consultation."
-    };
+  // Validate matter type
+  if (!ValidationService.validateMatterType(matter_type)) {
+    return createValidationError("I need to understand your legal situation better. Could you please describe what type of legal help you need? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or general consultation.");
   }
   
   // Set default urgency if not provided
   const finalUrgency = urgency || 'unknown';
   
   // Validate name format
-  if (!validateName(name)) {
-    return { 
-      success: false, 
-      message: "I need your full name to proceed. Could you please provide your complete name?" 
-    };
+  if (!ValidationService.validateName(name)) {
+    return createValidationError("I need your full name to proceed. Could you please provide your complete name?");
   }
   
   // Validate email if provided
-  if (email && !validateEmail(email)) {
-    return { 
-      success: false, 
-      message: "The email address you provided doesn't appear to be valid. Could you please provide a valid email address?" 
-    };
+  if (email && !ValidationService.validateEmail(email)) {
+    return createValidationError("The email address you provided doesn't appear to be valid. Could you please provide a valid email address?");
   }
   
   // Validate phone if provided
   if (phone && phone.trim() !== '') {
-    const phoneValidation = validatePhone(phone);
+    const phoneValidation = ValidationService.validatePhone(phone);
     if (!phoneValidation.isValid) {
-      return { 
-        success: false, 
-        message: `The phone number you provided doesn't appear to be valid: ${phoneValidation.error}. Could you please provide a valid phone number?` 
-      };
+      return createValidationError(`The phone number you provided doesn't appear to be valid: ${phoneValidation.error}. Could you please provide a valid phone number?`);
     }
   }
   
   // Validate location if provided
-  if (location && !validateLocation(location)) {
-    return { 
-      success: false, 
-      message: "Could you please provide your city and state or country?" 
-    };
+  if (location && !ValidationService.validateLocation(location)) {
+    return createValidationError("Could you please provide your city and state or country?");
   }
   
   if (!phone && !email) {
-    return {
-      success: false,
-      message: "I need both your phone number and email address to proceed. Could you provide both contact methods?"
-    };
+    return createValidationError("I need both your phone number and email address to proceed. Could you provide both contact methods?");
   }
   
-  // Check if payment is required
+  // Process payment using the PaymentServiceFactory
+  const paymentRequest = {
+    customerInfo: {
+      name: name,
+      email: email || '',
+      phone: phone || '',
+      location: location || ''
+    },
+    matterInfo: {
+      type: matter_type,
+      description: description,
+      urgency: finalUrgency,
+      opposingParty: opposing_party || ''
+    },
+    teamId: (() => {
+      if (teamConfig?.id) {
+        return teamConfig.id;
+      }
+      if (env.BLAWBY_TEAM_ULID) {
+        console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
+        return env.BLAWBY_TEAM_ULID;
+      }
+      console.error('❌ CRITICAL: No team ID available for payment processing');
+      console.error('   - teamConfig?.id:', teamConfig?.id);
+      console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
+      console.error('   - Team configuration should be set in database for team:', teamConfig?.slug || 'unknown');
+      throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
+    })(),
+    sessionId: 'session-' + Date.now()
+  };
+  
+  const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(env, paymentRequest, teamConfig);
+  
+  // Build summary message
   const requiresPayment = teamConfig?.config?.requiresPayment || false;
   const consultationFee = teamConfig?.config?.consultationFee || 0;
-  const paymentLink = teamConfig?.config?.paymentLink || null;
-  
-  // If payment is required, create invoice via payment service
-  let invoiceUrl = null;
-  let paymentId = null;
-  
-  if (requiresPayment && consultationFee > 0) {
-    try {
-      // Use real service when we have API token, otherwise use mock
-      const hasApiToken = env.BLAWBY_API_TOKEN && env.BLAWBY_API_TOKEN !== 'your_resend_api_key_here';
-      const { PaymentService } = await import('../services/PaymentService.js');
-      const { MockPaymentService } = await import('../services/MockPaymentService.js');
-      const paymentService = hasApiToken ? new PaymentService(env) : new MockPaymentService(env);
-      
-      const paymentRequest = {
-        customerInfo: {
-          name: name,
-          email: email || '',
-          phone: phone || '',
-          location: location || ''
-        },
-        matterInfo: {
-          type: matter_type,
-          description: description,
-          urgency: finalUrgency,
-          opposingParty: opposing_party || ''
-        },
-        teamId: (() => {
-          if (teamConfig?.id) {
-            return teamConfig.id;
-          }
-          if (env.BLAWBY_TEAM_ULID) {
-            console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
-            return env.BLAWBY_TEAM_ULID;
-          }
-          console.error('❌ CRITICAL: No team ID available for payment processing');
-          console.error('   - teamConfig?.id:', teamConfig?.id);
-          console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
-          console.error('   - Team configuration should be set in database for team:', teamConfig?.slug || 'unknown');
-          throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
-        })(),
-        sessionId: 'session-' + Date.now()
-      };
-      
-      const paymentResult = await paymentService.createInvoice(paymentRequest);
-      
-      if (paymentResult.success) {
-        invoiceUrl = paymentResult.invoiceUrl;
-        paymentId = paymentResult.paymentId;
-        console.log('✅ Invoice created successfully:', { invoiceUrl, paymentId });
-      } else {
-        console.error('❌ Failed to create invoice:', paymentResult.error);
-        console.error('   Payment service returned error - falling back to team payment link');
-        console.error('   Team payment link:', paymentLink);
-        // Fallback to team payment link
-        invoiceUrl = paymentLink;
-        console.log('✅ Using team payment link as fallback:', invoiceUrl);
-      }
-    } catch (error) {
-      console.error('❌ Payment service error:', error);
-      console.error('   Payment service threw exception - falling back to team payment link');
-      console.error('   Team payment link:', paymentLink);
-      // Fallback to team payment link
-      invoiceUrl = paymentLink;
-      console.log('✅ Using team payment link as fallback:', invoiceUrl);
-    }
-  }
   
   let summaryMessage = `Perfect! I have all the information I need. Here's a summary of your matter:
 
@@ -1131,7 +622,7 @@ Please complete the payment to secure your consultation. If you have any questio
 Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
 
 **Next Steps:**
-1. Please complete the payment using this link: ${paymentLink || 'Payment link will be sent shortly'}
+1. Please complete the payment using this link: ${teamConfig?.config?.paymentLink || 'Payment link will be sent shortly'}
 2. Once payment is confirmed, a lawyer will contact you within 24 hours
 
 Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
@@ -1142,29 +633,26 @@ Please complete the payment to secure your consultation. If you have any questio
 I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to schedule a consultation.`;
   }
   
-  const result = {
-    success: true,
-    message: summaryMessage,
-    data: {
-      matter_type,
-      description,
-      urgency: finalUrgency,
-      name,
-      phone,
-      email,
-      location,
-      opposing_party,
-      requires_payment: requiresPayment,
-      consultation_fee: consultationFee,
-      payment_link: invoiceUrl || paymentLink,
-      payment_embed: invoiceUrl ? {
-        paymentUrl: invoiceUrl,
-        amount: consultationFee,
-        description: `${matter_type}: ${description}`,
-        paymentId: paymentId
-      } : null
-    }
-  };
+  const result = createSuccessResponse(summaryMessage, {
+    matter_type,
+    description,
+    urgency: finalUrgency,
+    name,
+    phone,
+    email,
+    location,
+    opposing_party,
+    requires_payment: requiresPayment,
+    consultation_fee: consultationFee,
+    payment_link: invoiceUrl || teamConfig?.config?.paymentLink,
+    payment_embed: invoiceUrl ? {
+      paymentUrl: invoiceUrl,
+      amount: consultationFee,
+      description: `${matter_type}: ${description}`,
+      paymentId: paymentId
+    } : null
+  });
+  
   console.log('[handleCreateMatter] result:', JSON.stringify(result, null, 2));
   return result;
 }
@@ -1195,19 +683,13 @@ Please review this matter as soon as possible.`
     console.log('Email service not configured - skipping email notification');
   }
   
-  return {
-    success: true,
-    message: "I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further."
-  };
+  return createSuccessResponse("I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further.");
 }
 
 export async function handleScheduleConsultation(parameters: any, env: any, teamConfig: any) {
   const { preferred_date, preferred_time, matter_type } = parameters;
   
-  return {
-    success: true,
-    message: `I'd like to schedule a consultation with one of our experienced attorneys for your ${matter_type} matter. Would you be available to meet with us this week?`
-  };
+  return createSuccessResponse(`I'd like to schedule a consultation with one of our experienced attorneys for your ${matter_type} matter. Would you be available to meet with us this week?`);
 }
 
 export async function handleAnalyzeDocument(parameters: any, env: any, teamConfig: any) {
@@ -1218,50 +700,19 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   console.log('Analysis Type:', analysis_type);
   console.log('Specific Question:', specific_question);
   
-  // Determine the appropriate question based on analysis type for legal intake
-  let customQuestion = specific_question;
-  
-  if (!customQuestion) {
-    switch (analysis_type) {
-      case 'legal_document':
-        customQuestion = "Analyze this legal document and identify: 1) Document type/form name (e.g., 'IRS Form 501(c)(3) application', 'Employment contract', 'Lease agreement'), 2) Key parties involved, 3) Important dates and deadlines, 4) Critical terms or obligations, 5) Potential legal issues or concerns, 6) Required next steps. Focus on information needed for legal intake and matter creation.";
-        break;
-      case 'contract':
-        customQuestion = "Analyze this contract and identify: 1) Contract type (employment, lease, service agreement, etc.), 2) Parties involved, 3) Key terms and obligations, 4) Important dates and deadlines, 5) Potential issues or unfair terms, 6) Termination clauses, 7) Dispute resolution methods. Focus on legal implications and potential concerns.";
-        break;
-      case 'government_form':
-        customQuestion = "Analyze this government form and identify: 1) Form name and number, 2) Purpose of the form, 3) Filing deadlines, 4) Required information or documentation, 5) Potential legal implications, 6) Next steps or actions required. Focus on compliance and legal requirements.";
-        break;
-      case 'medical_document':
-        customQuestion = "Analyze this medical document and identify: 1) Document type (medical bill, diagnosis, treatment plan, etc.), 2) Medical condition or injury, 3) Treatment received, 4) Dates of service, 5) Costs or insurance information, 6) Potential legal implications (personal injury, medical malpractice, insurance disputes). Focus on legal relevance.";
-        break;
-      case 'image':
-        customQuestion = "Analyze this image and identify: 1) What the image shows (accident scene, injury, property damage, document, etc.), 2) Key details relevant to legal matters, 3) Potential legal implications, 4) Type of legal case this might support (personal injury, property damage, evidence, etc.), 5) Additional documentation that might be needed.";
-        break;
-      case 'resume':
-        customQuestion = "Analyze this resume and identify: 1) Professional background and experience, 2) Skills and qualifications, 3) Employment history, 4) Education and certifications, 5) Potential legal matters this person might need help with (employment disputes, contract negotiations, business formation, etc.). Focus on legal service needs.";
-        break;
-      default:
-        customQuestion = "Analyze this document and identify: 1) Document type and purpose, 2) Key parties and dates, 3) Important terms or requirements, 4) Potential legal implications, 5) Required actions or next steps. Focus on information needed for legal intake and matter creation.";
-    }
-  }
+  // Get the appropriate analysis question
+  const customQuestion = getAnalysisQuestion(analysis_type, specific_question);
   
   // Perform the analysis
   const fileAnalysis = await analyzeFile(env, file_id, customQuestion);
   
   if (!fileAnalysis) {
-    return {
-      success: false,
-      message: "I'm sorry, I couldn't analyze that document. The file may not be accessible or may not be in a supported format. Could you please try uploading it again or provide more details about what you'd like me to help you with?"
-    };
+    return createValidationError("I'm sorry, I couldn't analyze that document. The file may not be accessible or may not be in a supported format. Could you please try uploading it again or provide more details about what you'd like me to help you with?");
   }
   
   // Check if the analysis returned an error response (low confidence indicates error)
   if (fileAnalysis.confidence === 0.0) {
-    return {
-      success: false,
-      message: fileAnalysis.summary || "I'm sorry, I couldn't analyze that document. Please try uploading it again or contact support if the issue persists."
-    };
+    return createValidationError(fileAnalysis.summary || "I'm sorry, I couldn't analyze that document. Please try uploading it again or contact support if the issue persists.");
   }
   
   // Add document type to analysis
@@ -1348,16 +799,12 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   console.log('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
   console.log('==============================');
   
-  return {
-    success: true,
-    message: response,
-    analysis: {
-      ...fileAnalysis,
-      suggestedMatterType,
-      parties,
-      organizations,
-      dates,
-      keyFacts
-    }
-  };
+  return createSuccessResponse(response, {
+    ...fileAnalysis,
+    suggestedMatterType,
+    parties,
+    organizations,
+    dates,
+    keyFacts
+  });
 }
