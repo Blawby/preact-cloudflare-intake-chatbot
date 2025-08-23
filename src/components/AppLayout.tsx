@@ -71,7 +71,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   };
 
   return (
-    <div className="h-screen md:h-screen w-screen flex">
+    <div className="max-md:h-[100dvh] md:h-screen w-full flex">
       {/* Left Sidebar - Fixed width, hidden on mobile */}
       {features.enableLeftSidebar && (
         <div className="w-20 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
