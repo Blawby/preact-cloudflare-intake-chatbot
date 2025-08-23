@@ -19,10 +19,24 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Helper function to update AI message with aiState
+  const updateAIMessage = useCallback((messageId: string, updates: Partial<ChatMessageUI & { isUser: false }>) => {
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
+    ));
+  }, []);
+
+  // Helper function to update any message (for user messages, aiState will be ignored)
+  const updateMessageHelper = useCallback((messageId: string, updates: Partial<ChatMessageUI>) => {
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId ? { ...msg, ...updates } as ChatMessageUI : msg
+    ));
+  }, []);
+
   // Create message history from existing messages
   const createMessageHistory = useCallback((messages: ChatMessageUI[], currentMessage?: string): ChatMessageHistoryEntry[] => {
     const history = messages.map(msg => ({
-      role: msg.isUser ? 'user' : 'assistant' as const,
+      role: (msg.isUser ? 'user' : 'assistant') as 'user' | 'assistant',
       content: msg.content
     }));
     
@@ -110,50 +124,38 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                 switch (data.type) {
                   case 'connected':
                     // Connection established, start showing thinking indicator
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === placeholderId ? { 
-                        ...msg, 
-                        content: '',
-                        isLoading: true,
-                        aiState: 'thinking'
-                      } : msg
-                    ));
+                    updateAIMessage(placeholderId, { 
+                      content: '',
+                      isLoading: true,
+                      aiState: 'thinking'
+                    });
                     break;
                     
                   case 'text':
                     // Add text chunk to current content
                     currentContent += data.text;
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === placeholderId ? { 
-                        ...msg, 
-                        content: currentContent,
-                        isLoading: true,
-                        aiState: 'generating'
-                      } : msg
-                    ));
+                    updateAIMessage(placeholderId, { 
+                      content: currentContent,
+                      isLoading: true,
+                      aiState: 'generating'
+                    });
                     break;
                     
                   case 'typing':
                     // Show typing indicator during tool calls
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === placeholderId ? { 
-                        ...msg, 
-                        content: currentContent + '...',
-                        isLoading: true 
-                      } : msg
-                    ));
+                    updateAIMessage(placeholderId, { 
+                      content: currentContent + '...',
+                      isLoading: true 
+                    });
                     break;
                     
                   case 'tool_call':
                     // Tool call detected, show processing message
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === placeholderId ? { 
-                        ...msg, 
-                        content: currentContent,
-                        isLoading: true,
-                        aiState: 'processing'
-                      } : msg
-                    ));
+                    updateAIMessage(placeholderId, { 
+                      content: currentContent,
+                      isLoading: true,
+                      aiState: 'processing'
+                    });
                     break;
                     
                   case 'tool_result':
@@ -168,58 +170,43 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                         console.log('Payment embed data received via streaming');
                       }
                       
-                      setMessages(prev => prev.map(msg => 
-                        msg.id === placeholderId ? { 
-                          ...msg, 
-                          content: currentContent,
-                          paymentEmbed: paymentEmbed || undefined,
-                          isLoading: false 
-                        } : msg
-                      ));
+                      updateAIMessage(placeholderId, { 
+                        content: currentContent,
+                        paymentEmbed: paymentEmbed || undefined,
+                        isLoading: false 
+                      });
                     }
                     break;
                     
                   case 'final':
                     // Final response received
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === placeholderId ? { 
-                        ...msg, 
-                        content: data.response || currentContent,
-                        isLoading: false 
-                      } : msg
-                    ));
+                    updateAIMessage(placeholderId, { 
+                      content: data.response || currentContent,
+                      isLoading: false 
+                    });
                     break;
                     
                   case 'error':
                     // Error occurred
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === placeholderId ? { 
-                        ...msg, 
-                        content: data.message || 'An error occurred while processing your request.',
-                        isLoading: false 
-                      } : msg
-                    ));
+                    updateAIMessage(placeholderId, { 
+                      content: data.message || 'An error occurred while processing your request.',
+                      isLoading: false 
+                    });
                     break;
                     
                   case 'security_block':
                     // Security block
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === placeholderId ? { 
-                        ...msg, 
-                        content: data.response || 'This request was blocked for security reasons.',
-                        isLoading: false 
-                      } : msg
-                    ));
+                    updateAIMessage(placeholderId, { 
+                      content: data.response || 'This request was blocked for security reasons.',
+                      isLoading: false 
+                    });
                     break;
                     
                   case 'complete':
                     // Stream completed
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === placeholderId ? { 
-                        ...msg, 
-                        isLoading: false 
-                      } : msg
-                    ));
+                    updateAIMessage(placeholderId, { 
+                      isLoading: false 
+                    });
                     break;
                 }
               } catch (parseError) {
@@ -235,7 +222,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       console.error('Streaming error:', error);
       throw error;
     }
-  }, [teamId, sessionId]);
+  }, [teamId, sessionId, updateAIMessage]);
 
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
@@ -280,17 +267,14 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       console.error('Error sending message:', error);
       
       // Update placeholder with error message using the existing placeholderId
-      setMessages(prev => prev.map(msg => 
-        msg.id === placeholderId ? { 
-          ...msg, 
-          content: "I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact us directly if the issue persists.",
-          isLoading: false 
-        } : msg
-      ));
+      updateAIMessage(placeholderId, { 
+        content: "I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact us directly if the issue persists.",
+        isLoading: false 
+      });
       
       onError?.(error instanceof Error ? error.message : 'Unknown error occurred');
     }
-  }, [messages, teamId, sessionId, createMessageHistory, sendMessageWithStreaming, onError]);
+  }, [messages, teamId, sessionId, createMessageHistory, sendMessageWithStreaming, onError, updateAIMessage]);
 
   // Add message to the list
   const addMessage = useCallback((message: ChatMessageUI) => {
@@ -300,7 +284,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   // Update a specific message
   const updateMessage = useCallback((messageId: string, updates: Partial<ChatMessageUI>) => {
     setMessages(prev => prev.map(msg => 
-      msg.id === messageId ? { ...msg, ...updates } : msg
+      msg.id === messageId ? { ...msg, ...updates } as ChatMessageUI : msg
     ));
   }, []);
 

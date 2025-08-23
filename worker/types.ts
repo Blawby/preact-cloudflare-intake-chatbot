@@ -208,18 +208,38 @@ export interface PaymentEmbedData {
   paymentId?: string;
 }
 
+/**
+ * Represents the current state of AI processing for a chat message.
+ * Use this to determine loading states and provide appropriate UI feedback.
+ */
+export type AiState = 'thinking' | 'processing' | 'generating';
+
 // UI-specific ChatMessage interface that extends the base ChatMessage
-export interface ChatMessageUI extends ChatMessage {
-  isUser: boolean;
-  files?: FileAttachment[];
-  scheduling?: SchedulingData;
-  matterCreation?: MatterCreationData;
-  welcomeMessage?: WelcomeMessageData;
-  matterCanvas?: MatterCanvasData;
-  paymentEmbed?: PaymentEmbedData;
-  isLoading?: boolean;
-  aiState?: 'thinking' | 'processing' | 'generating';
-}
+export type ChatMessageUI = 
+  | (ChatMessage & {
+      isUser: true;
+      files?: FileAttachment[];
+      scheduling?: SchedulingData;
+      matterCreation?: MatterCreationData;
+      welcomeMessage?: WelcomeMessageData;
+      matterCanvas?: MatterCanvasData;
+      paymentEmbed?: PaymentEmbedData;
+      /** @deprecated Prefer deriving loading from aiState. */
+      isLoading?: boolean;
+      aiState?: never; // User messages cannot have aiState
+    })
+  | (ChatMessage & {
+      isUser: false;
+      files?: FileAttachment[];
+      scheduling?: SchedulingData;
+      matterCreation?: MatterCreationData;
+      welcomeMessage?: WelcomeMessageData;
+      matterCanvas?: MatterCanvasData;
+      paymentEmbed?: PaymentEmbedData;
+      /** @deprecated Prefer deriving loading from aiState. */
+      isLoading?: boolean;
+      aiState?: AiState; // AI messages can have aiState
+    });
 
 // Case brief interface for handoff between Paralegal and Intake agents
 export interface CaseBriefV1 {

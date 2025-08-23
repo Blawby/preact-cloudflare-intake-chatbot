@@ -149,7 +149,7 @@ const FilePreview: FunctionComponent<{ file: FileAttachment; onFileClick: (file:
 
 const ImagePreview: FunctionComponent<{ file: FileAttachment; onImageClick: (file: FileAttachment) => void }> = ({ file, onImageClick }) => {
 	return (
-		<div class="message-media-container my-2">
+		<div className="message-media-container my-2">
 			<LazyMedia
 				src={file.url}
 				type={file.type}
@@ -308,7 +308,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					/>
 				))}
 				{audioFiles.map((file, index) => (
-					<div class="my-2 rounded-xl overflow-hidden max-w-75 w-full">
+					<div className="my-2 rounded-xl overflow-hidden max-w-75 w-full">
 						<LazyMedia
 							src={file.url}
 							type={file.type}
@@ -318,7 +318,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					</div>
 				))}
 				{videoFiles.map((file, index) => (
-					<div class="my-2 rounded-xl overflow-hidden max-w-75 w-full">
+					<div className="my-2 rounded-xl overflow-hidden max-w-75 w-full">
 						<LazyMedia
 							src={file.url}
 							type={file.type}

@@ -9,7 +9,6 @@
 		"test:watch": "vitest --watch",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest --coverage",
-		"test:components": "vitest run -c vitest.component.config.ts",
 		"test:slow": "vitest run -c vitest.slow.config.ts",
 		"test:agent-report": "tsx scripts/run-agent-tests.ts",
 		"test:llm-judge": "./scripts/run-llm-judge-tests.sh",

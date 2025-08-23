@@ -150,7 +150,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           handleMediaCapture={handleMediaCapture}
           setIsRecording={setIsRecording}
           onSubmit={handleSubmit}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           textareaRef={textareaRef}
           isReadyToUpload={isReadyToUpload}
         />
