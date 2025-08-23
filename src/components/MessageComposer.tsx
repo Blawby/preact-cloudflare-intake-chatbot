@@ -157,9 +157,9 @@ const MessageComposer = ({
                 onClick={handleSubmit}
                 disabled={!inputValue.trim() && previewFiles.length === 0}
                 aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
-                className="flex items-center justify-center w-10 h-10 rounded-lg cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 border-none bg-transparent hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center w-12 h-12 rounded-lg cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 border-none bg-transparent hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <ArrowUpIcon className="w-5 h-5" aria-hidden="true" />
+                <ArrowUpIcon className="w-6 h-6" aria-hidden="true" />
               </Button>
             </div>
           </div>
