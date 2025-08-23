@@ -111,64 +111,46 @@ const MessageComposer = ({
           </div>
         )}
 
-        <div className="w-full relative block flex-1">
-          <textarea
-            ref={textareaRef}
-            className="flex-1 min-h-6 py-2 m-0 text-sm sm:text-base leading-6 text-gray-900 dark:text-white bg-transparent border-none resize-none outline-none overflow-hidden box-border block w-full z-[1] placeholder:text-gray-500 dark:placeholder:text-gray-400"
-            placeholder="Type a message..."
-            rows={1}
-            value={inputValue}
-            onInput={handleInput}
-            onKeyPress={onKeyPress}
-            aria-label="Message input"
-            aria-multiline="true"
-          />
+        <div className="flex items-center gap-3 w-full">
+          {!isRecording && (
+            <FileMenu onFileSelect={handleFileSelect} onCameraCapture={handleCameraCapture} isReadyToUpload={isReadyToUpload} />
+          )}
+          
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              className="w-full min-h-6 py-2 m-0 text-sm sm:text-base leading-6 text-gray-900 dark:text-white bg-transparent border-none resize-none outline-none overflow-hidden box-border placeholder:text-gray-500 dark:placeholder:text-gray-400"
+              placeholder="Type a message..."
+              rows={1}
+              value={inputValue}
+              onInput={handleInput}
+              onKeyPress={onKeyPress}
+              aria-label="Message input"
+              aria-multiline="true"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {features.enableAudioRecording && (
+              <MediaControls onMediaCapture={handleMediaCapture} onRecordingStateChange={setIsRecording} />
+            )}
+            <Button
+              variant="icon"
+              onClick={handleSubmit}
+              disabled={!inputValue.trim() && previewFiles.length === 0}
+              aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
+              className={`flex items-center justify-center w-12 h-12 rounded-lg cursor-pointer transition-all duration-200 border-none hover:scale-105 ${
+                inputValue.trim() || previewFiles.length > 0
+                  ? 'bg-gray-800 dark:bg-gray-200 hover:bg-gray-900 dark:hover:bg-gray-300 text-white dark:text-gray-900 shadow-md hover:shadow-lg'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <ArrowUpIcon className="w-6 h-6" aria-hidden="true" />
+            </Button>
+          </div>
         </div>
 
         <span id="input-instructions" className="sr-only">Type your message and press Enter to send. Use the buttons below to attach files or record audio.</span>
-
-        <div className="flex items-center gap-3 w-full p-0">
-          <div className="flex justify-between w-full items-center">
-            {!isRecording && (
-              <div className="flex items-center">
-                <FileMenu onFileSelect={handleFileSelect} onCameraCapture={handleCameraCapture} isReadyToUpload={isReadyToUpload} />
-                {!features.enableConsultationButton && (
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={handleScheduleStart}
-                    icon={<UserIcon className="w-4 h-4" />}
-                    className="ml-2"
-                  >
-                    Find Lawyer
-                  </Button>
-                )}
-                {features.enableConsultationButton && (
-                  <ScheduleButton onClick={handleScheduleStart} disabled={false} />
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              {features.enableAudioRecording && (
-                <MediaControls onMediaCapture={handleMediaCapture} onRecordingStateChange={setIsRecording} />
-              )}
-              <Button
-                variant="icon"
-                onClick={handleSubmit}
-                disabled={!inputValue.trim() && previewFiles.length === 0}
-                aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
-                className={`flex items-center justify-center w-12 h-12 rounded-lg cursor-pointer transition-all duration-200 border-none hover:scale-105 ${
-                  inputValue.trim() || previewFiles.length > 0
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:shadow-lg'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                <ArrowUpIcon className="w-6 h-6" aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
-        </div>
       </div>
 
       <div className="text-xs text-gray-600 dark:text-gray-400 text-center py-1 opacity-80 mt-1">
