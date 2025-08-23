@@ -115,12 +115,12 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
     // Clear preview files after sending
     clearPreviewFiles();
 
-    // Reset input and focus
+    // Reset input
     setInputValue('');
 
-    // Just focus the textarea
+    // Blur the textarea to collapse mobile keyboard
     if (textareaRef.current) {
-      textareaRef.current.focus();
+      textareaRef.current.blur();
     }
   };
 
