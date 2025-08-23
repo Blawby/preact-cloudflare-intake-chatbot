@@ -113,7 +113,9 @@ const MessageComposer = ({
 
         <div className="flex items-center gap-3 w-full">
           {!isRecording && (
-            <FileMenu onFileSelect={handleFileSelect} onCameraCapture={handleCameraCapture} isReadyToUpload={isReadyToUpload} />
+            <div className="flex-shrink-0">
+              <FileMenu onFileSelect={handleFileSelect} onCameraCapture={handleCameraCapture} isReadyToUpload={isReadyToUpload} />
+            </div>
           )}
           
           <div className="flex-1 relative">
@@ -130,7 +132,7 @@ const MessageComposer = ({
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {features.enableAudioRecording && (
               <MediaControls onMediaCapture={handleMediaCapture} onRecordingStateChange={setIsRecording} />
             )}
@@ -139,13 +141,13 @@ const MessageComposer = ({
               onClick={handleSubmit}
               disabled={!inputValue.trim() && previewFiles.length === 0}
               aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
-              className={`flex items-center justify-center w-12 h-12 rounded-lg cursor-pointer transition-all duration-200 border-none hover:scale-105 ${
+              className={`flex items-center justify-center w-12 h-12 rounded-full cursor-pointer transition-all duration-200 border-none hover:scale-105 ${
                 inputValue.trim() || previewFiles.length > 0
-                  ? 'bg-gray-800 dark:bg-gray-200 hover:bg-gray-900 dark:hover:bg-gray-300 text-white dark:text-gray-900 shadow-md hover:shadow-lg'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                  ? 'bg-white dark:bg-white hover:bg-gray-100 dark:hover:bg-gray-100 text-gray-900 dark:text-gray-900 shadow-sm'
+                  : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
               }`}
             >
-              <ArrowUpIcon className="w-6 h-6" aria-hidden="true" />
+              <ArrowUpIcon className="w-5 h-5" aria-hidden="true" />
             </Button>
           </div>
         </div>

@@ -158,7 +158,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         <div className="relative flex items-center" ref={menuRef}>
             <Button
                 type="button"
-                variant="ghost"
+                variant="icon"
                 size="md"
                 onClick={() => isReadyToUpload && setIsOpen(!isOpen)}
                 title={isReadyToUpload ? "Add attachment" : "File upload not ready yet"}
@@ -169,9 +169,10 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
                 aria-expanded={isOpen}
                 ref={triggerRef}
                 disabled={!isReadyToUpload}
-                icon={<PlusIcon className="w-5 h-5" aria-hidden="true" />}
-                className={`${!isReadyToUpload ? 'opacity-50 cursor-not-allowed' : ''}`}
-            />
+                className={`flex items-center justify-center w-12 h-12 rounded-full cursor-pointer transition-all duration-200 border-none hover:scale-105 bg-gray-700 dark:bg-gray-700 hover:bg-gray-600 dark:hover:bg-gray-600 text-white ${!isReadyToUpload ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+                <PlusIcon className="w-5 h-5" aria-hidden="true" />
+            </Button>
             
             {(isOpen || isClosing) && (
                 <div 
