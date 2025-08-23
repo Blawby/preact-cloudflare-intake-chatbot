@@ -478,20 +478,24 @@ const validateLocation = (location: string): boolean => {
   return locationInfo.isValid;
 };
 
-// Create the legal intake agent using native Cloudflare AI
-export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: string, sessionId?: string, cloudflareLocation?: CloudflareLocationInfo, attachments: any[] = []) {
-  console.log('=== LEGAL INTAKE AGENT START ===');
-  console.log('Attachments received:', attachments);
-  console.log('Attachments length:', attachments?.length || 0);
-  
+
+
+
+// Unified legal intake agent that handles both streaming and non-streaming responses
+export async function runLegalIntakeAgentStream(
+  env: any, 
+  messages: any[], 
+  teamId?: string, 
+  sessionId?: string,
+  cloudflareLocation?: CloudflareLocationInfo,
+  controller?: ReadableStreamDefaultController,
+  attachments: any[] = []
+) {
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
     teamConfig = await getTeamConfig(env, teamId);
   }
-
-  // Note: File analysis is now handled as a tool call (analyze_document)
-  // The AI will call this tool when it determines document analysis is needed
 
   // Convert messages to the format expected by Cloudflare AI
   const formattedMessages = messages.map(msg => ({
@@ -502,18 +506,17 @@ export async function runLegalIntakeAgent(env: any, messages: any[], teamId?: st
   // Use shared utility function for location context and prompt construction
   const { locationContext, locationPrompt } = buildLocationContext(cloudflareLocation);
 
-  // Build system prompt
   let systemPrompt = `You are a legal intake specialist. Collect client information step by step. Help with ALL legal matters - do not reject any cases.`;
 
   // Add file information to system prompt if attachments are present
   if (attachments && attachments.length > 0) {
-    console.log('📎 Adding file information to system prompt');
+    console.log('📎 Adding file information to system prompt (streaming)');
     console.log('Files to analyze:', attachments.map(f => ({ name: f.name, url: f.url })));
     
     systemPrompt += `\n\nThe user has uploaded files. You MUST analyze them FIRST using the analyze_document tool before proceeding with any other conversation:
 ${attachments.map((file, index) => `${index + 1}. ${file.name} - File ID: ${file.url?.split('/').pop()?.split('.')[0] || 'unknown'}`).join('\n')}`;
   } else {
-    console.log('📎 No attachments found');
+    console.log('📎 No attachments found (streaming)');
   }
 
   // Check if this is an attorney referral from paralegal
@@ -534,24 +537,22 @@ Then proceed with the conversation flow below.`;
 
 **CONVERSATION FLOW:**
 ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files using analyze_document tool, then proceed with intake.` : ''}
-1. If no name: "Can you please provide your full name?"
-2. If name but no location: ${locationPrompt}
-3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
-4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email: Check conversation history for legal issues:
-   - If user clearly mentioned ONE specific legal issue (divorce, employment, landlord/tenant, personal injury, business, criminal, etc.), call create_matter tool with that specific matter_type
-   - If user mentioned multiple legal issues, ask: "I see you mentioned several legal concerns. Which one would you like to focus on first?"
-   - If NO legal issue has been mentioned yet, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
-6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
+1. If user asks about pricing/costs/consultation fees: "I understand you're concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case. Let me collect your information first so I can provide you with accurate pricing details. Can you please provide your full name?"
+2. If no name: "Can you please provide your full name?"
+3. If name but no location: ${locationPrompt}
+4. If name and location but no phone: "Thank you [name]! Now I need your phone number."
+5. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
+6. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?" If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
-CRITICAL RULES - NEVER VIOLATE THESE:
+**PRICING QUESTIONS:**
+- If user asks about pricing, costs, consultation fees, or financial concerns, ALWAYS respond with pricing information and then ask for their name
+- Do NOT ignore pricing questions or give empty responses
+- Always acknowledge the pricing concern and provide basic information before proceeding with intake
+
+CRITICAL: 
 - Do NOT call collect_contact_info tool unless the user has actually provided contact information
-- Do NOT call create_matter tool unless you have ALL required information (name, phone, email, location, matter description)
-- Do NOT use placeholder values like "[user_phone]" - only use actual phone numbers provided by the user
+- Only call create_matter tool when you have ALL required information (name, phone, email, location, matter description)
 - If information is missing, ask for it directly in your response - don't call tools
-- If you don't have a real phone number from the user, do NOT call create_matter tool
-- When legal issue is unclear, use "General Consultation" as matter_type, NOT "Unknown"
-- Always confirm legal issue type with user when multiple issues are mentioned
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
 - Look through ALL previous messages for legal issues mentioned
@@ -578,7 +579,17 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
 **IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**`;
 
   try {
-    const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    console.log('🔄 Starting agent...');
+    
+    // Send initial connection event for streaming
+    if (controller) {
+      controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
+    }
+    
+    // Use AI call
+    console.log('🤖 Calling AI model...');
+    
+    const aiResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
       messages: [
         { role: 'system', content: systemPrompt },
         ...formattedMessages
@@ -586,37 +597,61 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
       max_tokens: 500,
       temperature: 0.1
     });
-
-    const response = result.response as string;
-    console.log('[AI] Full AI response:', response);
     
-    // Check if the response contains a tool call
+    console.log('✅ AI result:', aiResult);
+    
+    const response = aiResult.response || 'I apologize, but I encountered an error processing your request.';
+    console.log('📝 Full response:', response);
+    
+    // Check for tool call indicators
     if (response.includes('TOOL_CALL:')) {
-      console.log('[MAIN] Tool call detected in response');
+      console.log('🔧 Tool call detected in response');
+      
+      // Handle streaming case
+      if (controller) {
+        const typingEvent = `data: ${JSON.stringify({
+          type: 'typing',
+          text: 'Processing your request...'
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(typingEvent));
+      }
+      
+      // Parse tool call
       const toolCallMatch = response.match(/TOOL_CALL:\s*(\w+)/);
       const parametersMatch = response.match(/PARAMETERS:\s*(\{[\s\S]*?\})/);
       
       if (toolCallMatch && parametersMatch) {
-        const toolName = toolCallMatch[1].toLowerCase(); // Normalize tool name
-        console.log('[MAIN] Tool name:', toolName);
+        const toolName = toolCallMatch[1].toLowerCase();
         let parameters;
         try {
           parameters = JSON.parse(parametersMatch[1]);
-          console.log('[MAIN] Tool parameters:', parameters);
+          console.log(`🔧 Tool: ${toolName}, Parameters:`, parameters);
         } catch (error) {
-          console.error('Failed to parse tool parameters:', error);
-          console.error('Raw parameters string:', parametersMatch[1]);
+          console.error('❌ Failed to parse tool parameters:', error);
+          if (controller) {
+            const errorEvent = `data: ${JSON.stringify({
+              type: 'error',
+              message: 'Failed to parse tool parameters'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+          }
           return {
-            response: 'I apologize, but I encountered an error processing your request. Please try again.',
-            metadata: {
-              error: 'Failed to parse tool parameters',
-              sessionId,
-              teamId
-            }
+            response: 'I encountered an error processing your request. Please try again.',
+            metadata: { error: 'Failed to parse tool parameters' }
           };
         }
-
-        // Handle different tool calls
+        
+        // Handle streaming case
+        if (controller) {
+          const toolEvent = `data: ${JSON.stringify({
+            type: 'tool_call',
+            toolName: toolName,
+            parameters: parameters
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(toolEvent));
+        }
+        
+        // Execute the tool handler
         let toolResult;
         switch (toolName) {
           case 'create_matter':
@@ -635,82 +670,127 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
             toolResult = await handleAnalyzeDocument(parameters, env, teamConfig);
             break;
           default:
+            console.warn(`❌ Unknown tool: ${toolName}`);
+            if (controller) {
+              const errorEvent = `data: ${JSON.stringify({
+                type: 'error',
+                message: `Unknown tool: ${toolName}`
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(errorEvent));
+            }
             return {
-              response: `I apologize, but I don't recognize the tool "${toolName}". Please try again.`,
-              metadata: {
-                error: `Unknown tool: ${toolName}`,
-                sessionId,
-                teamId
-              }
+              response: `I encountered an error: Unknown tool ${toolName}`,
+              metadata: { error: `Unknown tool: ${toolName}` }
             };
         }
-
-        // Log the final tool response that will be sent to user
-        console.log('=== FINAL TOOL RESPONSE TO USER ===');
-        console.log('Tool Name:', toolName);
-        console.log('User Response:', toolResult.message);
-        console.log('Response Length:', toolResult.message.length, 'characters');
-        console.log('Response Success:', toolResult.success);
-        if (toolResult.analysis) {
-          console.log('Analysis Confidence:', `${(toolResult.analysis.confidence * 100).toFixed(1)}%`);
-          console.log('Analysis Type:', toolResult.analysis.documentType);
-          console.log('Key Facts Count:', toolResult.analysis.key_facts?.length || 0);
-          console.log('Action Items Count:', toolResult.analysis.action_items?.length || 0);
+        
+        // Handle streaming case
+        if (controller) {
+          const resultEvent = `data: ${JSON.stringify({
+            type: 'tool_result',
+            toolName: toolName,
+            result: toolResult
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(resultEvent));
         }
-        console.log('==================================');
-
-        return {
-          toolCalls: [{ name: toolName, parameters }],
-          response: toolResult.message,
-          metadata: {
-            toolName,
-            parameters,
-            toolResult,
-            inputMessageCount: formattedMessages.length,
-            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
-            sessionId,
-            teamId
-          }
-        };
-      } else {
-        console.log('[MAIN] Tool call detected but parsing failed');
-        console.log('[MAIN] toolCallMatch:', toolCallMatch);
-        console.log('[MAIN] parametersMatch:', parametersMatch);
+        
+        // If tool was successful and created a matter, trigger lawyer approval
+        if (toolResult.success && toolName === 'create_matter') {
+          await handleLawyerApproval(env, {
+            matter_type: parameters.matter_type,
+            urgency: parameters.urgency,
+            client_message: formattedMessages[formattedMessages.length - 1]?.content || '',
+            client_name: parameters.name,
+            client_phone: parameters.phone,
+            client_email: parameters.email,
+            opposing_party: parameters.opposing_party || '',
+            matter_details: parameters.description,
+            submitted: true,
+            requires_payment: toolResult.data?.requires_payment || false,
+            consultation_fee: toolResult.data?.consultation_fee || 0,
+            payment_link: toolResult.data?.payment_link || null
+          }, teamId);
+        }
+        
+        // Return tool result for non-streaming case
+        if (!controller) {
+          return {
+            response: toolResult.message || toolResult.response || 'Tool executed successfully.',
+            metadata: {
+              toolName,
+              toolResult,
+              inputMessageCount: formattedMessages.length,
+              lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+              sessionId,
+              teamId
+            }
+          };
+        }
+        
+        // Return after tool execution for streaming case
+        return;
       }
     }
-
-    // If no tool call detected, return the AI response as-is
-    console.log('[MAIN] No tool call detected, returning AI response');
     
-    // Log the final response
-    console.log('=== FINAL AI RESPONSE TO USER ===');
-    console.log('Response:', response);
-    console.log('Response Length:', response.length, 'characters');
-    console.log('Response Type: AI-generated (no tool call)');
-    console.log('==========================================');
+    // If no tool call detected, handle the regular response
+    console.log('📝 No tool call detected, handling regular response');
     
-    return {
-      response,
-      metadata: {
-        inputMessageCount: formattedMessages.length,
-        lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
-        sessionId,
-        teamId
+    if (controller) {
+      // Streaming case: simulate streaming by sending response in chunks
+      const chunkSize = 3;
+      for (let i = 0; i < response.length; i += chunkSize) {
+        const chunk = response.slice(i, i + chunkSize);
+        const textEvent = `data: ${JSON.stringify({
+          type: 'text',
+          text: chunk
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(textEvent));
+        
+        // Small delay to simulate streaming
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
-    };
-    
+      
+      // Send final response
+      const finalEvent = `data: ${JSON.stringify({
+        type: 'final',
+        response: response
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(finalEvent));
+    } else {
+      // Non-streaming case: return the response directly
+      return {
+        response,
+        metadata: {
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+          sessionId,
+          teamId
+        }
+      };
+    }
   } catch (error) {
-    console.error('Error running legal intake agent:', error);
-    return {
-      response: "I'm here to help with your legal needs. What can I assist you with?",
-      metadata: {
-        error: error.message,
-        inputMessageCount: formattedMessages.length,
-        lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
-        sessionId,
-        teamId
-      }
-    };
+    console.error('❌ Agent error:', error);
+    const errorMessage = 'An error occurred while processing your request';
+    
+    if (controller) {
+      const errorEvent = `data: ${JSON.stringify({
+        type: 'error',
+        message: errorMessage
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(errorEvent));
+      controller.close();
+    } else {
+      return {
+        response: "I'm here to help with your legal needs. What can I assist you with?",
+        metadata: {
+          error: error.message,
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+          sessionId,
+          teamId
+        }
+      };
+    }
   }
 }
 
@@ -1258,7 +1338,7 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
   };
 }
 
-// New streaming version of the legal intake agent
+// Unified legal intake agent that handles both streaming and non-streaming responses
 export async function runLegalIntakeAgentStream(
   env: any, 
   messages: any[], 
@@ -1356,15 +1436,16 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
 **IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**`;
 
   try {
-    console.log('🔄 Starting streaming agent...');
+    console.log('🔄 Starting agent...');
     
-    // Send initial connection event
-    controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
+    // Send initial connection event for streaming
+    if (controller) {
+      controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
+    }
     
-    // Use streaming AI call
+    // Use AI call
     console.log('🤖 Calling AI model...');
     
-    // Use non-streaming AI call but simulate streaming
     const aiResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
       messages: [
         { role: 'system', content: systemPrompt },
@@ -1383,12 +1464,14 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
     if (response.includes('TOOL_CALL:')) {
       console.log('🔧 Tool call detected in response');
       
-      // Send typing indicator
-      const typingEvent = `data: ${JSON.stringify({
-        type: 'typing',
-        text: 'Processing your request...'
-      })}\n\n`;
-      controller.enqueue(new TextEncoder().encode(typingEvent));
+      // Handle streaming case
+      if (controller) {
+        const typingEvent = `data: ${JSON.stringify({
+          type: 'typing',
+          text: 'Processing your request...'
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(typingEvent));
+      }
       
       // Parse tool call
       const toolCallMatch = response.match(/TOOL_CALL:\s*(\w+)/);
@@ -1402,21 +1485,28 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
           console.log(`🔧 Tool: ${toolName}, Parameters:`, parameters);
         } catch (error) {
           console.error('❌ Failed to parse tool parameters:', error);
-          const errorEvent = `data: ${JSON.stringify({
-            type: 'error',
-            message: 'Failed to parse tool parameters'
-          })}\n\n`;
-          controller.enqueue(new TextEncoder().encode(errorEvent));
-          return;
+          if (controller) {
+            const errorEvent = `data: ${JSON.stringify({
+              type: 'error',
+              message: 'Failed to parse tool parameters'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+          }
+          return {
+            response: 'I encountered an error processing your request. Please try again.',
+            metadata: { error: 'Failed to parse tool parameters' }
+          };
         }
         
-        // Send tool call event
-        const toolEvent = `data: ${JSON.stringify({
-          type: 'tool_call',
-          toolName: toolName,
-          parameters: parameters
-        })}\n\n`;
-        controller.enqueue(new TextEncoder().encode(toolEvent));
+        // Handle streaming case
+        if (controller) {
+          const toolEvent = `data: ${JSON.stringify({
+            type: 'tool_call',
+            toolName: toolName,
+            parameters: parameters
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(toolEvent));
+        }
         
         // Execute the tool handler
         let toolResult;
@@ -1438,49 +1528,72 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
             break;
           default:
             console.warn(`❌ Unknown tool: ${toolName}`);
-            const errorEvent = `data: ${JSON.stringify({
-              type: 'error',
-              message: `Unknown tool: ${toolName}`
-            })}\n\n`;
-            controller.enqueue(new TextEncoder().encode(errorEvent));
-            return;
-          }
-          
-          // Send tool result
+            if (controller) {
+              const errorEvent = `data: ${JSON.stringify({
+                type: 'error',
+                message: `Unknown tool: ${toolName}`
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(errorEvent));
+            }
+            return {
+              response: `I encountered an error: Unknown tool ${toolName}`,
+              metadata: { error: `Unknown tool: ${toolName}` }
+            };
+        }
+        
+        // Handle streaming case
+        if (controller) {
           const resultEvent = `data: ${JSON.stringify({
             type: 'tool_result',
             toolName: toolName,
             result: toolResult
           })}\n\n`;
           controller.enqueue(new TextEncoder().encode(resultEvent));
-          
-          // If tool was successful and created a matter, trigger lawyer approval
-          if (toolResult.success && toolName === 'create_matter') {
-            await handleLawyerApproval(env, {
-              matter_type: parameters.matter_type,
-              urgency: parameters.urgency,
-              client_message: formattedMessages[formattedMessages.length - 1]?.content || '',
-              client_name: parameters.name,
-              client_phone: parameters.phone,
-              client_email: parameters.email,
-              opposing_party: parameters.opposing_party || '',
-              matter_details: parameters.description,
-              submitted: true,
-              requires_payment: toolResult.data?.requires_payment || false,
-              consultation_fee: toolResult.data?.consultation_fee || 0,
-              payment_link: toolResult.data?.payment_link || null
-            }, teamId);
-          }
-          
-          // Return after tool execution - don't continue with fallback or regular response
-          return;
         }
+        
+        // If tool was successful and created a matter, trigger lawyer approval
+        if (toolResult.success && toolName === 'create_matter') {
+          await handleLawyerApproval(env, {
+            matter_type: parameters.matter_type,
+            urgency: parameters.urgency,
+            client_message: formattedMessages[formattedMessages.length - 1]?.content || '',
+            client_name: parameters.name,
+            client_phone: parameters.phone,
+            client_email: parameters.email,
+            opposing_party: parameters.opposing_party || '',
+            matter_details: parameters.description,
+            submitted: true,
+            requires_payment: toolResult.data?.requires_payment || false,
+            consultation_fee: toolResult.data?.consultation_fee || 0,
+            payment_link: toolResult.data?.payment_link || null
+          }, teamId);
+        }
+        
+        // Return tool result for non-streaming case
+        if (!controller) {
+          return {
+            response: toolResult.message || toolResult.response || 'Tool executed successfully.',
+            metadata: {
+              toolName,
+              toolResult,
+              inputMessageCount: formattedMessages.length,
+              lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+              sessionId,
+              teamId
+            }
+          };
+        }
+        
+        // Return after tool execution for streaming case
+        return;
       }
-      
-      // If no tool call detected, stream the regular response
-      console.log('📝 No tool call detected, streaming regular response');
-      
-      // Simulate streaming by sending response in chunks
+    }
+    
+    // If no tool call detected, handle the regular response
+    console.log('📝 No tool call detected, handling regular response');
+    
+    if (controller) {
+      // Streaming case: simulate streaming by sending response in chunks
       const chunkSize = 3;
       for (let i = 0; i < response.length; i += chunkSize) {
         const chunk = response.slice(i, i + chunkSize);
@@ -1500,13 +1613,41 @@ PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document",
         response: response
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(finalEvent));
-    } catch (error) {
-      console.error('❌ Streaming error:', error);
+    } else {
+      // Non-streaming case: return the response directly
+      return {
+        response,
+        metadata: {
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+          sessionId,
+          teamId
+        }
+      };
+    }
+  } catch (error) {
+    console.error('❌ Agent error:', error);
+    const errorMessage = 'An error occurred while processing your request';
+    
+    if (controller) {
       const errorEvent = `data: ${JSON.stringify({
         type: 'error',
-        message: 'An error occurred while processing your request'
+        message: errorMessage
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(errorEvent));
       controller.close();
+    } else {
+      return {
+        response: "I'm here to help with your legal needs. What can I assist you with?",
+        metadata: {
+          error: error.message,
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+          sessionId,
+          teamId
+        }
+      };
     }
   }
+}
+}

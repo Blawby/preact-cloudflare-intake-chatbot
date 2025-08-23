@@ -1,6 +1,6 @@
 import type { Env } from '../types';
 import { parseJsonBody } from '../utils';
-import { runLegalIntakeAgent, runLegalIntakeAgentStream } from '../agents/legalIntakeAgent';
+import { runLegalIntakeAgentStream } from '../agents/legalIntakeAgent';
 import { runParalegalAgentStream } from '../agents/ParalegalAgent';
 import { HttpErrors, handleError, createSuccessResponse, CORS_HEADERS, SECURITY_HEADERS } from '../errorHandler';
 import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
@@ -247,147 +247,7 @@ function formatParalegalResponse(paralegalData: any): string {
 Can you tell me more about what's going on with your case? The more details you share, the better I can help you figure out next steps.`;
 }
 
-export async function handleAgent(request: Request, env: Env): Promise<Response> {
-  if (request.method !== 'POST') {
-    throw HttpErrors.methodNotAllowed('Only POST method is allowed');
-  }
 
-  // Rate limiting for agent endpoint
-  const clientId = getClientId(request);
-  if (!(await rateLimit(env, clientId, 60, 60))) { // 60 requests per minute
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Rate limit exceeded. Please try again later.',
-      errorCode: 'RATE_LIMITED'
-    }), {
-      status: 429,
-      headers: { ...CORS_HEADERS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' }
-    });
-  }
-
-  try {
-    const body = await request.json(); // Read body once here
-    const { messages, teamId, sessionId, attachments = [] } = body;
-
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      throw HttpErrors.badRequest('No message content provided');
-    }
-    const latestMessage = messages[messages.length - 1];
-    if (!latestMessage?.content) {
-      throw HttpErrors.badRequest('No message content provided');
-    }
-
-    // Get team configuration for security validation and routing
-    let teamConfig = null;
-    if (teamId) {
-      try {
-        const { AIService } = await import('../services/AIService.js');
-        const aiService = new AIService(env.AI, env);
-        const rawTeamConfig = await aiService.getTeamConfig(teamId);
-        // Extract the config object for security validation
-        teamConfig = rawTeamConfig?.config || rawTeamConfig;
-      } catch (error) {
-        console.warn('Failed to get team config for security validation:', error);
-      }
-    }
-
-    // Get Cloudflare location data
-    const cloudflareLocation = getCloudflareLocation(request);
-    console.log('Cloudflare location data:', cloudflareLocation);
-
-    // Security validation with Cloudflare location
-    const validation = await validateInput(body, teamConfig, cloudflareLocation);
-    if (!validation.isValid) {
-      SecurityLogger.logInputValidation(validation, latestMessage.content, teamId);
-      
-      const securityResponse = getSecurityResponse(validation.violations || [], teamConfig);
-      
-      return createSuccessResponse({
-        response: securityResponse,
-        workflow: 'SECURITY_BLOCK',
-        actions: [],
-        metadata: { 
-          securityBlock: true, 
-          reason: validation.reason,
-          violations: validation.violations,
-          cloudflareLocation: cloudflareLocation.isValid ? getLocationDescription(cloudflareLocation) : 'Unknown'
-        },
-        sessionId
-              });
-    }
-
-    // Use supervisor router to determine which agent to use
-    const router = new SupervisorRouter(env);
-    const route = await router.route(body, teamConfig);
-
-    console.log('Supervisor routing decision:', { route, teamId, paralegalEnabled: teamConfig?.config?.features?.enableParalegalAgent });
-
-    if (route === 'paralegal') {
-      // Route to Paralegal Agent via Durable Object
-      try {
-        const matterId = sessionId || `matter-${Date.now()}`;
-        const doId = env.PARALEGAL_AGENT.idFromName(`${teamId}:${matterId}`);
-        const paralegalAgent = env.PARALEGAL_AGENT.get(doId);
-
-        const paralegalResponse = await paralegalAgent.fetch(
-          new Request(`https://do.local/paralegal/${teamId}/${matterId}/advance`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'user_input',
-              data: {
-                messages,
-                attachments,
-                clientInfo: extractClientInfo(messages)
-              },
-              idempotencyKey: crypto.randomUUID(),
-              teamId,
-              matterId
-            })
-          })
-        );
-
-        if (!paralegalResponse.ok) {
-          console.warn('Paralegal agent error, falling back to intake agent');
-          // Fallback to intake agent on error
-          const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation, attachments);
-          return createSuccessResponse(agentResponse);
-        }
-
-        const paralegalData = await paralegalResponse.json();
-        
-        // Transform paralegal response to match expected format
-        const response = {
-          response: formatParalegalResponse(paralegalData),
-          workflow: 'PARALEGAL_AGENT',
-          actions: [],
-          metadata: {
-            paralegalAgent: true,
-            stage: paralegalData.stage,
-            checklist: paralegalData.checklist,
-            teamId,
-            matterId,
-            sessionId
-          }
-        };
-
-        return createSuccessResponse(response);
-              } catch (error) {
-          console.error('Paralegal agent error:', error);
-          // Fallback to intake agent on error
-          const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation, attachments);
-          return createSuccessResponse(agentResponse);
-        }
-    }
-
-    // For 'analysis' and 'intake' routes, use the existing legal intake agent
-          // The intake agent already handles document analysis via the analyze_document tool
-      const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation, attachments);
-      return createSuccessResponse(agentResponse);
-      } catch (error) {
-      return handleError(error);
-    }
-}
 
 // New streaming endpoint for real-time AI responses
 export async function handleAgentStream(request: Request, env: Env): Promise<Response> {
@@ -497,25 +357,25 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
           // Send completion event
           controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));
           controller.close();
-        } catch (error) {
-          console.error('❌ Streaming error:', error);
-          const errorEvent = `data: ${JSON.stringify({
-            type: 'error',
-            message: 'An error occurred while processing your request'
-          })}\n\n`;
-          controller.enqueue(new TextEncoder().encode(errorEvent));
-          controller.close();
+                  } catch (error) {
+            console.error('❌ Streaming error:', error);
+            const errorEvent = `data: ${JSON.stringify({
+              type: 'error',
+              message: 'An error occurred while processing your request'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+            controller.close();
+          }
         }
-      }
-    });
+      });
 
-    return new Response(stream, { headers });
-  } catch (error) {
-    console.error('❌ Route error:', error);
-    const errorEvent = `data: ${JSON.stringify({
-      type: 'error',
-      message: error.message || 'An error occurred'
-    })}\n\n`;
-    return new Response(errorEvent, { headers });
+      return new Response(stream, { headers });
+    } catch (error) {
+      console.error('❌ Route error:', error);
+      const errorEvent = `data: ${JSON.stringify({
+        type: 'error',
+        message: error.message || 'An error occurred'
+      })}\n\n`;
+      return new Response(errorEvent, { headers });
+    }
   }
-} 

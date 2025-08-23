@@ -3,7 +3,6 @@
 import {
   handleHealth,
   handleRoot,
-  handleAgent,
   handleAgentStream,
   handleForms,
   handleTeams,
@@ -75,15 +74,9 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     
     console.log('🔍 Route matching for path:', path);
     
-    if (path === '/api/agent/stream') {
-      console.log('✅ Matched streaming route');
-      response = await handleAgentStream(request, env);
-    } else if (path.startsWith('/api/agent')) {
-      console.log('✅ Matched regular agent route');
-      response = await handleAgent(request, env);
-    } else if (path === '/api/chat') {
-      console.log('✅ Matched chat route');
-      response = await handleAgent(request, env);
+    if (path === '/api/agent/stream' || path.startsWith('/api/agent') || path === '/api/chat') {
+      console.log('✅ Matched agent route (streaming)');
+      response = await handleAgentStream(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/teams')) {
       response = await handleTeams(request, env);
     } else if (path.startsWith('/api/forms')) {
