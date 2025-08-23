@@ -182,7 +182,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     // Final response received
                     updateAIMessage(placeholderId, { 
                       content: data.response || currentContent,
-                      isLoading: false 
+                      isLoading: false,
+                      aiState: null
                     });
                     break;
                     
@@ -190,7 +191,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     // Error occurred
                     updateAIMessage(placeholderId, { 
                       content: data.message || 'An error occurred while processing your request.',
-                      isLoading: false 
+                      isLoading: false,
+                      aiState: null
                     });
                     break;
                     
@@ -198,14 +200,16 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     // Security block
                     updateAIMessage(placeholderId, { 
                       content: data.response || 'This request was blocked for security reasons.',
-                      isLoading: false 
+                      isLoading: false,
+                      aiState: null
                     });
                     break;
                     
                   case 'complete':
                     // Stream completed
                     updateAIMessage(placeholderId, { 
-                      isLoading: false 
+                      isLoading: false,
+                      aiState: null
                     });
                     break;
                 }

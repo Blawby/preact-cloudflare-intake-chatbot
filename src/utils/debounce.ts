@@ -5,7 +5,7 @@ export function debounce<T extends (...args: any[]) => void>(
 ): ((...args: Parameters<T>) => void) & { cancel: () => void } {
     let timeout: ReturnType<typeof setTimeout> | null = null;
 
-    const executedFunction = function(...args: Parameters<T>) {
+    const executedFunction: ((...args: Parameters<T>) => void) & { cancel: () => void } = function(...args: Parameters<T>) {
         const later = () => {
             timeout = null;
             if (!immediate) func.apply(this, args);
@@ -22,7 +22,7 @@ export function debounce<T extends (...args: any[]) => void>(
         if (callNow) {
             func.apply(this, args);
         }
-    };
+    } as ((...args: Parameters<T>) => void) & { cancel: () => void };
 
     executedFunction.cancel = () => {
         if (timeout) {

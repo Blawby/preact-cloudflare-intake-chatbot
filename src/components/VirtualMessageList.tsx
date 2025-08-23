@@ -1,5 +1,5 @@
-import { FunctionComponent, useMemo } from 'preact';
-import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'preact/hooks';
+import { FunctionComponent } from 'preact';
+import { useRef, useEffect, useState, useCallback, useLayoutEffect, useMemo } from 'preact/hooks';
 import Message from './Message';
 import TeamProfile from './TeamProfile';
 import { memo } from 'preact/compat';

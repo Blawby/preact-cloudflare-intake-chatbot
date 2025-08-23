@@ -1,17 +1,17 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 import { TextEncoder as NodeTextEncoder, TextDecoder as NodeTextDecoder } from 'node:util';
-import { randomUUID } from 'node:crypto';
+import { webcrypto, randomUUID } from 'node:crypto';
 
 // Mock Cloudflare Workers environment for Node.js tests
-// Use Node's real UUID generator and avoid Object.defineProperty
+// Use Node's full WebCrypto implementation and only add randomUUID if missing
 if (!global.crypto) {
-  // Create minimal crypto object if it doesn't exist
-  global.crypto = {
-    randomUUID,
-  };
-} else if (!global.crypto.randomUUID) {
-  // Add randomUUID to existing crypto object if it's missing
+  // Set global.crypto to Node's full WebCrypto implementation only when undefined
+  global.crypto = webcrypto;
+}
+
+// Add randomUUID if it's missing from the crypto object
+if (global.crypto && !global.crypto.randomUUID) {
   global.crypto.randomUUID = randomUUID;
 }
 
