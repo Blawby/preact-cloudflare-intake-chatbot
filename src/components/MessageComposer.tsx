@@ -54,7 +54,8 @@ const MessageComposer = ({
     const el = textareaRef.current;
     if (el) {
       el.style.height = '40px';
-      el.focus();
+      // Blur the textarea to collapse keyboard on mobile
+      el.blur();
     }
   };
 
@@ -157,7 +158,11 @@ const MessageComposer = ({
                 onClick={handleSubmit}
                 disabled={!inputValue.trim() && previewFiles.length === 0}
                 aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
-                className="flex items-center justify-center w-12 h-12 rounded-lg cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 border-none bg-transparent hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex items-center justify-center w-12 h-12 rounded-lg cursor-pointer transition-all duration-200 border-none hover:scale-105 ${
+                  inputValue.trim() || previewFiles.length > 0
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:shadow-lg'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                }`}
               >
                 <ArrowUpIcon className="w-6 h-6" aria-hidden="true" />
               </Button>
