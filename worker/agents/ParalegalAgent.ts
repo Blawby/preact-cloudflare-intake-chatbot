@@ -740,6 +740,9 @@ Keep it short, helpful, and human. Don't overwhelm them.`;
         workflow: 'PARALEGAL_AGENT'
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(finalEvent));
+      
+      // Close the stream after sending final event
+      controller.close();
     }
     
     return { response, workflow: 'PARALEGAL_AGENT' };

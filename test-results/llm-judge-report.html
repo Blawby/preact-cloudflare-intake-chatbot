@@ -282,19 +282,19 @@
         
         <div class="summary-grid">
             <div class="summary-card">
-                <h3>0/4</h3>
+                <h3>5/6</h3>
                 <p>Tests Passed</p>
             </div>
             <div class="summary-card">
-                <h3>0.0/10</h3>
+                <h3>6.7/10</h3>
                 <p>Average Score</p>
             </div>
             <div class="summary-card">
-                <h3>52240ms</h3>
+                <h3>21486ms</h3>
                 <p>Avg Response Time</p>
             </div>
             <div class="summary-card">
-                <h3>0.0%</h3>
+                <h3>83.3%</h3>
                 <p>Success Rate</p>
             </div>
         </div>
@@ -395,115 +395,129 @@
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>Thank you, Sarah Johnson. Now I need your location. Can you please tell me your city and state?</div>
+                                    <div>Thank you, Sarah Johnson! I have your name and a general idea of the legal issue. Now I need your location. Can you please tell me your city and state?</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 5)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 6)</div>
-                                    <div>Thank you, Sarah Johnson. Now I need your phone number.</div>
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 7)</div>
-                                    <div>My phone number is 704-555-0123.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 8)</div>
-                                    <div>Thank you, Sarah Johnson. Now I need your email address. 
-
-(If you provide your email address, I will call the create_matter tool immediately after this response)</div>
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 9)</div>
-                                    <div>My email is sarah.johnson@example.com.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 10)</div>
-                                    <div>TOOL_CALL: create_matter
-PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&quot;: &quot;Client seeking divorce assistance&quot;, &quot;urgency&quot;: &quot;unknown&quot;, &quot;name&quot;: &quot;Sarah Johnson&quot;, &quot;phone&quot;: &quot;704-555-0123&quot;, &quot;email&quot;: &quot;sarah.johnson@example.com&quot;, &quot;location&quot;: &quot;Charlotte, NC&quot;}</div>
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 11)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 12)</div>
-                                    <div>You&#39;ve already provided your location earlier, Sarah Johnson. I have all the necessary information. I&#39;m going to create a matter for you now.</div>
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?
+
+(Note: I&#39;ll keep asking until I get the location)</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 13)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 14)</div>
-                                    <div>You&#39;ve already provided your location earlier, Sarah Johnson. I have all the necessary information. I&#39;m going to create a matter for you now.
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?
 
-TOOL_CALL: create_matter
-PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&quot;: &quot;Client seeking divorce assistance&quot;, &quot;urgency&quot;: &quot;unknown&quot;, &quot;name&quot;: &quot;Sarah Johnson&quot;, &quot;phone&quot;: &quot;704-555-0123&quot;, &quot;email&quot;: &quot;sarah.johnson@example.com&quot;, &quot;location&quot;: &quot;Charlotte, NC&quot;}</div>
+(Note: I&#39;ll keep asking until I get the location)</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 15)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 16)</div>
-                                    <div>You&#39;ve already provided your location earlier, Sarah Johnson. I have all the necessary information. I&#39;m going to create a matter for you now.
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?
 
-TOOL_CALL: create_matter
-PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&quot;: &quot;Client seeking divorce assistance&quot;, &quot;urgency&quot;: &quot;unknown&quot;, &quot;name&quot;: &quot;Sarah Johnson&quot;, &quot;phone&quot;: &quot;704-555-0123&quot;, &quot;email&quot;: &quot;sarah.johnson@example.com&quot;, &quot;location&quot;: &quot;Charlotte, NC&quot;}</div>
+(Note: I&#39;ll keep asking until I get the location)
+
+However, I can also try to get the location from the context of our conversation. Since you mentioned divorce, I&#39;m going to take a guess that you&#39;re in the United States. If that&#39;s correct, I can proceed with the next step.</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 17)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 18)</div>
-                                    <div>You&#39;ve already provided your location earlier, Sarah Johnson. I have all the necessary information. I&#39;m going to create a matter for you now.
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?
 
-TOOL_CALL: create_matter
-PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&quot;: &quot;Client seeking divorce assistance&quot;, &quot;urgency&quot;: &quot;unknown&quot;, &quot;name&quot;: &quot;Sarah Johnson&quot;, &quot;phone&quot;: &quot;704-555-0123&quot;, &quot;email&quot;: &quot;sarah.johnson@example.com&quot;, &quot;location&quot;: &quot;Charlotte, NC&quot;}</div>
+(Note: I&#39;ll keep asking until I get the location)
+
+However, I can also try to get the location from the context of our conversation. Since you mentioned divorce, I&#39;m going to take a guess that you&#39;re in the United States. If that&#39;s correct, I can proceed with the next step.
+
+Let me try again. Can you please tell me your city and state?</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 19)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 20)</div>
-                                    <div>You&#39;ve already provided your location earlier, Sarah Johnson. I have all the necessary information. I&#39;m going to create a matter for you now.
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?
 
-TOOL_CALL: create_matter
-PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&quot;: &quot;Client seeking divorce assistance&quot;, &quot;urgency&quot;: &quot;unknown&quot;, &quot;name&quot;: &quot;Sarah Johnson&quot;, &quot;phone&quot;: &quot;704-555-0123&quot;, &quot;email&quot;: &quot;sarah.johnson@example.com&quot;, &quot;location&quot;: &quot;Charlotte, NC&quot;}</div>
+(Note: I&#39;ll keep asking until I get the location)
+
+However, I can also try to get the location from the context of our conversation. Since you mentioned divorce, I&#39;m going to take a guess that you&#39;re in the United States. If that&#39;s correct, I can proceed with the next step.
+
+Let me try again. Can you please tell me your city and state?
+
+If you&#39;re still having trouble, you can also give me a zip code or a nearby city. That way, I can try to get a more accurate location.</div>
                                 </div>
                             
                                 <div class="message user">
                                     <div class="message-role">user (message 21)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
+                                    <div>My name is Sarah Johnson.</div>
                                 </div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 22)</div>
-                                    <div>You&#39;ve already provided your location earlier, Sarah Johnson. I have all the necessary information. I&#39;m going to create a matter for you now.
+                                    <div>Thank you, Sarah Johnson! I already have your name. Now I need your location. Can you please tell me your city and state?
 
-TOOL_CALL: create_matter
-PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&quot;: &quot;Client seeking divorce assistance&quot;, &quot;urgency&quot;: &quot;unknown&quot;, &quot;name&quot;: &quot;Sarah Johnson&quot;, &quot;phone&quot;: &quot;704-555-0123&quot;, &quot;email&quot;: &quot;sarah.johnson@example.com&quot;, &quot;location&quot;: &quot;Charlotte, NC&quot;}</div>
+(Note: I&#39;ll keep asking until I get the location)
+
+However, I can also try to get the location from the context of our conversation. Since you mentioned divorce, I&#39;m going to take a guess that you&#39;re in the United States. If that&#39;s correct, I can proceed with the next step.
+
+Let me try again. Can you please tell me your city and state?
+
+If you&#39;re still having trouble, you can also give me a zip code or a nearby city. That way, I can try to get a more accurate location.
+
+Alternatively, I can also try to get your phone number. That way, I can call you to confirm your location. Would you be comfortable sharing your phone number with me?</div>
                                 </div>
                             
                         </div>
@@ -536,7 +550,7 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                         
                         
                         <div class="timestamp">
-                            Response Time: 58840ms | 
+                            Response Time: 65481ms | 
                             Average Score: 0.0/10
                         </div>
                     </div>
@@ -548,8 +562,8 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             <h3>Urgent legal matter requiring immediate escalation</h3>
                             <p>User: Michael Chen</p>
                         </div>
-                        <div class="test-status failed">
-                            FAIL
+                        <div class="test-status passed">
+                            PASS
                         </div>
                     </div>
                     
@@ -558,47 +572,47 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             
                                     <div class="score-item">
                                         <div class="score-label">empathy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">accuracy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">6.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">completeness</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">relevance</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">professionalism</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">actionability</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">legalAccuracy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">5.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">6.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -608,12 +622,34 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
                                         <div class="flag-item warning">
-                                            <span>⚠️ Critical Issues: 1</span>
+                                            <span>⚠️ Critical Issues: 2</span>
                                         </div>
                                     </div>
                                 </div>
                             
                         
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">12</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">0%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
                         
                         
                         <div class="conversation">
@@ -636,7 +672,7 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>Thank you Michael Chen! Now I need your city and state.</div>
+                                    <div>Thank you, Michael Chen! Now I need your city and state.</div>
                                 </div>
                             
                                 <div class="message user">
@@ -646,7 +682,7 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 6)</div>
-                                    <div>Thank you Michael Chen! Now I need your phone number.</div>
+                                    <div>Thank you, Michael Chen! Now I need your phone number.</div>
                                 </div>
                             
                                 <div class="message user">
@@ -656,9 +692,7 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 8)</div>
-                                    <div>Thank you Michael Chen! Now I need your email address. 
-
-Also, could you briefly describe what you need help with?</div>
+                                    <div>Thank you, Michael Chen! Now I need your email address.</div>
                                 </div>
                             
                                 <div class="message user">
@@ -668,9 +702,7 @@ Also, could you briefly describe what you need help with?</div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 10)</div>
-                                    <div>Thank you Michael Chen! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?
-
-(If you mentioned a legal issue earlier, I&#39;ll use that as the matter description. If not, please provide the details now.)</div>
+                                    <div>Thank you, Michael Chen! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -680,68 +712,36 @@ Also, could you briefly describe what you need help with?</div>
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 12)</div>
-                                    <div>TOOL_CALL: create_matter
-PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&quot;: &quot;Client seeking assistance with restraining order response&quot;, &quot;urgency&quot;: &quot;high&quot;, &quot;name&quot;: &quot;Michael Chen&quot;, &quot;phone&quot;: &quot;919-555-0123&quot;, &quot;email&quot;: &quot;michael.chen@example.com&quot;, &quot;location&quot;: &quot;Raleigh, NC&quot;, &quot;opposing_party&quot;: &quot;Unknown&quot;}</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 13)</div>
-                                    <div>I live in Raleigh, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 14)</div>
-                                    <div>You&#39;ve already provided your location earlier, Michael Chen. I&#39;ve already created a matter for you. If you have any further questions or concerns, please feel free to ask.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 15)</div>
-                                    <div>I live in Raleigh, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 16)</div>
-                                    <div>You&#39;ve already provided your location earlier, Michael Chen. I&#39;ve already created a matter for you. If you have any further questions or concerns, please feel free to ask.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 17)</div>
-                                    <div>I live in Raleigh, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 18)</div>
-                                    <div>You&#39;ve already provided your location earlier, Michael Chen. I&#39;ve already created a matter for you. If you have any further questions or concerns, please feel free to ask.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 19)</div>
-                                    <div>I live in Raleigh, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 20)</div>
-                                    <div>You&#39;ve already provided your location earlier, Michael Chen. I&#39;ve already created a matter for you. If you have any further questions or concerns, please feel free to ask.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 21)</div>
-                                    <div>I live in Raleigh, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 22)</div>
-                                    <div>You&#39;ve already provided your location earlier, Michael Chen. I&#39;ve already created a matter for you. If you have any further questions or concerns, please feel free to ask.</div>
+                                    <div>The phone number you provided doesn&#39;t appear to be valid: Invalid phone number format. Could you please provide a valid phone number?</div>
                                 </div>
                             
                         </div>
                         
                         
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        <pre>{
+  &quot;matter_type&quot;: &quot;Family Law&quot;,
+  &quot;description&quot;: &quot;Client seeking assistance with restraining order response&quot;,
+  &quot;name&quot;: &quot;Michael Chen&quot;,
+  &quot;urgency&quot;: &quot;high&quot;,
+  &quot;phone&quot;: &quot;91***23&quot;,
+  &quot;email&quot;: &quot;mi***@example.com&quot;,
+  &quot;location&quot;: &quot;Raleigh, NC&quot;,
+  &quot;opposing_party&quot;: &quot;Unknown&quot;
+}</pre>
+                                    </div>
+                                
+                            </div>
+                        
                         
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>Agent failed to complete conversation - no fallbacks allowed</p>
+                                <p>The AI could improve by not repeating the same response multiple times and ignoring previously provided information.</p>
                             </div>
                         
                         
@@ -749,7 +749,7 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                                 <div class="issues">
                                     <h4>Critical Issues</h4>
                                     <ul>
-                                        <li>Agent did not provide summary or create matter</li>
+                                        <li>AI repeated the same response multiple times</li><li>AI didn&#39;t progress the conversation</li>
                                     </ul>
                                 </div>
                             
@@ -758,14 +758,14 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Fix agent conversation flow logic</li>
+                                    <li>Improve conversation flow by not repeating responses and ignoring previously provided information</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 41853ms | 
-                            Average Score: 0.0/10
+                            Response Time: 15057ms | 
+                            Average Score: 7.3/10
                         </div>
                     </div>
                 </div>
@@ -776,8 +776,8 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             <h3>Complex legal situation requiring specialized expertise</h3>
                             <p>User: David Rodriguez</p>
                         </div>
-                        <div class="test-status failed">
-                            FAIL
+                        <div class="test-status passed">
+                            PASS
                         </div>
                     </div>
                     
@@ -786,47 +786,47 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             
                                     <div class="score-item">
                                         <div class="score-label">empathy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">accuracy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">completeness</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">relevance</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">professionalism</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">actionability</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">legalAccuracy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -842,6 +842,28 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                                 </div>
                             
                         
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">4</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">0%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
                         
                         
                         <div class="conversation">
@@ -864,143 +886,36 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Family Law&quot;, &quot;description&
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>Thank you, David Rodriguez. I have your name, phone, email, and a general idea of your legal situation. Now I need to know your location to proceed.
-
-Can you please tell me your city and state?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 5)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 6)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 7)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 8)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 9)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 10)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 11)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 12)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 13)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 14)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?
-
-If you can&#39;t remember your city and state, you can also give me your zip code.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 15)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 16)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?
-
-If you can&#39;t remember your city and state, you can also give me your zip code.
-
-Alternatively, I can try to look up your location using your phone number. Would you be okay with that?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 17)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 18)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?
-
-If you can&#39;t remember your city and state, you can also give me your zip code.
-
-Alternatively, I can try to look up your location using your phone number. Would you be okay with that?
-
-If not, I can also try to look up your location using your email address. Would you be okay with that?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 19)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 20)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?
-
-If you can&#39;t remember your city and state, you can also give me your zip code.
-
-Alternatively, I can try to look up your location using your phone number. Would you be okay with that?
-
-If not, I can also try to look up your location using your email address. Would you be okay with that?
-
-If none of these options work, I can also try to call you back to get your location. Would you be okay with that?
-
-Please let me know how I can proceed.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 21)</div>
-                                    <div>My name is David Rodriguez.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 22)</div>
-                                    <div>I already have your name, David. I need your city and state to proceed. Can you please tell me your city and state?
-
-If you can&#39;t remember your city and state, you can also give me your zip code.
-
-Alternatively, I can try to look up your location using your phone number. Would you be okay with that?
-
-If not, I can also try to look up your location using your email address. Would you be okay with that?
-
-If none of these options work, I can also try to call you back to get your location. Would you be okay with that?
-
-Please let me know how I can proceed.
-
-If you&#39;re still unable to provide your location, I won&#39;t be able to proceed with your case.</div>
+                                    <div>The phone number you provided doesn&#39;t appear to be valid: Invalid phone number format. Could you please provide a valid phone number?</div>
                                 </div>
                             
                         </div>
                         
                         
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        <pre>{
+  &quot;matter_type&quot;: &quot;Business Law&quot;,
+  &quot;description&quot;: &quot;Business dispute, employment issues, and potential tax problems&quot;,
+  &quot;name&quot;: &quot;David Rodriguez&quot;,
+  &quot;urgency&quot;: &quot;unknown&quot;,
+  &quot;phone&quot;: &quot;70***23&quot;,
+  &quot;email&quot;: &quot;da***@example.com&quot;,
+  &quot;location&quot;: &quot;Charlotte, NC&quot;,
+  &quot;opposing_party&quot;: &quot;Unknown&quot;
+}</pre>
+                                    </div>
+                                
+                            </div>
+                        
                         
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>Agent failed to complete conversation - no fallbacks allowed</p>
+                                <p>The conversation progressed well, but there were some minor issues with error handling and conversation flow.</p>
                             </div>
                         
                         
@@ -1008,7 +923,7 @@ If you&#39;re still unable to provide your location, I won&#39;t be able to proc
                                 <div class="issues">
                                     <h4>Critical Issues</h4>
                                     <ul>
-                                        <li>Agent did not provide summary or create matter</li>
+                                        <li>Invalid phone number format</li>
                                     </ul>
                                 </div>
                             
@@ -1017,14 +932,14 @@ If you&#39;re still unable to provide your location, I won&#39;t be able to proc
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Fix agent conversation flow logic</li>
+                                    <li>Provide a valid phone number format and improve conversation flow by avoiding repetitive responses.</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 59759ms | 
-                            Average Score: 0.0/10
+                            Response Time: 5017ms | 
+                            Average Score: 8.3/10
                         </div>
                     </div>
                 </div>
@@ -1032,11 +947,11 @@ If you&#39;re still unable to provide your location, I won&#39;t be able to proc
                 <div class="test-card">
                     <div class="test-header">
                         <div class="test-title">
-                            <h3>Pricing concerns and financial discussion</h3>
-                            <p>User: Thomas Brown</p>
+                            <h3>Location service area verification and matter creation</h3>
+                            <p>User: Maria Garcia</p>
                         </div>
-                        <div class="test-status failed">
-                            FAIL
+                        <div class="test-status passed">
+                            PASS
                         </div>
                     </div>
                     
@@ -1045,47 +960,47 @@ If you&#39;re still unable to provide your location, I won&#39;t be able to proc
                             
                                     <div class="score-item">
                                         <div class="score-label">empathy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">accuracy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">completeness</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">relevance</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">professionalism</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">actionability</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">legalAccuracy</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -1101,6 +1016,224 @@ If you&#39;re still unable to provide your location, I won&#39;t be able to proc
                                 </div>
                             
                         
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">8</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">25%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                        
+                        <div class="conversation">
+                            <h4>Conversation Flow</h4>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 1)</div>
+                                    <div>I need legal help but I&#39;m not sure if you provide services in my area.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 2)</div>
+                                    <div>I&#39;d be happy to help you schedule a consultation! To get started, I need to collect some basic information. Can you please provide your full name?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 3)</div>
+                                    <div>My name is Maria Garcia.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 4)</div>
+                                    <div>Thank you Maria Garcia! Now I need your city and state.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 5)</div>
+                                    <div>I&#39;m in California and I need help with a personal injury case from a car accident.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 6)</div>
+                                    <div>Thank you Maria Garcia! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?
+
+(Note: Since you mentioned a personal injury case from a car accident, I will use that as the matter description and classify the matter_type as &quot;Personal Injury&quot;)</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 7)</div>
+                                    <div>I&#39;m in California and I need help with a personal injury case from a car accident.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 8)</div>
+                                    <div>The phone number you provided doesn&#39;t appear to be valid: Invalid phone number format. Could you please provide a valid phone number?</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        <pre>{
+  &quot;matter_type&quot;: &quot;Personal Injury&quot;,
+  &quot;description&quot;: &quot;Car accident personal injury case&quot;,
+  &quot;name&quot;: &quot;Maria Garcia&quot;,
+  &quot;urgency&quot;: &quot;unknown&quot;,
+  &quot;phone&quot;: &quot;ph***ed&quot;,
+  &quot;email&quot;: &quot;ma***@example.com&quot;,
+  &quot;location&quot;: &quot;California&quot;,
+  &quot;opposing_party&quot;: &quot;None&quot;
+}</pre>
+                                    </div>
+                                
+                            </div>
+                        
+                        
+                        
+                            <div class="feedback">
+                                <h4>Judge Feedback</h4>
+                                <p>The conversation was mostly smooth, but there were a few areas where the AI could improve.</p>
+                            </div>
+                        
+                        
+                        
+                                <div class="issues">
+                                    <h4>Critical Issues</h4>
+                                    <ul>
+                                        <li>The AI did not handle the invalid phone number format correctly and repeated the same response multiple times.</li>
+                                    </ul>
+                                </div>
+                            
+                        
+                        
+                            <div class="suggestions">
+                                <h4>Suggestions</h4>
+                                <ul>
+                                    <li>Improve error handling for invalid phone number formats and provide more context-aware responses.</li>
+                                </ul>
+                            </div>
+                        
+                        
+                        <div class="timestamp">
+                            Response Time: 12827ms | 
+                            Average Score: 8.3/10
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="test-card">
+                    <div class="test-header">
+                        <div class="test-title">
+                            <h3>Pricing concerns and financial discussion</h3>
+                            <p>User: Thomas Brown</p>
+                        </div>
+                        <div class="test-status passed">
+                            PASS
+                        </div>
+                    </div>
+                    
+                    <div class="test-content">
+                        <div class="score-grid">
+                            
+                                    <div class="score-item">
+                                        <div class="score-label">empathy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">accuracy</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">completeness</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">relevance</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">professionalism</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">actionability</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">legalAccuracy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">conversationFlow</div>
+                                        <div class="score-value">7.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">toolUsage</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                        </div>
+                        
+                        
+                                <div class="flags">
+                                    <h4>Evaluation Flags</h4>
+                                    <div class="flag-grid">
+                                        <div class="flag-item warning">
+                                            <span>⚠️ Critical Issues: 2</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                        
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">12</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">0%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
                         
                         
                         <div class="conversation">
@@ -1163,68 +1296,35 @@ If you&#39;re still unable to provide your location, I won&#39;t be able to proc
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 12)</div>
-                                    <div>TOOL_CALL: create_matter
-PARAMETERS: {&quot;matter_type&quot;: &quot;Landlord/Tenant&quot;, &quot;description&quot;: &quot;Client seeking assistance with landlord-tenant dispute&quot;, &quot;urgency&quot;: &quot;unknown&quot;, &quot;name&quot;: &quot;Thomas Brown&quot;, &quot;phone&quot;: &quot;336-555-0123&quot;, &quot;email&quot;: &quot;thomas.brown@example.com&quot;, &quot;location&quot;: &quot;Greensboro, NC&quot;}</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 13)</div>
-                                    <div>I live in Greensboro, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 14)</div>
-                                    <div>You&#39;ve already provided your location earlier, Thomas Brown. I&#39;ve already called the create_matter tool with the necessary information. Is there anything else I can assist you with?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 15)</div>
-                                    <div>I live in Greensboro, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 16)</div>
-                                    <div>You&#39;ve already provided your location earlier, Thomas Brown. I&#39;ve already called the create_matter tool with the necessary information. Is there anything else I can assist you with?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 17)</div>
-                                    <div>I live in Greensboro, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 18)</div>
-                                    <div>You&#39;ve already provided your location earlier, Thomas Brown. I&#39;ve already called the create_matter tool with the necessary information. Is there anything else I can assist you with?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 19)</div>
-                                    <div>I live in Greensboro, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 20)</div>
-                                    <div>You&#39;ve already provided your location earlier, Thomas Brown. I&#39;ve already called the create_matter tool with the necessary information. Is there anything else I can assist you with?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 21)</div>
-                                    <div>I live in Greensboro, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 22)</div>
-                                    <div>You&#39;ve already provided your location earlier, Thomas Brown. I&#39;ve already called the create_matter tool with the necessary information. Is there anything else I can assist you with?</div>
+                                    <div>The phone number you provided doesn&#39;t appear to be valid: Invalid phone number format. Could you please provide a valid phone number?</div>
                                 </div>
                             
                         </div>
                         
                         
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        <pre>{
+  &quot;matter_type&quot;: &quot;Landlord/Tenant&quot;,
+  &quot;description&quot;: &quot;Client seeking assistance with landlord-tenant dispute&quot;,
+  &quot;name&quot;: &quot;Thomas Brown&quot;,
+  &quot;urgency&quot;: &quot;unknown&quot;,
+  &quot;phone&quot;: &quot;33***23&quot;,
+  &quot;email&quot;: &quot;th***@example.com&quot;,
+  &quot;location&quot;: &quot;Greensboro, NC&quot;
+}</pre>
+                                    </div>
+                                
+                            </div>
+                        
                         
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>Agent failed to complete conversation - no fallbacks allowed</p>
+                                <p>The conversation was mostly efficient, but there were some minor issues with context awareness and conversation flow.</p>
                             </div>
                         
                         
@@ -1232,7 +1332,7 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Landlord/Tenant&quot;, &quot;descrip
                                 <div class="issues">
                                     <h4>Critical Issues</h4>
                                     <ul>
-                                        <li>Agent did not provide summary or create matter</li>
+                                        <li>The AI mentioned costs/pricing when the user didn&#39;t ask</li><li>The AI assumed legal issue type without user confirmation</li>
                                     </ul>
                                 </div>
                             
@@ -1241,14 +1341,227 @@ PARAMETERS: {&quot;matter_type&quot;: &quot;Landlord/Tenant&quot;, &quot;descrip
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Fix agent conversation flow logic</li>
+                                    <li>Be more careful with assumptions and hallucinations</li><li>Improve conversation flow and context awareness</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 48506ms | 
-                            Average Score: 0.0/10
+                            Response Time: 14916ms | 
+                            Average Score: 8.2/10
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="test-card">
+                    <div class="test-header">
+                        <div class="test-title">
+                            <h3>Minimal information provided - AI should not hallucinate details</h3>
+                            <p>User: Alex Thompson</p>
+                        </div>
+                        <div class="test-status passed">
+                            PASS
+                        </div>
+                    </div>
+                    
+                    <div class="test-content">
+                        <div class="score-grid">
+                            
+                                    <div class="score-item">
+                                        <div class="score-label">empathy</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">accuracy</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">completeness</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">relevance</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">professionalism</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">actionability</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">legalAccuracy</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">conversationFlow</div>
+                                        <div class="score-value">7.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">toolUsage</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                        </div>
+                        
+                        
+                                <div class="flags">
+                                    <h4>Evaluation Flags</h4>
+                                    <div class="flag-grid">
+                                        <div class="flag-item warning">
+                                            <span>⚠️ Critical Issues: 2</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                        
+                        
+                            <div class="conversation-analysis">
+                                <h4>Conversation Analysis</h4>
+                                <div class="analysis-grid">
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Total Messages</div>
+                                        <div class="analysis-value">12</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Efficiency</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Context Retention</div>
+                                        <div class="analysis-value">0%</div>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <div class="analysis-label">Response Variety</div>
+                                        <div class="analysis-value">100%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                        
+                        <div class="conversation">
+                            <h4>Conversation Flow</h4>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 1)</div>
+                                    <div>I need legal help.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 2)</div>
+                                    <div>I understand you&#39;re concerned about costs. Our consultation fee is typically $150, but the exact amount depends on your specific case. Let me collect your information first so I can provide you with accurate pricing details. Can you please provide your full name?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 3)</div>
+                                    <div>My name is Alex Thompson.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 4)</div>
+                                    <div>Thank you, Alex Thompson! Now I need your city and state.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 5)</div>
+                                    <div>I live in Charlotte, North Carolina.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 6)</div>
+                                    <div>Thank you, Alex Thompson! Now I need your phone number.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 7)</div>
+                                    <div>My phone number is 704-555-9999.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 8)</div>
+                                    <div>Thank you, Alex Thompson! Now I need your email address.</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 9)</div>
+                                    <div>My email is alex.thompson@example.com.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 10)</div>
+                                    <div>Thank you, Alex Thompson! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?</div>
+                                </div>
+                            
+                                <div class="message user">
+                                    <div class="message-role">user (message 11)</div>
+                                    <div>I need legal help but I&#39;m not sure what specific type of legal issue I have. I&#39;d like to speak with a lawyer to understand my options.</div>
+                                </div>
+                            
+                                <div class="message assistant">
+                                    <div class="message-role">assistant (message 12)</div>
+                                    <div>The phone number you provided doesn&#39;t appear to be valid: Invalid phone number format. Could you please provide a valid phone number?</div>
+                                </div>
+                            
+                        </div>
+                        
+                        
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        <pre>{
+  &quot;matter_type&quot;: &quot;General Consultation&quot;,
+  &quot;description&quot;: &quot;Client seeking general legal advice&quot;,
+  &quot;name&quot;: &quot;Alex Thompson&quot;,
+  &quot;urgency&quot;: &quot;unknown&quot;,
+  &quot;phone&quot;: &quot;70***99&quot;,
+  &quot;email&quot;: &quot;al***@example.com&quot;,
+  &quot;location&quot;: &quot;Charlotte, NC&quot;
+}</pre>
+                                    </div>
+                                
+                            </div>
+                        
+                        
+                        
+                            <div class="feedback">
+                                <h4>Judge Feedback</h4>
+                                <p>The AI performed well in collecting user information and creating a matter. However, it could improve in handling validation errors and providing clear next steps.</p>
+                            </div>
+                        
+                        
+                        
+                                <div class="issues">
+                                    <h4>Critical Issues</h4>
+                                    <ul>
+                                        <li>The AI mentioned costs/pricing when the user didn&#39;t ask</li><li>The AI assumed legal issue type without user confirmation</li>
+                                    </ul>
+                                </div>
+                            
+                        
+                        
+                            <div class="suggestions">
+                                <h4>Suggestions</h4>
+                                <ul>
+                                    <li>Improve error handling and provide clear next steps</li><li>Avoid assuming legal issue type without user confirmation</li>
+                                </ul>
+                            </div>
+                        
+                        
+                        <div class="timestamp">
+                            Response Time: 15620ms | 
+                            Average Score: 8.3/10
                         </div>
                     </div>
                 </div>

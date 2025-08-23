@@ -7,7 +7,7 @@ import { webcrypto, randomUUID } from 'node:crypto';
 // Use Node's full WebCrypto implementation and only add randomUUID if missing
 if (!global.crypto) {
   // Set global.crypto to Node's full WebCrypto implementation only when undefined
-  global.crypto = webcrypto;
+  global.crypto = webcrypto as any;
 }
 
 // Add randomUUID if it's missing from the crypto object

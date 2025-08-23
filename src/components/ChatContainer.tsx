@@ -116,9 +116,12 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
     // Reset input
     setInputValue('');
 
-    // Blur the textarea to collapse mobile keyboard
+    // Only blur on mobile devices to collapse virtual keyboard
     if (textareaRef.current) {
-      textareaRef.current.blur();
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        textareaRef.current.blur();
+      }
     }
   };
 

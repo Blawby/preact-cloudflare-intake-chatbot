@@ -2,6 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fetch from 'node-fetch';
 import conversations from './fixtures/conversations.json';
 import { writeFile, mkdir } from 'fs/promises';
+
+// Type the imported conversations data
+const typedConversations = conversations as ConversationsData;
 import type { ToolCall } from '../../worker/routes/judge';
 
 // Helper function to escape HTML content
@@ -66,6 +69,23 @@ interface JudgeEvaluation {
   averageScore: number;
   flags: Record<string, boolean>;
   conversationAnalysis?: any;
+}
+
+interface Conversation {
+  id: string;
+  user: string;
+  scenario: string;
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp?: string;
+  }>;
+  expectedToolCalls: ToolCall[];
+  minScore?: number;
+}
+
+interface ConversationsData {
+  conversations: Conversation[];
 }
 
 class LLMJudge {
@@ -161,6 +181,12 @@ class LLMJudge {
               assistantResponse = data.result.message;
               console.log('   Tool result message:', data.result.message.substring(0, 200));
             }
+          } else if (data.type === 'final') {
+            // Final response from the agent
+            if (data.response) {
+              assistantResponse = data.response;
+              console.log('   Final response:', data.response.substring(0, 200));
+            }
           } else if (data.type === 'complete') {
             // Stream completed successfully
             console.log('   Stream completed');
@@ -224,7 +250,7 @@ class LLMJudge {
         'Must demonstrate conversation flow efficiency and context retention',
         'Must handle validation errors gracefully and provide helpful guidance'
       ],
-      minScore: testCase.minScore || 7.0
+      minScore: testCase.minScore ?? 7.0
     };
 
     const requestBody = {
@@ -292,7 +318,7 @@ class LLMJudge {
     };
   }
 
-  async runConversationTest(conversation: any): Promise<TestResult> {
+  async runConversationTest(conversation: Conversation): Promise<TestResult> {
     const sessionId = `test-${conversation.id}-${Date.now()}`;
     const actualResponses: string[] = [];
     const actualToolCalls: ToolCall[] = [];
@@ -514,7 +540,8 @@ class LLMJudge {
           averageScore: 0,
           feedback: 'Agent failed to complete conversation - no fallbacks allowed',
           criticalIssues: ['Agent did not provide summary or create matter'],
-          suggestions: ['Fix agent conversation flow logic']
+          suggestions: ['Fix agent conversation flow logic'],
+          flags: {}
         },
         passed: false,
         responseTime: totalResponseTime
@@ -585,7 +612,7 @@ class LLMJudge {
       };
     }
 
-    const minScore = conversation.minScore || 7.0;
+    const minScore = conversation.minScore ?? 7.0;
     const passed = averageScore >= minScore; // Minimum passing score
 
     // Analyze conversation flow for additional insights
@@ -1176,11 +1203,11 @@ describe('LLM Judge Evaluation', () => {
   it('should validate conversation data', async () => {
     console.log('🔍 Validating conversation data...');
     
-    expect(conversations.conversations).toBeDefined();
-    expect(Array.isArray(conversations.conversations)).toBe(true);
-    expect(conversations.conversations.length).toBeGreaterThan(0);
+    expect(typedConversations.conversations).toBeDefined();
+    expect(Array.isArray(typedConversations.conversations)).toBe(true);
+    expect(typedConversations.conversations.length).toBeGreaterThan(0);
     
-    conversations.conversations.forEach((conversation, index) => {
+    typedConversations.conversations.forEach((conversation, index) => {
       console.log(`📋 Conversation ${index + 1}: ${conversation.id}`);
       expect(conversation.id).toBeDefined();
       expect(conversation.scenario).toBeDefined();
@@ -1198,7 +1225,7 @@ describe('LLM Judge Evaluation', () => {
   it('should test basic conversation flow', async () => {
     console.log('🔍 Testing basic conversation flow...');
     
-    const conversation = conversations.conversations[0];
+    const conversation = typedConversations.conversations[0];
     console.log(`📋 Testing conversation: ${conversation.id}`);
     
     try {
@@ -1219,7 +1246,7 @@ describe('LLM Judge Evaluation', () => {
     }
   }, 60000); // 60 second timeout
 
-  conversations.conversations.forEach(conversation => {
+  typedConversations.conversations.forEach((conversation: Conversation) => {
     it(`should evaluate "${conversation.scenario}" for ${conversation.user}`, async () => {
       console.log(`\n🧪 Starting test for: ${conversation.scenario}`);
       console.log(`👤 User: ${conversation.user}`);
@@ -1404,7 +1431,7 @@ describe('LLM Judge Evaluation', () => {
           console.log(`⚠️  Zero score detected - this might be legitimate for minimal information scenarios`);
         }
         
-        const minScore = conversation.minScore || 7.0;
+        const minScore = conversation.minScore ?? 7.0;
         console.log(`\n📊 Test Result: ${result.passed ? '✅ PASS' : '❌ FAIL'} (${result.evaluation.averageScore >= minScore ? 'meets' : 'below'} ${minScore} threshold)`);
         
         // Log tool call comparison
