@@ -1,6 +1,6 @@
 import { LightBulbIcon, Cog6ToothIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import DOMPurify from 'dompurify';
-import { ComponentType, SVGProps } from 'react';
+import type { ComponentType, SVGProps } from 'react';
 
 // Define allowed variant types
 export type AIThinkingVariant = 'thinking' | 'processing' | 'generating';
@@ -9,11 +9,7 @@ export type AIThinkingVariant = 'thinking' | 'processing' | 'generating';
 type IconComponentType = ComponentType<SVGProps<SVGSVGElement>>;
 
 // Icon and default message mapping with proper typing
-const variantConfig: Record<AIThinkingVariant, {
-  icon: IconComponentType;
-  defaultMessage: string;
-  ariaLabel: string;
-}> = {
+const variantConfig = {
   thinking: {
     icon: LightBulbIcon,
     defaultMessage: 'AI is thinking',
@@ -29,7 +25,11 @@ const variantConfig: Record<AIThinkingVariant, {
     defaultMessage: 'Generating response',
     ariaLabel: 'Generating response'
   }
-} as const;
+} satisfies Record<AIThinkingVariant, {
+  icon: IconComponentType;
+  defaultMessage: string;
+  ariaLabel: string;
+}>;
 
 export interface AIThinkingIndicatorProps {
   message?: string;
@@ -44,16 +44,14 @@ export function AIThinkingIndicator({
   className = '',
   content
 }: AIThinkingIndicatorProps): JSX.Element {
-  // Runtime-safe fallback: if variant is invalid, default to 'thinking'
-  const safeVariant: AIThinkingVariant = variantConfig[variant] ? variant : 'thinking';
-  const config = variantConfig[safeVariant];
+  const config = variantConfig[variant];
   const IconComponent: IconComponentType = config.icon;
-  const displayMessage = message || config.defaultMessage;
+  const displayMessage = message ?? config.defaultMessage;
 
   // For streaming content, return wrapped prose div to match final state
   if (content) {
     return (
-      <div className={`text-base leading-6 min-h-6 ${className}`}>
+      <div className={`text-base leading-6 min-h-[1.5rem] ${className}`}>
         <div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
           <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
         </div>
@@ -64,11 +62,11 @@ export function AIThinkingIndicator({
   // For thinking indicators, use the full wrapper
   return (
     <div 
-      className={`text-base leading-6 min-h-6 ${className}`}
+      className={`text-base leading-6 min-h-[1.5rem] ${className}`}
       role="status"
       aria-live="polite"
       aria-busy="true"
-      aria-label={config.ariaLabel}
+      aria-atomic="true"
     >
       <div className="flex items-center gap-2 motion-safe:animate-pulse motion-reduce:animate-none">
         <IconComponent 
