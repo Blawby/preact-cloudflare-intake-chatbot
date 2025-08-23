@@ -77,36 +77,35 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     
     if (path === '/api/agent/stream') {
       console.log('✅ Matched streaming route');
-      response = await handleAgentStream(request, env, CORS_HEADERS);
+      response = await handleAgentStream(request, env);
     } else if (path.startsWith('/api/agent')) {
       console.log('✅ Matched regular agent route');
-      response = await handleAgent(request, env, CORS_HEADERS);
+      response = await handleAgent(request, env);
     } else if (path === '/api/chat') {
       console.log('✅ Matched chat route');
-      response = await handleAgent(request, env, CORS_HEADERS);
+      response = await handleAgent(request, env);
     } else if (path.startsWith('/api/teams')) {
-      response = await handleTeams(request, env, CORS_HEADERS);
+      response = await handleTeams(request, env);
     } else if (path.startsWith('/api/forms')) {
-      response = await handleForms(request, env, CORS_HEADERS);
+      response = await handleForms(request, env);
     } else if (path.startsWith('/api/scheduling')) {
-      response = await handleScheduling(request, env, CORS_HEADERS);
+      response = await handleScheduling(request, env);
     } else if (path.startsWith('/api/files')) {
-      response = await handleFiles(request, env, CORS_HEADERS);
+      response = await handleFiles(request, env);
     } else if (path === '/api/analyze') {
-      response = await handleAnalyze(request, env, CORS_HEADERS);
+      response = await handleAnalyze(request, env);
     } else if (path.startsWith('/api/paralegal/')) {
-      response = await handleParalegal(request, env, CORS_HEADERS);
-
+      response = await handleParalegal(request, env);
     } else if (path.startsWith('/api/review')) {
-      response = await handleReview(request, env, CORS_HEADERS);
+      response = await handleReview(request, env);
     } else if (path.startsWith('/api/payment')) {
-      response = await handlePayment(request, env, CORS_HEADERS);
+      response = await handlePayment(request, env);
     } else if (path.startsWith('/api/judge')) {
-      response = await handleJudge(request, env, CORS_HEADERS);
+      response = await handleJudge(request, env);
     } else if (path.startsWith('/api/debug')) {
-      response = await handleDebug(request, env, CORS_HEADERS);
+      response = await handleDebug(request, env);
     } else if (path === '/api/health') {
-      response = await handleHealth(request, env, CORS_HEADERS);
+      response = await handleHealth(request, env);
     } else if (path === '/') {
       response = await handleRoot(request, env);
     } else {
@@ -114,11 +113,27 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       throw HttpErrors.notFound('Endpoint not found');
     }
 
-    // Add security headers to all responses
+    // Don't reconstruct 101 Switching Protocols responses as it breaks WebSocket upgrades
+    if (response.status === 101) {
+      return response;
+    }
+
+    // Add CORS and security headers to all other responses centrally
     const headers = new Headers(response.headers);
-    Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-      headers.set(key, value);
-    });
+    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+      if (key.toLowerCase() === 'vary') {
+        headers.append('Vary', value);
+      } else {
+        headers.set(key, value);
+      }
+    }
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      if (key.toLowerCase() === 'vary') {
+        headers.append('Vary', value);
+      } else {
+        headers.set(key, value);
+      }
+    }
 
     return new Response(response.body, {
       status: response.status,
@@ -127,7 +142,24 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     });
 
   } catch (error) {
-    return handleError(error, CORS_HEADERS);
+    const errResp = handleError(error);
+    if (errResp.status === 101) {
+      return errResp;
+    }
+    const headers = new Headers(errResp.headers);
+    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+      if (key.toLowerCase() === 'vary') headers.append('Vary', value);
+      else headers.set(key, value);
+    }
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      if (key.toLowerCase() === 'vary') headers.append('Vary', value);
+      else headers.set(key, value);
+    }
+    return new Response(errResp.body, {
+      status: errResp.status,
+      statusText: errResp.statusText,
+      headers
+    });
   }
 }
 

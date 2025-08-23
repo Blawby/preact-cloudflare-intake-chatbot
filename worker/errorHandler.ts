@@ -17,8 +17,23 @@ export const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
   'Access-Control-Max-Age': '86400',
-  'Access-Control-Allow-Credentials': 'true'
+  'Access-Control-Allow-Credentials': 'false'
 };
+
+// Helper function to get CORS headers with proper origin handling
+export function getCorsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('Origin');
+  
+  // If credentials are needed, echo the origin instead of using '*'
+  // For now, we're setting credentials to false globally as per the review
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'false'
+  };
+}
 
 // Structured logging for better observability
 export function logError(error: unknown, context: Record<string, any> = {}) {
@@ -34,7 +49,7 @@ export function logError(error: unknown, context: Record<string, any> = {}) {
 }
 
 // Centralized error handler with enhanced features
-export function handleError(error: unknown, corsHeaders: Record<string, string>): Response {
+export function handleError(error: unknown): Response {
   logError(error, { endpoint: 'unknown' });
 
   let status = 500;
@@ -52,6 +67,10 @@ export function handleError(error: unknown, corsHeaders: Record<string, string>)
     message = 'Validation error';
     details = error.errors;
     errorCode = 'VALIDATION_ERROR';
+  } else if (error instanceof SyntaxError) {
+    status = 400;
+    message = 'Invalid JSON format';
+    errorCode = 'INVALID_JSON';
   } else if (error instanceof Error) {
     message = error.message;
     errorCode = 'GENERIC_ERROR';
@@ -65,7 +84,7 @@ export function handleError(error: unknown, corsHeaders: Record<string, string>)
   };
 
   const headers = {
-    ...corsHeaders,
+    ...CORS_HEADERS,
     ...SECURITY_HEADERS,
     'Content-Type': 'application/json'
   };
@@ -96,14 +115,14 @@ export const HttpErrors = {
 };
 
 // Success response helper with security headers
-export function createSuccessResponse<T>(data: T, corsHeaders: Record<string, string>): Response {
+export function createSuccessResponse<T>(data: T): Response {
   const response: ApiResponse<T> = {
     success: true,
     data
   };
 
   const headers = {
-    ...corsHeaders,
+    ...CORS_HEADERS,
     ...SECURITY_HEADERS,
     'Content-Type': 'application/json'
   };

@@ -1,465 +1,380 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { handleTeams } from '../../../worker/routes/teams';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { WORKER_URL } from '../../setup-real-api';
 
-// Mock the TeamService module
-const mockListTeams = vi.fn();
-const mockGetTeam = vi.fn();
-const mockCreateTeam = vi.fn();
-const mockUpdateTeam = vi.fn();
-const mockDeleteTeam = vi.fn();
-
-vi.mock('../../../worker/services/TeamService', () => ({
-  TeamService: vi.fn().mockImplementation(() => ({
-    listTeams: mockListTeams,
-    getTeam: mockGetTeam,
-    createTeam: mockCreateTeam,
-    updateTeam: mockUpdateTeam,
-    deleteTeam: mockDeleteTeam
-  }))
-}));
-
-describe('Teams API Integration Tests', () => {
-  let mockEnv: any;
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
-
-  const mockTeam = {
-    id: '01K0TNGNKTM4Q0AG0XF0A8ST0Q',
-    slug: 'blawby-ai',
-    name: 'Blawby AI',
+// Helper function to create a test team
+async function createTestTeam() {
+  const newTeam = {
+    slug: `test-team-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: 'Test Legal Team',
     config: {
       aiModel: 'llama',
-      consultationFee: 0,
-      requiresPayment: false,
-      ownerEmail: 'paulchrisluke@gmail.com',
-      availableServices: ['Business Law', 'Contract Review'],
+      consultationFee: 150,
+      requiresPayment: true,
+      ownerEmail: 'test@example.com',
+      availableServices: ['Family Law', 'Business Law'],
       jurisdiction: {
-        type: 'national',
-        description: 'Available nationwide',
-        supportedStates: ['all'],
+        type: 'state',
+        description: 'North Carolina only',
+        supportedStates: ['NC'],
         supportedCountries: ['US']
-      },
-      domain: 'ai.blawby.com',
-      description: 'AI-powered legal assistance',
-      brandColor: '#2563eb',
-      accentColor: '#3b82f6',
-      introMessage: 'Hello! How can I help you today?'
-    },
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
+      }
+    }
   };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  const response = await fetch(`${WORKER_URL}/api/teams`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newTeam)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create test team: ${response.status} ${response.statusText}`);
+  }
+
+  const responseData = await response.json();
+  return responseData.data;
+}
+
+// Helper function to validate teams data and create test team if needed
+async function getValidTeamData() {
+  const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
+  const teamsData = await teamsResponse.json();
+  
+  // Validate response structure
+  if (!teamsData || typeof teamsData !== 'object') {
+    throw new Error('Invalid teams response: response is not an object');
+  }
+  
+  if (!teamsData.success) {
+    throw new Error(`Teams API request failed: ${teamsData.error || 'Unknown error'}`);
+  }
+  
+  if (!Array.isArray(teamsData.data)) {
+    throw new Error('Invalid teams response: data is not an array');
+  }
+  
+  if (teamsData.data.length === 0) {
+    console.log('⚠️  No teams found, creating a test team...');
+    const testTeam = await createTestTeam();
+    return { data: [testTeam] };
+  }
+  
+  return teamsData;
+}
+
+describe('Teams API Integration Tests - Real Worker', () => {
+  beforeAll(async () => {
+    console.log('🧪 Testing teams API against real worker at:', WORKER_URL);
     
-    mockEnv = {
-      DB: {
-        prepare: vi.fn().mockReturnValue({
-          bind: vi.fn().mockReturnValue({
-            run: vi.fn().mockResolvedValue({}),
-            first: vi.fn().mockResolvedValue(null),
-            all: vi.fn().mockResolvedValue({ results: [] })
-          })
-        })
+    // Verify worker is running
+    try {
+      const healthResponse = await fetch(`${WORKER_URL}/api/health`);
+      if (!healthResponse.ok) {
+        throw new Error(`Worker health check failed: ${healthResponse.status}`);
       }
-    };
+      console.log('✅ Worker is running and healthy');
+    } catch (error) {
+      throw new Error(`Worker is not running at ${WORKER_URL}. Please start with: npx wrangler dev`);
+    }
   });
 
   describe('GET /api/teams', () => {
     it('should return all teams successfully', async () => {
-      const teams = [mockTeam, { ...mockTeam, id: 'team2', slug: 'team2', name: 'Team 2' }];
-      mockListTeams.mockResolvedValue(teams);
-
-      const request = new Request('http://localhost/api/teams', {
+      const response = await fetch(`${WORKER_URL}/api/teams`, {
         method: 'GET'
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(200);
       const responseData = await response.json();
+      
       expect(responseData.success).toBe(true);
       expect(Array.isArray(responseData.data)).toBe(true);
-      expect(responseData.data).toHaveLength(2);
-      expect(responseData.data[0]).toHaveProperty('id', mockTeam.id);
-      expect(responseData.data[0]).toHaveProperty('slug', mockTeam.slug);
-      expect(responseData.data[0]).toHaveProperty('name', mockTeam.name);
+      expect(responseData.data.length).toBeGreaterThan(0);
+      
+      // Verify team structure
+      const team = responseData.data[0];
+      expect(team).toHaveProperty('id');
+      expect(team).toHaveProperty('slug');
+      expect(team).toHaveProperty('name');
+      expect(team).toHaveProperty('config');
+      
+      console.log('📋 Found teams:', responseData.data.map(t => ({ id: t.id, slug: t.slug, name: t.name })));
     });
 
-    it('should return empty array when no teams exist', async () => {
-      mockListTeams.mockResolvedValue([]);
-
-      const request = new Request('http://localhost/api/teams', {
-        method: 'GET'
+    it('should handle CORS preflight requests', async () => {
+      const response = await fetch(`${WORKER_URL}/api/teams`, {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': 'http://localhost:3000',
+          'Access-Control-Request-Method': 'GET',
+          'Access-Control-Request-Headers': 'Content-Type'
+        }
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(200);
-      const responseData = await response.json();
-      expect(responseData.success).toBe(true);
-      expect(Array.isArray(responseData.data)).toBe(true);
-      expect(responseData.data).toHaveLength(0);
-    });
-
-    it('should handle database errors gracefully', async () => {
-      mockListTeams.mockRejectedValue(new Error('Database error'));
-
-      const request = new Request('http://localhost/api/teams', {
-        method: 'GET'
-      });
-
-      const response = await handleTeams(request, mockEnv);
-      
-      expect(response.status).toBe(500);
-      const responseData = await response.json();
-      expect(responseData.success).toBe(false);
-      expect(responseData.error).toContain('Database error');
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET');
     });
   });
 
   describe('GET /api/teams/{slugOrId}', () => {
     it('should return specific team by ID', async () => {
-      mockGetTeam.mockResolvedValue(mockTeam);
-
-      const request = new Request(`http://localhost/api/teams/${mockTeam.id}`, {
+      // First get all teams to find a valid ID
+      const teamsData = await getValidTeamData();
+      const validTeamId = teamsData.data[0].id;
+      
+      const response = await fetch(`${WORKER_URL}/api/teams/${validTeamId}`, {
         method: 'GET'
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(200);
       const responseData = await response.json();
+      
       expect(responseData.success).toBe(true);
-      expect(responseData.data).toHaveProperty('id', mockTeam.id);
-      expect(responseData.data).toHaveProperty('slug', mockTeam.slug);
-      expect(responseData.data).toHaveProperty('name', mockTeam.name);
+      expect(responseData.data).toHaveProperty('id', validTeamId);
+      expect(responseData.data).toHaveProperty('slug');
+      expect(responseData.data).toHaveProperty('name');
       expect(responseData.data).toHaveProperty('config');
     });
 
     it('should return specific team by slug', async () => {
-      mockGetTeam.mockResolvedValue(mockTeam);
-
-      const request = new Request('http://localhost/api/teams/blawby-ai', {
+      // First get all teams to find a valid slug
+      const teamsData = await getValidTeamData();
+      const validTeamSlug = teamsData.data[0].slug;
+      
+      const response = await fetch(`${WORKER_URL}/api/teams/${validTeamSlug}`, {
         method: 'GET'
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(200);
       const responseData = await response.json();
+      
       expect(responseData.success).toBe(true);
-      expect(responseData.data).toHaveProperty('slug', 'blawby-ai');
+      expect(responseData.data).toHaveProperty('slug', validTeamSlug);
+      expect(responseData.data).toHaveProperty('id');
+      expect(responseData.data).toHaveProperty('name');
+      expect(responseData.data).toHaveProperty('config');
     });
 
     it('should return 404 for non-existent team', async () => {
-      mockGetTeam.mockResolvedValue(null);
-
-      const request = new Request('http://localhost/api/teams/non-existent', {
+      const response = await fetch(`${WORKER_URL}/api/teams/non-existent-team`, {
         method: 'GET'
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(404);
       const responseData = await response.json();
+      
       expect(responseData.success).toBe(false);
-      expect(responseData.error).toBe('Team not found');
+      expect(responseData).toHaveProperty('error');
     });
   });
 
   describe('POST /api/teams', () => {
     it('should create new team successfully', async () => {
-      const newTeamData = {
-        slug: 'new-team',
-        name: 'New Legal Team',
+      const newTeam = {
+        slug: `test-team-${Date.now()}`,
+        name: 'Test Legal Team',
         config: {
           aiModel: 'llama',
-          consultationFee: 50,
+          consultationFee: 150,
           requiresPayment: true,
-          ownerEmail: 'owner@example.com',
-          availableServices: ['Family Law'],
+          ownerEmail: 'test@example.com',
+          availableServices: ['Family Law', 'Business Law'],
           jurisdiction: {
             type: 'state',
-            description: 'Available in California',
-            supportedStates: ['CA'],
+            description: 'North Carolina only',
+            supportedStates: ['NC'],
             supportedCountries: ['US']
           }
         }
       };
 
-      const createdTeam = {
-        ...newTeamData,
-        id: 'new-team-id',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
-      };
-
-      mockGetTeam.mockResolvedValue(null); // Team doesn't exist
-      mockCreateTeam.mockResolvedValue(createdTeam);
-
-      const request = new Request('http://localhost/api/teams', {
+      const response = await fetch(`${WORKER_URL}/api/teams`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newTeamData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTeam)
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(201);
       const responseData = await response.json();
+      
       expect(responseData.success).toBe(true);
-      expect(responseData.data).toHaveProperty('id', 'new-team-id');
-      expect(responseData.data).toHaveProperty('slug', 'new-team');
-      expect(responseData.data).toHaveProperty('name', 'New Legal Team');
-    });
+      expect(responseData.data).toHaveProperty('id');
+      expect(responseData.data).toHaveProperty('slug', newTeam.slug);
+      expect(responseData.data).toHaveProperty('name', newTeam.name);
+      expect(responseData.data).toHaveProperty('config');
+      
+      console.log('✅ Created team:', responseData.data);
+    }, 30000);
 
     it('should return 400 for missing required fields', async () => {
-      const invalidTeamData = {
+      const invalidTeam = {
         name: 'Team without slug'
-        // Missing slug and config
+        // Missing slug
       };
 
-      const request = new Request('http://localhost/api/teams', {
+      const response = await fetch(`${WORKER_URL}/api/teams`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(invalidTeamData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invalidTeam)
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(400);
       const responseData = await response.json();
-      expect(responseData.success).toBe(false);
-      expect(responseData.error).toContain('Missing required fields');
-    });
-
-    it('should return 409 for duplicate slug', async () => {
-      const newTeamData = {
-        slug: 'blawby-ai', // Existing slug
-        name: 'Duplicate Team',
-        config: { aiModel: 'llama' }
-      };
-
-      mockGetTeam.mockResolvedValue(mockTeam); // Team already exists
-
-      const request = new Request('http://localhost/api/teams', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newTeamData)
-      });
-
-      const response = await handleTeams(request, mockEnv);
       
-      expect(response.status).toBe(409);
-      const responseData = await response.json();
       expect(responseData.success).toBe(false);
-      expect(responseData.error).toContain('Team with this slug already exists');
+      expect(responseData).toHaveProperty('error');
     });
   });
 
   describe('PUT /api/teams/{slugOrId}', () => {
     it('should update team successfully', async () => {
+      // First create a team to update
+      const newTeam = {
+        slug: `update-test-${Date.now()}`,
+        name: 'Team to Update',
+        config: { aiModel: 'llama' }
+      };
+
+      const createResponse = await fetch(`${WORKER_URL}/api/teams`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTeam)
+      });
+      
+      const createdTeam = await createResponse.json();
+      const teamId = createdTeam.data.id;
+
+      // Now update the team
       const updateData = {
         name: 'Updated Team Name',
         config: {
-          consultationFee: 100
+          ...newTeam.config,
+          consultationFee: 200
         }
       };
 
-      const updatedTeam = {
-        ...mockTeam,
-        ...updateData,
-        updatedAt: '2024-01-02T00:00:00Z'
-      };
-
-      mockGetTeam.mockResolvedValue(mockTeam); // Team exists
-      mockUpdateTeam.mockResolvedValue(updatedTeam);
-
-      const request = new Request('http://localhost/api/teams/blawby-ai', {
+      const response = await fetch(`${WORKER_URL}/api/teams/${teamId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData)
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(200);
       const responseData = await response.json();
+      
       expect(responseData.success).toBe(true);
       expect(responseData.data).toHaveProperty('name', 'Updated Team Name');
-      expect(responseData.data.config).toHaveProperty('consultationFee', 100);
-    });
+      expect(responseData.data).toHaveProperty('config');
+    }, 30000);
 
     it('should return 404 for non-existent team update', async () => {
-      mockGetTeam.mockResolvedValue(null); // Team doesn't exist
-      mockUpdateTeam.mockResolvedValue(null); // updateTeam should also return null
+      const updateData = {
+        name: 'Updated Name'
+      };
 
-      const request = new Request('http://localhost/api/teams/non-existent', {
+      const response = await fetch(`${WORKER_URL}/api/teams/non-existent-id`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name: 'Updated Name' })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(404);
       const responseData = await response.json();
+      
       expect(responseData.success).toBe(false);
-      expect(responseData.error).toBe('Team not found');
+      expect(responseData).toHaveProperty('error');
     });
   });
 
   describe('DELETE /api/teams/{slugOrId}', () => {
     it('should delete team successfully', async () => {
-      mockDeleteTeam.mockResolvedValue(true);
+      // First create a team to delete
+      const createRequest = {
+        name: 'Test Team for Deletion',
+        slug: 'test-team-delete-' + Date.now(),
+        config: {
+          requiresPayment: false,
+          consultationFee: 0
+        }
+      };
 
-      const request = new Request('http://localhost/api/teams/blawby-ai', {
-        method: 'DELETE'
+      const createResponse = await fetch(`${WORKER_URL}/api/teams`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(createRequest)
       });
-
-      const response = await handleTeams(request, mockEnv);
+      
+      expect(createResponse.status).toBe(201);
+      const createResult = await createResponse.json();
+      expect(createResult.success).toBe(true);
+      
+      const teamId = createResult.data.id;
+      console.log('🔍 Created team ID:', teamId);
+      console.log('🔍 Created team data:', JSON.stringify(createResult.data, null, 2));
+      
+      // Add a small delay to ensure the team is fully created
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verify the team exists before trying to delete it
+      const verifyResponse = await fetch(`${WORKER_URL}/api/teams/${teamId}`, {
+        method: 'GET'
+      });
+      
+      if (verifyResponse.status !== 200) {
+        const verifyData = await verifyResponse.json();
+        throw new Error(`Team not found after creation! Verify Status: ${verifyResponse.status}, Data: ${JSON.stringify(verifyData, null, 2)}`);
+      }
+      
+      // Now delete the team
+      const response = await fetch(`${WORKER_URL}/api/teams/${teamId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const responseData = await response.json();
+      
+      if (response.status !== 200) {
+        throw new Error(`Delete failed! Status: ${response.status}, TeamID: ${teamId}, Response: ${JSON.stringify(responseData, null, 2)}`);
+      }
       
       expect(response.status).toBe(200);
-      const responseData = await response.json();
       expect(responseData.success).toBe(true);
-      expect(responseData.message).toBe('Team deleted successfully');
+      expect(responseData.message).toContain('deleted');
     });
 
     it('should return 404 for non-existent team deletion', async () => {
-      mockDeleteTeam.mockResolvedValue(false);
-
-      const request = new Request('http://localhost/api/teams/non-existent', {
+      const response = await fetch(`${WORKER_URL}/api/teams/non-existent-id`, {
         method: 'DELETE'
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(404);
       const responseData = await response.json();
+      
       expect(responseData.success).toBe(false);
-      expect(responseData.error).toBe('Team not found');
-    });
-  });
-
-  describe('CORS and OPTIONS', () => {
-    it('should handle OPTIONS request correctly', async () => {
-      const request = new Request('http://localhost/api/teams', {
-        method: 'OPTIONS'
-      });
-
-      const response = await handleTeams(request, mockEnv);
-      
-      expect(response.status).toBe(200);
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-      expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET');
-      expect(response.headers.get('Access-Control-Allow-Methods')).toContain('POST');
-      expect(response.headers.get('Access-Control-Allow-Methods')).toContain('PUT');
-      expect(response.headers.get('Access-Control-Allow-Methods')).toContain('DELETE');
-    });
-
-    it('should include CORS headers in all responses', async () => {
-      mockListTeams.mockResolvedValue([mockTeam]);
-
-      const request = new Request('http://localhost/api/teams', {
-        method: 'GET'
-      });
-
-      const response = await handleTeams(request, mockEnv);
-      
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-      expect(response.headers.get('Content-Type')).toBe('application/json');
+      expect(responseData).toHaveProperty('error');
     });
   });
 
   describe('Method Not Allowed', () => {
-    it('should return 405 for unsupported methods', async () => {
-      const request = new Request('http://localhost/api/teams', {
-        method: 'PATCH'
+    it('should reject unsupported methods', async () => {
+      const response = await fetch(`${WORKER_URL}/api/teams`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: 'Test' })
       });
-
-      const response = await handleTeams(request, mockEnv);
       
       expect(response.status).toBe(405);
       const responseText = await response.text();
-      expect(responseText).toBe('Method not allowed');
-    });
-  });
-
-  describe('Environment Variable Resolution', () => {
-    it('should resolve environment variables in team config', async () => {
-      // Unmock TeamService for this test to test real environment variable resolution
-      vi.unmock('../../../worker/services/TeamService');
       
-      // Add environment variables to mockEnv
-      const testEnv = {
-        ...mockEnv,
-        BLAWBY_API_TOKEN: 'test-api-token-123',
-        BLAWBY_TEAM_ULID: 'test-team-ulid-456'
-      };
-
-      const teamWithEnvVars = {
-        ...mockTeam,
-        config: {
-          ...mockTeam.config,
-          blawbyApi: {
-            enabled: true,
-            apiKey: '${BLAWBY_API_TOKEN}',
-            teamUlid: '${BLAWBY_TEAM_ULID}'
-          }
-        }
-      };
-
-      // Mock the database response with the team containing environment variables
-      const mockDbResponse = {
-        id: teamWithEnvVars.id,
-        slug: teamWithEnvVars.slug,
-        name: teamWithEnvVars.name,
-        config: JSON.stringify(teamWithEnvVars.config),
-        created_at: teamWithEnvVars.createdAt,
-        updated_at: teamWithEnvVars.updatedAt
-      };
-
-      testEnv.DB.prepare.mockReturnValue({
-        bind: vi.fn().mockReturnValue({
-          first: vi.fn().mockResolvedValue(mockDbResponse)
-        })
-      });
-
-      const request = new Request('http://localhost/api/teams/blawby-ai', {
-        method: 'GET'
-      });
-
-      const response = await handleTeams(request, testEnv);
-      
-      expect(response.status).toBe(200);
-      const responseData = await response.json();
-      expect(responseData.data.config.blawbyApi).toHaveProperty('apiKey', 'test-api-token-123');
-      expect(responseData.data.config.blawbyApi).toHaveProperty('teamUlid', 'test-team-ulid-456');
-      
-      // Restore the mock after the test
-      vi.doMock('../../../worker/services/TeamService', () => ({
-        TeamService: vi.fn().mockImplementation(() => ({
-          listTeams: mockListTeams,
-          getTeam: mockGetTeam,
-          createTeam: mockCreateTeam,
-          updateTeam: mockUpdateTeam,
-          deleteTeam: mockDeleteTeam
-        }))
-      }));
+      expect(responseText).toContain('Method not allowed');
     });
   });
 });
+

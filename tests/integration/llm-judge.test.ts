@@ -367,14 +367,23 @@ function generateHTMLReport(results: TestResult[]): string {
                             </div>
                         ` : ''}
                         
-                        ${result.evaluation.criticalIssues && result.evaluation.criticalIssues.length > 0 ? `
-                            <div class="issues">
-                                <h4>Critical Issues</h4>
-                                <ul>
-                                    ${result.evaluation.criticalIssues.map(issue => `<li>${escapeHtml(issue)}</li>`).join('')}
-                                </ul>
-                            </div>
-                        ` : ''}
+                        ${(() => {
+                            // Filter out "No hallucinations detected" and similar non-issue messages
+                            const actualIssues = result.evaluation.criticalIssues?.filter(issue => 
+                                !issue.toLowerCase().includes('no hallucinations detected') &&
+                                !issue.toLowerCase().includes('no critical issues') &&
+                                !issue.toLowerCase().includes('no issues detected')
+                            ) || [];
+                            
+                            return actualIssues.length > 0 ? `
+                                <div class="issues">
+                                    <h4>Critical Issues</h4>
+                                    <ul>
+                                        ${actualIssues.map(issue => `<li>${escapeHtml(issue)}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : '';
+                        })()}
                         
                         ${result.evaluation.suggestions && result.evaluation.suggestions.length > 0 ? `
                             <div class="suggestions">

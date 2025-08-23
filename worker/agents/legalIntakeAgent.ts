@@ -2,6 +2,17 @@ import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { validateLocation as validateLocationUtil, isLocationSupported } from '../utils/locationValidator.js';
 import { CloudflareLocationInfo, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 
+// Matter type classification constant to avoid duplication
+const MATTER_TYPE_CLASSIFICATION = `- MATTER TYPE CLASSIFICATION:
+  * "Family Law" - for divorce, custody, adoption, family disputes
+  * "Employment Law" - for workplace issues, discrimination, wrongful termination
+  * "Landlord/Tenant" - for rental disputes, eviction, lease issues
+  * "Personal Injury" - for accidents, medical malpractice, product liability
+  * "Business Law" - for contracts, partnerships, corporate issues
+  * "Criminal Law" - for criminal charges, traffic violations
+  * "General Consultation" - when legal issue is unclear or user needs general advice
+  * "Civil Law" - for general civil disputes not fitting other categories`;
+
 // Helper function to analyze files using the vision API
 async function analyzeFile(env: any, fileId: string, question?: string): Promise<any> {
   console.log('=== ANALYZE FILE FUNCTION CALLED ===');
@@ -527,19 +538,28 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 2. If name but no location: ${locationPrompt}
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
-5. If name, location, phone, and email: FIRST check conversation history for legal issues (divorce, employment, etc.). If legal issue is clear from conversation, call create_matter tool IMMEDIATELY. Only if no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+5. If name, location, phone, and email: Check conversation history for legal issues:
+   - If user clearly mentioned ONE specific legal issue (divorce, employment, landlord/tenant, personal injury, business, criminal, etc.), call create_matter tool with that specific matter_type
+   - If user mentioned multiple legal issues, ask: "I see you mentioned several legal concerns. Which one would you like to focus on first?"
+   - If NO legal issue has been mentioned yet, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
 6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
-CRITICAL: 
+CRITICAL RULES - NEVER VIOLATE THESE:
 - Do NOT call collect_contact_info tool unless the user has actually provided contact information
-- Only call create_matter tool when you have ALL required information (name, phone, email, location, matter description)
+- Do NOT call create_matter tool unless you have ALL required information (name, phone, email, location, matter description)
+- Do NOT use placeholder values like "[user_phone]" - only use actual phone numbers provided by the user
 - If information is missing, ask for it directly in your response - don't call tools
+- If you don't have a real phone number from the user, do NOT call create_matter tool
+- When legal issue is unclear, use "General Consultation" as matter_type, NOT "Unknown"
+- Always confirm legal issue type with user when multiple issues are mentioned
 
 **EXTRACT LEGAL CONTEXT FROM CONVERSATION:**
 - Look through ALL previous messages for legal issues mentioned
 - Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
 - If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
 - DO NOT ask again if they already explained their legal situation
+${MATTER_TYPE_CLASSIFICATION}
+- If user mentions multiple legal issues, ask them to specify which one to focus on first
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
@@ -547,10 +567,10 @@ CRITICAL:
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking divorce assistance", "urgency": "medium", "name": "John Doe", "phone": "704-555-0123", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Unknown", "description": "Client seeking legal assistance", "urgency": "unknown", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "None"}
+PARAMETERS: {"matter_type": "Personal Injury", "description": "Car accident personal injury case", "urgency": "unknown", "name": "Jane Smith", "phone": "919-555-0123", "email": "jane.smith@example.com", "location": "Raleigh, NC", "opposing_party": "None"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
@@ -727,6 +747,21 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
 export async function handleCollectContactInfo(parameters: any, env: any, teamConfig: any) {
   const { name, phone, email, location } = parameters;
   
+  // Prevent placeholder values from being used
+  if (phone && (phone.includes('[user_phone]') || phone.includes('[USER_PHONE]') || phone.trim() === '' || phone === 'None' || phone === 'null')) {
+    return {
+      success: false,
+      message: "I need your actual phone number to proceed. Could you please provide your phone number?"
+    };
+  }
+  
+  if (email && (email.includes('[user_email]') || email.includes('[USER_EMAIL]') || email.trim() === '' || email === 'None' || email === 'null')) {
+    return {
+      success: false,
+      message: "I need your actual email address to proceed. Could you please provide your email address?"
+    };
+  }
+  
   // Validate name if provided
   if (name && !validateName(name)) {
     return { 
@@ -810,11 +845,34 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   console.log('[handleCreateMatter] teamConfig:', JSON.stringify(teamConfig, null, 2));
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
+  // Prevent placeholder values from being used
+  if (phone && (phone.includes('[user_phone]') || phone.includes('[USER_PHONE]') || phone.trim() === '' || phone === 'None' || phone === 'null')) {
+    return {
+      success: false,
+      message: "I need your actual phone number to proceed. Could you please provide your phone number?"
+    };
+  }
+  
+  if (email && (email.includes('[user_email]') || email.includes('[USER_EMAIL]') || email.trim() === '' || email === 'None' || email === 'null')) {
+    return {
+      success: false,
+      message: "I need your actual email address to proceed. Could you please provide your email address?"
+    };
+  }
+  
   // Validate required fields
   if (!matter_type || !description || !name) {
     return { 
       success: false, 
       message: "I'm missing some essential information. Could you please provide your name, contact information, and describe your legal issue?" 
+    };
+  }
+  
+  // Validate matter type - prevent "Unknown" from being used
+  if (matter_type === 'Unknown' || matter_type === 'unknown') {
+    return {
+      success: false,
+      message: "I need to understand your legal situation better. Could you please describe what type of legal help you need? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or general consultation."
     };
   }
   
@@ -893,7 +951,20 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
           urgency: finalUrgency,
           opposingParty: opposing_party || ''
         },
-        teamId: teamConfig?.id || env.BLAWBY_TEAM_ULID || '01jq70jnstyfzevc6423czh50e',
+        teamId: (() => {
+          if (teamConfig?.id) {
+            return teamConfig.id;
+          }
+          if (env.BLAWBY_TEAM_ULID) {
+            console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
+            return env.BLAWBY_TEAM_ULID;
+          }
+          console.error('❌ CRITICAL: No team ID available for payment processing');
+          console.error('   - teamConfig?.id:', teamConfig?.id);
+          console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
+          console.error('   - Team configuration should be set in database for team:', teamConfig?.slug || 'unknown');
+          throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
+        })(),
         sessionId: 'session-' + Date.now()
       };
       
@@ -905,12 +976,16 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
         console.log('✅ Invoice created successfully:', { invoiceUrl, paymentId });
       } else {
         console.error('❌ Failed to create invoice:', paymentResult.error);
+        console.error('   Payment service returned error - falling back to team payment link');
+        console.error('   Team payment link:', paymentLink);
         // Fallback to team payment link
         invoiceUrl = paymentLink;
         console.log('✅ Using team payment link as fallback:', invoiceUrl);
       }
     } catch (error) {
       console.error('❌ Payment service error:', error);
+      console.error('   Payment service threw exception - falling back to team payment link');
+      console.error('   Team payment link:', paymentLink);
       // Fallback to team payment link
       invoiceUrl = paymentLink;
       console.log('✅ Using team payment link as fallback:', invoiceUrl);
@@ -1261,6 +1336,8 @@ CRITICAL:
 - Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
 - If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
 - DO NOT ask again if they already explained their legal situation
+${MATTER_TYPE_CLASSIFICATION}
+- If user mentions multiple legal issues, ask them to specify which one to focus on first
 
 **Available Tools:**
 - create_matter: Use when you have all required information (name, location, phone, email, matter description). REQUIRED FIELDS: name, phone, email, matter_type, description. OPTIONAL: urgency (use "unknown" if not provided by user)
@@ -1268,10 +1345,10 @@ CRITICAL:
 
 **Example Tool Calls:**
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking legal assistance", "urgency": "medium", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
+PARAMETERS: {"matter_type": "Family Law", "description": "Client seeking divorce assistance", "urgency": "medium", "name": "John Doe", "phone": "704-555-0123", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "Jane Doe"}
 
 TOOL_CALL: create_matter
-PARAMETERS: {"matter_type": "Unknown", "description": "Client seeking legal assistance", "urgency": "unknown", "name": "John Doe", "phone": "[user_phone]", "email": "john@example.com", "location": "Charlotte, NC", "opposing_party": "None"}
+PARAMETERS: {"matter_type": "Personal Injury", "description": "Car accident personal injury case", "urgency": "unknown", "name": "Jane Smith", "phone": "919-555-0123", "email": "jane.smith@example.com", "location": "Raleigh, NC", "opposing_party": "None"}
 
 TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}

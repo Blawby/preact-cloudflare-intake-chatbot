@@ -2,11 +2,7 @@ import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { rateLimit, getClientId } from '../middleware/rateLimit';
 
-export async function handleParalegal(
-  request: Request, 
-  env: Env, 
-  corsHeaders: Record<string, string>
-): Promise<Response> {
+export async function handleParalegal(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
   
@@ -31,7 +27,7 @@ export async function handleParalegal(
         errorCode: 'PARALEGAL_RATE_LIMITED'
       }), {
         status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -123,7 +119,7 @@ export async function handleParalegal(
       matterId,
       action,
       timestamp: Date.now()
-    }, corsHeaders);
+    });
 
   } catch (error) {
     console.error('Paralegal route error:', {
@@ -134,6 +130,6 @@ export async function handleParalegal(
       timestamp: new Date().toISOString()
     });
     
-    return handleError(error, corsHeaders);
+    return handleError(error);
   }
 }

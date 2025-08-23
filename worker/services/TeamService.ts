@@ -21,7 +21,13 @@ export interface TeamConfig {
   accentColor?: string;
   introMessage?: string;
   profileImage?: string;
-
+  blawbyApi?: {
+    enabled: boolean;
+    apiKey?: string | null;  // Optional/nullable for migration to hash-at-rest
+    apiKeyHash?: string;     // Lowercase hex SHA-256 hash (32 bytes -> 64 hex chars)
+    teamUlid?: string;       // Team identifier for API calls
+    apiUrl?: string;
+  };
 }
 
 export interface Team {
@@ -194,30 +200,99 @@ export class TeamService {
     return team?.config || null;
   }
 
+  /**
+   * Validates and normalizes team configuration to ensure all required properties are present
+   */
+  private validateAndNormalizeConfig(config: TeamConfig | null | undefined): TeamConfig {
+    // Handle null/undefined config by coercing to empty object
+    if (!config) {
+      config = {};
+    }
+
+    const defaultConfig: TeamConfig = {
+      aiModel: 'llama',
+      consultationFee: 0,
+      requiresPayment: false,
+      ownerEmail: 'default@example.com',
+      availableServices: [
+        'Family Law',
+        'Employment Law',
+        'Business Law',
+        'Intellectual Property',
+        'Personal Injury',
+        'Criminal Law',
+        'Civil Law',
+        'Tenant Rights Law',
+        'Probate and Estate Planning',
+        'Special Education and IEP Advocacy',
+        'Small Business and Nonprofits',
+        'Contract Review',
+        'General Consultation'
+      ],
+      jurisdiction: {
+        type: 'national',
+        description: 'Available nationwide',
+        supportedStates: ['all'],
+        supportedCountries: ['US']
+      }
+    };
+
+    // Merge provided config with defaults, ensuring all required properties are present
+    // Use optional chaining to safely access config.jurisdiction
+    return {
+      ...defaultConfig,
+      ...config,
+      jurisdiction: {
+        ...defaultConfig.jurisdiction,
+        ...(config.jurisdiction || {})
+      }
+    };
+  }
+
   async createTeam(teamData: Omit<Team, 'id' | 'createdAt' | 'updatedAt'>): Promise<Team> {
     const id = this.generateULID();
     const now = new Date().toISOString();
     
+    // Validate and normalize the team configuration
+    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config);
+    
     const team: Team = {
       ...teamData,
+      config: normalizedConfig,
       id,
       createdAt: now,
       updatedAt: now
     };
 
-    await this.env.DB.prepare(`
-      INSERT INTO teams (id, slug, name, config, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(
-      team.id,
-      team.slug,
-      team.name,
-      JSON.stringify(team.config),
-      team.createdAt,
-      team.updatedAt
-    ).run();
+    console.log('TeamService.createTeam: Attempting to insert team:', { id: team.id, slug: team.slug, name: team.name });
+    
+    try {
+      const result = await this.env.DB.prepare(`
+        INSERT INTO teams (id, slug, name, config, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(
+        team.id,
+        team.slug,
+        team.name,
+        JSON.stringify(team.config),
+        team.createdAt,
+        team.updatedAt
+      ).run();
+      
+      console.log('TeamService.createTeam: Insert result:', { success: result.success });
+      
+      // Verify the team was actually created by querying the database
+      const verifyTeam = await this.env.DB.prepare('SELECT id FROM teams WHERE id = ?').bind(team.id).first();
+      if (!verifyTeam) {
+        throw new Error('Team creation failed - team not found in database after insert');
+      }
+    } catch (error) {
+      console.error('TeamService.createTeam: Database insert failed:', error);
+      throw error;
+    }
 
     this.clearCache(team.id);
+    console.log('TeamService.createTeam: Team created successfully:', { id: team.id, slug: team.slug });
     return team;
   }
 
@@ -230,9 +305,16 @@ export class TeamService {
     // Extract only mutable fields from updates, excluding immutable fields
     const { id, createdAt, ...mutableUpdates } = updates;
 
+    // Validate and normalize the team configuration if it's being updated
+    let normalizedConfig = existingTeam.config;
+    if (mutableUpdates.config) {
+      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config);
+    }
+    
     const updatedTeam: Team = {
       ...existingTeam,
       ...mutableUpdates,
+      config: normalizedConfig,
       updatedAt: new Date().toISOString()
     };
 
@@ -253,9 +335,43 @@ export class TeamService {
   }
 
   async deleteTeam(teamId: string): Promise<boolean> {
-    const result = await this.env.DB.prepare('DELETE FROM teams WHERE id = ?').bind(teamId).run();
-    this.clearCache(teamId);
-    return result.changes > 0;
+    console.log('TeamService.deleteTeam called with teamId:', teamId);
+    
+    // First check if the team exists
+    const existingTeam = await this.getTeam(teamId);
+    if (!existingTeam) {
+      console.log('❌ Team not found for deletion:', teamId);
+      return false;
+    }
+    
+    console.log('✅ Team found for deletion:', { id: existingTeam.id, slug: existingTeam.slug, name: existingTeam.name });
+    
+    try {
+      const result = await this.env.DB.prepare('DELETE FROM teams WHERE id = ?').bind(teamId).run();
+      console.log('Delete result:', { success: result.success });
+      
+      this.clearCache(teamId);
+      
+      // Check if the operation was successful
+      // In D1 local development, changes might be undefined but success is true
+      if (result.success) {
+        // Double-check by trying to get the team again
+        const verifyDeleted = await this.env.DB.prepare('SELECT id FROM teams WHERE id = ?').bind(teamId).first();
+        if (!verifyDeleted) {
+          console.log('✅ Team deleted successfully (verified by query)');
+          return true;
+        } else {
+          console.log('❌ Delete operation reported success but team still exists');
+          return false;
+        }
+      } else {
+        console.log('❌ Delete operation failed:', { success: result.success });
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Database error during team deletion:', error);
+      return false;
+    }
   }
 
   async listTeams(): Promise<Team[]> {
@@ -275,7 +391,7 @@ export class TeamService {
 
   async validateTeamAccess(teamId: string, apiToken: string): Promise<boolean> {
     try {
-      // First, retrieve the team
+      // First, retrieve the team to verify it exists
       const team = await this.getTeam(teamId);
       if (!team) {
         console.log(`❌ Team not found: ${teamId}`);
@@ -285,16 +401,7 @@ export class TeamService {
       // Hash the provided API token for comparison
       const hashedToken = await this.hashToken(apiToken);
 
-      // Check if the team's config contains API tokens
-      if (team.config.blawbyApi?.apiKey) {
-        // Compare with the team's configured API key using constant-time comparison
-        if (this.constantTimeCompare(team.config.blawbyApi.apiKey, apiToken)) {
-          console.log(`✅ API token validated for team: ${teamId}`);
-          return true;
-        }
-      }
-
-      // If not found in config, check the team_api_tokens table
+      // Check the secure team_api_tokens table
       const tokenResult = await this.env.DB.prepare(`
         SELECT id, token_hash FROM team_api_tokens 
         WHERE team_id = ? AND token_hash = ? AND active = 1
@@ -306,7 +413,7 @@ export class TeamService {
           UPDATE team_api_tokens SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?
         `).bind(tokenResult.id).run();
         
-        console.log(`✅ API token validated from database for team: ${teamId}`);
+        console.log(`✅ API token validated from secure database for team: ${teamId}`);
         return true;
       }
 
@@ -328,15 +435,16 @@ export class TeamService {
     const tokenId = this.generateULID();
 
     await this.env.DB.prepare(`
-      INSERT INTO team_api_tokens (id, team_id, token_name, token_hash, permissions, created_by)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO team_api_tokens (id, team_id, token_name, token_hash, permissions, created_by, active)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
       tokenId,
       teamId,
       tokenName,
       tokenHash,
       JSON.stringify(permissions),
-      createdBy || 'system'
+      createdBy || 'system',
+      1
     ).run();
 
     return { token, tokenId };
@@ -345,12 +453,30 @@ export class TeamService {
   /**
    * Revoke an API token
    */
-  async revokeApiToken(tokenId: string): Promise<boolean> {
+  async revokeApiToken(tokenId: string): Promise<{ success: boolean; alreadyRevoked?: boolean }> {
+    // Try to revoke the token directly
     const result = await this.env.DB.prepare(`
-      UPDATE team_api_tokens SET active = 0 WHERE id = ?
+      UPDATE team_api_tokens SET active = 0 WHERE id = ? AND active = 1
     `).bind(tokenId).run();
     
-    return result.changes > 0;
+    // Check if rows were actually updated using meta.changes
+    if (result.meta?.changes && result.meta.changes > 0) {
+      // Token was successfully revoked
+      return { success: true };
+    }
+    
+    // No rows updated - check if token exists
+    const token = await this.env.DB.prepare(`
+      SELECT id FROM team_api_tokens WHERE id = ?
+    `).bind(tokenId).first();
+    
+    if (!token) {
+      // Token doesn't exist
+      return { success: false };
+    }
+    
+    // Token exists but is already inactive
+    return { success: true, alreadyRevoked: true };
   }
 
   /**
@@ -363,9 +489,10 @@ export class TeamService {
     createdAt: string;
     lastUsedAt?: string;
     expiresAt?: string;
+    active: boolean;
   }>> {
     const tokens = await this.env.DB.prepare(`
-      SELECT id, token_name, permissions, created_at, last_used_at, expires_at
+      SELECT id, token_name, permissions, created_at, last_used_at, expires_at, active
       FROM team_api_tokens 
       WHERE team_id = ? AND active = 1
       ORDER BY created_at DESC
@@ -377,21 +504,128 @@ export class TeamService {
       permissions: JSON.parse(row.permissions as string || '[]'),
       createdAt: row.created_at as string,
       lastUsedAt: row.last_used_at as string || undefined,
-      expiresAt: row.expires_at as string || undefined
+      expiresAt: row.expires_at as string || undefined,
+      active: Boolean(row.active)
     }));
   }
 
   /**
    * Hash a token for secure storage and comparison
-   * In production, use a proper cryptographic hash function
+   * Uses SHA-256 for consistent hashing across the application
+   * Returns lowercase hex string (32 bytes -> 64 hex chars)
    */
   private async hashToken(token: string): Promise<string> {
-    // For now, use a simple hash. In production, use crypto.subtle.digest
     const encoder = new TextEncoder();
     const data = encoder.encode(token);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /**
+   * Validate that an API key hash is a proper lowercase hex SHA-256 hash
+   * @param hash The hash to validate
+   * @returns true if valid, false otherwise
+   */
+  private isValidApiKeyHash(hash: string): boolean {
+    // Must be exactly 64 characters (32 bytes * 2 hex chars per byte)
+    // Must be lowercase hex characters only
+    return /^[a-f0-9]{64}$/.test(hash);
+  }
+
+  /**
+   * Validate an API key against the team's stored hash or plaintext key
+   * Prefers apiKeyHash for authentication when available
+   * @param teamId The team ID
+   * @param providedKey The API key to validate
+   * @returns true if valid, false otherwise
+   */
+  async validateApiKey(teamId: string, providedKey: string): Promise<boolean> {
+    try {
+      const team = await this.getTeam(teamId);
+      if (!team?.config.blawbyApi?.enabled) {
+        return false;
+      }
+
+      const { apiKey, apiKeyHash } = team.config.blawbyApi;
+
+      // Prefer hash-based validation when available
+      if (apiKeyHash && this.isValidApiKeyHash(apiKeyHash)) {
+        const providedKeyHash = await this.hashToken(providedKey);
+        return this.constantTimeCompare(providedKeyHash, apiKeyHash);
+      }
+
+      // Fallback to plaintext comparison if no hash available
+      if (apiKey) {
+        return this.constantTimeCompare(providedKey, apiKey);
+      }
+
+      return false;
+    } catch (error) {
+      console.error(`❌ Error validating API key for team ${teamId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Generate and store a hash for an existing API key
+   * This method can be used to migrate teams from plaintext to hashed API keys
+   */
+  async generateApiKeyHash(teamId: string): Promise<boolean> {
+    try {
+      const team = await this.getTeam(teamId);
+      if (!team || !team.config.blawbyApi?.apiKey) {
+        console.log(`❌ Team not found or no API key configured: ${teamId}`);
+        return false;
+      }
+
+      // Generate hash for the existing API key (apiKey is guaranteed to be string here due to check above)
+      const apiKeyHash = await this.hashToken(team.config.blawbyApi.apiKey!);
+      
+      // Validate the generated hash
+      if (!this.isValidApiKeyHash(apiKeyHash)) {
+        console.error(`❌ Generated invalid API key hash for team: ${teamId}`);
+        return false;
+      }
+      
+      // Update the team config to include the hash and optionally nullify the plaintext key
+      const updatedConfig = {
+        ...team.config,
+        blawbyApi: {
+          ...team.config.blawbyApi,
+          apiKeyHash,
+          // Optionally set apiKey to null after migration (uncomment when ready)
+          // apiKey: null
+        }
+      };
+
+      // Update the team in the database
+      const result = await this.env.DB.prepare(`
+        UPDATE teams SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(JSON.stringify(updatedConfig), teamId).run();
+
+      // Check if rows were actually updated using meta.changes
+      if (result.meta?.changes && result.meta.changes > 0) {
+        // Clear the cache for this team
+        this.clearCache(teamId);
+        console.log(`✅ API key hash generated and stored for team: ${teamId}`);
+        return true;
+      }
+
+      // Log detailed error information for debugging
+      console.error(`❌ Failed to update team config for team ${teamId}:`, {
+        teamId,
+        result,
+        updatePayload: {
+          config: updatedConfig,
+          timestamp: new Date().toISOString()
+        }
+      });
+      return false;
+    } catch (error) {
+      console.error(`❌ Error generating API key hash for ${teamId}:`, error);
+      return false;
+    }
   }
 
   /**

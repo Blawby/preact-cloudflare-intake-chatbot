@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { createSuccessResponse } from '../errorHandler';
+import { createSuccessResponse, CORS_HEADERS } from '../errorHandler';
 
 // Tool call interface for type safety
 export interface ToolCall {
@@ -68,19 +68,19 @@ function isValidJudgeRequest(value: any): value is JudgeRequest {
   );
 }
 
-export async function handleJudge(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handleJudge(request: Request, env: Env): Promise<Response> {
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: { ...corsHeaders } });
+    return new Response(null, { status: 204, headers: { ...CORS_HEADERS } });
   }
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({
       success: false,
       error: 'Only POST method is allowed',
       errorCode: 'METHOD_NOT_ALLOWED'
-    }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+          }), {
+        status: 405,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
   }
 
   try {
@@ -96,7 +96,7 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
         details: parseError instanceof Error ? parseError.message : 'JSON parse error'
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       });
     }
 
@@ -151,7 +151,7 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
         }
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       });
     }
 
@@ -191,6 +191,7 @@ CRITICAL EVALUATION RULES:
 4. FACTUAL BASIS: Every claim in the response must have a factual basis in the conversation
 5. CONTEXT AWARENESS: The AI should reference and build upon previous conversation elements
 6. CONVERSATION EFFICIENCY: Avoid repetitive responses and circular conversations
+7. CRITICAL ISSUES: Only list actual problems or violations. If no critical issues are found, return an empty array for criticalIssues.
 
 COMPREHENSIVE EVALUATION CRITERIA (Rate each 1-10):
 
@@ -253,7 +254,7 @@ RESPONSE FORMAT (JSON):
   "informationCollection": <score 1-10>,
   "errorHandling": <score 1-10>,
   "feedback": "<brief feedback on performance>",
-  "criticalIssues": ["<list any critical issues including hallucinations>"],
+  "criticalIssues": ["<list any critical issues including hallucinations. If no critical issues found, return empty array []>"],
   "suggestions": ["<list improvement suggestions>"],
   "hallucinationDetected": <boolean>,
   "repetitiveResponses": <boolean>,
@@ -370,7 +371,7 @@ Provide only the JSON response, no additional text.`;
       tokenUsage: result.metadata.tokenUsage
     });
 
-    return createSuccessResponse(result, corsHeaders);
+    return createSuccessResponse(result);
 
   } catch (error) {
     console.error('Judge evaluation error:', error);
@@ -380,9 +381,9 @@ Provide only the JSON response, no additional text.`;
       error: 'Judge evaluation failed',
       errorCode: 'JUDGE_EVALUATION_ERROR',
       details: error instanceof Error ? error.message : 'Unknown error'
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+          }), {
+        status: 500,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
   }
 }

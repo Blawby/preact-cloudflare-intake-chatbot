@@ -1,12 +1,9 @@
-export async function handleDebug(request: Request, env: any): Promise<Response> {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+import type { Env } from '../types.js';
+import { CORS_HEADERS } from '../errorHandler.js';
 
+export async function handleDebug(request: Request, env: Env): Promise<Response> {
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
   const url = new URL(request.url);
@@ -15,36 +12,36 @@ export async function handleDebug(request: Request, env: any): Promise<Response>
   try {
     if (request.method === 'GET') {
       if (path === '' || path === '/') {
-        return await getDebugInfo(env, corsHeaders);
+        return await getDebugInfo(env);
       } else if (path === '/teams') {
-        return await getTeamsInfo(env, corsHeaders);
+        return await getTeamsInfo(env);
       }
     }
 
     return new Response('Endpoint not found', { 
       status: 404, 
-      headers: corsHeaders 
+      headers: CORS_HEADERS 
     });
 
   } catch (error) {
     console.error('Debug API error:', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
-      }), 
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+          return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Internal server error' 
+        }), 
+        { 
+          status: 500, 
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        }
+      );
   }
 }
 
-async function getDebugInfo(env: any, corsHeaders: Record<string, string>): Promise<Response> {
+async function getDebugInfo(env: Env): Promise<Response> {
   const info = {
     timestamp: new Date().toISOString(),
-    environment: env.ENVIRONMENT || 'development',
+    environment: 'Cloudflare Workers',
     database: 'D1 (Cloudflare)',
     architecture: 'API-First Multi-Tenant',
     features: {
@@ -83,12 +80,12 @@ async function getDebugInfo(env: any, corsHeaders: Record<string, string>): Prom
   return new Response(JSON.stringify(info, null, 2), {
     headers: {
       'Content-Type': 'application/json',
-      ...corsHeaders
+      ...CORS_HEADERS
     }
   });
 }
 
-async function getTeamsInfo(env: any, corsHeaders: Record<string, string>): Promise<Response> {
+async function getTeamsInfo(env: Env): Promise<Response> {
   try {
     const { TeamService } = await import('../services/TeamService.js');
     const teamService = new TeamService(env);
@@ -100,7 +97,7 @@ async function getTeamsInfo(env: any, corsHeaders: Record<string, string>): Prom
     }, null, 2), {
       headers: {
         'Content-Type': 'application/json',
-        ...corsHeaders
+        ...CORS_HEADERS
       }
     });
   } catch (error) {
@@ -111,7 +108,7 @@ async function getTeamsInfo(env: any, corsHeaders: Record<string, string>): Prom
       status: 500,
       headers: {
         'Content-Type': 'application/json',
-        ...corsHeaders
+        ...CORS_HEADERS
       }
     });
   }

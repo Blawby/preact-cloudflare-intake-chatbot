@@ -2,7 +2,7 @@ import type { Env } from '../types';
 import { parseJsonBody } from '../utils';
 import { runLegalIntakeAgent, runLegalIntakeAgentStream } from '../agents/legalIntakeAgent';
 import { runParalegalAgentStream } from '../agents/ParalegalAgent';
-import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { HttpErrors, handleError, createSuccessResponse, CORS_HEADERS, SECURITY_HEADERS } from '../errorHandler';
 import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
 import { SecurityLogger } from '../utils/securityLogger.js';
 import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
@@ -247,7 +247,7 @@ function formatParalegalResponse(paralegalData: any): string {
 Can you tell me more about what's going on with your case? The more details you share, the better I can help you figure out next steps.`;
 }
 
-export async function handleAgent(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handleAgent(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
@@ -261,7 +261,7 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
       errorCode: 'RATE_LIMITED'
     }), {
       status: 429,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...CORS_HEADERS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' }
     });
   }
 
@@ -313,7 +313,7 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
           cloudflareLocation: cloudflareLocation.isValid ? getLocationDescription(cloudflareLocation) : 'Unknown'
         },
         sessionId
-      }, corsHeaders);
+              });
     }
 
     // Use supervisor router to determine which agent to use
@@ -351,7 +351,7 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
           console.warn('Paralegal agent error, falling back to intake agent');
           // Fallback to intake agent on error
           const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation, attachments);
-          return createSuccessResponse(agentResponse, corsHeaders);
+          return createSuccessResponse(agentResponse);
         }
 
         const paralegalData = await paralegalResponse.json();
@@ -371,26 +371,26 @@ export async function handleAgent(request: Request, env: Env, corsHeaders: Recor
           }
         };
 
-        return createSuccessResponse(response, corsHeaders);
-      } catch (error) {
-        console.error('Paralegal agent error:', error);
-        // Fallback to intake agent on error
-        const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation, attachments);
-        return createSuccessResponse(agentResponse, corsHeaders);
-      }
+        return createSuccessResponse(response);
+              } catch (error) {
+          console.error('Paralegal agent error:', error);
+          // Fallback to intake agent on error
+          const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation, attachments);
+          return createSuccessResponse(agentResponse);
+        }
     }
 
     // For 'analysis' and 'intake' routes, use the existing legal intake agent
-    // The intake agent already handles document analysis via the analyze_document tool
-    const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation, attachments);
-    return createSuccessResponse(agentResponse, corsHeaders);
-  } catch (error) {
-    return handleError(error, corsHeaders);
-  }
+          // The intake agent already handles document analysis via the analyze_document tool
+      const agentResponse = await runLegalIntakeAgent(env, messages, teamId, sessionId, cloudflareLocation, attachments);
+      return createSuccessResponse(agentResponse);
+      } catch (error) {
+      return handleError(error);
+    }
 }
 
 // New streaming endpoint for real-time AI responses
-export async function handleAgentStream(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handleAgentStream(request: Request, env: Env): Promise<Response> {
   console.log('🚀 Streaming endpoint called!');
   
   if (request.method !== 'POST') {
@@ -402,9 +402,9 @@ export async function handleAgentStream(request: Request, env: Env, corsHeaders:
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': corsHeaders['Access-Control-Allow-Origin'] || '*',
-    'Access-Control-Allow-Methods': corsHeaders['Access-Control-Allow-Methods'] || 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': corsHeaders['Access-Control-Allow-Headers'] || 'Content-Type',
+    'Access-Control-Allow-Origin': CORS_HEADERS['Access-Control-Allow-Origin'] || '*',
+    'Access-Control-Allow-Methods': CORS_HEADERS['Access-Control-Allow-Methods'] || 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': CORS_HEADERS['Access-Control-Allow-Headers'] || 'Content-Type',
   };
 
   try {

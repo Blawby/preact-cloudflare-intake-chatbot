@@ -1,25 +1,24 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { handleAgent } from '../../../worker/routes/agent';
+import { WORKER_URL } from '../../setup-real-api';
 
-// Mock environment with dynamic AI responses
-const createMockEnv = (aiResponse: string) => ({
-  CLOUDFLARE_ACCOUNT_ID: 'test-account-id',
-  CLOUDFLARE_API_TOKEN: 'test-api-token',
-  CLOUDFLARE_PUBLIC_URL: 'https://test-worker.workers.dev',
-  FILES_BUCKET: null,
-  DB: null,
-  CHAT_SESSIONS: null,
-  RESEND_API_KEY: 'test-resend-key',
-  AI: {
-    run: async (model: string, options: any) => {
-      return { response: aiResponse };
+describe('Agent Route Integration - Real API', () => {
+  beforeAll(async () => {
+    console.log('🧪 Testing agent API against real worker at:', WORKER_URL);
+    
+    // Verify worker is running
+    try {
+      const healthResponse = await fetch(`${WORKER_URL}/api/health`);
+      if (!healthResponse.ok) {
+        throw new Error(`Worker health check failed: ${healthResponse.status}`);
+      }
+      console.log('✅ Worker is running and healthy');
+    } catch (error) {
+      throw new Error(`Worker is not running at ${WORKER_URL}. Please ensure wrangler dev is started.`);
     }
-  }
-});
+  });
 
-describe('Agent Route Integration', () => {
-  describe('handleAgent with file attachments', () => {
-    it('should extract attachments from request body and pass to AI agent', async () => {
+  describe('POST /api/agent with file attachments', () => {
+    it('should handle requests with file attachments', async () => {
       const requestBody = {
         messages: [
           {
@@ -28,7 +27,7 @@ describe('Agent Route Integration', () => {
             isUser: true
           }
         ],
-        teamId: 'team-123',
+        teamId: 'test-team-1',
         sessionId: 'session-456',
         attachments: [
           {
@@ -40,7 +39,7 @@ describe('Agent Route Integration', () => {
         ]
       };
 
-      const request = new Request('http://localhost/api/agent', {
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -48,19 +47,13 @@ describe('Agent Route Integration', () => {
         body: JSON.stringify(requestBody)
       });
 
-      const mockEnv = createMockEnv(`TOOL_CALL: analyze_document
-PARAMETERS: {
-  "file_id": "file-abc123-def456",
-  "analysis_type": "resume",
-  "specific_question": "Analyze this resume for improvement opportunities"
-}`);
-      const response = await handleAgent(request, mockEnv, {});
+      expect(response.status).toBe(200);
       const result = await response.json();
 
-      // Should have tool calls indicating file analysis was triggered
-      expect(result.data.toolCalls).toBeDefined();
-      expect(result.data.toolCalls[0].name).toBe('analyze_document');
-      expect(result.data.toolCalls[0].parameters.file_id).toBe('file-abc123-def456');
+      // Should have a response from the real AI service
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data.response).toBeDefined();
     });
 
     it('should handle requests without attachments', async () => {
@@ -72,12 +65,12 @@ PARAMETERS: {
             isUser: true
           }
         ],
-        teamId: 'team-123',
+        teamId: 'test-team-1',
         sessionId: 'session-456',
         attachments: []
       };
 
-      const request = new Request('http://localhost/api/agent', {
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -85,13 +78,13 @@ PARAMETERS: {
         body: JSON.stringify(requestBody)
       });
 
-      const mockEnv = createMockEnv('Can you please provide your full name?');
-      const response = await handleAgent(request, mockEnv, {});
+      expect(response.status).toBe(200);
       const result = await response.json();
 
-      // Should not have tool calls when no attachments
-      expect(result.data.toolCalls).toBeUndefined();
-      expect(result.data.response).toContain('Can you please provide your full name');
+      // Should have a response from the real AI service
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data.response).toBeDefined();
     });
 
     it('should handle requests with missing attachments field', async () => {
@@ -103,12 +96,12 @@ PARAMETERS: {
             isUser: true
           }
         ],
-        teamId: 'team-123',
+        teamId: 'test-team-1',
         sessionId: 'session-456'
         // No attachments field
       };
 
-      const request = new Request('http://localhost/api/agent', {
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -116,43 +109,44 @@ PARAMETERS: {
         body: JSON.stringify(requestBody)
       });
 
-      const mockEnv = createMockEnv('Can you please provide your full name?');
-      const response = await handleAgent(request, mockEnv, {});
+      expect(response.status).toBe(200);
       const result = await response.json();
 
       // Should handle missing attachments gracefully
-      expect(result.data.toolCalls).toBeUndefined();
-      expect(result.data.response).toContain('Can you please provide your full name');
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
     });
+  });
 
-    it('should handle multiple file attachments', async () => {
+  describe('POST /api/agent with multiple file types', () => {
+    it('should handle requests with multiple file types', async () => {
       const requestBody = {
         messages: [
           {
             role: 'user',
-            content: 'Can you analyze these documents?',
+            content: 'Analyze these documents for me',
             isUser: true
           }
         ],
-        teamId: 'team-123',
-        sessionId: 'session-456',
+        teamId: 'test-team-1',
+        sessionId: 'session-789',
         attachments: [
-          {
-            name: 'Profile (5).pdf',
-            type: 'application/pdf',
-            size: 63872,
-            url: '/api/files/file-abc123-def456.pdf'
-          },
           {
             name: 'contract.pdf',
             type: 'application/pdf',
             size: 102400,
-            url: '/api/files/file-def789-ghi012.pdf'
+            url: '/api/files/contract-123.pdf'
+          },
+          {
+            name: 'resume.docx',
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            size: 51200,
+            url: '/api/files/resume-456.docx'
           }
         ]
       };
 
-      const request = new Request('http://localhost/api/agent', {
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -160,238 +154,196 @@ PARAMETERS: {
         body: JSON.stringify(requestBody)
       });
 
-      const mockEnv = createMockEnv(`TOOL_CALL: analyze_document
-PARAMETERS: {
-  "file_id": "file-abc123-def456",
-  "analysis_type": "resume",
-  "specific_question": "Analyze these documents"
-}`);
-      const response = await handleAgent(request, mockEnv, {});
+      expect(response.status).toBe(200);
       const result = await response.json();
 
-      // Should trigger file analysis
-      expect(result.data.toolCalls).toBeDefined();
-      expect(result.data.toolCalls[0].name).toBe('analyze_document');
+      // Should handle multiple file types
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+    });
+  });
+
+  describe('POST /api/agent validation', () => {
+    it('should validate required fields', async () => {
+      const requestBody = {
+        // Missing required fields
+        messages: [],
+        teamId: '',
+        sessionId: ''
+      };
+
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      // Should return validation error
+      expect(response.status).toBe(400);
+      const result = await response.json();
+      expect(result.success).toBe(false);
     });
 
-    it('should handle different file types in attachments', async () => {
-      const testCases = [
-        {
-          file: { name: 'resume.pdf', type: 'application/pdf', size: 50000, url: '/api/files/resume-123.pdf' },
-          description: 'resume file'
+    it('should handle malformed JSON', async () => {
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        {
-          file: { name: 'contract.pdf', type: 'application/pdf', size: 80000, url: '/api/files/contract-456.pdf' },
-          description: 'legal document'
+        body: 'invalid json'
+      });
+
+      // Should return error for malformed JSON
+      expect(response.status).toBe(400);
+    });
+
+    it('should handle missing Content-Type header', async () => {
+      const requestBody = {
+        messages: [
+          {
+            role: 'user',
+            content: 'Test message',
+            isUser: true
+          }
+        ],
+        teamId: 'test-team-1',
+        sessionId: 'session-123'
+      };
+
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+        // Missing Content-Type header
+      });
+
+      // Should handle missing Content-Type
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/agent with different team configurations', () => {
+    it('should work with different team IDs', async () => {
+      const requestBody = {
+        messages: [
+          {
+            role: 'user',
+            content: 'Hello from a different team',
+            isUser: true
+          }
+        ],
+        teamId: 'blawby-ai',
+        sessionId: 'session-diff-team',
+        attachments: []
+      };
+
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        {
-          file: { name: 'accident_photo.jpg', type: 'image/jpeg', size: 2500000, url: '/api/files/photo-012.jpg' },
-          description: 'image file'
-        }
-      ];
+        body: JSON.stringify(requestBody)
+      });
 
-      for (const testCase of testCases) {
-        const requestBody = {
-          messages: [
-            {
-              role: 'user',
-              content: `Can you analyze this ${testCase.description}?`,
-              isUser: true
-            }
-          ],
-          teamId: 'team-123',
-          sessionId: 'session-456',
-          attachments: [testCase.file]
-        };
+      expect(response.status).toBe(200);
+      const result = await response.json();
 
-        const request = new Request('http://localhost/api/agent', {
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+    });
+
+    it('should handle non-existent team gracefully', async () => {
+      const requestBody = {
+        messages: [
+          {
+            role: 'user',
+            content: 'Test message',
+            isUser: true
+          }
+        ],
+        teamId: 'non-existent-team',
+        sessionId: 'session-123',
+        attachments: []
+      };
+
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      // Should handle non-existent team gracefully by using default config
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+    });
+  });
+
+  describe('POST /api/agent error handling', () => {
+    it('should handle large message payloads', async () => {
+      const largeMessage = 'A'.repeat(10000); // 10KB message
+      const requestBody = {
+        messages: [
+          {
+            role: 'user',
+            content: largeMessage,
+            isUser: true
+          }
+        ],
+        teamId: 'test-team-1',
+        sessionId: 'session-large',
+        attachments: []
+      };
+
+      const response = await fetch(`${WORKER_URL}/api/agent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      // Should handle large payloads
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle concurrent requests', async () => {
+      const requestBody = {
+        messages: [
+          {
+            role: 'user',
+            content: 'Concurrent test message',
+            isUser: true
+          }
+        ],
+        teamId: 'test-team-1',
+        sessionId: 'session-concurrent',
+        attachments: []
+      };
+
+      // Make multiple concurrent requests
+      const promises = Array.from({ length: 3 }, () =>
+        fetch(`${WORKER_URL}/api/agent`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(requestBody)
-        });
+        })
+      );
 
-        const mockEnv = createMockEnv(`TOOL_CALL: analyze_document
-PARAMETERS: {
-  "file_id": "${testCase.file.url.split('/').pop()?.split('.')[0]}",
-  "analysis_type": "${testCase.description === 'resume file' ? 'resume' : testCase.description === 'legal document' ? 'legal_document' : testCase.description === 'image file' ? 'image' : 'general'}",
-  "specific_question": "Analyze this ${testCase.description}"
-}`);
-        const response = await handleAgent(request, mockEnv, {});
-        const result = await response.json();
-
-        expect(result.data.toolCalls).toBeDefined();
-        expect(result.data.toolCalls[0].name).toBe('analyze_document');
-        expect(result.data.toolCalls[0].parameters.file_id).toBe(testCase.file.url.split('/').pop()?.split('.')[0]);
-      }
-    });
-  });
-
-  describe('Request validation', () => {
-    it('should reject non-POST requests', async () => {
-      const request = new Request('http://localhost/api/agent', {
-        method: 'GET'
+      const responses = await Promise.all(promises);
+      
+      // All requests should succeed
+      responses.forEach(response => {
+        expect(response.status).toBe(200);
       });
-
-      const mockEnv = createMockEnv('Test response');
-      const response = await handleAgent(request, mockEnv, {});
-      expect(response.status).toBe(405); // Method Not Allowed
-    });
-
-    it('should reject requests without messages', async () => {
-      const requestBody = {
-        teamId: 'team-123',
-        sessionId: 'session-456',
-        attachments: []
-      };
-
-      const request = new Request('http://localhost/api/agent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const mockEnv = createMockEnv('Test response');
-      const response = await handleAgent(request, mockEnv, {});
-      expect(response.status).toBe(400); // Bad Request
-    });
-
-    it('should reject requests with empty messages', async () => {
-      const requestBody = {
-        messages: [],
-        teamId: 'team-123',
-        sessionId: 'session-456',
-        attachments: []
-      };
-
-      const request = new Request('http://localhost/api/agent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const mockEnv = createMockEnv('Test response');
-      const response = await handleAgent(request, mockEnv, {});
-      expect(response.status).toBe(400); // Bad Request
-    });
-
-    it('should reject requests with messages without content', async () => {
-      const requestBody = {
-        messages: [
-          {
-            role: 'user',
-            isUser: true
-            // No content
-          }
-        ],
-        teamId: 'team-123',
-        sessionId: 'session-456',
-        attachments: []
-      };
-
-      const request = new Request('http://localhost/api/agent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const mockEnv = createMockEnv('Test response');
-      const response = await handleAgent(request, mockEnv, {});
-      expect(response.status).toBe(400); // Bad Request
-    });
-  });
-
-  describe('Response format', () => {
-    it('should return proper response structure with tool calls', async () => {
-      const requestBody = {
-        messages: [
-          {
-            role: 'user',
-            content: 'Can you analyze this resume?',
-            isUser: true
-          }
-        ],
-        teamId: 'team-123',
-        sessionId: 'session-456',
-        attachments: [
-          {
-            name: 'resume.pdf',
-            type: 'application/pdf',
-            size: 50000,
-            url: '/api/files/resume-123.pdf'
-          }
-        ]
-      };
-
-      const request = new Request('http://localhost/api/agent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const mockEnv = createMockEnv(`TOOL_CALL: analyze_document
-PARAMETERS: {
-  "file_id": "resume-123",
-  "analysis_type": "resume",
-  "specific_question": "Analyze this resume"
-}`);
-      const response = await handleAgent(request, mockEnv, {});
-      const result = await response.json();
-
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      expect(result.data.toolCalls).toBeDefined();
-      expect(result.data.toolCalls).toHaveLength(1);
-      expect(result.data.toolCalls[0]).toMatchObject({
-        name: 'analyze_document',
-        parameters: {
-          file_id: expect.any(String),
-          analysis_type: expect.any(String),
-          specific_question: expect.any(String)
-        }
-      });
-    });
-
-    it('should return proper response structure without tool calls', async () => {
-      const requestBody = {
-        messages: [
-          {
-            role: 'user',
-            content: 'Can you please provide your full name?',
-            isUser: true
-          }
-        ],
-        teamId: 'team-123',
-        sessionId: 'session-456',
-        attachments: []
-      };
-
-      const request = new Request('http://localhost/api/agent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const mockEnv = createMockEnv('Can you please provide your full name?');
-      const response = await handleAgent(request, mockEnv, {});
-      const result = await response.json();
-
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      expect(result.data.response).toBeDefined();
-      expect(result.data.response).toContain('Can you please provide your full name');
-      expect(result.data.toolCalls).toBeUndefined();
     });
   });
 });

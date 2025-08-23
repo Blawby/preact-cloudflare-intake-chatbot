@@ -45,6 +45,10 @@ coverage
 wrangler.toml
 .wrangler/
 
+# Temporary migration files (may contain sensitive data)
+migrations/*_temp.sql
+migrations/*_with_secrets.sql
+
 # Misc
 .cache
 .parcel-cache
