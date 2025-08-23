@@ -1,4 +1,4 @@
-export async function handleDebug(request: Request, env: any): Promise<Response> {
+export async function handleDebug(request: Request, env: Env): Promise<Response> {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -15,9 +15,9 @@ export async function handleDebug(request: Request, env: any): Promise<Response>
   try {
     if (request.method === 'GET') {
       if (path === '' || path === '/') {
-        return await getDebugInfo(env, corsHeaders);
+        return await getDebugInfo(env);
       } else if (path === '/teams') {
-        return await getTeamsInfo(env, corsHeaders);
+        return await getTeamsInfo(env);
       }
     }
 
@@ -41,7 +41,7 @@ export async function handleDebug(request: Request, env: any): Promise<Response>
   }
 }
 
-async function getDebugInfo(env: any, corsHeaders: Record<string, string>): Promise<Response> {
+async function getDebugInfo(env: any): Promise<Response> {
   const info = {
     timestamp: new Date().toISOString(),
     environment: env.ENVIRONMENT || 'development',
@@ -83,12 +83,12 @@ async function getDebugInfo(env: any, corsHeaders: Record<string, string>): Prom
   return new Response(JSON.stringify(info, null, 2), {
     headers: {
       'Content-Type': 'application/json',
-      ...corsHeaders
+      ...CORS_HEADERS
     }
   });
 }
 
-async function getTeamsInfo(env: any, corsHeaders: Record<string, string>): Promise<Response> {
+async function getTeamsInfo(env: any): Promise<Response> {
   try {
     const { TeamService } = await import('../services/TeamService.js');
     const teamService = new TeamService(env);
@@ -100,7 +100,7 @@ async function getTeamsInfo(env: any, corsHeaders: Record<string, string>): Prom
     }, null, 2), {
       headers: {
         'Content-Type': 'application/json',
-        ...corsHeaders
+        ...CORS_HEADERS
       }
     });
   } catch (error) {
@@ -111,7 +111,7 @@ async function getTeamsInfo(env: any, corsHeaders: Record<string, string>): Prom
       status: 500,
       headers: {
         'Content-Type': 'application/json',
-        ...corsHeaders
+        ...CORS_HEADERS
       }
     });
   }

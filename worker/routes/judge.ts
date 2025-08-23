@@ -68,19 +68,19 @@ function isValidJudgeRequest(value: any): value is JudgeRequest {
   );
 }
 
-export async function handleJudge(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handleJudge(request: Request, env: Env): Promise<Response> {
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: { ...corsHeaders } });
+    return new Response(null, { status: 204, headers: { ...CORS_HEADERS } });
   }
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({
       success: false,
       error: 'Only POST method is allowed',
       errorCode: 'METHOD_NOT_ALLOWED'
-    }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+          }), {
+        status: 405,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
   }
 
   try {
@@ -96,7 +96,7 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
         details: parseError instanceof Error ? parseError.message : 'JSON parse error'
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       });
     }
 
@@ -151,7 +151,7 @@ export async function handleJudge(request: Request, env: Env, corsHeaders: Recor
         }
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       });
     }
 
@@ -370,7 +370,7 @@ Provide only the JSON response, no additional text.`;
       tokenUsage: result.metadata.tokenUsage
     });
 
-    return createSuccessResponse(result, corsHeaders);
+    return createSuccessResponse(result);
 
   } catch (error) {
     console.error('Judge evaluation error:', error);
@@ -380,9 +380,9 @@ Provide only the JSON response, no additional text.`;
       error: 'Judge evaluation failed',
       errorCode: 'JUDGE_EVALUATION_ERROR',
       details: error instanceof Error ? error.message : 'Unknown error'
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+          }), {
+        status: 500,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
   }
 }

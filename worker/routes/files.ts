@@ -197,7 +197,7 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
   return { fileId, url };
 }
 
-export async function handleFiles(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handleFiles(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -244,10 +244,10 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
         fileSize: file.size,
         url,
         message: 'File uploaded successfully'
-      }, corsHeaders);
+             });
 
-    } catch (error) {
-      return handleError(error, corsHeaders);
+              } catch (error) {
+      return handleError(error);
     }
   }
 
@@ -337,8 +337,8 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
 
       console.log('File found in R2, returning response');
 
-      // Return file with appropriate headers
-      const headers = new Headers(corsHeaders);
+              // Return file with appropriate headers
+        const headers = new Headers();
       headers.set('Content-Type', fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream');
       headers.set('Content-Disposition', `inline; filename="${fileRecord?.original_name || fileId}"`);
       if (fileRecord?.file_size) {
@@ -360,10 +360,10 @@ export async function handleFiles(request: Request, env: Env, corsHeaders: Recor
         headers
       });
 
-    } catch (error) {
-      console.error('File download error:', error);
-      return handleError(error, corsHeaders);
-    }
+          } catch (error) {
+        console.error('File download error:', error);
+        return handleError(error);
+      }
   }
 
   throw HttpErrors.notFound('Invalid file endpoint');

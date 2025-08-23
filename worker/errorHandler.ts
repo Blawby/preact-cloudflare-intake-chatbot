@@ -49,7 +49,7 @@ export function logError(error: unknown, context: Record<string, any> = {}) {
 }
 
 // Centralized error handler with enhanced features
-export function handleError(error: unknown, corsHeaders: Record<string, string>): Response {
+export function handleError(error: unknown): Response {
   logError(error, { endpoint: 'unknown' });
 
   let status = 500;
@@ -84,7 +84,7 @@ export function handleError(error: unknown, corsHeaders: Record<string, string>)
   };
 
   const headers = {
-    ...corsHeaders,
+    ...CORS_HEADERS,
     ...SECURITY_HEADERS,
     'Content-Type': 'application/json'
   };
@@ -115,14 +115,14 @@ export const HttpErrors = {
 };
 
 // Success response helper with security headers
-export function createSuccessResponse<T>(data: T, corsHeaders: Record<string, string>): Response {
+export function createSuccessResponse<T>(data: T): Response {
   const response: ApiResponse<T> = {
     success: true,
     data
   };
 
   const headers = {
-    ...corsHeaders,
+    ...CORS_HEADERS,
     ...SECURITY_HEADERS,
     'Content-Type': 'application/json'
   };

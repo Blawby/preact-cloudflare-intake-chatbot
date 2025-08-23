@@ -20,6 +20,11 @@ interface TestContext {
 describe('Blawby API Integration Tests - Real API Calls', () => {
   let testContext: TestContext;
 
+  // Helper function to check if tests should be skipped due to missing API token
+  const shouldSkipTest = (): boolean => {
+    return !testContext.apiToken || testContext.apiToken.trim() === '';
+  };
+
   beforeAll(async () => {
     console.log('🔍 Setting up Blawby API integration tests...');
     
@@ -74,7 +79,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
       console.warn('⚠️  Failed to retrieve team metadata:', error);
     }
     
-    if (!testContext.apiToken || testContext.apiToken.trim() === '') {
+    if (shouldSkipTest()) {
       console.warn('⚠️  Blawby API token not available for testing');
       console.warn('   Tests will be skipped. Set BLAWBY_API_TOKEN environment variable for real API testing.');
     }
@@ -125,7 +130,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
   describe('API Authentication', () => {
     it('should successfully authenticate with the Blawby API', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
+      if (shouldSkipTest()) {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -146,7 +151,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
     it('should reject requests without proper authentication', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
+      if (shouldSkipTest()) {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -165,7 +170,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
   describe('Customer Creation', () => {
     it('should successfully create a customer', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
+      if (shouldSkipTest()) {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -210,7 +215,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
     it('should reject customer creation with invalid data', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
+      if (shouldSkipTest()) {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -240,7 +245,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
   describe('Invoice Creation', () => {
     it('should successfully create an invoice for a customer', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
+      if (shouldSkipTest()) {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }
@@ -376,7 +381,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
     it('should handle rate limiting', async () => {
       // Skip if no real API token
-      if (!testContext.apiToken || testContext.apiToken.trim() === '') {
+      if (shouldSkipTest()) {
         console.log('⏭️  Skipping real API test - no valid token');
         return;
       }

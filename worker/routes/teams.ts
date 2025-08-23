@@ -56,40 +56,31 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
       }
     }
 
-    // Handle API key validation routes
-    if (path.includes('/validate-token')) {
+    // Helper function to extract teamId from path and validate method
+    const extractTeamIdForRoute = (path: string, suffix: string, method: string): string | null => {
       const pathParts = path.split('/').filter(part => part.length > 0);
-      if (pathParts.length >= 2 && pathParts[1] === 'validate-token') {
-        const teamId = pathParts[0];
-        
-        if (request.method === 'POST') {
-          return await validateTeamToken(teamService, teamId, request);
-        }
+      if (pathParts.length >= 2 && pathParts[1] === suffix && method === 'POST') {
+        return pathParts[0];
       }
+      return null;
+    };
+
+    // Handle API key validation routes
+    const validateTokenTeamId = extractTeamIdForRoute(path, 'validate-token', request.method);
+    if (validateTokenTeamId) {
+      return await validateTeamToken(teamService, validateTokenTeamId, request);
     }
 
     // Handle API key validation routes
-    if (path.includes('/validate-api-key')) {
-      const pathParts = path.split('/').filter(part => part.length > 0);
-      if (pathParts.length >= 2 && pathParts[1] === 'validate-api-key') {
-        const teamId = pathParts[0];
-        
-        if (request.method === 'POST') {
-          return await validateApiKey(teamService, teamId, request);
-        }
-      }
+    const validateApiKeyTeamId = extractTeamIdForRoute(path, 'validate-api-key', request.method);
+    if (validateApiKeyTeamId) {
+      return await validateApiKey(teamService, validateApiKeyTeamId, request);
     }
 
     // Handle API key hash generation routes
-    if (path.includes('/generate-hash')) {
-      const pathParts = path.split('/').filter(part => part.length > 0);
-      if (pathParts.length >= 2 && pathParts[1] === 'generate-hash') {
-        const teamId = pathParts[0];
-        
-        if (request.method === 'POST') {
-          return await generateApiKeyHash(teamService, teamId);
-        }
-      }
+    const generateHashTeamId = extractTeamIdForRoute(path, 'generate-hash', request.method);
+    if (generateHashTeamId) {
+      return await generateApiKeyHash(teamService, generateHashTeamId);
     }
 
     switch (request.method) {

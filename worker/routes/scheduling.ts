@@ -2,7 +2,7 @@ import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { parseJsonBody } from '../utils';
 
-export async function handleScheduling(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handleScheduling(request: Request, env: Env): Promise<Response> {
   if (request.method === 'POST') {
     try {
       const body = await parseJsonBody(request) as {
@@ -19,7 +19,7 @@ export async function handleScheduling(request: Request, env: Env, corsHeaders: 
       if (!body.teamId || !body.email || !body.preferredDate || !body.matterType) {
         return new Response(JSON.stringify({ error: 'Missing required fields' }), {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
         });
       }
 
@@ -41,13 +41,13 @@ export async function handleScheduling(request: Request, env: Env, corsHeaders: 
         appointmentId,
         message: 'Appointment requested successfully. We will contact you within 24 hours.'
       }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       });
     } catch (error) {
       console.error('Scheduling error:', error);
       return new Response(JSON.stringify({ error: 'Scheduling failed' }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       });
     }
   }
@@ -59,12 +59,12 @@ export async function handleScheduling(request: Request, env: Env, corsHeaders: 
       availableSlots: timeSlots,
       timezone: 'America/New_York'
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
     });
   }
 
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
     status: 405,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    headers: { ...env.CORS_HEADERS, 'Content-Type': 'application/json' }
   });
 } 

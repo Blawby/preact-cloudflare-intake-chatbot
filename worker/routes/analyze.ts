@@ -384,7 +384,7 @@ export async function analyzeWithCloudflareAI(
   }
 }
 
-export async function handleAnalyze(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handleAnalyze(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
@@ -398,7 +398,7 @@ export async function handleAnalyze(request: Request, env: Env, corsHeaders: Rec
       errorCode: 'RATE_LIMITED'
     }), {
       status: 429,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 
@@ -452,10 +452,10 @@ export async function handleAnalyze(request: Request, env: Env, corsHeaders: Rec
         timestamp: new Date().toISOString()
       },
       disclaimer
-    }, corsHeaders);
+    });
 
   } catch (error) {
     console.error('Analysis error:', error);
-    return handleError(error, corsHeaders);
+    return handleError(error);
   }
 }

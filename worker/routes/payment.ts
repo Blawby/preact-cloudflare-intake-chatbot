@@ -4,7 +4,7 @@ import { parseJsonBody } from '../utils';
 import { PaymentService, PaymentRequest } from '../services/PaymentService';
 import { MockPaymentService } from '../services/MockPaymentService';
 
-export async function handlePayment(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handlePayment(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -37,7 +37,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
           error: result.error
         }), {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' }
         });
       }
 
@@ -45,10 +45,10 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
         success: true,
         invoiceUrl: result.invoiceUrl,
         paymentId: result.paymentId
-      }, corsHeaders);
+      });
 
     } catch (error) {
-      return handleError(error, corsHeaders);
+      return handleError(error);
     }
   }
 
@@ -72,7 +72,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
           error: result.error
         }), {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' }
         });
       }
 
@@ -80,10 +80,10 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
         success: true,
         invoiceUrl: result.invoiceUrl,
         paymentId: result.paymentId
-      }, corsHeaders);
+      });
 
     } catch (error) {
-      return handleError(error, corsHeaders);
+      return handleError(error);
     }
   }
 
@@ -133,10 +133,10 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
           offset,
           hasMore: results.results.length === limit
         }
-      }, corsHeaders);
+      });
 
     } catch (error) {
-      return handleError(error, corsHeaders);
+      return handleError(error);
     }
   }
 
@@ -172,10 +172,10 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
         success: true,
         stats: stats,
         period: `${period} days`
-      }, corsHeaders);
+      });
 
     } catch (error) {
-      return handleError(error, corsHeaders);
+      return handleError(error);
     }
   }
 
@@ -199,10 +199,10 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
       return createSuccessResponse({
         success: true,
         payment: payment
-      }, corsHeaders);
+      });
 
     } catch (error) {
-      return handleError(error, corsHeaders);
+      return handleError(error);
     }
   }
 
@@ -231,10 +231,10 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
       return createSuccessResponse({
         success: true,
         message: 'Payment status updated successfully'
-      }, corsHeaders);
+      });
 
     } catch (error) {
-      return handleError(error, corsHeaders);
+      return handleError(error);
     }
   }
 
@@ -256,10 +256,10 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
       return createSuccessResponse({
         success: true,
         message: 'Payment cancelled successfully'
-      }, corsHeaders);
+      });
 
     } catch (error) {
-      return handleError(error, corsHeaders);
+      return handleError(error);
     }
   }
 
@@ -345,7 +345,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
       });
 
     } catch (error) {
@@ -355,7 +355,7 @@ export async function handlePayment(request: Request, env: Env, corsHeaders: Rec
         error: 'Payment webhook processing failed' 
       }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
   }

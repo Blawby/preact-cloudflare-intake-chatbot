@@ -3,17 +3,17 @@ import { parseJsonBody } from '../utils';
 import { ReviewService } from '../services/ReviewService';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 
-export async function handleReview(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+export async function handleReview(request: Request, env: Env): Promise<Response> {
   if (request.method === 'GET') {
-    return handleGetReviewMatters(request, env, corsHeaders);
+    return handleGetReviewMatters(request, env);
   } else if (request.method === 'POST') {
-    return handleProcessReview(request, env, corsHeaders);
+    return handleProcessReview(request, env);
   } else {
     throw HttpErrors.methodNotAllowed('Only GET and POST methods are allowed');
   }
 }
 
-async function handleGetReviewMatters(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+async function handleGetReviewMatters(request: Request, env: Env): Promise<Response> {
   try {
     const url = new URL(request.url);
     const teamId = url.searchParams.get('teamId');
@@ -29,13 +29,13 @@ async function handleGetReviewMatters(request: Request, env: Env, corsHeaders: R
     return createSuccessResponse({
       matters,
       stats
-    }, corsHeaders);
+    });
   } catch (error) {
-    return handleError(error, corsHeaders);
+    return handleError(error);
   }
 }
 
-async function handleProcessReview(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+async function handleProcessReview(request: Request, env: Env): Promise<Response> {
   try {
     const body = await parseJsonBody(request);
     const { matterId, action, notes } = body;
@@ -58,8 +58,8 @@ async function handleProcessReview(request: Request, env: Env, corsHeaders: Reco
     return createSuccessResponse({
       success: true,
       message: `Matter ${action}ed successfully`
-    }, corsHeaders);
+    });
   } catch (error) {
-    return handleError(error, corsHeaders);
+    return handleError(error);
   }
 } 

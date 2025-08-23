@@ -464,6 +464,13 @@ export class TeamService {
       return { success: true };
     }
     
+    // Log detailed error information for debugging
+    console.error(`❌ Failed to revoke API token ${tokenId}:`, {
+      tokenId,
+      result,
+      operation: 'revokeApiToken'
+    });
+    
     // No rows updated - check if token exists
     const token = await this.env.DB.prepare(`
       SELECT id FROM team_api_tokens WHERE id = ?
@@ -610,7 +617,15 @@ export class TeamService {
         return true;
       }
 
-      console.log(`❌ Failed to update team config for: ${teamId}`);
+      // Log detailed error information for debugging
+      console.error(`❌ Failed to update team config for team ${teamId}:`, {
+        teamId,
+        result,
+        updatePayload: {
+          config: updatedConfig,
+          timestamp: new Date().toISOString()
+        }
+      });
       return false;
     } catch (error) {
       console.error(`❌ Error generating API key hash for ${teamId}:`, error);
