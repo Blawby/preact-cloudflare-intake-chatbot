@@ -62,18 +62,10 @@ export class Logger {
       'apiUrl', 'url', 'endpoint', 'webhook',
       'privateKey', 'publicKey', 'certificate'
     ];
-          if (value.includes('@')) {
-            // Email-like field
-            const atIndex = value.lastIndexOf('@');
-            if (atIndex > 0) {
-              const local = value.substring(0, atIndex);
-              const domain = value.substring(atIndex + 1);
-              const maskedLocal = local.length > 2 ? `${local.substring(0, 2)}***` : '***';
-              sanitized[field] = `${maskedLocal}@${domain}`;
-            } else {
-              sanitized[field] = '***REDACTED***';
-            }
-          }
+
+    for (const field of sensitiveFields) {
+      if (sanitized[field]) {
+        if (typeof sanitized[field] === 'string') {
           const value = sanitized[field] as string;
           if (value.includes('@')) {
             // Email-like field

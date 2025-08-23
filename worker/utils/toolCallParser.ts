@@ -82,7 +82,7 @@ export class ToolCallParser {
       };
     }
     
-    const parametersMatch = afterParameters.substring(0, endIndex);
+    const parameters = afterParameters.substring(0, endIndex);
     // Create a safe copy without prototype‐pollution risk
     const sanitized = Object.create(null);
     for (const [key, value] of Object.entries(parameters)) {
@@ -134,16 +134,6 @@ export class ToolCallParser {
     };
     
     return sanitizeValue(sanitized);
-        }
-      };
-    } catch (error) {
-      Logger.error('Failed to parse tool parameters:', error);
-      return {
-        success: false,
-        error: 'Failed to parse tool parameters',
-        rawParameters: parametersMatch[1]
-      };
-    }
   }
 
   /**
