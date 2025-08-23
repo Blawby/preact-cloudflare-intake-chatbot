@@ -2,6 +2,17 @@ import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { validateLocation as validateLocationUtil, isLocationSupported } from '../utils/locationValidator.js';
 import { CloudflareLocationInfo, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 
+// Matter type classification constant to avoid duplication
+const MATTER_TYPE_CLASSIFICATION = `- MATTER TYPE CLASSIFICATION:
+  * "Family Law" - for divorce, custody, adoption, family disputes
+  * "Employment Law" - for workplace issues, discrimination, wrongful termination
+  * "Landlord/Tenant" - for rental disputes, eviction, lease issues
+  * "Personal Injury" - for accidents, medical malpractice, product liability
+  * "Business Law" - for contracts, partnerships, corporate issues
+  * "Criminal Law" - for criminal charges, traffic violations
+  * "General Consultation" - when legal issue is unclear or user needs general advice
+  * "Civil Law" - for general civil disputes not fitting other categories`;
+
 // Helper function to analyze files using the vision API
 async function analyzeFile(env: any, fileId: string, question?: string): Promise<any> {
   console.log('=== ANALYZE FILE FUNCTION CALLED ===');
@@ -528,9 +539,9 @@ ${attachments && attachments.length > 0 ? `0. FIRST: Analyze uploaded files usin
 3. If name and location but no phone: "Thank you [name]! Now I need your phone number."
 4. If name, location, and phone but no email: "Thank you [name]! Now I need your email address."
 5. If name, location, phone, and email: Check conversation history for legal issues:
-   - If user clearly mentioned a specific legal issue (divorce, employment, landlord/tenant, personal injury, business, criminal, etc.), call create_matter tool with that specific matter_type
+   - If user clearly mentioned ONE specific legal issue (divorce, employment, landlord/tenant, personal injury, business, criminal, etc.), call create_matter tool with that specific matter_type
    - If user mentioned multiple legal issues, ask: "I see you mentioned several legal concerns. Which one would you like to focus on first?"
-   - If no clear legal issue mentioned, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
+   - If NO legal issue has been mentioned yet, ask: "Thank you [name]! I have your contact information. Now I need to understand your legal situation. Could you briefly describe what you need help with?"
 6. If ALL information collected (name, phone, email, location, matter description): Call create_matter tool IMMEDIATELY.
 
 CRITICAL RULES - NEVER VIOLATE THESE:
@@ -547,15 +558,7 @@ CRITICAL RULES - NEVER VIOLATE THESE:
 - Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
 - If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
 - DO NOT ask again if they already explained their legal situation
-- MATTER TYPE CLASSIFICATION:
-  * "Family Law" - for divorce, custody, adoption, family disputes
-  * "Employment Law" - for workplace issues, discrimination, wrongful termination
-  * "Landlord/Tenant" - for rental disputes, eviction, lease issues
-  * "Personal Injury" - for accidents, medical malpractice, product liability
-  * "Business Law" - for contracts, partnerships, corporate issues
-  * "Criminal Law" - for criminal charges, traffic violations
-  * "General Consultation" - when legal issue is unclear or user needs general advice
-  * "Civil Law" - for general civil disputes not fitting other categories
+${MATTER_TYPE_CLASSIFICATION}
 - If user mentions multiple legal issues, ask them to specify which one to focus on first
 
 **Available Tools:**
@@ -1333,15 +1336,7 @@ CRITICAL:
 - Common issues: divorce, employment, landlord/tenant, personal injury, business, criminal, etc.
 - If user mentioned divorce, employment issues, etc. earlier, use that as the matter description
 - DO NOT ask again if they already explained their legal situation
-- MATTER TYPE CLASSIFICATION:
-  * "Family Law" - for divorce, custody, adoption, family disputes
-  * "Employment Law" - for workplace issues, discrimination, wrongful termination
-  * "Landlord/Tenant" - for rental disputes, eviction, lease issues
-  * "Personal Injury" - for accidents, medical malpractice, product liability
-  * "Business Law" - for contracts, partnerships, corporate issues
-  * "Criminal Law" - for criminal charges, traffic violations
-  * "General Consultation" - when legal issue is unclear or user needs general advice
-  * "Civil Law" - for general civil disputes not fitting other categories
+${MATTER_TYPE_CLASSIFICATION}
 - If user mentions multiple legal issues, ask them to specify which one to focus on first
 
 **Available Tools:**

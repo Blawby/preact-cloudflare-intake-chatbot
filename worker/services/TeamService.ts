@@ -203,7 +203,12 @@ export class TeamService {
   /**
    * Validates and normalizes team configuration to ensure all required properties are present
    */
-  private validateAndNormalizeConfig(config: TeamConfig): TeamConfig {
+  private validateAndNormalizeConfig(config: TeamConfig | null | undefined): TeamConfig {
+    // Handle null/undefined config by coercing to empty object
+    if (!config) {
+      config = {};
+    }
+
     const defaultConfig: TeamConfig = {
       aiModel: 'llama',
       consultationFee: 0,
@@ -233,12 +238,13 @@ export class TeamService {
     };
 
     // Merge provided config with defaults, ensuring all required properties are present
+    // Use optional chaining to safely access config.jurisdiction
     return {
       ...defaultConfig,
       ...config,
       jurisdiction: {
         ...defaultConfig.jurisdiction,
-        ...config.jurisdiction
+        ...(config.jurisdiction || {})
       }
     };
   }
@@ -273,7 +279,7 @@ export class TeamService {
         team.updatedAt
       ).run();
       
-      console.log('TeamService.createTeam: Insert result:', { changes: result.changes, lastRowId: result.lastRowId, success: result.success });
+      console.log('TeamService.createTeam: Insert result:', { success: result.success });
       
       // Verify the team was actually created by querying the database
       const verifyTeam = await this.env.DB.prepare('SELECT id FROM teams WHERE id = ?').bind(team.id).first();
@@ -342,7 +348,7 @@ export class TeamService {
     
     try {
       const result = await this.env.DB.prepare('DELETE FROM teams WHERE id = ?').bind(teamId).run();
-      console.log('Delete result:', { changes: result.changes, lastRowId: result.lastRowId, success: result.success });
+      console.log('Delete result:', { success: result.success });
       
       this.clearCache(teamId);
       
@@ -359,7 +365,7 @@ export class TeamService {
           return false;
         }
       } else {
-        console.log('❌ Delete operation failed:', { success: result.success, changes: result.changes });
+        console.log('❌ Delete operation failed:', { success: result.success });
         return false;
       }
     } catch (error) {
@@ -430,14 +436,15 @@ export class TeamService {
 
     await this.env.DB.prepare(`
       INSERT INTO team_api_tokens (id, team_id, token_name, token_hash, permissions, created_by, active)
-      VALUES (?, ?, ?, ?, ?, ?, 1)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
       tokenId,
       teamId,
       tokenName,
       tokenHash,
       JSON.stringify(permissions),
-      createdBy || 'system'
+      createdBy || 'system',
+      1
     ).run();
 
     return { token, tokenId };
@@ -452,7 +459,7 @@ export class TeamService {
       UPDATE team_api_tokens SET active = 0 WHERE id = ? AND active = 1
     `).bind(tokenId).run();
     
-    if (result.changes > 0) {
+    if (result.success) {
       // Token was successfully revoked
       return { success: true };
     }
@@ -481,9 +488,10 @@ export class TeamService {
     createdAt: string;
     lastUsedAt?: string;
     expiresAt?: string;
+    active: boolean;
   }>> {
     const tokens = await this.env.DB.prepare(`
-      SELECT id, token_name, permissions, created_at, last_used_at, expires_at
+      SELECT id, token_name, permissions, created_at, last_used_at, expires_at, active
       FROM team_api_tokens 
       WHERE team_id = ? AND active = 1
       ORDER BY created_at DESC
@@ -495,7 +503,8 @@ export class TeamService {
       permissions: JSON.parse(row.permissions as string || '[]'),
       createdAt: row.created_at as string,
       lastUsedAt: row.last_used_at as string || undefined,
-      expiresAt: row.expires_at as string || undefined
+      expiresAt: row.expires_at as string || undefined,
+      active: Boolean(row.active)
     }));
   }
 
@@ -594,7 +603,7 @@ export class TeamService {
         UPDATE teams SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
       `).bind(JSON.stringify(updatedConfig), teamId).run();
 
-      if (result.changes > 0) {
+      if (result.success) {
         // Clear the cache for this team
         this.clearCache(teamId);
         console.log(`✅ API key hash generated and stored for team: ${teamId}`);

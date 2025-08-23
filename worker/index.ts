@@ -85,7 +85,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       console.log('✅ Matched chat route');
       response = await handleAgent(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/teams')) {
-      response = await handleTeams(request, env, CORS_HEADERS);
+      response = await handleTeams(request, env);
     } else if (path.startsWith('/api/forms')) {
       response = await handleForms(request, env, CORS_HEADERS);
     } else if (path.startsWith('/api/scheduling')) {

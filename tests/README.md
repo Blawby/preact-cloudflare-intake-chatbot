@@ -36,7 +36,6 @@ tests/
 ### Integration Tests (`tests/integration/`)
 - **API**: Test API endpoints with real wrangler dev server
 - **Services**: Test service integration with real Cloudflare bindings
-- **LLM Judge**: Test LLM judge evaluation (included in main test run)
 
 ### LLM Judge Tests (`tests/llm-judge/`)
 - **AI-powered evaluation**: Uses LLM judge to evaluate agent responses

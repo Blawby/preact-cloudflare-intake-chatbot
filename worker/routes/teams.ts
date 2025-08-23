@@ -16,12 +16,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/teams', '');
   
-  console.log('Teams route debug:', {
-    method: request.method,
-    pathname: url.pathname,
-    path: path,
-    startsWithSlash: path.startsWith('/')
-  });
+
 
   try {
     const teamService = new TeamService(env);
@@ -31,6 +26,21 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
       const pathParts = path.split('/').filter(part => part.length > 0);
       if (pathParts.length >= 2 && pathParts[1] === 'tokens') {
         const teamId = pathParts[0];
+        
+        // Validate that the team exists
+        const team = await teamService.getTeam(teamId);
+        if (!team) {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Team not found' 
+            }), 
+            { 
+              status: 404, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
         
         if (pathParts.length === 2) {
           // /{teamId}/tokens
@@ -47,6 +57,42 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
             case 'DELETE':
               return await revokeTeamToken(teamService, teamId, tokenId, corsHeaders);
           }
+        }
+      }
+    }
+
+    // Handle API key validation routes
+    if (path.includes('/validate-token')) {
+      const pathParts = path.split('/').filter(part => part.length > 0);
+      if (pathParts.length >= 2 && pathParts[1] === 'validate-token') {
+        const teamId = pathParts[0];
+        
+        if (request.method === 'POST') {
+          return await validateTeamToken(teamService, teamId, request, corsHeaders);
+        }
+      }
+    }
+
+    // Handle API key validation routes
+    if (path.includes('/validate-api-key')) {
+      const pathParts = path.split('/').filter(part => part.length > 0);
+      if (pathParts.length >= 2 && pathParts[1] === 'validate-api-key') {
+        const teamId = pathParts[0];
+        
+        if (request.method === 'POST') {
+          return await validateApiKey(teamService, teamId, request, corsHeaders);
+        }
+      }
+    }
+
+    // Handle API key hash generation routes
+    if (path.includes('/generate-hash')) {
+      const pathParts = path.split('/').filter(part => part.length > 0);
+      if (pathParts.length >= 2 && pathParts[1] === 'generate-hash') {
+        const teamId = pathParts[0];
+        
+        if (request.method === 'POST') {
+          return await generateApiKeyHash(teamService, teamId, corsHeaders);
         }
       }
     }
@@ -160,7 +206,11 @@ async function getTeam(teamService: TeamService, teamId: string, corsHeaders: Re
 }
 
 async function createTeam(teamService: TeamService, request: Request, corsHeaders: Record<string, string>): Promise<Response> {
-  const body = await request.json();
+  const body = await request.json() as {
+    slug: string;
+    name: string;
+    config: TeamConfig;
+  };
   
   // Validate required fields
   if (!body.slug || !body.name || !body.config) {
@@ -263,7 +313,7 @@ async function deleteTeam(teamService: TeamService, teamId: string, corsHeaders:
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     }
   );
-} 
+}
 
 async function listTeamTokens(teamService: TeamService, teamId: string, corsHeaders: Record<string, string>): Promise<Response> {
   const tokens = await teamService.listApiTokens(teamId);
@@ -280,7 +330,11 @@ async function listTeamTokens(teamService: TeamService, teamId: string, corsHead
 }
 
 async function createTeamToken(teamService: TeamService, teamId: string, request: Request, corsHeaders: Record<string, string>): Promise<Response> {
-  const body = await request.json();
+  const body = await request.json() as {
+    tokenName: string;
+    permissions?: string[];
+    createdBy?: string;
+  };
   
   // Validate required fields
   if (!body.tokenName) {
@@ -319,33 +373,158 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
   );
 }
 
-async function revokeTeamToken(teamService: TeamService, teamId: string, tokenId: string, corsHeaders: Record<string, string>): Promise<Response> {
+async function revokeTeamToken(
+  teamService: TeamService,
+  teamId: string,
+  tokenId: string,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  // First verify the token belongs to this team
+  const tokens = await teamService.listApiTokens(teamId);
+  const tokenBelongsToTeam = tokens.some(token => token.id === tokenId);
+
+  if (!tokenBelongsToTeam) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'Token not found'
+      }),
+      {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
   const result = await teamService.revokeApiToken(tokenId);
-  
+
   if (!result.success) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'Token not found'
+      }),
+      {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  const message = result.alreadyRevoked
+    ? 'Token was already revoked'
+    : 'Token revoked successfully';
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      data: { success: true, message }
+    }),
+    {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+async function validateTeamToken(
+  teamService: TeamService,
+  teamId: string,
+  request: Request,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const body = await request.json() as {
+    token: string;
+  };
+  
+  if (!body.token) {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Token not found' 
+        error: 'Missing required field: token' 
       }), 
       { 
-        status: 404, 
+        status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   }
 
-  const message = result.alreadyRevoked 
-    ? 'Token was already revoked' 
-    : 'Token revoked successfully';
+  const isValid = await teamService.validateTeamAccess(teamId, body.token);
 
   return new Response(
     JSON.stringify({ 
       success: true, 
-      message: message
+      data: { valid: isValid } 
     }), 
     { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     }
   );
-} 
+}
+
+async function validateApiKey(
+  teamService: TeamService,
+  teamId: string,
+  request: Request,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const body = await request.json() as {
+    apiKey: string;
+  };
+  
+  if (!body.apiKey) {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Missing required field: apiKey' 
+      }), 
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  const isValid = await teamService.validateApiKey(teamId, body.apiKey);
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      data: { valid: isValid } 
+    }), 
+    { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}
+
+async function generateApiKeyHash(
+  teamService: TeamService,
+  teamId: string,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const success = await teamService.generateApiKeyHash(teamId);
+
+  if (!success) {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Failed to generate API key hash' 
+      }), 
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      data: { success: true } 
+    }), 
+    { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}

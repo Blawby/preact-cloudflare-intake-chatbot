@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
 
 describe('TeamService Integration - Real API', () => {
@@ -333,6 +333,199 @@ describe('TeamService Integration - Real API', () => {
       
       // Note: Slugs may have duplicates from test runs, but IDs should always be unique
       // This is expected behavior in a test environment with accumulated test data
+    });
+  });
+
+  describe('API Token Management', () => {
+    let testTeamId: string;
+    let createdToken: { token: string; tokenId: string };
+
+    beforeAll(async () => {
+      // Create a test team for API token tests
+      const newTeam = {
+        slug: `api-token-test-${Date.now()}`,
+        name: 'API Token Test Team',
+        config: {
+          aiModel: 'llama',
+          consultationFee: 0,
+          requiresPayment: false,
+          ownerEmail: 'apitoken@example.com',
+          availableServices: ['API Token Testing'],
+          jurisdiction: {
+            type: 'national',
+            description: 'API token test jurisdiction',
+            supportedStates: ['all'],
+            supportedCountries: ['US']
+          },
+          blawbyApi: {
+            enabled: true,
+            apiKey: 'test-api-key-12345',
+            teamUlid: 'test-team-ulid-12345',
+            apiUrl: 'https://staging.blawby.com'
+          }
+        }
+      };
+
+      const createResponse = await fetch(`${WORKER_URL}/api/teams`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTeam)
+      });
+
+      const createdTeam = await createResponse.json();
+      testTeamId = createdTeam.data.id;
+    });
+
+    afterAll(async () => {
+      // Clean up test team
+      if (testTeamId) {
+        await fetch(`${WORKER_URL}/api/teams/${testTeamId}`, {
+          method: 'DELETE'
+        });
+      }
+    });
+
+    it('should create API token successfully', async () => {
+      const tokenName = 'Test API Token';
+      const permissions = ['read', 'write'];
+
+      const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/tokens`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenName,
+          permissions
+        })
+      });
+
+      expect(response.status).toBe(201);
+      const result = await response.json();
+      
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('token');
+      expect(result.data).toHaveProperty('tokenId');
+      expect(result.data.token).toBeTruthy();
+      expect(result.data.tokenId).toBeTruthy();
+
+      createdToken = result.data;
+    });
+
+    it('should validate API token successfully', async () => {
+      if (!createdToken) {
+        throw new Error('No token created for validation test');
+      }
+
+      const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/validate-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: createdToken.token
+        })
+      });
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('valid', true);
+    });
+
+    it('should reject invalid API token', async () => {
+      const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/validate-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: 'invalid-token-12345'
+        })
+      });
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('valid', false);
+    });
+
+    it('should list API tokens for team', async () => {
+      const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/tokens`);
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      
+      expect(result.success).toBe(true);
+      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.data.length).toBeGreaterThan(0);
+      
+      const token = result.data[0];
+      expect(token).toHaveProperty('id');
+      expect(token).toHaveProperty('tokenName');
+      expect(token).toHaveProperty('permissions');
+      expect(token).toHaveProperty('createdAt');
+      expect(token).toHaveProperty('active', true);
+    });
+
+    it('should revoke API token successfully', async () => {
+      if (!createdToken) {
+        throw new Error('No token created for revocation test');
+      }
+
+      const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/tokens/${createdToken.tokenId}`, {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('success', true);
+    });
+
+    it('should validate API key hash functionality', async () => {
+      const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/validate-api-key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: 'test-api-key-12345'
+        })
+      });
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('valid', true);
+    });
+
+    it('should reject invalid API key', async () => {
+      const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/validate-api-key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: 'invalid-api-key'
+        })
+      });
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('valid', false);
+    });
+
+    it('should generate API key hash for existing key', async () => {
+      const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/generate-hash`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+
+      const result = await response.json();
+      
+      expect(response.status).toBe(200);
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty('success', true);
     });
   });
 });
