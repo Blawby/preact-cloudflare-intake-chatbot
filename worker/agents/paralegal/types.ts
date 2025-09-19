@@ -84,43 +84,36 @@ export type MatterFormationEventData =
   | DocumentData 
   | Record<string, unknown>;
 
+// Common fields shared by all events
+export interface MatterFormationEventBase {
+  idempotencyKey?: string;
+  teamId?: string;
+  matterId?: string;
+}
+
 // Discriminated union for events that can advance the state machine
-export type MatterFormationEvent = 
+export type MatterFormationEvent = MatterFormationEventBase & (
   | {
       type: 'user_input';
-      data?: PartyInfoData;
-      idempotencyKey?: string;
-      teamId?: string;
-      matterId?: string;
+      data: PartyInfoData;
     }
   | {
       type: 'conflict_check_complete';
       data?: Record<string, unknown>;
-      idempotencyKey?: string;
-      teamId?: string;
-      matterId?: string;
     }
   | {
       type: 'documents_received';
-      data?: DocumentData;
-      idempotencyKey?: string;
-      teamId?: string;
-      matterId?: string;
+      data: DocumentData;
     }
   | {
       type: 'payment_complete';
-      data?: PaymentData;
-      idempotencyKey?: string;
-      teamId?: string;
-      matterId?: string;
+      data: PaymentData;
     }
   | {
       type: 'letter_signed';
-      data?: EngagementData;
-      idempotencyKey?: string;
-      teamId?: string;
-      matterId?: string;
-    };
+      data: EngagementData;
+    }
+);
 
 // Response from state machine operations
 export interface MatterFormationResponse {

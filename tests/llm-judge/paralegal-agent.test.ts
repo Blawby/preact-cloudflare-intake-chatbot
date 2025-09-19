@@ -112,16 +112,20 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
     
     const responseText = chunks.join('');
     const lines = responseText.split('\n');
-    let responseContent = '';
     
     for (const line of lines) {
       if (line.startsWith('data: ')) {
         try {
           const data = JSON.parse(line.slice(6));
           if (data.type === 'text') {
-            responseContent += data.text;
+            // Append incremental chunks as they arrive
+            fullResponse += data.text;
           } else if (data.type === 'final') {
-            responseContent = data.response;
+            // For final response, only append if it's not already present
+            // Check if the final response is already at the end of fullResponse
+            if (!fullResponse.endsWith(data.response)) {
+              fullResponse += data.response;
+            }
             if (data.caseSummary) {
               caseSummary = data.caseSummary;
             }
@@ -134,9 +138,7 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
         }
       }
     }
-
-    fullResponse += responseContent;
-    console.log(`🤖 Agent response: ${responseContent.substring(0, 100)}...`);
+    console.log(`🤖 Agent response: ${fullResponse.substring(fullResponse.length - 100)}...`);
   }
 
   // Disable paralegal-first mode after test

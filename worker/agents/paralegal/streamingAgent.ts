@@ -16,14 +16,6 @@ export async function runParalegalAgentStream(
   controller?: ReadableStreamDefaultController
 ) {
   // Get team configuration if teamId is provided
-  let teamConfig: TeamConfig | null = null;
-  if (teamId) {
-    const { AIService } = await import('../../services/AIService');
-    // Cast env to match AIService's expected interface
-    const aiService = new AIService(env.AI, env as any);
-    teamConfig = await aiService.getTeamConfig(teamId);
-  }
-
   // Convert messages to the format expected by Cloudflare AI
   const formattedMessages = messages.map((msg: Message) => ({
     role: msg.isUser ? 'user' : 'assistant',
