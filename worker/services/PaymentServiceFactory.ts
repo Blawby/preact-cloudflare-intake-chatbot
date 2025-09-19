@@ -11,7 +11,6 @@ export interface PaymentRequest {
   matterInfo: {
     type: string;
     description: string;
-    urgency: string;
     opposingParty: string;
   };
   teamId: string;

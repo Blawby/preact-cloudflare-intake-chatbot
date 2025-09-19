@@ -38,18 +38,25 @@ The system uses a multi-tenant architecture with **secure API token management**
 ### ✅ **Successfully Deployed Features:**
 
 - **🤖 Intelligent Legal Intake Agent**: Cloudflare Workers AI-powered conversation handling
-- **📋 Step-by-Step Information Collection**: Systematic gathering of client details (Name → Phone → Email → Matter Details)
+- **📋 Comprehensive Information Collection**: Systematic gathering of client details (Name → Legal Issue → Description → Contact Info → Location)
 - **⚖️ Legal Matter Classification**: Automatic classification of legal issues (Employment Law, Family Law, Personal Injury, etc.)
 - **💰 Payment Integration**: Automated consultation fee collection ($75) with team configuration
-- **👨‍💼 Human-in-the-Loop Review**: Lawyer review queue for urgent/complex matters
+- **👨‍💼 Human-in-the-Loop Review**: Lawyer review queue for complex matters
 - **📱 Responsive Design**: Mobile-first interface with modern UI/UX
 - **📎 File Upload & Camera**: Support for photos, videos, audio, and documents (25MB max) with camera capture
 - **🔒 Production Security**: OWASP-compliant security headers and validation
 
+### 🔄 **Recent Updates:**
+
+- **Simplified Matter Creation**: Removed urgency assessment complexity - now focuses on comprehensive information collection
+- **Enhanced Information Requirements**: Matter creation now requires name, legal issue, description, contact info, AND location
+- **Streamlined Conversation Flow**: More efficient information gathering with clear requirements
+- **Improved User Experience**: Cleaner, more focused conversation without urgency-related confusion
+
 ### 🏗️ **Simplified Architecture:**
 
 ```
-Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Actions
+Frontend (Preact) → Cloudflare Workers → AI Agent → Conversation State Machine → Tool Handlers → Actions
 ```
 
 **Core Components:**
@@ -57,14 +64,15 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 - **Tool Handlers**: Modular functions for contact collection, matter creation, lawyer review
 - **Team Configuration**: Dynamic payment and service configuration per team
 - **Review Queue**: Human-in-the-loop system for lawyer oversight
+- **Conversation State Machine**: Intelligent flow control for comprehensive information collection
 
 ### 🧪 **Live Test Results:**
 
 ✅ **Employment Law**: "i got fired for downloading porn onmy work laptop" → Complete matter creation  
 ✅ **Family Law**: "i need help with my divorce" → Step-by-step collection + payment flow  
-✅ **Personal Injury**: "i ran over my cousin with my golf cart" → Urgent matter classification  
+✅ **Personal Injury**: "i ran over my cousin with my golf cart" → Complete matter creation  
 ✅ **Payment Integration**: Automatic $75 consultation fee with team config  
-✅ **Lawyer Review**: Automatic escalation for urgent matters with review queue  
+✅ **Lawyer Review**: Automatic escalation for complex matters with review queue  
 
 ### 🤖 **LLM Judge Testing Framework:**
 
@@ -78,10 +86,10 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 
 **Test Scenarios:**
 - Standard legal intake with family law matter
-- Urgent legal matter requiring immediate escalation  
 - Complex legal situation requiring specialized expertise
 - Location service area verification and matter creation
 - Pricing concerns and financial discussion
+- Comprehensive information collection flow
 
 **Running Tests:**
 ```bash
@@ -459,7 +467,12 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 │   └── utils/            # Utility functions
 ├── worker/               # Cloudflare Worker backend
 │   ├── agents/          # AI agent definitions
-│   │   └── legalIntakeAgent.ts  # Self-contained agent with tool execution
+│   │   └── legal-intake/    # Legal intake agent modules
+│   │       ├── index.ts     # Main agent orchestrator
+│   │       ├── businessLogicHandler.ts  # Business logic and decision making
+│   │       ├── conversationStateMachine.ts  # Conversation flow control
+│   │       ├── matterCreationHandler.ts  # Matter creation logic
+│   │       └── contactInfoHandler.ts     # Contact information collection
 │   ├── routes/          # API route handlers
 │   │   ├── agent.ts     # Main agent endpoint
 │   │   ├── review.ts    # Human-in-the-loop review API
@@ -467,7 +480,7 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 │   ├── services/        # Business logic services
 │   │   ├── AIService.ts     # Simplified team config
 │   │   ├── ReviewService.ts # Human-in-the-loop review service
-
+│   │   └── PaymentService.ts # Payment processing
 │   └── utils.ts         # Essential utilities only
 ├── tests/               # Test files
 │   ├── unit/           # Unit tests
@@ -558,12 +571,15 @@ The application is automatically deployed via GitHub Actions:
 - Complex frontend state management
 - Multiple utility layers
 - Separate conversation flow logic
+- Urgency assessment complexity
 
 **After (Simplified):**
 - Self-contained AI agent with built-in memory
 - Simple chat interface
 - Direct tool execution
 - Human-in-the-loop review system
+- Streamlined conversation state machine
+- Focused information collection requirements
 
 ### Benefits Achieved
 
@@ -572,6 +588,8 @@ The application is automatically deployed via GitHub Actions:
 - **Better maintainability** with fewer moving parts
 - **Preserved all essential functionality** while reducing complexity
 - **Added new features** (review queue) without increasing complexity
+- **Removed urgency complexity** for cleaner user experience
+- **Enhanced information collection** with clear requirements
 
 ## 🤝 **Contributing**
 

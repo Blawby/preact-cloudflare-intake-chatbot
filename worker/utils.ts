@@ -18,7 +18,6 @@ export async function createMatterRecord(
   sessionId: string,
   service: string,
   description: string,
-  urgency: string = 'normal'
 ): Promise<string> {
   try {
     // const matterId = crypto.randomUUID(); // REMOVE THIS LINE
@@ -43,7 +42,7 @@ export async function createMatterRecord(
       service,
       `${service} Matter`,
       description,
-      urgency === 'urgent' ? 'high' : urgency === 'somewhat urgent' ? 'normal' : 'low',
+      'normal',
       matterNumber,
       JSON.stringify({ sessionId, source: 'ai-intake' })
     ).run();

@@ -161,7 +161,6 @@ const ImagePreview: FunctionComponent<{ file: FileAttachment; onImageClick: (fil
 
 // Agent handles service selection - no component needed
 
-// Agent handles urgency selection - no component needed
 
 // Agent handles welcome messages - no component needed
 

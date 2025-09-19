@@ -289,6 +289,12 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
         const aiService = new AIService(env.AI, env);
         const rawTeamConfig = await aiService.getTeamConfig(teamId);
         teamConfig = rawTeamConfig?.config || rawTeamConfig;
+        
+        // Debug logging for test team configuration
+        console.log(`🔍 Team config for ${teamId}:`, JSON.stringify(teamConfig, null, 2));
+        console.log(`🔍 Features:`, teamConfig?.features);
+        console.log(`🔍 enableParalegalAgent:`, teamConfig?.features?.enableParalegalAgent);
+        console.log(`🔍 paralegalFirst:`, teamConfig?.features?.paralegalFirst);
       } catch (error) {
         console.warn('Failed to get team config for security validation:', error);
       }
@@ -355,16 +361,29 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
           }
           
           // Send completion event
-          controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));
-          controller.close();
+          try {
+            controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));
+            controller.close();
+          } catch (closeError) {
+            console.warn('⚠️ Controller already closed:', closeError.message);
+          }
         } catch (error) {
           console.error('❌ Streaming error:', error);
-          const errorEvent = `data: ${JSON.stringify({
-            type: 'error',
-            message: 'An error occurred while processing your request'
-          })}\n\n`;
-          controller.enqueue(new TextEncoder().encode(errorEvent));
-          controller.close();
+          try {
+            const errorEvent = `data: ${JSON.stringify({
+              type: 'error',
+              message: 'An error occurred while processing your request'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+            controller.close();
+          } catch (enqueueError) {
+            console.error('❌ Failed to send error event:', enqueueError);
+            try {
+              controller.close();
+            } catch (closeError) {
+              console.error('❌ Failed to close controller:', closeError);
+            }
+          }
         }
       }
     });

@@ -5,7 +5,6 @@ export interface NotificationRequest {
   teamConfig: any;
   matterInfo?: {
     type: string;
-    urgency?: string;
     complexity?: string;
     description?: string;
   };
@@ -39,7 +38,6 @@ export class NotificationService {
         text: `A new urgent legal matter requires immediate review:
 
 Matter Type: ${matterInfo?.type || 'Unknown'}
-Urgency: ${matterInfo?.urgency || 'Standard'}
 Complexity: ${matterInfo?.complexity || 'Standard'}
 Description: ${matterInfo?.description || 'No description provided'}
 
@@ -75,7 +73,6 @@ Client: ${clientInfo?.name || 'Unknown'}
 Contact: ${clientInfo?.email || 'No email'}, ${clientInfo?.phone || 'No phone'}
 Matter Type: ${matterInfo?.type || 'Unknown'}
 Description: ${matterInfo?.description || 'No description provided'}
-Urgency: ${matterInfo?.urgency || 'Standard'}
 
 Please review and take appropriate action.`
       });

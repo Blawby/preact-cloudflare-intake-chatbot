@@ -86,7 +86,6 @@ export const createMockMatter = (overrides = {}) => ({
   id: `matter-${Date.now()}`,
   service: 'Family Law',
   description: 'Test matter description',
-  urgency: 'Somewhat Urgent',
   qualityScore: 75,
   answers: {},
   ...overrides,

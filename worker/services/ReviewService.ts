@@ -7,7 +7,6 @@ export interface ReviewMatter {
   service: string;
   title: string;
   description: string;
-  urgency: 'low' | 'normal' | 'high';
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   clientName?: string;
@@ -34,7 +33,6 @@ export class ReviewService {
           m.matter_type as service,
           m.title,
           m.description,
-          m.priority as urgency,
           m.status,
           m.created_at,
           m.custom_fields,
@@ -54,7 +52,6 @@ export class ReviewService {
         service: matter.service,
         title: matter.title || `${matter.service} Matter`,
         description: matter.description,
-        urgency: this.mapPriorityToUrgency(matter.urgency),
         status: this.mapStatus(matter.status),
         createdAt: matter.created_at,
         clientName: matter.client_name,
@@ -152,17 +149,6 @@ export class ReviewService {
     }
   }
 
-  // Helper: Map database priority to urgency
-  private mapPriorityToUrgency(priority: string): 'low' | 'normal' | 'high' {
-    switch (priority) {
-      case 'high':
-        return 'high';
-      case 'normal':
-        return 'normal';
-      default:
-        return 'low';
-    }
-  }
 
   // Helper: Map database status to review status
   private mapStatus(status: string): 'pending' | 'approved' | 'rejected' {

@@ -76,7 +76,6 @@ export const contactFormSchema = z.object({
   email: emailSchema,
   phoneNumber: z.string().min(1),
   matterDetails: z.string().min(1),
-  urgency: z.string().optional()
 });
 
 

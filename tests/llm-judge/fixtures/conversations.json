@@ -28,7 +28,6 @@
           "parameters": {
             "matter_type": "Family Law",
             "description": "Client seeking divorce assistance",
-            "urgency": "medium",
             "name": "Sarah Johnson",
             "phone": "704-555-0123",
             "email": "sarah.johnson@example.com",
@@ -65,7 +64,6 @@
           "parameters": {
             "matter_type": "Family Law",
             "description": "Urgent restraining order response needed within 24 hours",
-            "urgency": "high",
             "name": "Michael Chen",
             "phone": "919-555-0123",
             "email": "michael.chen@example.com",
@@ -102,7 +100,6 @@
           "parameters": {
             "matter_type": "Civil Law",
             "description": "Complex multi-issue case involving business dispute, employment issues, and tax problems",
-            "urgency": "medium",
             "name": "David Rodriguez",
             "phone": "919-555-0124",
             "email": "david.rodriguez@example.com",
@@ -139,7 +136,6 @@
           "parameters": {
             "matter_type": "Personal Injury",
             "description": "Car accident personal injury case",
-            "urgency": "medium",
             "name": "Maria Garcia",
             "phone": "415-555-0123",
             "email": "maria.garcia@example.com",
@@ -176,11 +172,88 @@
           "parameters": {
             "matter_type": "Civil Law",
             "description": "Landlord-tenant dispute",
-            "urgency": "medium",
             "name": "Thomas Brown",
             "phone": "336-555-0123",
             "email": "thomas.brown@example.com",
             "location": "Greensboro, North Carolina"
+          }
+        }
+      ]
+    },
+    {
+      "id": "death-mention-crisis",
+      "user": "John Smith",
+      "scenario": "User mentions death but needs legal help - should provide guidance not refuse",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I ran someone over and need legal help"
+        },
+        {
+          "role": "user",
+          "content": "I ran a red light and ran over a pedestrian who died"
+        },
+        {
+          "role": "user",
+          "content": "what do you mean you can't continue? Get me a lawyer"
+        }
+      ],
+      "expectedBehavior": "Should provide legal guidance about rights, next steps, and offer to connect with attorney, NOT refuse to continue or say 'contact authorities'",
+      "expectedToolCalls": [
+        {
+          "name": "create_matter",
+          "parameters": {
+            "matter_type": "Personal Injury",
+            "description": "Car accident involving pedestrian fatality - client needs legal representation",
+            "name": "John Smith"
+          }
+        }
+      ]
+    },
+    {
+      "id": "minimal-contact-info",
+      "user": "Jane Doe",
+      "scenario": "User provides minimal contact info but clear legal issue - should proceed with matter creation",
+      "messages": [
+        {
+          "role": "user",
+          "content": "My name is Jane Doe and I need help with a divorce"
+        }
+      ],
+      "expectedToolCalls": [
+        {
+          "name": "create_matter",
+          "parameters": {
+            "matter_type": "Family Law",
+            "description": "Client seeking divorce assistance",
+            "name": "Jane Doe"
+          }
+        }
+      ]
+    },
+    {
+      "id": "unsupported-jurisdiction",
+      "user": "Bob Wilson",
+      "scenario": "User in unsupported jurisdiction but needs general help - should provide guidance not block",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I'm in California and need help with employment law"
+        },
+        {
+          "role": "user",
+          "content": "My name is Bob Wilson and I was wrongfully terminated"
+        }
+      ],
+      "expectedBehavior": "Should provide general guidance about employment law and suggest local attorney, NOT block conversation due to jurisdiction",
+      "expectedToolCalls": [
+        {
+          "name": "create_matter",
+          "parameters": {
+            "matter_type": "Employment Law",
+            "description": "Wrongful termination case",
+            "name": "Bob Wilson",
+            "location": "California"
           }
         }
       ]
@@ -213,7 +286,6 @@
           "parameters": {
             "matter_type": "General Consultation",
             "description": "Client seeking general legal assistance - specific issue not yet identified",
-            "urgency": "medium",
             "name": "Alex Thompson",
             "phone": "704-555-9999",
             "email": "alex.thompson@example.com",

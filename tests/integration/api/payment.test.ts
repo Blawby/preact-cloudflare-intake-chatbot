@@ -70,7 +70,6 @@ describe('Payment API Integration - Real Worker Tests', () => {
       matterInfo: {
         type: 'Employment Law',
         description: 'Terminated for downloading porn on work laptop',
-        urgency: 'high',
         opposingParty: 'ABC Company'
       },
       teamId: apiCredentials.teamUlid || 'blawby-ai',
@@ -113,7 +112,6 @@ describe('Payment API Integration - Real Worker Tests', () => {
       matterInfo: {
         type: 'Employment Law',
         description: 'Terminated for downloading porn on work laptop',
-        urgency: 'high'
       },
       teamId: apiCredentials.teamUlid || 'blawby-ai',
       sessionId: 'session-123'

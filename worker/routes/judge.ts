@@ -217,16 +217,15 @@ USER EXPERIENCE:
 
 TECHNICAL PERFORMANCE:
 15. Matter Classification: Correctly identifies and classifies legal matter type
-16. Urgency Assessment: Appropriately evaluates and handles urgent situations
-17. Information Collection: Efficiently gathers required information
-18. Error Handling: Gracefully handles validation errors and edge cases
+16. Information Collection: Efficiently gathers required information
+17. Error Handling: Gracefully handles validation errors and edge cases
 
 HALLUCINATION PENALTIES (CRITICAL):
-- If AI mentions costs/pricing when user didn't ask: -4 points on Accuracy and Legal Accuracy
-- If AI assumes legal issue type without user confirmation: -5 points on Accuracy and Legal Accuracy
-- If AI adds details not provided by user: -3 points on Accuracy
-- If AI makes up opposing party information: -4 points on Legal Accuracy
-- If AI assumes matter urgency without basis: -3 points on Urgency Assessment
+- If AI mentions costs/pricing when user didn't ask: -4 points on Accuracy and Legal Accuracy + CRITICAL ISSUE
+- If AI assumes legal issue type without user confirmation: -5 points on Accuracy and Legal Accuracy + CRITICAL ISSUE
+- If AI adds details not provided by user: -3 points on Accuracy + CRITICAL ISSUE
+- If AI makes up opposing party information: -4 points on Legal Accuracy + CRITICAL ISSUE
+- If AI creates placeholder/fake contact information: -5 points on Accuracy + CRITICAL ISSUE
 
 CONVERSATION FLOW PENALTIES:
 - If AI repeats the same response multiple times: -3 points on Conversation Flow and Efficiency
@@ -250,7 +249,6 @@ RESPONSE FORMAT (JSON):
   "helpfulness": <score 1-10>,
   "responsiveness": <score 1-10>,
   "matterClassification": <score 1-10>,
-  "urgencyAssessment": <score 1-10>,
   "informationCollection": <score 1-10>,
   "errorHandling": <score 1-10>,
   "feedback": "<brief feedback on performance>",
@@ -315,7 +313,6 @@ Provide only the JSON response, no additional text.`;
       
       // Technical performance
       matterClassification: toScore(evaluation.matterClassification),
-      urgencyAssessment: toScore(evaluation.urgencyAssessment),
       informationCollection: toScore(evaluation.informationCollection),
       errorHandling: toScore(evaluation.errorHandling)
     };
@@ -325,7 +322,7 @@ Provide only the JSON response, no additional text.`;
     const coreScores = [scores.empathy, scores.completeness, scores.relevance, scores.professionalism];
     const qualityScores = [scores.actionability, scores.toolUsage, scores.contextAwareness];
     const experienceScores = [scores.clarity, scores.efficiency, scores.helpfulness, scores.responsiveness];
-    const technicalScores = [scores.matterClassification, scores.urgencyAssessment, scores.informationCollection, scores.errorHandling];
+    const technicalScores = [scores.matterClassification, scores.informationCollection, scores.errorHandling];
 
     const criticalWeight = 0.3;
     const coreWeight = 0.2;

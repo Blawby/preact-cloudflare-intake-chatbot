@@ -181,13 +181,11 @@ export interface MatterCanvasData {
     score: number;
     badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
     color: 'blue' | 'green' | 'yellow' | 'red';
-    inferredUrgency: string;
     breakdown: {
       followUpCompletion: number;
       requiredFields: number;
       evidence: number;
       clarity: number;
-      urgency: number;
       consistency: number;
       aiConfidence: number;
     };

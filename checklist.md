@@ -62,7 +62,6 @@
 - [x] `onTimeSlotSelect` prop - Passed through but never used in Message component ✅ REMOVED
 - [x] `onRequestMoreDates` prop - Passed through but never used in Message component ✅ REMOVED
 - [x] `onServiceSelect` prop - Passed through but never used in Message component ✅ REMOVED
-- [x] `onUrgencySelect` prop - Passed through but never used in Message component ✅ REMOVED
 - [x] `onCreateMatter` prop - Passed through but never used in Message component ✅ REMOVED
 - [x] `onScheduleConsultation` prop - Passed through but never used in Message component ✅ KEPT (still used)
 - [x] `onLearnServices` prop - Passed through but never used in Message component ✅ REMOVED

@@ -181,7 +181,7 @@ RESPONSE FORMAT (JSON only):
       scenario: testCase.scenario,
       expectedBehavior: [
         'Collect client information efficiently and naturally',
-        'Create matter with appropriate parameters and urgency assessment',
+        'Create matter with appropriate parameters',
         'Provide clear next steps and guidance',
         'Maintain professional and empathetic tone throughout'
       ],
