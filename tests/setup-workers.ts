@@ -14,7 +14,8 @@ await applyD1Migrations(env.DB, { migrationsFolder: "./migrations" });
 const testTeams = [
   'test-team-1',
   'test-team-disabled', 
-  'blawby-ai'
+  'blawby-ai',
+  'north-carolina-legal-services'
 ];
 
 console.log('🚀 Test environment setup complete!');

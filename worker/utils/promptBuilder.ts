@@ -115,11 +115,11 @@ JSON:`;
     // Basic legal issue detection
     let legalIssueType: string | undefined;
     if (text.includes('divorce') || text.includes('family law')) legalIssueType = 'Family Law';
-    else if (text.includes('car accident') || text.includes('personal injury')) legalIssueType = 'Personal Injury';
-    else if (text.includes('employment') || text.includes('job')) legalIssueType = 'Employment Law';
+    else if (text.includes('car accident') || text.includes('personal injury') || text.includes('ran over') || text.includes('hit someone') || text.includes('pedestrian')) legalIssueType = 'Personal Injury';
+    else if (text.includes('employment') || text.includes('job') || text.includes('terminated') || text.includes('fired')) legalIssueType = 'Employment Law';
     else if (text.includes('landlord') || text.includes('tenant')) legalIssueType = 'Landlord/Tenant';
     else if (text.includes('business')) legalIssueType = 'Business Law';
-    else if (text.includes('criminal') || text.includes('arrest')) legalIssueType = 'Criminal Law';
+    else if (text.includes('criminal') || text.includes('arrest') || text.includes('charges') || text.includes('violation')) legalIssueType = 'Criminal Law';
     
     // Basic location extraction
     let location: string | undefined;

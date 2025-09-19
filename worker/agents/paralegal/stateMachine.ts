@@ -364,49 +364,49 @@ export async function advanceStateMachine(
   switch (currentState.stage) {
     case 'collect_parties':
       if (hasRequiredPartyInfo(event.data)) {
+        markChecklistComplete(nextState.checklist, 'collect_parties');
         nextState.stage = 'conflicts_check';
         nextState.checklist = initializeChecklist('conflicts_check');
-        markChecklistComplete(nextState.checklist, 'collect_parties');
       }
       break;
 
     case 'conflicts_check':
       if (event.type === 'conflict_check_complete') {
+        markChecklistComplete(nextState.checklist, 'conflicts_check');
         nextState.stage = 'documents_needed';
         nextState.checklist = initializeChecklist('documents_needed');
-        markChecklistComplete(nextState.checklist, 'conflicts_check');
       }
       break;
 
     case 'documents_needed':
       if (event.type === 'documents_received' || allDocumentsReceived(nextState.checklist)) {
+        markChecklistComplete(nextState.checklist, 'documents_needed');
         nextState.stage = 'fee_scope';
         nextState.checklist = initializeChecklist('fee_scope');
-        markChecklistComplete(nextState.checklist, 'documents_needed');
       }
       break;
 
     case 'fee_scope':
       if (event.type === 'payment_complete' || feeStructureAgreed(event.data)) {
+        markChecklistComplete(nextState.checklist, 'fee_scope');
         nextState.stage = 'engagement';
         nextState.checklist = initializeChecklist('engagement');
-        markChecklistComplete(nextState.checklist, 'fee_scope');
       }
       break;
 
     case 'engagement':
       if (event.type === 'letter_signed' || engagementLetterSigned(event.data)) {
+        markChecklistComplete(nextState.checklist, 'engagement');
         nextState.stage = 'filing_prep';
         nextState.checklist = initializeChecklist('filing_prep');
-        markChecklistComplete(nextState.checklist, 'engagement');
       }
       break;
 
     case 'filing_prep':
       if (filingPreparationComplete(nextState.checklist)) {
+        markChecklistComplete(nextState.checklist, 'filing_prep');
         nextState.stage = 'completed';
         nextState.checklist = initializeChecklist('completed');
-        markChecklistComplete(nextState.checklist, 'filing_prep');
       }
       break;
 

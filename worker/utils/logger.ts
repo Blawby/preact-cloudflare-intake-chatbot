@@ -1,6 +1,29 @@
 export class Logger {
+  private static env?: any;
+  
+  /**
+   * Initialize logger with environment bindings (call this during startup)
+   */
+  static initialize(env?: any): void {
+    this.env = env;
+  }
+  
   private static isDebugEnabled(): boolean {
-    return process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+    const nodeEnv = this.env?.NODE_ENV ?? 
+                   (typeof globalThis !== 'undefined' && globalThis.NODE_ENV) ?? 
+                   'production';
+    
+    // Never enable debug logging in production
+    if (nodeEnv === 'production') {
+      return false;
+    }
+    
+    // Try to get debug setting from injected env, then globalThis, then fallback
+    const debugValue = this.env?.DEBUG ?? 
+                      (typeof globalThis !== 'undefined' && globalThis.DEBUG) ?? 
+                      false;
+    
+    return debugValue === true || debugValue === 'true' || nodeEnv === 'development';
   }
 
   static debug(message: string, data?: any): void {

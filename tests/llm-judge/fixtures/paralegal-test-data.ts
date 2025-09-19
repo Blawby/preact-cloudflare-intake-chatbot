@@ -16,13 +16,13 @@ export function getParalegalTestTeamConfigForDB(teamId: string): TestTeamConfig 
     requiresPayment: false,
     ownerEmail: 'test@example.com',
     availableServices: [
+      'General Consultation', // Always first to ensure it's available
       'Family Law',
       'Employment Law',
       'Business Law',
       'Personal Injury',
       'Criminal Law',
-      'Civil Law',
-      'General Consultation'
+      'Civil Law'
     ],
     jurisdiction: {
       type: 'national',

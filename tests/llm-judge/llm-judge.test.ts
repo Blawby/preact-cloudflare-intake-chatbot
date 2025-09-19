@@ -19,7 +19,7 @@ function escapeHtml(str: string): string {
 
 // Configuration
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:8787';
-const TEAM_ID = process.env.TEST_TEAM_ID || 'test-team-1';
+const TEAM_ID = process.env.TEST_TEAM_ID || 'north-carolina-legal-services'; // Use intake agent team
 const JUDGE_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 
 interface TestResult {
@@ -1219,6 +1219,7 @@ describe('LLM Judge Evaluation - Intake Agent Tests', () => {
       
       expect(result).toBeDefined();
       expect(result.passed).toBeDefined();
+      expect(result.passed).toBe(true); // Test should fail if LLM judge says it failed
       expect(result.evaluation).toBeDefined();
       expect(result.actualResponses.length).toBeGreaterThan(0);
       

@@ -168,7 +168,7 @@ export class ToolCallParser {
     try {
       parameters = JSON.parse(parametersJson);
     } catch (parseError) {
-      Logger.error('Failed to parse tool parameters JSON:', parseError);
+      Logger.error('Failed to parse tool parameters JSON:', parseError instanceof Error ? parseError.message : 'Unknown parsing error');
       return { 
         success: false, 
         error: 'Invalid JSON in tool parameters',

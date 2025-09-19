@@ -16,13 +16,13 @@ export function getTestTeamConfigForDB(teamId: string): TestTeamConfig {
     requiresPayment: false,
     ownerEmail: 'test@example.com',
     availableServices: [
+      'General Consultation', // Always first to ensure it's available
       'Family Law',
       'Employment Law',
       'Business Law',
       'Personal Injury',
       'Criminal Law',
-      'Civil Law',
-      'General Consultation'
+      'Civil Law'
     ],
     jurisdiction: {
       type: 'national',
@@ -36,7 +36,13 @@ export function getTestTeamConfigForDB(teamId: string): TestTeamConfig {
   let features = {};
   
   if (teamId === 'blawby-ai') {
-    // For LLM Judge tests, ensure intake agent is used (disable paralegal)
+    // blawby-ai should use paralegal agent
+    features = {
+      enableParalegalAgent: true,
+      paralegalFirst: true
+    };
+  } else if (teamId === 'north-carolina-legal-services' || teamId === 'test-team-1') {
+    // North Carolina Legal Services should use intake agent
     features = {
       enableParalegalAgent: false,
       paralegalFirst: false
@@ -48,7 +54,7 @@ export function getTestTeamConfigForDB(teamId: string): TestTeamConfig {
       paralegalFirst: false
     };
   } else {
-    // Default test team - also use intake agent
+    // Default test team - use intake agent
     features = {
       enableParalegalAgent: false,
       paralegalFirst: false
@@ -65,7 +71,9 @@ export function getTestTeamConfigForDB(teamId: string): TestTeamConfig {
   return {
     id: teamId,
     slug: teamId,
-    name: teamId === 'blawby-ai' ? 'Blawby AI' : `Test Team ${teamId}`,
+    name: teamId === 'blawby-ai' ? 'Blawby AI' : 
+          teamId === 'north-carolina-legal-services' ? 'North Carolina Legal Services' :
+          `Test Team ${teamId}`,
     config: JSON.stringify(config),
     created_at: now,
     updated_at: now

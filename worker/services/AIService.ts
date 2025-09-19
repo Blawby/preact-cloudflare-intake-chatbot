@@ -12,6 +12,7 @@ const DEFAULT_TEAM_CONFIG: TeamConfig = {
   ownerEmail: 'default@example.com',
   paymentLink: null,
   availableServices: [
+    'General Consultation', // Always first to ensure it's available
     'Family Law',
     'Employment Law',
     'Business Law',
@@ -23,8 +24,7 @@ const DEFAULT_TEAM_CONFIG: TeamConfig = {
     'Probate and Estate Planning',
     'Special Education and IEP Advocacy',
     'Small Business and Nonprofits',
-    'Contract Review',
-    'General Consultation'
+    'Contract Review'
   ],
   jurisdiction: {
     type: 'national',
@@ -84,7 +84,7 @@ export class AIService {
         Logger.debug('All teams:', allTeams.map(t => ({ id: t.id, slug: t.slug })));
       }
     } catch (error) {
-      Logger.warn('Failed to fetch team config:', error);
+      Logger.warn('Failed to fetch team config:', error instanceof Error ? error.message : 'Unknown error');
     }
     
     Logger.info('Returning default team config');

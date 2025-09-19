@@ -15,7 +15,7 @@ fi
 
 # Set default values
 API_URL=${TEST_API_URL:-"http://localhost:8787"}
-TEAM_ID=${TEST_TEAM_ID:-"blawby-ai"}
+TEAM_ID=${TEST_TEAM_ID:-"north-carolina-legal-services"}
 
 echo "🔧 Configuration:"
 echo "  API URL: $API_URL"

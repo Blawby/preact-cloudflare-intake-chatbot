@@ -11,6 +11,7 @@ export enum ConversationState {
   COLLECTING_OPPOSING_PARTY = 'collecting_opposing_party',
   READY_TO_CREATE_MATTER = 'ready_to_create_matter',
   MATTER_CREATED = 'matter_created',
+  MATTER_CREATION_FAILED = 'matter_creation_failed',
   GENERAL_INQUIRY = 'general_inquiry'
 }
 
@@ -44,6 +45,11 @@ export class ConversationStateMachine {
       return false;
     }
     
+    // If we have a clear legal issue type, it's not a general inquiry
+    if (context.legalIssueType) {
+      return false;
+    }
+    
     const generalPatterns = [
       /\bservices in my area\b/i,
       /\bpricing\b/i,
@@ -52,7 +58,9 @@ export class ConversationStateMachine {
       /\bdo you provide\b/i,
       /\bnot sure if you provide\b/i,
       /\bconcerned about.*cost\b/i,
-      /\btell me about.*pricing\b/i
+      /\btell me about.*pricing\b/i,
+      /\bnot sure what kind\b/i,
+      /\bwhat kind of.*help\b/i
     ];
     return generalPatterns.some(pattern => pattern.test(conversationText));
   }
@@ -61,13 +69,16 @@ export class ConversationStateMachine {
    * Determines if we should create a matter based on available information
    */
   static shouldCreateMatter(context: ConversationContext): boolean {
-    // Create matter if we have essential information
+    // For intake agent, we need comprehensive information before creating matters
+    // This ensures we have all the details needed for a lawyer to contact the client
     const hasEssentialInfo = context.hasName && 
                             context.legalIssueType && 
-                            context.description;
+                            context.description &&
+                            context.hasEmail &&
+                            context.hasPhone &&
+                            context.hasLocation;
     
-    // Contact info and location are helpful but not strictly required
-    // We can create matters and collect missing info later
+    // All contact information is required for intake agent
     return hasEssentialInfo;
   }
 

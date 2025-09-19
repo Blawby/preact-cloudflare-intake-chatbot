@@ -94,9 +94,7 @@ function generateCorrectedResponse(issues: string[], messages: any[]): string {
   }
   
   if (issues.includes('Contains placeholder or fake information')) {
-    if (hasName && hasLegalIssue) {
-      return "I have your name and understand your legal issue. Let me create a matter for you with the information provided.";
-    }
+    // Never allow matter creation when placeholder/fake information is detected
     return "I need your actual contact information to proceed. Could you please provide your real phone number and email address?";
   }
   
@@ -409,7 +407,7 @@ export async function runLegalIntakeAgentStream(
         parameters: parseResult.toolCall.sanitizedParameters || redactParameters(parameters) 
       });
     } else if (parseResult.error && parseResult.error !== 'No tool call detected') {
-      Logger.error('Tool call parsing failed:', parseResult.error);
+      Logger.error('Tool call parsing failed:', parseResult.error instanceof Error ? parseResult.error.message : 'Unknown parsing error');
       if (controller) {
         const errorEvent = `data: ${JSON.stringify({
           type: 'error',
@@ -455,10 +453,15 @@ export async function runLegalIntakeAgentStream(
       
       let toolResult;
       try {
-        toolResult = await handler(parameters, env, teamConfig);
+        // Different tools expect different third argument types:
+        // - request_lawyer_review/analyze_document expect TeamConfig
+        // - collect_contact_info/create_matter expect Team | null
+        const needsTeamConfig = toolName === 'request_lawyer_review' || toolName === 'analyze_document';
+        const thirdArg = needsTeamConfig ? (teamConfig?.config ?? undefined) : teamConfig;
+        toolResult = await handler(parameters, env, thirdArg as any);
         Logger.debug('Tool execution result:', toolResult);
       } catch (error) {
-        Logger.error('Tool execution failed:', error);
+        Logger.error('Tool execution failed:', error instanceof Error ? error.message : 'Unknown execution error');
         if (controller) {
           const errorEvent = `data: ${JSON.stringify({
             type: 'error',

@@ -46,7 +46,7 @@ Please review this matter as soon as possible.`
 
       Logger.info('Lawyer review notification sent successfully');
     } catch (error) {
-      Logger.warn('Failed to send lawyer review notification:', error);
+      Logger.warn('Failed to send lawyer review notification:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
@@ -79,7 +79,7 @@ Please review and take appropriate action.`
 
       Logger.info('Matter creation notification sent successfully');
     } catch (error) {
-      Logger.warn('Failed to send matter creation notification:', error);
+      Logger.warn('Failed to send matter creation notification:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
@@ -112,7 +112,7 @@ Payment link has been sent to the client. Please monitor payment status.`
 
       Logger.info('Payment required notification sent successfully');
     } catch (error) {
-      Logger.warn('Failed to send payment required notification:', error);
+      Logger.warn('Failed to send payment required notification:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 }

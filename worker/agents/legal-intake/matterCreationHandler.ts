@@ -106,41 +106,51 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
     console.warn(`No contact method provided for ${name} - proceeding with name only`);
   }
   
-  // Process payment using the PaymentServiceFactory
-  const paymentRequest = {
-    customerInfo: {
-      name: name,
-      email: email || '',
-      phone: phone || '',
-      location: location || ''
-    },
-    matterInfo: {
-      type: matter_type,
-      description: description,
-      opposingParty: opposing_party || ''
-    },
-    teamId: (() => {
-      if (teamConfig?.id) {
-        return teamConfig.id;
-      }
-      if (env.BLAWBY_TEAM_ULID) {
-        console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
-        return env.BLAWBY_TEAM_ULID;
-      }
-      console.error('❌ CRITICAL: No team ID available for payment processing');
-      console.error('   - teamConfig?.id:', teamConfig?.id);
-      console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
-      console.error('   - Team configuration should be set in database for team:', teamConfig?.name || 'unknown');
-      throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
-    })(),
-    sessionId: 'session-' + Date.now()
-  };
-  
-  const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(env, paymentRequest, teamConfig);
-  
-  // Build summary message
+  // Process payment using the PaymentServiceFactory (only if required)
   const requiresPayment = teamConfig?.config?.requiresPayment || false;
   const consultationFee = teamConfig?.config?.consultationFee || 0;
+  
+  let invoiceUrl = null;
+  let paymentId = null;
+  
+  if (requiresPayment && consultationFee > 0) {
+    const paymentRequest = {
+      customerInfo: {
+        name: name,
+        email: email || '',
+        phone: phone || '',
+        location: location || ''
+      },
+      matterInfo: {
+        type: matter_type,
+        description: description,
+        opposingParty: opposing_party || ''
+      },
+      teamId: (() => {
+        if (teamConfig?.id) {
+          return teamConfig.id;
+        }
+        if (env.BLAWBY_TEAM_ULID) {
+          console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
+          return env.BLAWBY_TEAM_ULID;
+        }
+        console.error('❌ CRITICAL: No team ID available for payment processing');
+        console.error('   - teamConfig?.id:', teamConfig?.id);
+        console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
+        console.error('   - Team configuration should be set in database for team:', teamConfig?.name || 'unknown');
+        throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
+      })(),
+      sessionId: 'session-' + Date.now()
+    };
+    
+    const paymentResult = await PaymentServiceFactory.processPayment(env, paymentRequest, teamConfig);
+    invoiceUrl = paymentResult.invoiceUrl;
+    paymentId = paymentResult.paymentId;
+  } else {
+    console.log('💰 Payment not required - skipping payment processing');
+  }
+  
+  // Build summary message
   
   let summaryMessage = `Perfect! I have all the information I need. Here's a summary of your matter:
 

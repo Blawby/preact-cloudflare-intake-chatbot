@@ -7,6 +7,45 @@ import { validateInput, getSecurityResponse } from '../middleware/inputValidatio
 import { SecurityLogger } from '../utils/securityLogger.js';
 import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
+import { Logger } from '../utils/logger.js';
+import { ToolCallParser } from '../utils/toolCallParser.js';
+
+// Helper function to sanitize team config for logging
+function sanitizeTeamConfig(config: any): any {
+  if (!config || typeof config !== 'object') return config;
+  
+  const sanitized = { ...config };
+  const sensitiveFields = [
+    'apiKey', 'token', 'secret', 'password', 'credentials', 'accessToken', 
+    'privateKey', 'apiToken', 'blawbyApi', 'ownerEmail', 'contactEmail'
+  ];
+  
+  for (const field of sensitiveFields) {
+    if (sanitized[field]) {
+      if (typeof sanitized[field] === 'string') {
+        sanitized[field] = '***REDACTED***';
+      } else if (typeof sanitized[field] === 'object') {
+        sanitized[field] = '***REDACTED_OBJECT***';
+      }
+    }
+  }
+  
+  return sanitized;
+}
+
+// Helper function to safely log errors without exposing PII
+function safeLogError(message: string, error: any): void {
+  if (error instanceof Error) {
+    Logger.error(message, {
+      name: error.name,
+      message: error.message,
+      // Don't log stack traces in production
+      ...(process.env.NODE_ENV !== 'production' && { stack: error.stack })
+    });
+  } else {
+    Logger.error(message, typeof error === 'string' ? error : 'Unknown error');
+  }
+}
 
 // Supervisor router for intent-based routing between agents
 // Helper functions for intent detection
@@ -16,22 +55,22 @@ function wantsHuman(text: string, messages?: any[]): boolean {
     const previousMessage = messages[messages.length - 2]?.content?.toLowerCase() || '';
     const currentMessage = text.toLowerCase();
     
-    console.log('🔍 Checking attorney referral acceptance:');
-    console.log('  Previous message:', previousMessage.substring(0, 100));
-    console.log('  Current message:', currentMessage);
-    console.log('  Has attorney suggestion:', previousMessage.includes('would you like me to connect you with'));
-    console.log('  Is affirmative:', ['yes', 'yeah', 'sure', 'ok'].includes(currentMessage));
+    Logger.debug('🔍 Checking attorney referral acceptance:');
+    Logger.debug('  Previous message:', previousMessage.substring(0, 100));
+    Logger.debug('  Current message:', currentMessage);
+    Logger.debug('  Has attorney suggestion:', previousMessage.includes('would you like me to connect you with'));
+    Logger.debug('  Is affirmative:', ['yes', 'yeah', 'sure', 'ok'].includes(currentMessage));
     
     // If previous message suggested attorney and current is affirmative
     if (previousMessage.includes('would you like me to connect you with') && 
         (currentMessage === 'yes' || currentMessage === 'yeah' || currentMessage === 'sure' || currentMessage === 'ok')) {
-      console.log('✅ Attorney referral accepted - routing to intake!');
+      Logger.debug('✅ Attorney referral accepted - routing to intake!');
       return true;
     }
   }
   
   const regularMatch = /\b(lawyer|attorney|human|person|call|phone|consult|consultation)\b/i.test(text);
-  console.log('🔍 Regular wantsHuman check:', regularMatch, 'for text:', text);
+  Logger.debug('🔍 Regular wantsHuman check:', regularMatch, 'for text:', text);
   return regularMatch;
 }
 
@@ -51,40 +90,40 @@ class SupervisorRouter {
     const latestMessage = messages?.at(-1)?.content || '';
     const text = latestMessage.toLowerCase();
     
-    console.log(`🤖 Routing: paralegalEnabled=${paralegalEnabled}, paralegalFirst=${paralegalFirst}`);
+    Logger.debug(`🤖 Routing: paralegalEnabled=${paralegalEnabled}, paralegalFirst=${paralegalFirst}`);
     
     // 0. Check if user is already in intake flow - if so, stay in intake
     if (this.isInIntakeFlow(messages)) {
-      console.log('📋 User is in intake flow, staying in Intake Agent');
+      Logger.debug('📋 User is in intake flow, staying in Intake Agent');
       return 'intake';
     }
     
     // 1. Check for explicit human intent (always goes to intake)
     if (wantsHuman(text, messages)) {
-      console.log('👤 User wants human interaction, routing to Intake Agent');
+      Logger.debug('👤 User wants human interaction, routing to Intake Agent');
       return 'intake';
     }
     
     // 2. Check for document analysis intent/uploads (always goes to analysis)
     if (needsDocAnalysis(text, body.attachments) || this.shouldRouteToAnalysis(body)) {
-      console.log('🔍 Document analysis needed, routing to Analysis Agent');
+      Logger.debug('🔍 Document analysis needed, routing to Analysis Agent');
       return 'analysis';
     }
     
     // 3. If paralegal-first mode enabled, default to paralegal for all legal questions
     if (paralegalEnabled && paralegalFirst) {
-      console.log('🎯 Paralegal-first mode: routing to Paralegal Agent');
+      Logger.debug('🎯 Paralegal-first mode: routing to Paralegal Agent');
       return 'paralegal';
     }
     
     // 4. Legacy routing: check specific paralegal triggers if enabled
     if (paralegalEnabled && this.shouldRouteToParalegal(text, body)) {
-      console.log('🎯 Legacy routing: specific paralegal triggers matched');
+      Logger.debug('🎯 Legacy routing: specific paralegal triggers matched');
       return 'paralegal';
     }
     
     // 5. Default fallback to intake
-    console.log('🏢 Default routing to Intake Agent');
+    Logger.debug('🏢 Default routing to Intake Agent');
     return 'intake';
   }
 
@@ -97,7 +136,7 @@ class SupervisorRouter {
     const isPostPaymentQuery = this.isPostPaymentQuery(text, messages);
     
     if (hasCompletedIntake && isPostPaymentQuery) {
-      console.log('🎯 Detected post-payment scenario, routing to Paralegal Agent');
+      Logger.debug('🎯 Detected post-payment scenario, routing to Paralegal Agent');
       return true;
     }
 
@@ -212,7 +251,7 @@ class SupervisorRouter {
     const hasProvidedContactInfo = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(allContent) || // phone pattern
                                    /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/.test(allContent); // email pattern
     
-    console.log(`📋 Intake flow check: markers=${hasIntakeMarkers}, contact=${hasProvidedContactInfo}`);
+    Logger.debug(`📋 Intake flow check: markers=${hasIntakeMarkers}, contact=${hasProvidedContactInfo}`);
     
     return hasIntakeMarkers || hasProvidedContactInfo;
   }
@@ -251,7 +290,7 @@ Can you tell me more about what's going on with your case? The more details you 
 
 // New streaming endpoint for real-time AI responses
 export async function handleAgentStream(request: Request, env: Env): Promise<Response> {
-  console.log('🚀 Streaming endpoint called!');
+  Logger.debug('🚀 Streaming endpoint called!');
   
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
@@ -269,7 +308,7 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
 
   try {
     const body = await request.json();
-    console.log('📥 Request body:', body);
+    Logger.debug('📥 Request body:', ToolCallParser.sanitizeParameters(body));
     
     const { messages, teamId, sessionId, attachments = [] } = body;
 
@@ -290,19 +329,22 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
         const rawTeamConfig = await aiService.getTeamConfig(teamId);
         teamConfig = rawTeamConfig?.config || rawTeamConfig;
         
-        // Debug logging for test team configuration
-        console.log(`🔍 Team config for ${teamId}:`, JSON.stringify(teamConfig, null, 2));
-        console.log(`🔍 Features:`, teamConfig?.features);
-        console.log(`🔍 enableParalegalAgent:`, teamConfig?.features?.enableParalegalAgent);
-        console.log(`🔍 paralegalFirst:`, teamConfig?.features?.paralegalFirst);
+        // Debug logging for test team configuration (only in debug mode)
+        if (env.DEBUG === true || env.DEBUG === 'true') {
+          const sanitizedConfig = sanitizeTeamConfig(teamConfig);
+          Logger.debug(`🔍 Team config for ${teamId}:`, JSON.stringify(sanitizedConfig, null, 2));
+          Logger.debug(`🔍 Features:`, teamConfig?.features);
+          Logger.debug(`🔍 enableParalegalAgent:`, teamConfig?.features?.enableParalegalAgent);
+          Logger.debug(`🔍 paralegalFirst:`, teamConfig?.features?.paralegalFirst);
+        }
       } catch (error) {
-        console.warn('Failed to get team config for security validation:', error);
+        safeLogError('Failed to get team config for security validation', error);
       }
     }
 
     // Get Cloudflare location data
     const cloudflareLocation = getCloudflareLocation(request);
-    console.log('Cloudflare location data:', cloudflareLocation);
+    Logger.debug('Cloudflare location data:', cloudflareLocation);
 
     // Security validation with Cloudflare location
     const validation = await validateInput(body, teamConfig, cloudflareLocation);
@@ -322,27 +364,27 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
       return new Response(securityEvent, { headers });
     }
 
-    console.log('✅ Security validation passed, creating stream...');
+    Logger.debug('✅ Security validation passed, creating stream...');
 
     // Create streaming response using ReadableStream
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          console.log('🔄 Starting streaming agent...');
+          Logger.debug('🔄 Starting streaming agent...');
           
           // Send initial connection event
           controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
           
           // Use SupervisorRouter to determine which agent to use
-          console.log('📞 Using SupervisorRouter for streaming...');
+          Logger.debug('📞 Using SupervisorRouter for streaming...');
           const router = new SupervisorRouter(env);
           const route = await router.route(body, teamConfig);
           
-          console.log(`🎯 Streaming route decision: ${route}`);
+          Logger.debug(`🎯 Streaming route decision: ${route}`);
           
           if (route === 'paralegal') {
             // Route to Paralegal Agent (but stream the response)
-            console.log('🎯 Streaming via Paralegal Agent');
+            Logger.debug('🎯 Streaming via Paralegal Agent');
             
             // Generate a matter ID from session or team
             const matterId = sessionId || `matter-${teamId}-${Date.now()}`;

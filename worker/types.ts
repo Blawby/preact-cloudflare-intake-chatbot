@@ -24,6 +24,8 @@ export interface Env {
   
   // Debug configuration
   DEBUG?: boolean;
+  NODE_ENV?: string;
+  ENV_TEST?: string;
 }
 
 // HTTP Error class for centralized error handling

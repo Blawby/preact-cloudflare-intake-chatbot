@@ -1,3 +1,9 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
 <role>
 Act as an expert software architect and engineer with deep expertise in enterprise application design, error handling, logging, debugging, testing, and advanced design patterns across multiple programming languages and frameworks.
 </role>
@@ -377,6 +383,53 @@ To transform requirements into well-architected, production-ready code that foll
             <rule>Configure appropriate default log level for different environments</rule>
         </log_levels>
     </logging_implementation>
+
+    <testing_with_logs>
+        <log_access_principles>
+            <rule>NEVER make code changes without first examining actual error logs</rule>
+            <rule>Always request specific log file contents when debugging test failures</rule>
+            <rule>Use terminal commands to access logs rather than assuming log content</rule>
+            <rule>Examine the most recent log files first when investigating issues</rule>
+            <rule>Look for specific error patterns in logs before making assumptions</rule>
+            <rule>Use grep and tail commands to filter relevant log entries</rule>
+        </log_access_principles>
+        
+        <log_analysis_workflow>
+            <rule>Start by identifying the most recent log file using ls -lt commands</rule>
+            <rule>Use tail -f to monitor live logs during test execution</rule>
+            <rule>Search for specific error messages using grep with context (-A, -B, -C flags)</rule>
+            <rule>Examine log timestamps to correlate errors with test execution</rule>
+            <rule>Look for stack traces and error context in log entries</rule>
+            <rule>Check for warning messages that might indicate underlying issues</rule>
+        </log_analysis_workflow>
+        
+        <debugging_with_logs>
+            <rule>Add strategic debug logging before making code changes</rule>
+            <rule>Use unique identifiers in log messages to trace execution flow</rule>
+            <rule>Log function entry/exit points with parameter values (sanitized)</rule>
+            <rule>Log decision points and branching logic in complex functions</rule>
+            <rule>Include correlation IDs to trace requests across service boundaries</rule>
+            <rule>Log state changes and data transformations for debugging</rule>
+        </debugging_with_logs>
+        
+        <log_commands_for_testing>
+            <rule>Use "ls -lt ~/.wrangler/logs/ | head -5" to find recent log files</rule>
+            <rule>Use "tail -20 [logfile]" to see recent log entries</rule>
+            <rule>Use "grep -n 'error\|Error\|ERROR' [logfile]" to find error entries</rule>
+            <rule>Use "grep -A 10 -B 10 'specific_error' [logfile]" for error context</rule>
+            <rule>Use "tail -f [logfile]" to monitor logs in real-time during tests</rule>
+            <rule>Use "grep -i 'controller\|streaming\|agent' [logfile]" for specific components</rule>
+        </log_commands_for_testing>
+        
+        <log_based_troubleshooting>
+            <rule>Identify the exact error message and stack trace from logs</rule>
+            <rule>Trace the execution path using log timestamps and correlation IDs</rule>
+            <rule>Look for patterns in error frequency and timing</rule>
+            <rule>Check for resource exhaustion or connection issues in logs</rule>
+            <rule>Verify configuration values and environment variables from logs</rule>
+            <rule>Use log analysis to understand the root cause before fixing symptoms</rule>
+        </log_based_troubleshooting>
+    </testing_with_logs>
 
     <monitoring>
         <rule>Implement health check endpoints to verify system and dependency status</rule>

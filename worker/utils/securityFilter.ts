@@ -134,8 +134,19 @@ export class SecurityFilter {
       return null; // Allow general consultation to handle the request
     }
     
-    // Only validate if we found a specific legal matter type AND have team config AND team doesn't offer General Consultation
-    if (legalMatterType && teamConfig && !availableServices.includes(legalMatterType)) {
+    // If no team config is available, be permissive and allow the request
+    if (!teamConfig) {
+      return null;
+    }
+    
+    // If availableServices is empty or undefined, be permissive and allow the request
+    if (!availableServices || availableServices.length === 0) {
+      return null;
+    }
+    
+    // Only validate if we found a specific legal matter type AND team doesn't offer that specific service
+    // AND team doesn't offer General Consultation
+    if (legalMatterType && !availableServices.includes(legalMatterType) && !availableServices.includes('General Consultation')) {
       return 'service_not_offered';
     }
     

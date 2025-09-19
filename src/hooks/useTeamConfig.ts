@@ -16,6 +16,7 @@ interface TeamConfig {
     supportedCountries: string[];
     primaryState?: string;
   };
+  paymentLink?: string | null;
 }
 
 interface UseTeamConfigOptions {

@@ -49,20 +49,33 @@ export class BusinessLogicHandler {
 
       try {
         const toolResult = await TOOL_HANDLERS.create_matter(matterParams, env, teamConfig);
-        return {
-          shouldCreateMatter: true,
-          response: toolResult.message || 'Matter created successfully.',
-          matterParams,
-          useAIResponse: false,
-          state: ConversationState.MATTER_CREATED
-        };
+        
+        // Check if the tool call was successful
+        if (toolResult.success) {
+          return {
+            shouldCreateMatter: true,
+            response: toolResult.message || 'Matter created successfully.',
+            matterParams,
+            useAIResponse: false,
+            state: ConversationState.MATTER_CREATED
+          };
+        } else {
+          // Handle non-throwing failures (validation errors, etc.)
+          Logger.warn('Matter creation failed with non-throwing error:', toolResult.message);
+          return {
+            shouldCreateMatter: false,
+            response: toolResult.message || 'Failed to create matter',
+            useAIResponse: false,
+            state: ConversationState.MATTER_CREATION_FAILED
+          };
+        }
       } catch (error) {
-        Logger.error('Matter creation failed:', error);
+        Logger.error('Matter creation failed with exception:', error instanceof Error ? error.message : 'Unknown error');
         return {
           shouldCreateMatter: false,
           response: "I'm sorry, there was an issue creating your matter. Let me try to help you in a different way.",
           useAIResponse: true,
-          state
+          state: ConversationState.MATTER_CREATION_FAILED
         };
       }
     }
@@ -104,11 +117,11 @@ export class BusinessLogicHandler {
 - ALWAYS acknowledge what the user just said
 - Build on previous conversation - don't ignore context
 - Only ask for information you don't already have
-- CREATE MATTER when you have: name + legal issue + description
-- Contact info and location are helpful but not required for matter creation
+- CREATE MATTER when you have: name + legal issue + description + email + phone + location
+- Contact info and location are REQUIRED for matter creation
 
 **TOOLS:**
-- create_matter: Use when you have name, legal issue type, and description
+- create_matter: Use when you have name, legal issue type, description, email, phone, and location
 
 **FORMAT:**
 TOOL_CALL: create_matter

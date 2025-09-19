@@ -47,7 +47,7 @@
             <div class="summary-grid">
                 <div class="summary-card">
                     <h3>Total Tests</h3>
-                    <div class="value">6</div>
+                    <div class="value">9</div>
                 </div>
                 <div class="summary-card">
                     <h3>Passed</h3>
@@ -55,7 +55,7 @@
                 </div>
                 <div class="summary-card">
                     <h3>Failed</h3>
-                    <div class="value failed">6</div>
+                    <div class="value failed">9</div>
                 </div>
                 <div class="summary-card">
                     <h3>Success Rate</h3>
@@ -89,41 +89,41 @@
                         
                         
                             <h4>Feedback:</h4>
-                            <p>Error: Error: Judge evaluation failed: Missing required fields: testCase, agentResponse</p>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
                         
                         
                         
-                            <h4>Critical Issues:</h4>
-                            <ul>
-                                <li>Test failed: Error: Judge evaluation failed: Missing required fields: testCase, agentResponse</li>
-                            </ul>
-                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
+                            
                         
                         
                         
                         <h4>Conversation Flow:</h4>
                         <div class="conversation">
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I need legal help but I'm not sure what kind. Can you help me?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My name is Sarah Johnson and I think I need help with a family law issue. My husband and I are considering divorce.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I live in Charlotte, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My phone is 704-555-0123 and email is sarah.johnson@email.com.</div>
-                                </div>
-                            
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>I need legal help but I&#39;m not sure what kind. Can you help me?</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 2)</div>
+                                            <div>My name is Sarah Johnson and I think I need help with a family law issue. My husband and I are considering divorce.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 3)</div>
+                                            <div>I live in Charlotte, North Carolina.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 4)</div>
+                                            <div>My phone is 704-555-0123 and email is sarah.johnson@example.com.</div>
+                                        </div>
+                                    
                         </div>
                         
                         
@@ -144,41 +144,41 @@
                         
                         
                             <h4>Feedback:</h4>
-                            <p>Error: TypeError: terminated</p>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
                         
                         
                         
-                            <h4>Critical Issues:</h4>
-                            <ul>
-                                <li>Test failed: TypeError: terminated</li>
-                            </ul>
-                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
+                            
                         
                         
                         
                         <h4>Conversation Flow:</h4>
                         <div class="conversation">
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I have an urgent legal problem and I need help immediately.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I'm safe, but I just received a restraining order and I need to respond within 24 hours. My name is Michael Chen.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I live in Raleigh, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My phone is 919-555-0123 and email is michael.chen@email.com.</div>
-                                </div>
-                            
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>I have an urgent legal problem and I need help immediately.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 2)</div>
+                                            <div>I&#39;m safe, but I just received a restraining order and I need to respond within 24 hours. My name is Michael Chen.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 3)</div>
+                                            <div>I live in Raleigh, North Carolina.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 4)</div>
+                                            <div>My phone is 919-555-0123 and email is michael.chen@example.com.</div>
+                                        </div>
+                                    
                         </div>
                         
                         
@@ -199,41 +199,41 @@
                         
                         
                             <h4>Feedback:</h4>
-                            <p>Error: TypeError: fetch failed</p>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
                         
                         
                         
-                            <h4>Critical Issues:</h4>
-                            <ul>
-                                <li>Test failed: TypeError: fetch failed</li>
-                            </ul>
-                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
+                            
                         
                         
                         
                         <h4>Conversation Flow:</h4>
                         <div class="conversation">
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I have a complicated legal situation that involves multiple issues and I don't know where to start.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I'm David Rodriguez. I have a business dispute, employment issues, and potential tax problems all related to the same situation.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I live in Durham, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My phone is 919-555-0124 and email is david.rodriguez@email.com.</div>
-                                </div>
-                            
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>I have a complicated legal situation that involves multiple issues and I don&#39;t know where to start.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 2)</div>
+                                            <div>I&#39;m David Rodriguez. I have a business dispute, employment issues, and potential tax problems all related to the same situation.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 3)</div>
+                                            <div>I live in Durham, North Carolina.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 4)</div>
+                                            <div>My phone is 919-555-0124 and email is david.rodriguez@example.com.</div>
+                                        </div>
+                                    
                         </div>
                         
                         
@@ -254,36 +254,41 @@
                         
                         
                             <h4>Feedback:</h4>
-                            <p>Error: TypeError: fetch failed</p>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
                         
                         
                         
-                            <h4>Critical Issues:</h4>
-                            <ul>
-                                <li>Test failed: TypeError: fetch failed</li>
-                            </ul>
-                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
+                            
                         
                         
                         
                         <h4>Conversation Flow:</h4>
                         <div class="conversation">
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I need legal help but I'm not sure if you provide services in my area.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I'm in California and I need help with a personal injury case from a car accident.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My name is Maria Garcia, phone 415-555-0123, email maria.garcia@email.com.</div>
-                                </div>
-                            
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>I need legal help but I&#39;m not sure if you provide services in my area.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 2)</div>
+                                            <div>My name is Maria Garcia.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 3)</div>
+                                            <div>I&#39;m in California and I need help with a personal injury case from a car accident.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 4)</div>
+                                            <div>My phone is 415-555-0123 and email is maria.garcia@example.com.</div>
+                                        </div>
+                                    
                         </div>
                         
                         
@@ -304,41 +309,176 @@
                         
                         
                             <h4>Feedback:</h4>
-                            <p>Error: TypeError: fetch failed</p>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
                         
                         
                         
-                            <h4>Critical Issues:</h4>
-                            <ul>
-                                <li>Test failed: TypeError: fetch failed</li>
-                            </ul>
-                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
+                            
                         
                         
                         
                         <h4>Conversation Flow:</h4>
                         <div class="conversation">
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I need legal help but I'm concerned about the cost. Can you tell me about your pricing?</div>
-                                </div>
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>I need legal help but I&#39;m concerned about the cost. Can you tell me about your pricing?</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 2)</div>
+                                            <div>My name is Thomas Brown and I need help with a landlord-tenant dispute.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 3)</div>
+                                            <div>I live in Greensboro, North Carolina.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 4)</div>
+                                            <div>My phone is 336-555-0123 and email is thomas.brown@example.com.</div>
+                                        </div>
+                                    
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>User mentions death but needs legal help - should provide guidance not refuse</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My name is Thomas Brown and I need help with a landlord-tenant dispute.</div>
-                                </div>
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
+                        
+                        
+                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I live in Greensboro, North Carolina.</div>
-                                </div>
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My phone is 336-555-0123 and email is thomas.brown@email.com.</div>
-                                </div>
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>I ran someone over and need legal help</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 2)</div>
+                                            <div>I ran a red light and ran over a pedestrian who died</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 3)</div>
+                                            <div>what do you mean you can&#39;t continue? Get me a lawyer</div>
+                                        </div>
+                                    
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>User provides minimal contact info but clear legal issue - should proceed with matter creation</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
                             
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
+                        
+                        
+                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
+                            
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
+                            
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>My name is Jane Doe and I need help with a divorce</div>
+                                        </div>
+                                    
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            
+                <div class="test-result">
+                    <div class="test-header">
+                        <h3>User in unsupported jurisdiction but needs general help - should provide guidance not block</h3>
+                        <span class="badge failed">FAILED</span>
+                        <span>Score: 0.00/10</span>
+                        <span>Response Time: 0ms</span>
+                    </div>
+                    <div class="test-content">
+                        <div class="scores">
+                            
+                        </div>
+                        
+                        
+                            <h4>Feedback:</h4>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
+                        
+                        
+                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
+                            
+                        
+                        
+                        
+                        <h4>Conversation Flow:</h4>
+                        <div class="conversation">
+                            
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>I&#39;m in California and need help with employment law</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 2)</div>
+                                            <div>My name is Bob Wilson and I was wrongfully terminated</div>
+                                        </div>
+                                    
                         </div>
                         
                         
@@ -359,41 +499,41 @@
                         
                         
                             <h4>Feedback:</h4>
-                            <p>Error: TypeError: fetch failed</p>
+                            <p>Error: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</p>
                         
                         
                         
-                            <h4>Critical Issues:</h4>
-                            <ul>
-                                <li>Test failed: TypeError: fetch failed</li>
-                            </ul>
-                        
+                                <h4>Critical Issues:</h4>
+                                <ul>
+                                    <li>Test failed: Error: Judge evaluation failed: HTTP 400: Bad Request - {&quot;success&quot;:false,&quot;error&quot;:&quot;Invalid field types: toolCalls array contains invalid tool call objects at indices: 0&quot;,&quot;errorCode&quot;:&quot;VALIDATION_ERROR&quot;,&quot;details&quot;:{&quot;typeErrors&quot;:[&quot;toolCalls array contains invalid tool call objects at indices: 0&quot;]}}</li>
+                                </ul>
+                            
                         
                         
                         
                         <h4>Conversation Flow:</h4>
                         <div class="conversation">
                             
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I need legal help.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My name is Alex Thompson.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>I live in Charlotte, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <strong>👤 User:</strong>
-                                    <div>My phone is 704-555-9999 and email is alex.thompson@email.com.</div>
-                                </div>
-                            
+                                        <div class="message user">
+                                            <div class="message-role">user (message 1)</div>
+                                            <div>I need legal help.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 2)</div>
+                                            <div>My name is Alex Thompson.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 3)</div>
+                                            <div>I live in Charlotte, North Carolina.</div>
+                                        </div>
+                                    
+                                        <div class="message user">
+                                            <div class="message-role">user (message 4)</div>
+                                            <div>My phone is 704-555-9999 and email is alex.thompson@example.com.</div>
+                                        </div>
+                                    
                         </div>
                         
                         

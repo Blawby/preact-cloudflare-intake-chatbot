@@ -277,6 +277,12 @@ export class ParalegalHandlers {
       return new Response('Unauthorized', { status: 401 });
     }
 
+    // API key team binding check: ensure API keys can only operate within their own team
+    if (authResult.permissions?.includes('api_access') && authResult.teamId !== teamId) {
+      console.warn(`API key team binding violation for paralegal advance: apiKeyTeamId=${authResult.teamId}, requestedTeamId=${teamId}`);
+      return new Response('Forbidden', { status: 403 });
+    }
+
     // Authorization check: verify team and matter access
     const isAuthorized = await this.verifyTeamAccess(teamId, matterId);
     if (!isAuthorized) {
@@ -347,6 +353,12 @@ export class ParalegalHandlers {
       console.warn(`Authentication failed for paralegal status: ${authResult.error}`);
       return new Response('Unauthorized', { status: 401 });
     }
+
+    // API key team binding check: ensure API keys can only operate within their own team
+    if (authResult.permissions?.includes('api_access') && authResult.teamId !== teamId) {
+      console.warn(`API key team binding violation for paralegal status: apiKeyTeamId=${authResult.teamId}, requestedTeamId=${teamId}`);
+      return new Response('Forbidden', { status: 403 });
+    }
     
     const isAuthorized = await this.verifyTeamAccess(teamId, matterId);
     if (!isAuthorized) {
@@ -381,6 +393,12 @@ export class ParalegalHandlers {
     if (!authResult.isAuthenticated) {
       console.warn(`Authentication failed for paralegal checklist: ${authResult.error}`);
       return new Response('Unauthorized', { status: 401 });
+    }
+
+    // API key team binding check: ensure API keys can only operate within their own team
+    if (authResult.permissions?.includes('api_access') && authResult.teamId !== teamId) {
+      console.warn(`API key team binding violation for paralegal checklist: apiKeyTeamId=${authResult.teamId}, requestedTeamId=${teamId}`);
+      return new Response('Forbidden', { status: 403 });
     }
     
     const isAuthorized = await this.verifyTeamAccess(teamId, matterId);

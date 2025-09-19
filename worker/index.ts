@@ -19,6 +19,7 @@ import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './error
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
 import { ParalegalAgent } from './agents/ParalegalAgent';
+import { Logger } from './utils/logger';
 
 // Basic request validation
 function validateRequest(request: Request): boolean {
@@ -46,6 +47,9 @@ function validateRequest(request: Request): boolean {
 }
 
 export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  // Initialize logger with environment bindings
+  Logger.initialize(env);
+  
   const url = new URL(request.url);
   const path = url.pathname;
 

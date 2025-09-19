@@ -338,7 +338,9 @@ Provide only the JSON response, no additional text.`;
       (technicalScores.reduce((sum, score) => sum + score, 0) / technicalScores.length) * technicalWeight
     );
 
-    const passed = averageScore >= minScore;
+    // Test fails if there are critical issues OR score is too low
+    const hasCriticalIssues = (evaluation.criticalIssues || []).length > 0;
+    const passed = !hasCriticalIssues && averageScore >= minScore;
 
     const result = {
       success: true,

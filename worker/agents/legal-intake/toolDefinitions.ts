@@ -29,7 +29,12 @@ export const collectContactInfo = {
         maxLength: 100
       }
     },
-    required: ['name']
+    required: ['name', 'location'],
+    anyOf: [
+      { required: ['email'] },
+      { required: ['phone'] }
+    ],
+    additionalProperties: false
   }
 };
 
@@ -46,12 +51,24 @@ export const createMatter = {
       },
       description: { type: 'string', description: 'Brief description of the legal issue' },
       name: { type: 'string', description: 'Client full name' },
-      phone: { type: 'string', description: 'Client phone number' },
-      email: { type: 'string', description: 'Client email address' },
+      phone: { 
+        type: 'string', 
+        description: 'Client phone number',
+        pattern: '^[+]?[0-9\\s\\-\\(\\)]{7,20}$' // International format
+      },
+      email: { 
+        type: 'string', 
+        description: 'Client email address',
+        format: 'email'
+      },
       location: { type: 'string', description: 'Client location (city and state)' },
       opposing_party: { type: 'string', description: 'Opposing party name if applicable' }
     },
-    required: ['matter_type', 'description', 'name']
+    required: ['matter_type', 'description', 'name', 'location'],
+    anyOf: [
+      { required: ['phone'] },
+      { required: ['email'] }
+    ]
   }
 };
 

@@ -16,7 +16,7 @@ export interface TeamConfig {
   };
   domain?: string;
   description?: string;
-  paymentLink?: string;
+  paymentLink?: string | null;
   brandColor?: string;
   accentColor?: string;
   introMessage?: string;
@@ -215,6 +215,7 @@ export class TeamService {
       requiresPayment: false,
       ownerEmail: 'default@example.com',
       availableServices: [
+        'General Consultation', // Always first to ensure it's available
         'Family Law',
         'Employment Law',
         'Business Law',
@@ -226,8 +227,7 @@ export class TeamService {
         'Probate and Estate Planning',
         'Special Education and IEP Advocacy',
         'Small Business and Nonprofits',
-        'Contract Review',
-        'General Consultation'
+        'Contract Review'
       ],
       jurisdiction: {
         type: 'national',

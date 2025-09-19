@@ -87,7 +87,7 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
     // Build messages array up to this point
     const messages = conversation.slice(0, i + 1);
     
-    const response = await fetch('http://localhost:8787/api/agent/stream', {
+    const response = await fetch(`${BASE_URL}/api/agent/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -106,9 +106,14 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
     }
 
     const chunks: string[] = [];
-    for await (const chunk of response.body) {
-      chunks.push(chunk.toString());
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      chunks.push(decoder.decode(value, { stream: true }));
     }
+    chunks.push(decoder.decode());
     
     const responseText = chunks.join('');
     const lines = responseText.split('\n');
@@ -143,7 +148,7 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
 
   // Disable paralegal-first mode after test
   try {
-    const cleanupResponse = await fetch('http://localhost:8787/api/teams/blawby-ai', {
+    const cleanupResponse = await fetch(`${BASE_URL}/api/teams/blawby-ai`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -165,7 +170,7 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
   }
 
   // Evaluate with LLM Judge
-  const judgeResponse = await fetch('http://localhost:8787/api/judge/evaluate', {
+  const judgeResponse = await fetch(`${BASE_URL}/api/judge/evaluate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

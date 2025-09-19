@@ -1,6 +1,7 @@
 import { CasePreparationFlow, CasePreparationStage, CasePreparationContext, CaseInformation } from './casePreparationFlow.js';
 import { Env } from '../../types.js';
 import { TeamConfig } from '../../services/TeamService.js';
+import { Logger } from '../../utils/logger.js';
 
 // Message interface for type safety
 interface Message {
@@ -26,7 +27,7 @@ export async function runParalegalAgentStream(
   const conversationText = formattedMessages.map(msg => msg.content).join(' ');
   
   // Extract case information from conversation using enhanced basic patterns
-  const extractedInfo = CasePreparationFlow.extractCaseInformation(conversationText, env);
+  const extractedInfo = await CasePreparationFlow.extractCaseInformation(conversationText, env);
   
   // Create case preparation context
   const context: CasePreparationContext = {
@@ -58,11 +59,9 @@ export async function runParalegalAgentStream(
   }
 
   try {
-    if (env.DEBUG) {
-      console.log('🔄 Starting paralegal case preparation agent...');
-      console.log('🎯 Current stage:', currentStage);
-      // Avoid logging sensitive information like messages and case details
-    }
+    Logger.debug('🔄 Starting paralegal case preparation agent...');
+    Logger.debug('🎯 Current stage:', currentStage);
+    // Avoid logging sensitive information like messages and case details
     
     // Send initial connection event
     if (controller) {
@@ -71,9 +70,7 @@ export async function runParalegalAgentStream(
     
     // Use rule-based response for case preparation
     const response = ruleBasedResponse;
-    if (env.DEBUG) {
-      console.log('📝 Paralegal response generated');
-    }
+    Logger.debug('📝 Paralegal response generated');
     
     if (controller) {
       // Stream the response word by word
