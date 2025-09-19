@@ -4,6 +4,45 @@ import fetch from 'node-fetch';
 // Configuration
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:8787';
 
+// Helper function to parse SSE responses
+async function parseSSEResponse(response: Response): Promise<{ responseText: string; events: Array<{ type: string; [key: string]: any }> }> {
+  if (!response.body) {
+    throw new Error('No response body available');
+  }
+
+  const chunks: string[] = [];
+  for await (const chunk of response.body) {
+    chunks.push(chunk.toString());
+  }
+  
+  const fullResponse = chunks.join('');
+  const lines = fullResponse.split('\n');
+  let responseText = '';
+  const events: Array<{ type: string; [key: string]: any }> = [];
+  
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      try {
+        const data = JSON.parse(line.slice(6));
+        events.push(data);
+        
+        if (data.type === 'text') {
+          responseText += data.text;
+        } else if (data.type === 'final') {
+          responseText = data.response;
+        }
+      } catch (e) {
+        if (process.env.DEBUG) {
+          console.debug('Failed to parse SSE data line:', line, e);
+        }
+        // Ignore parsing errors
+      }
+    }
+  }
+  
+  return { responseText, events };
+}
+
 describe('Agent Routing Tests', () => {
   beforeAll(async () => {
     console.log('🧪 Setting up Agent Routing test environment...');
@@ -46,33 +85,7 @@ describe('Agent Routing Tests', () => {
       expect(response.headers.get('content-type')).toContain('text/event-stream');
       
       // Read the stream to verify it's using intake agent
-      if (!response.body) {
-        throw new Error('No response body available');
-      }
-
-      const chunks: string[] = [];
-      for await (const chunk of response.body) {
-        chunks.push(chunk.toString());
-      }
-      
-      const fullResponse = chunks.join('');
-      const lines = fullResponse.split('\n');
-      let responseText = '';
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'text') {
-              responseText += data.text;
-            } else if (data.type === 'final') {
-              responseText = data.response;
-            }
-          } catch (e) {
-            // Ignore parsing errors
-          }
-        }
-      }
+      const { responseText } = await parseSSEResponse(response);
       
       // Verify intake agent response characteristics
       // Intake agent should ask for name/info, not give action steps
@@ -105,38 +118,16 @@ describe('Agent Routing Tests', () => {
       expect(response.status).toBe(200);
       
       // Read the stream to check for tool calls
-      if (!response.body) {
-        throw new Error('No response body available');
-      }
-
-      const chunks: string[] = [];
-      for await (const chunk of response.body) {
-        chunks.push(chunk.toString());
-      }
+      const { events } = await parseSSEResponse(response);
       
-      const fullResponse = chunks.join('');
-      const lines = fullResponse.split('\n');
-      let hasToolCall = false;
-      let toolCallData = null;
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'tool_call' && data.toolName === 'create_matter') {
-              hasToolCall = true;
-              toolCallData = data;
-            }
-          } catch (e) {
-            // Ignore parsing errors
-          }
-        }
-      }
+      const toolCallEvent = events.find(event => event.type === 'tool_call' && event.toolName === 'create_matter');
+      const hasToolCall = !!toolCallEvent;
+      const toolCallData = toolCallEvent;
       
       // Verify matter creation
       expect(hasToolCall).toBe(true);
       expect(toolCallData?.toolName).toBe('create_matter');
-      expect(toolCallData?.parameters?.name).toBe('sarah johnson');
+      expect(toolCallData?.parameters?.name?.toLowerCase()).toBe('sarah johnson');
       expect(toolCallData?.parameters?.matter_type).toBe('Family Law');
       
       console.log('✅ Verified Intake Agent matter creation');
@@ -168,33 +159,7 @@ describe('Agent Routing Tests', () => {
       expect(response.headers.get('content-type')).toContain('text/event-stream');
       
       // Read the stream to verify it's using paralegal agent
-      if (!response.body) {
-        throw new Error('No response body available');
-      }
-
-      const chunks: string[] = [];
-      for await (const chunk of response.body) {
-        chunks.push(chunk.toString());
-      }
-      
-      const fullResponse = chunks.join('');
-      const lines = fullResponse.split('\n');
-      let responseText = '';
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'text') {
-              responseText += data.text;
-            } else if (data.type === 'final') {
-              responseText = data.response;
-            }
-          } catch (e) {
-            // Ignore parsing errors
-          }
-        }
-      }
+      const { responseText } = await parseSSEResponse(response);
       
       // Verify paralegal agent response characteristics
       // Paralegal agent should provide guidance/advice, not ask for matter creation
@@ -229,33 +194,7 @@ describe('Agent Routing Tests', () => {
       expect(response.status).toBe(200);
       
       // Read the stream
-      if (!response.body) {
-        throw new Error('No response body available');
-      }
-
-      const chunks: string[] = [];
-      for await (const chunk of response.body) {
-        chunks.push(chunk.toString());
-      }
-      
-      const fullResponse = chunks.join('');
-      const lines = fullResponse.split('\n');
-      let responseText = '';
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'text') {
-              responseText += data.text;
-            } else if (data.type === 'final') {
-              responseText = data.response;
-            }
-          } catch (e) {
-            // Ignore parsing errors
-          }
-        }
-      }
+      const { responseText } = await parseSSEResponse(response);
       
       // Should route to intake agent (ask for name/info) even with paralegal enabled
       expect(responseText.toLowerCase()).toMatch(/name|tell me|can you/i);

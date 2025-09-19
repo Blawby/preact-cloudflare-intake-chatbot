@@ -1,25 +1,31 @@
 import { CasePreparationFlow, CasePreparationStage, CasePreparationContext, CaseInformation } from './casePreparationFlow.js';
+import { Env } from '../../types.js';
+import { TeamConfig } from '../../services/TeamService.js';
+
+// Message interface for type safety
+interface Message {
+  isUser: boolean;
+  content: string;
+}
 
 // Streaming conversational paralegal agent
 export async function runParalegalAgentStream(
-  env: any, 
-  messages: any[], 
+  env: Env, 
+  messages: Message[], 
   teamId?: string, 
-  sessionId?: string,
-  cloudflareLocation?: any,
-  controller?: ReadableStreamDefaultController,
-  attachments: any[] = []
+  controller?: ReadableStreamDefaultController
 ) {
   // Get team configuration if teamId is provided
-  let teamConfig = null;
+  let teamConfig: TeamConfig | null = null;
   if (teamId) {
     const { AIService } = await import('../../services/AIService');
-    const aiService = new AIService(env.AI, env);
+    // Cast env to match AIService's expected interface
+    const aiService = new AIService(env.AI, env as any);
     teamConfig = await aiService.getTeamConfig(teamId);
   }
 
   // Convert messages to the format expected by Cloudflare AI
-  const formattedMessages = messages.map((msg: any) => ({
+  const formattedMessages = messages.map((msg: Message) => ({
     role: msg.isUser ? 'user' : 'assistant',
     content: msg.content
   }));
@@ -60,10 +66,11 @@ export async function runParalegalAgentStream(
   }
 
   try {
-    console.log('🔄 Starting paralegal case preparation agent...');
-    console.log('📥 Messages received:', JSON.stringify(formattedMessages, null, 2));
-    console.log('🎯 Current stage:', currentStage);
-    console.log('📋 Case information:', JSON.stringify(context.information, null, 2));
+    if (env.DEBUG) {
+      console.log('🔄 Starting paralegal case preparation agent...');
+      console.log('🎯 Current stage:', currentStage);
+      // Avoid logging sensitive information like messages and case details
+    }
     
     // Send initial connection event
     if (controller) {
@@ -72,7 +79,9 @@ export async function runParalegalAgentStream(
     
     // Use rule-based response for case preparation
     const response = ruleBasedResponse;
-    console.log('📝 Paralegal response:', response);
+    if (env.DEBUG) {
+      console.log('📝 Paralegal response generated');
+    }
     
     if (controller) {
       // Stream the response word by word

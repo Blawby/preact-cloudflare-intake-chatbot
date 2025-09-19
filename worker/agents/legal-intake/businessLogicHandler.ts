@@ -23,20 +23,17 @@ export class BusinessLogicHandler {
     const context = await PromptBuilder.extractConversationInfo(conversationText, env);
     const state = await ConversationStateMachine.getCurrentState(conversationText, env);
     
+    // Add state to context to satisfy ConversationContext interface
+    const fullContext = { ...context, state };
+    
     Logger.debug('🔍 Business Logic Analysis:', {
       state,
-      context,
-      shouldCreateMatter: ConversationStateMachine.shouldCreateMatter(context),
+      context: fullContext,
+      shouldCreateMatter: ConversationStateMachine.shouldCreateMatter(fullContext),
       isGeneralInquiry: ConversationStateMachine.isGeneralInquiry(conversationText)
     });
     
-    // Debug logging to see what's happening
-    console.log('🔍 DEBUG - Business Logic Analysis:');
-    console.log('  State:', state);
-    console.log('  Context:', JSON.stringify(context, null, 2));
-    console.log('  Should Create Matter:', ConversationStateMachine.shouldCreateMatter(context));
-    console.log('  Is General Inquiry:', ConversationStateMachine.isGeneralInquiry(conversationText));
-    console.log('  Conversation Text:', conversationText);
+
 
     // Handle matter creation
     if (state === ConversationState.READY_TO_CREATE_MATTER) {
@@ -54,7 +51,7 @@ export class BusinessLogicHandler {
         const toolResult = await TOOL_HANDLERS.create_matter(matterParams, env, teamConfig);
         return {
           shouldCreateMatter: true,
-          response: toolResult.message || toolResult.response || 'Matter created successfully.',
+          response: toolResult.message || 'Matter created successfully.',
           matterParams,
           useAIResponse: false,
           state: ConversationState.MATTER_CREATED
@@ -82,8 +79,8 @@ export class BusinessLogicHandler {
   /**
    * Determines if we should bypass AI entirely and use rule-based logic
    */
-  static shouldBypassAI(conversationText: string): boolean {
-    const state = ConversationStateMachine.getCurrentState(conversationText);
+  static async shouldBypassAI(conversationText: string, env?: any): Promise<boolean> {
+    const state = await ConversationStateMachine.getCurrentState(conversationText, env);
     return state === ConversationState.READY_TO_CREATE_MATTER || 
            !ConversationStateMachine.shouldUseAIResponse(state);
   }
@@ -107,10 +104,11 @@ export class BusinessLogicHandler {
 - ALWAYS acknowledge what the user just said
 - Build on previous conversation - don't ignore context
 - Only ask for information you don't already have
-- CREATE MATTER when you have: name + legal issue + description + contact info + location
+- CREATE MATTER when you have: name + legal issue + description
+- Contact info and location are helpful but not required for matter creation
 
 **TOOLS:**
-- create_matter: Use when you have ALL required information
+- create_matter: Use when you have name, legal issue type, and description
 
 **FORMAT:**
 TOOL_CALL: create_matter
@@ -118,11 +116,13 @@ PARAMETERS: {
   "name": "Client Name",
   "matter_type": "Family Law", 
   "description": "Description",
-  "email": "email@example.com",
-  "phone": "123-456-7890",
-  "location": "City, State",
-  "opposing_party": null
+  "email": "email@example.com" (only if provided),
+  "phone": "123-456-7890" (only if provided),
+  "location": "City, State" (only if provided),
+  "opposing_party": "Name" (only if provided)
 }
+
+**IMPORTANT:** Only include parameters that have actual values. Do NOT use placeholder text like "Not mentioned", "Unknown", or "Not provided".
 
 **MATTER TYPES:** Family Law, Personal Injury, Employment Law, Landlord/Tenant, Business Law, Criminal Law, General Consultation`;
   }

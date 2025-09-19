@@ -32,9 +32,9 @@ export async function createMatterRecord(
     const matterNumber = `MAT-${year}-${(count + 1).toString().padStart(3, '0')}`;
     await env.DB.prepare(`
       INSERT INTO matters (
-        id, team_id, client_name, matter_type, title, description, status, priority, 
+        id, team_id, client_name, matter_type, title, description, status, 
         lead_source, matter_number, custom_fields, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 'lead', ?, 'website', ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, 'lead', 'website', ?, ?, datetime('now'))
     `).bind(
       matterId,
       teamId,
@@ -42,7 +42,6 @@ export async function createMatterRecord(
       service,
       `${service} Matter`,
       description,
-      'normal',
       matterNumber,
       JSON.stringify({ sessionId, source: 'ai-intake' })
     ).run();

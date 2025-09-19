@@ -3,11 +3,42 @@ import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
+import type { Env, Team } from '../../types.js';
 
-export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
-  Logger.debug('[handleCreateMatter] parameters:', ToolCallParser.sanitizeParameters(parameters));
-  Logger.logTeamConfig(teamConfig, true); // Include sanitized config in debug mode
+// Interface for matter creation parameters
+export interface MatterParameters {
+  matter_type: string;
+  description: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  location?: string;
+  opposing_party?: string;
+}
+
+// Runtime type guard for MatterParameters
+function isMatterParameters(obj: any): obj is MatterParameters {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof obj.matter_type === 'string' &&
+    typeof obj.description === 'string' &&
+    typeof obj.name === 'string' &&
+    (obj.phone === undefined || typeof obj.phone === 'string') &&
+    (obj.email === undefined || typeof obj.email === 'string') &&
+    (obj.location === undefined || typeof obj.location === 'string') &&
+    (obj.opposing_party === undefined || typeof obj.opposing_party === 'string')
+  );
+}
+
+export async function handleCreateMatter(parameters: MatterParameters, env: Env, teamConfig: Team | null) {
+  // Runtime validation of parameters
+  if (!isMatterParameters(parameters)) {
+    return createValidationError("Invalid matter creation parameters provided.");
+  }
+
   const { matter_type, description, name, phone, email, location, opposing_party } = parameters;
+
   
   // Check for placeholder values and reject them (but don't block if contact info is missing)
   if (phone && email && ValidationService.hasPlaceholderValues(phone, email)) {
@@ -99,7 +130,7 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
       console.error('❌ CRITICAL: No team ID available for payment processing');
       console.error('   - teamConfig?.id:', teamConfig?.id);
       console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
-      console.error('   - Team configuration should be set in database for team:', teamConfig?.slug || 'unknown');
+      console.error('   - Team configuration should be set in database for team:', teamConfig?.name || 'unknown');
       throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
     })(),
     sessionId: 'session-' + Date.now()

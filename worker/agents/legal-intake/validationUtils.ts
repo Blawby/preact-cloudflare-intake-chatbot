@@ -59,8 +59,22 @@ function redactValue(obj: any, depth = 0): any {
         if (typeof value === 'string') {
           if (value.includes('@')) {
             // Email-like field - mask local part
-            const [local, domain] = value.split('@');
-            result[key] = `${local.substring(0, 2)}***@${domain}`;
+            const emailParts = value.split('@');
+            if (emailParts.length === 2 && 
+                emailParts[0]?.trim() && 
+                emailParts[1]?.trim()) {
+              const [local, domain] = emailParts;
+              const trimmedLocal = local.trim();
+              const trimmedDomain = domain.trim();
+              if (trimmedLocal.length >= 2) {
+                result[key] = `${trimmedLocal.substring(0, 2)}***@${trimmedDomain}`;
+              } else {
+                result[key] = `***@${trimmedDomain}`;
+              }
+            } else {
+              // Fallback for malformed email addresses
+              result[key] = '***REDACTED***';
+            }
           } else if (value.length > 4) {
             // Long string - show first and last few characters
             result[key] = `${value.substring(0, 2)}***${value.substring(value.length - 2)}`;

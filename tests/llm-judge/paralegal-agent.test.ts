@@ -54,7 +54,8 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
   console.log('🔄 Calling runParalegalConversationTest...\n');
 
   // Enable paralegal-first mode for this test
-  await fetch('http://localhost:8787/api/teams/blawby-ai', {
+  const BASE_URL = process.env.TEST_API_URL || 'http://localhost:8787';
+  const response = await fetch(`${BASE_URL}/api/teams/blawby-ai`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -66,6 +67,11 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
       }
     })
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to enable paralegal-first mode: ${response.status} ${response.statusText} - ${errorText}`);
+  }
 
   let fullResponse = '';
   let caseSummary = '';
@@ -107,12 +113,12 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
     const responseText = chunks.join('');
     const lines = responseText.split('\n');
     let responseContent = '';
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.type === 'text') {
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.type === 'text') {
             responseContent += data.text;
           } else if (data.type === 'final') {
             responseContent = data.response;
@@ -129,23 +135,32 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
       }
     }
 
-    fullResponse = responseContent;
+    fullResponse += responseContent;
     console.log(`🤖 Agent response: ${responseContent.substring(0, 100)}...`);
   }
 
   // Disable paralegal-first mode after test
-  await fetch('http://localhost:8787/api/teams/blawby-ai', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      config: {
-        features: {
-          enableParalegalAgent: true,
-          paralegalFirst: false
+  try {
+    const cleanupResponse = await fetch('http://localhost:8787/api/teams/blawby-ai', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        config: {
+          features: {
+            enableParalegalAgent: true,
+            paralegalFirst: false
+          }
         }
-      }
-    })
-  });
+      })
+    });
+    
+    if (!cleanupResponse.ok) {
+      console.error(`Failed to disable paralegal-first mode: ${cleanupResponse.status}`);
+    }
+  } catch (error) {
+    console.error('Cleanup failed:', error);
+    // Don't throw to allow test results to be returned
+  }
 
   // Evaluate with LLM Judge
   const judgeResponse = await fetch('http://localhost:8787/api/judge/evaluate', {
@@ -163,7 +178,7 @@ async function runParalegalConversationTest(testCase: any, conversation: any[], 
     throw new Error(`Judge evaluation failed: ${judgeResponse.status} ${judgeResponse.statusText}`);
   }
 
-  const judgeResult = await judgeResponse.json();
+  const judgeResult = await judgeResponse.json() as { data: any };
   const evaluation = judgeResult.data;
 
   console.log(`\n📊 Results for ${testCase.testCaseId}:`);

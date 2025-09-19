@@ -128,7 +128,7 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
         from: 'noreply@blawby.com',
         to: teamConfig.ownerEmail,
         subject: 'New Matter Requires Review',
-        text: `A new legal matter requires your review.\n\nMatter Details: ${JSON.stringify(params, null, 2)}`
+        text: `A new legal matter requires your review.\n\nMatter Type: ${params.matter_type}\nClient Name: ${params.client_name}\nSubmitted: ${params.submitted ? 'Yes' : 'No'}\n\nPlease log in to the dashboard for full details.`
       });
     } else {
       Logger.info('Email service not configured - skipping email notification');
@@ -289,7 +289,8 @@ export async function runLegalIntakeAgentStream(
   
   // Build system prompt for AI when it should be used
   const context = await PromptBuilder.extractConversationInfo(conversationText, env);
-  const systemPrompt = BusinessLogicHandler.getSystemPromptForAI(businessResult.state, context);
+  const fullContext = { ...context, state: businessResult.state };
+  const systemPrompt = BusinessLogicHandler.getSystemPromptForAI(businessResult.state, fullContext);
   
   // Continue with AI processing if needed
   

@@ -4,7 +4,12 @@ import type {
   ChecklistItem, 
   ParalegalState, 
   MatterFormationEvent, 
-  MatterFormationResponse 
+  MatterFormationResponse,
+  PartyInfoData,
+  PaymentData,
+  EngagementData,
+  DocumentData,
+  ClientInfoData
 } from './types.js';
 
 // Helper function to determine if case should be handed off to human lawyer
@@ -95,10 +100,13 @@ export function initializeChecklist(stage: MatterFormationStage): ChecklistItem[
   return checklists[stage] || [];
 }
 
-export function markChecklistComplete(checklist: ChecklistItem[], completedStage: string): void {
-  // Mark previous stage items as completed
+// Helper function to mark checklist items as completed based on stage
+export function markChecklistComplete(checklist: ChecklistItem[], completedStage: MatterFormationStage): void {
+  const stagePrefix = completedStage.includes('_') ? completedStage.split('_')[0] : completedStage;
+  
   checklist.forEach(item => {
-    if (item.id.includes(completedStage.split('_')[0])) {
+    // Mark item as completed if it matches the exact stage or starts with the stage prefix
+    if (item.id === completedStage || item.id.startsWith(stagePrefix + '_')) {
       item.status = 'completed';
     }
   });
@@ -159,10 +167,38 @@ export function getNextStepsForStage(stage: MatterFormationStage): string[] {
   return nextSteps[stage] || [];
 }
 
+// Type guard to check if data is PartyInfoData
+function isPartyInfoData(data: unknown): data is PartyInfoData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'clientInfo' in data &&
+    'opposingParty' in data &&
+    'matterType' in data &&
+    typeof (data as PartyInfoData).clientInfo === 'object' &&
+    (data as PartyInfoData).clientInfo !== null &&
+    typeof (data as PartyInfoData).clientInfo.name === 'string' &&
+    (data as PartyInfoData).clientInfo.name.length > 0 &&
+    (typeof (data as PartyInfoData).opposingParty === 'string' || Array.isArray((data as PartyInfoData).opposingParty)) &&
+    typeof (data as PartyInfoData).matterType === 'string' &&
+    (data as PartyInfoData).matterType.length > 0
+  );
+}
+
 // Helper methods for state transition conditions
-export function hasRequiredPartyInfo(data: any): boolean {
-  // Simplified check - in production, verify all required party information is present
-  return data && (data.clientInfo || data.name) && (data.opposingParty || data.matterType);
+export function hasRequiredPartyInfo(data: unknown): boolean {
+  if (!isPartyInfoData(data)) {
+    return false;
+  }
+  
+  // Ensure all required fields are present and valid
+  const { clientInfo, opposingParty, matterType } = data;
+  
+  return (
+    clientInfo.name.trim().length > 0 &&
+    (typeof opposingParty === 'string' ? opposingParty.trim().length > 0 : opposingParty.length > 0) &&
+    matterType.trim().length > 0
+  );
 }
 
 export function allDocumentsReceived(checklist: ChecklistItem[]): boolean {
@@ -170,12 +206,46 @@ export function allDocumentsReceived(checklist: ChecklistItem[]): boolean {
   return docItems.length > 0 && docItems.every(item => item.status === 'completed');
 }
 
-export function feeStructureAgreed(data: any): boolean {
-  return data && (data.feeApproved || data.paymentComplete);
+// Type guard to check if data is PaymentData
+function isPaymentData(data: unknown): data is PaymentData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'feeApproved' in data &&
+    'paymentComplete' in data &&
+    typeof (data as PaymentData).feeApproved === 'boolean' &&
+    typeof (data as PaymentData).paymentComplete === 'boolean'
+  );
 }
 
-export function engagementLetterSigned(data: any): boolean {
-  return data && (data.letterSigned || data.engagementComplete);
+// Type guard to check if data is EngagementData
+function isEngagementData(data: unknown): data is EngagementData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'letterSigned' in data &&
+    'engagementComplete' in data &&
+    typeof (data as EngagementData).letterSigned === 'boolean' &&
+    typeof (data as EngagementData).engagementComplete === 'boolean'
+  );
+}
+
+export function feeStructureAgreed(data: unknown): boolean {
+  if (!isPaymentData(data)) {
+    return false;
+  }
+  
+  // Require both fee approval AND payment completion for strict validation
+  return data.feeApproved && data.paymentComplete;
+}
+
+export function engagementLetterSigned(data: unknown): boolean {
+  if (!isEngagementData(data)) {
+    return false;
+  }
+  
+  // Require both letter signed AND engagement complete for strict validation
+  return data.letterSigned && data.engagementComplete;
 }
 
 export function filingPreparationComplete(checklist: ChecklistItem[]): boolean {
@@ -242,20 +312,22 @@ export function updateCaseBrief(state: ParalegalState, event: MatterFormationEve
   };
 
   // Update with new information from event
-  if (event.data?.clientInfo) {
-    existing.parties.client = event.data.clientInfo.name || existing.parties.client;
-    existing.jurisdiction = event.data.clientInfo.location || existing.jurisdiction;
-  }
+  if (isPartyInfoData(event.data)) {
+    if (event.data.clientInfo) {
+      existing.parties.client = event.data.clientInfo.name || existing.parties.client;
+      existing.jurisdiction = event.data.clientInfo.location || existing.jurisdiction;
+    }
 
-  if (event.data?.opposingParty) {
-    const opposing = Array.isArray(event.data.opposingParty) 
-      ? event.data.opposingParty 
-      : [event.data.opposingParty];
-    existing.parties.opposing = [...new Set([...existing.parties.opposing, ...opposing])];
-  }
+    if (event.data.opposingParty) {
+      const opposing = Array.isArray(event.data.opposingParty) 
+        ? event.data.opposingParty 
+        : [event.data.opposingParty];
+      existing.parties.opposing = Array.from(new Set([...existing.parties.opposing, ...opposing]));
+    }
 
-  if (event.data?.matterType) {
-    existing.matter_type = event.data.matterType;
+    if (event.data.matterType) {
+      existing.matter_type = event.data.matterType;
+    }
   }
 
   // Generate summary based on current information
@@ -356,13 +428,24 @@ export async function advanceStateMachine(
 export function buildResponse(state: ParalegalState): MatterFormationResponse {
   const pendingItems = state.checklist.filter(item => item.status === 'pending' && item.required);
   
-  const response: any = {
+  const response: MatterFormationResponse = {
     stage: state.stage,
     checklist: state.checklist,
     nextActions: getNextActions(state.stage, pendingItems),
     missing: pendingItems.map(item => item.title),
     completed: state.stage === 'completed',
-    metadata: state.metadata
+    metadata: {
+      teamId: state.metadata.teamId,
+      matterId: state.metadata.matterId,
+      clientInfo: state.metadata.clientInfo ? {
+        name: state.metadata.clientInfo.name || '',
+        email: state.metadata.clientInfo.email,
+        phone: state.metadata.clientInfo.phone,
+        location: state.metadata.clientInfo.location
+      } : undefined,
+      opposingParty: state.metadata.opposingParty,
+      matterType: state.metadata.matterType
+    }
   };
 
   // Include case brief if available

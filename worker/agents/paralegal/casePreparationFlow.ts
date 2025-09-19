@@ -88,13 +88,13 @@ export class CasePreparationFlow {
 
     switch (stage) {
       case CasePreparationStage.INITIAL:
-        return "I'm here to help you prepare your legal case so you can get the most value from your lawyer consultation. Let's start by understanding your situation. What legal issue are you facing?";
+        return "I'm here to help you prepare your legal case and provide guidance on next steps. I can help you organize your information, identify key legal issues, and prepare for your consultation. What legal issue are you facing?";
 
       case CasePreparationStage.ASSESSING_ISSUE:
-        return "I understand you're dealing with a legal issue. To help you prepare a strong case, I need to understand the specifics. Can you tell me:\n\n1. What type of legal problem is this? (e.g., employment, family law, personal injury, etc.)\n2. When did this situation begin?\n3. Who else is involved?";
+        return "I understand you're dealing with a legal issue. Here's how I can help you:\n\n**Immediate Steps:**\n1. Document everything that's happened\n2. Gather any relevant documents or evidence\n3. Make a timeline of events\n\n**To help you better, I need to understand:**\n- What type of legal problem is this?\n- When did this situation begin?\n- Who else is involved?\n\nThis information will help me provide specific guidance for your situation.";
 
       case CasePreparationStage.GATHERING_FACTS:
-        return `Great! I can see this involves ${information.legalIssueType}. Now let's gather the key facts. Please tell me:\n\n1. What exactly happened? (Give me the main events in order)\n2. When did each event occur?\n3. What was said or done by each person involved?\n4. How has this situation affected you?`;
+        return `Great! I can see this involves ${information.legalIssueType}. Here's my guidance for building a strong case:\n\n**Key Information I Need:**\n1. What exactly happened? (Give me the main events in order)\n2. When did each event occur?\n3. What was said or done by each person involved?\n4. How has this situation affected you?\n\n**Pro Tip:** Be as specific as possible with dates, times, and exact words spoken. This level of detail is crucial for legal proceedings.`;
 
       case CasePreparationStage.COLLECTING_EVIDENCE:
         return "Excellent! I have the basic facts. Now let's identify evidence that could support your case:\n\n1. Do you have any documents related to this? (contracts, emails, texts, photos, etc.)\n2. Are there any witnesses who saw what happened?\n3. Do you have any records of communications (emails, texts, voicemails)?\n4. Are there any other materials that could help your case?";

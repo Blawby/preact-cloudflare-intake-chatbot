@@ -6,6 +6,48 @@ import { advanceStateMachine, buildResponse } from './stateMachine.js';
 export class ParalegalHandlers {
   constructor(private state: DurableObjectState, private env: Env) {}
 
+  /**
+   * Verifies team and matter access authorization
+   * @param teamId - The team ID to verify access to
+   * @param matterId - The matter ID to verify access to
+   * @returns Promise<boolean> - true if authorized, false otherwise
+   */
+  private async verifyTeamAccess(teamId: string, matterId: string): Promise<boolean> {
+    try {
+      // 1. Verify team exists
+      const teamCheck = await this.env.DB.prepare('SELECT id FROM teams WHERE id = ?')
+        .bind(teamId)
+        .first();
+      
+      if (!teamCheck) {
+        console.warn(`Authorization failed: Team '${teamId}' not found`);
+        return false;
+      }
+
+      // 2. Verify matter exists and belongs to team
+      const matterCheck = await this.env.DB.prepare('SELECT id FROM matters WHERE id = ? AND team_id = ?')
+        .bind(matterId, teamId)
+        .first();
+      
+      if (!matterCheck) {
+        console.warn(`Authorization failed: Matter '${matterId}' not found or doesn't belong to team '${teamId}'`);
+        return false;
+      }
+
+      // 3. TODO: Add user authentication check when user system is implemented
+      // For now, we'll rely on the team/matter verification above
+      // In the future, this should check:
+      // - Request has valid authentication token/session
+      // - Authenticated user is a member of the team
+      // - User has appropriate permissions for the matter
+      
+      return true;
+    } catch (error) {
+      console.error(`Authorization error for team '${teamId}', matter '${matterId}':`, error);
+      return false;
+    }
+  }
+
   async handleAdvance(request: Request): Promise<Response> {
     const body = await request.json().catch(() => ({})) as MatterFormationEvent;
     const { idempotencyKey, teamId, matterId } = body;
@@ -29,9 +71,12 @@ export class ParalegalHandlers {
       }
     }
 
-    // TODO: Add team/matter authorization check here
-    // const isAuthorized = await this.verifyTeamAccess(teamId, matterId);
-    // if (!isAuthorized) return new Response('Unauthorized', { status: 401 });
+    // Authorization check: verify team and matter access
+    const isAuthorized = await this.verifyTeamAccess(teamId, matterId);
+    if (!isAuthorized) {
+      console.warn(`Authorization failed for paralegal advance: teamId=${teamId}, matterId=${matterId}`);
+      return new Response('Unauthorized', { status: 401 });
+    }
 
     const currentState = await this.getCurrentState();
     const nextState = await advanceStateMachine(currentState, body);
@@ -72,12 +117,38 @@ export class ParalegalHandlers {
   }
 
   async handleStatus(request: Request): Promise<Response> {
+    // Extract teamId and matterId from the request or state
     const currentState = await this.getCurrentState();
+    const teamId = currentState.metadata.teamId;
+    const matterId = currentState.metadata.matterId;
+    
+    // Authorization check for status access
+    if (teamId && matterId) {
+      const isAuthorized = await this.verifyTeamAccess(teamId, matterId);
+      if (!isAuthorized) {
+        console.warn(`Authorization failed for paralegal status: teamId=${teamId}, matterId=${matterId}`);
+        return new Response('Unauthorized', { status: 401 });
+      }
+    }
+    
     return this.jsonResponse(buildResponse(currentState));
   }
 
   async handleChecklist(request: Request): Promise<Response> {
+    // Extract teamId and matterId from the request or state
     const currentState = await this.getCurrentState();
+    const teamId = currentState.metadata.teamId;
+    const matterId = currentState.metadata.matterId;
+    
+    // Authorization check for checklist access
+    if (teamId && matterId) {
+      const isAuthorized = await this.verifyTeamAccess(teamId, matterId);
+      if (!isAuthorized) {
+        console.warn(`Authorization failed for paralegal checklist: teamId=${teamId}, matterId=${matterId}`);
+        return new Response('Unauthorized', { status: 401 });
+      }
+    }
+    
     return this.jsonResponse({
       checklist: currentState.checklist,
       stage: currentState.stage,

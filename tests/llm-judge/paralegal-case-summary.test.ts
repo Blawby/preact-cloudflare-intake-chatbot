@@ -161,7 +161,7 @@ describe('LLM Judge Evaluation - Paralegal Case Summary Test', () => {
       throw new Error(`Judge evaluation failed: ${judgeResponse.status} ${judgeResponse.statusText}`);
     }
 
-    const judgeResult = await judgeResponse.json();
+    const judgeResult = await judgeResponse.json() as { data: any };
     const evaluation = judgeResult.data;
 
     console.log(`\n📊 Results for ${testCase.testCaseId}:`);
@@ -173,10 +173,13 @@ describe('LLM Judge Evaluation - Paralegal Case Summary Test', () => {
     expect(evaluation.passed).toBe(true);
     expect(evaluation.averageScore).toBeGreaterThanOrEqual(7);
     
-    // Case summary should be generated
-    if (caseSummary) {
-      expect(caseSummary).toContain('Employment Law');
-      expect(caseSummary).toContain('discrimination');
-    }
+    // Explicitly assert that a case summary was generated
+    expect(caseSummary).toBeTruthy();
+    expect(caseSummary).not.toBeNull();
+    expect(caseSummary).not.toBeUndefined();
+    
+    // Assert that the case summary contains expected content
+    expect(caseSummary).toContain('Employment Law');
+    expect(caseSummary).toContain('discrimination');
   }, 30000);
 });

@@ -45,14 +45,14 @@ export class ConversationStateMachine {
     }
     
     const generalPatterns = [
-      /services in my area/i,
-      /pricing/i,
-      /cost/i,
-      /what.*services/i,
-      /do you provide/i,
-      /not sure if you provide/i,
-      /concerned about.*cost/i,
-      /tell me about.*pricing/i
+      /\bservices in my area\b/i,
+      /\bpricing\b/i,
+      /\bcost\b/i,
+      /\bwhat.*services\b/i,
+      /\bdo you provide\b/i,
+      /\bnot sure if you provide\b/i,
+      /\bconcerned about.*cost\b/i,
+      /\btell me about.*pricing\b/i
     ];
     return generalPatterns.some(pattern => pattern.test(conversationText));
   }
@@ -61,17 +61,14 @@ export class ConversationStateMachine {
    * Determines if we should create a matter based on available information
    */
   static shouldCreateMatter(context: ConversationContext): boolean {
-    // Create matter only if we have comprehensive information
+    // Create matter if we have essential information
     const hasEssentialInfo = context.hasName && 
                             context.legalIssueType && 
                             context.description;
     
-    // Require at least one contact method AND location for matter creation
-    const hasContactInfo = context.hasEmail || context.hasPhone;
-    const hasLocation = context.hasLocation;
-    
-    // Only create matter if we have essential info + contact info + location
-    return hasEssentialInfo && hasContactInfo && hasLocation;
+    // Contact info and location are helpful but not strictly required
+    // We can create matters and collect missing info later
+    return hasEssentialInfo;
   }
 
   /**
@@ -95,7 +92,7 @@ export class ConversationStateMachine {
       return ConversationState.COLLECTING_NAME;
     }
 
-    if (!context.legalIssueType && !context.hasLegalIssue) {
+    if (!context.legalIssueType || !context.hasLegalIssue) {
       return ConversationState.COLLECTING_LEGAL_ISSUE;
     }
 

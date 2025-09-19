@@ -21,6 +21,9 @@ export interface Env {
   BLAWBY_API_URL?: string;
   BLAWBY_API_TOKEN?: string;
   BLAWBY_TEAM_ULID?: string;
+  
+  // Debug configuration
+  DEBUG?: boolean;
 }
 
 // HTTP Error class for centralized error handling
@@ -84,6 +87,13 @@ export interface Team {
     ownerEmail: string;
     availableServices: string[];
     serviceQuestions: Record<string, string[]>;
+    jurisdiction?: {
+      type: 'state' | 'national';
+      description: string;
+      supportedStates: string[];
+      supportedCountries: string[];
+      primaryState?: string;
+    };
     domain: string;
     description: string;
     paymentLink?: string;
@@ -91,7 +101,6 @@ export interface Team {
     accentColor: string;
     introMessage: string;
     profileImage?: string;
-
   };
 }
 

@@ -2,27 +2,68 @@ import { createSuccessResponse, createValidationError } from '../../utils/respon
 import { analyzeFile, getAnalysisQuestion } from '../../utils/fileAnalysisUtils.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
+import { Env } from '../../types.js';
+import { TeamConfig } from '../../services/TeamService.js';
 
-export async function handleRequestLawyerReview(parameters: any, env: any, teamConfig: any) {
-  const { complexity, matter_type } = parameters;
-  
-  // Send notification using NotificationService
-  const { NotificationService } = await import('../../services/NotificationService.js');
-  const notificationService = new NotificationService(env);
-  
-  await notificationService.sendLawyerReviewNotification({
-    type: 'lawyer_review',
-    teamConfig,
-    matterInfo: {
-      type: matter_type,
-      complexity
-    }
-  });
-  
-  return createSuccessResponse("I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further.");
+// Interface for lawyer review request parameters
+interface LawyerReviewParameters {
+  complexity: string;
+  matter_type: string;
 }
 
-export async function handleAnalyzeDocument(parameters: any, env: any, teamConfig: any) {
+// Interface for document analysis parameters
+interface DocumentAnalysisParameters {
+  file_id: string;
+  analysis_type: string;
+  specific_question?: string;
+}
+
+// Interface for validation errors
+interface ValidationError {
+  field: string;
+  message: string;
+}
+
+export async function handleRequestLawyerReview(parameters: LawyerReviewParameters, env: Env, teamConfig: TeamConfig) {
+  // Validate required parameters
+  const validationErrors = validateLawyerReviewParameters(parameters);
+  if (validationErrors.length > 0) {
+    const errorMessage = validationErrors.map(err => `${err.field}: ${err.message}`).join(', ');
+    return createValidationError(`Invalid parameters: ${errorMessage}`);
+  }
+
+  const { complexity, matter_type } = parameters;
+  
+  try {
+    // Send notification using NotificationService
+    const { NotificationService } = await import('../../services/NotificationService.js');
+    const notificationService = new NotificationService(env);
+    
+    await notificationService.sendLawyerReviewNotification({
+      type: 'lawyer_review',
+      teamConfig,
+      matterInfo: {
+        type: matter_type,
+        complexity
+      }
+    });
+    
+    Logger.info('Lawyer review notification sent successfully', { complexity, matter_type });
+    return createSuccessResponse("I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further.");
+  } catch (error) {
+    Logger.error('Failed to send lawyer review notification', { error, complexity, matter_type });
+    return createValidationError("I'm sorry, I encountered an issue while requesting the lawyer review. Please try again or contact support if the problem persists.");
+  }
+}
+
+export async function handleAnalyzeDocument(parameters: DocumentAnalysisParameters, env: Env, teamConfig: TeamConfig) {
+  // Validate required parameters
+  const validationErrors = validateDocumentAnalysisParameters(parameters);
+  if (validationErrors.length > 0) {
+    const errorMessage = validationErrors.map(err => `${err.field}: ${err.message}`).join(', ');
+    return createValidationError(`Invalid parameters: ${errorMessage}`);
+  }
+
   const { file_id, analysis_type, specific_question } = parameters;
   
   Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
@@ -137,4 +178,42 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
     dates,
     keyFacts
   });
+}
+
+/**
+ * Validates lawyer review request parameters
+ */
+function validateLawyerReviewParameters(parameters: LawyerReviewParameters): ValidationError[] {
+  const errors: ValidationError[] = [];
+  
+  if (!parameters.complexity || typeof parameters.complexity !== 'string') {
+    errors.push({ field: 'complexity', message: 'Complexity is required and must be a string' });
+  }
+  
+  if (!parameters.matter_type || typeof parameters.matter_type !== 'string') {
+    errors.push({ field: 'matter_type', message: 'Matter type is required and must be a string' });
+  }
+  
+  return errors;
+}
+
+/**
+ * Validates document analysis parameters
+ */
+function validateDocumentAnalysisParameters(parameters: DocumentAnalysisParameters): ValidationError[] {
+  const errors: ValidationError[] = [];
+  
+  if (!parameters.file_id || typeof parameters.file_id !== 'string') {
+    errors.push({ field: 'file_id', message: 'File ID is required and must be a string' });
+  }
+  
+  if (!parameters.analysis_type || typeof parameters.analysis_type !== 'string') {
+    errors.push({ field: 'analysis_type', message: 'Analysis type is required and must be a string' });
+  }
+  
+  if (parameters.specific_question && typeof parameters.specific_question !== 'string') {
+    errors.push({ field: 'specific_question', message: 'Specific question must be a string if provided' });
+  }
+  
+  return errors;
 }

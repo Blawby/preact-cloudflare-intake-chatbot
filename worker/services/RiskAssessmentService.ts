@@ -144,7 +144,7 @@ export class RiskAssessmentService {
           level: 'critical',
           description: `Matter involves ${keyword}`,
           impact: 'Requires immediate attention and specialized expertise',
-          mitigation: 'Assign senior attorney, establish priority handling'
+          mitigation: 'Assign senior attorney, establish enhanced handling'
         });
         overallRisk = 'critical';
         flags.push('HIGH_STAKES');
@@ -414,7 +414,7 @@ Focus on legal risks, procedural complexities, and potential issues.`;
         low: 'Follow standard procedures and document steps',
         medium: 'Create detailed timeline and checkpoint system',
         high: 'Assign dedicated case manager and calendar all deadlines',
-        critical: 'Priority handling with daily status checks'
+        critical: 'Enhanced handling with daily status checks'
       }
     };
 

@@ -9,7 +9,6 @@ export interface DocumentRequirement {
   category: 'identification' | 'financial' | 'legal' | 'medical' | 'business' | 'other';
   expectedFormat?: string;
   examples?: string[];
-  priority: 'high' | 'medium' | 'low';
   estimatedTime?: string; // How long it typically takes to obtain
 }
 
@@ -136,7 +135,6 @@ export class DocumentRequirementService {
           required: true,
           category: 'legal',
           expectedFormat: 'PDF or certified copy',
-          priority: 'high',
           estimatedTime: '1-2 days'
         },
         {
@@ -147,7 +145,6 @@ export class DocumentRequirementService {
           required: true,
           category: 'legal',
           expectedFormat: 'PDF or certified copy',
-          priority: 'high',
           estimatedTime: '1-3 days'
         },
         {
@@ -157,7 +154,6 @@ export class DocumentRequirementService {
           description: 'Bank statements, pay stubs, tax returns (last 2 years)',
           required: true,
           category: 'financial',
-          priority: 'high',
           estimatedTime: '3-5 days'
         },
         {
@@ -167,7 +163,6 @@ export class DocumentRequirementService {
           description: 'Deeds for real estate, vehicle titles',
           required: false,
           category: 'legal',
-          priority: 'medium',
           estimatedTime: '1-2 weeks'
         }
       ],
@@ -179,7 +174,6 @@ export class DocumentRequirementService {
           description: 'Original employment agreement or offer letter',
           required: true,
           category: 'legal',
-          priority: 'high',
           estimatedTime: 'immediate'
         },
         {
@@ -189,7 +183,6 @@ export class DocumentRequirementService {
           description: 'Company policies and procedures manual',
           required: true,
           category: 'legal',
-          priority: 'high',
           estimatedTime: '1-2 days'
         },
         {
@@ -199,7 +192,6 @@ export class DocumentRequirementService {
           description: 'All performance evaluations and disciplinary records',
           required: false,
           category: 'business',
-          priority: 'medium',
           estimatedTime: '3-5 days'
         },
         {
@@ -209,7 +201,6 @@ export class DocumentRequirementService {
           description: 'Relevant emails, memos, or written communications',
           required: false,
           category: 'business',
-          priority: 'medium',
           estimatedTime: '1-3 days'
         }
       ],
@@ -221,7 +212,6 @@ export class DocumentRequirementService {
           description: 'All medical records related to the injury',
           required: true,
           category: 'medical',
-          priority: 'high',
           estimatedTime: '1-2 weeks'
         },
         {
@@ -231,7 +221,6 @@ export class DocumentRequirementService {
           description: 'Police report, incident report, or accident documentation',
           required: true,
           category: 'legal',
-          priority: 'high',
           estimatedTime: '3-5 days'
         },
         {
@@ -241,7 +230,6 @@ export class DocumentRequirementService {
           description: 'Insurance policies, claim numbers, correspondence',
           required: true,
           category: 'financial',
-          priority: 'high',
           estimatedTime: '1-2 days'
         },
         {
@@ -251,7 +239,6 @@ export class DocumentRequirementService {
           description: 'Photos of injuries, accident scene, property damage',
           required: false,
           category: 'other',
-          priority: 'medium',
           estimatedTime: 'immediate'
         }
       ],
@@ -263,7 +250,6 @@ export class DocumentRequirementService {
           description: 'The contract document that needs review',
           required: true,
           category: 'legal',
-          priority: 'high',
           estimatedTime: 'immediate'
         },
         {
@@ -273,7 +259,6 @@ export class DocumentRequirementService {
           description: 'Any addendums, exhibits, or related agreements',
           required: false,
           category: 'legal',
-          priority: 'medium',
           estimatedTime: '1-2 days'
         },
         {
@@ -283,7 +268,6 @@ export class DocumentRequirementService {
           description: 'Business licenses, articles of incorporation (if applicable)',
           required: false,
           category: 'business',
-          priority: 'low',
           estimatedTime: '3-5 days'
         }
       ],
@@ -295,7 +279,6 @@ export class DocumentRequirementService {
           description: 'Any documents related to your legal situation',
           required: false,
           category: 'other',
-          priority: 'medium',
           estimatedTime: '1-3 days'
         },
         {
@@ -305,7 +288,6 @@ export class DocumentRequirementService {
           description: 'Letters, emails, or notices related to your matter',
           required: false,
           category: 'other',
-          priority: 'low',
           estimatedTime: '1-2 days'
         }
       ]

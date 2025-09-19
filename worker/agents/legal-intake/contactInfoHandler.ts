@@ -1,8 +1,34 @@
 import { isLocationSupported } from '../../utils/locationValidator.js';
 import { ValidationService } from '../../services/ValidationService.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
+import type { Env, Team } from '../../types.js';
 
-export async function handleCollectContactInfo(parameters: any, env: any, teamConfig: any) {
+// Interface for contact information parameters
+export interface ContactInfoParameters {
+  name: string;
+  phone?: string;
+  email?: string;
+  location?: string;
+}
+
+// Runtime type guard for ContactInfoParameters
+function isContactInfoParameters(obj: any): obj is ContactInfoParameters {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof obj.name === 'string' &&
+    (obj.phone === undefined || typeof obj.phone === 'string') &&
+    (obj.email === undefined || typeof obj.email === 'string') &&
+    (obj.location === undefined || typeof obj.location === 'string')
+  );
+}
+
+export async function handleCollectContactInfo(parameters: ContactInfoParameters, env: Env, teamConfig: Team | null) {
+  // Runtime validation of parameters
+  if (!isContactInfoParameters(parameters)) {
+    return createValidationError("Invalid contact information parameters provided.");
+  }
+
   const { name, phone, email, location } = parameters;
   
   // Check for placeholder values
@@ -25,7 +51,7 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
     const phoneValidation = ValidationService.validatePhone(phone);
     if (!phoneValidation.isValid) {
       // Don't block the conversation for invalid phone - just note it
-      console.warn(`Invalid phone number provided: ${phone} - ${phoneValidation.error}`);
+      console.warn(`Invalid phone number provided - ${phoneValidation.error}`);
       // Continue with the conversation instead of blocking
     }
   }
@@ -46,7 +72,7 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
       
       if (!isSupported) {
         // Don't block the conversation - just note the jurisdiction issue and continue
-        console.warn(`User in unsupported jurisdiction: ${location} - continuing with general guidance`);
+        console.warn(`User in unsupported jurisdiction - continuing with general guidance`);
       }
     }
   }
@@ -57,7 +83,7 @@ export async function handleCollectContactInfo(parameters: any, env: any, teamCo
   
   // Check if we have at least one contact method (but don't block if missing)
   if (!phone && !email) {
-    console.warn(`No contact method provided for ${name} - continuing with name only`);
+    console.warn(`No contact method provided - continuing with name only`);
   }
   
   return createSuccessResponse(
