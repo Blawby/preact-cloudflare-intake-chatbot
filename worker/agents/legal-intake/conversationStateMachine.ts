@@ -35,6 +35,22 @@ export interface ConversationContext {
 
 export class ConversationStateMachine {
   /**
+   * Determines if this is a sensitive legal matter that requires immediate attention
+   */
+  private static isSensitiveMatter(context: ConversationContext): boolean {
+    return context.legalIssueType === 'Criminal Law' || 
+           context.legalIssueType === 'Personal Injury' ||
+           (context.description && (
+             context.description.toLowerCase().includes('death') ||
+             context.description.toLowerCase().includes('died') ||
+             context.description.toLowerCase().includes('fatal') ||
+             context.description.toLowerCase().includes('killed') ||
+             context.description.toLowerCase().includes('accident') ||
+             context.description.toLowerCase().includes('arrest')
+           ));
+  }
+
+  /**
    * Determines if this is a general inquiry that shouldn't result in matter creation
    */
   static async isGeneralInquiry(conversationText: string, env?: any): Promise<boolean> {
@@ -74,36 +90,19 @@ export class ConversationStateMachine {
     
     // Minimum required: name + legal issue + description
     const hasMinimumInfo = context.hasName && 
-                          context.legalIssueType && 
-                          context.description;
+                          Boolean(context.legalIssueType) && 
+                          Boolean(context.description);
     
-    // For sensitive legal matters (criminal, personal injury with death), be more flexible
-    const isSensitiveMatter = context.legalIssueType === 'Criminal Law' || 
-                             context.legalIssueType === 'Personal Injury' ||
-                             (context.description && (
-                               context.description.toLowerCase().includes('death') ||
-                               context.description.toLowerCase().includes('died') ||
-                               context.description.toLowerCase().includes('fatal') ||
-                               context.description.toLowerCase().includes('killed') ||
-                               context.description.toLowerCase().includes('accident') ||
-                               context.description.toLowerCase().includes('arrest')
-                             ));
-    
-    // For sensitive matters, only require name + legal issue + description
-    if (isSensitiveMatter && hasMinimumInfo) {
-      return true;
+    // For sensitive matters, only require minimum info
+    if (this.isSensitiveMatter(context)) {
+      return hasMinimumInfo;
     }
     
-    // For standard matters, prefer to have at least one contact method
+    // For standard matters, require minimum info + contact method + location
     const hasContactMethod = context.hasEmail || context.hasPhone;
     const hasLocation = context.hasLocation;
     
-    // Standard matters: name + legal issue + description + (email OR phone) + location
-    const hasStandardInfo = hasMinimumInfo && hasContactMethod && hasLocation;
-    
-    // If we have minimum info but no contact method, still allow matter creation
-    // The lawyer can follow up to get contact information
-    return hasMinimumInfo;
+    return hasMinimumInfo && hasContactMethod && hasLocation;
   }
 
   /**
@@ -125,16 +124,7 @@ export class ConversationStateMachine {
     }
 
     // Check if this is a sensitive matter that needs immediate attention
-    const isSensitiveMatter = context.legalIssueType === 'Criminal Law' || 
-                             context.legalIssueType === 'Personal Injury' ||
-                             (context.description && (
-                               context.description.toLowerCase().includes('death') ||
-                               context.description.toLowerCase().includes('died') ||
-                               context.description.toLowerCase().includes('fatal') ||
-                               context.description.toLowerCase().includes('killed') ||
-                               context.description.toLowerCase().includes('accident') ||
-                               context.description.toLowerCase().includes('arrest')
-                             ));
+    const isSensitiveMatter = this.isSensitiveMatter(contextWithState);
 
     // Determine what we're missing - prioritize the most important missing pieces
     if (!context.hasName) {
@@ -188,17 +178,14 @@ export class ConversationStateMachine {
       case ConversationState.COLLECTING_DETAILS:
         if (context.legalIssueType) {
           // Check if this might be a sensitive matter
-          const isSensitiveMatter = context.legalIssueType === 'Criminal Law' || 
-                                   context.legalIssueType === 'Personal Injury';
+          const isSensitiveMatter = this.isSensitiveMatter(context);
           
           if (isSensitiveMatter) {
             return `I understand you're dealing with a ${context.legalIssueType.toLowerCase()} issue. This must be very difficult for you. Can you tell me more about what's happening so I can help you get the right legal assistance?`;
-          } else {
-            return `I understand you're dealing with a ${context.legalIssueType.toLowerCase()} issue. Can you tell me more about what's happening?`;
           }
-        } else {
-          return `I understand you need legal help. Can you tell me more about what's happening? What type of legal issue are you facing?`;
+          return `I understand you're dealing with a ${context.legalIssueType.toLowerCase()} issue. Can you tell me more about what's happening?`;
         }
+        return `I understand you need legal help. Can you tell me more about what's happening? What type of legal issue are you facing?`;
       
       case ConversationState.COLLECTING_EMAIL:
         return `Thank you for that information. What's your email address so we can contact you?`;
@@ -226,7 +213,7 @@ export class ConversationStateMachine {
   /**
    * Determines if we should use AI response generation or rule-based response
    */
-  static shouldUseAIResponse(state: ConversationState): boolean {
+  static shouldUseAIResponse(): boolean {
     // Let AI handle most responses - it's better at understanding context
     return true;
   }

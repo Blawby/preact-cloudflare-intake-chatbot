@@ -282,19 +282,19 @@
         
         <div class="summary-grid">
             <div class="summary-card">
-                <h3>0/9</h3>
+                <h3>8/9</h3>
                 <p>Tests Passed</p>
             </div>
             <div class="summary-card">
-                <h3>7.9/10</h3>
+                <h3>7.7/10</h3>
                 <p>Average Score</p>
             </div>
             <div class="summary-card">
-                <h3>9669ms</h3>
+                <h3>8751ms</h3>
                 <p>Avg Response Time</p>
             </div>
             <div class="summary-card">
-                <h3>0.0%</h3>
+                <h3>88.9%</h3>
                 <p>Success Rate</p>
             </div>
         </div>
@@ -462,7 +462,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="issues">
                                     <h4>Critical Issues</h4>
                                     <ul>
-                                        <li>AI created placeholder/fake contact information</li>
+                                        <li>Assumed legal issue type without user confirmation</li>
                                     </ul>
                                 </div>
                             
@@ -471,13 +471,13 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Provide more specific guidance on next steps and costs.</li>
+                                    <li>Ask user to confirm legal issue type before proceeding</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 11081ms | 
+                            Response Time: 9522ms | 
                             Average Score: 8.4/10
                         </div>
                     </div>
@@ -650,7 +650,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                         
                         <div class="timestamp">
-                            Response Time: 10076ms | 
+                            Response Time: 10683ms | 
                             Average Score: 8.0/10
                         </div>
                     </div>
@@ -830,7 +830,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                         
                         <div class="timestamp">
-                            Response Time: 5545ms | 
+                            Response Time: 5554ms | 
                             Average Score: 8.0/10
                         </div>
                     </div>
@@ -882,7 +882,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">legalAccuracy</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -901,8 +901,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="flags">
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
-                                        <div class="flag-item success">
-                                            <span>✅ No Critical Issues</span>
+                                        <div class="flag-item warning">
+                                            <span>⚠️ Critical Issues: 2</span>
                                         </div>
                                     </div>
                                 </div>
@@ -914,7 +914,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="analysis-grid">
                                     <div class="analysis-item">
                                         <div class="analysis-label">Total Messages</div>
-                                        <div class="analysis-value">6</div>
+                                        <div class="analysis-value">4</div>
                                     </div>
                                     <div class="analysis-item">
                                         <div class="analysis-label">Efficiency</div>
@@ -942,7 +942,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>It&#39;s understandable to have concerns about whether we can assist you. Can you please tell me a little bit about your location? This will help me determine if we can provide services in your area.</div>
+                                    <div>You&#39;re unsure if I provide services in your area. That&#39;s completely understandable. Can you please tell me what area you&#39;re located in or what city you&#39;re from? This will help me determine if I can assist you with your legal matter.</div>
                                 </div>
                             
                                 <div class="message user">
@@ -952,29 +952,18 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>Nice to meet you, Maria. Now that I have your name, I&#39;d like to know a bit more about the reason you&#39;re reaching out for legal help. What kind of legal issue are you dealing with?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 5)</div>
-                                    <div>I&#39;m in California and I need help with a personal injury case from a car accident.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 6)</div>
-                                    <div>I understand this is a serious situation, and I want to help you get the legal assistance you need right away. Here&#39;s what I have:
+                                    <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
 
 **Client Information:**
 - Name: Maria Garcia
-- Contact: Not provided, California
+- Contact: Not provided
 
 **Matter Details:**
-- Type: personal_injury
-- Description: Personal injury case from a car accident
+- Type: general_consultation
+- Description: Need legal help, unsure if services are available in area
 
-I&#39;m connecting you with an attorney who specializes in this type of case. They will contact you as soon as possible to discuss your situation and next steps.
 
-I&#39;ll submit this to our legal team immediately for urgent review. A lawyer will contact you as soon as possible to discuss your case.</div>
+I&#39;ll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.</div>
                                 </div>
                             
                         </div>
@@ -987,9 +976,8 @@ I&#39;ll submit this to our legal team immediately for urgent review. A lawyer w
                                         <strong>create_matter</strong><br>
                                         <pre>{
   &quot;name&quot;: &quot;Maria Garcia&quot;,
-  &quot;matter_type&quot;: &quot;Personal Injury&quot;,
-  &quot;description&quot;: &quot;Personal injury case from a car accident&quot;,
-  &quot;location&quot;: &quot;California&quot;
+  &quot;matter_type&quot;: &quot;General Consultation&quot;,
+  &quot;description&quot;: &quot;Need legal help, unsure if services are available in area&quot;
 }</pre>
                                     </div>
                                 
@@ -999,24 +987,31 @@ I&#39;ll submit this to our legal team immediately for urgent review. A lawyer w
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The conversation was mostly helpful, but could benefit from more context awareness and actionability.</p>
+                                <p>The conversation progressed well, but there were some minor issues with context awareness and conversation flow.</p>
                             </div>
                         
                         
                         
+                                <div class="issues">
+                                    <h4>Critical Issues</h4>
+                                    <ul>
+                                        <li>The AI did not collect the client&#39;s contact information.</li><li>The AI did not provide a clear summary of the matter.</li>
+                                    </ul>
+                                </div>
+                            
                         
                         
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Provide more context awareness and actionability in the conversation</li>
+                                    <li>Collect the client&#39;s contact information in the next conversation.</li><li>Provide a clear summary of the matter in the next conversation.</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 17868ms | 
-                            Average Score: 8.4/10
+                            Response Time: 10552ms | 
+                            Average Score: 8.0/10
                         </div>
                     </div>
                 </div>
@@ -1195,7 +1190,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                         
                         <div class="timestamp">
-                            Response Time: 4941ms | 
+                            Response Time: 5220ms | 
                             Average Score: 8.1/10
                         </div>
                     </div>
@@ -1242,7 +1237,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">actionability</div>
-                                        <div class="score-value">7.0/10</div>
+                                        <div class="score-value">6.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -1252,7 +1247,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">6.0/10</div>
+                                        <div class="score-value">4.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -1267,7 +1262,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
                                         <div class="flag-item warning">
-                                            <span>⚠️ Critical Issues: 3</span>
+                                            <span>⚠️ Critical Issues: 2</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1337,7 +1332,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The AI failed to collect required information and did not create a matter. It also did not provide clear next steps and guidance.</p>
+                                <p>The AI failed to collect client information efficiently and naturally, and did not create a matter with appropriate parameters.</p>
                             </div>
                         
                         
@@ -1345,7 +1340,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="issues">
                                     <h4>Critical Issues</h4>
                                     <ul>
-                                        <li>Failed to collect required information</li><li>Did not create a matter</li><li>Did not provide clear next steps and guidance</li>
+                                        <li>Failed to collect client information efficiently and naturally</li><li>Did not create a matter with appropriate parameters</li>
                                     </ul>
                                 </div>
                             
@@ -1354,14 +1349,14 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Collect required information efficiently and naturally</li><li>Create a matter with appropriate parameters</li><li>Provide clear next steps and guidance</li>
+                                    <li>Improve the conversation flow by asking for client information in a more natural way</li><li>Use the create_matter tool with correct parameters</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 17411ms | 
-                            Average Score: 5.9/10
+                            Response Time: 17517ms | 
+                            Average Score: 5.2/10
                         </div>
                     </div>
                 </div>
@@ -1530,7 +1525,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                         
                         <div class="timestamp">
-                            Response Time: 2262ms | 
+                            Response Time: 2150ms | 
                             Average Score: 8.1/10
                         </div>
                     </div>
@@ -1704,7 +1699,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                         
                         <div class="timestamp">
-                            Response Time: 10310ms | 
+                            Response Time: 10246ms | 
                             Average Score: 8.1/10
                         </div>
                     </div>
@@ -1884,7 +1879,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                         
                         <div class="timestamp">
-                            Response Time: 7530ms | 
+                            Response Time: 7311ms | 
                             Average Score: 8.0/10
                         </div>
                     </div>

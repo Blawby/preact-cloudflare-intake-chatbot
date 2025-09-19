@@ -65,9 +65,10 @@ function escapeHtml(text: string): string {
 
 function generateHTMLReport(results: TestResult[]): string {
   const totalTests = results.length;
-  const passedTests = results.filter(r => r.passed).length;
-  const averageScore = results.reduce((sum, r) => sum + r.evaluation.averageScore, 0) / totalTests;
-  const averageResponseTime = results.reduce((sum, r) => sum + r.responseTime, 0) / totalTests;
+  // Use consistent 7.0 threshold for all metrics (same as Average Score calculation)
+  const passedTests = results.filter(r => r.evaluation.averageScore >= 7.0).length;
+  const averageScore = totalTests > 0 ? results.reduce((sum, r) => sum + r.evaluation.averageScore, 0) / totalTests : 0;
+  const averageResponseTime = totalTests > 0 ? results.reduce((sum, r) => sum + r.responseTime, 0) / totalTests : 0;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -294,7 +295,7 @@ function generateHTMLReport(results: TestResult[]): string {
                 <p>Average Score</p>
             </div>
             <div class="summary-card">
-                <h3>${Math.round(averageResponseTime)}ms</h3>
+                <h3>${averageResponseTime.toFixed(0)}ms</h3>
                 <p>Avg Response Time</p>
             </div>
             <div class="summary-card">
