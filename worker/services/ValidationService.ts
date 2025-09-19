@@ -93,7 +93,7 @@ export class ValidationService {
    */
   static hasPlaceholderValues(phone?: string, email?: string): boolean {
     const placeholderPatterns = [/\[user_phone\]/i, /\[user_email\]/i];
-    const emptyTokens = new Set(['', 'none', 'null', 'n/a', 'na', 'tbd', 'unknown']);
+    const emptyTokens = new Set(['', 'none', 'null', 'n/a', 'na', 'tbd', 'unknown', 'not provided', 'declined', 'prefer not to', 'don\'t want to', 'don\'t have', 'no email', 'no phone']);
     const isEmptyish = (v?: string) => {
       if (v == null) return false;
       const t = v.trim().toLowerCase();

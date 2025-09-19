@@ -89,21 +89,17 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
     return createValidationError("The email address you provided doesn't appear to be valid. Could you please provide a valid email address?");
   }
   
-  // Validate phone if provided (but don't block if invalid)
+  // Validate phone if provided - FAIL FAST if invalid
   if (phone && phone.trim() !== '') {
     const phoneValidation = ValidationService.validatePhone(phone);
     if (!phoneValidation.isValid) {
-      // Don't block the conversation for invalid phone - just note it
-      const maskedPhone = '*'.repeat(Math.max(1, String(phone ?? '').length));
-      Logger.warn(`Invalid phone number provided (masked: ${maskedPhone}) - ${phoneValidation.error}`);
-      // Continue with the conversation instead of blocking
+      return createValidationError(`Invalid phone number format: ${phoneValidation.error}. Please provide a valid phone number.`);
     }
   }
   
-  // Validate location if provided
+  // Validate location if provided - FAIL FAST if invalid
   if (location && !ValidationService.validateLocation(location)) {
-    Logger.warn(`Location validation failed for provided location - proceeding anyway`);
-    // Don't block matter creation for location validation issues
+    return createValidationError("Invalid location format. Please provide your city and state or country.");
   }
   
   // Check if this is a sensitive matter that requires immediate attention

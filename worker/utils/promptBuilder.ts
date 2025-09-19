@@ -57,7 +57,7 @@ export class PromptBuilder {
    * Extracts information from conversation history using hybrid regex + LLM approach
    * This prevents silent failures and provides comprehensive coverage
    */
-  static async extractConversationInfo(conversationText: string, env?: any): Promise<{
+  static async extractConversationInfo(conversationText: string, env: any): Promise<{
     hasName: boolean;
     hasLegalIssue: boolean;
     hasContactInfo: boolean;
@@ -102,11 +102,9 @@ export class PromptBuilder {
    * LLM extraction for all fields (comprehensive coverage)
    * Handles messy cases that regex can't handle
    */
-  private static async extractWithLLM(conversationText: string, env?: any) {
-    if (!env?.AI) {
-      // Fallback to basic extraction if no AI available
-      return this.extractWithBasicPatterns(conversationText);
-    }
+  private static async extractWithLLM(conversationText: string, env: any) {
+    // AI service is REQUIRED - no fallbacks, no conditionals
+    // If AI fails, the entire legal intake system fails
 
     try {
       const prompt = `Extract the following information from this legal intake conversation. Return ONLY a JSON object with these exact fields:
@@ -133,58 +131,22 @@ JSON:`;
       });
 
       const jsonMatch = response.response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+      if (!jsonMatch) {
+        throw new Error('AI response did not contain valid JSON format');
       }
+      
+      return JSON.parse(jsonMatch[0]);
     } catch (error) {
-      console.warn('LLM extraction failed, falling back to basic patterns:', error);
+      Logger.error('LLM extraction failed:', error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(`Failed to extract conversation information: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    return this.extractWithBasicPatterns(conversationText);
   }
 
   /**
-   * Basic pattern extraction as fallback
-   * Used when LLM is not available or fails
+   * DEPRECATED: Basic pattern extraction removed for production safety
+   * This was a dangerous fallback that could mask failures and provide inaccurate data
+   * If AI extraction fails, we should fail fast with clear error messages
    */
-  private static extractWithBasicPatterns(conversationText: string) {
-    const text = conversationText.toLowerCase();
-    
-    // Basic name extraction
-    let name: string | undefined;
-    const nameMatches = [...text.matchAll(/my name is ([^,.]+)|i am ([^,.]+)|name is ([^,.]+)|i'm ([^,.]+)/g)];
-    if (nameMatches.length > 0) {
-      const lastMatch = nameMatches[nameMatches.length - 1];
-      name = (lastMatch[1] || lastMatch[2] || lastMatch[3] || lastMatch[4]).trim();
-    }
-    
-    // Basic legal issue detection
-    let legalIssueType: string | undefined;
-    if (text.includes('divorce') || text.includes('family law')) legalIssueType = 'Family Law';
-    else if (text.includes('car accident') || text.includes('personal injury') || text.includes('ran over') || text.includes('hit someone') || text.includes('pedestrian')) legalIssueType = 'Personal Injury';
-    else if (text.includes('employment') || text.includes('job') || text.includes('terminated') || text.includes('fired')) legalIssueType = 'Employment Law';
-    else if (text.includes('landlord') || text.includes('tenant')) legalIssueType = 'Landlord/Tenant';
-    else if (text.includes('business')) legalIssueType = 'Business Law';
-    else if (text.includes('criminal') || text.includes('arrest') || text.includes('charges') || text.includes('violation')) legalIssueType = 'Criminal Law';
-    
-    // Basic location extraction
-    let location: string | undefined;
-    const locationMatches = [...text.matchAll(/live in ([^,.]+(?:,\s*[^,.]+)*)|located in ([^,.]+(?:,\s*[^,.]+)*)|from ([^,.]+(?:,\s*[^,.]+)*)/g)];
-    if (locationMatches.length > 0) {
-      const lastMatch = locationMatches[locationMatches.length - 1];
-      location = (lastMatch[1] || lastMatch[2] || lastMatch[3]).trim();
-    }
-    
-    return {
-      name,
-      legalIssueType,
-      description: legalIssueType ? `Client seeking ${legalIssueType.toLowerCase()} assistance` : undefined,
-      email: undefined,
-      phone: undefined,
-      location,
-      opposingParty: undefined
-    };
-  }
 
   /**
    * Merge regex and LLM results with conflict detection

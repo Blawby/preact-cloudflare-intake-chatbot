@@ -53,7 +53,7 @@ export class ConversationStateMachine {
   /**
    * Determines if this is a general inquiry that shouldn't result in matter creation
    */
-  static async isGeneralInquiry(conversationText: string, env?: any): Promise<boolean> {
+  static async isGeneralInquiry(conversationText: string, env: any): Promise<boolean> {
     const context = await PromptBuilder.extractConversationInfo(conversationText, env);
     
     // If we have substantial information (name, legal issue, contact info), it's not a general inquiry
@@ -108,7 +108,7 @@ export class ConversationStateMachine {
   /**
    * Gets the current conversation state based on context
    */
-  static async getCurrentState(conversationText: string, env?: any): Promise<ConversationState> {
+  static async getCurrentState(conversationText: string, env: any): Promise<ConversationState> {
     const context = await PromptBuilder.extractConversationInfo(conversationText, env);
     
     // Check for general inquiries first
@@ -188,7 +188,7 @@ export class ConversationStateMachine {
         return `I understand you need legal help. Can you tell me more about what's happening? What type of legal issue are you facing?`;
       
       case ConversationState.COLLECTING_EMAIL:
-        return `Thank you for that information. What's your email address so we can contact you?`;
+        return `Thank you for that information. What's your email address so we can contact you? (If you prefer not to provide an email, you can say "no email" or "prefer not to" and we can use your phone number instead)`;
       
       case ConversationState.COLLECTING_PHONE:
         return `Great! What's your phone number?`;

@@ -30,10 +30,11 @@ export const collectContactInfo = {
         maxLength: 100
       }
     },
-    required: ['name', 'location'],
+    required: ['name'],
     anyOf: [
       { required: ['email'] },
-      { required: ['phone'] }
+      { required: ['phone'] },
+      { required: ['location'] }
     ],
     additionalProperties: false
   }

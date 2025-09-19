@@ -31,9 +31,18 @@ export async function handleCollectContactInfo(parameters: ContactInfoParameters
 
   const { name, phone, email, location } = parameters;
   
-  // Check for placeholder values
-  if (ValidationService.hasPlaceholderValues(phone, email)) {
+  // Check for placeholder values - but only if both phone and email are provided
+  if (phone && email && ValidationService.hasPlaceholderValues(phone, email)) {
     return createValidationError("I need your actual contact information to proceed. Could you please provide your real phone number and email address?");
+  }
+  
+  // Check for placeholder values in individual fields
+  if (phone && ValidationService.hasPlaceholderValues(phone)) {
+    return createValidationError("I need your actual phone number to proceed. Could you please provide your real phone number?");
+  }
+  
+  if (email && ValidationService.hasPlaceholderValues(undefined, email)) {
+    return createValidationError("I need your actual email address to proceed. Could you please provide your real email address?");
   }
   
   // Validate name if provided
@@ -46,13 +55,11 @@ export async function handleCollectContactInfo(parameters: ContactInfoParameters
     return createValidationError("The email address you provided doesn't appear to be valid. Could you please provide a valid email address?");
   }
   
-  // Validate phone if provided (but don't block if invalid)
+  // Validate phone if provided - FAIL FAST if invalid
   if (phone && phone.trim() !== '') {
     const phoneValidation = ValidationService.validatePhone(phone);
     if (!phoneValidation.isValid) {
-      // Don't block the conversation for invalid phone - just note it
-      console.warn(`Invalid phone number provided - ${phoneValidation.error}`);
-      // Continue with the conversation instead of blocking
+      return createValidationError(`Invalid phone number format: ${phoneValidation.error}. Please provide a valid phone number.`);
     }
   }
   
@@ -71,8 +78,7 @@ export async function handleCollectContactInfo(parameters: ContactInfoParameters
       const isSupported = isLocationSupported(location, supportedStates, supportedCountries);
       
       if (!isSupported) {
-        // Don't block the conversation - just note the jurisdiction issue and continue
-        console.warn(`User in unsupported jurisdiction - continuing with general guidance`);
+        return createValidationError(`We don't currently provide services in ${location}. Please contact a local attorney in your area.`);
       }
     }
   }
@@ -81,9 +87,9 @@ export async function handleCollectContactInfo(parameters: ContactInfoParameters
     return createValidationError("I need your name to proceed. Could you please provide your full name?");
   }
   
-  // Check if we have at least one contact method (but don't block if missing)
+  // Check if we have at least one contact method - FAIL FAST if missing
   if (!phone && !email) {
-    console.warn(`No contact method provided - continuing with name only`);
+    return createValidationError("I need at least one way to contact you. Please provide either your phone number or email address.");
   }
   
   return createSuccessResponse(

@@ -167,11 +167,9 @@ export class CasePreparationFlow {
   /**
    * LLM extraction for all case information (comprehensive coverage)
    */
-  private static async extractWithLLM(conversationText: string, env?: any): Promise<Partial<CaseInformation>> {
-    if (!env?.AI) {
-      // Fallback to basic extraction if no AI available
-      return this.extractWithBasicPatterns(conversationText);
-    }
+  private static async extractWithLLM(conversationText: string, env: any): Promise<Partial<CaseInformation>> {
+    // AI service is REQUIRED - no fallbacks, no conditionals
+    // If AI fails, the entire paralegal system fails
 
     try {
       // Shorter timeout to prevent hanging
