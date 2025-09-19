@@ -138,14 +138,16 @@ export class SecurityFilter {
       return null; // Allow general consultation to handle the request
     }
     
-    // If no team config is available, be permissive and allow the request
+    // If no team config is available, fail closed for security
     if (!teamConfig) {
-      return null;
+      console.log('SecurityFilter: Authorization denied - missing team configuration');
+      return 'authorization_error';
     }
     
-    // If availableServices is empty or undefined, be permissive and allow the request
+    // If availableServices is empty or undefined, fail closed for security
     if (!availableServices || availableServices.length === 0) {
-      return null;
+      console.log('SecurityFilter: Authorization denied - no available services configured for team');
+      return 'authorization_error';
     }
     
     // Only validate if we found a specific legal matter type AND team doesn't offer that specific service
@@ -208,8 +210,8 @@ export class SecurityFilter {
       'Employment Law': /(employment|workplace|termination|discrimination|harassment|wage|overtime)/i,
       'Business Law': /(business|contract|corporate|company|startup|partnership)/i,
       'Intellectual Property': /(patent|trademark|copyright|intellectual property|IP|trade secret)/i,
-      'Personal Injury': /(accident|injury|personal injury|damage|liability|negligence)/i,
-      'Criminal Law': /(criminal|arrest|charges|trial|violation|felony|misdemeanor)/i,
+      'Personal Injury': /(accident|injury|personal injury|damage|liability|negligence|ran.*over|hit.*pedestrian|car.*accident|death|died|fatal)/i,
+      'Criminal Law': /(criminal|arrest|charges|trial|violation|felony|misdemeanor|police|law enforcement)/i,
       'Civil Law': /(civil|dispute|contract|property|tort)/i,
       'Landlord/Tenant': /(tenant|landlord|rental|eviction|housing|lease)/i,
       'Probate and Estate Planning': /(estate|probate|inheritance|will|trust|power of attorney)/i,

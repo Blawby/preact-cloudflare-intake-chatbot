@@ -29,6 +29,11 @@ export async function validateInput(body: any, teamConfig?: any, cloudflareLocat
 export function getSecurityResponse(violations: string[], teamConfig?: any): string {
   const teamName = teamConfig?.name || 'our legal team';
   
+  // Authorization errors (fail-closed security)
+  if (violations.includes('authorization_error')) {
+    return `I'm unable to process your request at this time due to a configuration issue. Please contact our support team for assistance.`;
+  }
+  
   // Team-specific responses
   if (violations.includes('service_not_offered')) {
     return `I understand your legal concern, but this type of matter is not within our practice areas. I'd be happy to help you find a lawyer who specializes in this area.`;

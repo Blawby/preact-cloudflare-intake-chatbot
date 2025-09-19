@@ -1,5 +1,5 @@
 import type { Env } from './types';
-import { normalizeMatterType } from './matterTypeNormalizer.js';
+import { normalizeMatterType } from './utils/matterTypeNormalizer.js';
 
 export async function parseJsonBody(request: Request) {
   try {

@@ -94,7 +94,7 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
     const phoneValidation = ValidationService.validatePhone(phone);
     if (!phoneValidation.isValid) {
       // Don't block the conversation for invalid phone - just note it
-      const maskedPhone = phone.length > 4 ? phone.slice(-4).padStart(phone.length, '*') : '****';
+      const maskedPhone = '*'.repeat(Math.max(1, String(phone ?? '').length));
       Logger.warn(`Invalid phone number provided (masked: ${maskedPhone}) - ${phoneValidation.error}`);
       // Continue with the conversation instead of blocking
     }
@@ -106,8 +106,22 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
     // Don't block matter creation for location validation issues
   }
   
-  // Don't require contact info - just note if missing
-  if (!phone && !email) {
+  // Check if this is a sensitive matter that requires immediate attention
+  const isSensitiveMatter = matter_type === 'Criminal Law' || 
+                           matter_type === 'Personal Injury' ||
+                           (description && (
+                             description.toLowerCase().includes('death') ||
+                             description.toLowerCase().includes('died') ||
+                             description.toLowerCase().includes('fatal') ||
+                             description.toLowerCase().includes('killed') ||
+                             description.toLowerCase().includes('accident') ||
+                             description.toLowerCase().includes('arrest')
+                           ));
+  
+  // For sensitive matters, don't require contact info - lawyer can follow up
+  if (isSensitiveMatter && (!phone && !email)) {
+    Logger.warn(`Sensitive matter detected - proceeding without contact info, lawyer will follow up`);
+  } else if (!phone && !email) {
     Logger.warn(`No contact method provided for client - proceeding with name only`);
   }
   
@@ -150,13 +164,13 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
             return teamConfig.id;
           }
           if (env.BLAWBY_TEAM_ULID) {
-            console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
+            Logger.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
             return env.BLAWBY_TEAM_ULID;
           }
-          console.error('❌ CRITICAL: No team ID available for payment processing');
-          console.error('   - teamConfig?.id:', teamConfig?.id);
-          console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
-          console.error('   - Team configuration should be set in database for team:', teamConfig?.name || 'unknown');
+          Logger.error('❌ CRITICAL: No team ID available for payment processing');
+          Logger.error('   - teamConfig?.id:', teamConfig?.id);
+          Logger.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
+          Logger.error('   - Team configuration should be set in database for team:', teamConfig?.name || 'unknown');
           throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
         })(),
         sessionId: 'session-' + Date.now()
@@ -167,28 +181,52 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
       paymentId = paymentResult.paymentId;
     }
   } else {
-    console.log('💰 Payment not required - skipping payment processing');
+    Logger.info('💰 Payment not required - skipping payment processing');
   }
   
   // Build summary message
   
-  let summaryMessage = `Perfect! I have all the information I need. Here's a summary of your matter:
+  let summaryMessage = '';
+  
+  // Customize message based on matter sensitivity
+  if (isSensitiveMatter) {
+    summaryMessage = `I understand this is a serious situation, and I want to help you get the legal assistance you need right away. Here's what I have:
 
 **Client Information:**
 - Name: ${name}
 - Contact: ${phone || 'Not provided'}${email ? `, ${email}` : ''}${location ? `, ${location}` : ''}`;
 
-  if (opposing_party) {
-    summaryMessage += `
+    if (opposing_party) {
+      summaryMessage += `
 - Opposing Party: ${opposing_party}`;
-  }
+    }
 
-  summaryMessage += `
+    summaryMessage += `
+
+**Matter Details:**
+- Type: ${matter_type}
+- Description: ${description}
+
+I'm connecting you with an attorney who specializes in this type of case. They will contact you as soon as possible to discuss your situation and next steps.`;
+  } else {
+    summaryMessage = `Perfect! I have all the information I need. Here's a summary of your matter:
+
+**Client Information:**
+- Name: ${name}
+- Contact: ${phone || 'Not provided'}${email ? `, ${email}` : ''}${location ? `, ${location}` : ''}`;
+
+    if (opposing_party) {
+      summaryMessage += `
+- Opposing Party: ${opposing_party}`;
+    }
+
+    summaryMessage += `
 
 **Matter Details:**
 - Type: ${matter_type}
 - Description: ${description}
 `;
+  }
 
   if (requiresPayment && consultationFee > 0) {
     if (invoiceUrl && paymentId) {
@@ -223,9 +261,15 @@ Before we can proceed with your consultation, there's a consultation fee of $${c
 Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
     }
   } else {
-    summaryMessage += `
+    if (isSensitiveMatter) {
+      summaryMessage += `
+
+I'll submit this to our legal team immediately for urgent review. A lawyer will contact you as soon as possible to discuss your case.`;
+    } else {
+      summaryMessage += `
 
 I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.`;
+    }
   }
   
   const result = createSuccessResponse(summaryMessage, {

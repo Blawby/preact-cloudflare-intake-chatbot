@@ -69,17 +69,41 @@ export class ConversationStateMachine {
    * Determines if we should create a matter based on available information
    */
   static shouldCreateMatter(context: ConversationContext): boolean {
-    // For intake agent, we need comprehensive information before creating matters
-    // This ensures we have all the details needed for a lawyer to contact the client
-    const hasEssentialInfo = context.hasName && 
-                            context.legalIssueType && 
-                            context.description &&
-                            context.hasEmail &&
-                            context.hasPhone &&
-                            context.hasLocation;
+    // For intake agent, we need essential information before creating matters
+    // This ensures we have the details needed for a lawyer to contact the client
     
-    // All contact information is required for intake agent
-    return hasEssentialInfo;
+    // Minimum required: name + legal issue + description
+    const hasMinimumInfo = context.hasName && 
+                          context.legalIssueType && 
+                          context.description;
+    
+    // For sensitive legal matters (criminal, personal injury with death), be more flexible
+    const isSensitiveMatter = context.legalIssueType === 'Criminal Law' || 
+                             context.legalIssueType === 'Personal Injury' ||
+                             (context.description && (
+                               context.description.toLowerCase().includes('death') ||
+                               context.description.toLowerCase().includes('died') ||
+                               context.description.toLowerCase().includes('fatal') ||
+                               context.description.toLowerCase().includes('killed') ||
+                               context.description.toLowerCase().includes('accident') ||
+                               context.description.toLowerCase().includes('arrest')
+                             ));
+    
+    // For sensitive matters, only require name + legal issue + description
+    if (isSensitiveMatter && hasMinimumInfo) {
+      return true;
+    }
+    
+    // For standard matters, prefer to have at least one contact method
+    const hasContactMethod = context.hasEmail || context.hasPhone;
+    const hasLocation = context.hasLocation;
+    
+    // Standard matters: name + legal issue + description + (email OR phone) + location
+    const hasStandardInfo = hasMinimumInfo && hasContactMethod && hasLocation;
+    
+    // If we have minimum info but no contact method, still allow matter creation
+    // The lawyer can follow up to get contact information
+    return hasMinimumInfo;
   }
 
   /**
@@ -88,18 +112,29 @@ export class ConversationStateMachine {
   static async getCurrentState(conversationText: string, env?: any): Promise<ConversationState> {
     const context = await PromptBuilder.extractConversationInfo(conversationText, env);
     
-    // Add state field to context to satisfy ConversationContext interface
-    context.state = ConversationState.UNKNOWN;
-    
     // Check for general inquiries first
     if (await this.isGeneralInquiry(conversationText, env)) {
       return ConversationState.GENERAL_INQUIRY;
     }
 
     // Check if we have all required info for matter creation
-    if (this.shouldCreateMatter(context)) {
+    // Create a temporary context with state property to satisfy ConversationContext interface
+    const contextWithState = { ...context, state: ConversationState.INITIAL };
+    if (this.shouldCreateMatter(contextWithState)) {
       return ConversationState.READY_TO_CREATE_MATTER;
     }
+
+    // Check if this is a sensitive matter that needs immediate attention
+    const isSensitiveMatter = context.legalIssueType === 'Criminal Law' || 
+                             context.legalIssueType === 'Personal Injury' ||
+                             (context.description && (
+                               context.description.toLowerCase().includes('death') ||
+                               context.description.toLowerCase().includes('died') ||
+                               context.description.toLowerCase().includes('fatal') ||
+                               context.description.toLowerCase().includes('killed') ||
+                               context.description.toLowerCase().includes('accident') ||
+                               context.description.toLowerCase().includes('arrest')
+                             ));
 
     // Determine what we're missing - prioritize the most important missing pieces
     if (!context.hasName) {
@@ -114,16 +149,14 @@ export class ConversationStateMachine {
       return ConversationState.COLLECTING_DETAILS;
     }
 
-    // The shouldCreateMatter function above already handles this logic
-    // No need to duplicate it here
-
-    // Fallback to collecting missing pieces
-    if (!context.hasEmail) {
-      return ConversationState.COLLECTING_EMAIL;
+    // For sensitive matters, we can create a matter with minimal information
+    if (isSensitiveMatter) {
+      return ConversationState.READY_TO_CREATE_MATTER;
     }
 
-    if (!context.hasPhone) {
-      return ConversationState.COLLECTING_PHONE;
+    // For standard matters, try to collect contact information but don't block
+    if (!context.hasEmail && !context.hasPhone) {
+      return ConversationState.COLLECTING_EMAIL;
     }
 
     if (!context.hasLocation) {
@@ -154,7 +187,15 @@ export class ConversationStateMachine {
       
       case ConversationState.COLLECTING_DETAILS:
         if (context.legalIssueType) {
-          return `I understand you're dealing with a ${context.legalIssueType.toLowerCase()} issue. Can you tell me more about what's happening?`;
+          // Check if this might be a sensitive matter
+          const isSensitiveMatter = context.legalIssueType === 'Criminal Law' || 
+                                   context.legalIssueType === 'Personal Injury';
+          
+          if (isSensitiveMatter) {
+            return `I understand you're dealing with a ${context.legalIssueType.toLowerCase()} issue. This must be very difficult for you. Can you tell me more about what's happening so I can help you get the right legal assistance?`;
+          } else {
+            return `I understand you're dealing with a ${context.legalIssueType.toLowerCase()} issue. Can you tell me more about what's happening?`;
+          }
         } else {
           return `I understand you need legal help. Can you tell me more about what's happening? What type of legal issue are you facing?`;
         }

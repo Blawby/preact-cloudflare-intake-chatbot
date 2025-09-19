@@ -282,19 +282,19 @@
         
         <div class="summary-grid">
             <div class="summary-card">
-                <h3>4/9</h3>
+                <h3>0/9</h3>
                 <p>Tests Passed</p>
             </div>
             <div class="summary-card">
-                <h3>7.6/10</h3>
+                <h3>7.9/10</h3>
                 <p>Average Score</p>
             </div>
             <div class="summary-card">
-                <h3>19804ms</h3>
+                <h3>9669ms</h3>
                 <p>Avg Response Time</p>
             </div>
             <div class="summary-card">
-                <h3>44.4%</h3>
+                <h3>0.0%</h3>
                 <p>Success Rate</p>
             </div>
         </div>
@@ -307,8 +307,8 @@
                             <h3>Standard legal intake with family law matter</h3>
                             <p>User: Sarah Johnson</p>
                         </div>
-                        <div class="test-status passed">
-                            PASS
+                        <div class="test-status failed">
+                            FAIL
                         </div>
                     </div>
                     
@@ -327,7 +327,7 @@
                                 
                                     <div class="score-item">
                                         <div class="score-label">completeness</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -352,12 +352,12 @@
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">8.0/10</div>
+                                        <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -366,8 +366,8 @@
                                 <div class="flags">
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
-                                        <div class="flag-item success">
-                                            <span>✅ No Critical Issues</span>
+                                        <div class="flag-item warning">
+                                            <span>⚠️ Critical Issues: 1</span>
                                         </div>
                                     </div>
                                 </div>
@@ -379,7 +379,7 @@
                                 <div class="analysis-grid">
                                     <div class="analysis-item">
                                         <div class="analysis-label">Total Messages</div>
-                                        <div class="analysis-value">8</div>
+                                        <div class="analysis-value">4</div>
                                     </div>
                                     <div class="analysis-item">
                                         <div class="analysis-label">Efficiency</div>
@@ -407,7 +407,7 @@
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>You&#39;re unsure about the type of legal issue you&#39;re facing. That&#39;s completely okay. Can you tell me a bit more about what&#39;s going on and what&#39;s been concerning you?</div>
+                                    <div>You&#39;re not sure what kind of legal issue you&#39;re dealing with, which can be a bit overwhelming. Let&#39;s try to break it down together. Can you tell me a little bit more about what&#39;s been going on and why you think you might need a lawyer?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -417,38 +417,16 @@
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>You&#39;re going through a difficult time with your marriage, and you&#39;re considering divorce. That can be a very emotional and overwhelming process. Can you tell me a bit more about what&#39;s been going on in your marriage that&#39;s led you to consider divorce?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 5)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 6)</div>
-                                    <div>You live in Charlotte, North Carolina. That&#39;s helpful to know. I also want to confirm that you&#39;re considering divorce, which falls under the category of Family Law. 
-
-Now, I just need your contact information to create a matter for you. Do you have an email address and a phone number that you&#39;d be comfortable sharing with me?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 7)</div>
-                                    <div>My phone is 704-555-0123 and email is sarah.johnson@example.com.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 8)</div>
                                     <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
 
 **Client Information:**
 - Name: Sarah Johnson
-- Contact: 704-555-0123, sarah.johnson@example.com, Charlotte, North Carolina
+- Contact: Not provided
 - Opposing Party: Husband
 
 **Matter Details:**
-- Type: Family Law
-- Description: Considering divorce due to issues in marriage
+- Type: family_law
+- Description: Considering divorce
 
 
 I&#39;ll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.</div>
@@ -465,10 +443,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                         <pre>{
   &quot;name&quot;: &quot;Sarah Johnson&quot;,
   &quot;matter_type&quot;: &quot;Family Law&quot;,
-  &quot;description&quot;: &quot;Considering divorce due to issues in marriage&quot;,
-  &quot;email&quot;: &quot;sarah.johnson@example.com&quot;,
-  &quot;phone&quot;: &quot;704-555-0123&quot;,
-  &quot;location&quot;: &quot;Charlotte, North Carolina&quot;,
+  &quot;description&quot;: &quot;Considering divorce&quot;,
   &quot;opposing_party&quot;: &quot;Husband&quot;
 }</pre>
                                     </div>
@@ -479,24 +454,31 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The conversation was well-structured and the AI provided clear guidance. However, there were a few instances where the AI could have built upon previous conversation elements more effectively.</p>
+                                <p>The conversation was helpful, but could be more efficient.</p>
                             </div>
                         
                         
                         
+                                <div class="issues">
+                                    <h4>Critical Issues</h4>
+                                    <ul>
+                                        <li>AI created placeholder/fake contact information</li>
+                                    </ul>
+                                </div>
+                            
                         
                         
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Consider adding more context to the matter summary to help the user understand the next steps more clearly.</li>
+                                    <li>Provide more specific guidance on next steps and costs.</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 25921ms | 
-                            Average Score: 8.6/10
+                            Response Time: 11081ms | 
+                            Average Score: 8.4/10
                         </div>
                     </div>
                 </div>
@@ -517,17 +499,17 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                     <div class="score-item">
                                         <div class="score-label">empathy</div>
-                                        <div class="score-value">9.0/10</div>
-                                    </div>
-                                
-                                    <div class="score-item">
-                                        <div class="score-label">accuracy</div>
                                         <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
-                                        <div class="score-label">completeness</div>
+                                        <div class="score-label">accuracy</div>
                                         <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">completeness</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -542,7 +524,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">actionability</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -552,12 +534,12 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">8.0/10</div>
+                                        <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -566,8 +548,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="flags">
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
-                                        <div class="flag-item warning">
-                                            <span>⚠️ Critical Issues: 1</span>
+                                        <div class="flag-item success">
+                                            <span>✅ No Critical Issues</span>
                                         </div>
                                     </div>
                                 </div>
@@ -579,7 +561,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="analysis-grid">
                                     <div class="analysis-item">
                                         <div class="analysis-label">Total Messages</div>
-                                        <div class="analysis-value">8</div>
+                                        <div class="analysis-value">4</div>
                                     </div>
                                     <div class="analysis-item">
                                         <div class="analysis-label">Efficiency</div>
@@ -607,7 +589,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>I&#39;d be happy to help you with your legal matter. To get started, could you please tell me your name?</div>
+                                    <div>I can sense the urgency in your voice, and I want to assure you that we&#39;ll do our best to get you the help you need as quickly as possible. Can you please tell me a little bit more about what&#39;s going on? What kind of legal issue are you facing?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -617,35 +599,14 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>I understand that you&#39;re going through a stressful situation with a restraining order. To better assist you, could you please describe the situation and the reason behind the restraining order?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 5)</div>
-                                    <div>I live in Raleigh, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 6)</div>
-                                    <div>So, to recap, you&#39;re Michael Chen, you&#39;re experiencing a family law issue related to a restraining order, and you&#39;re located in Raleigh, North Carolina. Before we proceed, do you have an email address and a phone number where I can reach you?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 7)</div>
-                                    <div>My phone is 919-555-0123 and email is michael.chen@example.com.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 8)</div>
                                     <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
 
 **Client Information:**
 - Name: Michael Chen
-- Contact: 919-555-0123, michael.chen@example.com, Raleigh, North Carolina
-- Opposing Party: Not mentioned
+- Contact: Not provided
 
 **Matter Details:**
-- Type: Family Law
+- Type: criminal_law
 - Description: Received a restraining order and need to respond within 24 hours
 
 
@@ -662,12 +623,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                         <strong>create_matter</strong><br>
                                         <pre>{
   &quot;name&quot;: &quot;Michael Chen&quot;,
-  &quot;matter_type&quot;: &quot;Family Law&quot;,
-  &quot;description&quot;: &quot;Received a restraining order and need to respond within 24 hours&quot;,
-  &quot;email&quot;: &quot;michael.chen@example.com&quot;,
-  &quot;phone&quot;: &quot;919-555-0123&quot;,
-  &quot;location&quot;: &quot;Raleigh, North Carolina&quot;,
-  &quot;opposing_party&quot;: &quot;Not mentioned&quot;
+  &quot;matter_type&quot;: &quot;Criminal Law&quot;,
+  &quot;description&quot;: &quot;Received a restraining order and need to respond within 24 hours&quot;
 }</pre>
                                     </div>
                                 
@@ -677,31 +634,24 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The conversation was well-structured and the AI provided clear guidance. However, there were a few instances where the AI repeated the same response.</p>
+                                <p>The AI demonstrated good understanding of the client&#39;s situation and provided accurate legal information. However, there were some minor issues with conversation flow and efficiency.</p>
                             </div>
                         
                         
                         
-                                <div class="issues">
-                                    <h4>Critical Issues</h4>
-                                    <ul>
-                                        <li>AI repeated the same response multiple times</li>
-                                    </ul>
-                                </div>
-                            
                         
                         
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Improve conversation flow by avoiding repetitive responses</li>
+                                    <li>Improve conversation flow by avoiding repetitive responses and ignoring previously provided information</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 21533ms | 
-                            Average Score: 8.7/10
+                            Response Time: 10076ms | 
+                            Average Score: 8.0/10
                         </div>
                     </div>
                 </div>
@@ -712,8 +662,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             <h3>Complex legal situation requiring specialized expertise</h3>
                             <p>User: David Rodriguez</p>
                         </div>
-                        <div class="test-status passed">
-                            PASS
+                        <div class="test-status failed">
+                            FAIL
                         </div>
                     </div>
                     
@@ -732,7 +682,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">completeness</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -752,17 +702,17 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">legalAccuracy</div>
-                                        <div class="score-value">9.0/10</div>
-                                    </div>
-                                
-                                    <div class="score-item">
-                                        <div class="score-label">conversationFlow</div>
                                         <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
+                                        <div class="score-label">conversationFlow</div>
+                                        <div class="score-value">7.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -771,8 +721,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="flags">
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
-                                        <div class="flag-item success">
-                                            <span>✅ No Critical Issues</span>
+                                        <div class="flag-item warning">
+                                            <span>⚠️ Critical Issues: 1</span>
                                         </div>
                                     </div>
                                 </div>
@@ -784,7 +734,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="analysis-grid">
                                     <div class="analysis-item">
                                         <div class="analysis-label">Total Messages</div>
-                                        <div class="analysis-value">8</div>
+                                        <div class="analysis-value">4</div>
                                     </div>
                                     <div class="analysis-item">
                                         <div class="analysis-label">Efficiency</div>
@@ -812,7 +762,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>I&#39;m here to help you navigate this situation. You&#39;ve mentioned that you have a complicated legal situation, but you haven&#39;t specified what the issues are. Can you please provide more information about the specific problems you&#39;re facing?</div>
+                                    <div>I&#39;d be happy to help you with your legal matter. To get started, could you please tell me your name?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -822,36 +772,15 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>Thank you for sharing more details, David. It sounds like you&#39;re dealing with a complex situation involving multiple areas of law. To better understand your situation, can you please tell me more about the business dispute, the employment issues, and the potential tax problems? What&#39;s the nature of the dispute, and how do these issues relate to each other?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 5)</div>
-                                    <div>I live in Durham, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 6)</div>
-                                    <div>I&#39;d like to understand your legal situation better. What type of legal help do you need? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or something else?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 7)</div>
-                                    <div>My phone is 919-555-0124 and email is david.rodriguez@example.com.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 8)</div>
                                     <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
 
 **Client Information:**
 - Name: David Rodriguez
-- Contact: 919-555-0124, david.rodriguez@example.com, Durham, North Carolina
-- Opposing Party: Not mentioned
+- Contact: Not provided
 
 **Matter Details:**
-- Type: Business Law|Employment Law|General Consultation
-- Description: Complicated legal situation involving multiple issues, including business dispute, employment issues, and potential tax problems
+- Type: business_law_employment_law_general_consultation
+- Description: Complicated legal situation involving multiple issues
 
 
 I&#39;ll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.</div>
@@ -868,11 +797,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                         <pre>{
   &quot;name&quot;: &quot;David Rodriguez&quot;,
   &quot;matter_type&quot;: &quot;Business Law|Employment Law|General Consultation&quot;,
-  &quot;description&quot;: &quot;Complicated legal situation involving multiple issues, including business dispute, employment issues, and potential tax problems&quot;,
-  &quot;email&quot;: &quot;david.rodriguez@example.com&quot;,
-  &quot;phone&quot;: &quot;919-555-0124&quot;,
-  &quot;location&quot;: &quot;Durham, North Carolina&quot;,
-  &quot;opposing_party&quot;: &quot;Not mentioned&quot;
+  &quot;description&quot;: &quot;Complicated legal situation involving multiple issues&quot;
 }</pre>
                                     </div>
                                 
@@ -882,24 +807,31 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>Good conversation flow, but could improve on actionability and efficiency.</p>
+                                <p>The conversation progressed well, but there were some minor issues with context awareness and conversation flow.</p>
                             </div>
                         
                         
                         
+                                <div class="issues">
+                                    <h4>Critical Issues</h4>
+                                    <ul>
+                                        <li>Assumed legal issue type without user confirmation</li>
+                                    </ul>
+                                </div>
+                            
                         
                         
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Provide more specific guidance on next steps and potential costs.</li>
+                                    <li>Ask the user to confirm the legal issue type before proceeding</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 26687ms | 
-                            Average Score: 8.6/10
+                            Response Time: 5545ms | 
+                            Average Score: 8.0/10
                         </div>
                     </div>
                 </div>
@@ -910,8 +842,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             <h3>Location service area verification and matter creation</h3>
                             <p>User: Maria Garcia</p>
                         </div>
-                        <div class="test-status passed">
-                            PASS
+                        <div class="test-status failed">
+                            FAIL
                         </div>
                     </div>
                     
@@ -930,7 +862,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">completeness</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -955,12 +887,12 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">8.0/10</div>
+                                        <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -982,7 +914,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="analysis-grid">
                                     <div class="analysis-item">
                                         <div class="analysis-label">Total Messages</div>
-                                        <div class="analysis-value">8</div>
+                                        <div class="analysis-value">6</div>
                                     </div>
                                     <div class="analysis-item">
                                         <div class="analysis-label">Efficiency</div>
@@ -1010,7 +942,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>You&#39;re unsure if I provide services in your area. Can you please tell me your location so I can check if we can assist you?</div>
+                                    <div>It&#39;s understandable to have concerns about whether we can assist you. Can you please tell me a little bit about your location? This will help me determine if we can provide services in your area.</div>
                                 </div>
                             
                                 <div class="message user">
@@ -1020,7 +952,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>You&#39;ve given me your name, Maria Garcia. Now, can you please tell me what kind of legal issue you&#39;re facing? Is it related to Family Law, Personal Injury, Employment Law, Landlord/Tenant, Business Law, Criminal Law, or something else?</div>
+                                    <div>Nice to meet you, Maria. Now that I have your name, I&#39;d like to know a bit more about the reason you&#39;re reaching out for legal help. What kind of legal issue are you dealing with?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -1030,28 +962,19 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 6)</div>
-                                    <div>I need your actual contact information to proceed. Could you please provide your real phone number and email address?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 7)</div>
-                                    <div>My phone is 415-555-0123 and email is maria.garcia@example.com.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 8)</div>
-                                    <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
+                                    <div>I understand this is a serious situation, and I want to help you get the legal assistance you need right away. Here&#39;s what I have:
 
 **Client Information:**
 - Name: Maria Garcia
-- Contact: 415-555-0123, maria.garcia@example.com, California
+- Contact: Not provided, California
 
 **Matter Details:**
-- Type: Personal Injury
+- Type: personal_injury
 - Description: Personal injury case from a car accident
 
+I&#39;m connecting you with an attorney who specializes in this type of case. They will contact you as soon as possible to discuss your situation and next steps.
 
-I&#39;ll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.</div>
+I&#39;ll submit this to our legal team immediately for urgent review. A lawyer will contact you as soon as possible to discuss your case.</div>
                                 </div>
                             
                         </div>
@@ -1066,8 +989,6 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
   &quot;name&quot;: &quot;Maria Garcia&quot;,
   &quot;matter_type&quot;: &quot;Personal Injury&quot;,
   &quot;description&quot;: &quot;Personal injury case from a car accident&quot;,
-  &quot;email&quot;: &quot;maria.garcia@example.com&quot;,
-  &quot;phone&quot;: &quot;415-555-0123&quot;,
   &quot;location&quot;: &quot;California&quot;
 }</pre>
                                     </div>
@@ -1078,7 +999,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The conversation was mostly smooth, but there were a few minor issues with context awareness.</p>
+                                <p>The conversation was mostly helpful, but could benefit from more context awareness and actionability.</p>
                             </div>
                         
                         
@@ -1088,14 +1009,14 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Consider adding more specific guidance on next steps and potential outcomes.</li>
+                                    <li>Provide more context awareness and actionability in the conversation</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 26725ms | 
-                            Average Score: 8.6/10
+                            Response Time: 17868ms | 
+                            Average Score: 8.4/10
                         </div>
                     </div>
                 </div>
@@ -1106,8 +1027,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             <h3>Pricing concerns and financial discussion</h3>
                             <p>User: Thomas Brown</p>
                         </div>
-                        <div class="test-status passed">
-                            PASS
+                        <div class="test-status failed">
+                            FAIL
                         </div>
                     </div>
                     
@@ -1126,7 +1047,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">completeness</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -1146,17 +1067,17 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">legalAccuracy</div>
-                                        <div class="score-value">9.0/10</div>
-                                    </div>
-                                
-                                    <div class="score-item">
-                                        <div class="score-label">conversationFlow</div>
                                         <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
+                                        <div class="score-label">conversationFlow</div>
+                                        <div class="score-value">7.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">9.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -1165,8 +1086,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="flags">
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
-                                        <div class="flag-item success">
-                                            <span>✅ No Critical Issues</span>
+                                        <div class="flag-item warning">
+                                            <span>⚠️ Critical Issues: 1</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1178,7 +1099,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="analysis-grid">
                                     <div class="analysis-item">
                                         <div class="analysis-label">Total Messages</div>
-                                        <div class="analysis-value">8</div>
+                                        <div class="analysis-value">4</div>
                                     </div>
                                     <div class="analysis-item">
                                         <div class="analysis-label">Efficiency</div>
@@ -1216,36 +1137,15 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>Thank you for sharing that with me, Thomas. It sounds like you&#39;re dealing with a challenging situation. Can you please tell me a bit more about the dispute and what&#39;s been going on?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 5)</div>
-                                    <div>I live in Greensboro, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 6)</div>
-                                    <div>So, to recap, you&#39;re Thomas Brown, you live in Greensboro, North Carolina, and you&#39;re dealing with a landlord-tenant dispute. Do you have a phone number and email address where I can reach you?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 7)</div>
-                                    <div>My phone is 336-555-0123 and email is thomas.brown@example.com.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 8)</div>
                                     <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
 
 **Client Information:**
 - Name: Thomas Brown
-- Contact: 336-555-0123, thomas.brown@example.com, Greensboro, North Carolina
-- Opposing Party: Not mentioned
+- Contact: Not provided
 
 **Matter Details:**
-- Type: Landlord/Tenant
-- Description: Dealing with a challenging landlord-tenant dispute
+- Type: landlord_tenant
+- Description: Landlord-tenant dispute
 
 
 I&#39;ll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.</div>
@@ -1262,11 +1162,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                         <pre>{
   &quot;name&quot;: &quot;Thomas Brown&quot;,
   &quot;matter_type&quot;: &quot;Landlord/Tenant&quot;,
-  &quot;description&quot;: &quot;Dealing with a challenging landlord-tenant dispute&quot;,
-  &quot;email&quot;: &quot;thomas.brown@example.com&quot;,
-  &quot;phone&quot;: &quot;336-555-0123&quot;,
-  &quot;location&quot;: &quot;Greensboro, North Carolina&quot;,
-  &quot;opposing_party&quot;: &quot;Not mentioned&quot;
+  &quot;description&quot;: &quot;Landlord-tenant dispute&quot;
 }</pre>
                                     </div>
                                 
@@ -1276,24 +1172,31 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The conversation was helpful and informative, but could benefit from more specific guidance on next steps.</p>
+                                <p>The conversation was mostly smooth, but there were a few areas where the AI could improve.</p>
                             </div>
                         
                         
                         
+                                <div class="issues">
+                                    <h4>Critical Issues</h4>
+                                    <ul>
+                                        <li>The AI assumed the legal issue type without user confirmation</li>
+                                    </ul>
+                                </div>
+                            
                         
                         
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Provide more specific guidance on next steps and potential outcomes</li>
+                                    <li>Ask the user to confirm the legal issue type before making any assumptions</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 22662ms | 
-                            Average Score: 8.6/10
+                            Response Time: 4941ms | 
+                            Average Score: 8.1/10
                         </div>
                     </div>
                 </div>
@@ -1314,42 +1217,42 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                     <div class="score-item">
                                         <div class="score-label">empathy</div>
-                                        <div class="score-value">6.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">accuracy</div>
-                                        <div class="score-value">4.0/10</div>
-                                    </div>
-                                
-                                    <div class="score-item">
-                                        <div class="score-label">completeness</div>
-                                        <div class="score-value">5.0/10</div>
-                                    </div>
-                                
-                                    <div class="score-item">
-                                        <div class="score-label">relevance</div>
                                         <div class="score-value">6.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
-                                        <div class="score-label">professionalism</div>
+                                        <div class="score-label">completeness</div>
                                         <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
+                                        <div class="score-label">relevance</div>
+                                        <div class="score-value">8.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
+                                        <div class="score-label">professionalism</div>
+                                        <div class="score-value">9.0/10</div>
+                                    </div>
+                                
+                                    <div class="score-item">
                                         <div class="score-label">actionability</div>
-                                        <div class="score-value">4.0/10</div>
+                                        <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">legalAccuracy</div>
-                                        <div class="score-value">3.0/10</div>
+                                        <div class="score-value">5.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">5.0/10</div>
+                                        <div class="score-value">6.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -1364,7 +1267,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
                                         <div class="flag-item warning">
-                                            <span>⚠️ Critical Issues: 2</span>
+                                            <span>⚠️ Critical Issues: 3</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1388,7 +1291,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                     </div>
                                     <div class="analysis-item">
                                         <div class="analysis-label">Response Variety</div>
-                                        <div class="analysis-value">67%</div>
+                                        <div class="analysis-value">100%</div>
                                     </div>
                                 </div>
                             </div>
@@ -1404,7 +1307,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>I&#39;m so sorry to hear that you&#39;ve been involved in an accident. Can you tell me more about what happened? What kind of injuries did you sustain and how severe are they?</div>
+                                    <div>I&#39;m so sorry to hear that you&#39;ve been involved in an accident. That must be a very stressful and overwhelming experience for you. Can you tell me more about what happened? What were you doing when the accident occurred, and were you injured in any way?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -1414,7 +1317,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>I need your actual contact information to proceed. Could you please provide your real phone number and email address?</div>
+                                    <div>I&#39;d like to understand your legal situation better. What type of legal help do you need? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or something else?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -1434,7 +1337,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The AI failed to collect client information efficiently and naturally, and did not create a matter with appropriate parameters.</p>
+                                <p>The AI failed to collect required information and did not create a matter. It also did not provide clear next steps and guidance.</p>
                             </div>
                         
                         
@@ -1442,7 +1345,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="issues">
                                     <h4>Critical Issues</h4>
                                     <ul>
-                                        <li>Failed to collect client information efficiently and naturally</li><li>Did not create a matter with appropriate parameters</li>
+                                        <li>Failed to collect required information</li><li>Did not create a matter</li><li>Did not provide clear next steps and guidance</li>
                                     </ul>
                                 </div>
                             
@@ -1451,14 +1354,14 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Improve information collection by asking for name, phone, email, location, and matter description in a clear and concise manner.</li><li>Create a matter with appropriate parameters using the create_matter tool.</li>
+                                    <li>Collect required information efficiently and naturally</li><li>Create a matter with appropriate parameters</li><li>Provide clear next steps and guidance</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 12659ms | 
-                            Average Score: 4.0/10
+                            Response Time: 17411ms | 
+                            Average Score: 5.9/10
                         </div>
                     </div>
                 </div>
@@ -1484,17 +1387,17 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">accuracy</div>
-                                        <div class="score-value">6.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">completeness</div>
-                                        <div class="score-value">4.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">relevance</div>
-                                        <div class="score-value">7.0/10</div>
+                                        <div class="score-value">9.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
@@ -1504,22 +1407,22 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">actionability</div>
-                                        <div class="score-value">6.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">legalAccuracy</div>
-                                        <div class="score-value">5.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">conversationFlow</div>
-                                        <div class="score-value">5.0/10</div>
+                                        <div class="score-value">7.0/10</div>
                                     </div>
                                 
                                     <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -1529,7 +1432,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
                                         <div class="flag-item warning">
-                                            <span>⚠️ Critical Issues: 2</span>
+                                            <span>⚠️ Critical Issues: 1</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1569,17 +1472,42 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>You&#39;re going through a divorce and you&#39;re seeking legal assistance. That&#39;s a very difficult and emotional time. Can you tell me a bit more about your situation? What are the main issues you&#39;re concerned about in your divorce?</div>
+                                    <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
+
+**Client Information:**
+- Name: Jane Doe
+- Contact: Not provided
+
+**Matter Details:**
+- Type: family_law
+- Description: Divorce
+
+
+I&#39;ll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.</div>
                                 </div>
                             
                         </div>
                         
                         
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        <pre>{
+  &quot;name&quot;: &quot;Jane Doe&quot;,
+  &quot;matter_type&quot;: &quot;Family Law&quot;,
+  &quot;description&quot;: &quot;Divorce&quot;
+}</pre>
+                                    </div>
+                                
+                            </div>
+                        
                         
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The AI could improve by providing more accurate legal information and addressing all aspects of the query comprehensively.</p>
+                                <p>The conversation progressed well, but there were some minor issues with context awareness and conversation flow.</p>
                             </div>
                         
                         
@@ -1587,7 +1515,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="issues">
                                     <h4>Critical Issues</h4>
                                     <ul>
-                                        <li>Assumed legal issue type without user confirmation</li><li>Did not collect all required information</li>
+                                        <li>The AI did not collect phone, email, and location information from the user.</li>
                                     </ul>
                                 </div>
                             
@@ -1596,14 +1524,14 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Collect name, phone, email, location, and matter description more efficiently</li><li>Provide clear and accurate legal information</li>
+                                    <li>Collect phone, email, and location information from the user before creating the matter.</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 7116ms | 
-                            Average Score: 5.4/10
+                            Response Time: 2262ms | 
+                            Average Score: 8.1/10
                         </div>
                     </div>
                 </div>
@@ -1664,7 +1592,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 
                                     <div class="score-item">
                                         <div class="score-label">toolUsage</div>
-                                        <div class="score-value">0.0/10</div>
+                                        <div class="score-value">8.0/10</div>
                                     </div>
                                 
                         </div>
@@ -1673,8 +1601,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="flags">
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
-                                        <div class="flag-item warning">
-                                            <span>⚠️ Critical Issues: 1</span>
+                                        <div class="flag-item success">
+                                            <span>✅ No Critical Issues</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1714,7 +1642,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>You&#39;re experiencing an issue related to employment law in California. Can you please tell me more about the situation, such as what&#39;s happening and how it&#39;s affecting you?</div>
+                                    <div>I&#39;m so sorry to hear that you&#39;re dealing with an employment law issue. That can be a really stressful and overwhelming experience. Can you tell me a bit more about what&#39;s going on? What specifically is the issue you&#39;re facing?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -1724,41 +1652,60 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>You&#39;re Bob Wilson, and you believe you were wrongfully terminated. That&#39;s a serious issue. Can you tell me more about your job and what led up to your termination? For example, did you have a specific job title, and were there any conflicts or issues with your employer that might be relevant to your situation?</div>
+                                    <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
+
+**Client Information:**
+- Name: Bob Wilson
+- Contact: Not provided, California
+
+**Matter Details:**
+- Type: employment_law
+- Description: Wrongfully terminated
+
+
+I&#39;ll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.</div>
                                 </div>
                             
                         </div>
                         
                         
-                        
-                        
-                            <div class="feedback">
-                                <h4>Judge Feedback</h4>
-                                <p>The conversation progressed well, but the AI could have asked for more information about the job and employer.</p>
+                            <div class="tool-calls">
+                                <h4>Tool Calls Made</h4>
+                                
+                                    <div class="tool-call">
+                                        <strong>create_matter</strong><br>
+                                        <pre>{
+  &quot;name&quot;: &quot;Bob Wilson&quot;,
+  &quot;matter_type&quot;: &quot;Employment Law&quot;,
+  &quot;description&quot;: &quot;Wrongfully terminated&quot;,
+  &quot;location&quot;: &quot;California&quot;
+}</pre>
+                                    </div>
+                                
                             </div>
                         
                         
                         
-                                <div class="issues">
-                                    <h4>Critical Issues</h4>
-                                    <ul>
-                                        <li>The AI did not ask for the user&#39;s location, which is a required piece of information.</li>
-                                    </ul>
-                                </div>
-                            
+                            <div class="feedback">
+                                <h4>Judge Feedback</h4>
+                                <p>The conversation was helpful, but could be more efficient.</p>
+                            </div>
+                        
+                        
+                        
                         
                         
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Ask for the user&#39;s location and confirm the legal issue type before proceeding.</li>
+                                    <li>Provide more specific guidance on next steps</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 14472ms | 
-                            Average Score: 7.4/10
+                            Response Time: 10310ms | 
+                            Average Score: 8.1/10
                         </div>
                     </div>
                 </div>
@@ -1828,8 +1775,8 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="flags">
                                     <h4>Evaluation Flags</h4>
                                     <div class="flag-grid">
-                                        <div class="flag-item success">
-                                            <span>✅ No Critical Issues</span>
+                                        <div class="flag-item warning">
+                                            <span>⚠️ Critical Issues: 1</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1841,7 +1788,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                 <div class="analysis-grid">
                                     <div class="analysis-item">
                                         <div class="analysis-label">Total Messages</div>
-                                        <div class="analysis-value">8</div>
+                                        <div class="analysis-value">4</div>
                                     </div>
                                     <div class="analysis-item">
                                         <div class="analysis-label">Efficiency</div>
@@ -1869,7 +1816,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 2)</div>
-                                    <div>You&#39;re looking for legal assistance. Can you please tell me a bit more about the issue you&#39;re facing? What kind of legal matter are you dealing with?</div>
+                                    <div>You&#39;re seeking legal assistance. Can you please tell me a bit more about the issue you&#39;re facing? What kind of legal matter are you dealing with?</div>
                                 </div>
                             
                                 <div class="message user">
@@ -1879,35 +1826,15 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                             
                                 <div class="message assistant">
                                     <div class="message-role">assistant (message 4)</div>
-                                    <div>You&#39;ve mentioned your name is Alex Thompson. Now, can you please describe the specific legal issue you&#39;re dealing with? What&#39;s been going on that&#39;s led you to seek legal help?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 5)</div>
-                                    <div>I live in Charlotte, North Carolina.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 6)</div>
-                                    <div>You&#39;re located in Charlotte, North Carolina. That&#39;s helpful to know. Now, can you tell me a bit more about the legal issue you&#39;re facing? What&#39;s been going on that&#39;s causing you concern?</div>
-                                </div>
-                            
-                                <div class="message user">
-                                    <div class="message-role">user (message 7)</div>
-                                    <div>My phone is 704-555-9999 and email is alex.thompson@example.com.</div>
-                                </div>
-                            
-                                <div class="message assistant">
-                                    <div class="message-role">assistant (message 8)</div>
                                     <div>Perfect! I have all the information I need. Here&#39;s a summary of your matter:
 
 **Client Information:**
 - Name: Alex Thompson
-- Contact: 704-555-9999, alex.thompson@example.com, Charlotte, North Carolina
+- Contact: Not provided
 
 **Matter Details:**
-- Type: General Consultation
-- Description: Specific legal issue not mentioned
+- Type: general_consultation
+- Description: Seeking legal assistance, but no specific issue mentioned
 
 
 I&#39;ll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.</div>
@@ -1924,10 +1851,7 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                                         <pre>{
   &quot;name&quot;: &quot;Alex Thompson&quot;,
   &quot;matter_type&quot;: &quot;General Consultation&quot;,
-  &quot;description&quot;: &quot;Specific legal issue not mentioned&quot;,
-  &quot;email&quot;: &quot;alex.thompson@example.com&quot;,
-  &quot;phone&quot;: &quot;704-555-9999&quot;,
-  &quot;location&quot;: &quot;Charlotte, North Carolina&quot;
+  &quot;description&quot;: &quot;Seeking legal assistance, but no specific issue mentioned&quot;
 }</pre>
                                     </div>
                                 
@@ -1937,24 +1861,31 @@ I&#39;ll submit this to our legal team for review. A lawyer will contact you wit
                         
                             <div class="feedback">
                                 <h4>Judge Feedback</h4>
-                                <p>The conversation was mostly efficient, but there were a few instances of repetitive responses.</p>
+                                <p>The conversation progressed well, but there were some minor issues with context awareness and conversation flow.</p>
                             </div>
                         
                         
                         
+                                <div class="issues">
+                                    <h4>Critical Issues</h4>
+                                    <ul>
+                                        <li>The AI did not collect phone, email, and location information from the user.</li>
+                                    </ul>
+                                </div>
+                            
                         
                         
                             <div class="suggestions">
                                 <h4>Suggestions</h4>
                                 <ul>
-                                    <li>Consider providing more specific guidance on next steps and legal matter type.</li>
+                                    <li>Collect phone, email, and location information from the user to improve completeness.</li>
                                 </ul>
                             </div>
                         
                         
                         <div class="timestamp">
-                            Response Time: 20464ms | 
-                            Average Score: 8.3/10
+                            Response Time: 7530ms | 
+                            Average Score: 8.0/10
                         </div>
                     </div>
                 </div>
