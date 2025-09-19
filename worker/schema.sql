@@ -270,6 +270,10 @@ CREATE TABLE IF NOT EXISTS team_api_tokens (
   FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
+-- Index for efficient token hash lookups
+CREATE INDEX IF NOT EXISTS idx_team_api_tokens_token_hash ON team_api_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_team_api_tokens_team_id ON team_api_tokens(team_id);
+
 -- Insert sample lawyers
 INSERT INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES 
 ('lawyer-1', 'test-team', 'Sarah Johnson', 'sarah@testlawfirm.com', '555-0101', '["Family Law", "Divorce", "Child Custody"]', 'attorney', 35000, 'CA123456', 'CA'),

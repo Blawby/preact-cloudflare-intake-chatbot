@@ -1,4 +1,5 @@
 import type { Env } from '../types';
+import { normalizeMatterType } from '../utils/matterTypeNormalizer.js';
 
 export interface DocumentRequirement {
   id: string;
@@ -27,7 +28,7 @@ export class DocumentRequirementService {
    * Get document requirements for a specific matter type
    */
   async getRequirements(matterType: string): Promise<MatterDocumentRequirements> {
-    const normalizedType = matterType.toLowerCase().replace(/\s+/g, '_');
+    const normalizedType = normalizeMatterType(matterType);
     const requirements = this.getTemplateRequirements(normalizedType);
     
     const totalRequired = requirements.filter(req => req.required).length;

@@ -1146,33 +1146,6 @@ describe('LLM Judge Evaluation - Intake Agent Tests', () => {
     }
     const responseText = chunks.join('');
     
-    // Skip the old reader logic
-    const reader = null;
-    const decoder = new TextDecoder();
-    
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.type === 'text') {
-                responseText += data.text;
-              }
-            } catch (e) {
-              // Ignore parsing errors for non-JSON data
-            }
-          }
-        }
-      }
-    }
-    
     // Verify intake agent response characteristics (not paralegal)
     // Intake agent should ask for name/info, not give action steps
     expect(responseText).not.toContain('immediate action steps');

@@ -1,9 +1,55 @@
 // Hybrid PromptBuilder - uses regex + LLM extraction with conflict detection
 // No more manual pattern building for every case!
 
+import { Logger } from './logger.js';
+
 export interface CloudflareLocationInfo {
   isValid: boolean;
   // Add other properties as needed
+}
+
+/**
+ * Sanitizes PII from data objects for safe logging
+ */
+function maskSensitive(data: any): any {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+  
+  const sanitized = { ...data };
+  
+  // Mask email addresses
+  if (sanitized.email) {
+    const email = sanitized.email.toString();
+    const [localPart, domain] = email.split('@');
+    if (localPart && domain) {
+      const maskedLocal = localPart.length > 2 
+        ? localPart.substring(0, 2) + '****' 
+        : '****';
+      sanitized.email = `${maskedLocal}@${domain}`;
+    } else {
+      sanitized.email = '****@****';
+    }
+  }
+  
+  // Mask phone numbers
+  if (sanitized.phone) {
+    const phone = sanitized.phone.toString();
+    if (phone.length > 4) {
+      sanitized.phone = '****' + phone.slice(-4);
+    } else {
+      sanitized.phone = '****';
+    }
+  }
+  
+  // Recursively sanitize nested objects
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      sanitized[key] = maskSensitive(value);
+    }
+  }
+  
+  return sanitized;
 }
 
 export class PromptBuilder {
@@ -165,11 +211,24 @@ JSON:`;
     };
 
     if (conflicts.email || conflicts.phone) {
-      console.warn('🔍 Extraction conflicts detected:', {
-        conflicts,
-        regex: regexData,
-        llm: llmData
-      });
+      // Check if PII logging is enabled (for debugging only)
+      const logPII = typeof process !== 'undefined' && process.env?.LOG_PII === 'true';
+      
+      if (logPII) {
+        // Full detail logging with PII (development/debugging only)
+        Logger.warn('🔍 Extraction conflicts detected:', {
+          conflicts,
+          regex: regexData,
+          llm: llmData
+        });
+      } else {
+        // Production-safe logging with sanitized PII
+        Logger.warn('🔍 Extraction conflicts detected:', {
+          conflicts,
+          regex: maskSensitive(regexData),
+          llm: maskSensitive(llmData)
+        });
+      }
     }
 
     return {

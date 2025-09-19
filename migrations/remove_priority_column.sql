@@ -2,7 +2,7 @@
 -- This migration removes the priority column that was previously used to categorize matter urgency
 -- This migration is idempotent and safe to run even if the priority column doesn't exist
 
-PRAGMA foreign_keys = ON;
+PRAGMA foreign_keys = OFF;
 BEGIN TRANSACTION;
 
 -- Create a new table without the priority column, using the correct schema from schema.sql
@@ -57,6 +57,9 @@ DROP TABLE matters;
 -- Rename the new table to the original name
 ALTER TABLE matters_new RENAME TO matters;
 
+-- Check for foreign key violations before re-enabling foreign keys
+PRAGMA foreign_key_check;
+
 -- Recreate any indexes that might have existed on the original table
 CREATE INDEX IF NOT EXISTS idx_matters_team_id ON matters(team_id);
 CREATE INDEX IF NOT EXISTS idx_matters_status ON matters(status);
@@ -65,4 +68,6 @@ CREATE INDEX IF NOT EXISTS idx_matters_created_at ON matters(created_at);
 CREATE INDEX IF NOT EXISTS idx_matters_matter_type ON matters(matter_type);
 CREATE INDEX IF NOT EXISTS idx_matters_client_name ON matters(client_name);
 
+-- Re-enable foreign keys and commit
+PRAGMA foreign_keys = ON;
 COMMIT;

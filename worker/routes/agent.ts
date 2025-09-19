@@ -36,11 +36,15 @@ function sanitizeTeamConfig(config: any): any {
 // Helper function to safely log errors without exposing PII
 function safeLogError(message: string, error: any): void {
   if (error instanceof Error) {
+    // Worker-safe environment check - avoid process.env which throws in Workers
+    const isProduction = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') ||
+                        (typeof globalThis !== 'undefined' && globalThis.NODE_ENV === 'production');
+    
     Logger.error(message, {
       name: error.name,
       message: error.message,
       // Don't log stack traces in production
-      ...(process.env.NODE_ENV !== 'production' && { stack: error.stack })
+      ...(!isProduction && { stack: error.stack })
     });
   } else {
     Logger.error(message, typeof error === 'string' ? error : 'Unknown error');

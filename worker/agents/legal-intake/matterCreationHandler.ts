@@ -3,6 +3,7 @@ import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
+import { normalizeMatterType } from '../../utils/matterTypeNormalizer.js';
 import type { Env, Team } from '../../types.js';
 
 // Interface for matter creation parameters
@@ -37,7 +38,10 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
     return createValidationError("Invalid matter creation parameters provided.");
   }
 
-  const { matter_type, description, name, phone, email, location, opposing_party } = parameters;
+  const { matter_type: rawMatterType, description, name, phone, email, location, opposing_party } = parameters;
+  
+  // Normalize matter type to canonical format
+  const matter_type = normalizeMatterType(rawMatterType);
 
   
   // Check for placeholder values and reject them (but don't block if contact info is missing)
@@ -90,20 +94,21 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
     const phoneValidation = ValidationService.validatePhone(phone);
     if (!phoneValidation.isValid) {
       // Don't block the conversation for invalid phone - just note it
-      console.warn(`Invalid phone number provided: ${phone} - ${phoneValidation.error}`);
+      const maskedPhone = phone.length > 4 ? phone.slice(-4).padStart(phone.length, '*') : '****';
+      Logger.warn(`Invalid phone number provided (masked: ${maskedPhone}) - ${phoneValidation.error}`);
       // Continue with the conversation instead of blocking
     }
   }
   
   // Validate location if provided
   if (location && !ValidationService.validateLocation(location)) {
-    console.warn(`Location validation failed for: ${location} - proceeding anyway`);
+    Logger.warn(`Location validation failed for provided location - proceeding anyway`);
     // Don't block matter creation for location validation issues
   }
   
   // Don't require contact info - just note if missing
   if (!phone && !email) {
-    console.warn(`No contact method provided for ${name} - proceeding with name only`);
+    Logger.warn(`No contact method provided for client - proceeding with name only`);
   }
   
   // Process payment using the PaymentServiceFactory (only if required)
@@ -114,38 +119,53 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
   let paymentId = null;
   
   if (requiresPayment && consultationFee > 0) {
-    const paymentRequest = {
-      customerInfo: {
-        name: name,
-        email: email || '',
-        phone: phone || '',
-        location: location || ''
-      },
-      matterInfo: {
-        type: matter_type,
-        description: description,
-        opposingParty: opposing_party || ''
-      },
-      teamId: (() => {
-        if (teamConfig?.id) {
-          return teamConfig.id;
-        }
-        if (env.BLAWBY_TEAM_ULID) {
-          console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
-          return env.BLAWBY_TEAM_ULID;
-        }
-        console.error('❌ CRITICAL: No team ID available for payment processing');
-        console.error('   - teamConfig?.id:', teamConfig?.id);
-        console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
-        console.error('   - Team configuration should be set in database for team:', teamConfig?.name || 'unknown');
-        throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
-      })(),
-      sessionId: 'session-' + Date.now()
-    };
-    
-    const paymentResult = await PaymentServiceFactory.processPayment(env, paymentRequest, teamConfig);
-    invoiceUrl = paymentResult.invoiceUrl;
-    paymentId = paymentResult.paymentId;
+    // Check if we have email for payment processing
+    if (!email) {
+      // Use fallback payment link when email is not provided
+      invoiceUrl = teamConfig?.config?.paymentLink || env.BLAWBY_TEAM_PAYMENT_LINK;
+      paymentId = null; // No payment ID for fallback links
+      
+      if (invoiceUrl) {
+        Logger.warn('Using fallback payment link due to missing customer email');
+      } else {
+        Logger.error('No payment link available - team payment link and environment fallback both missing');
+        return createValidationError("Payment processing is required but no payment method is configured. Please contact support.");
+      }
+    } else {
+      // Proceed with normal payment processing when email is available
+      const paymentRequest = {
+        customerInfo: {
+          name: name,
+          email: email || '',
+          phone: phone || '',
+          location: location || ''
+        },
+        matterInfo: {
+          type: matter_type,
+          description: description,
+          opposingParty: opposing_party || ''
+        },
+        teamId: (() => {
+          if (teamConfig?.id) {
+            return teamConfig.id;
+          }
+          if (env.BLAWBY_TEAM_ULID) {
+            console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
+            return env.BLAWBY_TEAM_ULID;
+          }
+          console.error('❌ CRITICAL: No team ID available for payment processing');
+          console.error('   - teamConfig?.id:', teamConfig?.id);
+          console.error('   - env.BLAWBY_TEAM_ULID:', env.BLAWBY_TEAM_ULID);
+          console.error('   - Team configuration should be set in database for team:', teamConfig?.name || 'unknown');
+          throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
+        })(),
+        sessionId: 'session-' + Date.now()
+      };
+      
+      const paymentResult = await PaymentServiceFactory.processPayment(env, paymentRequest, teamConfig);
+      invoiceUrl = paymentResult.invoiceUrl;
+      paymentId = paymentResult.paymentId;
+    }
   } else {
     console.log('💰 Payment not required - skipping payment processing');
   }
@@ -171,13 +191,23 @@ export async function handleCreateMatter(parameters: MatterParameters, env: Env,
 `;
 
   if (requiresPayment && consultationFee > 0) {
-    if (invoiceUrl) {
+    if (invoiceUrl && paymentId) {
       summaryMessage += `
 
 Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
 
 **Next Steps:**
 1. Please complete the payment using the embedded payment form below
+2. Once payment is confirmed, a lawyer will contact you within 24 hours
+
+Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
+    } else if (invoiceUrl) {
+      summaryMessage += `
+
+Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
+
+**Next Steps:**
+1. Please complete the payment using this link: ${invoiceUrl}
 2. Once payment is confirmed, a lawyer will contact you within 24 hours
 
 Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
@@ -209,7 +239,7 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
     requires_payment: requiresPayment,
     consultation_fee: consultationFee,
     payment_link: invoiceUrl || teamConfig?.config?.paymentLink,
-    payment_embed: invoiceUrl ? {
+    payment_embed: (invoiceUrl && paymentId) ? {
       paymentUrl: invoiceUrl,
       amount: consultationFee,
       description: `${matter_type}: ${description}`,

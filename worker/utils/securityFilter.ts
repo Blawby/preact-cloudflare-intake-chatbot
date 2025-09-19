@@ -1,5 +1,6 @@
 import { extractLocationFromText, isLocationSupported } from './locationValidator.js';
 import { CloudflareLocationInfo, isCloudflareLocationSupported } from './cloudflareLocationValidator.js';
+import { normalizeMatterTypes, normalizeMatterType } from './matterTypeNormalizer.js';
 
 export class SecurityFilter {
   // Core legal intake activities (always allowed)
@@ -121,6 +122,9 @@ export class SecurityFilter {
       availableServices = Object.values(availableServices);
     }
     
+    // Normalize available services to canonical format for comparison
+    const normalizedAvailableServices = normalizeMatterTypes(availableServices);
+    
     // Extract legal matter type from content
     const legalMatterType = this.extractLegalMatterType(content);
     
@@ -130,7 +134,7 @@ export class SecurityFilter {
     }
     
     // If the team offers General Consultation, allow most legal questions
-    if (availableServices.includes('General Consultation')) {
+    if (normalizedAvailableServices.includes('general_consultation')) {
       return null; // Allow general consultation to handle the request
     }
     
@@ -146,7 +150,7 @@ export class SecurityFilter {
     
     // Only validate if we found a specific legal matter type AND team doesn't offer that specific service
     // AND team doesn't offer General Consultation
-    if (legalMatterType && !availableServices.includes(legalMatterType) && !availableServices.includes('General Consultation')) {
+    if (legalMatterType && !normalizedAvailableServices.includes(legalMatterType) && !normalizedAvailableServices.includes('general_consultation')) {
       return 'service_not_offered';
     }
     
@@ -207,7 +211,7 @@ export class SecurityFilter {
       'Personal Injury': /(accident|injury|personal injury|damage|liability|negligence)/i,
       'Criminal Law': /(criminal|arrest|charges|trial|violation|felony|misdemeanor)/i,
       'Civil Law': /(civil|dispute|contract|property|tort)/i,
-      'Tenant Rights Law': /(tenant|landlord|rental|eviction|housing|lease)/i,
+      'Landlord/Tenant': /(tenant|landlord|rental|eviction|housing|lease)/i,
       'Probate and Estate Planning': /(estate|probate|inheritance|will|trust|power of attorney)/i,
       'Special Education and IEP Advocacy': /(special education|IEP|disability|accommodation|504 plan)/i,
       'Small Business and Nonprofits': /(small business|nonprofit|non-profit|entrepreneur|startup)/i,
@@ -217,7 +221,8 @@ export class SecurityFilter {
     
     for (const [matterType, pattern] of Object.entries(legalMatterPatterns)) {
       if (pattern.test(content)) {
-        return matterType;
+        // Normalize the extracted matter type to canonical format
+        return normalizeMatterType(matterType);
       }
     }
     

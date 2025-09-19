@@ -88,6 +88,9 @@ export class ConversationStateMachine {
   static async getCurrentState(conversationText: string, env?: any): Promise<ConversationState> {
     const context = await PromptBuilder.extractConversationInfo(conversationText, env);
     
+    // Add state field to context to satisfy ConversationContext interface
+    context.state = ConversationState.UNKNOWN;
+    
     // Check for general inquiries first
     if (await this.isGeneralInquiry(conversationText, env)) {
       return ConversationState.GENERAL_INQUIRY;

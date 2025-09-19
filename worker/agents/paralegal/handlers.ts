@@ -73,48 +73,68 @@ export class ParalegalHandlers {
   }
 
   /**
-   * Authenticates using API key
+   * Authenticates using API key with single DB lookup by token hash
    */
   private async authenticateApiKey(apiKey: string): Promise<AuthResult> {
     try {
-      const teamService = new TeamService(this.env);
+      // Hash the provided API key using the same algorithm as stored tokens
+      const tokenHash = await this.hashApiKey(apiKey);
       
-      // Try to find team by API key
-      const teams = await teamService.listTeams();
-      for (const team of teams) {
-        if (team.config.blawbyApi?.enabled) {
-          const isValid = await teamService.validateApiKey(team.id, apiKey);
-          if (isValid) {
-            return {
-              isAuthenticated: true,
-              teamId: team.id,
-              permissions: ['api_access']
-            };
-          }
-        }
+      // Single DB lookup by token hash
+      const tokenResult = await this.env.DB.prepare(`
+        SELECT tat.team_id, tat.permissions, tat.active, tat.expires_at, t.config
+        FROM team_api_tokens tat
+        JOIN teams t ON tat.team_id = t.id
+        WHERE tat.token_hash = ? AND tat.active = TRUE
+      `).bind(tokenHash).first();
+      
+      if (!tokenResult) {
+        return {
+          isAuthenticated: false,
+          error: 'Invalid API key'
+        };
       }
       
+      const token = tokenResult as any;
+      
+      // Check if token is expired
+      if (token.expires_at && new Date(token.expires_at) < new Date()) {
+        return {
+          isAuthenticated: false,
+          error: 'API key has expired'
+        };
+      }
+      
+      // Check if team has API access enabled
+      const teamConfig = JSON.parse(token.config || '{}');
+      if (!teamConfig.blawbyApi?.enabled) {
+        return {
+          isAuthenticated: false,
+          error: 'API access not enabled for this team'
+        };
+      }
+      
+      // Update last used timestamp
+      await this.env.DB.prepare(`
+        UPDATE team_api_tokens 
+        SET last_used_at = datetime('now')
+        WHERE token_hash = ?
+      `).bind(tokenHash).run();
+      
+      // Parse permissions
+      const permissions = JSON.parse(token.permissions || '["api_access"]');
+      
       return {
-        isAuthenticated: false,
-        error: 'Invalid API key'
+        isAuthenticated: true,
+        teamId: token.team_id,
+        permissions: permissions
       };
+      
     } catch (error) {
-      console.error('API key authentication service error:', error);
+      console.error('API key authentication error:', error);
       
       // Provide specific error messages for different failure types
       if (error instanceof Error) {
-        if (error.message.includes('fetch') || error.message.includes('network')) {
-          return {
-            isAuthenticated: false,
-            error: 'Authentication service temporarily unavailable. Please try again later.'
-          };
-        }
-        if (error.message.includes('timeout')) {
-          return {
-            isAuthenticated: false,
-            error: 'Authentication service timeout. Please try again.'
-          };
-        }
         if (error.message.includes('database') || error.message.includes('DB')) {
           return {
             isAuthenticated: false,
@@ -128,6 +148,19 @@ export class ParalegalHandlers {
         error: 'Authentication service error. Please contact support if this persists.'
       };
     }
+  }
+  
+  /**
+   * Hashes an API key using the same algorithm as stored tokens
+   */
+  private async hashApiKey(apiKey: string): Promise<string> {
+    // Use Web Crypto API to create SHA-256 hash
+    const encoder = new TextEncoder();
+    const data = encoder.encode(apiKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
   }
 
   /**

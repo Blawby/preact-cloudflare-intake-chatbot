@@ -1,4 +1,5 @@
 // Tool definitions with structured schemas
+import { getAvailableMatterTypeLabels } from '../../utils/matterTypeNormalizer.js';
 export const collectContactInfo = {
   name: 'collect_contact_info',
   description: 'Collect and validate client contact information including location for jurisdiction verification',
@@ -47,7 +48,7 @@ export const createMatter = {
       matter_type: { 
         type: 'string', 
         description: 'Type of legal matter',
-        enum: ['Family Law', 'Employment Law', 'Landlord/Tenant', 'Personal Injury', 'Business Law', 'Criminal Law', 'Civil Law', 'Contract Review', 'Property Law', 'Administrative Law', 'General Consultation']
+        enum: getAvailableMatterTypeLabels()
       },
       description: { type: 'string', description: 'Brief description of the legal issue' },
       name: { type: 'string', description: 'Client full name' },
