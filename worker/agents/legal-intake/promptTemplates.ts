@@ -9,38 +9,26 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
     return null;
   }
 
+  // HTML entity mapping for safe character replacement
+  const htmlEntityMap: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '`': '&#96;',
+    '\\': '&#92;'
+  };
+
   // Remove or escape potentially dangerous characters
   let sanitized = input
     // Remove null bytes and control characters (except newlines, tabs, carriage returns)
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu, '')
-    // Escape backticks to prevent code injection
-    .replace(/`/g, '\\`')
-    // Escape backslashes to prevent escape sequence injection
-    .replace(/\\/g, '\\\\')
     // Remove potential prompt injection patterns (targeted approach)
     .replace(/^(?:\s*)(?:system|user|assistant|prompt|instruct)\s*[:\-\|]/gim, '') // Role labels with separators
     .replace(/^(?:\s*)(?:ignore\s+previous|forget\s+all|reset\s+instructions?)/gim, '') // Malicious phrases
-    // Remove potential command injection patterns
-    .replace(/[<>{}[\]|&$;`'"\\]/g, (match) => {
-      // Replace with safe alternatives or remove entirely
-      const safeChars: Record<string, string> = {
-        '<': '&lt;',
-        '>': '&gt;',
-        '{': '&#123;',
-        '}': '&#125;',
-        '[': '&#91;',
-        ']': '&#93;',
-        '|': '&#124;',
-        '&': '&amp;',
-        '$': '&#36;',
-        ';': '&#59;',
-        '`': '&#96;',
-        "'": '&#39;',
-        '"': '&quot;',
-        '\\': '&#92;'
-      };
-      return safeChars[match] || '';
-    })
+    // Replace special characters with HTML entities using single regex with proper character class
+    .replace(/[&<>"'`\\]/g, (match) => htmlEntityMap[match] || match)
     // Trim whitespace
     .trim();
 

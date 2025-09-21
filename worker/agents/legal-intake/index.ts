@@ -410,17 +410,19 @@ export async function runLegalIntakeAgentStream(
 
   // Check if we've already completed a matter creation in this conversation
   // For multi-turn conversations, preserve role information for better context
-  const conversationText = formattedMessages
+  const conversationTextRaw = formattedMessages
     .map(msg => `${msg.role}: ${msg.content}`)
-    .join('\n')
-    .toLowerCase();
+    .join('\n');
+  
+  // Create normalized version for keyword detection only
+  const conversationTextNormalized = conversationTextRaw.toLowerCase();
   
   // Check for completion cues in conversation text or last assistant message
-  const hasCompletionCues = conversationText.includes('matter created') ||
-                            conversationText.includes('consultation fee') ||
-                            conversationText.includes('lawyer will contact you') ||
-                            conversationText.includes('already helped you create a matter') ||
-                            conversationText.includes('conversation is complete');
+  const hasCompletionCues = conversationTextNormalized.includes('matter created') ||
+                            conversationTextNormalized.includes('consultation fee') ||
+                            conversationTextNormalized.includes('lawyer will contact you') ||
+                            conversationTextNormalized.includes('already helped you create a matter') ||
+                            conversationTextNormalized.includes('conversation is complete');
   
   // Check for actual tool invocations in message history
   const hasToolInvocation = messages.some(msg => 
@@ -461,20 +463,20 @@ export async function runLegalIntakeAgentStream(
 
   // Process business logic
   // Sanitize conversation text for logging to avoid PII exposure
-  const sanitizedConversationText = conversationText.length > 200 
-    ? conversationText.substring(0, 200) + '...' 
-    : conversationText;
+  const sanitizedConversationText = conversationTextRaw.length > 200 
+    ? conversationTextRaw.substring(0, 200) + '...' 
+    : conversationTextRaw;
   Logger.debug('🔍 Conversation Text for Extraction:', { 
     conversationText: sanitizedConversationText,
-    originalLength: conversationText.length,
+    originalLength: conversationTextRaw.length,
     correlationId
   });
-  const businessResult = await BusinessLogicHandler.handleConversation(conversationText, env, teamConfig);
+  const businessResult = await BusinessLogicHandler.handleConversation(conversationTextRaw, env, teamConfig);
   
   // Build system prompt for AI when it should be used
   let context: ConversationContext;
   try {
-    context = await PromptBuilder.extractConversationInfo(conversationText, env);
+    context = await PromptBuilder.extractConversationInfo(conversationTextRaw, env);
   } catch (error) {
     // For short conversations or extraction failures, create a minimal context
     Logger.debug('🔍 AI context extraction failed, using minimal context:', error);

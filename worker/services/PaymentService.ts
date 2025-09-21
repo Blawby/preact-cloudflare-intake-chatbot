@@ -196,24 +196,36 @@ export class PaymentService {
       
       const customerResult = await withRetry(
         async () => {
-          const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiToken}`,
-              'Accept': 'application/json',
-              'User-Agent': 'Blawby-Legal-Intake/1.0',
-              'Idempotency-Key': idempotencyKey
-            },
-            body: JSON.stringify(customerData)
-          });
+          // Create new AbortController for this attempt
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
+          try {
+            const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiToken}`,
+                'Accept': 'application/json',
+                'User-Agent': 'Blawby-Legal-Intake/1.0',
+                'Idempotency-Key': idempotencyKey
+              },
+              body: JSON.stringify(customerData),
+              signal: controller.signal
+            });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Customer creation failed: ${response.status} - ${errorText}`);
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Customer creation failed: ${response.status} - ${errorText}`);
+            }
+
+            return await response.json() as CustomerCreateResponse;
+          } catch (error) {
+            clearTimeout(timeoutId);
+            throw error; // Re-throw to let withRetry handle it
           }
-
-          return await response.json() as CustomerCreateResponse;
         },
         {
           attempts: 3,
@@ -266,21 +278,33 @@ export class PaymentService {
     try {
       await withRetry(
         async () => {
-          const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer/${customerId}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${apiToken}`,
-              'Accept': 'application/json',
-              'User-Agent': 'Blawby-Legal-Intake/1.0'
+          // Create new AbortController for this attempt
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
+          try {
+            const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer/${customerId}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${apiToken}`,
+                'Accept': 'application/json',
+                'User-Agent': 'Blawby-Legal-Intake/1.0'
+              },
+              signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Customer deletion failed: ${response.status} - ${errorText}`);
             }
-          });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Customer deletion failed: ${response.status} - ${errorText}`);
+            return await response.json();
+          } catch (error) {
+            clearTimeout(timeoutId);
+            throw error; // Re-throw to let withRetry handle it
           }
-
-          return await response.json();
         },
         {
           attempts: 3,
@@ -370,24 +394,36 @@ export class PaymentService {
       
       const invoiceResult = await withRetry(
         async () => {
-          const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiToken}`,
-              'Accept': 'application/json',
-              'User-Agent': 'Blawby-Legal-Intake/1.0',
-              'Idempotency-Key': key
-            },
-            body: JSON.stringify(invoiceData)
-          });
+          // Create new AbortController for this attempt
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
+          try {
+            const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiToken}`,
+                'Accept': 'application/json',
+                'User-Agent': 'Blawby-Legal-Intake/1.0',
+                'Idempotency-Key': key
+              },
+              body: JSON.stringify(invoiceData),
+              signal: controller.signal
+            });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Invoice creation failed: ${response.status} - ${errorText}`);
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Invoice creation failed: ${response.status} - ${errorText}`);
+            }
+
+            return await response.json() as InvoiceCreateResponse;
+          } catch (error) {
+            clearTimeout(timeoutId);
+            throw error; // Re-throw to let withRetry handle it
           }
-
-          return await response.json() as InvoiceCreateResponse;
         },
         {
           attempts: 3,
