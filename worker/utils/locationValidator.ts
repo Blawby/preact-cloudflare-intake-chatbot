@@ -316,6 +316,18 @@ export function validateLocation(location: string): LocationInfo {
   }
   // If not a single state/country, check each part
   else {
+    // First, check for multi-word state names within the full location string
+    // This runs once outside the per-part loop to avoid repetition and partial matches
+    for (const [stateName, stateCode] of Object.entries(STATE_NAMES_TO_CODES)) {
+      // Use word boundary regex to prevent partial matches like "new" matching "New York"
+      const wordBoundaryRegex = new RegExp(`\\b${stateName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (wordBoundaryRegex.test(lowerLocationFull)) {
+        state = stateCode;
+        foundValidLocation = true;
+        break; // Exit the multi-word state detection loop
+      }
+    }
+    
     // Check each part for state, country, or city
     for (const part of parts) {
       const cleanPart = part.trim().toLowerCase();
@@ -332,16 +344,6 @@ export function validateLocation(location: string): LocationInfo {
         state = STATE_NAMES_TO_CODES[cleanPart];
         foundValidLocation = true;
         continue;
-      }
-      
-      // Check for multi-word state names within the full location string
-      const lowerLocation = trimmed.toLowerCase();
-      for (const [stateName, stateCode] of Object.entries(STATE_NAMES_TO_CODES)) {
-        if (lowerLocation.includes(stateName)) {
-          state = stateCode;
-          foundValidLocation = true;
-          break;
-        }
       }
       
       // Check if it's a country code

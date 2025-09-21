@@ -2,12 +2,138 @@ import { isLocationSupported } from '../utils/locationValidator.js';
 import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.js';
 import { ValidationService } from '../services/ValidationService.js';
 import { TeamService } from '../services/TeamService.js';
-import { PaymentServiceFactory } from '../services/PaymentServiceFactory.js';
+import { PaymentServiceFactory, type PaymentResult } from '../services/PaymentServiceFactory.js';
 import { createValidationError, createSuccessResponse } from '../utils/responseUtils.js';
 import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
 import { PromptBuilder } from '../utils/promptBuilder.js';
 import { Logger } from '../utils/logger.js';
 import { ToolCallParser } from '../utils/toolCallParser.js';
+import { withRetry } from '../utils/retry.js';
+import type { Env, ChatMessage } from '../types.js';
+
+// File attachment interface for the agent
+export interface FileAttachment {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly size: number;
+  readonly url: string;
+}
+
+// Agent message interface that extends ChatMessage with isUser property
+export interface AgentMessage {
+  readonly id?: string;
+  readonly role?: 'user' | 'assistant' | 'system';
+  readonly content: string;
+  readonly isUser?: boolean;
+  readonly timestamp?: number;
+  readonly metadata?: Record<string, any>;
+}
+
+// Agent response interface
+export interface AgentResponse {
+  readonly response: string;
+  readonly metadata: {
+    readonly conversationComplete?: boolean;
+    readonly inputMessageCount: number;
+    readonly lastUserMessage: string | null;
+    readonly sessionId?: string;
+    readonly teamId?: string;
+    readonly error?: string;
+    readonly toolName?: string;
+    readonly toolResult?: unknown;
+    readonly allowRetry?: boolean;
+    readonly rawParameters?: unknown;
+  };
+}
+
+// Contact form field interface
+export interface ContactFormField {
+  readonly required: boolean;
+  readonly label: string;
+}
+
+// Contact form fields interface
+export interface ContactFormFields {
+  readonly name: ContactFormField;
+  readonly email: ContactFormField;
+  readonly phone: ContactFormField;
+  readonly location: ContactFormField;
+  readonly opposing_party: ContactFormField;
+  readonly message: ContactFormField;
+}
+
+// Contact form data interface
+export interface ContactFormData {
+  readonly reason: string;
+  readonly fields: ContactFormFields;
+  readonly submitText: string;
+}
+
+// Contact form response interface
+export interface ContactFormResponse {
+  readonly success: boolean;
+  readonly action: string;
+  readonly message: string;
+  readonly contactForm: ContactFormData;
+}
+
+// Payment invoice request parameters interface
+export interface PaymentInvoiceParameters {
+  readonly customer_name: string;
+  readonly customer_email: string;
+  readonly customer_phone: string;
+  readonly matter_type: string;
+  readonly matter_description: string;
+  readonly amount: number;
+  readonly service_type: 'consultation' | 'document_review' | 'legal_advice' | 'case_preparation';
+}
+
+// Team configuration interface
+export interface TeamConfig {
+  readonly id: string;
+  readonly config?: {
+    readonly requiresPayment?: boolean;
+    readonly consultationFee?: number;
+    readonly paymentLink?: string;
+    readonly blawbyApi?: {
+      readonly enabled: boolean;
+    };
+  };
+}
+
+// Payment invoice response interface
+export interface PaymentInvoiceResponse {
+  readonly success: boolean;
+  readonly action?: string;
+  readonly message?: string;
+  readonly payment?: {
+    readonly invoiceUrl: string;
+    readonly paymentId: string;
+    readonly amount: number;
+    readonly serviceType: string;
+  };
+  readonly error?: string;
+  readonly errorDetails?: {
+    readonly code?: string;
+    readonly message: string;
+    readonly retryable?: boolean;
+    readonly timestamp: string;
+  };
+}
+
+// Error payload interface for detailed error information
+export interface ErrorPayload {
+  readonly success: false;
+  readonly error: string;
+  readonly errorDetails: {
+    readonly code?: string;
+    readonly message: string;
+    readonly retryable?: boolean;
+    readonly timestamp: string;
+    readonly originalError?: string;
+  };
+}
 
 /**
  * Redacts sensitive information from tool parameters for safe logging
@@ -209,7 +335,7 @@ export const createPaymentInvoice = {
 };
 
 // Contact form request handler
-async function handleRequestContactForm(parameters: any, env: any, teamConfig?: any): Promise<any> {
+async function handleRequestContactForm(parameters: any, env: any, teamConfig?: any): Promise<ContactFormResponse> {
   const { reason } = parameters;
   
   return {
@@ -231,8 +357,12 @@ async function handleRequestContactForm(parameters: any, env: any, teamConfig?: 
   };
 }
 
-// Payment invoice handler
-async function handleCreatePaymentInvoice(parameters: any, env: any, teamConfig?: any): Promise<any> {
+// Payment invoice handler with proper TypeScript types and dependency injection
+async function handleCreatePaymentInvoice(
+  parameters: PaymentInvoiceParameters, 
+  env: Env, 
+  teamConfig?: TeamConfig
+): Promise<PaymentInvoiceResponse | ErrorPayload> {
   const { 
     customer_name, 
     customer_email, 
@@ -244,32 +374,29 @@ async function handleCreatePaymentInvoice(parameters: any, env: any, teamConfig?
   } = parameters;
 
   try {
-    // Create payment request
+    // Create payment service using dependency injection
+    const paymentService = PaymentServiceFactory.createPaymentService(env);
+    
+    // Create payment request with proper typing
     const paymentRequest = {
       customerInfo: {
         name: customer_name,
         email: customer_email,
-        phone: customer_phone
+        phone: customer_phone,
+        location: '' // Default empty location as required by PaymentRequest interface
       },
       matterInfo: {
         type: matter_type,
-        description: matter_description
+        description: matter_description,
+        urgency: 'normal', // Default urgency as required by PaymentRequest interface
+        opposingParty: '' // Default empty opposing party
       },
-      amount: amount,
-      serviceType: service_type,
-      teamId: teamConfig?.id || 'default'
+      teamId: teamConfig?.id || 'default',
+      sessionId: 'payment-session' // Default session ID
     };
 
-    // Call payment service
-    const response = await fetch(`${env.BLAWBY_API_URL || 'http://localhost:8787'}/api/payment/create-invoice`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(paymentRequest)
-    });
-
-    const result = await response.json();
+    // Call payment service with retry logic (handled internally)
+    const result = await paymentService.createInvoice(paymentRequest);
 
     if (result.success) {
       return {
@@ -277,22 +404,41 @@ async function handleCreatePaymentInvoice(parameters: any, env: any, teamConfig?
         action: 'show_payment',
         message: `I've created a payment invoice for your ${service_type.replace('_', ' ')}. Please complete the payment to proceed.`,
         payment: {
-          invoiceUrl: result.invoiceUrl,
-          paymentId: result.paymentId,
+          invoiceUrl: result.invoiceUrl!,
+          paymentId: result.paymentId!,
           amount: amount,
           serviceType: service_type
         }
       };
     } else {
+      // Return detailed error information for debugging
       return {
         success: false,
-        error: result.error || 'Failed to create payment invoice'
+        error: result.error || 'Failed to create payment invoice',
+        errorDetails: {
+          code: 'PAYMENT_SERVICE_ERROR',
+          message: result.error || 'Failed to create payment invoice',
+          retryable: true, // Payment service errors are generally retryable
+          timestamp: new Date().toISOString(),
+          originalError: result.error
+        }
       };
     }
   } catch (error) {
+    // Log detailed error information
+    Logger.error('❌ Payment invoice creation failed:', error);
+    
+    // Return detailed error payload for debugging
     return {
       success: false,
-      error: 'Payment service unavailable. Please try again later.'
+      error: 'Payment service unavailable. Please try again later.',
+      errorDetails: {
+        code: 'PAYMENT_SERVICE_EXCEPTION',
+        message: 'Payment service threw an exception during invoice creation',
+        retryable: true,
+        timestamp: new Date().toISOString(),
+        originalError: error instanceof Error ? error.message : String(error)
+      }
     };
   }
 }
@@ -308,14 +454,14 @@ export const TOOL_HANDLERS = {
 
 // Unified legal intake agent that handles both streaming and non-streaming responses
 export async function runLegalIntakeAgentStream(
-  env: any, 
-  messages: any[], 
+  env: Env, 
+  messages: readonly AgentMessage[], 
   teamId?: string, 
   sessionId?: string,
   cloudflareLocation?: CloudflareLocationInfo,
-  controller?: ReadableStreamDefaultController,
-  attachments: any[] = []
-) {
+  controller?: ReadableStreamDefaultController<Uint8Array>,
+  attachments: readonly FileAttachment[] = []
+): Promise<AgentResponse | void> {
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
@@ -378,7 +524,7 @@ export async function runLegalIntakeAgentStream(
   }
 
   // Build system prompt using the new PromptBuilder
-  const systemPrompt = PromptBuilder.buildSystemPrompt(cloudflareLocation, attachments, conversationText);
+  const systemPrompt = PromptBuilder.buildSystemPrompt(cloudflareLocation, [...attachments], conversationText);
 
   // Hoist tool parsing variables to function scope
   let toolName: string | null = null;
@@ -471,7 +617,12 @@ export async function runLegalIntakeAgentStream(
       }
       return {
         response: 'I encountered an error processing your request. Please try rephrasing your request.',
-        metadata: { error: parseResult.error, rawParameters: parseResult.rawParameters }
+        metadata: { 
+          error: parseResult.error, 
+          rawParameters: parseResult.rawParameters,
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+        }
       };
     }
     
@@ -501,7 +652,11 @@ export async function runLegalIntakeAgentStream(
         }
         return {
           response: `I'm sorry, but I don't know how to handle that type of request.`,
-          metadata: { error: `Unknown tool: ${toolName}` }
+          metadata: { 
+            error: `Unknown tool: ${toolName}`,
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+          }
         };
       }
       
@@ -521,7 +676,11 @@ export async function runLegalIntakeAgentStream(
         }
         return {
           response: 'I encountered an error while processing your request. Please try again.',
-          metadata: { error: error instanceof Error ? error.message : String(error) }
+          metadata: { 
+            error: error instanceof Error ? error.message : String(error),
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+          }
         };
       }
       

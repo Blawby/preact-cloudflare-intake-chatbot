@@ -1,3 +1,7 @@
+import type { Env } from '../types.js';
+import { Logger } from './logger.js';
+import type { ConversationContext } from '../agents/legal-intake/conversationStateMachine.js';
+
 // Matter type classification constant
 const MATTER_TYPE_CLASSIFICATION = `- MATTER TYPE CLASSIFICATION:
   * "Family Law" - for divorce, custody, adoption, family disputes
@@ -13,6 +17,8 @@ export interface CloudflareLocationInfo {
   isValid: boolean;
   // Add other properties as needed
 }
+
+
 
 export class PromptBuilder {
   /**
@@ -146,30 +152,38 @@ PARAMETERS: {"customer_name": "John Doe", "customer_email": "john@example.com", 
   }
 
   /**
-   * Extracts conversation information using AI
+   * Creates a safe default ConversationContext object
    */
-  static async extractConversationInfo(conversationText: string, env: any): Promise<any> {
-    if (!conversationText || conversationText.trim().length < 10) {
-      return {
-        hasName: false,
-        hasLegalIssue: false,
-        hasEmail: false,
-        hasPhone: false,
-        hasLocation: false,
-        name: null,
-        legalIssueType: null,
-        description: null,
-        email: null,
-        phone: null,
-        location: null,
-        isSensitiveMatter: false,
-        isGeneralInquiry: true,
-        shouldCreateMatter: false
-      };
-    }
+  private static createDefaultConversationInfo(): ConversationContext {
+    return {
+      hasName: false,
+      hasLegalIssue: false,
+      hasEmail: false,
+      hasPhone: false,
+      hasLocation: false,
+      hasOpposingParty: false,
+      name: null,
+      legalIssueType: null,
+      description: null,
+      email: null,
+      phone: null,
+      location: null,
+      opposingParty: null,
+      isSensitiveMatter: false,
+      isGeneralInquiry: true,
+      shouldCreateMatter: false,
+      state: 'GATHERING_INFORMATION' as any // Will be set by caller
+    };
+  }
 
-    try {
-      const extractionPrompt = `Extract the following information from this conversation text. Return ONLY a JSON object with these exact fields:
+  /**
+   * Builds the extraction prompt with secure conversation text handling
+   */
+  private static buildExtractionPrompt(conversationText: string): string {
+    // Securely escape the conversation text to prevent prompt injection
+    const safeConversationText = JSON.stringify(conversationText);
+    
+    return `Extract the following information from this conversation text. Return ONLY a JSON object with these exact fields:
 
 {
   "hasName": boolean,
@@ -177,18 +191,20 @@ PARAMETERS: {"customer_name": "John Doe", "customer_email": "john@example.com", 
   "hasEmail": boolean,
   "hasPhone": boolean,
   "hasLocation": boolean,
+  "hasOpposingParty": boolean,
   "name": string or null,
   "legalIssueType": string or null,
   "description": string or null,
   "email": string or null,
   "phone": string or null,
   "location": string or null,
+  "opposingParty": string or null,
   "isSensitiveMatter": boolean,
   "isGeneralInquiry": boolean,
   "shouldCreateMatter": boolean
 }
 
-Conversation text: "${conversationText}"
+Conversation text: ${safeConversationText}
 
 Rules:
 - hasName: true if a person's name is mentioned
@@ -196,54 +212,117 @@ Rules:
 - hasEmail: true if an email address is provided
 - hasPhone: true if a phone number is provided
 - hasLocation: true if a city/state/location is mentioned
+- hasOpposingParty: true if an opposing party is mentioned
 - name: extract the person's name if mentioned
 - legalIssueType: classify as "Family Law", "Employment Law", "Personal Injury", "Business Law", "Criminal Law", "General Consultation", etc.
 - description: brief description of the legal issue
 - email: extract email if provided
 - phone: extract phone if provided
 - location: extract location if provided
+- opposingParty: extract opposing party name if mentioned
 - isSensitiveMatter: true if it involves criminal, injury, death, emergency, etc.
 - isGeneralInquiry: true if asking about services, pricing, general questions
 - shouldCreateMatter: true if we have enough info to create a legal matter
 
 Return only the JSON object, no other text.`;
+  }
 
-      const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-        messages: [
-          { role: 'system', content: extractionPrompt }
-        ],
-        max_tokens: 500,
-        temperature: 0.1
-      });
+  /**
+   * Calls the AI model with typed parameters
+   */
+  private static async callModel(env: Env, prompt: string): Promise<string> {
+    const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages: [
+        { role: 'system', content: prompt }
+      ],
+      max_tokens: 500,
+      temperature: 0.1
+    });
 
-      const responseText = response.response || '';
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      
-      if (!jsonMatch) {
-        throw new Error('AI response did not contain valid JSON format');
-      }
-      
-      const parsed = JSON.parse(jsonMatch[0]);
-      return parsed;
+    // Handle the response safely - Cloudflare AI returns different types
+    if (response && typeof response === 'object' && 'response' in response) {
+      return (response as any).response || '';
+    }
+    
+    // Fallback for other response types
+    return String(response || '');
+  }
+
+  /**
+   * Parses and validates the AI response against ConversationContext shape
+   */
+  private static parseAndValidateResponse(responseText: string): ConversationContext {
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) {
+      throw new Error('AI response did not contain valid JSON format');
+    }
+    
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
     } catch (error) {
-      console.log('🔍 LLM extraction failed:', error);
-      // Return minimal context on failure
-      return {
-        hasName: false,
-        hasLegalIssue: false,
-        hasEmail: false,
-        hasPhone: false,
-        hasLocation: false,
-        name: null,
-        legalIssueType: null,
-        description: null,
-        email: null,
-        phone: null,
-        location: null,
-        isSensitiveMatter: false,
-        isGeneralInquiry: true,
-        shouldCreateMatter: false
-      };
+      throw new Error(`Failed to parse JSON: ${error}`);
+    }
+
+    // Validate required fields and types
+    const requiredFields: (keyof ConversationContext)[] = [
+      'hasName', 'hasLegalIssue', 'hasEmail', 'hasPhone', 'hasLocation', 'hasOpposingParty',
+      'name', 'legalIssueType', 'description', 'email', 'phone', 'location', 'opposingParty',
+      'isSensitiveMatter', 'isGeneralInquiry', 'shouldCreateMatter'
+    ];
+
+    for (const field of requiredFields) {
+      if (!(field in parsed)) {
+        throw new Error(`Missing required field: ${field}`);
+      }
+    }
+
+    // Validate boolean fields
+    const booleanFields: (keyof ConversationContext)[] = [
+      'hasName', 'hasLegalIssue', 'hasEmail', 'hasPhone', 'hasLocation', 'hasOpposingParty',
+      'isSensitiveMatter', 'isGeneralInquiry', 'shouldCreateMatter'
+    ];
+
+    for (const field of booleanFields) {
+      if (typeof parsed[field] !== 'boolean') {
+        throw new Error(`Field ${field} must be boolean, got ${typeof parsed[field]}`);
+      }
+    }
+
+    // Validate nullable string fields
+    const nullableStringFields: (keyof ConversationContext)[] = [
+      'name', 'legalIssueType', 'description', 'email', 'phone', 'location', 'opposingParty'
+    ];
+
+    for (const field of nullableStringFields) {
+      if (parsed[field] !== null && typeof parsed[field] !== 'string') {
+        throw new Error(`Field ${field} must be string or null, got ${typeof parsed[field]}`);
+      }
+    }
+
+    // Add the state field which is required by ConversationContext but not extracted by AI
+    return {
+      ...parsed,
+      state: 'GATHERING_INFORMATION' as any // Will be set by caller
+    } as ConversationContext;
+  }
+
+  /**
+   * Extracts conversation information using AI
+   */
+  static async extractConversationInfo(conversationText: string, env: Env): Promise<ConversationContext> {
+    if (!conversationText || conversationText.trim().length < 10) {
+      return this.createDefaultConversationInfo();
+    }
+
+    try {
+      const prompt = this.buildExtractionPrompt(conversationText);
+      const responseText = await this.callModel(env, prompt);
+      return this.parseAndValidateResponse(responseText);
+    } catch (error) {
+      Logger.error('🔍 LLM extraction failed:', error);
+      return this.createDefaultConversationInfo();
     }
   }
 

@@ -1,4 +1,5 @@
 import type { Env } from '../types';
+import { withRetry } from '../utils/retry.js';
 
 export interface PaymentRequest {
   customerInfo: {
@@ -56,6 +57,114 @@ export class PaymentService {
     }
     
     return digits; // Return as is if we can't format it
+  }
+
+  /**
+   * Creates a customer with retry logic for transient failures
+   */
+  private async createCustomerWithRetry(
+    teamUlid: string, 
+    apiToken: string, 
+    customerData: any
+  ): Promise<{ success: boolean; customerId?: string; error?: string }> {
+    try {
+      const customerResult = await withRetry(
+        async () => {
+          const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiToken}`,
+              'Accept': 'application/json',
+              'User-Agent': 'Blawby-Legal-Intake/1.0'
+            },
+            body: JSON.stringify(customerData)
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Customer creation failed: ${response.status} - ${errorText}`);
+          }
+
+          return await response.json();
+        },
+        {
+          attempts: 3,
+          baseDelay: 500,
+          maxDelay: 2000,
+          operationName: 'create customer'
+        }
+      );
+
+      const customerId = customerResult.data?.id;
+      if (!customerId) {
+        return {
+          success: false,
+          error: 'Failed to extract customer ID from response'
+        };
+      }
+
+      console.log('✅ Customer created:', customerResult);
+      return { success: true, customerId };
+    } catch (error) {
+      console.error('❌ Customer creation error:', error);
+      return {
+        success: false,
+        error: `Customer creation failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * Creates an invoice with retry logic for transient failures
+   */
+  private async createInvoiceWithRetry(
+    teamUlid: string, 
+    apiToken: string, 
+    invoiceData: any
+  ): Promise<{ success: boolean; invoiceUrl?: string; paymentId?: string; error?: string }> {
+    try {
+      const invoiceResult = await withRetry(
+        async () => {
+          const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiToken}`,
+              'Accept': 'application/json',
+              'User-Agent': 'Blawby-Legal-Intake/1.0'
+            },
+            body: JSON.stringify(invoiceData)
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Invoice creation failed: ${response.status} - ${errorText}`);
+          }
+
+          return await response.json();
+        },
+        {
+          attempts: 3,
+          baseDelay: 500,
+          maxDelay: 2000,
+          operationName: 'create invoice'
+        }
+      );
+
+      console.log('✅ Invoice created:', invoiceResult);
+      return {
+        success: true,
+        invoiceUrl: invoiceResult.data.payment_link,
+        paymentId: invoiceResult.data.id
+      };
+    } catch (error) {
+      console.error('❌ Invoice creation error:', error);
+      return {
+        success: false,
+        error: `Invoice creation failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
   }
 
   async createInvoice(paymentRequest: PaymentRequest): Promise<PaymentResponse> {
@@ -116,98 +225,63 @@ export class PaymentService {
         teamUlid: teamUlid
       });
       
-      // Step 1: Create customer
-      const customerResponse = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiToken || ''}`,
-          'Accept': 'application/json',
-          'User-Agent': 'Blawby-Legal-Intake/1.0'
-        },
-        body: JSON.stringify({
-          name: paymentRequest.customerInfo.name,
-          email: paymentRequest.customerInfo.email,
-          phone: this.formatPhoneNumber(paymentRequest.customerInfo.phone),
-          currency: 'USD',
-          status: 'Lead',
-          team_id: teamUlid,
-          address_line_1: paymentRequest.customerInfo.location || '',
-          city: 'Test City',
-          state: 'TS',
-          zip: '12345'
-        })
-      });
+      // Step 1: Create customer with retry logic
+      const customerData = {
+        name: paymentRequest.customerInfo.name,
+        email: paymentRequest.customerInfo.email,
+        phone: this.formatPhoneNumber(paymentRequest.customerInfo.phone),
+        currency: 'USD',
+        status: 'Lead',
+        team_id: teamUlid,
+        address_line_1: paymentRequest.customerInfo.location || '',
+        city: 'Test City',
+        state: 'TS',
+        zip: '12345'
+      };
 
-      if (!customerResponse.ok) {
-        const errorText = await customerResponse.text();
-        console.error('❌ Customer creation error:', customerResponse.status, errorText);
+      const customerResult = await this.createCustomerWithRetry(teamUlid, apiToken, customerData);
+      if (!customerResult.success) {
         return {
           success: false,
-          error: `Customer creation failed: ${customerResponse.status} - ${errorText}`
+          error: customerResult.error || 'Failed to create customer'
         };
       }
 
-      const customerResult = await customerResponse.json();
-      console.log('✅ Customer created:', customerResult);
+      // Step 2: Create invoice with retry logic
+      const invoiceData = {
+        customer_id: customerResult.customerId,
+        currency: 'USD',
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        status: 'draft',
+        line_items: [
+          {
+            description: `${paymentRequest.matterInfo.type}: ${paymentRequest.matterInfo.description}`,
+            quantity: 1,
+            unit_price: 7500, // $75.00 in cents
+            line_total: 7500
+          }
+        ]
+      };
 
-      // Extract customer ID from the response
-      const customerId = customerResult.data?.id;
-      if (!customerId) {
+      const invoiceResult = await this.createInvoiceWithRetry(teamUlid, apiToken, invoiceData);
+      if (!invoiceResult.success) {
         return {
           success: false,
-          error: 'Failed to extract customer ID from response'
+          error: invoiceResult.error || 'Failed to create invoice'
         };
       }
-
-      // Step 2: Create invoice
-      const invoiceResponse = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiToken || ''}`,
-          'Accept': 'application/json',
-          'User-Agent': 'Blawby-Legal-Intake/1.0'
-        },
-        body: JSON.stringify({
-          customer_id: customerId,
-          currency: 'USD',
-          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
-          status: 'draft',
-          line_items: [
-            {
-              description: `${paymentRequest.matterInfo.type}: ${paymentRequest.matterInfo.description}`,
-              quantity: 1,
-              unit_price: 7500, // $75.00 in cents
-              line_total: 7500
-            }
-          ]
-        })
-      });
-
-      if (!invoiceResponse.ok) {
-        const errorText = await invoiceResponse.text();
-        console.error('❌ Invoice creation error:', invoiceResponse.status, errorText);
-        return {
-          success: false,
-          error: `Invoice creation failed: ${invoiceResponse.status} - ${errorText}`
-        };
-      }
-
-      const invoiceResult = await invoiceResponse.json();
-      console.log('✅ Invoice created:', invoiceResult);
 
       return {
         success: true,
-        invoiceUrl: invoiceResult.data.payment_link,
-        paymentId: invoiceResult.data.id
+        invoiceUrl: invoiceResult.invoiceUrl,
+        paymentId: invoiceResult.paymentId
       };
 
     } catch (error) {
       console.error('❌ Payment service error:', error);
       return {
         success: false,
-        error: `Payment service error: ${error}`
+        error: `Payment service error: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }

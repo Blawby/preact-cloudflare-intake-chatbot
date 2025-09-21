@@ -1,116 +1,362 @@
 import { Logger } from '../../utils/logger.js';
 import { PromptBuilder } from '../../utils/promptBuilder.js';
 import { BusinessLogicHandler } from './businessLogicHandler.js';
-import { ConversationStateMachine, ConversationState } from './conversationStateMachine.js';
+import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.js';
 import { TOOL_HANDLERS } from './matterCreationHandler.js';
-import { ToolCallParser } from '../../utils/toolCallParser.js';
+import { ToolCallParser, ToolCall, ToolCallParseResult } from '../../utils/toolCallParser.js';
+import { withAIRetry } from '../../utils/retry.js';
+import type { Env, Team, ChatMessage } from '../../types.js';
+import type { ErrorResult } from './errors.js';
+import { ExternalServiceError, ConfigurationError } from './errors.js';
 
-// AI Model Configuration
-const AI_MODEL_CONFIG = {
+// AI Model Configuration with explicit typing
+interface AIModelConfig {
+  readonly model: string;
+  readonly maxTokens: number;
+  readonly temperature: number;
+}
+
+const AI_MODEL_CONFIG: Readonly<AIModelConfig> = {
   model: '@cf/meta/llama-3.1-8b-instruct',
   maxTokens: 500,
   temperature: 0.1
 } as const;
 
+// Legal matter types as const for type safety
+const MATTER_TYPES = [
+  'Family Law',
+  'Employment Law', 
+  'Landlord/Tenant',
+  'Personal Injury',
+  'Business Law',
+  'Criminal Law',
+  'Civil Law',
+  'Contract Review',
+  'Property Law',
+  'Administrative Law',
+  'General Consultation'
+] as const;
+
+// Complexity levels as const for type safety
+const COMPLEXITY_LEVELS = [
+  'Low',
+  'Medium', 
+  'High',
+  'Very High'
+] as const;
+
+// Analysis types as const for type safety
+const ANALYSIS_TYPES = [
+  'general',
+  'legal_document',
+  'contract', 
+  'government_form',
+  'medical_document',
+  'image',
+  'resume'
+] as const;
+
+// Type definitions for const arrays
+export type MatterType = typeof MATTER_TYPES[number];
+export type ComplexityLevel = typeof COMPLEXITY_LEVELS[number];
+export type AnalysisType = typeof ANALYSIS_TYPES[number];
+
+// Tool parameter types with enhanced typing
+export interface CreateMatterParams {
+  readonly matter_type: MatterType;
+  readonly description: string;
+  readonly name: string;
+  readonly phone?: string;
+  readonly email?: string;
+  readonly location?: string;
+  readonly opposing_party?: string;
+}
+
+export interface CollectContactInfoParams {
+  readonly name: string;
+  readonly phone?: string;
+  readonly email?: string;
+  readonly location?: string;
+}
+
+export interface RequestLawyerReviewParams {
+  readonly matter_type: MatterType;
+  readonly complexity?: ComplexityLevel;
+}
+
+export interface AnalyzeDocumentParams {
+  readonly file_id: string;
+  readonly analysis_type?: AnalysisType;
+  readonly specific_question?: string;
+}
+
+// Enhanced tool parameter property types
+export interface ToolParameterProperty {
+  readonly type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  readonly description: string;
+  readonly enum?: readonly string[];
+  readonly pattern?: string | RegExp;
+  readonly default?: string | number | boolean;
+  readonly maxLength?: number;
+  readonly minLength?: number;
+  readonly maximum?: number;
+  readonly minimum?: number;
+  readonly items?: ToolParameterProperty;
+  readonly properties?: Record<string, ToolParameterProperty>;
+}
+
+// Enhanced tool definition interface
+export interface ToolDefinition<T = Record<string, unknown>> {
+  readonly name: string;
+  readonly description: string;
+  readonly parameters: {
+    readonly type: 'object';
+    readonly properties: Record<string, ToolParameterProperty>;
+    readonly required: readonly string[];
+    readonly additionalProperties?: boolean;
+  };
+}
+
 // Tool definitions with structured schemas
-export const createMatter = {
+export const createMatter: ToolDefinition<CreateMatterParams> = {
   name: 'create_matter',
   description: 'Create a new legal matter with all required information',
   parameters: {
     type: 'object',
     properties: {
       matter_type: { 
-        type: 'string', 
+        type: 'string' as const, 
         description: 'Type of legal matter',
-        enum: ['Family Law', 'Employment Law', 'Landlord/Tenant', 'Personal Injury', 'Business Law', 'Criminal Law', 'Civil Law', 'Contract Review', 'Property Law', 'Administrative Law', 'General Consultation']
+        enum: MATTER_TYPES
       },
-      description: { type: 'string', description: 'Brief description of the legal issue' },
-      name: { type: 'string', description: 'Client full name' },
-      phone: { type: 'string', description: 'Client phone number' },
-      email: { type: 'string', description: 'Client email address' },
-      location: { type: 'string', description: 'Client location (city and state)' },
-      opposing_party: { type: 'string', description: 'Opposing party name if applicable' }
+      description: { 
+        type: 'string' as const, 
+        description: 'Brief description of the legal issue',
+        maxLength: 1000
+      },
+      name: { 
+        type: 'string' as const, 
+        description: 'Client full name',
+        minLength: 2,
+        maxLength: 100
+      },
+      phone: { 
+        type: 'string' as const, 
+        description: 'Client phone number',
+        pattern: '^[\\+]?[1-9][\\d\\s\\-\\(\\)]{7,15}$'
+      },
+      email: { 
+        type: 'string' as const, 
+        description: 'Client email address',
+        pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
+      },
+      location: { 
+        type: 'string' as const, 
+        description: 'Client location (city and state)',
+        maxLength: 100
+      },
+      opposing_party: { 
+        type: 'string' as const, 
+        description: 'Opposing party name if applicable',
+        maxLength: 100
+      }
     },
-    required: ['matter_type', 'description', 'name']
+    required: ['matter_type', 'description', 'name'] as const,
+    additionalProperties: false
   }
 };
 
-export const collectContactInfo = {
+export const collectContactInfo: ToolDefinition<CollectContactInfoParams> = {
   name: 'collect_contact_info',
   description: 'Collect contact information from the user',
   parameters: {
     type: 'object',
     properties: {
-      name: { type: 'string', description: 'Client full name' },
-      phone: { type: 'string', description: 'Client phone number' },
-      email: { type: 'string', description: 'Client email address' },
-      location: { type: 'string', description: 'Client location (city and state)' }
+      name: { 
+        type: 'string' as const, 
+        description: 'Client full name',
+        minLength: 2,
+        maxLength: 100
+      },
+      phone: { 
+        type: 'string' as const, 
+        description: 'Client phone number',
+        pattern: '^[\\+]?[1-9][\\d\\s\\-\\(\\)]{7,15}$'
+      },
+      email: { 
+        type: 'string' as const, 
+        description: 'Client email address',
+        pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
+      },
+      location: { 
+        type: 'string' as const, 
+        description: 'Client location (city and state)',
+        maxLength: 100
+      }
     },
-    required: ['name']
+    required: ['name'] as const,
+    additionalProperties: false
   }
 };
 
-export const requestLawyerReview = {
+export const requestLawyerReview: ToolDefinition<RequestLawyerReviewParams> = {
   name: 'request_lawyer_review',
   description: 'Request lawyer review for complex matters',
   parameters: {
     type: 'object',
     properties: {
-      complexity: { type: 'string', description: 'Matter complexity level' },
-      matter_type: { type: 'string', description: 'Type of legal matter' }
+      matter_type: { 
+        type: 'string' as const, 
+        description: 'Type of legal matter',
+        enum: MATTER_TYPES
+      },
+      complexity: { 
+        type: 'string' as const, 
+        description: 'Matter complexity level',
+        enum: COMPLEXITY_LEVELS,
+        default: 'Medium'
+      }
     },
-    required: ['matter_type']
+    required: ['matter_type'] as const,
+    additionalProperties: false
   }
 };
 
-export const analyzeDocument = {
+export const analyzeDocument: ToolDefinition<AnalyzeDocumentParams> = {
   name: 'analyze_document',
   description: 'Analyze an uploaded document or image to extract key information for legal intake',
   parameters: {
     type: 'object',
     properties: {
       file_id: { 
-        type: 'string', 
+        type: 'string' as const, 
         description: 'The file ID of the uploaded document to analyze',
-        pattern: '^[a-zA-Z0-9\\-_]+$'
+        pattern: '^[a-zA-Z0-9\\-_]+$',
+        minLength: 1,
+        maxLength: 50
       },
       analysis_type: { 
-        type: 'string', 
+        type: 'string' as const, 
         description: 'Type of analysis to perform',
-        enum: ['general', 'legal_document', 'contract', 'government_form', 'medical_document', 'image', 'resume'],
+        enum: ANALYSIS_TYPES,
         default: 'general'
       },
       specific_question: { 
-        type: 'string', 
+        type: 'string' as const, 
         description: 'Optional specific question to ask about the document',
-        maxLength: 500
+        maxLength: 500,
+        minLength: 10
       }
     },
-    required: ['file_id']
+    required: ['file_id'] as const,
+    additionalProperties: false
   }
 };
 
+// Message types for the agent
+export interface AgentMessage {
+  readonly role?: 'user' | 'assistant' | 'system';
+  readonly content: string;
+  readonly isUser?: boolean;
+  readonly metadata?: {
+    readonly toolName?: string;
+    readonly toolCall?: {
+      readonly toolName: string;
+      readonly parameters: Record<string, unknown>;
+    };
+  };
+}
+
+export interface CloudflareLocation {
+  readonly city?: string;
+  readonly country?: string;
+  readonly region?: string;
+  readonly timezone?: string;
+}
+
+export interface FileAttachment {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly size: number;
+  readonly url: string;
+}
+
+// Response types
+export interface AgentResponse {
+  readonly response: string;
+  readonly metadata: {
+    readonly conversationComplete?: boolean;
+    readonly inputMessageCount: number;
+    readonly lastUserMessage: string | null;
+    readonly sessionId?: string;
+    readonly teamId?: string;
+    readonly error?: string;
+    readonly toolName?: string;
+    readonly toolResult?: unknown;
+    readonly allowRetry?: boolean;
+  };
+}
+
 // Unified legal intake agent that handles both streaming and non-streaming responses
 export async function runLegalIntakeAgentStream(
-  env: any, 
-  messages: any[], 
+  env: Env, 
+  messages: readonly AgentMessage[], 
   teamId?: string, 
   sessionId?: string,
-  cloudflareLocation?: any,
-  controller?: ReadableStreamDefaultController,
-  attachments: any[] = []
-) {
+  cloudflareLocation?: CloudflareLocation,
+  controller?: ReadableStreamDefaultController<Uint8Array>,
+  attachments: readonly FileAttachment[] = []
+): Promise<AgentResponse | void> {
+  // Generate correlation ID for error tracking
+  const correlationId = crypto.randomUUID();
+  
   // Get team configuration if teamId is provided
-  let teamConfig = null;
+  let teamConfig: unknown = null;
   if (teamId) {
-    const { TeamService } = await import('../../services/TeamService.js');
-    const teamService = new TeamService(env);
-    const team = await teamService.getTeam(teamId);
-    teamConfig = team || null;
+    // Validate teamId before making service call
+    if (!teamId || typeof teamId !== 'string' || teamId.trim().length === 0) {
+      Logger.warn('Invalid teamId provided for team configuration lookup', { teamId });
+      teamConfig = null;
+    } else {
+      try {
+        const { TeamService } = await import('../../services/TeamService.js');
+        const teamService = new TeamService(env);
+        const team = await teamService.getTeam(teamId);
+        teamConfig = team || null;
+        Logger.debug('Successfully retrieved team configuration', { teamId, hasConfig: !!team });
+      } catch (error) {
+        // Log error with contextual information
+        Logger.error('Failed to retrieve team configuration', {
+          teamId,
+          operation: 'getTeam',
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        
+        // Set teamConfig to null on failure
+        teamConfig = null;
+        
+        // Create and throw a wrapped error preserving the original stack
+        const wrappedError = new ExternalServiceError(
+          'TeamService',
+          `Failed to retrieve team configuration for teamId: ${teamId}`,
+          { teamId, operation: 'getTeam' },
+          true // Retryable
+        );
+        
+        // Preserve original stack trace if available
+        if (error instanceof Error && error.stack) {
+          wrappedError.stack = `${wrappedError.stack}\nCaused by: ${error.stack}`;
+        }
+        
+        throw wrappedError;
+      }
+    }
   }
 
   // Convert messages to the format expected by Cloudflare AI
-  const formattedMessages = messages.map(msg => ({
+  const formattedMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = messages.map(msg => ({
     role: msg.role || (msg.isUser ? 'user' : 'assistant'),
     content: msg.content
   }));
@@ -171,36 +417,31 @@ export async function runLegalIntakeAgentStream(
   const businessResult = await BusinessLogicHandler.handleConversation(conversationText, env, teamConfig);
   
   // Build system prompt for AI when it should be used
-  let context;
+  let context: ConversationContext;
   try {
     context = await PromptBuilder.extractConversationInfo(conversationText, env);
   } catch (error) {
     // For short conversations or extraction failures, create a minimal context
     Logger.debug('🔍 AI context extraction failed, using minimal context:', error);
-    context = {
-      hasName: false,
-      hasLegalIssue: false,
-      hasEmail: false,
-      hasPhone: false,
-      hasLocation: false,
-      name: null,
-      legalIssueType: null,
-      description: null,
-      email: null,
-      phone: null,
-      location: null,
-      isSensitiveMatter: false,
-      isGeneralInquiry: true,
-      shouldCreateMatter: false,
-      state: businessResult.state // Use the state determined by business logic
-    };
+    context = BusinessLogicHandler.createMinimalContext();
+    // Override the state with the one determined by business logic
+    if (businessResult.success) {
+      context.state = businessResult.data.state;
+    }
   }
-  const fullContext = { ...context, state: businessResult.state };
-  const systemPrompt = BusinessLogicHandler.getSystemPromptForAI(businessResult.state, fullContext);
+  
+  const fullContext = { 
+    ...context, 
+    state: businessResult.success ? businessResult.data.state : context.state 
+  };
+  const systemPrompt = BusinessLogicHandler.getSystemPromptForAI(
+    businessResult.success ? businessResult.data.state : context.state, 
+    fullContext
+  );
 
   // Hoist tool parsing variables to function scope
   let toolName: string | null = null;
-  let parameters: any = null;
+  let parameters: Record<string, unknown> | null = null;
   
   try {
     Logger.debug('🔄 Starting agent...');
@@ -210,21 +451,28 @@ export async function runLegalIntakeAgentStream(
       controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
     }
     
-    // Use AI call
+    // Use AI call with retry logic
     Logger.debug('🤖 Calling AI model...');
     
-    const aiResult = await env.AI.run(AI_MODEL_CONFIG.model, {
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...formattedMessages
-      ],
-      max_tokens: AI_MODEL_CONFIG.maxTokens,
-      temperature: AI_MODEL_CONFIG.temperature
-    });
+    const aiResult = await withAIRetry(
+      () => env.AI.run(AI_MODEL_CONFIG.model as any, {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...formattedMessages
+        ],
+        max_tokens: AI_MODEL_CONFIG.maxTokens,
+        temperature: AI_MODEL_CONFIG.temperature
+      }),
+      {
+        attempts: 4,
+        baseDelay: 400,
+        operationName: 'Legal Intake AI Call'
+      }
+    );
     
     Logger.debug('✅ AI result:', aiResult);
     
-    const response = aiResult.response || 'I apologize, but I encountered an error processing your request.';
+    const response = (aiResult as { response?: string }).response || 'I apologize, but I encountered an error processing your request.';
     Logger.debug('📝 Full response:', response);
     
     // Check if response is empty or too short
@@ -289,7 +537,11 @@ export async function runLegalIntakeAgentStream(
       }
       return {
         response: 'I encountered an error processing your request. Please try rephrasing your request.',
-        metadata: { error: parseResult.error, rawParameters: parseResult.rawParameters }
+        metadata: { 
+          error: parseResult.error, 
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+        }
       };
     }
     
@@ -319,11 +571,15 @@ export async function runLegalIntakeAgentStream(
         }
         return {
           response: `I'm sorry, but I don't know how to handle that type of request.`,
-          metadata: { error: `Unknown tool: ${toolName}` }
+          metadata: { 
+            error: `Unknown tool: ${toolName}`,
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+          }
         };
       }
       
-      let toolResult;
+      let toolResult: ErrorResult<unknown>;
       try {
         toolResult = await handler(parameters, env, teamConfig);
         Logger.debug('Tool execution result:', toolResult);
@@ -339,7 +595,11 @@ export async function runLegalIntakeAgentStream(
         }
         return {
           response: 'I encountered an error while processing your request. Please try again.',
-          metadata: { error: error instanceof Error ? error.message : String(error) }
+          metadata: { 
+            error: error instanceof Error ? error.message : String(error),
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+          }
         };
       }
       
@@ -355,11 +615,17 @@ export async function runLegalIntakeAgentStream(
       
       // Return tool result for non-streaming case
       if (!controller) {
+        const toolResponse = toolResult.success 
+          ? (toolResult.data as { message?: string; response?: string }).message || 
+            (toolResult.data as { message?: string; response?: string }).response || 
+            'Tool executed successfully.'
+          : (toolResult as { success: false; error: { toUserResponse(): string } }).error.toUserResponse();
+        
         return {
-          response: toolResult.message || toolResult.response || 'Tool executed successfully.',
+          response: toolResponse,
           metadata: {
             toolName,
-            toolResult,
+            toolResult: toolResult.success ? toolResult.data : (toolResult as { success: false; error: unknown }).error,
             inputMessageCount: formattedMessages.length,
             lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
             sessionId,
@@ -370,7 +636,11 @@ export async function runLegalIntakeAgentStream(
       }
       
       // For streaming case, send the tool result as the response
-      const finalResponse = toolResult.message || toolResult.response || 'Tool executed successfully.';
+      const finalResponse = toolResult.success 
+        ? (toolResult.data as { message?: string; response?: string }).message || 
+          (toolResult.data as { message?: string; response?: string }).response || 
+          'Tool executed successfully.'
+        : (toolResult as { success: false; error: { toUserResponse(): string } }).error.toUserResponse();
       
       // Check if the tool failed and we should allow retry
       if (!toolResult.success && toolName === 'create_matter') {
@@ -441,27 +711,61 @@ export async function runLegalIntakeAgentStream(
       };
     }
   } catch (error) {
-    console.error('Agent error:', error);
-    const errorMessage = error.message || 'An error occurred while processing your request';
+    // Extract error details safely
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred while processing your request';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    const lastUserMessage = formattedMessages[formattedMessages.length - 1]?.content || null;
+    
+    // Create structured error log object
+    const structuredError = {
+      correlationId,
+      sessionId,
+      teamId,
+      inputMessageCount: formattedMessages.length,
+      lastUserMessage,
+      error: {
+        message: errorMessage,
+        stack: errorStack
+      },
+      timestamp: new Date().toISOString(),
+      operation: 'runLegalIntakeAgentStream'
+    };
+    
+    // Log structured error using project's Logger
+    Logger.error('Agent error occurred', structuredError);
 
     if (controller) {
       const errorEvent = `data: ${JSON.stringify({
         type: 'error',
-        message: errorMessage
+        message: errorMessage,
+        correlationId
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(errorEvent));
+      
+      // Log the same structured error for SSE case
+      Logger.error('SSE error event sent', structuredError);
+      
+      // Safely close controller with try/catch
       try {
         controller.close();
       } catch (closeError) {
-        console.error('Error closing controller:', closeError);
+        Logger.error('Error closing SSE controller', {
+          correlationId,
+          closeError: closeError instanceof Error ? closeError.message : String(closeError),
+          stack: closeError instanceof Error ? closeError.stack : undefined
+        });
       }
     } else {
       return {
         response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
         metadata: {
-          error: error.message,
+          correlationId,
+          error: {
+            message: errorMessage,
+            stack: errorStack
+          },
           inputMessageCount: formattedMessages.length,
-          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+          lastUserMessage,
           sessionId,
           teamId
         }

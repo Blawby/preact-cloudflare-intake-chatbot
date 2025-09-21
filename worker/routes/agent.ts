@@ -1,4 +1,5 @@
 import type { Env } from '../types';
+import type { TeamConfig } from '../services/TeamService';
 import { parseJsonBody } from '../utils';
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index';
 import { HttpErrors, handleError, createSuccessResponse, CORS_HEADERS, SECURITY_HEADERS } from '../errorHandler';
@@ -6,6 +7,22 @@ import { validateInput, getSecurityResponse } from '../middleware/inputValidatio
 import { SecurityLogger } from '../utils/securityLogger.js';
 import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
+
+// Interface for the request body in the route method
+interface RouteBody {
+  messages: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+  }>;
+  teamId?: string;
+  sessionId?: string;
+  attachments?: Array<{
+    name: string;
+    size: number;
+    type: string;
+    url: string;
+  }>;
+}
 
 // Supervisor router for intent-based routing between agents
 // Helper functions for intent detection
@@ -41,7 +58,7 @@ function needsDocAnalysis(text: string, attachments?: any[]): boolean {
 class SupervisorRouter {
   constructor(private env: Env) {}
 
-  async route(body: any, teamConfig: any): Promise<'intake'> {
+  async route(body: RouteBody, teamConfig: TeamConfig): Promise<'intake'> {
     // Simplified routing - always use intake agent for everything
     console.log('📋 Routing to Intake Agent (simplified)');
     return 'intake';
@@ -227,7 +244,7 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
   };
 
   try {
-    const body = await request.json();
+    const body = await request.json() as RouteBody;
     console.log('📥 Request body:', body);
     
     const { messages, teamId, sessionId, attachments = [] } = body;
