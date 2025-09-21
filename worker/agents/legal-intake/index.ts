@@ -7,7 +7,21 @@ import { ToolCallParser, ToolCall, ToolCallParseResult } from '../../utils/toolC
 import { withAIRetry } from '../../utils/retry.js';
 import type { Env, Team, ChatMessage } from '../../types.js';
 import type { ErrorResult } from './errors.js';
-import { ExternalServiceError, ConfigurationError } from './errors.js';
+import { ExternalServiceError, ConfigurationError, LegalIntakeError } from './errors.js';
+
+/**
+ * Extracts a user-friendly response from a tool result
+ * @param toolResult The result from a tool execution
+ * @returns A user-friendly string response
+ */
+function extractToolResponse<T>(toolResult: ErrorResult<T>): string {
+  if (toolResult.success) {
+    const data = toolResult.data as { message?: string; response?: string };
+    return data.message || data.response || 'Tool executed successfully.';
+  } else {
+    return toolResult.error.toUserResponse();
+  }
+}
 
 // AI Model Configuration with explicit typing
 interface AIModelConfig {
@@ -95,7 +109,7 @@ export interface ToolParameterProperty {
   readonly type: 'string' | 'number' | 'boolean' | 'array' | 'object';
   readonly description: string;
   readonly enum?: readonly string[];
-  readonly pattern?: string | RegExp;
+  readonly pattern?: string;
   readonly default?: string | number | boolean;
   readonly maxLength?: number;
   readonly minLength?: number;
@@ -472,7 +486,10 @@ export async function runLegalIntakeAgentStream(
     
     Logger.debug('✅ AI result:', aiResult);
     
-    const response = (aiResult as { response?: string }).response || 'I apologize, but I encountered an error processing your request.';
+    // Runtime validation of aiResult structure
+    const response = (typeof aiResult === 'object' && aiResult !== null && typeof (aiResult as any).response === 'string') 
+      ? (aiResult as any).response 
+      : 'I apologize, but I encountered an error processing your request.';
     Logger.debug('📝 Full response:', response);
     
     // Check if response is empty or too short
@@ -615,11 +632,7 @@ export async function runLegalIntakeAgentStream(
       
       // Return tool result for non-streaming case
       if (!controller) {
-        const toolResponse = toolResult.success 
-          ? (toolResult.data as { message?: string; response?: string }).message || 
-            (toolResult.data as { message?: string; response?: string }).response || 
-            'Tool executed successfully.'
-          : (toolResult as { success: false; error: { toUserResponse(): string } }).error.toUserResponse();
+        const toolResponse = extractToolResponse(toolResult);
         
         return {
           response: toolResponse,
@@ -636,11 +649,7 @@ export async function runLegalIntakeAgentStream(
       }
       
       // For streaming case, send the tool result as the response
-      const finalResponse = toolResult.success 
-        ? (toolResult.data as { message?: string; response?: string }).message || 
-          (toolResult.data as { message?: string; response?: string }).response || 
-          'Tool executed successfully.'
-        : (toolResult as { success: false; error: { toUserResponse(): string } }).error.toUserResponse();
+      const finalResponse = extractToolResponse(toolResult);
       
       // Check if the tool failed and we should allow retry
       if (!toolResult.success && toolName === 'create_matter') {

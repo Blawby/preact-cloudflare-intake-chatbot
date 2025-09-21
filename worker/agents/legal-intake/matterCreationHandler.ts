@@ -42,9 +42,32 @@ export interface DocumentAnalysisParams {
 }
 
 export interface TeamConfig {
-  id: string;
-  name: string;
-  [key: string]: any;
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly config?: {
+    readonly requiresPayment?: boolean;
+    readonly consultationFee?: number;
+    readonly paymentLink?: string;
+    readonly ownerEmail?: string;
+    readonly availableServices?: string[];
+    readonly jurisdiction?: {
+      readonly type: 'state' | 'national';
+      readonly description: string;
+      readonly supportedStates: string[];
+      readonly supportedCountries: string[];
+      readonly primaryState?: string;
+    };
+    readonly blawbyApi?: {
+      readonly enabled: boolean;
+      readonly apiKey?: string | null;
+      readonly apiKeyHash?: string;
+      readonly teamUlid?: string;
+      readonly apiUrl?: string;
+    };
+  };
+  // Allow for additional dynamic properties with proper typing
+  readonly [key: string]: unknown;
 }
 
 export interface ValidationResult {

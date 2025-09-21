@@ -24,6 +24,74 @@ interface RouteBody {
   }>;
 }
 
+// Type guard function for runtime validation of RouteBody
+function isValidRouteBody(obj: unknown): obj is RouteBody {
+  // Check if obj is an object and not null
+  if (typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const body = obj as Record<string, unknown>;
+
+  // Check if messages exists and is an array
+  if (!Array.isArray(body.messages)) {
+    return false;
+  }
+
+  // Validate each message in the array
+  for (const message of body.messages) {
+    if (typeof message !== 'object' || message === null) {
+      return false;
+    }
+
+    const msg = message as Record<string, unknown>;
+
+    // Check if content exists and is a string
+    if (typeof msg.content !== 'string') {
+      return false;
+    }
+
+    // Check if role exists and is one of the allowed values
+    if (msg.role !== 'user' && msg.role !== 'assistant' && msg.role !== 'system') {
+      return false;
+    }
+  }
+
+  // Optional fields validation
+  if (body.teamId !== undefined && typeof body.teamId !== 'string') {
+    return false;
+  }
+
+  if (body.sessionId !== undefined && typeof body.sessionId !== 'string') {
+    return false;
+  }
+
+  // Validate attachments if present
+  if (body.attachments !== undefined) {
+    if (!Array.isArray(body.attachments)) {
+      return false;
+    }
+
+    for (const attachment of body.attachments) {
+      if (typeof attachment !== 'object' || attachment === null) {
+        return false;
+      }
+
+      const att = attachment as Record<string, unknown>;
+
+      // Check required attachment fields
+      if (typeof att.name !== 'string' || 
+          typeof att.size !== 'number' || 
+          typeof att.type !== 'string' || 
+          typeof att.url !== 'string') {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 // Supervisor router for intent-based routing between agents
 // Helper functions for intent detection
 function wantsHuman(text: string, messages?: any[]): boolean {
@@ -244,7 +312,14 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
   };
 
   try {
-    const body = await request.json() as RouteBody;
+    const rawBody = await request.json();
+    
+    // Runtime validation of request body
+    if (!isValidRouteBody(rawBody)) {
+      throw HttpErrors.badRequest('Invalid request body format. Expected messages array with valid message objects.');
+    }
+    
+    const body = rawBody;
     console.log('📥 Request body:', body);
     
     const { messages, teamId, sessionId, attachments = [] } = body;
@@ -264,7 +339,7 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
         const { AIService } = await import('../services/AIService.js');
         const aiService = new AIService(env.AI, env);
         const rawTeamConfig = await aiService.getTeamConfig(teamId);
-        teamConfig = rawTeamConfig?.config || rawTeamConfig;
+        teamConfig = rawTeamConfig;
       } catch (error) {
         console.warn('Failed to get team config for security validation:', error);
       }

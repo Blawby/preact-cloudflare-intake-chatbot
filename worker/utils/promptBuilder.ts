@@ -1,6 +1,7 @@
 import type { Env } from '../types.js';
 import { Logger } from './logger.js';
 import type { ConversationContext } from '../agents/legal-intake/conversationStateMachine.js';
+import { ConversationState } from '../agents/legal-intake/conversationStateMachine.js';
 
 // Matter type classification constant
 const MATTER_TYPE_CLASSIFICATION = `- MATTER TYPE CLASSIFICATION:
@@ -16,6 +17,11 @@ const MATTER_TYPE_CLASSIFICATION = `- MATTER TYPE CLASSIFICATION:
 export interface CloudflareLocationInfo {
   isValid: boolean;
   // Add other properties as needed
+}
+
+export interface CloudflareAIResponse {
+  response?: string | null;
+  // Add other known fields if any
 }
 
 
@@ -241,7 +247,8 @@ Return only the JSON object, no other text.`;
 
     // Handle the response safely - Cloudflare AI returns different types
     if (response && typeof response === 'object' && 'response' in response) {
-      return (response as any).response || '';
+      const typedResponse = response as CloudflareAIResponse;
+      return typedResponse.response || '';
     }
     
     // Fallback for other response types
@@ -258,12 +265,19 @@ Return only the JSON object, no other text.`;
       throw new Error('AI response did not contain valid JSON format');
     }
     
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(jsonMatch[0]);
     } catch (error) {
       throw new Error(`Failed to parse JSON: ${error}`);
     }
+
+    // Ensure parsed is an object
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Parsed JSON is not an object');
+    }
+
+    const parsedObj = parsed as Record<string, unknown>;
 
     // Validate required fields and types
     const requiredFields: (keyof ConversationContext)[] = [
@@ -273,7 +287,7 @@ Return only the JSON object, no other text.`;
     ];
 
     for (const field of requiredFields) {
-      if (!(field in parsed)) {
+      if (!(field in parsedObj)) {
         throw new Error(`Missing required field: ${field}`);
       }
     }
@@ -285,8 +299,8 @@ Return only the JSON object, no other text.`;
     ];
 
     for (const field of booleanFields) {
-      if (typeof parsed[field] !== 'boolean') {
-        throw new Error(`Field ${field} must be boolean, got ${typeof parsed[field]}`);
+      if (typeof parsedObj[field] !== 'boolean') {
+        throw new Error(`Field ${field} must be boolean, got ${typeof parsedObj[field]}`);
       }
     }
 
@@ -296,16 +310,33 @@ Return only the JSON object, no other text.`;
     ];
 
     for (const field of nullableStringFields) {
-      if (parsed[field] !== null && typeof parsed[field] !== 'string') {
-        throw new Error(`Field ${field} must be string or null, got ${typeof parsed[field]}`);
+      if (parsedObj[field] !== null && typeof parsedObj[field] !== 'string') {
+        throw new Error(`Field ${field} must be string or null, got ${typeof parsedObj[field]}`);
       }
     }
 
-    // Add the state field which is required by ConversationContext but not extracted by AI
-    return {
-      ...parsed,
-      state: 'GATHERING_INFORMATION' as any // Will be set by caller
-    } as ConversationContext;
+    // Construct and return a properly typed ConversationContext after validation
+    const result: ConversationContext = {
+      hasName: parsedObj.hasName as boolean,
+      hasLegalIssue: parsedObj.hasLegalIssue as boolean,
+      hasEmail: parsedObj.hasEmail as boolean,
+      hasPhone: parsedObj.hasPhone as boolean,
+      hasLocation: parsedObj.hasLocation as boolean,
+      hasOpposingParty: parsedObj.hasOpposingParty as boolean,
+      name: parsedObj.name as string | null,
+      legalIssueType: parsedObj.legalIssueType as string | null,
+      description: parsedObj.description as string | null,
+      email: parsedObj.email as string | null,
+      phone: parsedObj.phone as string | null,
+      location: parsedObj.location as string | null,
+      opposingParty: parsedObj.opposingParty as string | null,
+      isSensitiveMatter: parsedObj.isSensitiveMatter as boolean,
+      isGeneralInquiry: parsedObj.isGeneralInquiry as boolean,
+      shouldCreateMatter: parsedObj.shouldCreateMatter as boolean,
+      state: ConversationState.GATHERING_INFORMATION
+    };
+    
+    return result;
   }
 
   /**

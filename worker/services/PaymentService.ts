@@ -22,7 +22,54 @@ export interface PaymentResponse {
   success: boolean;
   invoiceUrl?: string;
   paymentId?: string;
+  status?: string;
   error?: string;
+}
+
+export interface InvoiceCreateRequest {
+  customer_id: string;
+  currency: string;
+  due_date: string;
+  status: string;
+  line_items: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+  }>;
+}
+
+export interface InvoiceCreateResponse {
+  data: {
+    id: string;
+    payment_link: string;
+  };
+}
+
+export interface CustomerCreateResponse {
+  data: {
+    id: string;
+  };
+}
+
+export interface CustomerCreateRequest {
+  name: string;
+  email: string;
+  phone: string;
+  currency: string;
+  status: string;
+  team_id: string;
+  address_line_1: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+export interface PaymentConfig {
+  defaultPrice: number; // in cents
+  currency: string;
+  dueDateDays: number;
+  matterTypePricing?: Record<string, number>; // matter type -> price in cents
 }
 
 export class PaymentService {
@@ -34,6 +81,66 @@ export class PaymentService {
     // Use the Blawby staging API with proper authentication
     this.mcpServerUrl = env.BLAWBY_API_URL || 'https://staging.blawby.com';
     console.log('💰 PaymentService initialized with API URL:', this.mcpServerUrl);
+  }
+
+  /**
+   * Gets payment configuration for a team, with fallback to defaults
+   */
+  private async getPaymentConfig(teamId: string): Promise<PaymentConfig> {
+    try {
+      const { TeamService } = await import('./TeamService.js');
+      const teamService = new TeamService(this.env);
+      const team = await teamService.getTeam(teamId);
+      
+      // Use team's consultation fee if available, otherwise use defaults
+      const teamConsultationFee = team?.config?.consultationFee;
+      const defaultPrice = teamConsultationFee ? teamConsultationFee * 100 : 7500; // Convert dollars to cents
+      
+      // Default configuration with team-specific pricing
+      return {
+        defaultPrice: defaultPrice,
+        currency: 'USD',
+        dueDateDays: 30,
+        matterTypePricing: {
+          'Family Law': Math.round(defaultPrice * 1.33), // 33% more than default
+          'Employment Law': Math.round(defaultPrice * 1.67), // 67% more than default
+          'Personal Injury': Math.round(defaultPrice * 2.0), // 100% more than default
+          'Business Law': Math.round(defaultPrice * 1.33), // 33% more than default
+          'Criminal Law': Math.round(defaultPrice * 2.67), // 167% more than default
+          'General Consultation': Math.round(defaultPrice * 0.67) // 33% less than default
+        }
+      };
+    } catch (error) {
+      console.warn('⚠️ Failed to load team payment config, using defaults:', error);
+    }
+    
+    // Fallback default configuration
+    return {
+      defaultPrice: 7500, // $75.00 in cents
+      currency: 'USD',
+      dueDateDays: 30,
+      matterTypePricing: {
+        'Family Law': 10000, // $100.00
+        'Employment Law': 12500, // $125.00
+        'Personal Injury': 15000, // $150.00
+        'Business Law': 10000, // $100.00
+        'Criminal Law': 20000, // $200.00
+        'General Consultation': 5000 // $50.00
+      }
+    };
+  }
+
+  /**
+   * Gets the price for a specific matter type
+   */
+  private getMatterPrice(matterType: string, config: PaymentConfig): number {
+    // Check if there's specific pricing for this matter type
+    if (config.matterTypePricing && config.matterTypePricing[matterType]) {
+      return config.matterTypePricing[matterType];
+    }
+    
+    // Fall back to default price
+    return config.defaultPrice;
   }
 
   private formatPhoneNumber(phone: string): string {
@@ -65,9 +172,28 @@ export class PaymentService {
   private async createCustomerWithRetry(
     teamUlid: string, 
     apiToken: string, 
-    customerData: any
+    customerData: CustomerCreateRequest
   ): Promise<{ success: boolean; customerId?: string; error?: string }> {
+    // Guard clause: validate required parameters
+    if (!teamUlid || !apiToken || !customerData) {
+      return {
+        success: false,
+        error: 'Missing required parameters: teamUlid, apiToken, or customerData'
+      };
+    }
+
+    // Guard clause: validate customer data structure
+    if (!customerData.name || !customerData.email || !customerData.phone) {
+      return {
+        success: false,
+        error: 'Missing required customer data: name, email, or phone'
+      };
+    }
+
     try {
+      // Generate idempotency key to prevent duplicate customers on retry
+      const idempotencyKey = this.generateCustomerIdempotencyKey(customerData);
+      
       const customerResult = await withRetry(
         async () => {
           const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer`, {
@@ -76,7 +202,8 @@ export class PaymentService {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${apiToken}`,
               'Accept': 'application/json',
-              'User-Agent': 'Blawby-Legal-Intake/1.0'
+              'User-Agent': 'Blawby-Legal-Intake/1.0',
+              'Idempotency-Key': idempotencyKey
             },
             body: JSON.stringify(customerData)
           });
@@ -86,7 +213,7 @@ export class PaymentService {
             throw new Error(`Customer creation failed: ${response.status} - ${errorText}`);
           }
 
-          return await response.json();
+          return await response.json() as CustomerCreateResponse;
         },
         {
           attempts: 3,
@@ -116,14 +243,102 @@ export class PaymentService {
   }
 
   /**
+   * Deletes a customer with retry logic for transient failures
+   */
+  private async deleteCustomerWithRetry(
+    teamUlid: string, 
+    apiToken: string, 
+    customerId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      await withRetry(
+        async () => {
+          const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer/${customerId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${apiToken}`,
+              'Accept': 'application/json',
+              'User-Agent': 'Blawby-Legal-Intake/1.0'
+            }
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Customer deletion failed: ${response.status} - ${errorText}`);
+          }
+
+          return await response.json();
+        },
+        {
+          attempts: 3,
+          baseDelay: 500,
+          maxDelay: 2000,
+          operationName: 'delete customer'
+        }
+      );
+
+      console.log('✅ Customer deleted:', customerId);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Customer deletion error:', error);
+      return {
+        success: false,
+        error: `Customer deletion failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * Generates a deterministic idempotency key from customer data
+   */
+  private generateCustomerIdempotencyKey(customerData: CustomerCreateRequest): string {
+    // Create a deterministic key based on customer data to prevent duplicates
+    const keyData = {
+      name: customerData.name,
+      email: customerData.email,
+      phone: customerData.phone,
+      team_id: customerData.team_id
+    };
+    
+    // Use a simple hash of the key data (in production, you might want a more robust hashing function)
+    const keyString = JSON.stringify(keyData);
+    return `customer-${Buffer.from(keyString).toString('base64').slice(0, 32)}`;
+  }
+
+  /**
+   * Generates a deterministic idempotency key from invoice data
+   */
+  private generateIdempotencyKey(invoiceData: InvoiceCreateRequest): string {
+    // Create a deterministic key based on invoice data to prevent duplicates
+    const keyData = {
+      customer_id: invoiceData.customer_id,
+      currency: invoiceData.currency,
+      due_date: invoiceData.due_date,
+      line_items: invoiceData.line_items.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price
+      }))
+    };
+    
+    // Use a simple hash of the key data (in production, you might want a more robust hashing function)
+    const keyString = JSON.stringify(keyData);
+    return `invoice-${Buffer.from(keyString).toString('base64').slice(0, 32)}`;
+  }
+
+  /**
    * Creates an invoice with retry logic for transient failures
    */
   private async createInvoiceWithRetry(
     teamUlid: string, 
     apiToken: string, 
-    invoiceData: any
+    invoiceData: InvoiceCreateRequest,
+    idempotencyKey?: string
   ): Promise<{ success: boolean; invoiceUrl?: string; paymentId?: string; error?: string }> {
     try {
+      // Generate idempotency key if not provided
+      const key = idempotencyKey || this.generateIdempotencyKey(invoiceData);
+      
       const invoiceResult = await withRetry(
         async () => {
           const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
@@ -132,7 +347,8 @@ export class PaymentService {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${apiToken}`,
               'Accept': 'application/json',
-              'User-Agent': 'Blawby-Legal-Intake/1.0'
+              'User-Agent': 'Blawby-Legal-Intake/1.0',
+              'Idempotency-Key': key
             },
             body: JSON.stringify(invoiceData)
           });
@@ -142,7 +358,7 @@ export class PaymentService {
             throw new Error(`Invoice creation failed: ${response.status} - ${errorText}`);
           }
 
-          return await response.json();
+          return await response.json() as InvoiceCreateResponse;
         },
         {
           attempts: 3,
@@ -151,6 +367,31 @@ export class PaymentService {
           operationName: 'create invoice'
         }
       );
+
+      // Defensive null checks for response data
+      if (!invoiceResult) {
+        console.error('❌ Invoice creation returned null response');
+        return {
+          success: false,
+          error: 'Invoice creation returned null response'
+        };
+      }
+
+      if (!invoiceResult.data) {
+        console.error('❌ Invoice creation response missing data field:', invoiceResult);
+        return {
+          success: false,
+          error: 'Invoice creation response missing data field'
+        };
+      }
+
+      if (!invoiceResult.data.payment_link || !invoiceResult.data.id) {
+        console.error('❌ Invoice creation response missing required fields:', invoiceResult.data);
+        return {
+          success: false,
+          error: 'Invoice creation response missing payment_link or id'
+        };
+      }
 
       console.log('✅ Invoice created:', invoiceResult);
       return {
@@ -168,6 +409,44 @@ export class PaymentService {
   }
 
   async createInvoice(paymentRequest: PaymentRequest): Promise<PaymentResponse> {
+    // Guard clause: validate required parameters
+    if (!paymentRequest) {
+      return {
+        success: false,
+        error: 'Payment request is required'
+      };
+    }
+
+    if (!paymentRequest.teamId || !paymentRequest.sessionId) {
+      return {
+        success: false,
+        error: 'Missing required fields: teamId or sessionId'
+      };
+    }
+
+    if (!paymentRequest.customerInfo || !paymentRequest.matterInfo) {
+      return {
+        success: false,
+        error: 'Missing required fields: customerInfo or matterInfo'
+      };
+    }
+
+    // Guard clause: validate customer info
+    if (!paymentRequest.customerInfo.name || !paymentRequest.customerInfo.email || !paymentRequest.customerInfo.phone) {
+      return {
+        success: false,
+        error: 'Missing required customer information: name, email, or phone'
+      };
+    }
+
+    // Guard clause: validate matter info
+    if (!paymentRequest.matterInfo.type || !paymentRequest.matterInfo.description) {
+      return {
+        success: false,
+        error: 'Missing required matter information: type or description'
+      };
+    }
+
     try {
       console.log('💰 Creating invoice for payment request:', paymentRequest);
       
@@ -225,12 +504,16 @@ export class PaymentService {
         teamUlid: teamUlid
       });
       
+      // Get payment configuration for this team
+      const paymentConfig = await this.getPaymentConfig(teamId);
+      console.log('💰 Payment configuration:', paymentConfig);
+      
       // Step 1: Create customer with retry logic
-      const customerData = {
+      const customerData: CustomerCreateRequest = {
         name: paymentRequest.customerInfo.name,
         email: paymentRequest.customerInfo.email,
         phone: this.formatPhoneNumber(paymentRequest.customerInfo.phone),
-        currency: 'USD',
+        currency: paymentConfig.currency,
         status: 'Lead',
         team_id: teamUlid,
         address_line_1: paymentRequest.customerInfo.location || '',
@@ -247,35 +530,72 @@ export class PaymentService {
         };
       }
 
-      // Step 2: Create invoice with retry logic
-      const invoiceData = {
-        customer_id: customerResult.customerId,
-        currency: 'USD',
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
-        status: 'draft',
-        line_items: [
-          {
-            description: `${paymentRequest.matterInfo.type}: ${paymentRequest.matterInfo.description}`,
-            quantity: 1,
-            unit_price: 7500, // $75.00 in cents
-            line_total: 7500
-          }
-        ]
-      };
+      // Store customer ID for potential cleanup
+      const customerId = customerResult.customerId!;
 
-      const invoiceResult = await this.createInvoiceWithRetry(teamUlid, apiToken, invoiceData);
-      if (!invoiceResult.success) {
-        return {
-          success: false,
-          error: invoiceResult.error || 'Failed to create invoice'
+      try {
+        // Step 2: Create invoice with retry logic
+        const matterPrice = this.getMatterPrice(paymentRequest.matterInfo.type, paymentConfig);
+        const dueDate = new Date(Date.now() + paymentConfig.dueDateDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        const invoiceData: InvoiceCreateRequest = {
+          customer_id: customerId,
+          currency: paymentConfig.currency,
+          due_date: dueDate,
+          status: 'draft',
+          line_items: [
+            {
+              description: `${paymentRequest.matterInfo.type}: ${paymentRequest.matterInfo.description}`,
+              quantity: 1,
+              unit_price: matterPrice,
+              line_total: matterPrice
+            }
+          ]
         };
-      }
 
-      return {
-        success: true,
-        invoiceUrl: invoiceResult.invoiceUrl,
-        paymentId: invoiceResult.paymentId
-      };
+        console.log('💰 Invoice data with configurable pricing:', {
+          matterType: paymentRequest.matterInfo.type,
+          price: matterPrice,
+          currency: paymentConfig.currency,
+          dueDate: dueDate
+        });
+
+        const invoiceResult = await this.createInvoiceWithRetry(teamUlid, apiToken, invoiceData);
+        if (!invoiceResult.success) {
+          // Invoice creation failed - attempt to clean up the orphaned customer
+          console.log('🔄 Invoice creation failed, attempting to delete orphaned customer:', customerId);
+          const deleteResult = await this.deleteCustomerWithRetry(teamUlid, apiToken, customerId);
+          if (!deleteResult.success) {
+            console.error('❌ Failed to clean up orphaned customer:', customerId, 'Error:', deleteResult.error);
+          } else {
+            console.log('✅ Successfully cleaned up orphaned customer:', customerId);
+          }
+          
+          return {
+            success: false,
+            error: invoiceResult.error || 'Failed to create invoice'
+          };
+        }
+
+        return {
+          success: true,
+          invoiceUrl: invoiceResult.invoiceUrl,
+          paymentId: invoiceResult.paymentId
+        };
+      } catch (error) {
+        // Any downstream error - attempt to clean up the orphaned customer
+        console.log('🔄 Downstream error occurred, attempting to delete orphaned customer:', customerId);
+        const deleteResult = await this.deleteCustomerWithRetry(teamUlid, apiToken, customerId);
+        if (!deleteResult.success) {
+          console.error('❌ Failed to clean up orphaned customer:', customerId, 'Error:', deleteResult.error);
+        } else {
+          console.log('✅ Successfully cleaned up orphaned customer:', customerId);
+        }
+        
+        // Log both the original error and any cleanup error, but return the original error
+        console.error('❌ Original error:', error);
+        throw error; // Re-throw to be caught by outer try/catch
+      }
 
     } catch (error) {
       console.error('❌ Payment service error:', error);
