@@ -187,7 +187,7 @@ PARAMETERS: {"customer_name": "John Doe", "customer_email": "john@example.com", 
       isSensitiveMatter: false,
       isGeneralInquiry: true,
       shouldCreateMatter: false,
-      state: 'GATHERING_INFORMATION' as any // Will be set by caller
+      state: ConversationState.GATHERING_INFORMATION
     };
   }
 

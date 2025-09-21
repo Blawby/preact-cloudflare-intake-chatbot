@@ -231,7 +231,7 @@ export class PaymentService {
         };
       }
 
-      console.log('✅ Customer created:', customerResult);
+      console.log('✅ Customer created: id=', customerResult.data?.id);
       return { success: true, customerId };
     } catch (error) {
       console.error('❌ Customer creation error:', error);
@@ -422,7 +422,7 @@ export class PaymentService {
         };
       }
 
-      console.log('✅ Invoice created:', invoiceResult);
+      console.log('✅ Invoice created: id=', invoiceResult.data?.id, 'timestamp=', new Date().toISOString());
       return {
         success: true,
         invoiceUrl: invoiceResult.data.payment_link,
@@ -477,7 +477,7 @@ export class PaymentService {
     }
 
     try {
-      console.log('💰 Creating invoice for payment request:', paymentRequest);
+      console.log('💰 Creating invoice for payment request: teamId=', paymentRequest.teamId, 'sessionId=', paymentRequest.sessionId);
       
       const teamId = paymentRequest.teamId;
       console.log('💰 Using team ID:', teamId);

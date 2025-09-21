@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS matters (
   title TEXT NOT NULL,
   description TEXT,
   status TEXT DEFAULT 'lead', -- 'lead', 'open', 'in_progress', 'completed', 'archived'
+  priority TEXT DEFAULT 'normal', -- 'low', 'normal', 'high' - maps from urgency
   assigned_lawyer_id TEXT,
   lead_source TEXT, -- 'website', 'referral', 'advertising', etc.
   estimated_value INTEGER, -- in cents

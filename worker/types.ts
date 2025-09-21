@@ -155,6 +155,7 @@ export interface ValidatedRequest<T = any> {
 
 // UI-specific types that extend base types
 export interface FileAttachment {
+  id: string;
   name: string;
   size: number;
   type: string;

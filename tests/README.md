@@ -59,9 +59,6 @@ npm test
 npm run test:watch     # Run tests in watch mode
 npm run test:ui        # Run tests with UI
 npm run test:coverage  # Run tests with coverage
-
-# Agent report tests
-npm run test:agent-report
 ```
 
 ### Test Configuration

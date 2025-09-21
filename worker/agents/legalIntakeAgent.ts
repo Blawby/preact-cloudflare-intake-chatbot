@@ -9,16 +9,9 @@ import { PromptBuilder } from '../utils/promptBuilder.js';
 import { Logger } from '../utils/logger.js';
 import { ToolCallParser } from '../utils/toolCallParser.js';
 import { withRetry } from '../utils/retry.js';
-import type { Env, ChatMessage } from '../types.js';
+import type { Env, ChatMessage, FileAttachment } from '../types.js';
+import type { Team } from '../services/TeamService.js';
 
-// File attachment interface for the agent
-export interface FileAttachment {
-  readonly id: string;
-  readonly name: string;
-  readonly type: string;
-  readonly size: number;
-  readonly url: string;
-}
 
 // Agent message interface that extends ChatMessage with isUser property
 export interface AgentMessage {
@@ -89,18 +82,6 @@ export interface PaymentInvoiceParameters {
   readonly service_type: 'consultation' | 'document_review' | 'legal_advice' | 'case_preparation';
 }
 
-// Team configuration interface
-export interface TeamConfig {
-  readonly id: string;
-  readonly config?: {
-    readonly requiresPayment?: boolean;
-    readonly consultationFee?: number;
-    readonly paymentLink?: string;
-    readonly blawbyApi?: {
-      readonly enabled: boolean;
-    };
-  };
-}
 
 // Payment invoice response interface
 export interface PaymentInvoiceResponse {
@@ -112,6 +93,7 @@ export interface PaymentInvoiceResponse {
     readonly paymentId: string;
     readonly amount: number;
     readonly serviceType: string;
+    readonly sessionId?: string;
   };
   readonly error?: string;
   readonly errorDetails?: {
@@ -132,6 +114,8 @@ export interface ErrorPayload {
     readonly retryable?: boolean;
     readonly timestamp: string;
     readonly originalError?: string;
+    readonly sessionId?: string;
+    readonly validationErrors?: string[];
   };
 }
 
@@ -336,7 +320,16 @@ export const createPaymentInvoice = {
 
 // Contact form request handler
 async function handleRequestContactForm(parameters: any, env: any, teamConfig?: any): Promise<ContactFormResponse> {
+  // Validate required reason field
+  if (!parameters || typeof parameters !== 'object') {
+    throw new Error('Invalid parameters: expected object');
+  }
+  
   const { reason } = parameters;
+  
+  if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
+    throw new Error('Invalid reason: expected non-empty string');
+  }
   
   return {
     success: true,
@@ -361,8 +354,71 @@ async function handleRequestContactForm(parameters: any, env: any, teamConfig?: 
 async function handleCreatePaymentInvoice(
   parameters: PaymentInvoiceParameters, 
   env: Env, 
-  teamConfig?: TeamConfig
+  teamConfig?: Team
 ): Promise<PaymentInvoiceResponse | ErrorPayload> {
+  // Generate unique session ID for idempotency
+  const sessionId = crypto.randomUUID();
+  
+  // Validate team configuration
+  if (!teamConfig?.id) {
+    return {
+      success: false,
+      error: 'Team configuration missing: team ID is required for payment processing',
+      errorDetails: {
+        code: 'MISSING_TEAM_CONFIG',
+        message: 'Team configuration is missing or invalid',
+        retryable: false,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  // Validate input parameters
+  const validationErrors: string[] = [];
+  
+  if (!parameters.customer_name || typeof parameters.customer_name !== 'string' || parameters.customer_name.trim().length === 0) {
+    validationErrors.push('customer_name is required and must be a non-empty string');
+  }
+  
+  if (!parameters.customer_email || typeof parameters.customer_email !== 'string' || parameters.customer_email.trim().length === 0) {
+    validationErrors.push('customer_email is required and must be a non-empty string');
+  }
+  
+  if (!parameters.customer_phone || typeof parameters.customer_phone !== 'string' || parameters.customer_phone.trim().length === 0) {
+    validationErrors.push('customer_phone is required and must be a non-empty string');
+  }
+  
+  if (!parameters.matter_type || typeof parameters.matter_type !== 'string' || parameters.matter_type.trim().length === 0) {
+    validationErrors.push('matter_type is required and must be a non-empty string');
+  }
+  
+  if (!parameters.matter_description || typeof parameters.matter_description !== 'string' || parameters.matter_description.trim().length === 0) {
+    validationErrors.push('matter_description is required and must be a non-empty string');
+  }
+  
+  if (typeof parameters.amount !== 'number' || parameters.amount <= 0) {
+    validationErrors.push('amount is required and must be a positive number');
+  }
+  
+  const allowedServiceTypes = ['consultation', 'document_review', 'legal_advice', 'case_preparation'];
+  if (!parameters.service_type || !allowedServiceTypes.includes(parameters.service_type)) {
+    validationErrors.push(`service_type is required and must be one of: ${allowedServiceTypes.join(', ')}`);
+  }
+  
+  if (validationErrors.length > 0) {
+    return {
+      success: false,
+      error: 'Validation failed: ' + validationErrors.join('; '),
+      errorDetails: {
+        code: 'VALIDATION_ERROR',
+        message: 'Input validation failed',
+        retryable: false,
+        timestamp: new Date().toISOString(),
+        validationErrors
+      }
+    };
+  }
+
   const { 
     customer_name, 
     customer_email, 
@@ -377,7 +433,7 @@ async function handleCreatePaymentInvoice(
     // Create payment service using dependency injection
     const paymentService = PaymentServiceFactory.createPaymentService(env);
     
-    // Create payment request with proper typing
+    // Create payment request with proper typing and unique session ID
     const paymentRequest = {
       customerInfo: {
         name: customer_name,
@@ -391,8 +447,8 @@ async function handleCreatePaymentInvoice(
         urgency: 'normal', // Default urgency as required by PaymentRequest interface
         opposingParty: '' // Default empty opposing party
       },
-      teamId: teamConfig?.id || 'default',
-      sessionId: 'payment-session' // Default session ID
+      teamId: teamConfig.id, // Use validated team ID
+      sessionId: sessionId // Use generated unique session ID for idempotency
     };
 
     // Call payment service with retry logic (handled internally)
@@ -407,7 +463,8 @@ async function handleCreatePaymentInvoice(
           invoiceUrl: result.invoiceUrl!,
           paymentId: result.paymentId!,
           amount: amount,
-          serviceType: service_type
+          serviceType: service_type,
+          sessionId: sessionId // Include session ID for correlation
         }
       };
     } else {
@@ -420,6 +477,7 @@ async function handleCreatePaymentInvoice(
           message: result.error || 'Failed to create payment invoice',
           retryable: true, // Payment service errors are generally retryable
           timestamp: new Date().toISOString(),
+          sessionId: sessionId, // Include session ID for correlation
           originalError: result.error
         }
       };
@@ -437,6 +495,7 @@ async function handleCreatePaymentInvoice(
         message: 'Payment service threw an exception during invoice creation',
         retryable: true,
         timestamp: new Date().toISOString(),
+        sessionId: sessionId, // Include session ID for correlation
         originalError: error instanceof Error ? error.message : String(error)
       }
     };
@@ -858,7 +917,7 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
       Logger.info('Email service not configured - skipping email notification');
     }
   } catch (error) {
-    console.warn('Failed to send lawyer approval email:', error);
+    Logger.warn('Failed to send lawyer approval email:', error instanceof Error ? error.message : 'Unknown error');
     // Don't fail the request if email fails
   }
 }

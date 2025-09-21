@@ -450,7 +450,7 @@ export class LegalIntakeLogger {
       // Add additional metadata for log aggregation
       service: 'legal-intake',
       version: '1.0.0',
-      environment: process.env.NODE_ENV || 'development'
+      environment: (typeof process !== 'undefined' && process.env && process.env.NODE_ENV) || 'development'
     };
 
     // Use appropriate Logger method based on level

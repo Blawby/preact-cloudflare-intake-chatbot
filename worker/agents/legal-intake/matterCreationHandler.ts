@@ -2,7 +2,12 @@ import { ValidationService } from '../../services/ValidationService.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { Logger } from '../../utils/logger.js';
 import { LegalIntakeLogger } from './legalIntakeLogger.js';
+import { ToolCallParser } from '../../utils/toolCallParser.js';
 import type { Env } from '../../types.js';
+import type { TeamConfig } from '../../services/TeamService.js';
+
+// Re-export the canonical TOOL_HANDLERS registry to prevent drift
+export { TOOL_HANDLERS } from '../legalIntakeAgent.js';
 import {
   MatterCreationError,
   ValidationError,
@@ -42,34 +47,6 @@ export interface DocumentAnalysisParams {
   specific_question?: string;
 }
 
-export interface TeamConfig {
-  readonly id: string;
-  readonly slug: string;
-  readonly name: string;
-  readonly config?: {
-    readonly requiresPayment?: boolean;
-    readonly consultationFee?: number;
-    readonly paymentLink?: string;
-    readonly ownerEmail?: string;
-    readonly availableServices?: string[];
-    readonly jurisdiction?: {
-      readonly type: 'state' | 'national';
-      readonly description: string;
-      readonly supportedStates: string[];
-      readonly supportedCountries: string[];
-      readonly primaryState?: string;
-    };
-    readonly blawbyApi?: {
-      readonly enabled: boolean;
-      readonly apiKey?: string | null;
-      readonly apiKeyHash?: string;
-      readonly teamUlid?: string;
-      readonly apiUrl?: string;
-    };
-  };
-  // Allow for additional dynamic properties with proper typing
-  readonly [key: string]: unknown;
-}
 
 export interface ValidationResult {
   isValid: boolean;
@@ -303,12 +280,6 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
   return summaryMessage;
 }
 
-export const TOOL_HANDLERS = {
-  create_matter: handleCreateMatter,
-  collect_contact_info: handleCollectContactInfo,
-  request_lawyer_review: handleRequestLawyerReview,
-  analyze_document: handleAnalyzeDocument
-};
 
 export async function handleCreateMatter(
   parameters: MatterCreationParams, 
@@ -327,7 +298,7 @@ export async function handleCreateMatter(
         });
       }
 
-      Logger.debug('[handleCreateMatter] parameters:', parameters);
+      Logger.debug('[handleCreateMatter] parameters:', ToolCallParser.sanitizeParameters(parameters));
       
       // Log matter creation start
       if (correlationId) {

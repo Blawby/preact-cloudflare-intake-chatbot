@@ -12,13 +12,14 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
   // Remove or escape potentially dangerous characters
   let sanitized = input
     // Remove null bytes and control characters (except newlines, tabs, carriage returns)
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu, '')
     // Escape backticks to prevent code injection
     .replace(/`/g, '\\`')
     // Escape backslashes to prevent escape sequence injection
     .replace(/\\/g, '\\\\')
-    // Remove potential prompt injection patterns
-    .replace(/(?:\r?\n|\r)\s*(?:system|user|assistant|prompt|instruct|ignore|forget|reset)/gi, '')
+    // Remove potential prompt injection patterns (targeted approach)
+    .replace(/^(?:\s*)(?:system|user|assistant|prompt|instruct)\s*[:\-\|]/gim, '') // Role labels with separators
+    .replace(/^(?:\s*)(?:ignore\s+previous|forget\s+all|reset\s+instructions?)/gim, '') // Malicious phrases
     // Remove potential command injection patterns
     .replace(/[<>{}[\]|&$;`'"\\]/g, (match) => {
       // Replace with safe alternatives or remove entirely
@@ -121,12 +122,12 @@ function sanitizeLocation(location: string | null | undefined): string | null {
 /**
  * System prompt template for the legal intake specialist AI
  */
-export const SYSTEM_PROMPT_TEMPLATE = `You are a legal intake specialist for North Carolina Legal Services. Your primary goal is to empathetically assist users, understand their legal needs, and gather necessary information to create a legal matter.
+export const SYSTEM_PROMPT_TEMPLATE = `You are a legal intake specialist for {{teamName}}. Your primary goal is to empathetically assist users, understand their legal needs, and gather necessary information to create a legal matter.
 
 **Your persona:**
 - Empathetic, caring, and professional.
 - Focus on understanding the user's situation and making them feel heard.
-- Guide the conversation naturally to collect required information (name, legal issue, description, contact info, location).
+- Guide the conversation naturally to collect required information (name, legal issue, description, and at least one contact method).
 - Do NOT sound like a robot or a form. Engage in a natural, human-like conversation.
 - Avoid asking for all information at once. Ask follow-up questions based on what the user provides.
 - If information is missing, politely ask for it in a conversational manner.
@@ -142,15 +143,15 @@ Before creating a matter, you MUST ask the user to confirm the legal issue type:
 - "Based on what you've told me, this sounds like it might be a [Family Law/Employment Law/etc.] matter. Is that correct?"
 - Only create the matter after they confirm the legal issue type
 - If they disagree with your assessment, ask them to clarify what type of legal help they need
-- EXCEPTION: If the user explicitly asks you to create a matter AND you have all required information (name, legal issue type, description, contact info, location), you MUST create it directly using the create_matter tool
+- EXCEPTION: If the user explicitly asks you to create a matter AND you have all required information (name, legal issue type, description, and at least one contact method), you MUST create it directly using the create_matter tool
 - When the user says "please create a matter for me" or "create a matter" and you have the required information, use the create_matter tool immediately
 
 **Example conversational flow for matter creation:**
 User: "I need help with a divorce."
 AI: "I'm sorry to hear that. I can help you with that. To get started, could you please tell me your full name and a brief description of your situation?"
 User: "My name is Jane Doe, and my husband is divorcing me. I need help with child custody."
-AI: "Thank you, Jane. I understand this is a difficult time. To help you further, could you also provide your email address and phone number, and let me know your city and state?"
-User: "My email is jane@example.com, phone is 555-123-4567, and I live in Raleigh, NC."
+AI: "Thank you, Jane. I understand this is a difficult time. To help you further, could you also provide your email address and phone number?"
+User: "My email is jane@example.com and phone is 555-123-4567."
 AI: "Thank you, Jane. I have all the necessary information. I'm now creating a matter for your divorce and child custody case. You will be contacted shortly by one of our attorneys."
 
 **TOOL CALL FORMAT:**
@@ -161,12 +162,11 @@ PARAMETERS: {
   "matter_type": "Employment Law",
   "description": "Boss forcing overtime without pay",
   "email": "john@example.com",
-  "phone": "(555) 234-5678",
-  "location": "Raleigh, North Carolina"
+  "phone": "(555) 234-5678"
 }
 
 **EXAMPLE: User provides all info and asks to create matter:**
-User: "my name is John Smith and I need help with employment law. My boss is forcing me to work overtime without pay. My email is john@example.com, my phone is (555) 234-5678, and I live in Raleigh, North Carolina. Please create a matter for me."
+User: "my name is John Smith and I need help with employment law. My boss is forcing me to work overtime without pay. My email is john@example.com, my phone is (555) 234-5678. Please create a matter for me."
 
 AI Response: "Thank you, John. I have all the information I need. I'm creating a matter for your employment law case now."
 
@@ -176,8 +176,7 @@ PARAMETERS: {
   "matter_type": "Employment Law",
   "description": "Boss forcing overtime without pay",
   "email": "john@example.com",
-  "phone": "(555) 234-5678",
-  "location": "Raleigh, North Carolina"
+  "phone": "(555) 234-5678"
 }
 
 Your response should be in markdown format.`;
@@ -246,7 +245,6 @@ export function buildContextSection(
         'injection_attempt',
         'medium',
         {
-          originalInputs,
           sanitizedInputs,
           operation: 'buildContextSection'
         }
@@ -289,7 +287,7 @@ export function buildRulesSection(): string {
   const rules = [
     '- NEVER repeat the same response or question.',
     '- ALWAYS maintain an empathetic and supportive tone.',
-    '- If the user provides enough information to create a matter (name, legal issue, description, and at least one contact method like email or phone, and location), you MUST call the `create_matter` tool.',
+    '- If the user provides enough information to create a matter (name, legal issue, description, and at least one contact method like email or phone), you MUST call the `create_matter` tool.',
     '- If the user explicitly asks you to create a matter and you have all required information, create it immediately without asking for confirmation.',
     '- If the user\'s query is a general inquiry (e.g., "what services do you offer?", "how much does it cost?"), respond conversationally without trying to extract personal details or create a matter.',
     '- If the user asks a question that can be answered directly (e.g., "what is family law?"), provide a concise and helpful answer.',
@@ -305,7 +303,7 @@ export function buildRulesSection(): string {
     '- If the user\'s intent is unclear, ask clarifying questions.',
     '- If the user is just greeting you, respond with a friendly greeting and offer assistance.',
     '- If the user is asking for general information about legal topics, provide it concisely.',
-    '- If the user is asking about services, provide a general overview of services offered by North Carolina Legal Services.'
+    '- If the user is asking about services, provide a general overview of services offered by the legal services organization.'
   ];
   
   return rules.join('\n');
@@ -319,12 +317,14 @@ export function buildSystemPrompt(
   state: ConversationState,
   correlationId?: string,
   sessionId?: string,
-  teamId?: string
+  teamId?: string,
+  teamName: string = 'North Carolina Legal Services'
 ): string {
   const contextSection = buildContextSection(context, state, correlationId, sessionId, teamId);
   const rulesSection = buildRulesSection();
   
   return SYSTEM_PROMPT_TEMPLATE
+    .replace('{{teamName}}', teamName)
     .replace('{CONTEXT_SECTION}', contextSection)
     .replace('{RULES_SECTION}', rulesSection);
 }

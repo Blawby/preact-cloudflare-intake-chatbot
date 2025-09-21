@@ -1,4 +1,4 @@
-import type { Env } from '../types';
+import type { Env, FileAttachment } from '../types';
 import type { TeamConfig } from '../services/TeamService';
 import { parseJsonBody } from '../utils';
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index';
@@ -17,6 +17,7 @@ interface RouteBody {
   teamId?: string;
   sessionId?: string;
   attachments?: Array<{
+    id?: string; // Optional id field for backward compatibility
     name: string;
     size: number;
     type: string;
@@ -106,6 +107,14 @@ function validateAttachment(att: unknown, index: number): void {
     throw new ValidationError(
       `Attachment at index ${index} must have a string 'url' property`, 
       `attachment[${index}].url`
+    );
+  }
+
+  // Validate optional id field
+  if (attachment.id !== undefined && typeof attachment.id !== 'string') {
+    throw new ValidationError(
+      `Attachment at index ${index} 'id' property must be a string if provided`, 
+      `attachment[${index}].id`
     );
   }
 }
@@ -381,7 +390,7 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
   };
 
   try {
-    const rawBody = await request.json();
+    const rawBody = await parseJsonBody(request);
     
     // Runtime validation of request body
     if (!isValidRouteBody(rawBody)) {
@@ -389,7 +398,7 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
     }
     
     const body = rawBody;
-    console.log('📥 Request body:', body);
+    console.log('📥 Request metadata: messageCount=', body.messages?.length, 'attachmentCount=', body.attachments?.length || 0);
     
     const { messages, teamId, sessionId, attachments = [] } = body;
 
@@ -406,7 +415,7 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
     if (teamId) {
       try {
         const { AIService } = await import('../services/AIService.js');
-        const aiService = new AIService(env.AI, env);
+        const aiService = new AIService(env.AI, env as any);
         const rawTeamConfig = await aiService.getTeamConfig(teamId);
         teamConfig = rawTeamConfig;
       } catch (error) {
@@ -449,7 +458,14 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
           
           // Simplified routing - always use intake agent
           console.log('📞 Using simplified intake agent routing...');
-          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, attachments);
+          const fileAttachments: FileAttachment[] = attachments.map(att => ({
+            id: att.id || crypto.randomUUID(), // Use provided id or generate UUID
+            name: att.name,
+            type: att.type,
+            size: att.size,
+            url: att.url
+          }));
+          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, fileAttachments);
           
           // Send completion event
           controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));

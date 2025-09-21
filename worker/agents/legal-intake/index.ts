@@ -3,7 +3,7 @@ import { LegalIntakeLogger } from './legalIntakeLogger.js';
 import { PromptBuilder } from '../../utils/promptBuilder.js';
 import { BusinessLogicHandler } from './businessLogicHandler.js';
 import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.js';
-import { TOOL_HANDLERS } from './matterCreationHandler.js';
+import { TOOL_HANDLERS } from '../legalIntakeAgent.js';
 import { ToolCallParser, ToolCall, ToolCallParseResult } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
 import type { Env, Team, ChatMessage } from '../../types.js';
@@ -352,7 +352,7 @@ export async function runLegalIntakeAgentStream(
         // Set teamConfig to null on failure
         teamConfig = null;
         
-        // Create and throw a wrapped error preserving the original stack
+        // Create and log a wrapped error preserving the original stack
         const wrappedError = new ExternalServiceError(
           'TeamService',
           `Failed to retrieve team configuration for teamId: ${teamId}`,
@@ -365,7 +365,28 @@ export async function runLegalIntakeAgentStream(
           wrappedError.stack = `${wrappedError.stack}\nCaused by: ${error.stack}`;
         }
         
-        throw wrappedError;
+        // Log the wrapped error and emit SSE error report
+        Logger.error('Team configuration retrieval failed', {
+          correlationId,
+          teamId,
+          error: wrappedError.message,
+          stack: wrappedError.stack
+        });
+        
+        // Emit SSE error report if controller is available
+        if (controller) {
+          try {
+            controller.enqueue(new TextEncoder().encode(
+              `data: ${JSON.stringify({
+                type: 'error',
+                message: 'Failed to retrieve team configuration',
+                correlationId
+              })}\n\n`
+            ));
+          } catch (sseError) {
+            Logger.warn('Failed to emit SSE error report', { sseError });
+          }
+        }
       }
     }
   }
@@ -439,7 +460,15 @@ export async function runLegalIntakeAgentStream(
   }
 
   // Process business logic
-  Logger.debug('🔍 Conversation Text for Extraction:', { conversationText });
+  // Sanitize conversation text for logging to avoid PII exposure
+  const sanitizedConversationText = conversationText.length > 200 
+    ? conversationText.substring(0, 200) + '...' 
+    : conversationText;
+  Logger.debug('🔍 Conversation Text for Extraction:', { 
+    conversationText: sanitizedConversationText,
+    originalLength: conversationText.length,
+    correlationId
+  });
   const businessResult = await BusinessLogicHandler.handleConversation(conversationText, env, teamConfig);
   
   // Build system prompt for AI when it should be used
@@ -460,13 +489,43 @@ export async function runLegalIntakeAgentStream(
     ...context, 
     state: businessResult.success ? businessResult.data.state : context.state 
   };
-  const systemPrompt = BusinessLogicHandler.getSystemPromptForAI(
+  const systemPromptResult = BusinessLogicHandler.getSystemPromptForAI(
     businessResult.success ? businessResult.data.state : context.state, 
     fullContext,
     correlationId,
     sessionId,
     teamId
   );
+  
+  // Handle system prompt generation error
+  let systemPrompt: string;
+  if (!systemPromptResult.success) {
+    Logger.error('Failed to generate system prompt', {
+      correlationId,
+      error: systemPromptResult.error.message,
+      state: businessResult.success ? businessResult.data.state : context.state
+    });
+    
+    // Use fallback system prompt
+    systemPrompt = `You are a helpful legal assistant. Please help the user with their legal inquiry.`;
+    
+    // Emit error via SSE if controller is available
+    if (controller) {
+      try {
+        controller.enqueue(new TextEncoder().encode(
+          `data: ${JSON.stringify({
+            type: 'error',
+            message: 'Failed to generate system prompt',
+            correlationId
+          })}\n\n`
+        ));
+      } catch (sseError) {
+        Logger.warn('Failed to emit SSE error report for system prompt failure', { sseError });
+      }
+    }
+  } else {
+    systemPrompt = systemPromptResult.data;
+  }
 
   // Hoist tool parsing variables to function scope
   let toolName: string | null = null;
@@ -511,6 +570,11 @@ export async function runLegalIntakeAgentStream(
     
     Logger.debug('✅ AI result:', aiResult);
     
+    // Runtime validation of aiResult structure
+    const response = (typeof aiResult === 'object' && aiResult !== null && typeof (aiResult as any).response === 'string') 
+      ? (aiResult as any).response 
+      : 'I apologize, but I encountered an error processing your request.';
+    
     // Log AI model response
     const aiCallEndTime = Date.now();
     const processingTime = aiCallEndTime - aiCallStartTime;
@@ -524,11 +588,6 @@ export async function runLegalIntakeAgentStream(
       response?.length,
       processingTime
     );
-    
-    // Runtime validation of aiResult structure
-    const response = (typeof aiResult === 'object' && aiResult !== null && typeof (aiResult as any).response === 'string') 
-      ? (aiResult as any).response 
-      : 'I apologize, but I encountered an error processing your request.';
     Logger.debug('📝 Full response:', response);
     
     // Check if response is empty or too short

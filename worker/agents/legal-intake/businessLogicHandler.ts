@@ -193,6 +193,13 @@ export class BusinessLogicHandler {
           });
         }
 
+        if (!env) {
+          throw new ValidationError('Environment is required for conversation state analysis', {
+            conversationText: conversationText?.substring(0, 100) + '...',
+            method: 'shouldBypassAI'
+          });
+        }
+
         const stateResult = await ConversationStateMachine.getCurrentState(conversationText, env);
         if (!stateResult.success) {
           const errorMessage = (stateResult as { success: false; error: LegalIntakeError }).error.message;
@@ -250,7 +257,7 @@ export class BusinessLogicHandler {
           });
         }
 
-        return buildSystemPrompt(context, state, correlationId, sessionId, teamId);
+        return buildSystemPrompt(context, state, correlationId, sessionId, teamId, 'North Carolina Legal Services');
       },
       {
         state: state,
