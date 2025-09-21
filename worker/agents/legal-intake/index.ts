@@ -1,4 +1,5 @@
 import { Logger } from '../../utils/logger.js';
+import { LegalIntakeLogger } from './legalIntakeLogger.js';
 import { PromptBuilder } from '../../utils/promptBuilder.js';
 import { BusinessLogicHandler } from './businessLogicHandler.js';
 import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.js';
@@ -323,7 +324,7 @@ export async function runLegalIntakeAgentStream(
   attachments: readonly FileAttachment[] = []
 ): Promise<AgentResponse | void> {
   // Generate correlation ID for error tracking
-  const correlationId = crypto.randomUUID();
+  const correlationId = LegalIntakeLogger.generateCorrelationId();
   
   // Get team configuration if teamId is provided
   let teamConfig: unknown = null;
@@ -368,6 +369,17 @@ export async function runLegalIntakeAgentStream(
       }
     }
   }
+
+  // Log agent start with structured logging after team configuration is retrieved
+  LegalIntakeLogger.logAgentStart(
+    correlationId,
+    sessionId,
+    teamId,
+    messages.length,
+    attachments.length > 0,
+    attachments.length,
+    teamConfig ? { hasConfig: true, teamSlug: (teamConfig as any)?.slug } : { hasConfig: false }
+  );
 
   // Convert messages to the format expected by Cloudflare AI
   const formattedMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = messages.map(msg => ({
@@ -450,7 +462,10 @@ export async function runLegalIntakeAgentStream(
   };
   const systemPrompt = BusinessLogicHandler.getSystemPromptForAI(
     businessResult.success ? businessResult.data.state : context.state, 
-    fullContext
+    fullContext,
+    correlationId,
+    sessionId,
+    teamId
   );
 
   // Hoist tool parsing variables to function scope
@@ -467,6 +482,16 @@ export async function runLegalIntakeAgentStream(
     
     // Use AI call with retry logic
     Logger.debug('🤖 Calling AI model...');
+    
+    // Log AI model call start
+    const aiCallStartTime = Date.now();
+    LegalIntakeLogger.logAIModelCall(
+      correlationId,
+      sessionId,
+      teamId,
+      'ai_model_call' as any,
+      AI_MODEL_CONFIG.model
+    );
     
     const aiResult = await withAIRetry(
       () => env.AI.run(AI_MODEL_CONFIG.model as any, {
@@ -485,6 +510,20 @@ export async function runLegalIntakeAgentStream(
     );
     
     Logger.debug('✅ AI result:', aiResult);
+    
+    // Log AI model response
+    const aiCallEndTime = Date.now();
+    const processingTime = aiCallEndTime - aiCallStartTime;
+    LegalIntakeLogger.logAIModelCall(
+      correlationId,
+      sessionId,
+      teamId,
+      'ai_model_response' as any,
+      AI_MODEL_CONFIG.model,
+      undefined, // tokenCount not available from Cloudflare AI
+      response?.length,
+      processingTime
+    );
     
     // Runtime validation of aiResult structure
     const response = (typeof aiResult === 'object' && aiResult !== null && typeof (aiResult as any).response === 'string') 
@@ -578,6 +617,18 @@ export async function runLegalIntakeAgentStream(
       const handler = TOOL_HANDLERS[toolName as keyof typeof TOOL_HANDLERS];
       if (!handler) {
         Logger.warn(`❌ Unknown tool: ${toolName}`);
+        
+        // Log unknown tool call
+        LegalIntakeLogger.logToolCall(
+          correlationId,
+          sessionId,
+          teamId,
+          'tool_call_failed' as any,
+          toolName,
+          parameters,
+          undefined,
+          new Error(`Unknown tool: ${toolName}`)
+        );
         if (controller) {
           const errorEvent = `data: ${JSON.stringify({
             type: 'error',
@@ -596,12 +647,45 @@ export async function runLegalIntakeAgentStream(
         };
       }
       
+      // Log tool call start
+      LegalIntakeLogger.logToolCall(
+        correlationId,
+        sessionId,
+        teamId,
+        'tool_call_start' as any,
+        toolName,
+        parameters
+      );
+      
       let toolResult: ErrorResult<unknown>;
       try {
-        toolResult = await handler(parameters, env, teamConfig);
+        toolResult = await handler(parameters, env, teamConfig, correlationId, sessionId, teamId);
         Logger.debug('Tool execution result:', toolResult);
+        
+        // Log successful tool call
+        LegalIntakeLogger.logToolCall(
+          correlationId,
+          sessionId,
+          teamId,
+          'tool_call_success' as any,
+          toolName,
+          parameters,
+          toolResult
+        );
       } catch (error) {
         Logger.error('Tool execution failed:', error);
+        
+        // Log failed tool call
+        LegalIntakeLogger.logToolCall(
+          correlationId,
+          sessionId,
+          teamId,
+          'tool_call_failed' as any,
+          toolName,
+          parameters,
+          undefined,
+          error instanceof Error ? error : new Error(String(error))
+        );
         if (controller) {
           const errorEvent = `data: ${JSON.stringify({
             type: 'error',
@@ -633,6 +717,18 @@ export async function runLegalIntakeAgentStream(
       // Return tool result for non-streaming case
       if (!controller) {
         const toolResponse = extractToolResponse(toolResult);
+        
+        // Log agent completion for tool execution
+        const toolEndTime = Date.now();
+        const totalDuration = toolEndTime - (aiCallStartTime || Date.now());
+        LegalIntakeLogger.logAgentComplete(
+          correlationId,
+          sessionId,
+          teamId,
+          totalDuration,
+          toolResult.success,
+          toolResponse.length
+        );
         
         return {
           response: toolResponse,
@@ -709,6 +805,18 @@ export async function runLegalIntakeAgentStream(
       controller.close();
     } else {
       // Non-streaming case: return the response directly
+      // Log agent completion
+      const agentEndTime = Date.now();
+      const totalDuration = agentEndTime - (aiCallStartTime || Date.now());
+      LegalIntakeLogger.logAgentComplete(
+        correlationId,
+        sessionId,
+        teamId,
+        totalDuration,
+        true,
+        response.length
+      );
+      
       return {
         response,
         metadata: {
@@ -742,6 +850,19 @@ export async function runLegalIntakeAgentStream(
     
     // Log structured error using project's Logger
     Logger.error('Agent error occurred', structuredError);
+    
+    // Log agent error with structured logging
+    LegalIntakeLogger.logAgentError(
+      correlationId,
+      sessionId,
+      teamId,
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        inputMessageCount: formattedMessages.length,
+        lastUserMessage,
+        operation: 'runLegalIntakeAgentStream'
+      }
+    );
 
     if (controller) {
       const errorEvent = `data: ${JSON.stringify({

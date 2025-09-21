@@ -21,7 +21,16 @@ export interface CloudflareLocationInfo {
 
 export interface CloudflareAIResponse {
   response?: string | null;
-  // Add other known fields if any
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+  tool_calls?: Array<{
+    name: string;
+    arguments: Record<string, unknown>;
+  }>;
+  [k: string]: unknown;
 }
 
 

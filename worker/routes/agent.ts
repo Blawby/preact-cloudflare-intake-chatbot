@@ -24,72 +24,141 @@ interface RouteBody {
   }>;
 }
 
-// Type guard function for runtime validation of RouteBody
-function isValidRouteBody(obj: unknown): obj is RouteBody {
-  // Check if obj is an object and not null
-  if (typeof obj !== 'object' || obj === null) {
-    return false;
+// Validation error class for contextual error messages
+class ValidationError extends Error {
+  constructor(message: string, public context?: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+// Validate a single message with contextual error information
+function validateMessage(msg: unknown, index: number): void {
+  if (typeof msg !== 'object' || msg === null) {
+    throw new ValidationError(`Message at index ${index} must be an object`, `message[${index}]`);
   }
 
-  const body = obj as Record<string, unknown>;
+  const message = msg as Record<string, unknown>;
 
-  // Check if messages exists and is an array
-  if (!Array.isArray(body.messages)) {
-    return false;
+  // Check if content exists and is a string
+  if (typeof message.content !== 'string') {
+    throw new ValidationError(
+      `Message at index ${index} must have a string 'content' property`, 
+      `message[${index}].content`
+    );
+  }
+
+  // Check if role exists and is one of the allowed values
+  if (message.role !== 'user' && message.role !== 'assistant' && message.role !== 'system') {
+    throw new ValidationError(
+      `Message at index ${index} must have a 'role' property with value 'user', 'assistant', or 'system'`, 
+      `message[${index}].role`
+    );
+  }
+}
+
+// Validate messages array
+function validateMessages(messages: unknown): void {
+  if (!Array.isArray(messages)) {
+    throw new ValidationError('Request body must have a "messages" property that is an array', 'messages');
   }
 
   // Validate each message in the array
-  for (const message of body.messages) {
-    if (typeof message !== 'object' || message === null) {
-      return false;
-    }
+  for (let i = 0; i < messages.length; i++) {
+    validateMessage(messages[i], i);
+  }
+}
 
-    const msg = message as Record<string, unknown>;
-
-    // Check if content exists and is a string
-    if (typeof msg.content !== 'string') {
-      return false;
-    }
-
-    // Check if role exists and is one of the allowed values
-    if (msg.role !== 'user' && msg.role !== 'assistant' && msg.role !== 'system') {
-      return false;
-    }
+// Validate a single attachment with contextual error information
+function validateAttachment(att: unknown, index: number): void {
+  if (typeof att !== 'object' || att === null) {
+    throw new ValidationError(
+      `Attachment at index ${index} must be an object`, 
+      `attachment[${index}]`
+    );
   }
 
-  // Optional fields validation
-  if (body.teamId !== undefined && typeof body.teamId !== 'string') {
+  const attachment = att as Record<string, unknown>;
+
+  // Check required attachment fields
+  if (typeof attachment.name !== 'string') {
+    throw new ValidationError(
+      `Attachment at index ${index} must have a string 'name' property`, 
+      `attachment[${index}].name`
+    );
+  }
+
+  if (typeof attachment.size !== 'number') {
+    throw new ValidationError(
+      `Attachment at index ${index} must have a number 'size' property`, 
+      `attachment[${index}].size`
+    );
+  }
+
+  if (typeof attachment.type !== 'string') {
+    throw new ValidationError(
+      `Attachment at index ${index} must have a string 'type' property`, 
+      `attachment[${index}].type`
+    );
+  }
+
+  if (typeof attachment.url !== 'string') {
+    throw new ValidationError(
+      `Attachment at index ${index} must have a string 'url' property`, 
+      `attachment[${index}].url`
+    );
+  }
+}
+
+// Validate attachments array
+function validateAttachments(attachments: unknown): void {
+  if (!Array.isArray(attachments)) {
+    throw new ValidationError('Attachments property must be an array', 'attachments');
+  }
+
+  // Validate each attachment in the array
+  for (let i = 0; i < attachments.length; i++) {
+    validateAttachment(attachments[i], i);
+  }
+}
+
+// Type guard function for runtime validation of RouteBody
+function isValidRouteBody(obj: unknown): obj is RouteBody {
+  try {
+    // Check if obj is an object and not null
+    if (typeof obj !== 'object' || obj === null) {
+      return false;
+    }
+
+    const body = obj as Record<string, unknown>;
+
+    // Validate messages array
+    validateMessages(body.messages);
+
+    // Validate optional fields
+    if (body.teamId !== undefined && typeof body.teamId !== 'string') {
+      throw new ValidationError('teamId must be a string if provided', 'teamId');
+    }
+
+    if (body.sessionId !== undefined && typeof body.sessionId !== 'string') {
+      throw new ValidationError('sessionId must be a string if provided', 'sessionId');
+    }
+
+    // Validate attachments if present
+    if (body.attachments !== undefined) {
+      validateAttachments(body.attachments);
+    }
+
+    return true;
+  } catch (error) {
+    // Log validation errors for debugging
+    if (error instanceof ValidationError) {
+      console.error(`Validation failed: ${error.message} (context: ${error.context})`);
+    } else {
+      console.error('Unexpected validation error:', error);
+    }
     return false;
   }
-
-  if (body.sessionId !== undefined && typeof body.sessionId !== 'string') {
-    return false;
-  }
-
-  // Validate attachments if present
-  if (body.attachments !== undefined) {
-    if (!Array.isArray(body.attachments)) {
-      return false;
-    }
-
-    for (const attachment of body.attachments) {
-      if (typeof attachment !== 'object' || attachment === null) {
-        return false;
-      }
-
-      const att = attachment as Record<string, unknown>;
-
-      // Check required attachment fields
-      if (typeof att.name !== 'string' || 
-          typeof att.size !== 'number' || 
-          typeof att.type !== 'string' || 
-          typeof att.url !== 'string') {
-        return false;
-      }
-    }
-  }
-
-  return true;
 }
 
 // Supervisor router for intent-based routing between agents

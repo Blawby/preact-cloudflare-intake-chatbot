@@ -1,6 +1,7 @@
 import { ValidationService } from '../../services/ValidationService.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { Logger } from '../../utils/logger.js';
+import { LegalIntakeLogger } from './legalIntakeLogger.js';
 import type { Env } from '../../types.js';
 import {
   MatterCreationError,
@@ -312,7 +313,10 @@ export const TOOL_HANDLERS = {
 export async function handleCreateMatter(
   parameters: MatterCreationParams, 
   env: Env, 
-  teamConfig: TeamConfig
+  teamConfig: TeamConfig,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
 ): Promise<ErrorResult<any>> {
   return withErrorHandling(
     async () => {
@@ -324,6 +328,31 @@ export async function handleCreateMatter(
       }
 
       Logger.debug('[handleCreateMatter] parameters:', parameters);
+      
+      // Log matter creation start
+      if (correlationId) {
+        const context = {
+          hasName: Boolean(parameters.name),
+          hasEmail: Boolean(parameters.email),
+          hasPhone: Boolean(parameters.phone),
+          hasLocation: Boolean(parameters.location),
+          hasDescription: Boolean(parameters.description),
+          name: parameters.name,
+          email: parameters.email,
+          phone: parameters.phone,
+          location: parameters.location,
+          description: parameters.description
+        };
+        
+        LegalIntakeLogger.logMatterCreation(
+          correlationId,
+          sessionId,
+          teamId,
+          'matter_creation_start' as any,
+          parameters.matter_type,
+          context as any
+        );
+      }
       
       // Use the comprehensive validation service
       const validationResult = MatterValidationService.validateMatterCreation(parameters);
@@ -355,6 +384,31 @@ export async function handleCreateMatter(
       // Build summary and return success response
       const summaryMessage = buildSummary(parameters);
       
+      // Log successful matter creation
+      if (correlationId) {
+        const context = {
+          hasName: Boolean(parameters.name),
+          hasEmail: Boolean(parameters.email),
+          hasPhone: Boolean(parameters.phone),
+          hasLocation: Boolean(parameters.location),
+          hasDescription: Boolean(parameters.description),
+          name: parameters.name,
+          email: parameters.email,
+          phone: parameters.phone,
+          location: parameters.location,
+          description: parameters.description
+        };
+        
+        LegalIntakeLogger.logMatterCreation(
+          correlationId,
+          sessionId,
+          teamId,
+          'matter_creation_success' as any,
+          parameters.matter_type,
+          context as any
+        );
+      }
+      
       return createSuccessResponse(summaryMessage, {
         matter_type: parameters.matter_type,
         description: parameters.description,
@@ -376,7 +430,10 @@ export async function handleCreateMatter(
 export async function handleCollectContactInfo(
   parameters: ContactInfoParams, 
   env: Env, 
-  teamConfig: TeamConfig
+  teamConfig: TeamConfig,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
 ): Promise<ErrorResult<any>> {
   return withErrorHandling(
     async () => {
@@ -417,7 +474,10 @@ export async function handleCollectContactInfo(
 export async function handleRequestLawyerReview(
   parameters: LawyerReviewParams, 
   env: Env, 
-  teamConfig: TeamConfig
+  teamConfig: TeamConfig,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
 ): Promise<ErrorResult<any>> {
   return withErrorHandling(
     async () => {
@@ -444,7 +504,10 @@ export async function handleRequestLawyerReview(
 export async function handleAnalyzeDocument(
   parameters: DocumentAnalysisParams, 
   env: Env, 
-  teamConfig: TeamConfig
+  teamConfig: TeamConfig,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
 ): Promise<ErrorResult<any>> {
   return withErrorHandling(
     async () => {

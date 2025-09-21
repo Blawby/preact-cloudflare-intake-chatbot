@@ -1,4 +1,122 @@
 import type { ConversationContext, ConversationState } from './conversationStateMachine.js';
+import { LegalIntakeLogger } from './legalIntakeLogger.js';
+
+/**
+ * Sanitizes a string to prevent injection attacks and handle PII safely
+ */
+function sanitizeString(input: string | null | undefined, maxLength: number = 1000): string | null {
+  if (!input || typeof input !== 'string') {
+    return null;
+  }
+
+  // Remove or escape potentially dangerous characters
+  let sanitized = input
+    // Remove null bytes and control characters (except newlines, tabs, carriage returns)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Escape backticks to prevent code injection
+    .replace(/`/g, '\\`')
+    // Escape backslashes to prevent escape sequence injection
+    .replace(/\\/g, '\\\\')
+    // Remove potential prompt injection patterns
+    .replace(/(?:\r?\n|\r)\s*(?:system|user|assistant|prompt|instruct|ignore|forget|reset)/gi, '')
+    // Remove potential command injection patterns
+    .replace(/[<>{}[\]|&$;`'"\\]/g, (match) => {
+      // Replace with safe alternatives or remove entirely
+      const safeChars: Record<string, string> = {
+        '<': '&lt;',
+        '>': '&gt;',
+        '{': '&#123;',
+        '}': '&#125;',
+        '[': '&#91;',
+        ']': '&#93;',
+        '|': '&#124;',
+        '&': '&amp;',
+        '$': '&#36;',
+        ';': '&#59;',
+        '`': '&#96;',
+        "'": '&#39;',
+        '"': '&quot;',
+        '\\': '&#92;'
+      };
+      return safeChars[match] || '';
+    })
+    // Trim whitespace
+    .trim();
+
+  // Limit length to prevent buffer overflow attacks
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength) + '...';
+  }
+
+  return sanitized.length > 0 ? sanitized : null;
+}
+
+/**
+ * Sanitizes email addresses with additional validation
+ */
+function sanitizeEmail(email: string | null | undefined): string | null {
+  if (!email || typeof email !== 'string') {
+    return null;
+  }
+
+  // Basic email validation regex
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  
+  let sanitized = sanitizeString(email, 254); // RFC 5321 limit
+  if (!sanitized || !emailRegex.test(sanitized)) {
+    return null;
+  }
+
+  return sanitized;
+}
+
+/**
+ * Sanitizes phone numbers with additional validation
+ */
+function sanitizePhone(phone: string | null | undefined): string | null {
+  if (!phone || typeof phone !== 'string') {
+    return null;
+  }
+
+  // Remove all non-digit characters except + at the beginning
+  let sanitized = phone.replace(/[^\d+]/g, '');
+  
+  // Ensure + is only at the beginning
+  if (sanitized.includes('+') && !sanitized.startsWith('+')) {
+    sanitized = sanitized.replace(/\+/g, '');
+  }
+
+  // Basic phone number validation (7-15 digits)
+  const phoneRegex = /^\+?[1-9]\d{6,14}$/;
+  if (!phoneRegex.test(sanitized)) {
+    return null;
+  }
+
+  return sanitized;
+}
+
+/**
+ * Sanitizes location data
+ */
+function sanitizeLocation(location: string | null | undefined): string | null {
+  if (!location || typeof location !== 'string') {
+    return null;
+  }
+
+  // More restrictive sanitization for location data
+  let sanitized = sanitizeString(location, 200);
+  if (!sanitized) {
+    return null;
+  }
+
+  // Remove potential coordinate injection patterns
+  sanitized = sanitized
+    .replace(/[0-9.-]+\s*,\s*[0-9.-]+/g, '[coordinates]') // Replace lat,lng patterns
+    .replace(/https?:\/\/[^\s]+/gi, '[url]') // Replace URLs
+    .replace(/www\.[^\s]+/gi, '[url]'); // Replace www URLs
+
+  return sanitized;
+}
 
 /**
  * System prompt template for the legal intake specialist AI
@@ -67,15 +185,98 @@ Your response should be in markdown format.`;
 /**
  * Builds the context section for the system prompt
  */
-export function buildContextSection(context: ConversationContext, state: ConversationState): string {
+export function buildContextSection(
+  context: ConversationContext, 
+  state: ConversationState,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+): string {
+  // Parameter validation
+  if (!context || typeof context !== 'object') {
+    throw new TypeError('buildContextSection: context parameter must be a valid ConversationContext object');
+  }
+  
+  if (!state || typeof state !== 'string') {
+    throw new TypeError('buildContextSection: state parameter must be a valid ConversationState string');
+  }
+
+  // Sanitize all string inputs to prevent injection attacks and handle PII safely
+  const sanitizedName = sanitizeString(context.name, 100);
+  const sanitizedLegalIssueType = sanitizeString(context.legalIssueType, 50);
+  const sanitizedDescription = sanitizeString(context.description, 500);
+  const sanitizedEmail = sanitizeEmail(context.email);
+  const sanitizedPhone = sanitizePhone(context.phone);
+  const sanitizedLocation = sanitizeLocation(context.location);
+  const sanitizedState = sanitizeString(state, 50);
+
+  // Log security events if suspicious input is detected
+  if (correlationId) {
+    const originalInputs = {
+      name: context.name,
+      legalIssueType: context.legalIssueType,
+      description: context.description,
+      email: context.email,
+      phone: context.phone,
+      location: context.location
+    };
+
+    const sanitizedInputs = {
+      name: sanitizedName,
+      legalIssueType: sanitizedLegalIssueType,
+      description: sanitizedDescription,
+      email: sanitizedEmail,
+      phone: sanitizedPhone,
+      location: sanitizedLocation
+    };
+
+    // Check for potential injection attempts
+    const hasInjectionPatterns = Object.entries(originalInputs).some(([key, value]) => {
+      if (!value) return false;
+      const original = value;
+      const sanitized = sanitizedInputs[key as keyof typeof sanitizedInputs];
+      return original !== sanitized && sanitized === null;
+    });
+
+    if (hasInjectionPatterns) {
+      LegalIntakeLogger.logSecurityEvent(
+        correlationId,
+        sessionId,
+        teamId,
+        'injection_attempt',
+        'medium',
+        {
+          originalInputs,
+          sanitizedInputs,
+          operation: 'buildContextSection'
+        }
+      );
+    }
+  }
+
+  // Ensure required properties exist with safe defaults
+  const safeContext = {
+    hasName: Boolean(context.hasName && sanitizedName),
+    hasLegalIssue: Boolean(context.hasLegalIssue && sanitizedLegalIssueType),
+    hasEmail: Boolean(context.hasEmail && sanitizedEmail),
+    hasPhone: Boolean(context.hasPhone && sanitizedPhone),
+    hasLocation: Boolean(context.hasLocation && sanitizedLocation),
+    name: sanitizedName,
+    legalIssueType: sanitizedLegalIssueType,
+    description: sanitizedDescription,
+    email: sanitizedEmail,
+    phone: sanitizedPhone,
+    location: sanitizedLocation
+  };
+
   const contextItems = [
-    `- Has Name: ${context.hasName ? 'YES' : 'NO'} ${context.name ? `(${context.name})` : ''}`,
-    `- Has Legal Issue: ${context.hasLegalIssue ? 'YES' : 'NO'} ${context.legalIssueType ? `(${context.legalIssueType})` : ''}`,
-    `- Has Description: ${context.description ? 'YES' : 'NO'}`,
-    `- Has Email: ${context.hasEmail ? 'YES' : 'NO'} ${context.email ? `(${context.email})` : ''}`,
-    `- Has Phone: ${context.hasPhone ? 'YES' : 'NO'} ${context.phone ? `(${context.phone})` : ''}`,
-    `- Has Location: ${context.hasLocation ? 'YES' : 'NO'} ${context.location ? `(${context.location})` : ''}`,
-    `- Current State: ${state}`
+    `- Has Name: ${safeContext.hasName ? 'YES' : 'NO'} ${safeContext.name ? `(${safeContext.name})` : ''}`,
+    `- Has Legal Issue: ${safeContext.hasLegalIssue ? 'YES' : 'NO'} ${safeContext.legalIssueType ? `(${safeContext.legalIssueType})` : ''}`,
+    `- Has Description: ${safeContext.description ? 'YES' : 'NO'}`,
+    `- Has Email: ${safeContext.hasEmail ? 'YES' : 'NO'} ${safeContext.email ? `(${safeContext.email})` : ''}`,
+    `- Has Phone: ${safeContext.hasPhone ? 'YES' : 'NO'} ${safeContext.phone ? `(${safeContext.phone})` : ''}`,
+    `- Has Location: ${safeContext.hasLocation ? 'YES' : 'NO'} ${safeContext.location ? `(${safeContext.location})` : ''}`,
+    `- Current State: ${sanitizedState || 'UNKNOWN'}`
   ];
   
   return contextItems.join('\n');
@@ -113,8 +314,14 @@ export function buildRulesSection(): string {
 /**
  * Builds the complete system prompt by combining template with context and rules
  */
-export function buildSystemPrompt(context: ConversationContext, state: ConversationState): string {
-  const contextSection = buildContextSection(context, state);
+export function buildSystemPrompt(
+  context: ConversationContext, 
+  state: ConversationState,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+): string {
+  const contextSection = buildContextSection(context, state, correlationId, sessionId, teamId);
   const rulesSection = buildRulesSection();
   
   return SYSTEM_PROMPT_TEMPLATE

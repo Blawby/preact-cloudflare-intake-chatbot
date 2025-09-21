@@ -226,7 +226,13 @@ export class BusinessLogicHandler {
   /**
    * Gets the system prompt for AI when it should be used
    */
-  static getSystemPromptForAI(state: ConversationState, context: ConversationContext): ErrorResult<string> {
+  static getSystemPromptForAI(
+    state: ConversationState, 
+    context: ConversationContext,
+    correlationId?: string,
+    sessionId?: string,
+    teamId?: string
+  ): ErrorResult<string> {
     return withErrorHandlingSync(
       () => {
         // Validate input parameters
@@ -244,7 +250,7 @@ export class BusinessLogicHandler {
           });
         }
 
-        return buildSystemPrompt(context, state);
+        return buildSystemPrompt(context, state, correlationId, sessionId, teamId);
       },
       {
         state: state,

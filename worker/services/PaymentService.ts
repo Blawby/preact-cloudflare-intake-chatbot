@@ -192,7 +192,7 @@ export class PaymentService {
 
     try {
       // Generate idempotency key to prevent duplicate customers on retry
-      const idempotencyKey = this.generateCustomerIdempotencyKey(customerData);
+      const idempotencyKey = await this.generateCustomerIdempotencyKey(customerData);
       
       const customerResult = await withRetry(
         async () => {
@@ -250,6 +250,19 @@ export class PaymentService {
     apiToken: string, 
     customerId: string
   ): Promise<{ success: boolean; error?: string }> {
+    // Input validation guard clauses
+    if (!teamUlid || typeof teamUlid !== 'string' || teamUlid.trim() === '') {
+      return { success: false, error: 'Team ULID is required and must be a non-empty string' };
+    }
+    
+    if (!apiToken || typeof apiToken !== 'string' || apiToken.trim() === '') {
+      return { success: false, error: 'API token is required and must be a non-empty string' };
+    }
+    
+    if (!customerId || typeof customerId !== 'string' || customerId.trim() === '') {
+      return { success: false, error: 'Customer ID is required and must be a non-empty string' };
+    }
+
     try {
       await withRetry(
         async () => {
@@ -289,9 +302,23 @@ export class PaymentService {
   }
 
   /**
+   * Helper method to create a deterministic hash using Web Crypto API
+   */
+  private async createDeterministicHash(input: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    return hashHex.slice(0, 32); // Truncate to 32 characters for consistent length
+  }
+
+  /**
    * Generates a deterministic idempotency key from customer data
    */
-  private generateCustomerIdempotencyKey(customerData: CustomerCreateRequest): string {
+  private async generateCustomerIdempotencyKey(customerData: CustomerCreateRequest): Promise<string> {
     // Create a deterministic key based on customer data to prevent duplicates
     const keyData = {
       name: customerData.name,
@@ -300,15 +327,16 @@ export class PaymentService {
       team_id: customerData.team_id
     };
     
-    // Use a simple hash of the key data (in production, you might want a more robust hashing function)
+    // Use Web Crypto API to create a deterministic hash
     const keyString = JSON.stringify(keyData);
-    return `customer-${Buffer.from(keyString).toString('base64').slice(0, 32)}`;
+    const hash = await this.createDeterministicHash(keyString);
+    return `customer-${hash}`;
   }
 
   /**
    * Generates a deterministic idempotency key from invoice data
    */
-  private generateIdempotencyKey(invoiceData: InvoiceCreateRequest): string {
+  private async generateIdempotencyKey(invoiceData: InvoiceCreateRequest): Promise<string> {
     // Create a deterministic key based on invoice data to prevent duplicates
     const keyData = {
       customer_id: invoiceData.customer_id,
@@ -321,9 +349,10 @@ export class PaymentService {
       }))
     };
     
-    // Use a simple hash of the key data (in production, you might want a more robust hashing function)
+    // Use Web Crypto API to create a deterministic hash
     const keyString = JSON.stringify(keyData);
-    return `invoice-${Buffer.from(keyString).toString('base64').slice(0, 32)}`;
+    const hash = await this.createDeterministicHash(keyString);
+    return `invoice-${hash}`;
   }
 
   /**
@@ -337,7 +366,7 @@ export class PaymentService {
   ): Promise<{ success: boolean; invoiceUrl?: string; paymentId?: string; error?: string }> {
     try {
       // Generate idempotency key if not provided
-      const key = idempotencyKey || this.generateIdempotencyKey(invoiceData);
+      const key = idempotencyKey || await this.generateIdempotencyKey(invoiceData);
       
       const invoiceResult = await withRetry(
         async () => {
