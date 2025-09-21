@@ -101,37 +101,24 @@ const AI_MODEL_CONFIG = {
 } as const;
 
 // Tool definitions with structured schemas
-export const collectContactInfo = {
-  name: 'collect_contact_info',
-  description: 'Collect and validate client contact information including location for jurisdiction verification',
+export const requestContactForm = {
+  name: 'request_contact_form',
+  description: 'Request contact information by displaying a contact form component in the chat',
   parameters: {
     type: 'object',
     properties: {
-      name: { 
+      reason: { 
         type: 'string', 
-        description: 'Client full name',
-        minLength: 2,
-        maxLength: 100
-      },
-      phone: { 
-        type: 'string', 
-        description: 'Client phone number',
-        pattern: '^[+]?[0-9\\s\\-\\(\\)]{7,20}$' // International format
-      },
-      email: { 
-        type: 'string', 
-        description: 'Client email address',
-        format: 'email'
-      },
-      location: { 
-        type: 'string', 
-        description: 'Client location (city, state, or country)',
-        examples: ['Charlotte, NC', 'North Carolina', 'NC', 'United States', 'US'],
-        minLength: 2,
-        maxLength: 100
+        description: 'Reason for requesting contact information',
+        examples: [
+          'To schedule a consultation',
+          'To provide legal assistance',
+          'To follow up on your inquiry',
+          'To connect you with the right attorney'
+        ]
       }
     },
-    required: ['name']
+    required: ['reason']
   }
 };
 
@@ -147,11 +134,6 @@ export const createMatter = {
         enum: ['Family Law', 'Employment Law', 'Landlord/Tenant', 'Personal Injury', 'Business Law', 'Criminal Law', 'Civil Law', 'Contract Review', 'Property Law', 'Administrative Law', 'General Consultation']
       },
       description: { type: 'string', description: 'Brief description of the legal issue' },
-      urgency: { 
-        type: 'string', 
-        description: 'Urgency level',
-        enum: ['low', 'medium', 'high', 'urgent']
-      },
       name: { type: 'string', description: 'Client full name' },
       phone: { type: 'string', description: 'Client phone number' },
       email: { type: 'string', description: 'Client email address' },
@@ -164,19 +146,14 @@ export const createMatter = {
 
 export const requestLawyerReview = {
   name: 'request_lawyer_review',
-  description: 'Request lawyer review for urgent or complex matters',
+  description: 'Request lawyer review for complex matters',
   parameters: {
     type: 'object',
     properties: {
-      urgency: { 
-        type: 'string', 
-        description: 'Urgency level',
-        enum: ['low', 'medium', 'high', 'urgent']
-      },
       complexity: { type: 'string', description: 'Matter complexity level' },
       matter_type: { type: 'string', description: 'Type of legal matter' }
     },
-    required: ['urgency', 'matter_type']
+    required: ['matter_type']
   }
 };
 
@@ -209,13 +186,124 @@ export const analyzeDocument = {
   }
 };
 
+export const createPaymentInvoice = {
+  name: 'create_payment_invoice',
+  description: 'Create a payment invoice for consultation or legal services',
+  parameters: {
+    type: 'object',
+    properties: {
+      customer_name: { type: 'string', description: 'Customer full name' },
+      customer_email: { type: 'string', description: 'Customer email address' },
+      customer_phone: { type: 'string', description: 'Customer phone number' },
+      matter_type: { type: 'string', description: 'Type of legal matter' },
+      matter_description: { type: 'string', description: 'Description of the legal issue' },
+      amount: { type: 'number', description: 'Amount in cents (e.g., 7500 for $75.00)' },
+      service_type: { 
+        type: 'string', 
+        description: 'Type of service being billed',
+        enum: ['consultation', 'document_review', 'legal_advice', 'case_preparation']
+      }
+    },
+    required: ['customer_name', 'customer_email', 'customer_phone', 'matter_type', 'matter_description', 'amount', 'service_type']
+  }
+};
+
+// Contact form request handler
+async function handleRequestContactForm(parameters: any, env: any, teamConfig?: any): Promise<any> {
+  const { reason } = parameters;
+  
+  return {
+    success: true,
+    action: 'show_contact_form',
+    message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`,
+    contactForm: {
+      reason,
+      fields: {
+        name: { required: true, label: 'Full Name' },
+        email: { required: true, label: 'Email Address' },
+        phone: { required: false, label: 'Phone Number' },
+        location: { required: true, label: 'Location (City, State)' },
+        opposing_party: { required: false, label: 'Opposing Party (if applicable)' },
+        message: { required: true, label: 'Brief description of your legal issue' }
+      },
+      submitText: 'Submit Contact Form'
+    }
+  };
+}
+
+// Payment invoice handler
+async function handleCreatePaymentInvoice(parameters: any, env: any, teamConfig?: any): Promise<any> {
+  const { 
+    customer_name, 
+    customer_email, 
+    customer_phone, 
+    matter_type, 
+    matter_description, 
+    amount, 
+    service_type 
+  } = parameters;
+
+  try {
+    // Create payment request
+    const paymentRequest = {
+      customerInfo: {
+        name: customer_name,
+        email: customer_email,
+        phone: customer_phone
+      },
+      matterInfo: {
+        type: matter_type,
+        description: matter_description
+      },
+      amount: amount,
+      serviceType: service_type,
+      teamId: teamConfig?.id || 'default'
+    };
+
+    // Call payment service
+    const response = await fetch(`${env.BLAWBY_API_URL || 'http://localhost:8787'}/api/payment/create-invoice`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(paymentRequest)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      return {
+        success: true,
+        action: 'show_payment',
+        message: `I've created a payment invoice for your ${service_type.replace('_', ' ')}. Please complete the payment to proceed.`,
+        payment: {
+          invoiceUrl: result.invoiceUrl,
+          paymentId: result.paymentId,
+          amount: amount,
+          serviceType: service_type
+        }
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || 'Failed to create payment invoice'
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Payment service unavailable. Please try again later.'
+    };
+  }
+}
+
 // Tool handlers mapping
 export const TOOL_HANDLERS = {
-  collect_contact_info: handleCollectContactInfo,
+  request_contact_form: handleRequestContactForm,
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
-
-  analyze_document: handleAnalyzeDocument
+  analyze_document: handleAnalyzeDocument,
+  create_payment_invoice: handleCreatePaymentInvoice
 };
 
 // Unified legal intake agent that handles both streaming and non-streaming responses

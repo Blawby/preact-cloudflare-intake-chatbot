@@ -1,6 +1,71 @@
 import { env, applyD1Migrations, fetchMock } from "cloudflare:test";
-import { getTestTeamConfigForDB } from './llm-judge/fixtures/agent-test-data';
 import type { Env } from '../worker/types';
+
+// Test team configuration function
+function getTestTeamConfigForDB(teamId: string) {
+  const baseConfig = {
+    features: {
+      enablePaymentProcessing: true,
+      enableMatterCreation: true
+    },
+    legalAreas: ['family_law', 'personal_injury', 'business_law'],
+    pricing: {
+      consultationFee: 75,
+      currency: 'USD'
+    },
+    contactInfo: {
+      phone: '+1-555-0123',
+      email: 'test@example.com'
+    },
+    introMessage: 'Hello! I\'m here to help you with your legal needs.',
+    systemPrompt: 'You are a helpful legal assistant.',
+    matterTypes: {
+      family_law: {
+        name: 'Family Law',
+        description: 'Divorce, custody, and family matters'
+      },
+      personal_injury: {
+        name: 'Personal Injury',
+        description: 'Accidents and injury claims'
+      }
+    }
+  };
+
+  const teamConfigs: Record<string, any> = {
+    'test-team-1': {
+      id: 'test-team-1',
+      slug: 'test-team-1',
+      name: 'Test Team 1',
+      config: JSON.stringify(baseConfig),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    'test-team-disabled': {
+      id: 'test-team-disabled',
+      slug: 'test-team-disabled',
+      name: 'Test Team Disabled',
+      config: JSON.stringify({
+        ...baseConfig,
+        features: {
+          ...baseConfig.features,
+          enableParalegalAgent: false
+        }
+      }),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    'blawby-ai': {
+      id: 'blawby-ai',
+      slug: 'blawby-ai',
+      name: 'Blawby AI',
+      config: JSON.stringify(baseConfig),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  };
+
+  return teamConfigs[teamId] || teamConfigs['test-team-1'];
+}
 
 // Type augmentation for cloudflare:test
 declare module "cloudflare:test" {

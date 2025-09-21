@@ -9,16 +9,13 @@ import {
 
   handleFiles,
   handleAnalyze,
-  handleParalegal,
   handleReview,
   handlePayment,
-  handleDebug,
-  handleJudge
+  handleDebug
 } from './routes';
 import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
-import { ParalegalAgent } from './agents/ParalegalAgent';
 
 // Basic request validation
 function validateRequest(request: Request): boolean {
@@ -86,14 +83,10 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handleFiles(request, env);
     } else if (path === '/api/analyze') {
       response = await handleAnalyze(request, env);
-    } else if (path.startsWith('/api/paralegal/')) {
-      response = await handleParalegal(request, env);
     } else if (path.startsWith('/api/review')) {
       response = await handleReview(request, env);
     } else if (path.startsWith('/api/payment')) {
       response = await handlePayment(request, env);
-    } else if (path.startsWith('/api/judge')) {
-      response = await handleJudge(request, env);
     } else if (path.startsWith('/api/debug')) {
       response = await handleDebug(request, env);
     } else if (path === '/api/health') {
@@ -157,8 +150,4 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
 
 export default { fetch: handleRequest };
 
-// Export Durable Object classes
-export { ParalegalAgent };
-
-// Export queue consumers
-export { default as paralegalTasks } from './consumers/paralegal-tasks';
+// Export Durable Object classes (none currently)

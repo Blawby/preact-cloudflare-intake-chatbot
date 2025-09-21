@@ -66,22 +66,12 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 ✅ **Payment Integration**: Automatic $75 consultation fee with team config  
 ✅ **Lawyer Review**: Automatic escalation for urgent matters with review queue  
 
-### 🤖 **LLM Judge Testing Framework:**
+### 🧪 **Testing Framework:**
 
-**Advanced AI Agent Evaluation:**
-- **Automated Conversation Testing**: Tests agent responses across multiple legal scenarios
-- **Phone Validation**: Fixed test data to use valid phone numbers (555- numbers are invalid)
-- **Sequential Message Flow**: Tests send messages one-by-one, waiting for agent responses
-- **Strict Assertions**: No fallbacks - tests fail on phone validation errors, wrong matter types, missing tool calls
-- **HTML Report Generation**: Auto-generated reports with conversation flow visualization
-- **Auto-Open Reports**: Browser automatically opens test results after completion
-
-**Test Scenarios:**
-- Standard legal intake with family law matter
-- Urgent legal matter requiring immediate escalation  
-- Complex legal situation requiring specialized expertise
-- Location service area verification and matter creation
-- Pricing concerns and financial discussion
+**Comprehensive Test Coverage:**
+- **Unit Tests**: Component and utility function testing
+- **Integration Tests**: API endpoint testing with real Cloudflare Workers
+- **Paralegal Tests**: Service integration and queue processing tests
 
 **Running Tests:**
 ```bash
@@ -89,12 +79,13 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 npm run dev  # Vite frontend
 npx wrangler dev  # Cloudflare Worker API (required for integration tests)
 
-# Run LLM Judge tests (choose one):
-npm run test:slow        # New: Uses vitest.slow.config.ts
-npm run test:llm-judge   # Legacy: Uses shell script
+# Run all tests:
+npm test
 
-# View HTML report (auto-opens in browser)
-# Manual: open test-results/llm-judge-report.html
+# Run specific test types:
+npm run test:watch     # Watch mode
+npm run test:ui        # UI mode
+npm run test:coverage  # Coverage report
 ```
 
 **📖 For detailed testing documentation, see [tests/README.md](tests/README.md)**  
@@ -396,8 +387,6 @@ npm run test:coverage
 # Run tests with UI interface
 npm run test:ui
 
-# Legacy LLM judge test script
-npm run test:llm-judge
 ```
 
 ### Test Configuration
@@ -409,7 +398,7 @@ The project uses a unified test configuration that runs all tests against real A
 - 60-second timeout per test
 - Automatically starts/stops wrangler dev server
 - Tests actual behavior, not mocked responses
-- Includes unit, integration, and LLM judge tests
+- Includes unit, integration, and paralegal tests
 
 **Test Results:**
 - All tests: ~122 tests, ~2-3 minutes (real API calls)
@@ -472,10 +461,8 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 ├── tests/               # Test files
 │   ├── unit/           # Unit tests
 │   ├── integration/    # Integration tests
-│   ├── llm-judge/      # LLM judge evaluation tests
 │   └── paralegal/      # Paralegal service tests
 ├── vitest.config.ts     # Fast tests configuration
-├── vitest.slow.config.ts # Slow tests configuration (LLM judge)
 └── public/              # Static assets
 ```
 

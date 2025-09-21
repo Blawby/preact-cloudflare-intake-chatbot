@@ -245,38 +245,3 @@ export type ChatMessageUI =
       // System messages typically don't need most of these fields
       // Keep only what makes sense for system messages
     });
-
-// Case brief interface for handoff between Paralegal and Intake agents
-export interface CaseBriefV1 {
-  teamId: string;
-  matterId: string;
-  matter_type: string;
-  summary: string; // 2-3 sentence overview
-  timeline: Array<{
-    date: string; // ISO date string
-    event: string;
-  }>;
-  parties: {
-    client: string;
-    opposing: string[];
-    orgs: string[]; // organizations involved (courts, etc.)
-  };
-  issues: string[]; // key legal issues
-  jurisdiction: string;
-  docs_needed: string[];
-  docs_received: Array<{
-    name: string;
-    r2_key: string;
-  }>;
-  risk: {
-    level: 'low' | 'med' | 'high';
-    notes: string[];
-  };
-  next_steps_ai: string[]; // AI-recommended next steps
-}
-
-export interface HandoffDecision {
-  recommended: boolean;
-  reason?: 'high_risk' | 'hard_trigger' | 'complexity' | 'document_gaps' | 'payment_needed';
-  message?: string;
-} 

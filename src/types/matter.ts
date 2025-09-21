@@ -9,7 +9,6 @@ export interface Matter {
   createdAt: Date;
   updatedAt: Date;
   summary: string;
-  urgency?: string;
   answers?: Record<string, string>;
   contactInfo?: {
     email?: string;

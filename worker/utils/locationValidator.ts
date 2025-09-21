@@ -334,6 +334,16 @@ export function validateLocation(location: string): LocationInfo {
         continue;
       }
       
+      // Check for multi-word state names within the full location string
+      const lowerLocation = trimmed.toLowerCase();
+      for (const [stateName, stateCode] of Object.entries(STATE_NAMES_TO_CODES)) {
+        if (lowerLocation.includes(stateName)) {
+          state = stateCode;
+          foundValidLocation = true;
+          break;
+        }
+      }
+      
       // Check if it's a country code
       if (COUNTRIES[cleanPart.toUpperCase()]) {
         country = cleanPart.toUpperCase();

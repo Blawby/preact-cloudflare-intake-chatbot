@@ -1,7 +1,6 @@
 import type { Env } from '../types';
 import { parseJsonBody } from '../utils';
-import { runLegalIntakeAgentStream } from '../agents/legalIntakeAgent';
-import { runParalegalAgentStream } from '../agents/ParalegalAgent';
+import { runLegalIntakeAgentStream } from '../agents/legal-intake/index';
 import { HttpErrors, handleError, createSuccessResponse, CORS_HEADERS, SECURITY_HEADERS } from '../errorHandler';
 import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
 import { SecurityLogger } from '../utils/securityLogger.js';
@@ -42,49 +41,9 @@ function needsDocAnalysis(text: string, attachments?: any[]): boolean {
 class SupervisorRouter {
   constructor(private env: Env) {}
 
-  async route(body: any, teamConfig: any): Promise<'paralegal' | 'analysis' | 'intake'> {
-    // Check feature flags
-    const paralegalEnabled = teamConfig?.config?.features?.enableParalegalAgent || teamConfig?.features?.enableParalegalAgent || false;
-    const paralegalFirst = teamConfig?.config?.features?.paralegalFirst || teamConfig?.features?.paralegalFirst || false;
-    
-    const messages = body.messages || [];
-    const latestMessage = messages?.at(-1)?.content || '';
-    const text = latestMessage.toLowerCase();
-    
-    console.log(`🤖 Routing: paralegalEnabled=${paralegalEnabled}, paralegalFirst=${paralegalFirst}`);
-    
-    // 0. Check if user is already in intake flow - if so, stay in intake
-    if (this.isInIntakeFlow(messages)) {
-      console.log('📋 User is in intake flow, staying in Intake Agent');
-      return 'intake';
-    }
-    
-    // 1. Check for explicit human intent (always goes to intake)
-    if (wantsHuman(text, messages)) {
-      console.log('👤 User wants human interaction, routing to Intake Agent');
-      return 'intake';
-    }
-    
-    // 2. Check for document analysis intent/uploads (always goes to analysis)
-    if (needsDocAnalysis(text, body.attachments) || this.shouldRouteToAnalysis(body)) {
-      console.log('🔍 Document analysis needed, routing to Analysis Agent');
-      return 'analysis';
-    }
-    
-    // 3. If paralegal-first mode enabled, default to paralegal for all legal questions
-    if (paralegalEnabled && paralegalFirst) {
-      console.log('🎯 Paralegal-first mode: routing to Paralegal Agent');
-      return 'paralegal';
-    }
-    
-    // 4. Legacy routing: check specific paralegal triggers if enabled
-    if (paralegalEnabled && this.shouldRouteToParalegal(text, body)) {
-      console.log('🎯 Legacy routing: specific paralegal triggers matched');
-      return 'paralegal';
-    }
-    
-    // 5. Default fallback to intake
-    console.log('🏢 Default routing to Intake Agent');
+  async route(body: any, teamConfig: any): Promise<'intake'> {
+    // Simplified routing - always use intake agent for everything
+    console.log('📋 Routing to Intake Agent (simplified)');
     return 'intake';
   }
 
@@ -327,32 +286,9 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
           // Send initial connection event
           controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
           
-          // Use SupervisorRouter to determine which agent to use
-          console.log('📞 Using SupervisorRouter for streaming...');
-          const router = new SupervisorRouter(env);
-          const route = await router.route(body, teamConfig);
-          
-          console.log(`🎯 Streaming route decision: ${route}`);
-          
-          if (route === 'paralegal') {
-            // Route to Paralegal Agent (but stream the response)
-            console.log('🎯 Streaming via Paralegal Agent');
-            
-            // Generate a matter ID from session or team
-            const matterId = sessionId || `matter-${teamId}-${Date.now()}`;
-            
-            try {
-              // Use conversational paralegal agent for streaming
-              await runParalegalAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, attachments);
-            } catch (error) {
-              console.error('Streaming paralegal agent error:', error);
-              // Fallback to intake agent
-              await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, attachments);
-            }
-          } else {
-            // Use regular intake agent streaming
-            await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, attachments);
-          }
+          // Simplified routing - always use intake agent
+          console.log('📞 Using simplified intake agent routing...');
+          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, attachments);
           
           // Send completion event
           controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));
