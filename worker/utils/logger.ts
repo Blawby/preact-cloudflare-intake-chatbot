@@ -5,6 +5,18 @@ export class Logger {
    * Initialize Logger with environment variables (required for Cloudflare Workers)
    */
   static initialize(env: { DEBUG?: string; NODE_ENV?: string }): void {
+    // Validate input parameter
+    if (!env || typeof env !== 'object') {
+      throw new Error('Logger.initialize: env parameter must be a non-null object');
+    }
+
+    // Check if already initialized (idempotent behavior)
+    if (this.env !== undefined) {
+      console.warn('[WARN] Logger.initialize: Logger has already been initialized, skipping re-initialization');
+      return;
+    }
+
+    // Assign environment after validation
     this.env = env;
   }
 

@@ -26,10 +26,104 @@ const ADDRESS_PATTERNS = [
   /\b(?:PO Box|P\.O\. Box|P\.O\.\s*Box)\s*\d+/gi
 ];
 
-const ADDITIONAL_PII_PATTERNS = [
-  // Credit card numbers (basic pattern)
-  /\b\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/g
+// Credit card patterns by issuer - tightly scoped to avoid false positives
+const CREDIT_CARD_PATTERNS = [
+  // Visa: 4xxxxxxxxxxxxxxx (13, 16, or 19 digits)
+  { issuer: 'Visa', pattern: /\b4\d{3}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/g },
+  { issuer: 'Visa', pattern: /\b4\d{3}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{3}\b/g },
+  { issuer: 'Visa', pattern: /\b4\d{2}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{3}\b/g },
+  
+  // MasterCard: 5[1-5]xxxxxxxxxxxxxx or 2[2-7]xxxxxxxxxxxxxx (16 digits)
+  { issuer: 'MasterCard', pattern: /\b5[1-5]\d{2}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/g },
+  { issuer: 'MasterCard', pattern: /\b2[2-7]\d{2}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/g },
+  
+  // American Express: 34xxxxxxxxxxxxx or 37xxxxxxxxxxxxx (15 digits)
+  { issuer: 'AmEx', pattern: /\b3[47]\d{2}[-.\s]?\d{6}[-.\s]?\d{5}\b/g },
+  
+  // Discover: 6011xxxxxxxxxxxx, 65xxxxxxxxxxxxxx, 64[4-9]xxxxxxxxxxxx, 622[126-925]xxxxxxxxxxxx (16 digits)
+  { issuer: 'Discover', pattern: /\b6011[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/g },
+  { issuer: 'Discover', pattern: /\b65\d{2}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/g },
+  { issuer: 'Discover', pattern: /\b64[4-9]\d[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/g },
+  { issuer: 'Discover', pattern: /\b622[126-925][-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{3}\b/g },
+  
+  // JCB: 35xxxxxxxxxxxxxx (16 digits)
+  { issuer: 'JCB', pattern: /\b35\d{2}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/g },
+  
+  // Diners Club: 30[0-5]xxxxxxxxxx or 36xxxxxxxxxxxx or 38xxxxxxxxxxxx (14 digits)
+  { issuer: 'Diners', pattern: /\b30[0-5]\d[-.\s]?\d{6}[-.\s]?\d{4}\b/g },
+  { issuer: 'Diners', pattern: /\b36\d[-.\s]?\d{6}[-.\s]?\d{4}\b/g },
+  { issuer: 'Diners', pattern: /\b38\d[-.\s]?\d{6}[-.\s]?\d{4}\b/g }
 ];
+
+const ADDITIONAL_PII_PATTERNS = [
+  // Credit card patterns will be processed separately with Luhn validation
+];
+
+/**
+ * Validates a credit card number using the Luhn algorithm
+ * @param cardNumber - The credit card number (digits only)
+ * @returns true if the number passes Luhn validation
+ */
+function validateLuhn(cardNumber: string): boolean {
+  // Remove all non-digit characters
+  const digits = cardNumber.replace(/\D/g, '');
+  
+  // Check if we have a valid length (13-19 digits)
+  if (digits.length < 13 || digits.length > 19) {
+    return false;
+  }
+  
+  let sum = 0;
+  let isEven = false;
+  
+  // Process digits from right to left
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let digit = parseInt(digits[i], 10);
+    
+    if (isEven) {
+      digit *= 2;
+      if (digit > 9) {
+        digit -= 9;
+      }
+    }
+    
+    sum += digit;
+    isEven = !isEven;
+  }
+  
+  return sum % 10 === 0;
+}
+
+/**
+ * Processes credit card patterns with Luhn validation
+ * @param content - The content to process
+ * @param remove - Whether to remove or mask matches
+ * @param maskText - Text to use for masking
+ * @returns The processed content
+ */
+function processCreditCards(content: string, remove: boolean, maskText: string): string {
+  let processed = content;
+  
+  for (const { issuer, pattern } of CREDIT_CARD_PATTERNS) {
+    // Create a fresh regex instance to avoid lastIndex issues
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    
+    processed = processed.replace(freshPattern, (match) => {
+      // Extract digits only for Luhn validation
+      const digits = match.replace(/\D/g, '');
+      
+      // Only sanitize if it passes Luhn validation
+      if (validateLuhn(digits)) {
+        return remove ? '' : maskText;
+      }
+      
+      // Return original match if it doesn't pass Luhn validation
+      return match;
+    });
+  }
+  
+  return processed;
+}
 
 export interface SanitizationOptions {
   /** Whether to completely remove PII (true) or mask it (false) */
@@ -133,6 +227,9 @@ export function sanitizePII(
     }
   }
 
+  // Process credit cards with Luhn validation
+  sanitized = processCreditCards(sanitized, remove, maskText);
+
   // Additional PII patterns
   for (const pattern of ADDITIONAL_PII_PATTERNS) {
     // Create a fresh regex instance to avoid lastIndex issues
@@ -161,14 +258,12 @@ export function sanitizePII(
  * Useful when you need to track content without storing PII
  */
 export async function createContentHash(content: string | null | undefined): Promise<string> {
-  // Validate that content is a non-null/undefined string
-  if (content === null || content === undefined) {
-    throw new TypeError('Content must be a non-null, non-undefined string');
-  }
+  // Coerce null/undefined to empty string for consistent behavior with sanitizePII
+  const safeContent = content ?? '';
   
   // Convert string to UTF-8 bytes
   const encoder = new TextEncoder();
-  const data = encoder.encode(content);
+  const data = encoder.encode(safeContent);
   
   // Compute SHA-256 hash using Web Crypto API
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -241,6 +336,21 @@ export function containsPII(content: string | null | undefined): boolean {
     const freshPattern = new RegExp(pattern.source, pattern.flags);
     if (freshPattern.test(content)) {
       return true;
+    }
+  }
+  
+  // Credit card pattern check with Luhn validation
+  for (const { pattern } of CREDIT_CARD_PATTERNS) {
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    const matches = content.match(freshPattern);
+    if (matches) {
+      // Check if any match passes Luhn validation
+      for (const match of matches) {
+        const digits = match.replace(/\D/g, '');
+        if (validateLuhn(digits)) {
+          return true;
+        }
+      }
     }
   }
   

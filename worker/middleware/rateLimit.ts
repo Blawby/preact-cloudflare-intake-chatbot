@@ -1,6 +1,15 @@
 import type { Env } from '../types';
 
 export async function rateLimit(env: Env, key: string, limit = 60, windowSec = 60): Promise<boolean> {
+  // Guard clause: validate numeric parameters
+  if (typeof limit !== 'number' || !Number.isFinite(limit) || limit <= 0) {
+    throw new RangeError(`Invalid limit parameter: expected a positive finite number, got ${limit}`);
+  }
+  
+  if (typeof windowSec !== 'number' || !Number.isFinite(windowSec) || windowSec <= 0) {
+    throw new RangeError(`Invalid windowSec parameter: expected a positive finite number, got ${windowSec}`);
+  }
+
   // Check if we're in a test environment
   const isTestEnv = env.NODE_ENV === 'test' || env.ENV_TEST === 'true';
 

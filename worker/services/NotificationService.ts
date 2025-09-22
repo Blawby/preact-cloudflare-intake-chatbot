@@ -1,4 +1,5 @@
 import { Logger } from '../utils/logger.js';
+import type { Env } from '../types.js';
 
 export interface NotificationRequest {
   type: 'lawyer_review' | 'matter_created' | 'payment_required';
@@ -17,7 +18,7 @@ export interface NotificationRequest {
 }
 
 export class NotificationService {
-  constructor(private env: any) {
+  constructor(private env: Env) {
     // Initialize Logger with environment variables for Cloudflare Workers compatibility
     Logger.initialize({
       DEBUG: env.DEBUG,
@@ -30,7 +31,7 @@ export class NotificationService {
     
     try {
       const { EmailService } = await import('./EmailService.js');
-      const emailService = new EmailService(this.env);
+      const emailService = new EmailService(this.env.RESEND_API_KEY);
       
       const ownerEmail = teamConfig?.config?.ownerEmail;
       if (!ownerEmail) {
@@ -63,7 +64,7 @@ Please review this matter as soon as possible.`
     
     try {
       const { EmailService } = await import('./EmailService.js');
-      const emailService = new EmailService(this.env);
+      const emailService = new EmailService(this.env.RESEND_API_KEY);
       
       const ownerEmail = teamConfig?.config?.ownerEmail;
       if (!ownerEmail) {
@@ -97,7 +98,7 @@ Please review and take appropriate action.`
     
     try {
       const { EmailService } = await import('./EmailService.js');
-      const emailService = new EmailService(this.env);
+      const emailService = new EmailService(this.env.RESEND_API_KEY);
       
       const ownerEmail = teamConfig?.config?.ownerEmail;
       if (!ownerEmail) {
