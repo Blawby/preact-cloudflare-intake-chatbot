@@ -16,6 +16,7 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
   const [conversationState, setConversationState] = useState<string>('unknown');
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -67,51 +68,58 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
       return 'unknown';
     };
 
+    // Centralized error handling
+    const handleError = (context: string, error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`Error in ${context}:`, error);
+      setError(`${context} error: ${errorMessage}`);
+    };
+
     // Update tool calls from global variable
-    const updateToolCalls = () => {
+    const updateToolCalls = (): boolean => {
       try {
-        setError(null);
         const rawCalls = getWindowProperty('__toolCalls');
         const validatedCalls = validateToolCalls(rawCalls);
         setToolCalls(validatedCalls);
+        return true;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        console.error('Error updating tool calls:', error);
-        setError(`Tool calls error: ${errorMessage}`);
+        handleError('Tool calls', error);
         setToolCalls([]);
+        return false;
       }
     };
 
     // Update conversation state from global variable
-    const updateConversationState = () => {
+    const updateConversationState = (): boolean => {
       try {
-        setError(null);
         const rawState = getWindowProperty('__conversationState');
         const validatedState = validateConversationState(rawState);
         setConversationState(validatedState);
+        return true;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        console.error('Error updating conversation state:', error);
-        setError(`Conversation state error: ${errorMessage}`);
+        handleError('Conversation state', error);
         setConversationState('unknown');
+        return false;
+      }
+    };
+
+    // Centralized update function that handles both updates and error clearing
+    const performUpdate = () => {
+      const toolCallsSuccess = updateToolCalls();
+      const conversationStateSuccess = updateConversationState();
+      
+      // Only clear errors and update timestamp if both updates succeed
+      if (toolCallsSuccess && conversationStateSuccess) {
+        setError(null);
+        setLastUpdated(new Date());
       }
     };
 
     // Initial update
-    updateToolCalls();
-    updateConversationState();
+    performUpdate();
 
     // Set up interval to update
-    const interval = setInterval(() => {
-      try {
-        updateToolCalls();
-        updateConversationState();
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        console.error('Error in debug overlay update interval:', error);
-        setError(`Update interval error: ${errorMessage}`);
-      }
-    }, 1000);
+    const interval = setInterval(performUpdate, 1000);
 
     return () => clearInterval(interval);
   }, [isVisible]);
@@ -194,8 +202,8 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
         )}
       </div>
       
-      <div className="text-xs text-gray-400" aria-label={`Last updated at ${new Date().toLocaleTimeString()}`}>
-        Last updated: {new Date().toLocaleTimeString()}
+      <div className="text-xs text-gray-400" aria-label={lastUpdated ? `Last updated at ${lastUpdated.toLocaleTimeString()}` : 'No successful updates yet'}>
+        Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Never'}
       </div>
       
       {isExpanded && (

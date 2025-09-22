@@ -7,7 +7,8 @@ import { TOOL_HANDLERS, Currency, Recipient, ISODateString } from '../legalIntak
 import { ToolCallParser, ToolCall, ToolCallParseResult } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
 import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
-import type { Env, Team, ChatMessage, AgentMessage, AgentResponse } from '../../types.js';
+import { sanitizeForLogging, containsPII } from '../../utils/piiSanitizer.js';
+import type { Env, Team, ChatMessage, AgentMessage, AgentResponse, FileAttachment } from '../../types.js';
 import type { ErrorResult } from './errors.js';
 import { ExternalServiceError, ConfigurationError, LegalIntakeError } from './errors.js';
 import { safeIncludes } from '../../utils/safeStringUtils.js';
@@ -379,9 +380,7 @@ export const createPaymentInvoice: ToolDefinition<CreatePaymentInvoiceParams> = 
             minLength: 1,
             maxLength: 255
           }
-        },
-        required: ['email', 'name'] as const,
-        additionalProperties: false
+        }
       },
       due_date: { 
         type: 'string' as const, 
@@ -409,13 +408,7 @@ export interface CloudflareLocation {
   readonly timezone?: string;
 }
 
-export interface FileAttachment {
-  readonly id: string;
-  readonly name: string;
-  readonly type: string;
-  readonly size: number;
-  readonly url: string;
-}
+// FileAttachment is now imported from shared types.ts
 
 // AgentResponse is now imported from shared types.ts
 
@@ -651,11 +644,23 @@ export async function runLegalIntakeAgentStream(
   // 🧪 DIAGNOSTIC: Check for contact form submissions
   const lastUserMessage = formattedMessages[formattedMessages.length - 1];
   if (lastUserMessage?.role === 'user' && lastUserMessage.content && safeIncludes(lastUserMessage.content, 'Contact Information:')) {
+    // Sanitize PII from contact form content for logging
+    const sanitized = sanitizeForLogging(lastUserMessage.content);
     Logger.debug('🧪 Received contact form submission:', {
       correlationId,
       sessionId,
       teamId,
-      contactFormContent: lastUserMessage.content,
+      sanitizedContent: sanitized.sanitizedContent,
+      contentHash: sanitized.hash,
+      hasPII: sanitized.metadata.hasPII,
+      piiTypes: {
+        hasEmail: sanitized.metadata.hasEmail,
+        hasPhone: sanitized.metadata.hasPhone,
+        hasSSN: sanitized.metadata.hasSSN,
+        hasAddress: sanitized.metadata.hasAddress
+      },
+      originalLength: sanitized.metadata.originalLength,
+      sanitizedLength: sanitized.metadata.sanitizedLength,
       timestamp: new Date().toISOString()
     });
   }
@@ -789,9 +794,10 @@ export async function runLegalIntakeAgentStream(
     // Handle system prompt generation error
     let systemPrompt: string;
     if (!systemPromptResult.success) {
+      const errorResult = systemPromptResult as Extract<typeof systemPromptResult, { success: false }>;
       Logger.error('Failed to generate system prompt', {
         correlationId,
-        error: systemPromptResult.error?.message || 'Unknown error',
+        error: errorResult.error.message || 'Unknown error',
         state: businessResult.success ? businessResult.data.state : context.state
       });
     
@@ -945,9 +951,20 @@ export async function runLegalIntakeAgentStream(
       }
     );
     
-    // Log raw AI response for debugging
-    console.log('[RAW_AI_RESPONSE]', JSON.stringify(aiResult, null, 2));
-    Logger.debug('✅ AI result:', aiResult);
+    // Log raw AI response for debugging (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[RAW_AI_RESPONSE]', JSON.stringify(aiResult, null, 2));
+      Logger.debug('✅ AI result:', aiResult);
+    } else {
+      // In production, log only metadata to avoid exposing sensitive AI responses
+      Logger.debug('✅ AI result received:', {
+        hasResponse: Boolean(aiResult?.response),
+        hasToolCalls: Boolean(aiResult?.tool_calls?.length),
+        toolCallCount: aiResult?.tool_calls?.length || 0,
+        responseLength: aiResult?.response?.length || 0,
+        correlationId
+      });
+    }
     
     // Check for tool calls first
     if (hasToolCalls(aiResult)) {

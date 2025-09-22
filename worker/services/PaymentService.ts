@@ -60,10 +60,10 @@ export interface CustomerCreateRequest {
   currency: Currency;
   status: string;
   team_id: string;
-  address_line_1: string;
-  city: string;
-  state: string;
-  zip: string;
+  address_line_1?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
 }
 
 export interface PaymentConfig {
@@ -142,7 +142,7 @@ export class PaymentService {
     // Fallback default configuration
     return {
       defaultPrice: 7500, // $75.00 in cents
-      currency: 'USD',
+      currency: Currency.USD,
       dueDateDays: 30,
       matterTypePricing: {
         'Family Law': 10000, // $100.00
@@ -325,6 +325,11 @@ export class PaymentService {
               throw new Error(`Customer deletion failed: ${response.status} - ${errorText}`);
             }
 
+            // Only parse JSON if there's a body (not 204 No Content)
+            if (response.status === 204 || response.status === 205 || response.headers.get('Content-Length') === '0') {
+              return null;
+            }
+            
             return await response.json();
           } catch (error) {
             clearTimeout(timeoutId);
@@ -400,7 +405,14 @@ export class PaymentService {
    */
   private async createSecureHash(input: string, secretName: string, secretValue?: string): Promise<string> {
     if (!secretValue) {
-      console.warn(`⚠️ ${secretName} is missing, using deterministic fallback`);
+      // Only use deterministic fallback in development environment
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      
+      if (!isDevelopment) {
+        throw new Error(`${secretName} is required but not configured. Cannot proceed without secure secret in production.`);
+      }
+      
+      console.warn(`⚠️ ${secretName} is missing, using deterministic fallback (development only)`);
       // Use a constant fallback key derived from the secret name for consistency
       const fallbackKey = `fallback-${secretName}-${this.env.IDEMPOTENCY_SALT || 'default'}`;
       return await this.hmacHex(fallbackKey, input);
