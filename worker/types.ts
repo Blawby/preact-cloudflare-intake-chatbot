@@ -255,3 +255,30 @@ export type ChatMessageUI =
       // System messages typically don't need most of these fields
       // Keep only what makes sense for system messages
     });
+
+// Agent message interface that extends ChatMessage with isUser property
+export interface AgentMessage {
+  readonly id?: string;
+  readonly role?: 'user' | 'assistant' | 'system';
+  readonly content: string;
+  readonly isUser?: boolean;
+  readonly timestamp?: number;
+  readonly metadata?: Record<string, any>;
+}
+
+// Agent response interface
+export interface AgentResponse {
+  readonly response: string;
+  readonly metadata: {
+    readonly conversationComplete?: boolean;
+    readonly inputMessageCount: number;
+    readonly lastUserMessage: string | null;
+    readonly sessionId?: string;
+    readonly teamId?: string;
+    readonly error?: string;
+    readonly toolName?: string;
+    readonly toolResult?: unknown;
+    readonly allowRetry?: boolean;
+    readonly rawParameters?: unknown;
+  };
+}

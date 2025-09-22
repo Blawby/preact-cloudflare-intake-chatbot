@@ -103,8 +103,8 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 npm run dev  # Vite frontend
 npx wrangler dev  # Cloudflare Worker API (required for integration tests)
 
-# Run all tests:
-npm test
+# Run all tests (unit/integration + E2E):
+npm run test:all
 
 # Run specific test types:
 npm run test:watch     # Watch mode
@@ -402,6 +402,13 @@ npx wrangler dev  # Cloudflare Worker API server
 # Run all tests with real API calls (requires wrangler dev server)
 npm test
 
+# Run all tests (unit/integration + E2E + AI tools):
+npm run test:all
+
+# Run specific test types:
+npm run test:e2e        # End-to-end tests with Playwright
+npm run test:ai-tools   # AI tool calling tests
+
 # Run tests in watch mode
 npm run test:watch
 
@@ -411,6 +418,8 @@ npm run test:coverage
 # Run tests with UI interface
 npm run test:ui
 
+# For CI: Install Playwright browsers once before E2E tests
+npx playwright install
 ```
 
 ### Test Configuration
@@ -544,17 +553,35 @@ if (hasToolCalls) {
 
 **Why:** When `tool_calls` exist, `response` is `null` by spec. Don't let that break your logic flow.
 
-#### 📌 **3. Log Actual Model Payloads for Debugging**
+#### 📌 **3. Log Actual Model Payloads for Debugging (Production-Safe)**
 
-**✅ ALWAYS LOG:**
+**✅ PRODUCTION-SAFE LOGGING:**
 ```typescript
-// Essential debugging logs
-console.log('[SYSTEM PROMPT]', systemPrompt);
-console.log('[TOOLS PASSED]', availableTools.map(t => t.name));
-console.log('[AI RAW RESULT]', JSON.stringify(aiResult, null, 2));
+// Production-safe debugging logs
+const isDev = process.env.NODE_ENV === 'development';
+
+if (isDev) {
+  // Full debugging in development
+  console.log('[SYSTEM PROMPT]', systemPrompt);
+  console.log('[TOOLS PASSED]', availableTools.map(t => t.name));
+  console.log('[AI RAW RESULT]', JSON.stringify(aiResult, null, 2));
+} else {
+  // Production-safe logs (no PII)
+  console.log('[TOOLS PASSED]', availableTools.map(t => t.name));
+  console.log('[AI RESPONSE TYPE]', aiResult.tool_calls ? 'tool_calls' : 'text');
+  console.log('[TOOL CALLS COUNT]', aiResult.tool_calls?.length || 0);
+  
+  // Redact PII from any logged content
+  const redactedPrompt = systemPrompt
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
+    .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE]')
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN]');
+  console.log('[SYSTEM PROMPT LENGTH]', systemPrompt.length);
+  console.log('[SYSTEM PROMPT PREVIEW]', redactedPrompt.substring(0, 200) + '...');
+}
 ```
 
-**Why:** If AI isn't acting right, these logs reveal exactly what the model received and returned.
+**Why:** If AI isn't acting right, these logs reveal exactly what the model received and returned, while protecting PII in production.
 
 #### 📌 **4. Kill Stale Context Code Aggressively**
 
@@ -602,15 +629,33 @@ function validateAIToolLoop(tools, systemPrompt, state, context) {
 }
 ```
 
-#### **Debug Utility**
+#### **Debug Utility (Production-Safe)**
 ```typescript
 function debugAiToolLoop(aiResult, tools, systemPrompt) {
+  const isDev = process.env.NODE_ENV === 'development';
+  
   console.log('🔍 AI Tool Loop Debug:');
   console.log('  Tools available:', tools.map(t => t.name));
   console.log('  System prompt length:', systemPrompt.length);
   console.log('  AI response type:', aiResult.tool_calls ? 'tool_calls' : 'text');
   console.log('  Tool calls:', aiResult.tool_calls?.map(tc => tc.name) || 'none');
-  console.log('  Response text:', aiResult.response?.substring(0, 100) || 'null');
+  
+  if (isDev) {
+    // Full debugging in development
+    console.log('  Response text:', aiResult.response?.substring(0, 100) || 'null');
+  } else {
+    // Production-safe: redact PII from response
+    const response = aiResult.response;
+    if (response) {
+      const redactedResponse = response
+        .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
+        .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE]')
+        .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN]');
+      console.log('  Response preview:', redactedResponse.substring(0, 100) + '...');
+    } else {
+      console.log('  Response text: null');
+    }
+  }
 }
 ```
 
@@ -621,6 +666,46 @@ function debugAiToolLoop(aiResult, tools, systemPrompt) {
 3. **Stale Context Flags**: Remove old `hasEmail`, `hasPhone` logic when using forms
 4. **Silent Failures**: Always log the raw AI response for debugging
 5. **Variable Scope Issues**: Ensure all variables are properly scoped in tool call paths
+6. **PII in Logs**: Never log full prompts or AI responses in production without redaction
+
+### 🔒 **PII Protection Best Practices**
+
+**❌ DANGEROUS (Logs PII):**
+```typescript
+// Never do this in production
+console.log('User message:', userMessage); // May contain email/phone
+console.log('AI response:', aiResult.response); // May contain PII
+console.log('Full context:', JSON.stringify(context)); // Contains all user data
+```
+
+**✅ PRODUCTION-SAFE:**
+```typescript
+// Always gate sensitive logs behind environment checks
+const isDev = process.env.NODE_ENV === 'development';
+
+if (isDev) {
+  // Full debugging in development
+  console.log('User message:', userMessage);
+  console.log('AI response:', aiResult.response);
+} else {
+  // Production-safe logging
+  console.log('Message length:', userMessage.length);
+  console.log('Response type:', aiResult.tool_calls ? 'tool_calls' : 'text');
+  
+  // Redact PII using regex patterns
+  const redactedMessage = userMessage
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
+    .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE]')
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN]');
+  console.log('Redacted message:', redactedMessage.substring(0, 100) + '...');
+}
+```
+
+**Key PII Patterns to Redact:**
+- **Emails**: `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`
+- **Phone Numbers**: `\b\d{3}[-.]?\d{3}[-.]?\d{4}\b`
+- **SSNs**: `\b\d{3}-\d{2}-\d{4}\b`
+- **Credit Cards**: `\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b`
 
 ### 🎯 **Success Pattern**
 

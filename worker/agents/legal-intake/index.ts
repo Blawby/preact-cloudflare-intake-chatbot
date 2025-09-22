@@ -7,7 +7,7 @@ import { TOOL_HANDLERS } from '../legalIntakeAgent.js';
 import { ToolCallParser, ToolCall, ToolCallParseResult } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
 import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
-import type { Env, Team, ChatMessage } from '../../types.js';
+import type { Env, Team, ChatMessage, AgentMessage, AgentResponse } from '../../types.js';
 import type { ErrorResult } from './errors.js';
 import { ExternalServiceError, ConfigurationError, LegalIntakeError } from './errors.js';
 import { safeIncludes } from '../../utils/safeStringUtils.js';
@@ -276,7 +276,7 @@ export const createMatter: ToolDefinition<CreateMatterParams> = {
 
 export const showContactForm: ToolDefinition<{}> = {
   name: 'show_contact_form',
-  description: 'Show the contact form to collect user contact information. ONLY use this tool AFTER you have qualified the lead by asking about urgency, timeline, and intent to take legal action. Do NOT use this tool on the first message or for unqualified leads.',
+  description: 'CRITICAL: ONLY use this tool AFTER you have had a full conversation, qualified the lead, and determined they are serious about legal action. NEVER use this tool for simple greetings like "hello" or "hi". NEVER use this tool on the first message. ONLY use after asking about urgency, timeline, and intent.',
   parameters: {
     type: 'object',
     properties: {},
@@ -403,19 +403,7 @@ export const createPaymentInvoice: ToolDefinition<CreatePaymentInvoiceParams> = 
   }
 };
 
-// Message types for the agent
-export interface AgentMessage {
-  readonly role?: 'user' | 'assistant' | 'system';
-  readonly content: string;
-  readonly isUser?: boolean;
-  readonly metadata?: {
-    readonly toolName?: string;
-    readonly toolCall?: {
-      readonly toolName: string;
-      readonly parameters: Record<string, unknown>;
-    };
-  };
-}
+// AgentMessage is now imported from shared types.ts
 
 export interface CloudflareLocation {
   readonly city?: string;
@@ -432,21 +420,7 @@ export interface FileAttachment {
   readonly url: string;
 }
 
-// Response types
-export interface AgentResponse {
-  readonly response: string;
-  readonly metadata: {
-    readonly conversationComplete?: boolean;
-    readonly inputMessageCount: number;
-    readonly lastUserMessage: string | null;
-    readonly sessionId?: string;
-    readonly teamId?: string;
-    readonly error?: string;
-    readonly toolName?: string;
-    readonly toolResult?: unknown;
-    readonly allowRetry?: boolean;
-  };
-}
+// AgentResponse is now imported from shared types.ts
 
 /**
  * Get available tools based on conversation state
@@ -467,9 +441,11 @@ function getAvailableToolsForState(
     case ConversationState.GATHERING_INFORMATION:
     case ConversationState.COLLECTING_LEGAL_ISSUE:
     case ConversationState.COLLECTING_DETAILS:
+      // During initial information gathering, no tools available - just conversational
+      return [];
+      
     case ConversationState.QUALIFYING_LEAD:
-      // During information gathering and lead qualification, allow show_contact_form
-      // so AI can show the form when it has enough information
+      // Only during lead qualification, allow show_contact_form
       return [showContactForm];
       
     case ConversationState.SHOWING_CONTACT_FORM:
@@ -486,8 +462,8 @@ function getAvailableToolsForState(
       return allTools;
       
     default:
-      // Fallback: allow show_contact_form for unknown states
-      return [showContactForm];
+      // Fallback: no tools for unknown states - force conversational response
+      return [];
   }
 }
 
@@ -1046,9 +1022,7 @@ export async function runLegalIntakeAgentStream(
         }
       }
       
-      return;
-      
-      // Log AI model response
+      // Log AI model response (moved before return to avoid unreachable code)
       const aiCallEndTime = Date.now();
       const processingTime = aiCallEndTime - aiCallStartTime;
       LegalIntakeLogger.logAIModelCall(
@@ -1062,6 +1036,8 @@ export async function runLegalIntakeAgentStream(
         processingTime
       );
       Logger.debug('📝 Full response:', response);
+      
+      return;
       
       // Check if response is empty or too short
       if (!response || response.trim().length < 10) {
@@ -1116,7 +1092,8 @@ export async function runLegalIntakeAgentStream(
     }
     
     // Handle tool calls (this should only happen when tools are available)
-    if (hasToolCalls) {
+    // Only attempt text-tool parsing when there are no structured tool_calls present and the response is a string
+    if (!hasToolCalls(aiResult) && typeof response === 'string') {
       // Parse tool call using ToolCallParser for text-based tool calls
       const parseResult = ToolCallParser.parseToolCall(response);
     
@@ -1157,7 +1134,7 @@ export async function runLegalIntakeAgentStream(
           }
         };
       }
-    } // Close the if (!hasToolCalls) block
+    } // Close the if (!hasToolCalls(aiResult) && typeof response === 'string') block
     
     // Check if we have valid tool call data
     if (toolName && parameters) {

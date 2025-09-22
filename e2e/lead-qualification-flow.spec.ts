@@ -31,7 +31,7 @@ test.describe('Lead Qualification Flow', (): void => {
     await sendMessageAndWait(page, input, sendButton, 'I was injured in a car crash with back pain. It was a personal injury claim.', 1, 1);
     
     // Step 3: Verify AI is asking qualifying questions
-    const aiMessage = page.locator('[data-testid="ai-message"]');
+    const aiMessage = page.locator('[data-testid="ai-message"]').last();
     const aiMessageText: string = (await aiMessage.textContent()) ?? '';
     verifyQualifyingQuestions(aiMessageText);
     

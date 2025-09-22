@@ -1,7 +1,7 @@
 // Import TeamConfig from TeamService instead of defining it here
 import { TeamConfig } from './TeamService.js';
 import { Logger } from '../utils/logger.js';
-import { Env } from '../types.js';
+import type { Env } from '../types.js';
 import type { Ai } from '@cloudflare/workers-types';
 
 // Default team configuration - centralized for maintainability

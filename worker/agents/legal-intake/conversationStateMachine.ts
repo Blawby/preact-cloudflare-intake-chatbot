@@ -232,19 +232,26 @@ export class ConversationStateMachine {
           context = await PromptBuilder.extractConversationInfo(conversationText, env);
           Logger.info('Conversation context extracted successfully', {
             hasLegalIssue: context.hasLegalIssue,
-            legalIssueType: context.legalIssueType,
-            description: context.description,
             isQualifiedLead: context.isQualifiedLead
           });
         } catch (error) {
           Logger.error('Failed to extract conversation context', {
-            error: error,
-            conversationText: conversationText
+            error: error instanceof Error ? error.message : String(error)
           });
           return ConversationState.GATHERING_INFORMATION;
         }
         
-        // Check for general inquiries first
+        // Check for simple greetings first - these should always be conversational
+        const simpleGreetings = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'greetings'];
+        const isSimpleGreeting = simpleGreetings.some(greeting => 
+          conversationText.toLowerCase().trim().startsWith(greeting.toLowerCase())
+        );
+        
+        if (isSimpleGreeting) {
+          return ConversationState.GATHERING_INFORMATION;
+        }
+        
+        // Check for general inquiries
         const generalInquiryResult = await this.isGeneralInquiry(conversationText, env);
         if (!generalInquiryResult.success) {
           const errorMessage = (generalInquiryResult as { success: false; error: LegalIntakeError }).error.message;
@@ -299,8 +306,14 @@ export class ConversationStateMachine {
         }
 
         // NEW: Lead qualification step - ask qualifying questions before showing contact form
-        if (!context.isQualifiedLead) {
+        // Only go to QUALIFYING_LEAD if we have substantial legal information
+        if (!context.isQualifiedLead && context.legalIssueType && context.description && context.description.length > 20) {
           return ConversationState.QUALIFYING_LEAD;
+        }
+        
+        // If we have legal issue but not enough details, continue gathering information
+        if (context.hasLegalIssue && (!context.description || context.description.length <= 20)) {
+          return ConversationState.COLLECTING_DETAILS;
         }
 
         // If we have all legal information AND lead is qualified, show contact form
@@ -347,11 +360,8 @@ export class ConversationStateMachine {
           case ConversationState.GENERAL_INQUIRY:
             return "I'd be happy to help you with information about our services. Could you please tell me your name so I can better assist you?";
           
-          case ConversationState.COLLECTING_NAME:
-            return "I'd be happy to help you with your legal matter. Could you please tell me your name?";
-          
           case ConversationState.COLLECTING_LEGAL_ISSUE:
-            return `Thanks ${context.name}. What type of legal issue are you facing? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or something else?`;
+            return "Thanks for that information. What type of legal issue are you facing? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or something else?";
           
           case ConversationState.COLLECTING_DETAILS:
             if (context.legalIssueType) {

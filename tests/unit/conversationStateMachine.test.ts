@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConversationStateMachine, ConversationState } from '../../worker/agents/legal-intake/conversationStateMachine.js';
-import { hasContactInformation } from '../../worker/utils/contactInfoUtils.js';
+import { hasContactInformation as hasContactInfo } from '../../worker/utils/contactInfoUtils.js';
 import { PromptBuilder } from '../../worker/utils/promptBuilder.js';
 import { AIService } from '../../worker/services/AIService.js';
 import type { Env } from '../../worker/types.js';
@@ -71,7 +71,7 @@ describe('ConversationStateMachine Business Logic', () => {
       vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
-      vi.mocked(hasContactInformation).mockReturnValue(false);
+      vi.mocked(hasContactInfo).mockReturnValue(false);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
@@ -95,7 +95,7 @@ describe('ConversationStateMachine Business Logic', () => {
       vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
-      vi.mocked(hasContactInformation).mockReturnValue(false);
+      vi.mocked(hasContactInfo).mockReturnValue(false);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
@@ -119,7 +119,7 @@ describe('ConversationStateMachine Business Logic', () => {
       vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
-      vi.mocked(hasContactInformation).mockReturnValue(true);
+      vi.mocked(hasContactInfo).mockReturnValue(true);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
@@ -143,7 +143,7 @@ describe('ConversationStateMachine Business Logic', () => {
       vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
-      vi.mocked(hasContactInformation).mockReturnValue(true);
+      vi.mocked(hasContactInfo).mockReturnValue(true);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
@@ -167,7 +167,7 @@ describe('ConversationStateMachine Business Logic', () => {
       vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
-      vi.mocked(hasContactInformation).mockReturnValue(false);
+      vi.mocked(hasContactInfo).mockReturnValue(false);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
@@ -191,7 +191,7 @@ describe('ConversationStateMachine Business Logic', () => {
       vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
-      vi.mocked(hasContactInformation).mockReturnValue(false);
+      vi.mocked(hasContactInfo).mockReturnValue(false);
 
       // Mock the general inquiry check
       vi.spyOn(ConversationStateMachine, 'isGeneralInquiry')
@@ -206,21 +206,21 @@ describe('ConversationStateMachine Business Logic', () => {
 
   describe('hasContactInformation', () => {
     it('should return true when contact information is detected', () => {
-      vi.mocked(hasContactInformation).mockReturnValue(true);
+      vi.mocked(hasContactInfo).mockReturnValue(true);
       
       const result = ConversationStateMachine.hasContactInformation('Contact Information:\nName: John Doe\nEmail: john@example.com');
       
       expect(result).toBe(true);
-      expect(hasContactInformation).toHaveBeenCalledWith('Contact Information:\nName: John Doe\nEmail: john@example.com');
+      expect(hasContactInfo).toHaveBeenCalledWith('Contact Information:\nName: John Doe\nEmail: john@example.com');
     });
 
     it('should return false when no contact information is detected', () => {
-      vi.mocked(hasContactInformation).mockReturnValue(false);
+      vi.mocked(hasContactInfo).mockReturnValue(false);
       
       const result = ConversationStateMachine.hasContactInformation('Just a regular conversation');
       
       expect(result).toBe(false);
-      expect(hasContactInformation).toHaveBeenCalledWith('Just a regular conversation');
+      expect(hasContactInfo).toHaveBeenCalledWith('Just a regular conversation');
     });
   });
 });

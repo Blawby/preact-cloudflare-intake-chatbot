@@ -206,8 +206,8 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
           hasName: !!formData.name,
           hasEmail: !!formData.email,
           hasPhone: !!formData.phone,
-          location: formData.location,
-          opposingParty: formData.opposingParty
+          hasLocation: !!formData.location,
+          hasOpposingParty: !!formData.opposingParty
         },
         fields,
         required,

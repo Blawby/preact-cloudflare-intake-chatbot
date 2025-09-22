@@ -76,7 +76,8 @@ interface FeatureFlags {
 
 }
 
-const featureConfig: FeatureFlags = {
+// Immutable base configuration
+const baseFeatureConfig: FeatureFlags = {
     enableAudioRecording: false, // Set to false to hide voice recording
     enableVideoRecording: false, // Not implemented yet
     enableFileAttachments: true, // File attachments are enabled
@@ -90,10 +91,14 @@ const featureConfig: FeatureFlags = {
     enableLeadQualification: true, // Enable lead qualification flow - AI asks questions before contact form
 };
 
-// For development environment, you can override settings
-if (import.meta.env.DEV) {
+// DEV-only overrides (computed via spread, no mutation)
+const devOverrides: Partial<FeatureFlags> = import.meta.env.DEV ? {
     // Enable all features in development if needed
-    // featureConfig.enableAudioRecording = true; 
-}
+    // enableAudioRecording: true,
+} : {};
 
-export const features = featureConfig; 
+// Export frozen, readonly configuration
+export const features: Readonly<FeatureFlags> = Object.freeze({
+    ...baseFeatureConfig,
+    ...devOverrides
+}); 

@@ -42,7 +42,7 @@ function validateRequest(request: Request): boolean {
   return true;
 }
 
-export async function handleRequest(request: Request, env: Env, ctx: any): Promise<Response> {
+export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
 

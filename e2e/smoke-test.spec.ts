@@ -20,14 +20,27 @@ const TEST_CONFIG = {
   },
 } as const;
 
+// Interface for tool call objects
+interface ToolCall {
+  tool: string;
+  timestamp: any;
+  type: string;
+}
+
 // Helper functions for type-safe window property access
-const getToolCalls = async (page: Page): Promise<string[]> => {
-  return await page.evaluate((): string[] => {
+const getToolCalls = async (page: Page): Promise<ToolCall[]> => {
+  return await page.evaluate((): ToolCall[] => {
     const win = window as any;
     if (Array.isArray(win.__toolCalls)) {
-      return win.__toolCalls.filter((call: any): call is string => 
-        typeof call === 'string' && call.length > 0
-      );
+      return win.__toolCalls.filter((call: any): call is ToolCall => {
+        // Verify each entry is a non-null object with required keys of correct types
+        return call !== null && 
+               typeof call === 'object' && 
+               typeof call.tool === 'string' && 
+               typeof call.type === 'string' &&
+               call.tool.length > 0 &&
+               call.type.length > 0;
+      });
     }
     return [];
   });
@@ -79,7 +92,11 @@ test.describe('Smoke Tests', () => {
       
       // Type-safe assertions for debug information
       expect(Array.isArray(toolCalls)).toBe(true);
-      expect(toolCalls.every(call => typeof call === 'string')).toBe(true);
+      expect(toolCalls.every(call => 
+        typeof call === 'object' && 
+        typeof call.tool === 'string' && 
+        typeof call.type === 'string'
+      )).toBe(true);
       
       if (conversationState !== null) {
         expect(typeof conversationState).toBe('string');
@@ -145,7 +162,11 @@ test.describe('Smoke Tests', () => {
     
     // Type-safe assertions for debug information
     expect(Array.isArray(toolCalls)).toBe(true);
-    expect(toolCalls.every(call => typeof call === 'string')).toBe(true);
+    expect(toolCalls.every(call => 
+      typeof call === 'object' && 
+      typeof call.tool === 'string' && 
+      typeof call.type === 'string'
+    )).toBe(true);
     
     if (conversationState !== null) {
       expect(typeof conversationState).toBe('string');

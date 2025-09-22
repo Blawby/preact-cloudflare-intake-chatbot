@@ -170,7 +170,8 @@ async function captureTestFailure(
  * 3. Message input is functional
  */
 test.describe('Basic Application Tests', () => {
-  test('application loads and chat interface is visible', async ({ page, testInfo }: { page: Page; testInfo: TestInfo }): Promise<void> => {
+  test('application loads and chat interface is visible', async ({ page }) => {
+    const testInfo = test.info();
     const logContext = createLogContext(testInfo.title, 'application_load_test');
     
     try {
@@ -197,7 +198,8 @@ test.describe('Basic Application Tests', () => {
     }
   });
 
-  test('application handles basic user interaction', async ({ page, testInfo }: { page: Page; testInfo: TestInfo }): Promise<void> => {
+  test('application handles basic user interaction', async ({ page }) => {
+    const testInfo = test.info();
     const logContext = createLogContext(testInfo.title, 'user_interaction_test');
     
     try {
@@ -233,7 +235,8 @@ test.describe('Basic Application Tests', () => {
     }
   });
 
-  test('application is responsive on mobile', async ({ page, testInfo }: { page: Page; testInfo: TestInfo }): Promise<void> => {
+  test('application is responsive on mobile', async ({ page }) => {
+    const testInfo = test.info();
     const logContext = createLogContext(testInfo.title, 'mobile_responsive_test');
     
     try {

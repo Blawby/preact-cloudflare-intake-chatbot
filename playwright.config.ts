@@ -83,10 +83,10 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
     {
-      command: 'pnpm wrangler dev --port 8787',
+      command: 'pnpm wrangler dev --local --port 8787',
       url: 'http://localhost:8787',
       reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
+      timeout: 240 * 1000,
     }
   ],
 });

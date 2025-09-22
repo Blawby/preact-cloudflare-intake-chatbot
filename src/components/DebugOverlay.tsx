@@ -118,6 +118,12 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
 
   // Keyboard navigation handler
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Don't interfere with typing in input fields
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
+      return;
+    }
+
     if (event.key === 'Escape') {
       setIsExpanded(false);
     } else if (event.key === 'Enter' || event.key === ' ') {

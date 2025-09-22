@@ -93,6 +93,9 @@ export function hasContactInformation(conversationText: string): boolean {
   return hasCoreInfo || hasHeaderWithInfo;
 }
 
+// Export alias for consistency with usage in conversationStateMachine
+export const hasContactInfo = hasContactInformation;
+
 /**
  * Extracts contact information from conversation text
  * @param conversationText - The conversation text to analyze
@@ -160,13 +163,28 @@ export function logContactInfoDetection(
   detection: ContactInfoMatch, 
   correlationId?: string
 ): void {
-  // Parameter validation with guard clauses
+  // Only log in development environment
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'development') {
+    return;
+  }
+
+  // Parameter validation with graceful handling
   if (typeof conversationText !== 'string') {
-    throw new Error('conversationText must be a string');
+    console.warn('logContactInfoDetection: conversationText must be a string');
+    return;
   }
   if (!detection || typeof detection !== 'object') {
-    throw new Error('detection must be a ContactInfoMatch object');
+    console.warn('logContactInfoDetection: detection must be a ContactInfoMatch object');
+    return;
   }
+
+  // Redact PII from conversation text
+  const redactedText = conversationText
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL_REDACTED]')
+    .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]')
+    .replace(/Name:\s*.+/gi, 'Name: [NAME_REDACTED]')
+    .replace(/Location:\s*.+/gi, 'Location: [LOCATION_REDACTED]')
+    .substring(0, 200);
 
   // Use structured logging (replace with your logging framework)
   const logData = {
@@ -176,7 +194,7 @@ export function logContactInfoDetection(
     hasContactInfo: hasContactInformation(conversationText),
     isComplete: isContactInfoComplete(conversationText),
     detection,
-    conversationText: conversationText.substring(0, 300) + '...'
+    conversationText: redactedText + (conversationText.length > 200 ? '...' : '')
   };
   console.log(JSON.stringify(logData));
 }

@@ -160,7 +160,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       />
 
       {/* Debug Overlay - Only in development */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.MODE === 'development' && (
         <DebugOverlay isVisible={true} />
       )}
     </div>

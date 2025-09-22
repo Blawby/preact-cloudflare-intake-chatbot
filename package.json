@@ -9,6 +9,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"test": "vitest run",
+		"test:all": "npm run test && npm run test:ai-tools && npm run test:e2e",
 		"test:watch": "vitest --watch",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest --coverage",

@@ -16,32 +16,8 @@ import { createSuccessResult, createErrorResult, ValidationError } from './legal
 import { safeIncludes } from '../utils/safeStringUtils.ts';
 
 
-// Agent message interface that extends ChatMessage with isUser property
-export interface AgentMessage {
-  readonly id?: string;
-  readonly role?: 'user' | 'assistant' | 'system';
-  readonly content: string;
-  readonly isUser?: boolean;
-  readonly timestamp?: number;
-  readonly metadata?: Record<string, any>;
-}
-
-// Agent response interface
-export interface AgentResponse {
-  readonly response: string;
-  readonly metadata: {
-    readonly conversationComplete?: boolean;
-    readonly inputMessageCount: number;
-    readonly lastUserMessage: string | null;
-    readonly sessionId?: string;
-    readonly teamId?: string;
-    readonly error?: string;
-    readonly toolName?: string;
-    readonly toolResult?: unknown;
-    readonly allowRetry?: boolean;
-    readonly rawParameters?: unknown;
-  };
-}
+// Import shared types from types.ts
+import type { AgentMessage, AgentResponse } from '../types.js';
 
 // Contact form field interface
 export interface ContactFormField {
@@ -85,15 +61,17 @@ export interface ContactFormResponse {
   readonly contactForm: ContactFormData;
 }
 
-// Payment invoice request parameters interface
+// Payment invoice request parameters interface - aligned with tool schema
 export interface PaymentInvoiceParameters {
-  readonly customer_name: string;
-  readonly customer_email: string;
-  readonly customer_phone: string;
-  readonly matter_type: string;
-  readonly matter_description: string;
+  readonly invoice_id: string;
   readonly amount: number;
-  readonly service_type: 'consultation' | 'document_review' | 'legal_advice' | 'case_preparation';
+  readonly currency: 'USD' | 'CAD' | 'EUR' | 'GBP';
+  readonly recipient: {
+    readonly email: string;
+    readonly name: string;
+  };
+  readonly description: string;
+  readonly due_date?: string;
 }
 
 
@@ -370,34 +348,33 @@ async function handleCreatePaymentInvoice(
   // Validate input parameters
   const validationErrors: string[] = [];
   
-  if (!parameters.customer_name || typeof parameters.customer_name !== 'string' || parameters.customer_name.trim().length === 0) {
-    validationErrors.push('customer_name is required and must be a non-empty string');
-  }
-  
-  if (!parameters.customer_email || typeof parameters.customer_email !== 'string' || parameters.customer_email.trim().length === 0) {
-    validationErrors.push('customer_email is required and must be a non-empty string');
-  }
-  
-  if (!parameters.customer_phone || typeof parameters.customer_phone !== 'string' || parameters.customer_phone.trim().length === 0) {
-    validationErrors.push('customer_phone is required and must be a non-empty string');
-  }
-  
-  if (!parameters.matter_type || typeof parameters.matter_type !== 'string' || parameters.matter_type.trim().length === 0) {
-    validationErrors.push('matter_type is required and must be a non-empty string');
-  }
-  
-  if (!parameters.matter_description || typeof parameters.matter_description !== 'string' || parameters.matter_description.trim().length === 0) {
-    validationErrors.push('matter_description is required and must be a non-empty string');
+  if (!parameters.invoice_id || typeof parameters.invoice_id !== 'string' || parameters.invoice_id.trim().length === 0) {
+    validationErrors.push('invoice_id is required and must be a non-empty string');
   }
   
   if (typeof parameters.amount !== 'number' || parameters.amount <= 0) {
     validationErrors.push('amount is required and must be a positive number');
   }
   
-  const allowedServiceTypes = ['consultation', 'document_review', 'legal_advice', 'case_preparation'];
-  if (!parameters.service_type || !allowedServiceTypes.includes(parameters.service_type)) {
-    validationErrors.push(`service_type is required and must be one of: ${allowedServiceTypes.join(', ')}`);
+  if (!parameters.currency || !['USD', 'CAD', 'EUR', 'GBP'].includes(parameters.currency)) {
+    validationErrors.push('currency is required and must be one of: USD, CAD, EUR, GBP');
   }
+  
+  if (!parameters.recipient || typeof parameters.recipient !== 'object') {
+    validationErrors.push('recipient is required and must be an object');
+  } else {
+    if (!parameters.recipient.email || typeof parameters.recipient.email !== 'string' || parameters.recipient.email.trim().length === 0) {
+      validationErrors.push('recipient.email is required and must be a non-empty string');
+    }
+    if (!parameters.recipient.name || typeof parameters.recipient.name !== 'string' || parameters.recipient.name.trim().length === 0) {
+      validationErrors.push('recipient.name is required and must be a non-empty string');
+    }
+  }
+  
+  if (!parameters.description || typeof parameters.description !== 'string' || parameters.description.trim().length === 0) {
+    validationErrors.push('description is required and must be a non-empty string');
+  }
+  
   
   if (validationErrors.length > 0) {
     return {
@@ -414,13 +391,12 @@ async function handleCreatePaymentInvoice(
   }
 
   const { 
-    customer_name, 
-    customer_email, 
-    customer_phone, 
-    matter_type, 
-    matter_description, 
+    invoice_id,
     amount, 
-    service_type 
+    currency,
+    recipient,
+    description,
+    due_date
   } = parameters;
 
   try {
@@ -430,19 +406,22 @@ async function handleCreatePaymentInvoice(
     // Create payment request with proper typing and unique session ID
     const paymentRequest = {
       customerInfo: {
-        name: customer_name,
-        email: customer_email,
-        phone: customer_phone,
+        name: recipient.name,
+        email: recipient.email,
+        phone: '', // Not provided in new schema
         location: '' // Default empty location as required by PaymentRequest interface
       },
       matterInfo: {
-        type: matter_type,
-        description: matter_description,
+        type: 'consultation', // Default type since not in new schema
+        description: description,
         urgency: 'normal', // Default urgency as required by PaymentRequest interface
         opposingParty: '' // Default empty opposing party
       },
       teamId: teamConfig.id, // Use validated team ID
-      sessionId: sessionId // Use generated unique session ID for idempotency
+      sessionId: sessionId, // Use generated unique session ID for idempotency
+      invoiceId: invoice_id, // Add invoice ID
+      currency: currency, // Add currency
+      dueDate: due_date // Add due date if provided
     };
 
     // Call payment service with retry logic (handled internally)

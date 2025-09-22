@@ -32,16 +32,18 @@ BEGIN
 END $$;
 
 -- Backfill priority values from existing urgency column
+-- Only update rows that still have the bootstrap default (idempotent)
 UPDATE matters SET priority = 
   CASE 
     WHEN urgency = 'low' THEN 'low'
     WHEN urgency = 'high' THEN 'high'
     ELSE 'normal'
   END
-WHERE urgency IS NOT NULL;
+WHERE urgency IS NOT NULL 
+  AND (priority IS NULL OR priority = 'normal');
 
--- After backfill, remove the default to force explicit priority values
-ALTER TABLE matters ALTER COLUMN priority DROP DEFAULT;
+-- Note: Keeping DEFAULT 'normal' to align with worker/schema.sql definition
+-- This ensures schema consistency between migration and main schema file
 
 -- Create index on priority column for better query performance
 CREATE INDEX IF NOT EXISTS idx_matters_priority ON matters(priority);

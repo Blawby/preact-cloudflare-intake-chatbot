@@ -12,11 +12,17 @@ const TOOL_LOADING_MESSAGES: Record<string, string> = {
 };
 // API endpoints - moved inline since api.ts was removed
 const getAgentStreamEndpoint = () => {
-  // In test environment, use full backend URL since proxy is not available
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '5174') {
-    return 'http://localhost:8787/api/agent/stream';
+  // Check for configurable base URL from environment or window override
+  const baseUrl = import.meta.env.VITE_API_BASE || 
+                  (typeof window !== 'undefined' ? (window as any).__API_BASE__ : undefined);
+  
+  if (baseUrl) {
+    return `${baseUrl}/api/agent/stream`;
   }
-  return '/api/agent/stream';
+  
+  // Fallback to relative path or construct from current origin
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return origin ? `${origin}/api/agent/stream` : '/api/agent/stream';
 };
 
 // Define proper types for message history
@@ -37,7 +43,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   
   // Debug hooks for test environment (development only)
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+    if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined') {
       (window as any).__DEBUG_AI_MESSAGES__ = (messages: any[]) => {
         console.log('[TEST] Current messages:', messages.map((m) => ({ role: m.role, isUser: m.isUser, id: m.id })));
       };
@@ -52,7 +58,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
         msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
       );
       // Debug hook for test environment
-      if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_AI_MESSAGES__) {
+      if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_AI_MESSAGES__) {
         (window as any).__DEBUG_AI_MESSAGES__(updated);
       }
       return updated;
@@ -154,7 +160,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                 const combinedData = dataLines.map(line => line.slice(6)).join('\n');
                 const data = JSON.parse(combinedData);
                 // Debug hook for test environment (development only)
-                if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SSE_EVENTS__) {
+                if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SSE_EVENTS__) {
                   (window as any).__DEBUG_SSE_EVENTS__(data);
                 }
                 
@@ -187,10 +193,13 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     break;
                     
                   case 'tool_call':
+                    // Hoist declarations before try block to avoid scope issues
+                    let toolName = data?.toolName || data?.name;
+                    let toolMessage: string | undefined;
+                    
                     try {
                       // Tool call detected, show processing message with tool-specific text
-                      const toolName = data?.toolName || data?.name;
-                      const toolMessage = toolName ? TOOL_LOADING_MESSAGES[toolName] : undefined;
+                      toolMessage = toolName ? TOOL_LOADING_MESSAGES[toolName] : undefined;
                       
                       // Log tool call for test monitoring (sanitized)
                       if (typeof window !== 'undefined') {
@@ -304,7 +313,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
     // Debug hook for test environment (development only)
-    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SEND_MESSAGE__) {
+    if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SEND_MESSAGE__) {
       (window as any).__DEBUG_SEND_MESSAGE__(message, attachments);
     }
     
@@ -368,9 +377,25 @@ Email: ${contactData.email}
 Phone: ${contactData.phone}
 Location: ${contactData.location}${contactData.opposingParty ? `\nOpposing Party: ${contactData.opposingParty}` : ''}`;
 
-      // Debug hook for test environment
-      if (typeof window !== 'undefined' && (window as any).__DEBUG_CONTACT_FORM__) {
-        (window as any).__DEBUG_CONTACT_FORM__(contactData, contactMessage);
+      // Debug hook for test environment (development only, PII-safe)
+      if (import.meta.env.MODE === 'development' && typeof window !== 'undefined' && (window as any).__DEBUG_CONTACT_FORM__) {
+        // Create sanitized payload with presence flags instead of raw PII
+        const sanitizedContactData = {
+          nameProvided: !!contactData.name,
+          emailProvided: !!contactData.email,
+          phoneProvided: !!contactData.phone,
+          locationProvided: !!contactData.location,
+          opposingPartyProvided: !!contactData.opposingParty
+        };
+        
+        // Create redacted contact message indicating sections without actual values
+        const redactedContactMessage = `Contact Information:
+Name: ${contactData.name ? '[PROVIDED]' : '[NOT PROVIDED]'}
+Email: ${contactData.email ? '[PROVIDED]' : '[NOT PROVIDED]'}
+Phone: ${contactData.phone ? '[PROVIDED]' : '[NOT PROVIDED]'}
+Location: ${contactData.location ? '[PROVIDED]' : '[NOT PROVIDED]'}${contactData.opposingParty ? '\nOpposing Party: [PROVIDED]' : ''}`;
+        
+        (window as any).__DEBUG_CONTACT_FORM__(sanitizedContactData, redactedContactMessage);
       }
 
       // Send the contact information as a user message

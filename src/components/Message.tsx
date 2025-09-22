@@ -54,7 +54,7 @@ interface MessageProps {
 		teamId: string;
 	};
 	onOpenSidebar?: () => void;
-	onContactFormSubmit?: (data: ContactData) => void;
+	onContactFormSubmit?: (data: ContactData) => void | Promise<void>;
 	isLoading?: boolean;
 	aiState?: 'thinking' | 'processing' | 'generating';
 	toolMessage?: string;
