@@ -45,23 +45,38 @@ describe('PII Sanitizer', () => {
       });
 
       it('should NOT detect bare 9-digit sequences without context', () => {
-        const testCases = [
+        // Group 1: Strings that should retain the literal "123456789"
+        const literalCases = [
           'My account number is 123456789',
           'The product code is 123456789',
           'Reference ID: 123456789',
           'Order number 123456789 was processed',
           'Tracking number: 123456789',
-          'Serial number 123456789',
-          'The zip code is 12345 and the extension is 6789',
-          'Phone: 123-456-7890', // This should be caught by phone pattern, not SSN
-          'Date: 12/34/5678' // This should not match
+          'Serial number 123456789'
         ];
 
-        testCases.forEach(content => {
+        literalCases.forEach(content => {
           const result = sanitizePII(content);
           expect(result.metadata.hasSSN).toBe(false);
           expect(result.content).toContain('123456789');
         });
+
+        // Group 2: Phone-formatted and other non-matching strings
+        const phoneCase = 'Phone: 123-456-7890';
+        const phoneResult = sanitizePII(phoneCase);
+        expect(phoneResult.metadata.hasSSN).toBe(false);
+        expect(phoneResult.metadata.hasPhone).toBe(true);
+        expect(phoneResult.content).toContain('[REDACTED]');
+
+        const dateCase = 'Date: 12/34/5678';
+        const dateResult = sanitizePII(dateCase);
+        expect(dateResult.metadata.hasSSN).toBe(false);
+        expect(dateResult.content).toBe(dateCase); // Should remain unchanged
+
+        const zipCase = 'The zip code is 12345 and the extension is 6789';
+        const zipResult = sanitizePII(zipCase);
+        expect(zipResult.metadata.hasSSN).toBe(false);
+        expect(zipResult.content).toBe(zipCase); // Should remain unchanged
       });
 
       it('should handle SSN removal vs masking', () => {

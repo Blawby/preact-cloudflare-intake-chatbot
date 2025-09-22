@@ -232,7 +232,6 @@ export class PaymentService {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiToken}`,
                 'Accept': 'application/json',
-                'User-Agent': 'Blawby-Legal-Intake/1.0',
                 'Idempotency-Key': idempotencyKey
               },
               body: JSON.stringify(customerData),
@@ -312,8 +311,7 @@ export class PaymentService {
               method: 'DELETE',
               headers: {
                 'Authorization': `Bearer ${apiToken}`,
-                'Accept': 'application/json',
-                'User-Agent': 'Blawby-Legal-Intake/1.0'
+                'Accept': 'application/json'
               },
               signal: controller.signal
             });
@@ -528,7 +526,6 @@ export class PaymentService {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiToken}`,
                 'Accept': 'application/json',
-                'User-Agent': 'Blawby-Legal-Intake/1.0',
                 'Idempotency-Key': key
               },
               body: JSON.stringify(invoiceData),
@@ -846,8 +843,7 @@ export class PaymentService {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${this.env.BLAWBY_API_TOKEN || ''}`,
-          'Accept': 'application/json',
-          'User-Agent': 'Blawby-Legal-Intake/1.0'
+          'Accept': 'application/json'
         }
       });
 
