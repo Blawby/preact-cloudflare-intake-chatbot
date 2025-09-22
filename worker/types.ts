@@ -21,6 +21,8 @@ export interface Env {
   BLAWBY_API_URL?: string;
   BLAWBY_API_TOKEN?: string;
   BLAWBY_TEAM_ULID?: string;
+  IDEMPOTENCY_SALT?: string;
+  PAYMENT_IDEMPOTENCY_SECRET?: string;
 }
 
 // HTTP Error class for centralized error handling

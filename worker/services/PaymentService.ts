@@ -94,20 +94,36 @@ export class PaymentService {
       
       // Use team's consultation fee if available, otherwise use defaults
       const teamConsultationFee = team?.config?.consultationFee;
-      const defaultPrice = teamConsultationFee ? teamConsultationFee * 100 : 7500; // Convert dollars to cents
+      
+      // Validate and normalize the consultation fee
+      let normalizedFee: number;
+      if (teamConsultationFee !== undefined && teamConsultationFee !== null) {
+        const parsedFee = parseFloat(String(teamConsultationFee));
+        if (isFinite(parsedFee) && parsedFee > 0) {
+          normalizedFee = parsedFee;
+        } else {
+          console.warn('⚠️ Invalid consultation fee, using default $75.00:', teamConsultationFee);
+          normalizedFee = 75.00; // Default fallback
+        }
+      } else {
+        normalizedFee = 75.00; // Default fallback
+      }
+      
+      // Convert to integer cents and ensure minimum value
+      const defaultPriceCents = Math.max(100, Math.round(normalizedFee * 100)); // Minimum 100 cents ($1.00)
       
       // Default configuration with team-specific pricing
       return {
-        defaultPrice: defaultPrice,
+        defaultPrice: defaultPriceCents,
         currency: 'USD',
         dueDateDays: 30,
         matterTypePricing: {
-          'Family Law': Math.round(defaultPrice * 1.33), // 33% more than default
-          'Employment Law': Math.round(defaultPrice * 1.67), // 67% more than default
-          'Personal Injury': Math.round(defaultPrice * 2.0), // 100% more than default
-          'Business Law': Math.round(defaultPrice * 1.33), // 33% more than default
-          'Criminal Law': Math.round(defaultPrice * 2.67), // 167% more than default
-          'General Consultation': Math.round(defaultPrice * 0.67) // 33% less than default
+          'Family Law': Math.round(defaultPriceCents * 1.33), // 33% more than default
+          'Employment Law': Math.round(defaultPriceCents * 1.67), // 67% more than default
+          'Personal Injury': Math.round(defaultPriceCents * 2.0), // 100% more than default
+          'Business Law': Math.round(defaultPriceCents * 1.33), // 33% more than default
+          'Criminal Law': Math.round(defaultPriceCents * 2.67), // 167% more than default
+          'General Consultation': Math.round(defaultPriceCents * 0.67) // 33% less than default
         }
       };
     } catch (error) {
@@ -326,24 +342,109 @@ export class PaymentService {
   }
 
   /**
-   * Helper method to create a deterministic hash using Web Crypto API
+   * Helper method to create HMAC-based idempotency hash using Web Crypto API
    */
-  private async createDeterministicHash(input: string): Promise<string> {
+  private async hmacHex(secret: string, input: string): Promise<string> {
+    if (!secret) {
+      throw new Error('IDEMPOTENCY_SALT is required for secure hashing');
+    }
+    
     const encoder = new TextEncoder();
-    const data = encoder.encode(input);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = new Uint8Array(hashBuffer);
-    const hashHex = Array.from(hashArray)
+    const keyData = encoder.encode(secret);
+    const inputData = encoder.encode(input);
+    
+    // Import the secret as a key for HMAC-SHA-256
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false, // not extractable
+      ['sign']
+    );
+    
+    // Sign the input data
+    const signature = await crypto.subtle.sign('HMAC', key, inputData);
+    const signatureArray = new Uint8Array(signature);
+    
+    // Convert to hex string and truncate to 32 characters
+    const hashHex = Array.from(signatureArray)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-    return hashHex.slice(0, 32); // Truncate to 32 characters for consistent length
+    
+    return hashHex.slice(0, 32);
   }
 
   /**
-   * Generates a deterministic idempotency key from customer data
+   * Helper method to create a deterministic hash using HMAC for idempotency
+   */
+  private async createDeterministicHash(input: string): Promise<string> {
+    const salt = this.env.IDEMPOTENCY_SALT;
+    if (!salt) {
+      throw new Error('IDEMPOTENCY_SALT environment variable is required');
+    }
+    
+    return await this.hmacHex(salt, input);
+  }
+
+  /**
+   * Helper method to create HMAC-based hash with fallback for missing secrets
+   */
+  private async createSecureHash(input: string, secretName: string, secretValue?: string): Promise<string> {
+    if (!secretValue) {
+      console.warn(`⚠️ ${secretName} is missing, using deterministic fallback`);
+      // Use a constant fallback key derived from the secret name for consistency
+      const fallbackKey = `fallback-${secretName}-${this.env.IDEMPOTENCY_SALT || 'default'}`;
+      return await this.hmacHex(fallbackKey, input);
+    }
+    
+    return await this.hmacHex(secretValue, input);
+  }
+
+  /**
+   * Helper method to parse location string into address components
+   */
+  private parseLocation(location?: string): { city?: string; state?: string; zip?: string } {
+    if (!location || typeof location !== 'string') {
+      return {};
+    }
+
+    const trimmed = location.trim();
+    if (!trimmed) {
+      return {};
+    }
+
+    // Try to parse common location formats
+    // Format: "City, State ZIP" or "City, State" or "City State ZIP"
+    const patterns = [
+      /^(.+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i, // "City, ST 12345"
+      /^(.+),\s*([A-Z]{2})$/i, // "City, ST"
+      /^(.+)\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i, // "City ST 12345"
+      /^(.+)$/i // Just city name
+    ];
+
+    for (const pattern of patterns) {
+      const match = trimmed.match(pattern);
+      if (match) {
+        const [, city, state, zip] = match;
+        const result: { city?: string; state?: string; zip?: string } = {};
+        
+        if (city) result.city = city.trim();
+        if (state) result.state = state.trim().toUpperCase();
+        if (zip) result.zip = zip.trim();
+        
+        return result;
+      }
+    }
+
+    // If no pattern matches, treat the whole string as city
+    return { city: trimmed };
+  }
+
+  /**
+   * Generates a deterministic idempotency key from customer data using HMAC
    */
   private async generateCustomerIdempotencyKey(customerData: CustomerCreateRequest): Promise<string> {
-    // Create a deterministic key based on customer data to prevent duplicates
+    // Create a canonical key based on customer data to prevent duplicates
     const keyData = {
       name: customerData.name,
       email: customerData.email,
@@ -351,17 +452,17 @@ export class PaymentService {
       team_id: customerData.team_id
     };
     
-    // Use Web Crypto API to create a deterministic hash
+    // Use HMAC with payment-specific secret for secure hashing
     const keyString = JSON.stringify(keyData);
-    const hash = await this.createDeterministicHash(keyString);
+    const hash = await this.createSecureHash(keyString, 'PAYMENT_IDEMPOTENCY_SECRET', this.env.PAYMENT_IDEMPOTENCY_SECRET);
     return `customer-${hash}`;
   }
 
   /**
-   * Generates a deterministic idempotency key from invoice data
+   * Generates a deterministic idempotency key from invoice data using HMAC
    */
-  private async generateIdempotencyKey(invoiceData: InvoiceCreateRequest): Promise<string> {
-    // Create a deterministic key based on invoice data to prevent duplicates
+  private async generateInvoiceIdempotencyKey(invoiceData: InvoiceCreateRequest): Promise<string> {
+    // Create a canonical key based on invoice data to prevent duplicates
     const keyData = {
       customer_id: invoiceData.customer_id,
       currency: invoiceData.currency,
@@ -373,9 +474,9 @@ export class PaymentService {
       }))
     };
     
-    // Use Web Crypto API to create a deterministic hash
+    // Use HMAC with payment-specific secret for secure hashing
     const keyString = JSON.stringify(keyData);
-    const hash = await this.createDeterministicHash(keyString);
+    const hash = await this.createSecureHash(keyString, 'PAYMENT_IDEMPOTENCY_SECRET', this.env.PAYMENT_IDEMPOTENCY_SECRET);
     return `invoice-${hash}`;
   }
 
@@ -390,7 +491,7 @@ export class PaymentService {
   ): Promise<{ success: boolean; invoiceUrl?: string; paymentId?: string; error?: string }> {
     try {
       // Generate idempotency key if not provided
-      const key = idempotencyKey || await this.generateIdempotencyKey(invoiceData);
+      const key = idempotencyKey || await this.generateInvoiceIdempotencyKey(invoiceData);
       
       const invoiceResult = await withRetry(
         async () => {
@@ -574,6 +675,7 @@ export class PaymentService {
       console.log('💰 Payment configuration:', paymentConfig);
       
       // Step 1: Create customer with retry logic
+      const locationInfo = this.parseLocation(paymentRequest.customerInfo.location);
       const customerData: CustomerCreateRequest = {
         name: paymentRequest.customerInfo.name,
         email: paymentRequest.customerInfo.email,
@@ -581,10 +683,11 @@ export class PaymentService {
         currency: paymentConfig.currency,
         status: 'Lead',
         team_id: teamUlid,
-        address_line_1: paymentRequest.customerInfo.location || '',
-        city: 'Test City',
-        state: 'TS',
-        zip: '12345'
+        // Only include address fields if we have real values
+        ...(paymentRequest.customerInfo.location && { address_line_1: paymentRequest.customerInfo.location }),
+        ...(locationInfo.city && { city: locationInfo.city }),
+        ...(locationInfo.state && { state: locationInfo.state }),
+        ...(locationInfo.zip && { zip: locationInfo.zip })
       };
 
       const customerResult = await this.createCustomerWithRetry(teamUlid, apiToken, customerData);

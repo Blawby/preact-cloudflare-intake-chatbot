@@ -105,6 +105,18 @@ export interface AnalyzeDocumentParams {
   readonly specific_question?: string;
 }
 
+export interface CreatePaymentInvoiceParams {
+  readonly invoice_id: string;
+  readonly amount: number;
+  readonly currency: 'USD' | 'CAD' | 'EUR' | 'GBP';
+  readonly recipient: {
+    readonly email: string;
+    readonly name: string;
+  };
+  readonly due_date?: string;
+  readonly description: string;
+}
+
 // Enhanced tool parameter property types
 export interface ToolParameterProperty {
   readonly type: 'string' | 'number' | 'boolean' | 'array' | 'object';
@@ -181,8 +193,8 @@ export const createMatter: ToolDefinition<CreateMatterParams> = {
   }
 };
 
-export const collectContactInfo: ToolDefinition<CollectContactInfoParams> = {
-  name: 'collect_contact_info',
+export const requestContactForm: ToolDefinition<CollectContactInfoParams> = {
+  name: 'request_contact_form',
   description: 'Collect contact information from the user',
   parameters: {
     type: 'object',
@@ -264,6 +276,72 @@ export const analyzeDocument: ToolDefinition<AnalyzeDocumentParams> = {
       }
     },
     required: ['file_id'] as const,
+    additionalProperties: false
+  }
+};
+
+// Alias for backward compatibility
+export const collectContactInfo = requestContactForm;
+
+export const createPaymentInvoice: ToolDefinition<CreatePaymentInvoiceParams> = {
+  name: 'create_payment_invoice',
+  description: 'Create a payment invoice for consultation or legal services',
+  parameters: {
+    type: 'object',
+    properties: {
+      invoice_id: { 
+        type: 'string' as const, 
+        description: 'Unique identifier for the invoice',
+        pattern: '^[a-zA-Z0-9\\-_]+$',
+        minLength: 1,
+        maxLength: 50
+      },
+      amount: { 
+        type: 'number' as const, 
+        description: 'Invoice amount in cents (e.g., 7500 for $75.00)',
+        minimum: 100,
+        maximum: 1000000
+      },
+      currency: { 
+        type: 'string' as const, 
+        description: 'Currency code for the invoice',
+        enum: ['USD', 'CAD', 'EUR', 'GBP'],
+        default: 'USD'
+      },
+      recipient: { 
+        type: 'object' as const, 
+        description: 'Recipient information for the invoice',
+        properties: {
+          email: { 
+            type: 'string' as const, 
+            description: 'Recipient email address',
+            format: 'email',
+            maxLength: 255
+          },
+          name: { 
+            type: 'string' as const, 
+            description: 'Recipient full name',
+            minLength: 1,
+            maxLength: 255
+          }
+        },
+        required: ['email', 'name'] as const,
+        additionalProperties: false
+      },
+      due_date: { 
+        type: 'string' as const, 
+        description: 'Invoice due date in ISO 8601 format (YYYY-MM-DD)',
+        format: 'date',
+        pattern: '^\\d{4}-\\d{2}-\\d{2}$'
+      },
+      description: { 
+        type: 'string' as const, 
+        description: 'Description of services or consultation',
+        minLength: 1,
+        maxLength: 500
+      }
+    },
+    required: ['invoice_id', 'amount', 'currency', 'recipient', 'description'] as const,
     additionalProperties: false
   }
 };

@@ -137,7 +137,7 @@ ${MATTER_TYPE_CLASSIFICATION}
 **Available Tools:**
 • request_contact_form: Use when you need to collect contact information from the user. This will display a contact form component in the chat.
 • create_matter: Use when you have all required information (name, matter_type, description). REQUIRED FIELDS: name, matter_type, description. OPTIONAL: phone, email, location, opposing_party
-• create_payment_invoice: Use when user needs to pay for consultation or services. REQUIRED: customer_name, customer_email, customer_phone, matter_type, matter_description, amount (in cents), service_type
+• create_payment_invoice: Use when user needs to pay for consultation or services. REQUIRED: invoice_id, amount (in cents), currency, recipient (email, name), description. OPTIONAL: due_date
 • analyze_document: Use when files are uploaded
 
 **When to Use request_contact_form:**
@@ -165,7 +165,7 @@ TOOL_CALL: analyze_document
 PARAMETERS: {"file_id": "file-abc123-def456", "analysis_type": "legal_document", "specific_question": "Analyze this legal document for intake purposes"}
 
 TOOL_CALL: create_payment_invoice
-PARAMETERS: {"customer_name": "John Doe", "customer_email": "john@example.com", "customer_phone": "704-555-0123", "matter_type": "Family Law", "matter_description": "Divorce consultation", "amount": 7500, "service_type": "consultation"}
+PARAMETERS: {"invoice_id": "inv-abc123-def456", "amount": 7500, "currency": "USD", "recipient": {"email": "john@example.com", "name": "John Doe"}, "description": "Family Law consultation - Divorce assistance", "due_date": "2024-02-15"}
 
 **IMPORTANT: If files are uploaded, ALWAYS analyze them FIRST before asking for any other information.**`;
   }
