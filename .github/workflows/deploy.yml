@@ -36,16 +36,15 @@ jobs:
     - name: Build frontend
       run: pnpm run build
 
+    - name: Install Wrangler
+      run: pnpm install -g wrangler
+
     - name: Deploy backend to Cloudflare Workers
       uses: cloudflare/wrangler-action@v3
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         command: deploy
-        packageManager: pnpm
-
-    - name: Install Wrangler
-      run: pnpm install -g wrangler
 
     # Teams are managed via the API — see TEAM_API_MIGRATION.md for usage
 
