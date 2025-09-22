@@ -1,5 +1,6 @@
 import { env, applyD1Migrations, fetchMock } from "cloudflare:test";
 import type { Env } from '../worker/types';
+import { Currency } from '../worker/agents/legalIntakeAgent.js';
 
 // TypeScript interfaces for team configuration
 interface FeatureFlags {
@@ -51,7 +52,7 @@ const baseConfig: TeamConfig = {
   legalAreas: ['family_law', 'personal_injury', 'business_law'],
   pricing: {
     consultationFee: 75,
-    currency: 'USD'
+    currency: Currency.USD
   },
   contactInfo: {
     phone: '+1-555-0123',

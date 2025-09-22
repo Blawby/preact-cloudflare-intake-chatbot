@@ -61,17 +61,44 @@ export interface ContactFormResponse {
   readonly contactForm: ContactFormData;
 }
 
+// Currency enum for type-safe currency handling
+export enum Currency {
+  USD = 'USD',
+  CAD = 'CAD',
+  EUR = 'EUR',
+  GBP = 'GBP'
+}
+
+// Branded type for ISO date strings to ensure proper format
+export type ISODateString = string & { __isoDate: true };
+
+// Recipient interface with explicit required fields
+export interface Recipient {
+  readonly email: string;
+  readonly name: string;
+}
+
+// Runtime validation helper for ISO 8601 date format
+export function validateISODate(dateString: string): dateString is ISODateString {
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+  const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  
+  if (!isoDateRegex.test(dateString) && !simpleDateRegex.test(dateString)) {
+    return false;
+  }
+  
+  const date = new Date(dateString);
+  return !isNaN(date.getTime()) && date.toISOString().startsWith(dateString.split('T')[0]);
+}
+
 // Payment invoice request parameters interface - aligned with tool schema
 export interface PaymentInvoiceParameters {
   readonly invoice_id: string;
   readonly amount: number;
-  readonly currency: 'USD' | 'CAD' | 'EUR' | 'GBP';
-  readonly recipient: {
-    readonly email: string;
-    readonly name: string;
-  };
+  readonly currency: Currency;
+  readonly recipient: Recipient;
   readonly description: string;
-  readonly due_date?: string;
+  readonly due_date?: ISODateString;
 }
 
 
@@ -356,7 +383,7 @@ async function handleCreatePaymentInvoice(
     validationErrors.push('amount is required and must be a positive number');
   }
   
-  if (!parameters.currency || !['USD', 'CAD', 'EUR', 'GBP'].includes(parameters.currency)) {
+  if (!parameters.currency || !Object.values(Currency).includes(parameters.currency)) {
     validationErrors.push('currency is required and must be one of: USD, CAD, EUR, GBP');
   }
   
@@ -375,6 +402,10 @@ async function handleCreatePaymentInvoice(
     validationErrors.push('description is required and must be a non-empty string');
   }
   
+  // Validate due_date if provided - must be valid ISO date format
+  if (parameters.due_date && !validateISODate(parameters.due_date)) {
+    validationErrors.push('due_date must be a valid ISO 8601 date string (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss.sssZ)');
+  }
   
   if (validationErrors.length > 0) {
     return {

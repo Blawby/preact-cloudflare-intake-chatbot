@@ -129,6 +129,18 @@ export class SecurityFilter {
       return null;
     }
     
+    // Special case: If this is a case preparation assistant (Blawby AI), allow all legal matters
+    const isCasePreparationAssistant = availableServices.some((service: string) => 
+      service.includes('Case Discussion') || 
+      service.includes('Case Summary') || 
+      service.includes('Document Organization') ||
+      service.includes('Timeline & Evidence')
+    );
+    
+    if (isCasePreparationAssistant) {
+      return null; // Allow case preparation assistants to handle any legal matter
+    }
+    
     // If the team offers General Consultation, allow most legal questions
     if (availableServices.includes('General Consultation')) {
       return null; // Allow general consultation to handle the request

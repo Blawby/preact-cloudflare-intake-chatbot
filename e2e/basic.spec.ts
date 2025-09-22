@@ -19,13 +19,29 @@ interface TestFixtures {
   testMessages: TestMessageData[];
 }
 
+// Interface for structured logging context data
+interface LogContextData {
+  viewport?: ViewportConfig;
+  messageContent?: string;
+  screenshotPath?: string;
+  testTitle?: string;
+  testFile?: string;
+  testLine?: number;
+  testColumn?: number;
+  testDuration?: number;
+  testRetry?: number;
+  testWorkerIndex?: number;
+  originalError?: string;
+  screenshotError?: string;
+}
+
 // Interface for structured logging context
 interface LogContext {
   correlationId: string;
   testName: string;
   timestamp: string;
   operation: string;
-  context?: Record<string, any>;
+  context?: LogContextData;
 }
 
 // Mobile viewport dimensions for responsive testing
@@ -43,7 +59,7 @@ const testFixtures: TestFixtures = {
 /**
  * Structured logging utility for E2E tests
  */
-function createLogContext(testName: string, operation: string, context?: Record<string, any>): LogContext {
+function createLogContext(testName: string, operation: string, context?: LogContextData): LogContext {
   return {
     correlationId: randomUUID(),
     testName,
@@ -110,6 +126,16 @@ async function testMessageInput(messageInput: import('@playwright/test').Locator
   await expect(messageInput).toHaveValue(testData.expectedValue);
   await messageInput.clear();
   await expect(messageInput).toHaveValue('');
+}
+
+/**
+ * Helper function to safely convert unknown values to Error instances
+ */
+function ensureError(value: unknown): Error {
+  if (value instanceof Error) {
+    return value;
+  }
+  return new Error(String(value));
 }
 
 /**
@@ -194,7 +220,7 @@ test.describe('Basic Application Tests', () => {
       logInfo('Message input test completed successfully', { ...logContext, operation: 'message_input_test' });
       
     } catch (error) {
-      await captureTestFailure(page, error as Error, testInfo, logContext);
+      await captureTestFailure(page, ensureError(error), testInfo, logContext);
     }
   });
 
@@ -231,7 +257,7 @@ test.describe('Basic Application Tests', () => {
       
     } catch (error) {
       // Capture diagnostic information before rethrowing
-      await captureTestFailure(page, error as Error, testInfo, logContext);
+      await captureTestFailure(page, ensureError(error), testInfo, logContext);
     }
   });
 
@@ -262,7 +288,7 @@ test.describe('Basic Application Tests', () => {
       logInfo('Message input is functional on mobile', { ...logContext, operation: 'message_input_verification' });
       
     } catch (error) {
-      await captureTestFailure(page, error as Error, testInfo, logContext);
+      await captureTestFailure(page, ensureError(error), testInfo, logContext);
     }
   });
 });

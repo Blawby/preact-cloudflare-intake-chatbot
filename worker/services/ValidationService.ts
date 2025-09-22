@@ -80,8 +80,12 @@ export class ValidationService {
       // Block 555 exchange code with fictional subscriber numbers
       if (exchangeCode === '555') {
         // Block fictional subscriber range 0100-0199 and special 1212
-        if ((subscriber >= '0100' && subscriber <= '0199') || subscriber === '1212') {
-          return { isValid: false, error: 'Please provide a real phone number, not a placeholder' };
+        // First check if subscriber contains only digits
+        if (/^\d+$/.test(subscriber)) {
+          const subscriberNum = parseInt(subscriber, 10);
+          if ((subscriberNum >= 100 && subscriberNum <= 199) || subscriber === '1212') {
+            return { isValid: false, error: 'Please provide a real phone number, not a placeholder' };
+          }
         }
       }
       

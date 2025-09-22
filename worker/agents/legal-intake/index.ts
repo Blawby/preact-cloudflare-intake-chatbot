@@ -3,7 +3,7 @@ import { LegalIntakeLogger } from './legalIntakeLogger.js';
 import { PromptBuilder, CloudflareAIResponse } from '../../utils/promptBuilder.js';
 import { BusinessLogicHandler } from './businessLogicHandler.js';
 import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.js';
-import { TOOL_HANDLERS } from '../legalIntakeAgent.js';
+import { TOOL_HANDLERS, Currency, Recipient, ISODateString } from '../legalIntakeAgent.js';
 import { ToolCallParser, ToolCall, ToolCallParseResult } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
 import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
@@ -189,12 +189,9 @@ export interface AnalyzeDocumentParams {
 export interface CreatePaymentInvoiceParams {
   readonly invoice_id: string;
   readonly amount: number;
-  readonly currency: 'USD' | 'CAD' | 'EUR' | 'GBP';
-  readonly recipient: {
-    readonly email: string;
-    readonly name: string;
-  };
-  readonly due_date?: string;
+  readonly currency: Currency;
+  readonly recipient: Recipient;
+  readonly due_date?: ISODateString;
   readonly description: string;
 }
 
@@ -364,8 +361,8 @@ export const createPaymentInvoice: ToolDefinition<CreatePaymentInvoiceParams> = 
       currency: { 
         type: 'string' as const, 
         description: 'Currency code for the invoice',
-        enum: ['USD', 'CAD', 'EUR', 'GBP'],
-        default: 'USD'
+        enum: Object.values(Currency),
+        default: Currency.USD
       },
       recipient: { 
         type: 'object' as const, 
@@ -785,7 +782,8 @@ export async function runLegalIntakeAgentStream(
     fullContext,
     correlationId,
     sessionId,
-    teamId
+    teamId,
+    teamConfig
   );
   
     // Handle system prompt generation error

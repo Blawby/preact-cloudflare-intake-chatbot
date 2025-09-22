@@ -1,5 +1,6 @@
 import type { Env } from '../types';
 import { withRetry } from '../utils/retry.js';
+import { Currency } from '../agents/legalIntakeAgent.js';
 
 export interface PaymentRequest {
   customerInfo: {
@@ -28,7 +29,7 @@ export interface PaymentResponse {
 
 export interface InvoiceCreateRequest {
   customer_id: string;
-  currency: string;
+  currency: Currency;
   due_date: string;
   status: string;
   line_items: Array<{
@@ -56,7 +57,7 @@ export interface CustomerCreateRequest {
   name: string;
   email: string;
   phone: string;
-  currency: string;
+  currency: Currency;
   status: string;
   team_id: string;
   address_line_1: string;
@@ -67,7 +68,7 @@ export interface CustomerCreateRequest {
 
 export interface PaymentConfig {
   defaultPrice: number; // in cents
-  currency: string;
+  currency: Currency;
   dueDateDays: number;
   matterTypePricing?: Record<string, number>; // matter type -> price in cents
 }
@@ -123,7 +124,7 @@ export class PaymentService {
       // Default configuration with team-specific pricing
       return {
         defaultPrice: defaultPriceCents,
-        currency: 'USD',
+        currency: Currency.USD,
         dueDateDays: 30,
         matterTypePricing: {
           'Family Law': Math.round(defaultPriceCents * 1.33), // 33% more than default

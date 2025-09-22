@@ -10,14 +10,29 @@ const TOOL_LOADING_MESSAGES: Record<string, string> = {
   'analyze_document': 'Analyzing document...',
   'create_payment_invoice': 'Creating payment invoice...'
 };
+// Global interface for window API base override
+declare global {
+  interface Window {
+    __API_BASE__?: string;
+  }
+}
+
 // API endpoints - moved inline since api.ts was removed
-const getAgentStreamEndpoint = () => {
+const getAgentStreamEndpoint = (): string => {
   // Check for configurable base URL from environment or window override
-  const baseUrl = import.meta.env.VITE_API_BASE || 
-                  (typeof window !== 'undefined' ? (window as any).__API_BASE__ : undefined);
+  const envBaseUrl = import.meta.env.VITE_API_BASE as string | undefined;
+  const windowBaseUrl = typeof window !== 'undefined' ? window.__API_BASE__ : undefined;
+  const baseUrl = envBaseUrl || windowBaseUrl;
   
   if (baseUrl) {
-    return `${baseUrl}/api/agent/stream`;
+    try {
+      // Validate the base URL using URL constructor to ensure it's absolute
+      new URL(baseUrl);
+      return `${baseUrl}/api/agent/stream`;
+    } catch (error) {
+      console.warn('Invalid base URL provided, falling back to relative path:', baseUrl);
+      // Fall through to fallback logic
+    }
   }
   
   // Fallback to relative path or construct from current origin
@@ -159,9 +174,30 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                 // Concatenate all data lines with newline separators
                 const combinedData = dataLines.map(line => line.slice(6)).join('\n');
                 const data = JSON.parse(combinedData);
-                // Debug hook for test environment (development only)
+                
+                // Validate data object structure
+                if (!data || typeof data !== 'object') {
+                  console.warn('Invalid SSE data: not an object', { combinedData });
+                  continue;
+                }
+                
+                // Debug hook for test environment (development only) - sanitized
                 if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SSE_EVENTS__) {
-                  (window as any).__DEBUG_SSE_EVENTS__(data);
+                  // Only log safe properties to avoid sensitive data exposure
+                  const sanitizedData = {
+                    type: data.type,
+                    timestamp: Date.now(),
+                    hasText: !!data.text,
+                    hasToolName: !!(data.toolName || data.name),
+                    hasResult: !!data.result
+                  };
+                  (window as any).__DEBUG_SSE_EVENTS__(sanitizedData);
+                }
+                
+                // Validate that we have a type property
+                if (typeof data.type !== 'string') {
+                  console.warn('Invalid SSE data: missing or invalid type', { type: data.type });
+                  continue;
                 }
                 
                 switch (data.type) {
@@ -193,28 +229,40 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     break;
                     
                   case 'tool_call':
-                    // Hoist declarations before try block to avoid scope issues
-                    let toolName = data?.toolName || data?.name;
+                    // Validate data object structure and extract tool information safely
+                    let toolName: string | undefined;
                     let toolMessage: string | undefined;
                     
                     try {
+                      // Safely extract tool name with validation
+                      if (data && typeof data === 'object') {
+                        toolName = (typeof data.toolName === 'string' ? data.toolName : 
+                                  typeof data.name === 'string' ? data.name : undefined);
+                      }
+                      
                       // Tool call detected, show processing message with tool-specific text
                       toolMessage = toolName ? TOOL_LOADING_MESSAGES[toolName] : undefined;
                       
-                      // Log tool call for test monitoring (sanitized)
+                      // Log tool call for test monitoring (sanitized - only safe properties)
                       if (typeof window !== 'undefined') {
                         if (!(window as any).__toolCalls) {
                           (window as any).__toolCalls = [];
                         }
-                        (window as any).__toolCalls.push({
-                          tool: toolName,
+                        
+                        // Only log safe, non-sensitive properties
+                        const sanitizedToolCall = {
+                          tool: toolName || 'unknown',
                           timestamp: Date.now(),
-                          type: data?.type
-                        });
+                          type: 'tool_call'
+                        };
+                        
+                        (window as any).__toolCalls.push(sanitizedToolCall);
                       }
                     } catch (error) {
-                      console.warn('Error processing tool call:', error);
-                      // Continue with fallback behavior
+                      console.warn('Error processing tool call:', error instanceof Error ? error.message : 'Unknown error');
+                      // Continue with fallback behavior - ensure we have safe defaults
+                      toolName = undefined;
+                      toolMessage = undefined;
                     }
                     
                     updateAIMessage(placeholderId, { 
@@ -296,7 +344,18 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     break;
                 }
               } catch (parseError) {
-                console.warn('Failed to parse SSE data:', parseError);
+                // Log parse error with sanitized information to avoid sensitive data exposure
+                const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parse error';
+                console.warn('Failed to parse SSE data:', errorMessage);
+                
+                // Log sanitized data for debugging (without sensitive content)
+                if (import.meta.env.MODE !== 'production') {
+                  console.warn('Parse error context:', {
+                    dataLength: combinedData?.length || 0,
+                    hasData: !!combinedData,
+                    errorType: parseError instanceof Error ? parseError.constructor.name : typeof parseError
+                  });
+                }
               }
             }
           }

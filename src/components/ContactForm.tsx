@@ -2,6 +2,10 @@ import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
 import { useTheme } from '../hooks/useTheme';
 
+// Constants for allowed field names
+export const ALLOWED_FIELDS = ['name', 'email', 'phone', 'location', 'opposingParty'] as const;
+export type AllowedField = typeof ALLOWED_FIELDS[number];
+
 export interface ContactFormProps {
   onSubmit: (data: ContactData) => void | Promise<void>;
   fields?: string[];
@@ -25,68 +29,86 @@ interface FormErrors {
   opposingParty?: string;
 }
 
-export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'location', 'opposingParty'], required = ['name', 'email', 'phone'], message }: ContactFormProps): JSX.Element {
-  // Runtime validation and normalization of props
-  const ALLOWED_FIELDS = ['name', 'email', 'phone', 'location', 'opposingParty'] as const;
-  
-  // Validate and normalize fields array
-  if (!Array.isArray(fields)) {
-    console.error('[ContactForm] Invalid fields prop: must be an array. Using default fields.');
-    fields = ['name', 'email', 'phone', 'location', 'opposingParty'];
-  } else if (fields.length === 0) {
-    console.error('[ContactForm] Invalid fields prop: cannot be empty array. Using default fields.');
-    fields = ['name', 'email', 'phone', 'location', 'opposingParty'];
-  } else {
-    // Filter out invalid field names and remove duplicates
-    const validFields = fields
-      .filter((field): field is typeof ALLOWED_FIELDS[number] => 
-        typeof field === 'string' && ALLOWED_FIELDS.includes(field as typeof ALLOWED_FIELDS[number])
-      );
-    
-    if (validFields.length === 0) {
-      console.error('[ContactForm] No valid fields provided. Using default fields.');
-      fields = ['name', 'email', 'phone', 'location', 'opposingParty'];
-    } else if (validFields.length !== fields.length) {
-      console.warn('[ContactForm] Some invalid field names were filtered out:', 
-        fields.filter(field => !ALLOWED_FIELDS.includes(field as typeof ALLOWED_FIELDS[number]))
-      );
-      fields = validFields;
-    } else {
-      // Remove duplicates while preserving order
-      fields = [...new Set(fields)];
+interface ValidatedProps {
+  fields: readonly AllowedField[];
+  required: readonly AllowedField[];
+  message?: string;
+}
+
+/**
+ * Validates and normalizes ContactForm props with proper type guards
+ */
+function validateContactFormProps(
+  fields: unknown,
+  required: unknown, 
+  message: unknown
+): ValidatedProps {
+  // Validate fields with type guard
+  const validatedFields = (() => {
+    if (!Array.isArray(fields) || fields.length === 0) {
+      console.error('[ContactForm] Invalid fields prop. Using defaults.');
+      return ALLOWED_FIELDS;
     }
-  }
-  
-  // Validate and normalize required array
-  if (!Array.isArray(required)) {
-    console.error('[ContactForm] Invalid required prop: must be an array. Using default required fields.');
-    required = ['name', 'email', 'phone'];
-  } else {
-    // Filter to only include valid field names that exist in fields array
-    const validRequired = required
-      .filter((field): field is typeof ALLOWED_FIELDS[number] => 
-        typeof field === 'string' && 
-        ALLOWED_FIELDS.includes(field as typeof ALLOWED_FIELDS[number]) &&
-        fields.includes(field)
+    
+    const valid = [...new Set(fields)]
+      .filter((f): f is AllowedField => 
+        typeof f === 'string' && ALLOWED_FIELDS.includes(f as AllowedField)
       );
     
-    if (validRequired.length !== required.length) {
+    if (valid.length === 0) {
+      console.error('[ContactForm] No valid fields. Using defaults.');
+      return ALLOWED_FIELDS;
+    }
+    
+    if (valid.length !== fields.length) {
+      const invalidFields = fields.filter(field => 
+        !ALLOWED_FIELDS.includes(field as AllowedField)
+      );
+      console.warn('[ContactForm] Some invalid field names were filtered out:', invalidFields);
+    }
+    
+    return valid;
+  })();
+  
+  // Validate required with type guard  
+  const validatedRequired = (() => {
+    if (!Array.isArray(required)) {
+      console.error('[ContactForm] Invalid required prop. Using defaults.');
+      return ['name', 'email', 'phone'] as const;
+    }
+    
+    const valid = [...new Set(required)]
+      .filter((f): f is AllowedField =>
+        typeof f === 'string' && 
+        ALLOWED_FIELDS.includes(f as AllowedField) &&
+        validatedFields.includes(f)
+      );
+    
+    if (valid.length !== required.length) {
       const invalidRequired = required.filter(field => 
-        !ALLOWED_FIELDS.includes(field as typeof ALLOWED_FIELDS[number]) || 
-        !fields.includes(field)
+        !ALLOWED_FIELDS.includes(field as AllowedField) || 
+        !validatedFields.includes(field as AllowedField)
       );
       console.warn('[ContactForm] Some invalid required fields were filtered out:', invalidRequired);
     }
     
-    // Remove duplicates while preserving order
-    required = [...new Set(validRequired)];
-  }
+    return valid.length > 0 ? valid : ['name', 'email', 'phone'] as const;
+  })();
   
-  // Validate message prop
-  if (message !== undefined && typeof message !== 'string') {
-    console.error('[ContactForm] Invalid message prop: must be a string. Ignoring message.');
-    message = undefined;
-  }
+  // Validate message
+  const validatedMessage = typeof message === 'string' ? message : undefined;
+  
+  return {
+    fields: validatedFields,
+    required: validatedRequired,
+    message: validatedMessage
+  };
+}
+
+export function ContactForm({ onSubmit, fields = ALLOWED_FIELDS, required = ['name', 'email', 'phone'], message }: ContactFormProps): JSX.Element {
+  // Validate props without mutation
+  const validatedProps = validateContactFormProps(fields, required, message);
+  const { fields: validFields, required: validRequired, message: validMessage } = validatedProps;
   
   // Validate onSubmit function
   if (typeof onSubmit !== 'function') {
@@ -115,7 +137,7 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const validateField = (field: keyof ContactData, value: string): string | undefined => {
-    if (required.includes(field) && !value.trim()) {
+    if (validRequired.includes(field as AllowedField) && !value.trim()) {
       return `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
     }
 
@@ -153,7 +175,7 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
     let hasErrors = false;
 
     // Validate required fields
-    for (const field of required) {
+    for (const field of validRequired) {
       const error = validateField(field as keyof ContactData, formData[field as keyof ContactData]);
       if (error) {
         newErrors[field as keyof ContactData] = error;
@@ -162,8 +184,8 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
     }
 
     // Also validate non-required fields if they have values
-    for (const field of fields) {
-      if (!required.includes(field) && formData[field as keyof ContactData]) {
+    for (const field of validFields) {
+      if (!validRequired.includes(field) && formData[field as keyof ContactData]) {
         const error = validateField(field as keyof ContactData, formData[field as keyof ContactData]);
         if (error) {
           newErrors[field as keyof ContactData] = error;
@@ -209,8 +231,8 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
           hasLocation: !!formData.location,
           hasOpposingParty: !!formData.opposingParty
         },
-        fields,
-        required,
+        fields: validFields,
+        required: validRequired,
         timestamp: new Date().toISOString(),
         component: 'ContactForm'
       };
@@ -229,9 +251,9 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
 
   return (
     <div class="bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-6 shadow-sm" data-testid="contact-form">
-      {message && (
+      {validMessage && (
         <div class="mb-4 text-gray-700 dark:text-gray-300">
-          {message}
+          {validMessage}
         </div>
       )}
       
@@ -251,10 +273,10 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
       )}
       
       <form onSubmit={handleSubmit} class="space-y-4">
-        {fields.includes('name') && (
+        {validFields.includes('name') && (
           <div>
             <label for="contact-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Full Name {required.includes('name') && <span class="text-red-500">*</span>}
+              Full Name {validRequired.includes('name') && <span class="text-red-500">*</span>}
             </label>
             <input
               id="contact-name"
@@ -274,10 +296,10 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
           </div>
         )}
 
-        {fields.includes('email') && (
+        {validFields.includes('email') && (
           <div>
             <label for="contact-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Email Address {required.includes('email') && <span class="text-red-500">*</span>}
+              Email Address {validRequired.includes('email') && <span class="text-red-500">*</span>}
             </label>
             <input
               id="contact-email"
@@ -297,10 +319,10 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
           </div>
         )}
 
-        {fields.includes('phone') && (
+        {validFields.includes('phone') && (
           <div>
             <label for="contact-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Phone Number {required.includes('phone') && <span class="text-red-500">*</span>}
+              Phone Number {validRequired.includes('phone') && <span class="text-red-500">*</span>}
             </label>
             <input
               id="contact-phone"
@@ -320,10 +342,10 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
           </div>
         )}
 
-        {fields.includes('location') && (
+        {validFields.includes('location') && (
           <div>
             <label for="contact-location" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Location {required.includes('location') && <span class="text-red-500">*</span>}
+              Location {validRequired.includes('location') && <span class="text-red-500">*</span>}
             </label>
             <input
               id="contact-location"
@@ -343,7 +365,7 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
           </div>
         )}
 
-        {fields.includes('opposingParty') && (
+        {validFields.includes('opposingParty') && (
           <div>
             <label for="contact-opposing-party" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Opposing Party (Optional)

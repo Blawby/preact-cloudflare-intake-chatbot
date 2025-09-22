@@ -240,7 +240,8 @@ export class BusinessLogicHandler {
     context: ConversationContext,
     correlationId?: string,
     sessionId?: string,
-    teamId?: string
+    teamId?: string,
+    teamConfig?: any
   ): ErrorResult<string> {
     return withErrorHandlingSync(
       () => {
@@ -259,7 +260,10 @@ export class BusinessLogicHandler {
           });
         }
 
-        return buildSystemPrompt(context, state, correlationId, sessionId, teamId, 'North Carolina Legal Services');
+        // Use team name from configuration, fallback to default
+        const teamName = teamConfig?.name || 'Legal Assistant';
+        
+        return buildSystemPrompt(context, state, correlationId, sessionId, teamId, teamName, teamConfig);
       },
       {
         state: state,
