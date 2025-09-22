@@ -8,7 +8,7 @@ const EMAIL_PATTERN = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
 
 const PHONE_PATTERNS = [
   /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, // 123-456-7890, 123.456.7890, 1234567890
-  /\b\(\d{3}\)\s*\d{3}[-.]?\d{4}\b/g, // (123) 456-7890
+  /(?:^|\s)\(\d{3}\)\s*\d{3}[-.\s]?\d{4}\b/g, // (123) 456-7890, (123) 456.7890, (123) 456 7890
   /\b\+1[-.]?\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, // +1-123-456-7890
   /\b1[-.]?\d{3}[-.]?\d{3}[-.]?\d{4}\b/g // 1-123-456-7890
 ];
@@ -96,40 +96,49 @@ export function sanitizePII(
 
   // Phone number patterns - various formats
   for (const pattern of PHONE_PATTERNS) {
-    if (pattern.test(sanitized)) {
+    // Create a fresh regex instance to avoid lastIndex issues
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    if (freshPattern.test(sanitized)) {
       metadata.hasPhone = true;
-      sanitized = sanitized.replace(pattern, remove ? '' : maskText);
+      sanitized = sanitized.replace(freshPattern, remove ? '' : maskText);
     }
   }
 
   // SSN patterns - contextual matching to avoid false positives
   for (const pattern of SSN_PATTERNS) {
-    if (pattern.test(sanitized)) {
+    // Create a fresh regex instance to avoid lastIndex issues
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    if (freshPattern.test(sanitized)) {
       metadata.hasSSN = true;
-      sanitized = sanitized.replace(pattern, remove ? '' : maskText);
+      sanitized = sanitized.replace(freshPattern, remove ? '' : maskText);
     }
   }
   
   // Handle contextual unformatted SSNs
-  if (CONTEXTUAL_SSN_PATTERN.test(sanitized)) {
+  const freshContextualSSNPattern = new RegExp(CONTEXTUAL_SSN_PATTERN.source, CONTEXTUAL_SSN_PATTERN.flags);
+  if (freshContextualSSNPattern.test(sanitized)) {
     metadata.hasSSN = true;
-    sanitized = sanitized.replace(CONTEXTUAL_SSN_PATTERN, (match, ssnDigits) => {
+    sanitized = sanitized.replace(freshContextualSSNPattern, (match, ssnDigits) => {
       return remove ? '' : match.replace(ssnDigits, maskText);
     });
   }
 
   // Address patterns - common address indicators
   for (const pattern of ADDRESS_PATTERNS) {
-    if (pattern.test(sanitized)) {
+    // Create a fresh regex instance to avoid lastIndex issues
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    if (freshPattern.test(sanitized)) {
       metadata.hasAddress = true;
-      sanitized = sanitized.replace(pattern, remove ? '' : maskText);
+      sanitized = sanitized.replace(freshPattern, remove ? '' : maskText);
     }
   }
 
   // Additional PII patterns
   for (const pattern of ADDITIONAL_PII_PATTERNS) {
-    if (pattern.test(sanitized)) {
-      sanitized = sanitized.replace(pattern, remove ? '' : maskText);
+    // Create a fresh regex instance to avoid lastIndex issues
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    if (freshPattern.test(sanitized)) {
+      sanitized = sanitized.replace(freshPattern, remove ? '' : maskText);
     }
   }
 
@@ -200,39 +209,45 @@ export function containsPII(content: string | null | undefined): boolean {
   }
   
   // Email pattern check
-  if (EMAIL_PATTERN.test(content)) {
+  const freshEmailPattern = new RegExp(EMAIL_PATTERN.source, EMAIL_PATTERN.flags);
+  if (freshEmailPattern.test(content)) {
     return true;
   }
   
   // Phone pattern check - use comprehensive patterns
   for (const pattern of PHONE_PATTERNS) {
-    if (pattern.test(content)) {
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    if (freshPattern.test(content)) {
       return true;
     }
   }
   
   // SSN pattern check - use comprehensive patterns
   for (const pattern of SSN_PATTERNS) {
-    if (pattern.test(content)) {
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    if (freshPattern.test(content)) {
       return true;
     }
   }
   
   // Contextual SSN pattern check
-  if (CONTEXTUAL_SSN_PATTERN.test(content)) {
+  const freshContextualSSNPattern = new RegExp(CONTEXTUAL_SSN_PATTERN.source, CONTEXTUAL_SSN_PATTERN.flags);
+  if (freshContextualSSNPattern.test(content)) {
     return true;
   }
   
   // Address pattern check - use comprehensive patterns
   for (const pattern of ADDRESS_PATTERNS) {
-    if (pattern.test(content)) {
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    if (freshPattern.test(content)) {
       return true;
     }
   }
   
   // Additional PII pattern check
   for (const pattern of ADDITIONAL_PII_PATTERNS) {
-    if (pattern.test(content)) {
+    const freshPattern = new RegExp(pattern.source, pattern.flags);
+    if (freshPattern.test(content)) {
       return true;
     }
   }
