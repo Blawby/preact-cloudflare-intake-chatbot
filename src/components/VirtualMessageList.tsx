@@ -6,6 +6,7 @@ import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ChatMessageUI } from '../../worker/types';
+import { ContactData } from './ContactForm';
 
 interface VirtualMessageListProps {
     messages: ChatMessageUI[];
@@ -16,6 +17,7 @@ interface VirtualMessageListProps {
         description?: string | null;
     };
     onOpenSidebar?: () => void;
+    onContactFormSubmit?: (data: ContactData) => void;
 
     // Feedback props
     sessionId?: string;
@@ -31,6 +33,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     messages,
     teamConfig,
     onOpenSidebar,
+    onContactFormSubmit,
     sessionId,
     teamId,
     onFeedbackSubmit
@@ -158,10 +161,13 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         files={(message as any).files}
                         matterCanvas={(message as any).matterCanvas}
                         paymentEmbed={(message as any).paymentEmbed}
+                        contactForm={(message as any).contactForm}
                         teamConfig={teamConfig}
                         onOpenSidebar={onOpenSidebar}
+                        onContactFormSubmit={onContactFormSubmit}
                         isLoading={(message as any).isLoading}
                         aiState={(message as any).aiState}
+                        toolMessage={(message as any).toolMessage}
                         id={message.id}
                         sessionId={sessionId}
                         teamId={teamId}

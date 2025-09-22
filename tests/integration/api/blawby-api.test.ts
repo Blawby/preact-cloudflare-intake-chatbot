@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
+import { Currency } from '../../../worker/agents/legalIntakeAgent.js';
 
 // Real Blawby API configuration for integration testing
 const BLAWBY_API_URL = 'https://staging.blawby.com';
@@ -182,7 +183,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         name: 'Test Customer API',
         email: email,
         phone: '+13322097232',
-        currency: 'USD',
+        currency: Currency.USD,
         status: 'Lead',
         team_id: testContext.teamUlid,
         address_line_1: '123 Test St',
@@ -258,7 +259,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         name: 'Test Customer for Invoice',
         email: email,
         phone: '+13322097232',
-        currency: 'USD',
+        currency: Currency.USD,
         status: 'Lead',
         team_id: testContext.teamUlid
       };
@@ -284,7 +285,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
       const invoiceData = {
         customer_id: customerIdResult,
         amount: 150.00,
-        currency: 'USD',
+        currency: Currency.USD,
         description: 'Legal consultation services',
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         status: 'draft', // Required field

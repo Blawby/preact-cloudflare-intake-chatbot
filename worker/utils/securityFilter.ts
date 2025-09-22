@@ -129,6 +129,28 @@ export class SecurityFilter {
       return null;
     }
     
+    // Special case: If this is a case preparation assistant (Blawby AI), allow all legal matters
+    const CASE_PREPARATION_SERVICES: readonly string[] = [
+      'Case Discussion',
+      'Case Summary', 
+      'Document Organization',
+      'Timeline & Evidence'
+    ] as const;
+    
+    const isCasePreparationAssistant: boolean = availableServices.some((service: string) => 
+      CASE_PREPARATION_SERVICES.some((caseService: string) => service === caseService)
+    );
+    
+    if (isCasePreparationAssistant) {
+      // Log this bypass for security monitoring
+      console.log('SecurityFilter: Case preparation assistant bypass applied', { 
+        teamServices: availableServices,
+        legalMatterType,
+        timestamp: new Date().toISOString()
+      });
+      return null; // Allow case preparation assistants to handle any legal matter
+    }
+    
     // If the team offers General Consultation, allow most legal questions
     if (availableServices.includes('General Consultation')) {
       return null; // Allow general consultation to handle the request

@@ -1,7 +1,44 @@
 import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
 import { ChatMessageUI } from '../../worker/types';
+import { ContactData } from '../components/ContactForm';
+
+// Tool name to user-friendly message mapping
+const TOOL_LOADING_MESSAGES: Record<string, string> = {
+  'show_contact_form': 'Preparing contact form...',
+  'create_matter': 'Creating your case file...',
+  'request_lawyer_review': 'Requesting lawyer review...',
+  'analyze_document': 'Analyzing document...',
+  'create_payment_invoice': 'Creating payment invoice...'
+};
+// Global interface for window API base override
+declare global {
+  interface Window {
+    __API_BASE__?: string;
+  }
+}
+
 // API endpoints - moved inline since api.ts was removed
-const getAgentStreamEndpoint = () => '/api/agent/stream';
+const getAgentStreamEndpoint = (): string => {
+  // Check for configurable base URL from environment or window override
+  const envBaseUrl = import.meta.env.VITE_API_BASE as string | undefined;
+  const windowBaseUrl = typeof window !== 'undefined' ? window.__API_BASE__ : undefined;
+  const baseUrl = envBaseUrl || windowBaseUrl;
+  
+  if (baseUrl) {
+    try {
+      // Validate the base URL using URL constructor to ensure it's absolute
+      new URL(baseUrl);
+      return `${baseUrl}/api/agent/stream`;
+    } catch (error) {
+      console.warn('Invalid base URL provided, falling back to relative path:', baseUrl);
+      // Fall through to fallback logic
+    }
+  }
+  
+  // Fallback to relative path or construct from current origin
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return origin ? `${origin}/api/agent/stream` : '/api/agent/stream';
+};
 
 // Define proper types for message history
 interface ChatMessageHistoryEntry {
@@ -18,12 +55,29 @@ interface UseMessageHandlingOptions {
 export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHandlingOptions) => {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Debug hooks for test environment (development only)
+  useEffect(() => {
+    if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined') {
+      (window as any).__DEBUG_AI_MESSAGES__ = (messages: any[]) => {
+        console.log('[TEST] Current messages:', messages.map((m) => ({ role: m.role, isUser: m.isUser, id: m.id })));
+      };
+      (window as any).__DEBUG_AI_MESSAGES__(messages);
+    }
+  }, [messages]);
 
   // Helper function to update AI message with aiState
   const updateAIMessage = useCallback((messageId: string, updates: Partial<ChatMessageUI & { isUser: false }>) => {
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
-    ));
+    setMessages(prev => {
+      const updated = prev.map(msg => 
+        msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
+      );
+      // Debug hook for test environment
+      if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_AI_MESSAGES__) {
+        (window as any).__DEBUG_AI_MESSAGES__(updated);
+      }
+      return updated;
+    });
   }, []);
 
   // Helper function to update any message (for user messages, aiState will be ignored)
@@ -121,6 +175,31 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                 const combinedData = dataLines.map(line => line.slice(6)).join('\n');
                 const data = JSON.parse(combinedData);
                 
+                // Validate data object structure
+                if (!data || typeof data !== 'object') {
+                  console.warn('Invalid SSE data: not an object', { combinedData });
+                  continue;
+                }
+                
+                // Debug hook for test environment (development only) - sanitized
+                if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SSE_EVENTS__) {
+                  // Only log safe properties to avoid sensitive data exposure
+                  const sanitizedData = {
+                    type: data.type,
+                    timestamp: Date.now(),
+                    hasText: !!data.text,
+                    hasToolName: !!(data.toolName || data.name),
+                    hasResult: !!data.result
+                  };
+                  (window as any).__DEBUG_SSE_EVENTS__(sanitizedData);
+                }
+                
+                // Validate that we have a type property
+                if (typeof data.type !== 'string') {
+                  console.warn('Invalid SSE data: missing or invalid type', { type: data.type });
+                  continue;
+                }
+                
                 switch (data.type) {
                   case 'connected':
                     // Connection established, start showing thinking indicator
@@ -150,11 +229,47 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     break;
                     
                   case 'tool_call':
-                    // Tool call detected, show processing message
+                    // Validate data object structure and extract tool information safely
+                    let toolName: string | undefined;
+                    let toolMessage: string | undefined;
+                    
+                    try {
+                      // Safely extract tool name with validation
+                      if (data && typeof data === 'object') {
+                        toolName = (typeof data.toolName === 'string' ? data.toolName : 
+                                  typeof data.name === 'string' ? data.name : undefined);
+                      }
+                      
+                      // Tool call detected, show processing message with tool-specific text
+                      toolMessage = toolName ? TOOL_LOADING_MESSAGES[toolName] : undefined;
+                      
+                      // Log tool call for test monitoring (sanitized - only safe properties)
+                      if (typeof window !== 'undefined') {
+                        if (!(window as any).__toolCalls) {
+                          (window as any).__toolCalls = [];
+                        }
+                        
+                        // Only log safe, non-sensitive properties
+                        const sanitizedToolCall = {
+                          tool: toolName || 'unknown',
+                          timestamp: Date.now(),
+                          type: 'tool_call'
+                        };
+                        
+                        (window as any).__toolCalls.push(sanitizedToolCall);
+                      }
+                    } catch (error) {
+                      console.warn('Error processing tool call:', error instanceof Error ? error.message : 'Unknown error');
+                      // Continue with fallback behavior - ensure we have safe defaults
+                      toolName = undefined;
+                      toolMessage = undefined;
+                    }
+                    
                     updateAIMessage(placeholderId, { 
                       content: currentContent,
                       isLoading: true,
-                      aiState: 'processing'
+                      aiState: 'processing',
+                      toolMessage: toolMessage
                     });
                     break;
                     
@@ -185,6 +300,11 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                       isLoading: false,
                       aiState: null
                     });
+                    
+                    // Log conversation state if available
+                    if (data.conversationState && typeof window !== 'undefined') {
+                      (window as any).__conversationState = data.conversationState;
+                    }
                     break;
                     
                   case 'error':
@@ -205,6 +325,16 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     });
                     break;
                     
+                  case 'contact_form':
+                    // Contact form requested
+                    updateAIMessage(placeholderId, { 
+                      content: currentContent,
+                      contactForm: data.data,
+                      isLoading: false,
+                      aiState: null
+                    });
+                    break;
+                    
                   case 'complete':
                     // Stream completed
                     updateAIMessage(placeholderId, { 
@@ -214,7 +344,18 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     break;
                 }
               } catch (parseError) {
-                console.warn('Failed to parse SSE data:', parseError);
+                // Log parse error with sanitized information to avoid sensitive data exposure
+                const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parse error';
+                console.warn('Failed to parse SSE data:', errorMessage);
+                
+                // Log sanitized data for debugging (without sensitive content)
+                if (import.meta.env.MODE !== 'production') {
+                  console.warn('Parse error context:', {
+                    dataLength: combinedData?.length || 0,
+                    hasData: !!combinedData,
+                    errorType: parseError instanceof Error ? parseError.constructor.name : typeof parseError
+                  });
+                }
               }
             }
           }
@@ -230,6 +371,11 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
 
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
+    // Debug hook for test environment (development only)
+    if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SEND_MESSAGE__) {
+      (window as any).__DEBUG_SEND_MESSAGE__(message, attachments);
+    }
+    
     // Create user message
     const userMessage: ChatMessageUI = {
       id: crypto.randomUUID(),
@@ -280,6 +426,45 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     }
   }, [messages, teamId, sessionId, createMessageHistory, sendMessageWithStreaming, onError, updateAIMessage]);
 
+  // Handle contact form submission
+  const handleContactFormSubmit = useCallback(async (contactData: ContactData) => {
+    try {
+      // Format contact data as a structured message
+      const contactMessage = `Contact Information:
+Name: ${contactData.name}
+Email: ${contactData.email}
+Phone: ${contactData.phone}
+Location: ${contactData.location}${contactData.opposingParty ? `\nOpposing Party: ${contactData.opposingParty}` : ''}`;
+
+      // Debug hook for test environment (development only, PII-safe)
+      if (import.meta.env.MODE === 'development' && typeof window !== 'undefined' && (window as any).__DEBUG_CONTACT_FORM__) {
+        // Create sanitized payload with presence flags instead of raw PII
+        const sanitizedContactData = {
+          nameProvided: !!contactData.name,
+          emailProvided: !!contactData.email,
+          phoneProvided: !!contactData.phone,
+          locationProvided: !!contactData.location,
+          opposingPartyProvided: !!contactData.opposingParty
+        };
+        
+        // Create redacted contact message indicating sections without actual values
+        const redactedContactMessage = `Contact Information:
+Name: ${contactData.name ? '[PROVIDED]' : '[NOT PROVIDED]'}
+Email: ${contactData.email ? '[PROVIDED]' : '[NOT PROVIDED]'}
+Phone: ${contactData.phone ? '[PROVIDED]' : '[NOT PROVIDED]'}
+Location: ${contactData.location ? '[PROVIDED]' : '[NOT PROVIDED]'}${contactData.opposingParty ? '\nOpposing Party: [PROVIDED]' : ''}`;
+        
+        (window as any).__DEBUG_CONTACT_FORM__(sanitizedContactData, redactedContactMessage);
+      }
+
+      // Send the contact information as a user message
+      await sendMessage(contactMessage);
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      onError?.(error instanceof Error ? error.message : 'Failed to submit contact information');
+    }
+  }, [sendMessage, onError]);
+
   // Add message to the list
   const addMessage = useCallback((message: ChatMessageUI) => {
     setMessages(prev => [...prev, message]);
@@ -316,6 +501,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   return {
     messages,
     sendMessage,
+    handleContactFormSubmit,
     addMessage,
     updateMessage,
     clearMessages,

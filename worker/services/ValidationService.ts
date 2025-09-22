@@ -1,5 +1,5 @@
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
-import { validateLocation as validateLocationUtil } from '../utils/locationValidator.js';
+import { validateLocation as validateLocationUtil } from '../utils/locationValidator';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -16,11 +16,33 @@ export class ValidationService {
     }
     
     try {
-      // Remove extension suffixes (e.g., "x123", "ext.123", "ext 123")
+      // Remove extension suffixes first (e.g., "x123", "ext.123", "ext 123")
       const withoutExtension = phone.replace(/\s*(?:x|ext\.?|extension)\s*\d+$/i, '');
+      
+      // Block alphanumeric phone numbers (like 1-800-FLOWERS) - check after extension removal
+      if (/[a-zA-Z]/.test(withoutExtension)) {
+        return { isValid: false, error: 'Phone numbers cannot contain letters' };
+      }
+      
+      // Block common placeholder/test numbers in production - use cleaned version without extension
+      const blockedNumbers = [
+        '555-555-5555', '5555555555', '555-123-4567', '5551234567',
+        '123-456-7890', '1234567890', '000-000-0000', '0000000000',
+        '111-111-1111', '1111111111', '999-999-9999', '9999999999'
+      ];
+      
+      const cleanedForBlocking = withoutExtension.replace(/\D/g, '');
+      if (blockedNumbers.some(blocked => blocked.replace(/\D/g, '') === cleanedForBlocking)) {
+        return { isValid: false, error: 'Please provide a real phone number, not a placeholder' };
+      }
       
       // Clean the phone number - remove all non-digit characters
       const cleaned = withoutExtension.replace(/\D/g, '');
+      
+      // Validate length - must be 10 or 11 digits
+      if (cleaned.length < 10 || cleaned.length > 11) {
+        return { isValid: false, error: 'Phone number must be 10 or 11 digits' };
+      }
       
       // NANP validation patterns
       // Area code: [2-9]\d{2} (starts with 2-9, followed by 2 digits)
@@ -47,12 +69,24 @@ export class ValidationService {
       }
       
       // Additional validation: ensure area code and exchange code are valid
-      const [, areaCode, exchangeCode] = match;
+      const [, areaCode, exchangeCode, subscriber] = match;
       
       // Area code cannot be 0 or 1, and exchange code cannot be 0 or 1
       if (areaCode.startsWith('0') || areaCode.startsWith('1') || 
           exchangeCode.startsWith('0') || exchangeCode.startsWith('1')) {
         return { isValid: false, error: 'Invalid phone number format' };
+      }
+      
+      // Block 555 exchange code with fictional subscriber numbers
+      if (exchangeCode === '555') {
+        // Block fictional subscriber range 0100-0199 and special 1212
+        // First check if subscriber contains only digits
+        if (/^\d+$/.test(subscriber)) {
+          const subscriberNum = parseInt(subscriber, 10);
+          if ((subscriberNum >= 100 && subscriberNum <= 199) || subscriber === '1212') {
+            return { isValid: false, error: 'Please provide a real phone number, not a placeholder' };
+          }
+        }
       }
       
       return { isValid: true };

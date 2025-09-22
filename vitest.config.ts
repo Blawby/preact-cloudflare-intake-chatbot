@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    setupFiles: ["./tests/setup-real-api.ts"],
+    setupFiles: ["./tests/setup-real-api.ts", "./tests/setup-node.ts"],
     testTimeout: 60000, // 60 seconds for real API tests
     hookTimeout: 60000, // 60 seconds for hooks (beforeAll/afterAll)
     threads: false, // Disable worker threads to prevent multiple wrangler dev instances from colliding
@@ -17,7 +17,7 @@ export default defineConfig({
     exclude: [
       'node_modules/**',
       'dist/**',
-      'tests/integration/llm-judge.test.ts'  // Exclude LLM judge integration test
+      'e2e/**'
     ],
     coverage: {
       provider: 'v8',
@@ -30,6 +30,10 @@ export default defineConfig({
         '**/*.config.*'
       ]
     }
+  },
+  esbuild: {
+    target: 'es2020',
+    loader: 'ts'
   },
   resolve: {
     alias: {

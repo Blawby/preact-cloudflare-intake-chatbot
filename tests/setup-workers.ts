@@ -1,6 +1,115 @@
 import { env, applyD1Migrations, fetchMock } from "cloudflare:test";
-import { getTestTeamConfigForDB } from './llm-judge/fixtures/agent-test-data';
 import type { Env } from '../worker/types';
+import { Currency } from '../worker/agents/legalIntakeAgent.js';
+
+// TypeScript interfaces for team configuration
+interface FeatureFlags {
+  enablePaymentProcessing: boolean;
+  enableMatterCreation: boolean;
+  enableParalegalAgent?: boolean;
+}
+
+interface Pricing {
+  consultationFee: number;
+  currency: string;
+}
+
+interface ContactInfo {
+  phone: string;
+  email: string;
+}
+
+interface MatterType {
+  name: string;
+  description: string;
+}
+
+interface TeamConfig {
+  features: FeatureFlags;
+  legalAreas: string[];
+  pricing: Pricing;
+  contactInfo: ContactInfo;
+  introMessage: string;
+  systemPrompt: string;
+  matterTypes: Record<string, MatterType>;
+}
+
+interface TeamRecord {
+  id: string;
+  slug: string;
+  name: string;
+  config: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Base configuration constant
+const baseConfig: TeamConfig = {
+  features: {
+    enablePaymentProcessing: true,
+    enableMatterCreation: true
+  },
+  legalAreas: ['family_law', 'personal_injury', 'business_law'],
+  pricing: {
+    consultationFee: 75,
+    currency: Currency.USD
+  },
+  contactInfo: {
+    phone: '+1-555-0123',
+    email: 'test@example.com'
+  },
+  introMessage: 'Hello! I\'m here to help you with your legal needs.',
+  systemPrompt: 'You are a helpful legal assistant.',
+  matterTypes: {
+    family_law: {
+      name: 'Family Law',
+      description: 'Divorce, custody, and family matters'
+    },
+    personal_injury: {
+      name: 'Personal Injury',
+      description: 'Accidents and injury claims'
+    }
+  }
+};
+
+// Team configurations constant
+const teamConfigs: Record<string, TeamRecord> = {
+  'test-team-1': {
+    id: 'test-team-1',
+    slug: 'test-team-1',
+    name: 'Test Team 1',
+    config: JSON.stringify(baseConfig),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  'test-team-disabled': {
+    id: 'test-team-disabled',
+    slug: 'test-team-disabled',
+    name: 'Test Team Disabled',
+    config: JSON.stringify({
+      ...baseConfig,
+      features: {
+        ...baseConfig.features,
+        enableParalegalAgent: false
+      }
+    }),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  'blawby-ai': {
+    id: 'blawby-ai',
+    slug: 'blawby-ai',
+    name: 'Blawby AI',
+    config: JSON.stringify(baseConfig),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+};
+
+// Test team configuration function
+export function getTestTeamConfigForDB(teamId: string): TeamRecord {
+  return teamConfigs[teamId] ?? teamConfigs['test-team-1'];
+}
 
 // Type augmentation for cloudflare:test
 declare module "cloudflare:test" {

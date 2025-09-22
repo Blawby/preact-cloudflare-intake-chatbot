@@ -37,17 +37,19 @@ export interface AIThinkingIndicatorProps {
   variant?: AIThinkingVariant;
   className?: string;
   content?: string; // For showing streaming content
+  toolMessage?: string; // Custom message for tool calls
 }
 
 export function AIThinkingIndicator({
   message,
   variant = 'thinking',
   className = '',
-  content
+  content,
+  toolMessage
 }: AIThinkingIndicatorProps): VNode {
   const config = variantConfig[variant];
   const IconComponent: IconComponentType = config.icon;
-  const displayMessage = message ?? config.defaultMessage;
+  const displayMessage = toolMessage ?? message ?? config.defaultMessage;
 
   // For streaming content, return wrapped prose div to match final state
   if (content) {

@@ -2,6 +2,30 @@
 
 A production-ready legal intake chatbot built with Cloudflare Workers AI, featuring intelligent conversation handling, step-by-step information collection, and automated matter creation with payment integration.
 
+## 🎯 **Lead Qualification Feature**
+
+The chatbot now includes an intelligent lead qualification system that ensures only serious potential clients are shown the contact form:
+
+### How It Works
+1. **Initial Legal Issue Collection**: AI collects the basic legal issue and description
+2. **Lead Qualification Questions**: AI asks qualifying questions about:
+   - Urgency of the matter
+   - Timeline for resolution
+   - Previous legal consultation
+   - Intent to pursue legal action
+3. **Contact Form Display**: Only after qualifying the lead does the AI show the contact form
+4. **Matter Creation**: After contact form submission, the AI creates the legal matter
+
+### Feature Flag
+The lead qualification can be toggled via the `enableLeadQualification` feature flag in `src/config/features.ts`:
+- `true`: AI asks qualifying questions before showing contact form (default)
+- `false`: AI shows contact form immediately after getting legal issue info
+
+### Testing
+- **API Tests**: Verify lead qualification logic and tool gating
+- **Playwright Tests**: End-to-end testing of the qualification conversation flow
+- **Health Checks**: Validate AI tool loop integrity and state transitions
+
 ## 🔒 **Security & Configuration**
 
 ### Team Configuration Security
@@ -66,22 +90,12 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 ✅ **Payment Integration**: Automatic $75 consultation fee with team config  
 ✅ **Lawyer Review**: Automatic escalation for urgent matters with review queue  
 
-### 🤖 **LLM Judge Testing Framework:**
+### 🧪 **Testing Framework:**
 
-**Advanced AI Agent Evaluation:**
-- **Automated Conversation Testing**: Tests agent responses across multiple legal scenarios
-- **Phone Validation**: Fixed test data to use valid phone numbers (555- numbers are invalid)
-- **Sequential Message Flow**: Tests send messages one-by-one, waiting for agent responses
-- **Strict Assertions**: No fallbacks - tests fail on phone validation errors, wrong matter types, missing tool calls
-- **HTML Report Generation**: Auto-generated reports with conversation flow visualization
-- **Auto-Open Reports**: Browser automatically opens test results after completion
-
-**Test Scenarios:**
-- Standard legal intake with family law matter
-- Urgent legal matter requiring immediate escalation  
-- Complex legal situation requiring specialized expertise
-- Location service area verification and matter creation
-- Pricing concerns and financial discussion
+**Comprehensive Test Coverage:**
+- **Unit Tests**: Component and utility function testing
+- **Integration Tests**: API endpoint testing with real Cloudflare Workers
+- **Paralegal Tests**: Service integration and queue processing tests
 
 **Running Tests:**
 ```bash
@@ -89,12 +103,13 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 npm run dev  # Vite frontend
 npx wrangler dev  # Cloudflare Worker API (required for integration tests)
 
-# Run LLM Judge tests (choose one):
-npm run test:slow        # New: Uses vitest.slow.config.ts
-npm run test:llm-judge   # Legacy: Uses shell script
+# Run all tests (unit/integration + E2E):
+npm run test:all
 
-# View HTML report (auto-opens in browser)
-# Manual: open test-results/llm-judge-report.html
+# Run specific test types:
+npm run test:watch     # Watch mode
+npm run test:ui        # UI mode
+npm run test:coverage  # Coverage report
 ```
 
 **📖 For detailed testing documentation, see [tests/README.md](tests/README.md)**  
@@ -387,6 +402,13 @@ npx wrangler dev  # Cloudflare Worker API server
 # Run all tests with real API calls (requires wrangler dev server)
 npm test
 
+# Run all tests (unit/integration + E2E + AI tools):
+npm run test:all
+
+# Run specific test types:
+npm run test:e2e        # End-to-end tests with Playwright
+npm run test:ai-tools   # AI tool calling tests
+
 # Run tests in watch mode
 npm run test:watch
 
@@ -396,8 +418,8 @@ npm run test:coverage
 # Run tests with UI interface
 npm run test:ui
 
-# Legacy LLM judge test script
-npm run test:llm-judge
+# For CI: Install Playwright browsers once before E2E tests
+npx playwright install
 ```
 
 ### Test Configuration
@@ -409,7 +431,7 @@ The project uses a unified test configuration that runs all tests against real A
 - 60-second timeout per test
 - Automatically starts/stops wrangler dev server
 - Tests actual behavior, not mocked responses
-- Includes unit, integration, and LLM judge tests
+- Includes unit, integration, and paralegal tests
 
 **Test Results:**
 - All tests: ~122 tests, ~2-3 minutes (real API calls)
@@ -472,11 +494,249 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 ├── tests/               # Test files
 │   ├── unit/           # Unit tests
 │   ├── integration/    # Integration tests
-│   ├── llm-judge/      # LLM judge evaluation tests
 │   └── paralegal/      # Paralegal service tests
 ├── vitest.config.ts     # Fast tests configuration
-├── vitest.slow.config.ts # Slow tests configuration (LLM judge)
 └── public/              # Static assets
+```
+
+## 🤖 **AI Tool Calling Best Practices**
+
+### Critical Principles for Reliable AI Tool Integration
+
+Based on extensive testing and debugging, here are the **essential principles** that ensure AI tool calling works reliably:
+
+#### 📌 **1. Always Pass Tools Explicitly in Model Calls**
+
+**❌ WRONG:**
+```typescript
+// Missing tools parameter - AI can't call any tools
+const aiResult = await env.AI.run(model, {
+  messages: [...],
+  // tools: missing!
+});
+```
+
+**✅ CORRECT:**
+```typescript
+// Always include tools array, even if AI might not use them
+const aiResult = await env.AI.run(model, {
+  messages: [...],
+  tools: availableTools, // Essential for any tool flow
+});
+```
+
+**Why:** Even if you think "the AI won't need tools yet" — they must be there for any tool flow to work.
+
+#### 📌 **2. Never Trust `response` for Tool Calls**
+
+**❌ WRONG:**
+```typescript
+// This will break when AI calls tools
+const response = aiResult.response; // null when tool_calls exist
+if (response.includes('tool')) { /* broken logic */ }
+```
+
+**✅ CORRECT:**
+```typescript
+// Check for tool_calls first, then handle response
+const hasToolCalls = aiResult.tool_calls && aiResult.tool_calls.length > 0;
+if (hasToolCalls) {
+  // Handle tool calls
+  const toolCall = aiResult.tool_calls[0];
+  // ...
+} else {
+  // Handle text response
+  const response = aiResult.response;
+  // ...
+}
+```
+
+**Why:** When `tool_calls` exist, `response` is `null` by spec. Don't let that break your logic flow.
+
+#### 📌 **3. Log Actual Model Payloads for Debugging (Production-Safe)**
+
+**✅ PRODUCTION-SAFE LOGGING:**
+```typescript
+// Production-safe debugging logs
+const isDev = process.env.NODE_ENV === 'development';
+
+if (isDev) {
+  // Full debugging in development
+  console.log('[SYSTEM PROMPT]', systemPrompt);
+  console.log('[TOOLS PASSED]', availableTools.map(t => t.name));
+  console.log('[AI RAW RESULT]', JSON.stringify(aiResult, null, 2));
+} else {
+  // Production-safe logs (no PII)
+  console.log('[TOOLS PASSED]', availableTools.map(t => t.name));
+  console.log('[AI RESPONSE TYPE]', aiResult.tool_calls ? 'tool_calls' : 'text');
+  console.log('[TOOL CALLS COUNT]', aiResult.tool_calls?.length || 0);
+  
+  // Redact PII from any logged content
+  const redactedPrompt = systemPrompt
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
+    .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE]')
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN]');
+  console.log('[SYSTEM PROMPT LENGTH]', systemPrompt.length);
+  console.log('[SYSTEM PROMPT PREVIEW]', redactedPrompt.substring(0, 200) + '...');
+}
+```
+
+**Why:** If AI isn't acting right, these logs reveal exactly what the model received and returned, while protecting PII in production.
+
+#### 📌 **4. Kill Stale Context Code Aggressively**
+
+**❌ WRONG:**
+```typescript
+// Old flags that no longer serve a purpose
+if (context.hasEmail && context.hasPhone) {
+  // This logic is dead if you're using a contact form
+}
+```
+
+**✅ CORRECT:**
+```typescript
+// Clean context - only what's actually needed
+if (context.legalIssueType && context.description) {
+  // Clear, purpose-driven logic
+}
+```
+
+**Why:** Don't trust old flags like `hasEmail` or `hasOpposingParty` — if you're using a form, they have no role.
+
+### 🧪 **Development Tools for AI Tool Calling**
+
+#### **Health Check Function**
+```typescript
+function validateAIToolLoop(tools, systemPrompt, state, context) {
+  const issues = [];
+  
+  // Check if show_contact_form is included in tools
+  if (!tools.some(tool => tool.name === 'show_contact_form')) {
+    issues.push('❌ show_contact_form tool is NOT included in availableTools array');
+  }
+  
+  // Check if system prompt mentions the tool
+  if (!systemPrompt.includes('show_contact_form')) {
+    issues.push('❌ System prompt does NOT mention show_contact_form tool');
+  }
+  
+  // Check state machine logic
+  if (state === 'SHOWING_CONTACT_FORM' && !context.legalIssueType) {
+    issues.push('❌ State is SHOWING_CONTACT_FORM but missing legal issue info');
+  }
+  
+  return { isValid: issues.length === 0, issues };
+}
+```
+
+#### **Debug Utility (Production-Safe)**
+```typescript
+function debugAiToolLoop(aiResult, tools, systemPrompt) {
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  console.log('🔍 AI Tool Loop Debug:');
+  console.log('  Tools available:', tools.map(t => t.name));
+  console.log('  System prompt length:', systemPrompt.length);
+  console.log('  AI response type:', aiResult.tool_calls ? 'tool_calls' : 'text');
+  console.log('  Tool calls:', aiResult.tool_calls?.map(tc => tc.name) || 'none');
+  
+  if (isDev) {
+    // Full debugging in development
+    console.log('  Response text:', aiResult.response?.substring(0, 100) || 'null');
+  } else {
+    // Production-safe: redact PII from response
+    const response = aiResult.response;
+    if (response) {
+      const redactedResponse = response
+        .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
+        .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE]')
+        .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN]');
+      console.log('  Response preview:', redactedResponse.substring(0, 100) + '...');
+    } else {
+      console.log('  Response text: null');
+    }
+  }
+}
+```
+
+### 🚨 **Common Pitfalls to Avoid**
+
+1. **Missing Tools Parameter**: The #1 cause of "AI not calling tools"
+2. **Response vs Tool Calls**: Don't check `response` when `tool_calls` exist
+3. **Stale Context Flags**: Remove old `hasEmail`, `hasPhone` logic when using forms
+4. **Silent Failures**: Always log the raw AI response for debugging
+5. **Variable Scope Issues**: Ensure all variables are properly scoped in tool call paths
+6. **PII in Logs**: Never log full prompts or AI responses in production without redaction
+
+### 🔒 **PII Protection Best Practices**
+
+**❌ DANGEROUS (Logs PII):**
+```typescript
+// Never do this in production
+console.log('User message:', userMessage); // May contain email/phone
+console.log('AI response:', aiResult.response); // May contain PII
+console.log('Full context:', JSON.stringify(context)); // Contains all user data
+```
+
+**✅ PRODUCTION-SAFE:**
+```typescript
+// Always gate sensitive logs behind environment checks
+const isDev = process.env.NODE_ENV === 'development';
+
+if (isDev) {
+  // Full debugging in development
+  console.log('User message:', userMessage);
+  console.log('AI response:', aiResult.response);
+} else {
+  // Production-safe logging
+  console.log('Message length:', userMessage.length);
+  console.log('Response type:', aiResult.tool_calls ? 'tool_calls' : 'text');
+  
+  // Redact PII using regex patterns
+  const redactedMessage = userMessage
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
+    .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE]')
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN]');
+  console.log('Redacted message:', redactedMessage.substring(0, 100) + '...');
+}
+```
+
+**Key PII Patterns to Redact:**
+- **Emails**: `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`
+- **Phone Numbers**: `\b\d{3}[-.]?\d{3}[-.]?\d{4}\b`
+- **SSNs**: `\b\d{3}-\d{2}-\d{4}\b`
+- **Credit Cards**: `\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b`
+
+### 🎯 **Success Pattern**
+
+```typescript
+// The bulletproof pattern that works every time
+const availableTools = [createMatter, showContactForm, requestLawyerReview];
+
+// 1. Always pass tools
+const aiResult = await env.AI.run(model, {
+  messages: [...],
+  tools: availableTools, // Essential!
+});
+
+// 2. Check tool_calls first
+const hasToolCalls = aiResult.tool_calls && aiResult.tool_calls.length > 0;
+
+if (hasToolCalls) {
+  // 3. Handle tool calls
+  const toolCall = aiResult.tool_calls[0];
+  const handler = TOOL_HANDLERS[toolCall.name];
+  const result = await handler(toolCall.arguments);
+  
+  // 4. Emit SSE event
+  controller.enqueue(new TextEncoder().encode(
+    `data: ${JSON.stringify({ type: 'tool_result', result })}\n\n`
+  ));
+} else {
+  // 5. Handle text response
+  const response = aiResult.response;
+  // Process regular text response...
+}
 ```
 
 ## 🔒 **Security & Best Practices**

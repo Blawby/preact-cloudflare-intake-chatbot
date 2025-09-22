@@ -67,23 +67,17 @@ interface FeatureFlags {
      */
     enablePaymentIframe: boolean;
 
-      /**
-   * Enable Paralegal Agent for matter formation
-   * When false, all matter formation flows through the standard intake agent
-   * When true, enables the stateful paralegal agent with matter formation stages
-   */
-  enableParalegalAgent: boolean;
+    /**
+     * Enable lead qualification flow
+     * When false, AI will show contact form immediately after getting legal issue info
+     * When true, AI will ask qualifying questions before showing contact form
+     */
+    enableLeadQualification: boolean;
 
-  /**
-   * Make Paralegal Agent the default first interaction
-   * When false, uses intake-first flow (current behavior)
-   * When true, routes to Paralegal Agent first, then Intake only for human requests
-   * Requires enableParalegalAgent to be true
-   */
-  paralegalFirst: boolean;
 }
 
-const featureConfig: FeatureFlags = {
+// Immutable base configuration
+const baseFeatureConfig: FeatureFlags = {
     enableAudioRecording: false, // Set to false to hide voice recording
     enableVideoRecording: false, // Not implemented yet
     enableFileAttachments: true, // File attachments are enabled
@@ -94,14 +88,17 @@ const featureConfig: FeatureFlags = {
     enableConsultationButton: false, // Hide consultation request button
     enableMobileBottomNav: false, // Temporarily hide mobile bottom nav
     enablePaymentIframe: false, // Disable payment iframe/drawer - only show "Open in Browser" button
-    enableParalegalAgent: false, // Paralegal agent disabled by default - enable per team
-    paralegalFirst: false, // Intake-first flow by default - enable per team
+    enableLeadQualification: true, // Enable lead qualification flow - AI asks questions before contact form
 };
 
-// For development environment, you can override settings
-if (import.meta.env.DEV) {
+// DEV-only overrides (computed via spread, no mutation)
+const devOverrides: Partial<FeatureFlags> = import.meta.env.DEV ? {
     // Enable all features in development if needed
-    // featureConfig.enableAudioRecording = true; 
-}
+    // enableAudioRecording: true,
+} : {};
 
-export const features = featureConfig; 
+// Export frozen, readonly configuration
+export const features: Readonly<FeatureFlags> = Object.freeze({
+    ...baseFeatureConfig,
+    ...devOverrides
+}); 

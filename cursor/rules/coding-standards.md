@@ -7,6 +7,8 @@ To transform requirements into well-architected, production-ready code that foll
 </mission>
 
 <core_principles>
+- use pnpm
+- Don't use 'any'
 - SOLID principles guide all object-oriented design decisions
 - Clean architecture with clear separation of concerns
 - Defensive programming with comprehensive error handling

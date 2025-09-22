@@ -4,11 +4,13 @@ import VirtualMessageList from './VirtualMessageList';
 import MessageComposer from './MessageComposer';
 import { ChatMessageUI } from '../../worker/types';
 import { FileAttachment } from '../../worker/types';
+import { ContactData } from './ContactForm';
 import { createKeyPressHandler } from '../utils/keyboard';
 
 interface ChatContainerProps {
   messages: ChatMessageUI[];
   onSendMessage: (message: string, attachments: FileAttachment[]) => void;
+  onContactFormSubmit?: (data: ContactData) => void;
   teamConfig?: {
     name: string;
     profileImage: string | null;
@@ -38,6 +40,7 @@ interface ChatContainerProps {
 const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   messages,
   onSendMessage,
+  onContactFormSubmit,
   teamConfig,
   onOpenSidebar,
   sessionId,
@@ -136,12 +139,13 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen md:h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg">
+    <div className="flex flex-col h-screen md:h-screen w-full m-0 p-0 relative overflow-hidden bg-white dark:bg-dark-bg" data-testid="chat-container">
       <main className="flex flex-col h-full w-full overflow-hidden relative bg-white dark:bg-dark-bg">
         <VirtualMessageList
           messages={messages}
           teamConfig={teamConfig}
           onOpenSidebar={onOpenSidebar}
+          onContactFormSubmit={onContactFormSubmit}
           sessionId={sessionId}
           teamId={teamId}
           onFeedbackSubmit={onFeedbackSubmit}

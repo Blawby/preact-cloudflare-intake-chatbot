@@ -9,13 +9,18 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"test": "vitest run",
+		"test:all": "npm run test && npm run test:ai-tools && npm run test:e2e",
 		"test:watch": "vitest --watch",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest --coverage",
-		"test:slow": "vitest run -c vitest.slow.config.ts",
-		"test:agent-report": "tsx scripts/run-agent-tests.ts",
-		"test:llm-judge": "./scripts/run-llm-judge-tests.sh",
-		"verify:llm-judge": "./scripts/verify-llm-judge-fixes.sh"
+		"test:ai-tools": "tsx scripts/test-ai-tool-loop.js",
+		"test:ai-tools:quick": "tsx scripts/test-ai-tool-loop.js --quick",
+		"test:ai-tools:verbose": "tsx scripts/test-ai-tool-loop.js --verbose",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:headed": "playwright test --headed",
+		"test:e2e:debug": "playwright test --debug",
+		"test:e2e:report": "playwright show-report"
 	},
 	"dependencies": {
 		"@heroicons/react": "^2.2.0",
@@ -30,11 +35,12 @@
 		"preact-markdown": "^2.1.0",
 		"preact-render-to-string": "^6.5.13",
 		"react-markdown": "^10.1.0",
-		"zod": "^4.0.5"
+		"zod": "^4.1.11"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.8.63",
 		"@cloudflare/workers-types": "^4.20250715.0",
+		"@playwright/test": "^1.55.0",
 		"@preact/preset-vite": "^2.9.3",
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/preact": "^3.2.4",
@@ -57,7 +63,8 @@
 		"vite-plugin-compression": "^0.5.1",
 		"vite-plugin-html": "^3.2.2",
 		"vite-plugin-pwa": "^0.21.1",
-		"vitest": "^2.1.5"
+		"vitest": "^2.1.5",
+		"wrangler": "^4.38.0"
 	},
 	"eslintConfig": {
 		"extends": "preact"

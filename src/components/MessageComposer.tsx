@@ -122,6 +122,7 @@ const MessageComposer = ({
           <div className="flex-1 flex items-center">
             <textarea
               ref={textareaRef}
+              data-testid="message-input"
               className="w-full min-h-8 py-1 m-0 text-sm sm:text-base leading-6 text-gray-900 dark:text-white bg-transparent border-none resize-none outline-none overflow-hidden box-border placeholder:text-gray-500 dark:placeholder:text-gray-400"
               placeholder="Type a message..."
               rows={1}
@@ -144,6 +145,7 @@ const MessageComposer = ({
               aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
               className="w-8 h-8 p-0 rounded-full"
               icon={<ArrowUpIcon className="w-3.5 h-3.5" aria-hidden="true" />}
+              data-testid="message-send-button"
             />
           </div>
         </div>

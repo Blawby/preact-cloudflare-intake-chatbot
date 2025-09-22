@@ -21,6 +21,14 @@ export interface Env {
   BLAWBY_API_URL?: string;
   BLAWBY_API_TOKEN?: string;
   BLAWBY_TEAM_ULID?: string;
+  IDEMPOTENCY_SALT?: string;
+  PAYMENT_IDEMPOTENCY_SECRET?: string;
+  
+  // Environment flags
+  NODE_ENV?: string;
+  DEBUG?: string;
+  ENV_TEST?: string;
+  IS_PRODUCTION?: string;
 }
 
 // HTTP Error class for centralized error handling
@@ -155,6 +163,7 @@ export interface ValidatedRequest<T = any> {
 
 // UI-specific types that extend base types
 export interface FileAttachment {
+  id: string;
   name: string;
   size: number;
   type: string;
@@ -223,8 +232,15 @@ export interface UIMessageExtras {
   welcomeMessage?: WelcomeMessageData;
   matterCanvas?: MatterCanvasData;
   paymentEmbed?: PaymentEmbedData;
+  contactForm?: {
+    fields: string[];
+    required: string[];
+    message?: string;
+  };
   /** @deprecated Prefer deriving loading from aiState. */
   isLoading?: boolean;
+  /** Custom message to show during tool calls */
+  toolMessage?: string;
 }
 
 // UI-specific ChatMessage interface that extends the base ChatMessage
@@ -246,37 +262,29 @@ export type ChatMessageUI =
       // Keep only what makes sense for system messages
     });
 
-// Case brief interface for handoff between Paralegal and Intake agents
-export interface CaseBriefV1 {
-  teamId: string;
-  matterId: string;
-  matter_type: string;
-  summary: string; // 2-3 sentence overview
-  timeline: Array<{
-    date: string; // ISO date string
-    event: string;
-  }>;
-  parties: {
-    client: string;
-    opposing: string[];
-    orgs: string[]; // organizations involved (courts, etc.)
-  };
-  issues: string[]; // key legal issues
-  jurisdiction: string;
-  docs_needed: string[];
-  docs_received: Array<{
-    name: string;
-    r2_key: string;
-  }>;
-  risk: {
-    level: 'low' | 'med' | 'high';
-    notes: string[];
-  };
-  next_steps_ai: string[]; // AI-recommended next steps
+// Agent message interface that extends ChatMessage with isUser property
+export interface AgentMessage {
+  readonly id?: string;
+  readonly role?: 'user' | 'assistant' | 'system';
+  readonly content: string;
+  readonly isUser?: boolean;
+  readonly timestamp?: number;
+  readonly metadata?: Record<string, any>;
 }
 
-export interface HandoffDecision {
-  recommended: boolean;
-  reason?: 'high_risk' | 'hard_trigger' | 'complexity' | 'document_gaps' | 'payment_needed';
-  message?: string;
-} 
+// Agent response interface
+export interface AgentResponse {
+  readonly response: string;
+  readonly metadata: {
+    readonly conversationComplete?: boolean;
+    readonly inputMessageCount: number;
+    readonly lastUserMessage: string | null;
+    readonly sessionId?: string;
+    readonly teamId?: string;
+    readonly error?: string;
+    readonly toolName?: string;
+    readonly toolResult?: unknown;
+    readonly allowRetry?: boolean;
+    readonly rawParameters?: unknown;
+  };
+}

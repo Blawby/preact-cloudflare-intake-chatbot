@@ -1,14 +1,8 @@
 // Import TeamConfig from TeamService instead of defining it here
 import { TeamConfig } from './TeamService.js';
 import { Logger } from '../utils/logger.js';
-
-export interface Env {
-  AI: any;
-  DB: D1Database;
-  CHAT_SESSIONS: KVNamespace;
-  RESEND_API_KEY: string;
-  FILES_BUCKET?: R2Bucket;
-}
+import type { Env } from '../types.js';
+import type { Ai } from '@cloudflare/workers-types';
 
 // Default team configuration - centralized for maintainability
 const DEFAULT_TEAM_CONFIG: TeamConfig = {
@@ -45,7 +39,13 @@ export class AIService {
   private teamConfigCache = new Map<string, { config: TeamConfig; timestamp: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-  constructor(private ai: any, private env: Env) {}
+  constructor(private ai: Ai, private env: Env) {
+    // Initialize Logger with environment variables for Cloudflare Workers compatibility
+    Logger.initialize({
+      DEBUG: env.DEBUG,
+      NODE_ENV: env.NODE_ENV
+    });
+  }
   
   async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
     const controller = new AbortController();

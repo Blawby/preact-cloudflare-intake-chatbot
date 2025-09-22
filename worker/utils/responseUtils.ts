@@ -1,7 +1,7 @@
-export interface ToolResponse {
+export interface ToolResponse<T = unknown> {
   success: boolean;
   message: string;
-  data?: any;
+  data?: T;
 }
 
 export interface AnalysisErrorResponse {
@@ -15,11 +15,11 @@ export interface AnalysisErrorResponse {
 /**
  * Creates a standardized tool response
  */
-export function createToolResponse(
+export function createToolResponse<T = unknown>(
   success: boolean, 
   message: string, 
-  data?: any
-): ToolResponse {
+  data?: T
+): ToolResponse<T> {
   return { success, message, data };
 }
 
@@ -42,13 +42,13 @@ export function createAnalysisErrorResponse(
 /**
  * Creates a validation error response
  */
-export function createValidationError(message: string): ToolResponse {
+export function createValidationError(message: string): ToolResponse<never> {
   return createToolResponse(false, message);
 }
 
 /**
  * Creates a success response with data
  */
-export function createSuccessResponse(message: string, data?: any): ToolResponse {
+export function createSuccessResponse<T = unknown>(message: string, data?: T): ToolResponse<T> {
   return createToolResponse(true, message, data);
 }

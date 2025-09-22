@@ -7,6 +7,7 @@ import MobileTopNav from './MobileTopNav';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
 import TeamProfile from './TeamProfile';
+import { DebugOverlay } from './DebugOverlay';
 import { features } from '../config/features';
 import { ChatMessageUI } from '../../worker/types';
 import { useEffect, useState } from 'preact/hooks';
@@ -157,6 +158,11 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
         messages={chatMessages}
         onRequestConsultation={onRequestConsultation}
       />
+
+      {/* Debug Overlay - Only in development */}
+      {import.meta.env.MODE === 'development' && (
+        <DebugOverlay isVisible={true} />
+      )}
     </div>
   );
 };

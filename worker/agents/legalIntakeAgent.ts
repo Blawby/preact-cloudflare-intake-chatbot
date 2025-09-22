@@ -1,13 +1,142 @@
-import { isLocationSupported } from '../utils/locationValidator.js';
-import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.js';
-import { ValidationService } from '../services/ValidationService.js';
-import { TeamService } from '../services/TeamService.js';
-import { PaymentServiceFactory } from '../services/PaymentServiceFactory.js';
-import { createValidationError, createSuccessResponse } from '../utils/responseUtils.js';
-import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
-import { PromptBuilder } from '../utils/promptBuilder.js';
-import { Logger } from '../utils/logger.js';
-import { ToolCallParser } from '../utils/toolCallParser.js';
+import { isLocationSupported } from '../utils/locationValidator.ts';
+import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.ts';
+import { ValidationService } from '../services/ValidationService.ts';
+import { TeamService } from '../services/TeamService.ts';
+import { PaymentServiceFactory, type PaymentResult } from '../services/PaymentServiceFactory.ts';
+import { createValidationError, createSuccessResponse, type ToolResponse } from '../utils/responseUtils.ts';
+import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.ts';
+import { PromptBuilder } from '../utils/promptBuilder.ts';
+import { Logger } from '../utils/logger.ts';
+import { ToolCallParser } from '../utils/toolCallParser.ts';
+import { withRetry } from '../utils/retry.ts';
+import type { Env, ChatMessage, FileAttachment } from '../types.ts';
+import type { Team } from '../services/TeamService.ts';
+import type { ErrorResult } from './legal-intake/errors.ts';
+import { createSuccessResult, createErrorResult, ValidationError } from './legal-intake/errors.ts';
+import { safeIncludes } from '../utils/safeStringUtils.ts';
+
+
+// Import shared types from types.ts
+import type { AgentMessage, AgentResponse } from '../types.js';
+
+// Contact form field interface
+export interface ContactFormField {
+  readonly required: boolean;
+  readonly label: string;
+}
+
+// Contact form fields interface
+export interface ContactFormFields {
+  readonly name: ContactFormField;
+  readonly email: ContactFormField;
+  readonly phone: ContactFormField;
+  readonly location: ContactFormField;
+  readonly opposing_party: ContactFormField;
+  readonly message: ContactFormField;
+}
+
+// Contact form data interface
+export interface ContactFormData {
+  readonly reason: string;
+  readonly fields: ContactFormFields;
+  readonly submitText: string;
+}
+
+// Contact form parameters interface
+export interface ContactFormParameters {
+  readonly reason?: string;
+  readonly name?: string;
+  readonly email?: string;
+  readonly phone?: string;
+  readonly location?: string;
+  readonly message?: string;
+}
+
+
+// Contact form response interface
+export interface ContactFormResponse {
+  readonly success: boolean;
+  readonly action: string;
+  readonly message: string;
+  readonly contactForm: ContactFormData;
+}
+
+// Currency enum for type-safe currency handling
+export enum Currency {
+  USD = 'USD',
+  CAD = 'CAD',
+  EUR = 'EUR',
+  GBP = 'GBP'
+}
+
+// Branded type for ISO date strings to ensure proper format
+export type ISODateString = string & { __isoDate: true };
+
+// Recipient interface with explicit required fields
+export interface Recipient {
+  readonly email: string;
+  readonly name: string;
+}
+
+// Runtime validation helper for ISO 8601 date format
+export function validateISODate(dateString: string): dateString is ISODateString {
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+  const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  
+  if (!isoDateRegex.test(dateString) && !simpleDateRegex.test(dateString)) {
+    return false;
+  }
+  
+  const date = new Date(dateString);
+  return !isNaN(date.getTime()) && date.toISOString().startsWith(dateString.split('T')[0]);
+}
+
+// Payment invoice request parameters interface - aligned with tool schema
+export interface PaymentInvoiceParameters {
+  readonly invoice_id: string;
+  readonly amount: number;
+  readonly currency: Currency;
+  readonly recipient: Recipient;
+  readonly description: string;
+  readonly due_date?: ISODateString;
+}
+
+
+// Payment invoice response interface
+export interface PaymentInvoiceResponse {
+  readonly success: boolean;
+  readonly action?: string;
+  readonly message?: string;
+  readonly payment?: {
+    readonly invoiceUrl: string;
+    readonly paymentId: string;
+    readonly amount: number;
+    readonly serviceType: string;
+    readonly sessionId?: string;
+  };
+  readonly error?: string;
+  readonly errorDetails?: {
+    readonly code?: string;
+    readonly message: string;
+    readonly retryable?: boolean;
+    readonly timestamp: string;
+  };
+}
+
+// Error payload interface for detailed error information
+export interface ErrorPayload {
+  readonly success: false;
+  readonly error: string;
+  readonly errorDetails: {
+    readonly code?: string;
+    readonly message: string;
+    readonly retryable?: boolean;
+    readonly timestamp: string;
+    readonly originalError?: string;
+    readonly sessionId?: string;
+    readonly validationErrors?: string[];
+  };
+}
 
 /**
  * Redacts sensitive information from tool parameters for safe logging
@@ -67,8 +196,8 @@ function redactValue(obj: any, depth = 0): any {
       );
       
       if (isSensitiveKey || isSensitiveValue) {
-        if (typeof value === 'string') {
-          if (value.includes('@')) {
+        if (typeof value === 'string' && value) {
+          if (safeIncludes(value, '@')) {
             // Email-like field - mask local part
             const [local, domain] = value.split('@');
             result[key] = `${local.substring(0, 2)}***@${domain}`;
@@ -101,39 +230,6 @@ const AI_MODEL_CONFIG = {
 } as const;
 
 // Tool definitions with structured schemas
-export const collectContactInfo = {
-  name: 'collect_contact_info',
-  description: 'Collect and validate client contact information including location for jurisdiction verification',
-  parameters: {
-    type: 'object',
-    properties: {
-      name: { 
-        type: 'string', 
-        description: 'Client full name',
-        minLength: 2,
-        maxLength: 100
-      },
-      phone: { 
-        type: 'string', 
-        description: 'Client phone number',
-        pattern: '^[+]?[0-9\\s\\-\\(\\)]{7,20}$' // International format
-      },
-      email: { 
-        type: 'string', 
-        description: 'Client email address',
-        format: 'email'
-      },
-      location: { 
-        type: 'string', 
-        description: 'Client location (city, state, or country)',
-        examples: ['Charlotte, NC', 'North Carolina', 'NC', 'United States', 'US'],
-        minLength: 2,
-        maxLength: 100
-      }
-    },
-    required: ['name']
-  }
-};
 
 export const createMatter = {
   name: 'create_matter',
@@ -147,11 +243,6 @@ export const createMatter = {
         enum: ['Family Law', 'Employment Law', 'Landlord/Tenant', 'Personal Injury', 'Business Law', 'Criminal Law', 'Civil Law', 'Contract Review', 'Property Law', 'Administrative Law', 'General Consultation']
       },
       description: { type: 'string', description: 'Brief description of the legal issue' },
-      urgency: { 
-        type: 'string', 
-        description: 'Urgency level',
-        enum: ['low', 'medium', 'high', 'urgent']
-      },
       name: { type: 'string', description: 'Client full name' },
       phone: { type: 'string', description: 'Client phone number' },
       email: { type: 'string', description: 'Client email address' },
@@ -164,19 +255,14 @@ export const createMatter = {
 
 export const requestLawyerReview = {
   name: 'request_lawyer_review',
-  description: 'Request lawyer review for urgent or complex matters',
+  description: 'Request lawyer review for complex matters',
   parameters: {
     type: 'object',
     properties: {
-      urgency: { 
-        type: 'string', 
-        description: 'Urgency level',
-        enum: ['low', 'medium', 'high', 'urgent']
-      },
       complexity: { type: 'string', description: 'Matter complexity level' },
       matter_type: { type: 'string', description: 'Type of legal matter' }
     },
-    required: ['urgency', 'matter_type']
+    required: ['matter_type']
   }
 };
 
@@ -209,25 +295,371 @@ export const analyzeDocument = {
   }
 };
 
+export const createPaymentInvoice = {
+  name: 'create_payment_invoice',
+  description: 'Create a payment invoice for consultation or legal services',
+  parameters: {
+    type: 'object',
+    properties: {
+      customer_name: { type: 'string', description: 'Customer full name' },
+      customer_email: { type: 'string', description: 'Customer email address' },
+      customer_phone: { type: 'string', description: 'Customer phone number' },
+      matter_type: { type: 'string', description: 'Type of legal matter' },
+      matter_description: { type: 'string', description: 'Description of the legal issue' },
+      amount: { type: 'number', description: 'Amount in cents (e.g., 7500 for $75.00)' },
+      service_type: { 
+        type: 'string', 
+        description: 'Type of service being billed',
+        enum: ['consultation', 'document_review', 'legal_advice', 'case_preparation']
+      }
+    },
+    required: ['customer_name', 'customer_email', 'customer_phone', 'matter_type', 'matter_description', 'amount', 'service_type']
+  }
+};
+
+// Contact form request handler
+async function handleRequestContactForm(parameters: any, env: any, teamConfig?: any): Promise<ContactFormResponse> {
+  // Validate required reason field
+  if (!parameters || typeof parameters !== 'object') {
+    throw new Error('Invalid parameters: expected object');
+  }
+  
+  const { reason } = parameters;
+  
+  if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
+    throw new Error('Invalid reason: expected non-empty string');
+  }
+  
+  return {
+    success: true,
+    action: 'show_contact_form',
+    message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`,
+    contactForm: {
+      reason,
+      fields: {
+        name: { required: true, label: 'Full Name' },
+        email: { required: true, label: 'Email Address' },
+        phone: { required: false, label: 'Phone Number' },
+        location: { required: true, label: 'Location (City, State)' },
+        opposing_party: { required: false, label: 'Opposing Party (if applicable)' },
+        message: { required: true, label: 'Brief description of your legal issue' }
+      },
+      submitText: 'Submit Contact Form'
+    }
+  };
+}
+
+// Payment invoice handler with proper TypeScript types and dependency injection
+async function handleCreatePaymentInvoice(
+  parameters: PaymentInvoiceParameters, 
+  env: Env, 
+  teamConfig?: Team
+): Promise<PaymentInvoiceResponse | ErrorPayload> {
+  // Generate unique session ID for idempotency
+  const sessionId = crypto.randomUUID();
+  
+  // Validate team configuration
+  if (!teamConfig?.id) {
+    return {
+      success: false,
+      error: 'Team configuration missing: team ID is required for payment processing',
+      errorDetails: {
+        code: 'MISSING_TEAM_CONFIG',
+        message: 'Team configuration is missing or invalid',
+        retryable: false,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  // Validate input parameters
+  const validationErrors: string[] = [];
+  
+  if (!parameters.invoice_id || typeof parameters.invoice_id !== 'string' || parameters.invoice_id.trim().length === 0) {
+    validationErrors.push('invoice_id is required and must be a non-empty string');
+  }
+  
+  if (typeof parameters.amount !== 'number' || parameters.amount <= 0) {
+    validationErrors.push('amount is required and must be a positive number');
+  }
+  
+  if (!parameters.currency || !Object.values(Currency).includes(parameters.currency)) {
+    validationErrors.push('currency is required and must be one of: USD, CAD, EUR, GBP');
+  }
+  
+  if (!parameters.recipient || typeof parameters.recipient !== 'object') {
+    validationErrors.push('recipient is required and must be an object');
+  } else {
+    if (!parameters.recipient.email || typeof parameters.recipient.email !== 'string' || parameters.recipient.email.trim().length === 0) {
+      validationErrors.push('recipient.email is required and must be a non-empty string');
+    }
+    if (!parameters.recipient.name || typeof parameters.recipient.name !== 'string' || parameters.recipient.name.trim().length === 0) {
+      validationErrors.push('recipient.name is required and must be a non-empty string');
+    }
+  }
+  
+  if (!parameters.description || typeof parameters.description !== 'string' || parameters.description.trim().length === 0) {
+    validationErrors.push('description is required and must be a non-empty string');
+  }
+  
+  // Validate due_date if provided - must be valid ISO date format
+  if (parameters.due_date && !validateISODate(parameters.due_date)) {
+    validationErrors.push('due_date must be a valid ISO 8601 date string (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss.sssZ)');
+  }
+  
+  if (validationErrors.length > 0) {
+    return {
+      success: false,
+      error: 'Validation failed: ' + validationErrors.join('; '),
+      errorDetails: {
+        code: 'VALIDATION_ERROR',
+        message: 'Input validation failed',
+        retryable: false,
+        timestamp: new Date().toISOString(),
+        validationErrors
+      }
+    };
+  }
+
+  const { 
+    invoice_id,
+    amount, 
+    currency,
+    recipient,
+    description,
+    due_date
+  } = parameters;
+
+  try {
+    // Create payment service using dependency injection
+    const paymentService = PaymentServiceFactory.createPaymentService(env);
+    
+    // Create payment request with proper typing and unique session ID
+    const paymentRequest = {
+      customerInfo: {
+        name: recipient.name,
+        email: recipient.email,
+        phone: '', // Not provided in new schema
+        location: '' // Default empty location as required by PaymentRequest interface
+      },
+      matterInfo: {
+        type: 'consultation', // Default type since not in new schema
+        description: description,
+        urgency: 'normal', // Default urgency as required by PaymentRequest interface
+        opposingParty: '' // Default empty opposing party
+      },
+      teamId: teamConfig.id, // Use validated team ID
+      sessionId: sessionId, // Use generated unique session ID for idempotency
+      invoiceId: invoice_id, // Add invoice ID
+      currency: currency, // Add currency
+      dueDate: due_date // Add due date if provided
+    };
+
+    // Call payment service with retry logic (handled internally)
+    const result = await paymentService.createInvoice(paymentRequest);
+
+    if (result.success) {
+      return {
+        success: true,
+        action: 'show_payment',
+        message: `I've created a payment invoice for your ${service_type.replace('_', ' ')}. Please complete the payment to proceed.`,
+        payment: {
+          invoiceUrl: result.invoiceUrl!,
+          paymentId: result.paymentId!,
+          amount: amount,
+          serviceType: service_type,
+          sessionId: sessionId // Include session ID for correlation
+        }
+      };
+    } else {
+      // Return detailed error information for debugging
+      return {
+        success: false,
+        error: result.error || 'Failed to create payment invoice',
+        errorDetails: {
+          code: 'PAYMENT_SERVICE_ERROR',
+          message: result.error || 'Failed to create payment invoice',
+          retryable: true, // Payment service errors are generally retryable
+          timestamp: new Date().toISOString(),
+          sessionId: sessionId, // Include session ID for correlation
+          originalError: result.error
+        }
+      };
+    }
+  } catch (error) {
+    // Log detailed error information
+    Logger.error('❌ Payment invoice creation failed:', error);
+    
+    // Return detailed error payload for debugging
+    return {
+      success: false,
+      error: 'Payment service unavailable. Please try again later.',
+      errorDetails: {
+        code: 'PAYMENT_SERVICE_EXCEPTION',
+        message: 'Payment service threw an exception during invoice creation',
+        retryable: true,
+        timestamp: new Date().toISOString(),
+        sessionId: sessionId, // Include session ID for correlation
+        originalError: error instanceof Error ? error.message : String(error)
+      }
+    };
+  }
+}
+
+// Validation utilities for contact form parameters
+function validateContactFormParameters(parameters: unknown): { isValid: boolean; error?: string; params?: ContactFormParameters } {
+  // Check if parameters exist and is an object
+  if (!parameters || typeof parameters !== 'object') {
+    return { isValid: false, error: 'Invalid parameters: expected object' };
+  }
+
+  const params = parameters as Record<string, unknown>;
+  const resultParams: Partial<ContactFormParameters> = {};
+  
+  // Validate reason if provided
+  if (params.reason !== undefined) {
+    if (typeof params.reason !== 'string' || params.reason.trim().length === 0) {
+      return { isValid: false, error: 'Invalid reason: expected non-empty string' };
+    }
+    resultParams.reason = params.reason;
+  }
+
+  // Validate name if provided
+  if (params.name !== undefined) {
+    if (typeof params.name !== 'string' || params.name.trim().length === 0) {
+      return { isValid: false, error: 'Invalid name: expected non-empty string' };
+    }
+    resultParams.name = params.name;
+  }
+
+  // Validate email if provided
+  if (params.email !== undefined) {
+    if (typeof params.email !== 'string' || !ValidationService.validateEmail(params.email)) {
+      return { isValid: false, error: 'Invalid email: expected valid email address' };
+    }
+    resultParams.email = params.email;
+  }
+
+  // Validate phone if provided
+  if (params.phone !== undefined) {
+    if (typeof params.phone !== 'string') {
+      return { isValid: false, error: 'Invalid phone: expected string' };
+    }
+    if (params.phone.trim() !== '') {
+      const phoneValidation = ValidationService.validatePhone(params.phone);
+      if (!phoneValidation.isValid) {
+        return { isValid: false, error: `Invalid phone: ${phoneValidation.error}` };
+      }
+    }
+    resultParams.phone = params.phone;
+  }
+
+  // Validate location if provided
+  if (params.location !== undefined) {
+    if (typeof params.location !== 'string' || params.location.trim().length === 0) {
+      return { isValid: false, error: 'Invalid location: expected non-empty string' };
+    }
+    resultParams.location = params.location;
+  }
+
+  // Validate message if provided
+  if (params.message !== undefined) {
+    if (typeof params.message !== 'string' || params.message.trim().length === 0) {
+      return { isValid: false, error: 'Invalid message: expected non-empty string' };
+    }
+    resultParams.message = params.message;
+  }
+
+  return { 
+    isValid: true, 
+    params: Object.keys(resultParams).length ? (resultParams as ContactFormParameters) : undefined
+  };
+}
+
+// Handler for showing contact form with proper types and validation
+// Compatible with both old and new systems
+async function handleShowContactForm(
+  parameters: unknown, 
+  env: Env, 
+  teamConfig?: Team,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+): Promise<ErrorResult<ContactFormResponse>> {
+  try {
+    // Validate parameters
+    const validation = validateContactFormParameters(parameters);
+    if (!validation.isValid) {
+      const error = new ValidationError(
+        validation.error || 'Invalid parameters provided',
+        {
+          parameters: parameters,
+          method: 'handleShowContactForm',
+          correlationId,
+          sessionId,
+          teamId
+        }
+      );
+      return createErrorResult(error);
+    }
+
+    const params = validation.params || {};
+    const reason = params.reason || 'your legal matter';
+
+    const response: ContactFormResponse = {
+      success: true,
+      action: 'show_contact_form',
+      message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`,
+      contactForm: {
+        reason,
+        fields: {
+          name: { required: true, label: 'Full Name' },
+          email: { required: true, label: 'Email Address' },
+          phone: { required: false, label: 'Phone Number' },
+          location: { required: true, label: 'Location (City, State)' },
+          opposing_party: { required: false, label: 'Opposing Party (if applicable)' },
+          message: { required: false, label: 'Additional Details' }
+        },
+        submitText: 'Submit Contact Form'
+      }
+    };
+
+    return createSuccessResult(response);
+  } catch (error) {
+    Logger.error('[handleShowContactForm] Unexpected error:', error);
+    const validationError = new ValidationError(
+      'An unexpected error occurred while processing your request. Please try again.',
+      {
+        originalError: error instanceof Error ? error.message : String(error),
+        method: 'handleShowContactForm',
+        correlationId,
+        sessionId,
+        teamId
+      }
+    );
+    return createErrorResult(validationError);
+  }
+}
+
 // Tool handlers mapping
 export const TOOL_HANDLERS = {
-  collect_contact_info: handleCollectContactInfo,
+  show_contact_form: handleShowContactForm,
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
-
-  analyze_document: handleAnalyzeDocument
+  analyze_document: handleAnalyzeDocument,
+  create_payment_invoice: handleCreatePaymentInvoice
 };
 
 // Unified legal intake agent that handles both streaming and non-streaming responses
 export async function runLegalIntakeAgentStream(
-  env: any, 
-  messages: any[], 
+  env: Env, 
+  messages: readonly AgentMessage[], 
   teamId?: string, 
   sessionId?: string,
   cloudflareLocation?: CloudflareLocationInfo,
-  controller?: ReadableStreamDefaultController,
-  attachments: any[] = []
-) {
+  controller?: ReadableStreamDefaultController<Uint8Array>,
+  attachments: readonly FileAttachment[] = []
+): Promise<AgentResponse | void> {
   // Get team configuration if teamId is provided
   let teamConfig = null;
   if (teamId) {
@@ -290,7 +722,7 @@ export async function runLegalIntakeAgentStream(
   }
 
   // Build system prompt using the new PromptBuilder
-  const systemPrompt = PromptBuilder.buildSystemPrompt(cloudflareLocation, attachments, conversationText);
+  const systemPrompt = PromptBuilder.buildSystemPrompt(cloudflareLocation, [...attachments], conversationText);
 
   // Hoist tool parsing variables to function scope
   let toolName: string | null = null;
@@ -383,7 +815,12 @@ export async function runLegalIntakeAgentStream(
       }
       return {
         response: 'I encountered an error processing your request. Please try rephrasing your request.',
-        metadata: { error: parseResult.error, rawParameters: parseResult.rawParameters }
+        metadata: { 
+          error: parseResult.error, 
+          rawParameters: parseResult.rawParameters,
+          inputMessageCount: formattedMessages.length,
+          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+        }
       };
     }
     
@@ -413,7 +850,11 @@ export async function runLegalIntakeAgentStream(
         }
         return {
           response: `I'm sorry, but I don't know how to handle that type of request.`,
-          metadata: { error: `Unknown tool: ${toolName}` }
+          metadata: { 
+            error: `Unknown tool: ${toolName}`,
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+          }
         };
       }
       
@@ -433,7 +874,11 @@ export async function runLegalIntakeAgentStream(
         }
         return {
           response: 'I encountered an error while processing your request. Please try again.',
-          metadata: { error: error instanceof Error ? error.message : String(error) }
+          metadata: { 
+            error: error instanceof Error ? error.message : String(error),
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+          }
         };
       }
       
@@ -593,12 +1038,12 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
   
   try {
     // Get team config for notification
-    const { AIService } = await import('../services/AIService.js');
+    const { AIService } = await import('../services/AIService.ts');
     const aiService = new AIService(env.AI, env);
     const teamConfig = await aiService.getTeamConfig(teamId);
     
     if (teamConfig.ownerEmail && env.RESEND_API_KEY) {
-      const { EmailService } = await import('../services/EmailService.js');
+      const { EmailService } = await import('../services/EmailService.ts');
       const emailService = new EmailService(env.RESEND_API_KEY);
       
       await emailService.send({
@@ -611,7 +1056,7 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
       Logger.info('Email service not configured - skipping email notification');
     }
   } catch (error) {
-    console.warn('Failed to send lawyer approval email:', error);
+    Logger.warn('Failed to send lawyer approval email:', error instanceof Error ? error.message : 'Unknown error');
     // Don't fail the request if email fails
   }
 }
@@ -839,7 +1284,7 @@ export async function handleRequestLawyerReview(parameters: any, env: any, teamC
   const { urgency, complexity, matter_type } = parameters;
   
   // Send notification using NotificationService
-  const { NotificationService } = await import('../services/NotificationService.js');
+  const { NotificationService } = await import('../services/NotificationService.ts');
   const notificationService = new NotificationService(env);
   
   await notificationService.sendLawyerReviewNotification({

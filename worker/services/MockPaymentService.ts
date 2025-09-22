@@ -10,7 +10,7 @@ export class MockPaymentService {
 
   async createInvoice(paymentRequest: PaymentRequest): Promise<PaymentResponse> {
     try {
-      console.log('💰 [MOCK] Creating invoice for payment request:', paymentRequest);
+      console.log('💰 [MOCK] Creating invoice for payment request: teamId=', paymentRequest.teamId, 'sessionId=', paymentRequest.sessionId);
 
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
