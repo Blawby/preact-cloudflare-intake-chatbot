@@ -1,7 +1,7 @@
-import { Logger } from '../../utils/logger.ts';
-import { PromptBuilder } from '../../utils/promptBuilder.ts';
-import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.ts';
-import { buildSystemPrompt } from './promptTemplates.ts';
+import { Logger } from '../../utils/logger.js';
+import { PromptBuilder } from '../../utils/promptBuilder.js';
+import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.js';
+import { buildSystemPrompt, type TeamConfig } from './promptTemplates.js';
 import type { Env } from '../../types.ts';
 import {
   BusinessLogicError,
@@ -148,7 +148,7 @@ export class BusinessLogicHandler {
   static async handleConversation(
     conversationText: string,
     env: Env,
-    teamConfig: any
+    teamConfig: TeamConfig
   ): Promise<ErrorResult<BusinessLogicResult>> {
     return withErrorHandling(
       async () => {
@@ -236,12 +236,12 @@ export class BusinessLogicHandler {
    * Gets the system prompt for AI when it should be used
    */
   static getSystemPromptForAI(
-    state: ConversationState, 
+    state: ConversationState,
     context: ConversationContext,
     correlationId?: string,
     sessionId?: string,
     teamId?: string,
-    teamConfig?: any
+    teamConfig?: TeamConfig
   ): ErrorResult<string> {
     return withErrorHandlingSync(
       () => {

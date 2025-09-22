@@ -645,7 +645,7 @@ export async function runLegalIntakeAgentStream(
   const lastUserMessage = formattedMessages[formattedMessages.length - 1];
   if (lastUserMessage?.role === 'user' && lastUserMessage.content && safeIncludes(lastUserMessage.content, 'Contact Information:')) {
     // Sanitize PII from contact form content for logging
-    const sanitized = sanitizeForLogging(lastUserMessage.content);
+    const sanitized = await sanitizeForLogging(lastUserMessage.content);
     Logger.debug('🧪 Received contact form submission:', {
       correlationId,
       sessionId,

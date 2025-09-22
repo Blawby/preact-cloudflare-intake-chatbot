@@ -23,6 +23,10 @@ export interface Env {
   BLAWBY_TEAM_ULID?: string;
   IDEMPOTENCY_SALT?: string;
   PAYMENT_IDEMPOTENCY_SECRET?: string;
+  
+  // Environment flags
+  NODE_ENV?: string;
+  IS_PRODUCTION?: string;
 }
 
 // HTTP Error class for centralized error handling

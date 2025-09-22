@@ -1,5 +1,16 @@
-import type { ConversationContext, ConversationState } from './conversationStateMachine.ts';
-import { LegalIntakeLogger } from './legalIntakeLogger.ts';
+import type { ConversationContext, ConversationState } from './conversationStateMachine.js';
+import { LegalIntakeLogger } from './legalIntakeLogger.js';
+
+/**
+ * Interface for team configuration used in prompt templates
+ * Based on the Team interface but only includes properties used in this module
+ */
+export interface TeamConfig {
+  /** Team slug identifier */
+  slug?: string;
+  /** Team name */
+  name?: string;
+}
 
 // Constants for sanitizeString length limits
 const MAX_LEGAL_ISSUE_TYPE_LENGTH = 50;
@@ -362,7 +373,7 @@ export function buildSystemPrompt(
   sessionId?: string,
   teamId?: string,
   teamName: string = 'North Carolina Legal Services',
-  teamConfig?: any
+  teamConfig?: TeamConfig
 ): string {
   // Guard clause parameter validation
   if (!context || typeof context !== 'object') {

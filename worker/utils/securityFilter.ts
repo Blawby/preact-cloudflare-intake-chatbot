@@ -130,14 +130,24 @@ export class SecurityFilter {
     }
     
     // Special case: If this is a case preparation assistant (Blawby AI), allow all legal matters
-    const isCasePreparationAssistant = availableServices.some((service: string) => 
-      service.includes('Case Discussion') || 
-      service.includes('Case Summary') || 
-      service.includes('Document Organization') ||
-      service.includes('Timeline & Evidence')
+    const CASE_PREPARATION_SERVICES: readonly string[] = [
+      'Case Discussion',
+      'Case Summary', 
+      'Document Organization',
+      'Timeline & Evidence'
+    ] as const;
+    
+    const isCasePreparationAssistant: boolean = availableServices.some((service: string) => 
+      CASE_PREPARATION_SERVICES.some((caseService: string) => service === caseService)
     );
     
     if (isCasePreparationAssistant) {
+      // Log this bypass for security monitoring
+      console.log('SecurityFilter: Case preparation assistant bypass applied', { 
+        teamServices: availableServices,
+        legalMatterType,
+        timestamp: new Date().toISOString()
+      });
       return null; // Allow case preparation assistants to handle any legal matter
     }
     
