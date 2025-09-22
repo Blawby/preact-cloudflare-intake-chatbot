@@ -17,7 +17,13 @@ export interface NotificationRequest {
 }
 
 export class NotificationService {
-  constructor(private env: any) {}
+  constructor(private env: any) {
+    // Initialize Logger with environment variables for Cloudflare Workers compatibility
+    Logger.initialize({
+      DEBUG: env.DEBUG,
+      NODE_ENV: env.NODE_ENV
+    });
+  }
 
   async sendLawyerReviewNotification(request: NotificationRequest): Promise<void> {
     const { teamConfig, matterInfo } = request;

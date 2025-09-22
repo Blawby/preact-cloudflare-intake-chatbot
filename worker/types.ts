@@ -26,6 +26,8 @@ export interface Env {
   
   // Environment flags
   NODE_ENV?: string;
+  DEBUG?: string;
+  ENV_TEST?: string;
   IS_PRODUCTION?: string;
 }
 

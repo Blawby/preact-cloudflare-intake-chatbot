@@ -2,7 +2,7 @@ import type { Env } from '../types';
 
 export async function rateLimit(env: Env, key: string, limit = 60, windowSec = 60): Promise<boolean> {
   // Check if we're in a test environment
-  const isTestEnv = process.env.NODE_ENV === 'test' || env.ENV_TEST === 'true';
+  const isTestEnv = env.NODE_ENV === 'test' || env.ENV_TEST === 'true';
 
   // Handle missing CHAT_SESSIONS
   if (!env.CHAT_SESSIONS) {

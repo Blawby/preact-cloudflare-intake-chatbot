@@ -404,7 +404,7 @@ export class PaymentService {
   private async createSecureHash(input: string, secretName: string, secretValue?: string): Promise<string> {
     if (!secretValue) {
       // Only use deterministic fallback in development environment
-      const isDevelopment = process.env.NODE_ENV === 'development';
+      const isDevelopment = this.env.NODE_ENV === 'development';
       
       if (!isDevelopment) {
         throw new Error(`${secretName} is required but not configured. Cannot proceed without secure secret in production.`);

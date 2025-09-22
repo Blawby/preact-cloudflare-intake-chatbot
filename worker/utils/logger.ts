@@ -1,6 +1,19 @@
 export class Logger {
+  private static env?: { DEBUG?: string; NODE_ENV?: string };
+
+  /**
+   * Initialize Logger with environment variables (required for Cloudflare Workers)
+   */
+  static initialize(env: { DEBUG?: string; NODE_ENV?: string }): void {
+    this.env = env;
+  }
+
   private static isDebugEnabled(): boolean {
-    return process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+    // Use injected environment variables if available, otherwise fallback to process.env (for Node.js environments)
+    const debug = this.env?.DEBUG || (typeof process !== 'undefined' && process.env?.DEBUG);
+    const nodeEnv = this.env?.NODE_ENV || (typeof process !== 'undefined' && process.env?.NODE_ENV);
+    
+    return debug === 'true' || nodeEnv === 'development';
   }
 
   static debug(message: string, data?: any): void {

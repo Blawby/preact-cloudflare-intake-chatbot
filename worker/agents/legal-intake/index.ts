@@ -549,6 +549,12 @@ export async function runLegalIntakeAgentStream(
   attachments: readonly FileAttachment[] = []
 ): Promise<AgentResponse | void> {
   
+  // Initialize Logger with environment variables for Cloudflare Workers compatibility
+  Logger.initialize({
+    DEBUG: env.DEBUG,
+    NODE_ENV: env.NODE_ENV
+  });
+  
   // Generate correlation ID for error tracking
   const correlationId = LegalIntakeLogger.generateCorrelationId();
   
@@ -952,7 +958,7 @@ export async function runLegalIntakeAgentStream(
     );
     
     // Log raw AI response for debugging (development only)
-    if (process.env.NODE_ENV === 'development') {
+    if (env.NODE_ENV === 'development') {
       console.log('[RAW_AI_RESPONSE]', JSON.stringify(aiResult, null, 2));
       Logger.debug('✅ AI result:', aiResult);
     } else {
