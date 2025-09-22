@@ -1,7 +1,7 @@
 -- Migration: Add priority column to matters table
--- Date: 2025-09-20
--- Description: Add priority column to matters table to support urgency mapping
--- This is a ONE-TIME migration that will fail if run multiple times
+-- Date: 2025-01-20
+-- Description: Add priority column to matters table and migrate data from urgency column
+-- Note: Column addition may fail if run multiple times, but index creation is idempotent with IF NOT EXISTS
 
 BEGIN TRANSACTION;
 

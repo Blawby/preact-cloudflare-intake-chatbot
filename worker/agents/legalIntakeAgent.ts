@@ -11,6 +11,9 @@ import { ToolCallParser } from '../utils/toolCallParser.js';
 import { withRetry } from '../utils/retry.js';
 import type { Env, ChatMessage, FileAttachment } from '../types.js';
 import type { Team } from '../services/TeamService.js';
+import type { ErrorResult } from './legal-intake/errors.js';
+import { createSuccessResult, createErrorResult, ValidationError } from './legal-intake/errors.js';
+import { safeIncludes } from '../utils/safeStringUtils.js';
 
 
 // Agent message interface that extends ChatMessage with isUser property
@@ -61,6 +64,24 @@ export interface ContactFormData {
   readonly reason: string;
   readonly fields: ContactFormFields;
   readonly submitText: string;
+}
+
+// Contact form parameters interface
+export interface ContactFormParameters {
+  readonly reason?: string;
+  readonly name?: string;
+  readonly email?: string;
+  readonly phone?: string;
+  readonly location?: string;
+  readonly message?: string;
+}
+
+// Tool response interface for standardized responses
+export interface ToolResponse {
+  readonly success: boolean;
+  readonly action: string;
+  readonly message: string;
+  readonly data?: any;
 }
 
 // Contact form response interface
@@ -177,8 +198,8 @@ function redactValue(obj: any, depth = 0): any {
       );
       
       if (isSensitiveKey || isSensitiveValue) {
-        if (typeof value === 'string') {
-          if (value.includes('@')) {
+        if (typeof value === 'string' && value) {
+          if (safeIncludes(value, '@')) {
             // Email-like field - mask local part
             const [local, domain] = value.split('@');
             result[key] = `${local.substring(0, 2)}***@${domain}`;
@@ -482,13 +503,127 @@ async function handleCreatePaymentInvoice(
   }
 }
 
-// Handler for showing contact form
-async function handleShowContactForm(parameters: any, env: any, teamConfig?: any): Promise<{ success: boolean; action: string; message: string }> {
-  return {
-    success: true,
-    action: 'show_contact_form',
-    message: 'Please fill out the contact form below so we can get in touch with you.'
+// Validation utilities for contact form parameters
+function validateContactFormParameters(parameters: unknown): { isValid: boolean; error?: string; params?: ContactFormParameters } {
+  // Check if parameters exist and is an object
+  if (!parameters || typeof parameters !== 'object') {
+    return { isValid: false, error: 'Invalid parameters: expected object' };
+  }
+
+  const params = parameters as Record<string, unknown>;
+  
+  // Validate reason if provided
+  if (params.reason !== undefined) {
+    if (typeof params.reason !== 'string' || params.reason.trim().length === 0) {
+      return { isValid: false, error: 'Invalid reason: expected non-empty string' };
+    }
+  }
+
+  // Validate name if provided
+  if (params.name !== undefined) {
+    if (typeof params.name !== 'string' || params.name.trim().length === 0) {
+      return { isValid: false, error: 'Invalid name: expected non-empty string' };
+    }
+  }
+
+  // Validate email if provided
+  if (params.email !== undefined) {
+    if (typeof params.email !== 'string' || !ValidationService.validateEmail(params.email)) {
+      return { isValid: false, error: 'Invalid email: expected valid email address' };
+    }
+  }
+
+  // Validate phone if provided
+  if (params.phone !== undefined) {
+    if (typeof params.phone !== 'string') {
+      return { isValid: false, error: 'Invalid phone: expected string' };
+    }
+    if (params.phone.trim() !== '') {
+      const phoneValidation = ValidationService.validatePhone(params.phone);
+      if (!phoneValidation.isValid) {
+        return { isValid: false, error: `Invalid phone: ${phoneValidation.error}` };
+      }
+    }
+  }
+
+  // Validate location if provided
+  if (params.location !== undefined) {
+    if (typeof params.location !== 'string' || params.location.trim().length === 0) {
+      return { isValid: false, error: 'Invalid location: expected non-empty string' };
+    }
+  }
+
+  // Validate message if provided
+  if (params.message !== undefined) {
+    if (typeof params.message !== 'string' || params.message.trim().length === 0) {
+      return { isValid: false, error: 'Invalid message: expected non-empty string' };
+    }
+  }
+
+  return { 
+    isValid: true, 
+    params: {
+      reason: params.reason as string,
+      name: params.name as string,
+      email: params.email as string,
+      phone: params.phone as string,
+      location: params.location as string,
+      message: params.message as string
+    }
   };
+}
+
+// Handler for showing contact form with proper types and validation
+// Compatible with both old and new systems
+async function handleShowContactForm(
+  parameters: unknown, 
+  env: Env, 
+  teamConfig?: Team,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+): Promise<ErrorResult<ToolResponse>> {
+  try {
+    // Validate parameters
+    const validation = validateContactFormParameters(parameters);
+    if (!validation.isValid) {
+      const error = new ValidationError(
+        validation.error || 'Invalid parameters provided',
+        {
+          parameters: parameters,
+          method: 'handleShowContactForm',
+          correlationId,
+          sessionId,
+          teamId
+        }
+      );
+      return createErrorResult(error);
+    }
+
+    const params = validation.params!;
+    const reason = params.reason || 'your legal matter';
+
+    const response: ToolResponse = {
+      success: true,
+      action: 'show_contact_form',
+      message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`
+    };
+
+    return createSuccessResult(response);
+  } catch (error) {
+    Logger.error('[handleShowContactForm] Unexpected error:', error);
+    const validationError = new ValidationError(
+      'An unexpected error occurred while processing your request. Please try again.',
+      {
+        originalError: error instanceof Error ? error.message : String(error),
+        method: 'handleShowContactForm',
+        correlationId,
+        sessionId,
+        teamId
+      }
+    );
+    return createErrorResult(validationError);
+  }
 }
 
 // Tool handlers mapping

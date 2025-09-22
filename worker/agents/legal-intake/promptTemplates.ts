@@ -1,11 +1,29 @@
 import type { ConversationContext, ConversationState } from './conversationStateMachine.js';
 import { LegalIntakeLogger } from './legalIntakeLogger.js';
 
+// Constants for sanitizeString length limits
+const MAX_LEGAL_ISSUE_TYPE_LENGTH = 50;
+const MAX_DESCRIPTION_LENGTH = 500;
+const MAX_STATE_LENGTH = 50;
+
 /**
  * Sanitizes a string to prevent injection attacks and handle PII safely
  */
 function sanitizeString(input: string | null | undefined, maxLength: number = 1000): string | null {
-  if (!input || typeof input !== 'string') {
+  // Early return for invalid input
+  if (input === null || input === undefined || typeof input !== 'string') {
+    return null;
+  }
+
+  // Validate and coerce maxLength parameter
+  const validatedMaxLength = typeof maxLength === 'number' && 
+                            Number.isInteger(maxLength) && 
+                            maxLength > 0 
+                            ? maxLength 
+                            : 1000;
+
+  // Early return for non-positive maxLength (after validation)
+  if (validatedMaxLength <= 0) {
     return null;
   }
 
@@ -32,9 +50,9 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
     // Trim whitespace
     .trim();
 
-  // Limit length to prevent buffer overflow attacks
-  if (sanitized.length > maxLength) {
-    sanitized = sanitized.substring(0, maxLength) + '...';
+  // Limit length to prevent buffer overflow attacks using validated maxLength
+  if (sanitized.length > validatedMaxLength) {
+    sanitized = sanitized.substring(0, validatedMaxLength) + '...';
   }
 
   return sanitized.length > 0 ? sanitized : null;
@@ -102,8 +120,16 @@ Before creating a matter, you MUST ask the user to confirm the legal issue type:
 - "Based on what you've told me, this sounds like it might be a [Family Law/Employment Law/etc.] matter. Is that correct?"
 - Only create the matter after they confirm the legal issue type
 - If they disagree with your assessment, ask them to clarify what type of legal help they need
-- EXCEPTION: If the user explicitly asks you to create a matter AND you have all required information (legal issue type, description) AND you have qualified them as a serious lead, you MUST use the show_contact_form tool to collect their contact details first
-- NEVER call create_matter directly - always use show_contact_form first to collect contact information
+- EXCEPTION: If the user explicitly asks you to create a matter AND you have all required information (legal issue type, description) AND you have qualified them as a serious lead, you MUST use the show_contact_form tool to collect their contact details first, UNLESS contact information is already provided
+
+**CRITICAL: WHEN CONTACT INFORMATION IS ALREADY PROVIDED**
+If the user has already provided contact information (name, email, phone) in the conversation:
+- You MUST call create_matter directly with the provided information
+- Do NOT show the contact form again if contact information is already available
+- Extract the contact information from the conversation and use it in the create_matter tool call
+- This takes priority over the general rule to show contact form first
+- Look for patterns like "Contact Information:", "Name:", "Email:", "Phone:" in the conversation
+- If you see these patterns, you have contact information and should call create_matter
 
 **Example conversational flow for matter creation:**
 User: "I need help with a divorce."
@@ -144,6 +170,21 @@ PARAMETERS: {
   "phone": "(555) 234-5678"
 }
 
+**EXAMPLE: User provides contact information after legal discussion:**
+User: "I was injured in a car crash with back pain. The other driver was John Smith and I have his insurance information. I want to pursue a personal injury claim."
+User: "Contact Information:\nName: John Doe\nEmail: john@example.com\nPhone: 555-1234\nLocation: New York, NY"
+
+AI Response: "Thank you, John. I have all the information I need to create a matter for your personal injury case. Let me create that for you now."
+
+TOOL_CALL: create_matter
+PARAMETERS: {
+  "name": "John Doe",
+  "matter_type": "Personal Injury",
+  "description": "Car crash with back pain, other driver John Smith, has insurance information",
+  "email": "john@example.com",
+  "phone": "555-1234"
+}
+
 Your response should be in markdown format.`;
 
 /**
@@ -166,9 +207,9 @@ export function buildContextSection(
   }
 
   // Sanitize only legal information - contact info is handled by ContactForm
-  const sanitizedLegalIssueType = sanitizeString(context.legalIssueType, 50);
-  const sanitizedDescription = sanitizeString(context.description, 500);
-  const sanitizedState = sanitizeString(state, 50);
+  const sanitizedLegalIssueType = sanitizeString(context?.legalIssueType, MAX_LEGAL_ISSUE_TYPE_LENGTH);
+  const sanitizedDescription = sanitizeString(context?.description, MAX_DESCRIPTION_LENGTH);
+  const sanitizedState = sanitizeString(state, MAX_STATE_LENGTH);
 
   // Log security events if suspicious input is detected
   if (correlationId) {
@@ -207,11 +248,11 @@ export function buildContextSection(
 
   // Build context with only legal information
   const contextItems = [
-    `- Has Legal Issue: ${Boolean(context.hasLegalIssue && sanitizedLegalIssueType) ? 'YES' : 'NO'} ${sanitizedLegalIssueType ? `(${sanitizedLegalIssueType})` : ''}`,
+    `- Has Legal Issue: ${Boolean(context?.hasLegalIssue && sanitizedLegalIssueType) ? 'YES' : 'NO'} ${sanitizedLegalIssueType ? `(${sanitizedLegalIssueType})` : ''}`,
     `- Has Description: ${sanitizedDescription ? 'YES' : 'NO'}`,
-    `- Is Sensitive Matter: ${context.isSensitiveMatter ? 'YES' : 'NO'}`,
-    `- Is General Inquiry: ${context.isGeneralInquiry ? 'YES' : 'NO'}`,
-    `- Should Create Matter: ${context.shouldCreateMatter ? 'YES' : 'NO'}`,
+    `- Is Sensitive Matter: ${context?.isSensitiveMatter ? 'YES' : 'NO'}`,
+    `- Is General Inquiry: ${context?.isGeneralInquiry ? 'YES' : 'NO'}`,
+    `- Should Create Matter: ${context?.shouldCreateMatter ? 'YES' : 'NO'}`,
     `- Current State: ${sanitizedState || 'UNKNOWN'}`
   ];
   
@@ -226,7 +267,7 @@ export function buildRulesSection(): string {
     '- NEVER repeat the same response or question.',
     '- ALWAYS maintain an empathetic and supportive tone.',
     '- ONLY use the `show_contact_form` tool AFTER you have asked qualifying questions and determined the user is a serious potential client.',
-    '- NEVER call create_matter directly - always use show_contact_form first to collect contact information.',
+    '- Use show_contact_form to collect contact information when needed, or call create_matter directly if contact information is already provided.',
     '- If the user\'s query is a general inquiry (e.g., "what services do you offer?", "how much does it cost?"), respond conversationally without trying to extract personal details or create a matter.',
     '- If the user asks a question that can be answered directly (e.g., "what is family law?"), provide a concise and helpful answer.',
     '- If the user provides sensitive information (e.g., "I ran over my child"), acknowledge the sensitivity with empathy and gently guide them towards providing necessary details for a matter, or offer to connect them with a lawyer if appropriate.',
@@ -256,6 +297,31 @@ export function buildSystemPrompt(
   teamId?: string,
   teamName: string = 'North Carolina Legal Services'
 ): string {
+  // Guard clause parameter validation
+  if (!context || typeof context !== 'object') {
+    throw new TypeError('context must be a non-null object');
+  }
+  
+  if (!state || typeof state !== 'string') {
+    throw new TypeError('state must be a non-null string');
+  }
+  
+  if (correlationId !== undefined && (typeof correlationId !== 'string' || correlationId.trim() === '')) {
+    throw new TypeError('correlationId must be a non-empty string when provided');
+  }
+  
+  if (sessionId !== undefined && (typeof sessionId !== 'string' || sessionId.trim() === '')) {
+    throw new TypeError('sessionId must be a non-empty string when provided');
+  }
+  
+  if (teamId !== undefined && (typeof teamId !== 'string' || teamId.trim() === '')) {
+    throw new TypeError('teamId must be a non-empty string when provided');
+  }
+  
+  if (typeof teamName !== 'string' || teamName.trim() === '') {
+    teamName = 'North Carolina Legal Services';
+  }
+
   const contextSection = buildContextSection(context, state, correlationId, sessionId, teamId);
   const rulesSection = buildRulesSection();
   

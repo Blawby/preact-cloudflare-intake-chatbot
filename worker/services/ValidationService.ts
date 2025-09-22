@@ -16,11 +16,33 @@ export class ValidationService {
     }
     
     try {
+      // Block common placeholder/test numbers in production
+      const blockedNumbers = [
+        '555-555-5555', '5555555555', '555-123-4567', '5551234567',
+        '123-456-7890', '1234567890', '000-000-0000', '0000000000',
+        '111-111-1111', '1111111111', '999-999-9999', '9999999999'
+      ];
+      
+      const cleanedForBlocking = phone.replace(/\D/g, '');
+      if (blockedNumbers.some(blocked => blocked.replace(/\D/g, '') === cleanedForBlocking)) {
+        return { isValid: false, error: 'Please provide a real phone number, not a placeholder' };
+      }
+      
+      // Block alphanumeric phone numbers (like 1-800-FLOWERS)
+      if (/[a-zA-Z]/.test(phone)) {
+        return { isValid: false, error: 'Phone numbers cannot contain letters' };
+      }
+      
       // Remove extension suffixes (e.g., "x123", "ext.123", "ext 123")
       const withoutExtension = phone.replace(/\s*(?:x|ext\.?|extension)\s*\d+$/i, '');
       
       // Clean the phone number - remove all non-digit characters
       const cleaned = withoutExtension.replace(/\D/g, '');
+      
+      // Validate length - must be 10 or 11 digits
+      if (cleaned.length < 10 || cleaned.length > 11) {
+        return { isValid: false, error: 'Phone number must be 10 or 11 digits' };
+      }
       
       // NANP validation patterns
       // Area code: [2-9]\d{2} (starts with 2-9, followed by 2 digits)
@@ -53,6 +75,12 @@ export class ValidationService {
       if (areaCode.startsWith('0') || areaCode.startsWith('1') || 
           exchangeCode.startsWith('0') || exchangeCode.startsWith('1')) {
         return { isValid: false, error: 'Invalid phone number format' };
+      }
+      
+      // Block specific invalid area codes
+      const invalidAreaCodes = ['555']; // 555 is reserved for fictional use
+      if (invalidAreaCodes.includes(areaCode)) {
+        return { isValid: false, error: 'Please provide a real phone number, not a placeholder' };
       }
       
       return { isValid: true };

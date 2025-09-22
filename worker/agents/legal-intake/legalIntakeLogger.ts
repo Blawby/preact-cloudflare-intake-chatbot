@@ -84,6 +84,19 @@ export interface StateTransitionLogEntry extends LegalIntakeLogEntry {
   };
 }
 
+export interface MatterCreationContext {
+  hasName: boolean;
+  hasEmail: boolean;
+  hasPhone: boolean;
+  hasLocation: boolean;
+  hasDescription: boolean;
+  name?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  description?: string;
+}
+
 export interface MatterCreationLogEntry extends LegalIntakeLogEntry {
   operation: LegalIntakeOperation.MATTER_CREATION_START | LegalIntakeOperation.MATTER_CREATION_SUCCESS | LegalIntakeOperation.MATTER_CREATION_FAILED;
   metadata: {
@@ -142,7 +155,7 @@ export class LegalIntakeLogger {
   static generateCorrelationId(): string {
     const timestamp = Date.now();
     const counter = ++this.correlationIdCounter;
-    return `li_${timestamp}_${counter}_${Math.random().toString(36).substr(2, 9)}`;
+    return `li_${timestamp}_${counter}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   /**
@@ -274,7 +287,7 @@ export class LegalIntakeLogger {
     teamId: string | undefined,
     operation: LegalIntakeOperation.MATTER_CREATION_START | LegalIntakeOperation.MATTER_CREATION_SUCCESS | LegalIntakeOperation.MATTER_CREATION_FAILED,
     matterType: string,
-    context: ConversationContext,
+    context: MatterCreationContext,
     error?: Error
   ): void {
     const sanitizedData = this.sanitizePIIForLogging({
@@ -476,8 +489,8 @@ export class LegalIntakeLogger {
   /**
    * Sanitizes PII data for logging
    */
-  private static sanitizePIIForLogging(data: Record<string, any>): Record<string, any> {
-    const sanitized: Record<string, any> = {};
+  private static sanitizePIIForLogging(data: Record<string, unknown>): Record<string, unknown> {
+    const sanitized: Record<string, unknown> = {};
     
     for (const [key, value] of Object.entries(data)) {
       if (!value) {
@@ -537,10 +550,10 @@ export class LegalIntakeLogger {
   /**
    * Sanitizes tool parameters for logging
    */
-  private static sanitizeParametersForLogging(parameters?: Record<string, any>): Record<string, any> | undefined {
+  private static sanitizeParametersForLogging(parameters?: Record<string, unknown>): Record<string, unknown> | undefined {
     if (!parameters) return undefined;
 
-    const sanitized: Record<string, any> = {};
+    const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(parameters)) {
       if (typeof value === 'string') {
         // Truncate long strings
@@ -555,7 +568,7 @@ export class LegalIntakeLogger {
   /**
    * Sanitizes tool results for logging
    */
-  private static sanitizeResultForLogging(result?: any): any {
+  private static sanitizeResultForLogging(result?: unknown): unknown {
     if (!result) return undefined;
     
     if (typeof result === 'string') {
@@ -572,8 +585,8 @@ export class LegalIntakeLogger {
   /**
    * Sanitizes security event details
    */
-  private static sanitizeSecurityDetails(details: Record<string, any>): Record<string, any> {
-    const sanitized: Record<string, any> = {};
+  private static sanitizeSecurityDetails(details: Record<string, unknown>): Record<string, unknown> {
+    const sanitized: Record<string, unknown> = {};
     
     for (const [key, value] of Object.entries(details)) {
       if (typeof value === 'string') {

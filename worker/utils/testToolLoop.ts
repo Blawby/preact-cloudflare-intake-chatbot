@@ -10,6 +10,7 @@
 
 import { ToolDefinition } from '../types/toolTypes';
 import { ConversationContext, ConversationState } from '../agents/legal-intake/conversationStateMachine';
+import { Env } from '../types';
 
 export interface ToolLoopTestConfig {
   /** AI model to test with */
@@ -78,11 +79,152 @@ export interface ToolLoopTestResult {
 }
 
 /**
+ * 🔧 Check tool availability
+ */
+async function checkToolAvailability(tools: ToolDefinition<any>[]): Promise<ToolLoopTestResult['steps']['toolAvailability']> {
+  console.log('🔧 Step 1: Checking tool availability...');
+  const showContactFormTool = tools.find(tool => tool.name === 'show_contact_form');
+  
+  if (showContactFormTool) {
+    return {
+      passed: true,
+      message: '✅ show_contact_form tool is available',
+      toolsFound: tools.map(t => t.name)
+    };
+  } else {
+    return {
+      passed: false,
+      message: '❌ show_contact_form tool is NOT available',
+      toolsFound: tools.map(t => t.name)
+    };
+  }
+}
+
+/**
+ * 📝 Validate system prompt
+ */
+async function validateSystemPrompt(prompt: string): Promise<ToolLoopTestResult['steps']['systemPrompt']> {
+  console.log('📝 Step 2: Validating system prompt...');
+  const promptLength = prompt.length;
+  const mentionsTools = prompt.includes('show_contact_form');
+  
+  return {
+    passed: promptLength > 1000 && mentionsTools,
+    message: promptLength > 1000 && mentionsTools 
+      ? '✅ System prompt is valid and mentions show_contact_form'
+      : `❌ System prompt issues: length=${promptLength}, mentionsTools=${mentionsTools}`,
+    promptLength,
+    mentionsTools
+  };
+}
+
+/**
+ * 🤖 Test AI tool call
+ */
+async function testAIToolCall(config: ToolLoopTestConfig, env?: Env): Promise<ToolLoopTestResult['steps']['aiToolCall']> {
+  console.log('🤖 Step 3: Testing AI tool call...');
+  
+  if (config.simulateOnly) {
+    // Simulate the expected behavior
+    const shouldCallTool = config.state === 'SHOWING_CONTACT_FORM' && 
+                         config.context.legalIssueType && 
+                         config.context.description;
+    
+    return {
+      passed: shouldCallTool,
+      message: shouldCallTool 
+        ? '✅ AI should call show_contact_form (simulated)'
+        : '❌ AI should NOT call show_contact_form (simulated)',
+      expectedToolCall: shouldCallTool ? 'show_contact_form' : undefined,
+      actualToolCall: shouldCallTool ? 'show_contact_form' : undefined
+    };
+  } else if (env?.AI) {
+    // Run actual AI call
+    try {
+      const testMessages = [
+        { role: 'system', content: config.systemPrompt },
+        { role: 'user', content: 'I need help with a divorce case. My spouse and I have been separated for 6 months.' }
+      ];
+
+      const aiResult = await env.AI.run(config.model, {
+        messages: testMessages,
+        tools: config.tools,
+        max_tokens: 100,
+        temperature: 0.1
+      });
+
+      const hasToolCalls = aiResult.tool_calls && aiResult.tool_calls.length > 0;
+      const toolCallName = hasToolCalls ? aiResult.tool_calls[0].name : undefined;
+
+      console.log('🤖 AI Result:', {
+        hasToolCalls,
+        toolCallName,
+        response: aiResult.response?.substring(0, 100) || 'null'
+      });
+
+      return {
+        passed: hasToolCalls && toolCallName === 'show_contact_form',
+        message: hasToolCalls && toolCallName === 'show_contact_form'
+          ? '✅ AI successfully called show_contact_form'
+          : `❌ AI did not call show_contact_form. Got: ${toolCallName || 'no tool call'}`,
+        expectedToolCall: 'show_contact_form',
+        actualToolCall: toolCallName
+      };
+    } catch (error) {
+      throw new Error(`AI call error: ${error}`);
+    }
+  } else {
+    return {
+      passed: false,
+      message: '❌ No AI environment available for testing',
+      expectedToolCall: 'show_contact_form',
+      actualToolCall: undefined
+    };
+  }
+}
+
+/**
+ * 📡 Validate SSE event
+ */
+async function validateSSEEvent(): Promise<ToolLoopTestResult['steps']['sseEvent']> {
+  console.log('📡 Step 4: Validating SSE event...');
+  const expectedEventType = 'contact_form';
+  const expectedEventData = {
+    fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
+    required: ['name', 'email', 'phone'],
+    message: 'Please fill out the contact form below.'
+  };
+
+  return {
+    passed: true, // This would be validated in actual implementation
+    message: '✅ SSE event structure is valid (simulated)',
+    eventType: expectedEventType,
+    eventData: expectedEventData
+  };
+}
+
+/**
+ * 🎨 Validate frontend form
+ */
+async function validateFrontendForm(): Promise<ToolLoopTestResult['steps']['frontendForm']> {
+  console.log('🎨 Step 5: Validating frontend form...');
+  const expectedFields = ['name', 'email', 'phone', 'location', 'opposingParty'];
+  const expectedRequired = ['name', 'email', 'phone'];
+
+  return {
+    passed: true, // This would be validated in actual implementation
+    message: '✅ Frontend form structure is valid (simulated)',
+    formFields: expectedFields,
+    requiredFields: expectedRequired
+  };
+}
+
+/**
  * 🧪 Test the complete AI tool loop flow
  */
 export async function testToolLoop(
   config: ToolLoopTestConfig,
-  env?: any
+  env?: Env
 ): Promise<ToolLoopTestResult> {
   const startTime = Date.now();
   const result: ToolLoopTestResult = {
@@ -107,130 +249,36 @@ export async function testToolLoop(
       simulateOnly: config.simulateOnly
     });
 
-    // Step 1: Tool Availability Check
-    console.log('🔧 Step 1: Checking tool availability...');
-    const showContactFormTool = config.tools.find(tool => tool.name === 'show_contact_form');
-    if (showContactFormTool) {
-      result.steps.toolAvailability = {
-        passed: true,
-        message: '✅ show_contact_form tool is available',
-        toolsFound: config.tools.map(t => t.name)
-      };
-    } else {
-      result.steps.toolAvailability = {
-        passed: false,
-        message: '❌ show_contact_form tool is NOT available',
-        toolsFound: config.tools.map(t => t.name)
-      };
+    // Execute all test steps
+    try {
+      result.steps.toolAvailability = await checkToolAvailability(config.tools);
+    } catch (error) {
+      result.errors.push(`Tool availability check failed: ${error}`);
     }
 
-    // Step 2: System Prompt Validation
-    console.log('📝 Step 2: Validating system prompt...');
-    const promptLength = config.systemPrompt.length;
-    const mentionsTools = config.systemPrompt.includes('show_contact_form');
-    
-    result.steps.systemPrompt = {
-      passed: promptLength > 1000 && mentionsTools,
-      message: promptLength > 1000 && mentionsTools 
-        ? '✅ System prompt is valid and mentions show_contact_form'
-        : `❌ System prompt issues: length=${promptLength}, mentionsTools=${mentionsTools}`,
-      promptLength,
-      mentionsTools
-    };
-
-    // Step 3: AI Tool Call Simulation/Test
-    console.log('🤖 Step 3: Testing AI tool call...');
-    if (config.simulateOnly) {
-      // Simulate the expected behavior
-      const shouldCallTool = config.state === 'SHOWING_CONTACT_FORM' && 
-                           config.context.legalIssueType && 
-                           config.context.description;
-      
-      result.steps.aiToolCall = {
-        passed: shouldCallTool,
-        message: shouldCallTool 
-          ? '✅ AI should call show_contact_form (simulated)'
-          : '❌ AI should NOT call show_contact_form (simulated)',
-        expectedToolCall: shouldCallTool ? 'show_contact_form' : undefined,
-        actualToolCall: shouldCallTool ? 'show_contact_form' : undefined
-      };
-    } else if (env?.AI) {
-      // Run actual AI call
-      try {
-        const testMessages = [
-          { role: 'system', content: config.systemPrompt },
-          { role: 'user', content: 'I need help with a divorce case. My spouse and I have been separated for 6 months.' }
-        ];
-
-        const aiResult = await env.AI.run(config.model, {
-          messages: testMessages,
-          tools: config.tools,
-          max_tokens: 100,
-          temperature: 0.1
-        });
-
-        const hasToolCalls = aiResult.tool_calls && aiResult.tool_calls.length > 0;
-        const toolCallName = hasToolCalls ? aiResult.tool_calls[0].name : undefined;
-
-        result.steps.aiToolCall = {
-          passed: hasToolCalls && toolCallName === 'show_contact_form',
-          message: hasToolCalls && toolCallName === 'show_contact_form'
-            ? '✅ AI successfully called show_contact_form'
-            : `❌ AI did not call show_contact_form. Got: ${toolCallName || 'no tool call'}`,
-          expectedToolCall: 'show_contact_form',
-          actualToolCall: toolCallName
-        };
-
-        console.log('🤖 AI Result:', {
-          hasToolCalls,
-          toolCallName,
-          response: aiResult.response?.substring(0, 100) || 'null'
-        });
-      } catch (error) {
-        result.steps.aiToolCall = {
-          passed: false,
-          message: `❌ AI call failed: ${error}`,
-          expectedToolCall: 'show_contact_form',
-          actualToolCall: undefined
-        };
-        result.errors.push(`AI call error: ${error}`);
-      }
-    } else {
-      result.steps.aiToolCall = {
-        passed: false,
-        message: '❌ No AI environment available for testing',
-        expectedToolCall: 'show_contact_form',
-        actualToolCall: undefined
-      };
+    try {
+      result.steps.systemPrompt = await validateSystemPrompt(config.systemPrompt);
+    } catch (error) {
+      result.errors.push(`System prompt validation failed: ${error}`);
     }
 
-    // Step 4: SSE Event Validation
-    console.log('📡 Step 4: Validating SSE event...');
-    const expectedEventType = 'contact_form';
-    const expectedEventData = {
-      fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
-      required: ['name', 'email', 'phone'],
-      message: 'Please fill out the contact form below.'
-    };
+    try {
+      result.steps.aiToolCall = await testAIToolCall(config, env);
+    } catch (error) {
+      result.errors.push(`AI tool call test failed: ${error}`);
+    }
 
-    result.steps.sseEvent = {
-      passed: true, // This would be validated in actual implementation
-      message: '✅ SSE event structure is valid (simulated)',
-      eventType: expectedEventType,
-      eventData: expectedEventData
-    };
+    try {
+      result.steps.sseEvent = await validateSSEEvent();
+    } catch (error) {
+      result.errors.push(`SSE event validation failed: ${error}`);
+    }
 
-    // Step 5: Frontend Form Validation
-    console.log('🎨 Step 5: Validating frontend form...');
-    const expectedFields = ['name', 'email', 'phone', 'location', 'opposingParty'];
-    const expectedRequired = ['name', 'email', 'phone'];
-
-    result.steps.frontendForm = {
-      passed: true, // This would be validated in actual implementation
-      message: '✅ Frontend form structure is valid (simulated)',
-      formFields: expectedFields,
-      requiredFields: expectedRequired
-    };
+    try {
+      result.steps.frontendForm = await validateFrontendForm();
+    } catch (error) {
+      result.errors.push(`Frontend form validation failed: ${error}`);
+    }
 
     // Calculate summary
     const passedSteps = Object.values(result.steps).filter(step => step.passed).length;
@@ -263,7 +311,7 @@ export async function testToolLoop(
 /**
  * 🧪 Quick test for development
  */
-export async function quickToolLoopTest(env?: any): Promise<boolean> {
+export async function quickToolLoopTest(env?: Env): Promise<boolean> {
   const testConfig: ToolLoopTestConfig = {
     model: '@cf/meta/llama-3.1-8b-instruct',
     tools: [
@@ -307,7 +355,7 @@ export async function quickToolLoopTest(env?: any): Promise<boolean> {
 /**
  * 🧪 Test specific tool scenarios
  */
-export async function testToolScenarios(env?: any): Promise<{
+export async function testToolScenarios(env?: Env): Promise<{
   contactForm: boolean;
   matterCreation: boolean;
   lawyerReview: boolean;

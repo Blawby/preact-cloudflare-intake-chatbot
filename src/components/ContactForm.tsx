@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
 
 export interface ContactFormProps {
-  onSubmit: (data: ContactData) => void;
+  onSubmit: (data: ContactData) => void | Promise<void>;
   fields?: string[];
   required?: string[];
   message?: string;
@@ -24,7 +24,7 @@ interface FormErrors {
   opposingParty?: string;
 }
 
-export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'location', 'opposingParty'], required = ['name', 'email', 'phone'], message }: ContactFormProps) {
+export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'location', 'opposingParty'], required = ['name', 'email', 'phone'], message }: ContactFormProps): JSX.Element {
   const [formData, setFormData] = useState<ContactData>({
     name: '',
     email: '',
@@ -56,7 +56,7 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
     return undefined;
   };
 
-  const handleInputChange = (field: keyof ContactData, value: string) => {
+  const handleInputChange = (field: keyof ContactData, value: string): void => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear error when user starts typing
@@ -65,14 +65,11 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
     }
   };
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    // Validate all fields
+  const validateAllFields = (): { errors: FormErrors; hasErrors: boolean } => {
     const newErrors: FormErrors = {};
     let hasErrors = false;
 
+    // Validate required fields
     for (const field of required) {
       const error = validateField(field as keyof ContactData, formData[field as keyof ContactData]);
       if (error) {
@@ -92,17 +89,43 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
       }
     }
 
-    if (hasErrors) {
-      setErrors(newErrors);
-      setIsSubmitting(false);
-      return;
-    }
+    return { errors: newErrors, hasErrors };
+  };
 
-    // Submit the form
+  const handleSubmit = async (e: Event): Promise<void> => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
     try {
+      // Validate all fields
+      const { errors: validationErrors, hasErrors } = validateAllFields();
+
+      if (hasErrors) {
+        setErrors(validationErrors);
+        return;
+      }
+
+      // Submit the form
       await onSubmit(formData);
     } catch (error) {
-      console.error('Error submitting contact form:', error);
+      // Structured logging with contextual metadata
+      const logData = {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        formData: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          location: formData.location,
+          opposingParty: formData.opposingParty
+        },
+        fields,
+        required,
+        timestamp: new Date().toISOString(),
+        component: 'ContactForm'
+      };
+      
+      console.error('[ContactForm] Error submitting contact form:', logData);
     } finally {
       setIsSubmitting(false);
     }

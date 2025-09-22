@@ -226,6 +226,11 @@ export interface UIMessageExtras {
   welcomeMessage?: WelcomeMessageData;
   matterCanvas?: MatterCanvasData;
   paymentEmbed?: PaymentEmbedData;
+  contactForm?: {
+    fields: string[];
+    required: string[];
+    message?: string;
+  };
   /** @deprecated Prefer deriving loading from aiState. */
   isLoading?: boolean;
 }

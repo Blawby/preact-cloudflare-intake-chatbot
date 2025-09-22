@@ -33,6 +33,10 @@ build
 coverage
 .nyc_output
 
+# Playwright test results and reports
+playwright-report/
+test-results/
+
 # Environment variables
 .env
 .env.local

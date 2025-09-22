@@ -7,6 +7,7 @@ import { validateInput, getSecurityResponse } from '../middleware/inputValidatio
 import { SecurityLogger } from '../utils/securityLogger.js';
 import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
+import { safeIncludes, safeToLowerCase } from '../utils/safeStringUtils.js';
 
 // Interface for the request body in the route method
 interface RouteBody {
@@ -179,13 +180,13 @@ function wantsHuman(text: string, messages?: any[]): boolean {
     const currentMessage = text.toLowerCase();
     
     console.log('🔍 Checking attorney referral acceptance:');
-    console.log('  Previous message:', previousMessage.substring(0, 100));
+    console.log('  Previous message:', previousMessage ? previousMessage.substring(0, 100) : 'null');
     console.log('  Current message:', currentMessage);
-    console.log('  Has attorney suggestion:', previousMessage.includes('would you like me to connect you with'));
+    console.log('  Has attorney suggestion:', safeIncludes(previousMessage, 'would you like me to connect you with'));
     console.log('  Is affirmative:', ['yes', 'yeah', 'sure', 'ok'].includes(currentMessage));
     
     // If previous message suggested attorney and current is affirmative
-    if (previousMessage.includes('would you like me to connect you with') && 
+    if (safeIncludes(previousMessage, 'would you like me to connect you with') && 
         (currentMessage === 'yes' || currentMessage === 'yeah' || currentMessage === 'sure' || currentMessage === 'ok')) {
       console.log('✅ Attorney referral accepted - routing to intake!');
       return true;
@@ -230,7 +231,7 @@ class SupervisorRouter {
       'filing prep', 'case status', 'paralegal'
     ];
 
-    if (paralegalKeywords.some(keyword => text.toLowerCase().includes(keyword))) {
+    if (paralegalKeywords.some(keyword => safeIncludes(safeToLowerCase(text), keyword))) {
       return true;
     }
 
@@ -240,14 +241,14 @@ class SupervisorRouter {
       'consultation', 'proceeding', 'continue', 'move forward', 'what now'
     ];
 
-    if (postPaymentKeywords.some(keyword => text.toLowerCase().includes(keyword))) {
+    if (postPaymentKeywords.some(keyword => safeIncludes(safeToLowerCase(text), keyword))) {
       // Only route to paralegal if there's legal context
-      const hasLegalContext = allContent.includes('legal') || 
-                             allContent.includes('lawyer') || 
-                             allContent.includes('attorney') ||
-                             allContent.includes('divorce') ||
-                             allContent.includes('employment') ||
-                             allContent.includes('matter');
+      const hasLegalContext = safeIncludes(allContent, 'legal') || 
+                             safeIncludes(allContent, 'lawyer') || 
+                             safeIncludes(allContent, 'attorney') ||
+                             safeIncludes(allContent, 'divorce') ||
+                             safeIncludes(allContent, 'employment') ||
+                             safeIncludes(allContent, 'matter');
       return hasLegalContext;
     }
 
@@ -269,7 +270,7 @@ class SupervisorRouter {
 
     ];
     
-    return intakeCompletionMarkers.some(marker => allContent.includes(marker));
+    return intakeCompletionMarkers.some(marker => safeIncludes(allContent, marker));
   }
 
   private isPostPaymentQuery(text: string, messages: any[]): boolean {
@@ -285,9 +286,9 @@ class SupervisorRouter {
       const lastAssistantMsg = messages.filter(msg => msg.role === 'assistant').pop();
       if (lastAssistantMsg && lastAssistantMsg.content) {
         const assistantContent = lastAssistantMsg.content.toLowerCase();
-        return assistantContent.includes('pay $') || 
-               assistantContent.includes('payment') || 
-               assistantContent.includes('consultation fee');
+        return safeIncludes(assistantContent, 'pay $') || 
+               safeIncludes(assistantContent, 'payment') || 
+               safeIncludes(assistantContent, 'consultation fee');
       }
     }
     
@@ -297,7 +298,7 @@ class SupervisorRouter {
       'proceed', 'continue', 'move forward', 'what do we do'
     ];
     
-    return postPaymentQueries.some(query => lowerText.includes(query));
+    return postPaymentQueries.some(query => safeIncludes(lowerText, query));
   }
 
   private shouldRouteToAnalysis(body: any): boolean {
@@ -307,7 +308,7 @@ class SupervisorRouter {
     const analysisKeywords = ['analyze document', 'pdf', 'ocr', 'extract', 'review document'];
     
     return hasAttachments || analysisKeywords.some(keyword => 
-      latestMessage.toLowerCase().includes(keyword)
+      safeIncludes(safeToLowerCase(latestMessage), keyword)
     );
   }
 
@@ -328,7 +329,7 @@ class SupervisorRouter {
     ];
     
     // If any intake markers are present, user is in intake flow
-    const hasIntakeMarkers = intakeMarkers.some(marker => allContent.includes(marker));
+    const hasIntakeMarkers = intakeMarkers.some(marker => safeIncludes(allContent, marker));
     
     // Also check if user has already provided contact info (sign they're in intake)
     const hasProvidedContactInfo = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(allContent) || // phone pattern
@@ -347,10 +348,10 @@ function extractClientInfo(messages: any[]): any {
   const allContent = messages.map(m => m.content).join(' ').toLowerCase();
   
   return {
-    hasName: allContent.includes('name') || allContent.includes('i am') || allContent.includes('my name'),
+    hasName: safeIncludes(allContent, 'name') || safeIncludes(allContent, 'i am') || safeIncludes(allContent, 'my name'),
     hasPhone: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(allContent),
     hasEmail: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(allContent),
-    hasLocation: allContent.includes('live in') || allContent.includes('located in') || allContent.includes('from')
+    hasLocation: safeIncludes(allContent, 'live in') || safeIncludes(allContent, 'located in') || safeIncludes(allContent, 'from')
   };
 }
 
@@ -415,7 +416,7 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
     if (teamId) {
       try {
         const { AIService } = await import('../services/AIService.js');
-        const aiService = new AIService(env.AI, env as any);
+        const aiService = new AIService(env.AI, env);
         const rawTeamConfig = await aiService.getTeamConfig(teamId);
         teamConfig = rawTeamConfig;
       } catch (error) {
@@ -465,10 +466,53 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
             size: att.size,
             url: att.url
           }));
-          await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, fileAttachments);
+          try {
+            await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, fileAttachments);
+          } catch (error) {
+            console.error('🚨 ERROR in runLegalIntakeAgentStream:', {
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+              teamId,
+              sessionId,
+              messageCount: messages?.length || 0
+            });
+            
+            // Send error event via SSE
+            const errorEvent = `data: ${JSON.stringify({
+              type: 'error',
+              message: `Agent error: ${error instanceof Error ? error.message : String(error)}`,
+              correlationId: `route_${Date.now()}`
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+            
+            // Send complete event
+            const completeEvent = `data: ${JSON.stringify({
+              type: 'complete'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(completeEvent));
+            
+            // Close controller
+            controller.close();
+            return;
+          }
           
-          // Note: runLegalIntakeAgentStream handles stream closure internally
-          // No need to close the controller here as it's already closed by the agent
+          // Ensure stream is properly closed after agent completes
+          try {
+            const completeEvent = `data: ${JSON.stringify({
+              type: 'complete'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(completeEvent));
+            console.log('✅ SSE complete event sent from route handler');
+          } catch (completeError) {
+            console.log('❌ Failed to send complete event from route handler:', completeError);
+          }
+          
+          // Close the controller
+          try {
+            controller.close();
+          } catch (closeError) {
+            console.log('Controller already closed, ignoring close attempt');
+          }
         } catch (error) {
           console.error('❌ Streaming error:', error);
           try {

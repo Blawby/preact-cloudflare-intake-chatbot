@@ -1,4 +1,5 @@
 import { Logger } from './logger.js';
+import { safeIncludes } from './safeStringUtils.js';
 
 export interface ToolCall {
   toolName: string;
@@ -62,8 +63,8 @@ export class ToolCallParser {
         
         const isSensitive = this.isSensitiveField(key);
         
-        if (isSensitive && typeof value === 'string') {
-          if (value.includes('@')) {
+        if (isSensitive && typeof value === 'string' && value) {
+          if (safeIncludes(value, '@')) {
             const [local, domain] = value.split('@');
             result[key] = `${local.substring(0, 2)}***@${domain}`;
           } else if (value.length > 4) {
@@ -88,7 +89,7 @@ export class ToolCallParser {
    */
   static parseToolCall(response: string): ToolCallParseResult {
     // Check for tool call indicators
-    if (!response.includes('TOOL_CALL:')) {
+    if (!safeIncludes(response, 'TOOL_CALL:')) {
       return { success: false, error: 'No tool call detected' };
     }
 

@@ -1,10 +1,11 @@
 import { ValidationService } from '../../services/ValidationService.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { Logger } from '../../utils/logger.js';
-import { LegalIntakeLogger } from './legalIntakeLogger.js';
+import { LegalIntakeLogger, LegalIntakeOperation, type MatterCreationContext } from './legalIntakeLogger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import type { Env } from '../../types.js';
 import type { TeamConfig } from '../../services/TeamService.js';
+import { ConversationState } from './conversationStateMachine.js';
 
 // Re-export the canonical TOOL_HANDLERS registry to prevent drift
 export { TOOL_HANDLERS } from '../legalIntakeAgent.js';
@@ -302,7 +303,7 @@ export async function handleCreateMatter(
       
       // Log matter creation start
       if (correlationId) {
-        const context = {
+        const context: MatterCreationContext = {
           hasName: Boolean(parameters.name),
           hasEmail: Boolean(parameters.email),
           hasPhone: Boolean(parameters.phone),
@@ -319,9 +320,9 @@ export async function handleCreateMatter(
           correlationId,
           sessionId,
           teamId,
-          'matter_creation_start' as any,
+          LegalIntakeOperation.MATTER_CREATION_START,
           parameters.matter_type,
-          context as any
+          context
         );
       }
       
@@ -357,7 +358,7 @@ export async function handleCreateMatter(
       
       // Log successful matter creation
       if (correlationId) {
-        const context = {
+        const context: MatterCreationContext = {
           hasName: Boolean(parameters.name),
           hasEmail: Boolean(parameters.email),
           hasPhone: Boolean(parameters.phone),
@@ -374,9 +375,9 @@ export async function handleCreateMatter(
           correlationId,
           sessionId,
           teamId,
-          'matter_creation_success' as any,
+          LegalIntakeOperation.MATTER_CREATION_SUCCESS,
           parameters.matter_type,
-          context as any
+          context
         );
       }
       

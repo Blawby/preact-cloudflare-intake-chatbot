@@ -115,18 +115,7 @@ export class PaymentService {
       const teamConsultationFee = team?.config?.consultationFee;
       
       // Validate and normalize the consultation fee
-      let normalizedFee: number;
-      if (teamConsultationFee !== undefined && teamConsultationFee !== null) {
-        const parsedFee = parseFloat(String(teamConsultationFee));
-        if (isFinite(parsedFee) && parsedFee > 0) {
-          normalizedFee = parsedFee;
-        } else {
-          console.warn('⚠️ Invalid consultation fee, using default $75.00:', teamConsultationFee);
-          normalizedFee = 75.00; // Default fallback
-        }
-      } else {
-        normalizedFee = 75.00; // Default fallback
-      }
+      const normalizedFee = this.validateConsultationFee(teamConsultationFee);
       
       // Convert to integer cents and ensure minimum value
       const defaultPriceCents = Math.max(100, Math.round(normalizedFee * 100)); // Minimum 100 cents ($1.00)
@@ -871,5 +860,22 @@ export class PaymentService {
         error: `Failed to check payment status: ${error}`
       };
     }
+  }
+
+  /**
+   * Validates and normalizes consultation fee from team configuration
+   * @param teamConsultationFee - The consultation fee from team config (can be any type)
+   * @returns A valid number representing the consultation fee in dollars
+   */
+  private validateConsultationFee(teamConsultationFee: any): number {
+    if (teamConsultationFee !== undefined && teamConsultationFee !== null) {
+      const parsedFee = parseFloat(String(teamConsultationFee));
+      if (isFinite(parsedFee) && parsedFee > 0) {
+        return parsedFee;
+      } else {
+        console.warn('⚠️ Invalid consultation fee, using default $75.00:', teamConsultationFee);
+      }
+    }
+    return 75.00; // Default fallback
   }
 } 

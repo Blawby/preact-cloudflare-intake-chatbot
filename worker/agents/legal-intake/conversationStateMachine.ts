@@ -1,6 +1,7 @@
 import { Logger } from '../../utils/logger.js';
 import { PromptBuilder } from '../../utils/promptBuilder.js';
 import type { Env } from '../../types.js';
+import { hasContactInformation as hasContactInfo, detectContactInfo, logContactInfoDetection } from '../../utils/contactInfoUtils.js';
 import {
   ConversationStateError,
   AIServiceError,
@@ -21,6 +22,7 @@ export enum ConversationState {
   QUALIFYING_LEAD = 'QUALIFYING_LEAD',
   SHOWING_CONTACT_FORM = 'SHOWING_CONTACT_FORM',
   READY_TO_CREATE_MATTER = 'READY_TO_CREATE_MATTER',
+  CREATING_MATTER = 'CREATING_MATTER',
   MATTER_CREATED = 'MATTER_CREATED',
   MATTER_CREATION_FAILED = 'MATTER_CREATION_FAILED',
   GATHERING_INFORMATION = 'GATHERING_INFORMATION'
@@ -49,6 +51,19 @@ export interface ConversationContext {
 }
 
 export class ConversationStateMachine {
+  /**
+   * Determines if contact information has been provided in the conversation
+   */
+  static hasContactInformation(conversationText: string): boolean {
+    const detection = detectContactInfo(conversationText);
+    const result = hasContactInfo(conversationText);
+    
+    // Log for debugging using centralized utility
+    logContactInfoDetection(conversationText, detection);
+    
+    return result;
+  }
+
   /**
    * Determines if the conversation is a general inquiry
    */
@@ -214,7 +229,14 @@ export class ConversationStateMachine {
         let context: ConversationContext;
         try {
           context = await PromptBuilder.extractConversationInfo(conversationText, env);
+          console.log('🔍 Conversation context extracted:', {
+            hasLegalIssue: context.hasLegalIssue,
+            legalIssueType: context.legalIssueType,
+            description: context.description,
+            isQualifiedLead: context.isQualifiedLead
+          });
         } catch (error) {
+          console.log('🔍 Failed to extract conversation context:', error);
           Logger.error('Failed to extract conversation context:', error);
           return ConversationState.GATHERING_INFORMATION;
         }
@@ -260,12 +282,33 @@ export class ConversationStateMachine {
           return ConversationState.COLLECTING_DETAILS;
         }
 
+        // Check if contact information has been provided
+        if (this.hasContactInformation(conversationText)) {
+          console.log('🔍 Transitioning to READY_TO_CREATE_MATTER state due to contact information');
+          console.log('🔍 Context at transition:', {
+            hasLegalIssue: context.hasLegalIssue,
+            legalIssueType: context.legalIssueType,
+            description: context.description,
+            isQualifiedLead: context.isQualifiedLead,
+            reason: 'All required information present (legal + contact)'
+          });
+          return ConversationState.READY_TO_CREATE_MATTER;
+        }
+
         // NEW: Lead qualification step - ask qualifying questions before showing contact form
         if (!context.isQualifiedLead) {
           return ConversationState.QUALIFYING_LEAD;
         }
 
         // If we have all legal information AND lead is qualified, show contact form
+        console.log('🔍 Final state determination: SHOWING_CONTACT_FORM');
+        console.log('🔍 Context for contact form:', {
+          hasLegalIssue: context.hasLegalIssue,
+          legalIssueType: context.legalIssueType,
+          description: context.description,
+          isQualifiedLead: context.isQualifiedLead,
+          reason: 'Legal info complete, lead qualified, contact info needed'
+        });
         return ConversationState.SHOWING_CONTACT_FORM;
       },
       {

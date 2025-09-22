@@ -26,9 +26,9 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
   
-  // Debug hooks for test environment
+  // Debug hooks for test environment (development only)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
       (window as any).__DEBUG_AI_MESSAGES__ = (messages: any[]) => {
         console.log('[TEST] Current messages:', messages.map((m) => ({ role: m.role, isUser: m.isUser, id: m.id })));
       };
@@ -43,7 +43,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
         msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
       );
       // Debug hook for test environment
-      if (typeof window !== 'undefined' && (window as any).__DEBUG_AI_MESSAGES__) {
+      if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_AI_MESSAGES__) {
         (window as any).__DEBUG_AI_MESSAGES__(updated);
       }
       return updated;
@@ -144,8 +144,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                 // Concatenate all data lines with newline separators
                 const combinedData = dataLines.map(line => line.slice(6)).join('\n');
                 const data = JSON.parse(combinedData);
-                // Debug hook for test environment
-                if (typeof window !== 'undefined' && (window as any).__DEBUG_SSE_EVENTS__) {
+                // Debug hook for test environment (development only)
+                if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SSE_EVENTS__) {
                   (window as any).__DEBUG_SSE_EVENTS__(data);
                 }
                 
@@ -268,8 +268,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
 
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
-    // Debug hook for test environment
-    if (typeof window !== 'undefined' && (window as any).__DEBUG_SEND_MESSAGE__) {
+    // Debug hook for test environment (development only)
+    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SEND_MESSAGE__) {
       (window as any).__DEBUG_SEND_MESSAGE__(message, attachments);
     }
     

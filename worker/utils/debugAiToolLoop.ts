@@ -8,12 +8,35 @@
  * 4. Provides detailed diagnostics for AI tool calling issues
  */
 
-import { ToolDefinition } from '../types/toolTypes';
+import { ToolDefinition } from '../agents/legal-intake/index';
 import { ConversationContext, ConversationState } from '../agents/legal-intake/conversationStateMachine';
+import { Logger } from './logger';
+
+/**
+ * Generate a unique correlation ID for tracking debug sessions
+ */
+function generateCorrelationId(): string {
+  return `debug-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Structured logger for debug operations
+ */
+function logDebug(correlationId: string, level: 'info' | 'warn' | 'error', message: string, metadata?: Record<string, unknown>): void {
+  const logEntry = {
+    correlationId,
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...(metadata && { metadata })
+  };
+  
+  console.log(JSON.stringify(logEntry));
+}
 
 export interface DebugConfig {
   /** Available tools to validate */
-  tools: ToolDefinition<any>[];
+  tools: ToolDefinition[];
   /** System prompt to analyze */
   systemPrompt: string;
   /** Current conversation state */
@@ -69,10 +92,10 @@ export interface DebugResult {
 }
 
 /**
- * 🔍 Debug the AI tool loop and provide comprehensive diagnostics
+ * Initialize debug result with default values
  */
-export function debugAiToolLoop(config: DebugConfig): DebugResult {
-  const result: DebugResult = {
+function initializeDebugResult(): DebugResult {
+  return {
     healthy: true,
     criticalIssues: [],
     warnings: [],
@@ -85,16 +108,14 @@ export function debugAiToolLoop(config: DebugConfig): DebugResult {
     },
     fixes: []
   };
+}
 
-  console.log('🔍 Starting AI Tool Loop Debug Analysis...');
-  console.log('📋 Debug Config:', {
-    toolCount: config.tools.length,
-    state: config.state,
-    model: config.model,
-    verbose: config.verbose
-  });
-
-  // Analyze tools
+/**
+ * Analyze available tools and identify issues
+ */
+function analyzeTools(config: DebugConfig, result: DebugResult, correlationId: string): void {
+  logDebug(correlationId, 'info', 'Starting tool analysis', { toolCount: config.tools.length });
+  
   result.analysis.tools.available = config.tools.map(tool => tool.name);
   result.analysis.tools.expected = ['show_contact_form', 'create_matter', 'request_lawyer_review'];
   result.analysis.tools.missing = result.analysis.tools.expected.filter(
@@ -105,14 +126,27 @@ export function debugAiToolLoop(config: DebugConfig): DebugResult {
   if (result.analysis.tools.missing.includes('show_contact_form')) {
     result.criticalIssues.push('❌ CRITICAL: show_contact_form tool is missing');
     result.fixes.push('Add show_contact_form tool to availableTools array');
+    logDebug(correlationId, 'error', 'Critical tool missing', { tool: 'show_contact_form' });
   }
 
   if (result.analysis.tools.available.length === 0) {
     result.criticalIssues.push('❌ CRITICAL: No tools available to AI');
     result.fixes.push('Ensure tools array is passed to env.AI.run() call');
+    logDebug(correlationId, 'error', 'No tools available', { toolCount: 0 });
   }
 
-  // Analyze system prompt
+  logDebug(correlationId, 'info', 'Tool analysis completed', {
+    available: result.analysis.tools.available,
+    missing: result.analysis.tools.missing
+  });
+}
+
+/**
+ * Analyze system prompt for completeness and tool references
+ */
+function analyzeSystemPrompt(config: DebugConfig, result: DebugResult, correlationId: string): void {
+  logDebug(correlationId, 'info', 'Starting system prompt analysis', { promptLength: config.systemPrompt.length });
+  
   result.analysis.systemPrompt.length = config.systemPrompt.length;
   result.analysis.systemPrompt.mentionsTools = config.systemPrompt.includes('show_contact_form');
   result.analysis.systemPrompt.hasInstructions = config.systemPrompt.includes('You are') || 
@@ -127,19 +161,35 @@ export function debugAiToolLoop(config: DebugConfig): DebugResult {
   if (config.systemPrompt.length < 500) {
     result.warnings.push('⚠️ System prompt is very short (< 500 chars)');
     result.suggestions.push('Consider expanding system prompt with more detailed instructions');
+    logDebug(correlationId, 'warn', 'System prompt too short', { length: config.systemPrompt.length });
   }
 
   if (!result.analysis.systemPrompt.mentionsTools) {
     result.criticalIssues.push('❌ CRITICAL: System prompt does not mention show_contact_form');
     result.fixes.push('Add show_contact_form instructions to system prompt');
+    logDebug(correlationId, 'error', 'System prompt missing tool reference', { tool: 'show_contact_form' });
   }
 
   if (!result.analysis.systemPrompt.hasInstructions) {
     result.warnings.push('⚠️ System prompt lacks clear role instructions');
     result.suggestions.push('Add clear "You are a..." instructions to system prompt');
+    logDebug(correlationId, 'warn', 'System prompt lacks role instructions');
   }
 
-  // Analyze state machine
+  logDebug(correlationId, 'info', 'System prompt analysis completed', {
+    length: result.analysis.systemPrompt.length,
+    mentionsTools: result.analysis.systemPrompt.mentionsTools,
+    hasInstructions: result.analysis.systemPrompt.hasInstructions,
+    toolReferences: result.analysis.systemPrompt.toolReferences
+  });
+}
+
+/**
+ * Analyze state machine and context validity
+ */
+function analyzeStateMachine(config: DebugConfig, result: DebugResult, correlationId: string): void {
+  logDebug(correlationId, 'info', 'Starting state machine analysis', { currentState: config.state });
+  
   result.analysis.stateMachine.currentState = config.state;
   result.analysis.stateMachine.expectedTransitions = getExpectedTransitions(config.state);
   
@@ -151,9 +201,23 @@ export function debugAiToolLoop(config: DebugConfig): DebugResult {
   if (contextIssues.length > 0) {
     result.warnings.push(`⚠️ Context issues: ${contextIssues.join(', ')}`);
     result.suggestions.push('Ensure context is properly populated before AI call');
+    logDebug(correlationId, 'warn', 'Context validation issues', { issues: contextIssues });
   }
 
-  // Analyze model configuration
+  logDebug(correlationId, 'info', 'State machine analysis completed', {
+    currentState: result.analysis.stateMachine.currentState,
+    expectedTransitions: result.analysis.stateMachine.expectedTransitions,
+    contextValid: result.analysis.stateMachine.contextValid,
+    missingContext: result.analysis.stateMachine.missingContext
+  });
+}
+
+/**
+ * Analyze AI model configuration
+ */
+function analyzeModel(config: DebugConfig, result: DebugResult, correlationId: string): void {
+  logDebug(correlationId, 'info', 'Starting model analysis', { model: config.model });
+  
   result.analysis.model.configured = Boolean(config.model);
   result.analysis.model.modelName = config.model;
   result.analysis.model.supportsTools = config.model?.includes('llama') || config.model?.includes('gpt') || false;
@@ -161,33 +225,71 @@ export function debugAiToolLoop(config: DebugConfig): DebugResult {
   if (!result.analysis.model.configured) {
     result.criticalIssues.push('❌ CRITICAL: No AI model configured');
     result.fixes.push('Set AI_MODEL_CONFIG.model in environment');
+    logDebug(correlationId, 'error', 'No AI model configured');
   }
 
   if (!result.analysis.model.supportsTools) {
     result.warnings.push('⚠️ Model may not support tool calling');
     result.suggestions.push('Consider using a model that supports function calling');
+    logDebug(correlationId, 'warn', 'Model may not support tool calling', { model: config.model });
   }
 
-  // Determine overall health
-  result.healthy = result.criticalIssues.length === 0;
+  logDebug(correlationId, 'info', 'Model analysis completed', {
+    configured: result.analysis.model.configured,
+    modelName: result.analysis.model.modelName,
+    supportsTools: result.analysis.model.supportsTools
+  });
+}
 
-  // Generate detailed output
-  if (config.verbose) {
-    console.log('🔍 Detailed Analysis Results:');
-    console.log('  Tools:', result.analysis.tools);
-    console.log('  System Prompt:', result.analysis.systemPrompt);
-    console.log('  State Machine:', result.analysis.stateMachine);
-    console.log('  Model:', result.analysis.model);
-  }
-
-  // Log summary
-  console.log('🎯 Debug Summary:', {
+/**
+ * Log debug summary with structured logging
+ */
+function logDebugSummary(result: DebugResult, correlationId: string, config: DebugConfig): void {
+  const summary = {
     healthy: result.healthy,
     criticalIssues: result.criticalIssues.length,
     warnings: result.warnings.length,
     suggestions: result.suggestions.length,
     fixes: result.fixes.length
+  };
+
+  logDebug(correlationId, 'info', 'Debug analysis completed', summary);
+
+  if (config.verbose) {
+    logDebug(correlationId, 'info', 'Detailed analysis results', {
+      tools: result.analysis.tools,
+      systemPrompt: result.analysis.systemPrompt,
+      stateMachine: result.analysis.stateMachine,
+      model: result.analysis.model
+    });
+  }
+}
+
+/**
+ * 🔍 Debug the AI tool loop and provide comprehensive diagnostics
+ */
+export function debugAiToolLoop(config: DebugConfig): DebugResult {
+  const correlationId = generateCorrelationId();
+  const result = initializeDebugResult();
+
+  logDebug(correlationId, 'info', 'Starting AI Tool Loop Debug Analysis', {
+    toolCount: config.tools.length,
+    state: config.state,
+    model: config.model,
+    verbose: config.verbose
   });
+
+  // Run all analysis functions
+  analyzeTools(config, result, correlationId);
+  analyzeSystemPrompt(config, result, correlationId);
+  analyzeStateMachine(config, result, correlationId);
+  analyzeModel(config, result, correlationId);
+
+  // Determine overall health
+  result.healthy = result.criticalIssues.length === 0;
+
+  // Log summary
+  logDebugSummary(result, correlationId, config);
 
   return result;
 }
@@ -196,7 +298,7 @@ export function debugAiToolLoop(config: DebugConfig): DebugResult {
  * 🔍 Quick debug function for common issues
  */
 export function quickDebugAiToolLoop(
-  tools: ToolDefinition<any>[],
+  tools: ToolDefinition[],
   systemPrompt: string,
   state: ConversationState,
   context: ConversationContext
@@ -228,7 +330,7 @@ function validateContext(context: ConversationContext, state: ConversationState)
 
   // Check for required context based on state
   switch (state) {
-    case 'SHOWING_CONTACT_FORM':
+    case ConversationState.SHOWING_CONTACT_FORM:
       if (!context.legalIssueType) {
         issues.push('missing legalIssueType');
       }
@@ -237,7 +339,7 @@ function validateContext(context: ConversationContext, state: ConversationState)
       }
       break;
     
-    case 'READY_TO_CREATE_MATTER':
+    case ConversationState.READY_TO_CREATE_MATTER:
       if (!context.legalIssueType) {
         issues.push('missing legalIssueType');
       }
@@ -259,13 +361,16 @@ function validateContext(context: ConversationContext, state: ConversationState)
  */
 function getExpectedTransitions(state: ConversationState): string[] {
   const transitions: Record<ConversationState, string[]> = {
-    'COLLECTING_INFO': ['SHOWING_CONTACT_FORM', 'READY_TO_CREATE_MATTER'],
-    'SHOWING_CONTACT_FORM': ['READY_TO_CREATE_MATTER'],
-    'READY_TO_CREATE_MATTER': ['MATTER_CREATED'],
-    'MATTER_CREATED': [],
-    'LAWYER_REVIEW': ['MATTER_CREATED'],
-    'PAYMENT_REQUIRED': ['MATTER_CREATED'],
-    'GENERAL_INQUIRY': []
+    [ConversationState.INITIAL]: [ConversationState.GENERAL_INQUIRY, ConversationState.COLLECTING_LEGAL_ISSUE],
+    [ConversationState.GENERAL_INQUIRY]: [],
+    [ConversationState.COLLECTING_LEGAL_ISSUE]: [ConversationState.COLLECTING_DETAILS, ConversationState.GENERAL_INQUIRY],
+    [ConversationState.COLLECTING_DETAILS]: [ConversationState.QUALIFYING_LEAD, ConversationState.SHOWING_CONTACT_FORM],
+    [ConversationState.QUALIFYING_LEAD]: [ConversationState.SHOWING_CONTACT_FORM, ConversationState.READY_TO_CREATE_MATTER],
+    [ConversationState.SHOWING_CONTACT_FORM]: [ConversationState.READY_TO_CREATE_MATTER],
+    [ConversationState.READY_TO_CREATE_MATTER]: [ConversationState.MATTER_CREATED, ConversationState.MATTER_CREATION_FAILED],
+    [ConversationState.MATTER_CREATED]: [],
+    [ConversationState.MATTER_CREATION_FAILED]: [ConversationState.READY_TO_CREATE_MATTER],
+    [ConversationState.GATHERING_INFORMATION]: [ConversationState.COLLECTING_DETAILS, ConversationState.QUALIFYING_LEAD]
   };
 
   return transitions[state] || [];
@@ -275,27 +380,32 @@ function getExpectedTransitions(state: ConversationState): string[] {
  * 🔍 Log AI tool loop debug information
  */
 export function logAiToolLoopDebug(
-  aiResult: any,
-  tools: ToolDefinition<any>[],
+  aiResult: {
+    tool_calls?: Array<{ name: string }>;
+    response?: string;
+    usage?: unknown;
+  },
+  tools: ToolDefinition[],
   systemPrompt: string,
   state: ConversationState,
   context: ConversationContext
 ): void {
-  console.log('🔍 AI Tool Loop Debug:');
-  console.log('  Tools available:', tools.map(t => t.name));
-  console.log('  System prompt length:', systemPrompt.length);
-  console.log('  Current state:', state);
-  console.log('  Context valid:', Boolean(context.legalIssueType && context.description));
-  console.log('  AI response type:', aiResult.tool_calls ? 'tool_calls' : 'text');
-  console.log('  Tool calls:', aiResult.tool_calls?.map((tc: any) => tc.name) || 'none');
-  console.log('  Response text:', aiResult.response?.substring(0, 100) || 'null');
-  console.log('  Usage:', aiResult.usage || 'not available');
+  Logger.info('AI Tool Loop Debug', {
+    correlationId: generateCorrelationId(),
+    toolsAvailable: tools.map(t => t.name),
+    systemPromptLength: systemPrompt.length,
+    currentState: state,
+    contextValid: Boolean(context.legalIssueType && context.description),
+    aiResponseType: aiResult.tool_calls ? 'tool_calls' : 'text',
+    toolCalls: aiResult.tool_calls?.map(tc => tc.name) || [],
+    responsePreview: aiResult.response?.substring(0, 100) || null
+  });
 }
 
 /**
  * 🔍 Validate tools array before AI call
  */
-export function validateToolsBeforeCall(tools: ToolDefinition<any>[]): {
+export function validateToolsBeforeCall(tools: ToolDefinition[]): {
   valid: boolean;
   issues: string[];
   suggestions: string[];
