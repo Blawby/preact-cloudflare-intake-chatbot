@@ -63,9 +63,6 @@ deleted_classes = ["ParalegalAgent"]
 # Domain configuration for ai.blawby.com
 [env.production]
 name = "blawby-ai-chatbot"
-routes = [
-  { pattern = "ai.blawby.com/api/*", zone_name = "blawby.com" }
-]
 ai = { binding = "AI" }
 kv_namespaces = [
   { binding = "CHAT_SESSIONS", id = "9ca96bd55b2d4455bad3fe0cda914f14", preview_id = "e7bbadb101d44a828fb3ef34528b3540", experimental_remote = true }
