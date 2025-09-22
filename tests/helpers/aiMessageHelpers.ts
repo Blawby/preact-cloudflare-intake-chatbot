@@ -4,6 +4,19 @@ import { Page } from '@playwright/test';
 const DEFAULT_TIMEOUT_MS = 20000;
 const MIN_MESSAGE_CONTENT_LENGTH = 50;
 
+// Type definitions for tool call monitoring
+interface ToolCall {
+  tool: string;
+  [key: string]: unknown;
+}
+
+// Extend Window interface to include our custom property
+declare global {
+  interface Window {
+    __toolCalls?: ToolCall[];
+  }
+}
+
 /**
  * Waits for a specific tool call to be made by the AI
  * @param page - Playwright page object
@@ -15,14 +28,31 @@ export async function waitForToolCall(
   toolName: string, 
   timeout: number = 10000
 ): Promise<void> {
-  await page.waitForFunction(
-    (name) => {
-      const logs = (window as any).__toolCalls || [];
-      return logs.some((log: any) => log.tool === name);
-    },
-    toolName,
-    { timeout }
-  );
+  // Validate inputs
+  if (!toolName || typeof toolName !== 'string' || toolName.trim().length === 0) {
+    throw new Error('toolName must be a non-empty string');
+  }
+  
+  if (typeof timeout !== 'number' || timeout < 0 || !Number.isFinite(timeout)) {
+    throw new Error('timeout must be a non-negative finite number');
+  }
+
+  try {
+    await page.waitForFunction(
+      (name: string) => {
+        const logs = window.__toolCalls || [];
+        return logs.some((log: ToolCall) => log.tool === name);
+      },
+      toolName,
+      { timeout }
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `waitForToolCall: Failed to wait for tool call '${toolName}' within ${timeout}ms. ` +
+      `Original error: ${errorMessage}`
+    );
+  }
 }
 
 /**
@@ -30,9 +60,19 @@ export async function waitForToolCall(
  * @param page - Playwright page object
  */
 export async function setupToolCallMonitoring(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    (window as any).__toolCalls = [];
-  });
+  try {
+    await page.addInitScript(() => {
+      window.__toolCalls = [];
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const currentUrl = page.url();
+    throw new Error(
+      `setupToolCallMonitoring: Failed to inject tool call monitoring script. ` +
+      `Current URL: ${currentUrl}. ` +
+      `Original error: ${errorMessage}`
+    );
+  }
 }
 
 /**

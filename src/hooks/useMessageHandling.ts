@@ -187,20 +187,25 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     break;
                     
                   case 'tool_call':
-                    // Tool call detected, show processing message with tool-specific text
-                    const toolName = data.toolName || data.name;
-                    const toolMessage = toolName ? TOOL_LOADING_MESSAGES[toolName] : undefined;
-                    
-                    // Log tool call for test monitoring
-                    if (typeof window !== 'undefined') {
-                      if (!(window as any).__toolCalls) {
-                        (window as any).__toolCalls = [];
+                    try {
+                      // Tool call detected, show processing message with tool-specific text
+                      const toolName = data?.toolName || data?.name;
+                      const toolMessage = toolName ? TOOL_LOADING_MESSAGES[toolName] : undefined;
+                      
+                      // Log tool call for test monitoring (sanitized)
+                      if (typeof window !== 'undefined') {
+                        if (!(window as any).__toolCalls) {
+                          (window as any).__toolCalls = [];
+                        }
+                        (window as any).__toolCalls.push({
+                          tool: toolName,
+                          timestamp: Date.now(),
+                          type: data?.type
+                        });
                       }
-                      (window as any).__toolCalls.push({
-                        tool: toolName,
-                        timestamp: Date.now(),
-                        data: data
-                      });
+                    } catch (error) {
+                      console.warn('Error processing tool call:', error);
+                      // Continue with fallback behavior
                     }
                     
                     updateAIMessage(placeholderId, { 

@@ -24,7 +24,7 @@ BEGIN
         JOIN information_schema.check_constraints cc ON tc.constraint_name = cc.constraint_name
         WHERE tc.table_name = 'matters'
         AND tc.constraint_type = 'CHECK'
-        AND cc.check_clause LIKE '%priority%'
+        AND tc.constraint_name = 'matters_priority_check'
         AND tc.table_schema = 'public'
     ) THEN
         ALTER TABLE matters ADD CONSTRAINT matters_priority_check CHECK(priority IN ('low','normal','high'));
@@ -39,6 +39,9 @@ UPDATE matters SET priority =
     ELSE 'normal'
   END
 WHERE urgency IS NOT NULL;
+
+-- After backfill, remove the default to force explicit priority values
+ALTER TABLE matters ALTER COLUMN priority DROP DEFAULT;
 
 -- Create index on priority column for better query performance
 CREATE INDEX IF NOT EXISTS idx_matters_priority ON matters(priority);

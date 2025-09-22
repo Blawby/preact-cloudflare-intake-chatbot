@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConversationStateMachine, ConversationState } from '../../worker/agents/legal-intake/conversationStateMachine.js';
 import { hasContactInformation } from '../../worker/utils/contactInfoUtils.js';
+import { PromptBuilder } from '../../worker/utils/promptBuilder.js';
+import { AIService } from '../../worker/services/AIService.js';
 import type { Env } from '../../worker/types.js';
 
 // Mock the contact info utility
@@ -33,6 +35,7 @@ vi.mock('../../worker/services/AIService.js', () => ({
   }
 }));
 
+
 describe('ConversationStateMachine Business Logic', () => {
   // Create a properly typed mock environment that satisfies the Env interface
   // Using Record<string, any> for Cloudflare-specific types that aren't used in these tests
@@ -52,7 +55,7 @@ describe('ConversationStateMachine Business Logic', () => {
   });
 
   describe('getCurrentState business logic matrix', () => {
-    it('should return GATHERING_INFORMATION when no legal info and no contact info', async () => {
+    it('should return COLLECTING_LEGAL_ISSUE when no legal info and no contact info', async () => {
       // Mock context with no legal info and no contact info
       const mockContext = {
         hasLegalIssue: false,
@@ -65,14 +68,15 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: false
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
+      vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(false);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
-      expect(result).toBe(ConversationState.GATHERING_INFORMATION);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(ConversationState.COLLECTING_LEGAL_ISSUE);
     });
 
     it('should return SHOWING_CONTACT_FORM when legal info present but no contact info', async () => {
@@ -88,17 +92,18 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: true
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
+      vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(false);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
-      expect(result).toBe(ConversationState.SHOWING_CONTACT_FORM);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(ConversationState.SHOWING_CONTACT_FORM);
     });
 
-    it('should return GATHERING_INFORMATION when contact info present but no legal info', async () => {
+    it('should return COLLECTING_LEGAL_ISSUE when contact info present but no legal info', async () => {
       // Mock context with contact info but no legal info
       const mockContext = {
         hasLegalIssue: false,
@@ -111,14 +116,15 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: false
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
+      vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(true);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
-      expect(result).toBe(ConversationState.GATHERING_INFORMATION);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(ConversationState.COLLECTING_LEGAL_ISSUE);
     });
 
     it('should return READY_TO_CREATE_MATTER when both legal and contact info present', async () => {
@@ -134,14 +140,15 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: true
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
+      vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(true);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
-      expect(result).toBe(ConversationState.READY_TO_CREATE_MATTER);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(ConversationState.READY_TO_CREATE_MATTER);
     });
 
     it('should return QUALIFYING_LEAD when legal info present but lead not qualified', async () => {
@@ -157,14 +164,15 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: true
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
+      vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(false);
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
-      expect(result).toBe(ConversationState.QUALIFYING_LEAD);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(ConversationState.QUALIFYING_LEAD);
     });
 
     it('should return GENERAL_INQUIRY when conversation is a general inquiry', async () => {
@@ -180,18 +188,19 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: false
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
+      vi.mocked(PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(false);
 
       // Mock the general inquiry check
-      vi.mocked(require('../../worker/services/AIService.js').AIService.analyzeGeneralInquiry)
+      vi.spyOn(ConversationStateMachine, 'isGeneralInquiry')
         .mockResolvedValue({ success: true, data: true });
 
       const result = await ConversationStateMachine.getCurrentState(mockConversationText, mockEnv);
       
-      expect(result).toBe(ConversationState.GENERAL_INQUIRY);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(ConversationState.GENERAL_INQUIRY);
     });
   });
 
