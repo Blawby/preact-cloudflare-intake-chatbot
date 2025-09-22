@@ -480,6 +480,25 @@ export class PaymentService {
     return `invoice-${hash}`;
   }
 
+  // Invoice creation error codes for better error handling
+  type InvoiceErrorCode = 
+    | 'NETWORK_TIMEOUT'
+    | 'NETWORK_ABORT' 
+    | 'SERVER_ERROR'
+    | 'VALIDATION_ERROR'
+    | 'AUTHENTICATION_ERROR'
+    | 'RATE_LIMIT_ERROR'
+    | 'UNKNOWN_ERROR';
+
+  interface InvoiceResult {
+    success: boolean;
+    invoiceUrl?: string;
+    paymentId?: string;
+    error?: string;
+    errorCode?: InvoiceErrorCode;
+    isIndeterminate?: boolean; // true if we can't determine if invoice was created server-side
+  }
+
   /**
    * Creates an invoice with retry logic for transient failures
    */
@@ -488,7 +507,7 @@ export class PaymentService {
     apiToken: string, 
     invoiceData: InvoiceCreateRequest,
     idempotencyKey?: string
-  ): Promise<{ success: boolean; invoiceUrl?: string; paymentId?: string; error?: string }> {
+  ): Promise<InvoiceResult> {
     try {
       // Generate idempotency key if not provided
       const key = idempotencyKey || await this.generateInvoiceIdempotencyKey(invoiceData);
@@ -517,7 +536,13 @@ export class PaymentService {
 
             if (!response.ok) {
               const errorText = await response.text();
-              throw new Error(`Invoice creation failed: ${response.status} - ${errorText}`);
+              const error = new Error(`Invoice creation failed: ${response.status} - ${errorText}`);
+              // Add error code based on HTTP status
+              (error as any).errorCode = response.status >= 500 ? 'SERVER_ERROR' :
+                                        response.status === 401 ? 'AUTHENTICATION_ERROR' :
+                                        response.status === 429 ? 'RATE_LIMIT_ERROR' :
+                                        response.status >= 400 ? 'VALIDATION_ERROR' : 'UNKNOWN_ERROR';
+              throw error;
             }
 
             return await response.json() as InvoiceCreateResponse;
@@ -567,9 +592,31 @@ export class PaymentService {
       };
     } catch (error) {
       console.error('❌ Invoice creation error:', error);
+      
+      // Determine error code and if the error is indeterminate
+      let errorCode: InvoiceErrorCode = 'UNKNOWN_ERROR';
+      let isIndeterminate = false;
+      
+      if (error instanceof Error) {
+        // Check for specific error types
+        if (error.name === 'AbortError' || error.message.includes('aborted')) {
+          errorCode = 'NETWORK_ABORT';
+          isIndeterminate = true; // Network abort could still create invoice server-side
+        } else if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+          errorCode = 'NETWORK_TIMEOUT';
+          isIndeterminate = true; // Timeout could still create invoice server-side
+        } else if ((error as any).errorCode) {
+          errorCode = (error as any).errorCode;
+          // Server errors and rate limits are indeterminate
+          isIndeterminate = errorCode === 'SERVER_ERROR' || errorCode === 'RATE_LIMIT_ERROR';
+        }
+      }
+      
       return {
         success: false,
-        error: `Invoice creation failed: ${error instanceof Error ? error.message : String(error)}`
+        error: `Invoice creation failed: ${error instanceof Error ? error.message : String(error)}`,
+        errorCode,
+        isIndeterminate
       };
     }
   }
@@ -730,8 +777,23 @@ export class PaymentService {
 
         const invoiceResult = await this.createInvoiceWithRetry(teamUlid, apiToken, invoiceData);
         if (!invoiceResult.success) {
-          // Invoice creation failed - attempt to clean up the orphaned customer
-          console.log('🔄 Invoice creation failed, attempting to delete orphaned customer:', customerId);
+          // Conservative guard: Only delete customer if we're certain the invoice wasn't created
+          // Network aborts, timeouts, and server errors could still create invoices server-side
+          if (invoiceResult.isIndeterminate) {
+            console.warn('⚠️ Invoice creation failed with indeterminate error - preserving customer to avoid data loss:', {
+              customerId,
+              errorCode: invoiceResult.errorCode,
+              error: invoiceResult.error
+            });
+            
+            return {
+              success: false,
+              error: `Invoice creation failed due to ${invoiceResult.errorCode?.toLowerCase().replace('_', ' ')}. Please check your payment status or contact support.`
+            };
+          }
+          
+          // Only attempt cleanup for deterministic failures (validation errors, auth errors)
+          console.log('🔄 Invoice creation failed with deterministic error, attempting to delete orphaned customer:', customerId);
           const deleteResult = await this.deleteCustomerWithRetry(teamUlid, apiToken, customerId);
           if (!deleteResult.success) {
             console.error('❌ Failed to clean up orphaned customer:', customerId, 'Error:', deleteResult.error);

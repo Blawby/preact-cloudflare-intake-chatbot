@@ -799,7 +799,8 @@ export async function runLegalIntakeAgentStream(
       let toolResult: ErrorResult<unknown>;
       try {
         toolResult = await handler(parameters, env, teamConfig, correlationId, sessionId, teamId);
-        Logger.debug('Tool execution result:', toolResult);
+        // Note: Raw toolResult logging removed to prevent PII exposure
+        // LegalIntakeLogger.logToolCall handles sanitized logging above
         
         // Log successful tool call
         LegalIntakeLogger.logToolCall(
