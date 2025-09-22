@@ -54,6 +54,12 @@ binding = "DOC_EVENTS"
 # [[queues.consumers]]
 # queue = "doc-events"
 
+# Durable Objects migration to delete old ParalegalAgent class
+[[migrations]]
+tag = "v1"
+new_classes = []
+deleted_classes = ["ParalegalAgent"]
+
 # Domain configuration for ai.blawby.com
 [env.production]
 name = "blawby-ai-chatbot"

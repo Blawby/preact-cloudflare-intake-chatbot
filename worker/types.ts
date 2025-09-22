@@ -9,7 +9,6 @@ export interface Env {
   FILES_BUCKET?: R2Bucket;
   DOC_EVENTS: Queue;
   PARALEGAL_TASKS: Queue;
-  PARALEGAL_AGENT: DurableObjectNamespace;
   PAYMENT_API_KEY?: string;
   PAYMENT_API_URL?: string;
   
