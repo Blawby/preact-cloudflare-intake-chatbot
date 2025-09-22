@@ -1,5 +1,6 @@
-import { test, expect, type Request, type Page, type ConsoleMessage } from '@playwright/test';
+import { test, expect, type Request, type Page, type ConsoleMessage, type Locator } from '@playwright/test';
 import type { ToolCall } from '../../worker/utils/toolCallParser.js';
+import { waitForToolCall, setupToolCallMonitoring } from '../tests/helpers/aiMessageHelpers';
 
 // Timeout constants for AI responses
 const TIMEOUTS = {
@@ -10,7 +11,7 @@ const TIMEOUTS = {
 interface TestError extends Error {
   category: string;
   context: {
-    element?: any;
+    element?: Locator;
     messageText?: string | null;
     expectedPatterns?: RegExp[];
     [key: string]: any;
@@ -26,11 +27,24 @@ interface TestError extends Error {
  * @param testContext - Additional context for error reporting
  */
 async function validateAIResponse(
-  element: any,
+  element: Locator,
   messageText: string,
   expectedPatterns: RegExp[],
   testContext: Record<string, any> = {}
 ): Promise<void> {
+  // Input validation guard clauses
+  if (!element) {
+    throw new Error('validateAIResponse: element parameter is null or undefined');
+  }
+  
+  if (typeof element.textContent !== 'function' || typeof element.isVisible !== 'function') {
+    throw new Error('validateAIResponse: element parameter is not a valid Playwright Locator (missing textContent or isVisible methods)');
+  }
+  
+  if (typeof TIMEOUTS.AI_RESPONSE !== 'number' || TIMEOUTS.AI_RESPONSE <= 0) {
+    throw new Error(`validateAIResponse: TIMEOUTS.AI_RESPONSE must be a positive number, got: ${TIMEOUTS.AI_RESPONSE}`);
+  }
+  
   try {
     // Wait for finalMessage with TIMEOUTS.AI_RESPONSE
     await expect(element).toBeVisible({ timeout: TIMEOUTS.AI_RESPONSE });
@@ -106,70 +120,62 @@ test.describe('AI Tool Calling', () => {
       throw new Error(`Failed to navigate to home page: ${error instanceof Error ? error.message : String(error)}`);
     }
     
-    // Monitor network requests to verify tool calls
-    const toolCallRequests: Request[] = [];
-    page.on('request', request => {
-      if (request.url().includes('/api/agent/stream')) {
-        toolCallRequests.push(request);
-      }
-    });
+    // Setup tool call monitoring
+    await setupToolCallMonitoring(page);
     
-    // Monitor console logs for tool call debugging
-    const consoleLogs: string[] = [];
-    page.on('console', (msg: ConsoleMessage): void => {
-      const text: string = msg.text();
-      if (text.includes('show_contact_form') || text.includes('tool_calls')) {
-        consoleLogs.push(text);
-      }
-    });
-    
-    // Step 1: User provides complete legal information
+    // Step 1: User provides legal issue (first message - AI should ask follow-up questions)
     const legalIssueInput = page.locator('[data-testid="message-input"]');
     try {
-      await legalIssueInput.fill('I was injured in a car crash with back pain. The other driver was John Smith and I have his insurance information. I want to pursue a personal injury claim.');
+      await legalIssueInput.fill('I was injured in a car crash with back pain. I want to pursue a personal injury claim.');
       await legalIssueInput.press('Enter');
     } catch (error) {
       throw new Error(`Failed to fill legal issue input: ${error instanceof Error ? error.message : String(error)}`);
     }
     
-    // Step 2: Wait for AI to process and call show_contact_form tool
+    // Step 2: Wait for AI to ask follow-up questions (should NOT show contact form yet)
     try {
-      await expect(page.locator('[data-testid="contact-form"]')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('[data-testid="ai-message"]')).toBeVisible({ timeout: 15000 });
+      // Verify contact form is NOT shown on first message
+      await expect(page.locator('[data-testid="contact-form"]')).not.toBeVisible();
     } catch (error) {
-      throw new Error(`Contact form did not appear within timeout: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`AI did not respond or contact form appeared too early: ${error instanceof Error ? error.message : String(error)}`);
     }
     
-    // Step 3: Verify the tool call was made (check console logs or network requests)
-    // The contact form appearing indicates the tool was called successfully
-    
-    // Step 4: Verify AI response indicates tool usage
-    const aiMessage = page.locator('[data-testid="ai-message"]').first();
+    // Step 3: User provides qualifying information with contact details
     try {
-      await expect(aiMessage).toBeVisible();
+      await legalIssueInput.fill('It happened last week when another driver ran a red light. My name is John Doe, email john@example.com, phone 555-123-4567. I have the other driver\'s insurance information.');
+      await legalIssueInput.press('Enter');
     } catch (error) {
-      throw new Error(`AI message not visible: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to fill qualifying information: ${error instanceof Error ? error.message : String(error)}`);
     }
     
-    // The AI should have called the tool, so we should see the contact form
+    // Step 4: Wait for AI to call show_contact_form tool OR create_matter directly
     try {
-      await expect(page.locator('[data-testid="contact-form"]')).toBeVisible();
+      // Wait for either tool call
+      await Promise.race([
+        waitForToolCall(page, 'show_contact_form', 15000),
+        waitForToolCall(page, 'create_matter', 15000)
+      ]);
     } catch (error) {
-      throw new Error(`Contact form not visible after AI response: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`No tool call detected within timeout: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    
+    // Step 5: Verify the appropriate UI element appears
+    try {
+      // Either contact form OR matter canvas should be visible
+      await expect(
+        page.locator('[data-testid="contact-form"]').or(page.locator('[data-testid="matter-canvas"]'))
+      ).toBeVisible({ timeout: 5000 });
+    } catch (error) {
+      throw new Error(`Neither contact form nor matter canvas appeared: ${error instanceof Error ? error.message : String(error)}`);
     }
   });
 
   test('AI calls create_matter tool after contact form submission', async ({ page }: { page: Page }): Promise<void> => {
     await page.goto('/');
     
-    // Monitor console logs for tool calls
-    const toolCallLogs: string[] = [];
-    page.on('console', (msg: ConsoleMessage): void => {
-      const text: string = msg.text();
-      if (text.includes('create_matter') || text.includes('show_contact_form') || text.includes('tool_calls')) {
-        toolCallLogs.push(text);
-        console.log(`Debug: Tool call log: ${text}`);
-      }
-    });
+    // Setup tool call monitoring
+    await setupToolCallMonitoring(page);
     
     // Step 1: Send message with legal issue but no contact info
     const legalIssueInput = page.locator('[data-testid="message-input"]');
@@ -183,8 +189,6 @@ test.describe('AI Tool Calling', () => {
     const contactForm = page.locator('[data-testid="contact-form"]');
     await expect(contactForm).toBeVisible({ timeout: 10000 });
     
-    console.log(`Debug: Contact form visible: true`);
-    
     // Fill and submit contact form
     await page.locator('input[name="name"]').fill('Jane Doe');
     await page.locator('input[name="email"]').fill('jane@example.com');
@@ -194,44 +198,18 @@ test.describe('AI Tool Calling', () => {
     
     await page.locator('[data-testid="contact-form-submit"]').click();
     
-    // Wait for the contact form submission to be processed
-    await page.waitForTimeout(2000);
+    // Step 4: Wait for AI to call create_matter tool after form submission
+    try {
+      await waitForToolCall(page, 'create_matter', 15000);
+    } catch (error) {
+      throw new Error(`create_matter tool call not detected: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
-    // Debug: Check if the contact form is still visible (it should disappear after submission)
-    const isFormStillVisible = await contactForm.isVisible();
-    console.log(`Debug: Contact form still visible after submission: ${isFormStillVisible}`);
-    
-    // Step 4: Wait for AI to process the contact form submission and call create_matter
-    // The AI should respond with a success message after processing the contact form
-    const finalMessage = page.locator('[data-testid="ai-message"]').last();
-    await expect(finalMessage).toBeVisible({ timeout: 15000 });
-    
-    // Wait for the AI to finish processing (wait for "AI is thinking" to be replaced with actual response)
-    await page.waitForFunction(
-      () => {
-        const messageElement = document.querySelector('[data-testid="ai-message"]:last-child');
-        return messageElement && !messageElement.textContent?.includes('AI is thinking');
-      },
-      { timeout: 20000 }
-    );
-    
-    // Wait a bit more for the AI to complete processing
-    await page.waitForTimeout(2000);
-    
-    // Step 6: Verify the AI message contains the specific success text
-    await validateAIResponse(
-      finalMessage,
-      'matter summary',
-      [/Perfect! I have all the information I need/i, /summary of your matter/i, /Client Information/i],
-      { testStep: 'create_matter_tool_verification', toolCallLogs }
-    );
-    
-    // Additional verification that the tool call log contains the expected entry (optional)
-    const createMatterLogEntry = toolCallLogs.find(log => log.includes('create_matter'));
-    if (createMatterLogEntry) {
-      console.log('Debug: Found create_matter tool call in logs');
-    } else {
-      console.log('Debug: create_matter tool call not found in console logs, but success message indicates it worked');
+    // Step 5: Wait for matter canvas to appear
+    try {
+      await expect(page.locator('[data-testid="matter-canvas"]')).toBeVisible({ timeout: 10000 });
+    } catch (error) {
+      throw new Error(`Matter canvas did not appear after create_matter tool call: ${error instanceof Error ? error.message : String(error)}`);
     }
   });
 

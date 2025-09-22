@@ -1,5 +1,5 @@
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
-import { validateLocation as validateLocationUtil } from '../utils/locationValidator.js';
+import { validateLocation as validateLocationUtil } from '../utils/locationValidator.ts';
 
 export interface ValidationResult {
   isValid: boolean;

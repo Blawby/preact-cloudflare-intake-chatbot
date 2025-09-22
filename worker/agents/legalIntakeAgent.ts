@@ -1,19 +1,19 @@
-import { isLocationSupported } from '../utils/locationValidator.js';
-import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.js';
-import { ValidationService } from '../services/ValidationService.js';
-import { TeamService } from '../services/TeamService.js';
-import { PaymentServiceFactory, type PaymentResult } from '../services/PaymentServiceFactory.js';
-import { createValidationError, createSuccessResponse } from '../utils/responseUtils.js';
-import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
-import { PromptBuilder } from '../utils/promptBuilder.js';
-import { Logger } from '../utils/logger.js';
-import { ToolCallParser } from '../utils/toolCallParser.js';
-import { withRetry } from '../utils/retry.js';
-import type { Env, ChatMessage, FileAttachment } from '../types.js';
-import type { Team } from '../services/TeamService.js';
-import type { ErrorResult } from './legal-intake/errors.js';
-import { createSuccessResult, createErrorResult, ValidationError } from './legal-intake/errors.js';
-import { safeIncludes } from '../utils/safeStringUtils.js';
+import { isLocationSupported } from '../utils/locationValidator.ts';
+import { CloudflareLocationInfo } from '../utils/cloudflareLocationValidator.ts';
+import { ValidationService } from '../services/ValidationService.ts';
+import { TeamService } from '../services/TeamService.ts';
+import { PaymentServiceFactory, type PaymentResult } from '../services/PaymentServiceFactory.ts';
+import { createValidationError, createSuccessResponse, type ToolResponse } from '../utils/responseUtils.ts';
+import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.ts';
+import { PromptBuilder } from '../utils/promptBuilder.ts';
+import { Logger } from '../utils/logger.ts';
+import { ToolCallParser } from '../utils/toolCallParser.ts';
+import { withRetry } from '../utils/retry.ts';
+import type { Env, ChatMessage, FileAttachment } from '../types.ts';
+import type { Team } from '../services/TeamService.ts';
+import type { ErrorResult } from './legal-intake/errors.ts';
+import { createSuccessResult, createErrorResult, ValidationError } from './legal-intake/errors.ts';
+import { safeIncludes } from '../utils/safeStringUtils.ts';
 
 
 // Agent message interface that extends ChatMessage with isUser property
@@ -76,13 +76,6 @@ export interface ContactFormParameters {
   readonly message?: string;
 }
 
-// Tool response interface for standardized responses
-export interface ToolResponse {
-  readonly success: boolean;
-  readonly action: string;
-  readonly message: string;
-  readonly data?: any;
-}
 
 // Contact form response interface
 export interface ContactFormResponse {
@@ -511,12 +504,14 @@ function validateContactFormParameters(parameters: unknown): { isValid: boolean;
   }
 
   const params = parameters as Record<string, unknown>;
+  const resultParams: Partial<ContactFormParameters> = {};
   
   // Validate reason if provided
   if (params.reason !== undefined) {
     if (typeof params.reason !== 'string' || params.reason.trim().length === 0) {
       return { isValid: false, error: 'Invalid reason: expected non-empty string' };
     }
+    resultParams.reason = params.reason;
   }
 
   // Validate name if provided
@@ -524,6 +519,7 @@ function validateContactFormParameters(parameters: unknown): { isValid: boolean;
     if (typeof params.name !== 'string' || params.name.trim().length === 0) {
       return { isValid: false, error: 'Invalid name: expected non-empty string' };
     }
+    resultParams.name = params.name;
   }
 
   // Validate email if provided
@@ -531,6 +527,7 @@ function validateContactFormParameters(parameters: unknown): { isValid: boolean;
     if (typeof params.email !== 'string' || !ValidationService.validateEmail(params.email)) {
       return { isValid: false, error: 'Invalid email: expected valid email address' };
     }
+    resultParams.email = params.email;
   }
 
   // Validate phone if provided
@@ -544,6 +541,7 @@ function validateContactFormParameters(parameters: unknown): { isValid: boolean;
         return { isValid: false, error: `Invalid phone: ${phoneValidation.error}` };
       }
     }
+    resultParams.phone = params.phone;
   }
 
   // Validate location if provided
@@ -551,6 +549,7 @@ function validateContactFormParameters(parameters: unknown): { isValid: boolean;
     if (typeof params.location !== 'string' || params.location.trim().length === 0) {
       return { isValid: false, error: 'Invalid location: expected non-empty string' };
     }
+    resultParams.location = params.location;
   }
 
   // Validate message if provided
@@ -558,18 +557,12 @@ function validateContactFormParameters(parameters: unknown): { isValid: boolean;
     if (typeof params.message !== 'string' || params.message.trim().length === 0) {
       return { isValid: false, error: 'Invalid message: expected non-empty string' };
     }
+    resultParams.message = params.message;
   }
 
   return { 
     isValid: true, 
-    params: {
-      reason: params.reason as string,
-      name: params.name as string,
-      email: params.email as string,
-      phone: params.phone as string,
-      location: params.location as string,
-      message: params.message as string
-    }
+    params: Object.keys(resultParams).length ? (resultParams as ContactFormParameters) : undefined
   };
 }
 
@@ -582,7 +575,7 @@ async function handleShowContactForm(
   correlationId?: string,
   sessionId?: string,
   teamId?: string
-): Promise<ErrorResult<ToolResponse>> {
+): Promise<ErrorResult<ContactFormResponse>> {
   try {
     // Validate parameters
     const validation = validateContactFormParameters(parameters);
@@ -600,13 +593,25 @@ async function handleShowContactForm(
       return createErrorResult(error);
     }
 
-    const params = validation.params!;
+    const params = validation.params || {};
     const reason = params.reason || 'your legal matter';
 
-    const response: ToolResponse = {
+    const response: ContactFormResponse = {
       success: true,
       action: 'show_contact_form',
-      message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`
+      message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`,
+      contactForm: {
+        reason,
+        fields: {
+          name: { required: true, label: 'Full Name' },
+          email: { required: true, label: 'Email Address' },
+          phone: { required: false, label: 'Phone Number' },
+          location: { required: true, label: 'Location (City, State)' },
+          opposing_party: { required: false, label: 'Opposing Party (if applicable)' },
+          message: { required: false, label: 'Additional Details' }
+        },
+        submitText: 'Submit Contact Form'
+      }
     };
 
     return createSuccessResult(response);
@@ -1023,12 +1028,12 @@ async function handleLawyerApproval(env: any, params: any, teamId: string) {
   
   try {
     // Get team config for notification
-    const { AIService } = await import('../services/AIService.js');
+    const { AIService } = await import('../services/AIService.ts');
     const aiService = new AIService(env.AI, env);
     const teamConfig = await aiService.getTeamConfig(teamId);
     
     if (teamConfig.ownerEmail && env.RESEND_API_KEY) {
-      const { EmailService } = await import('../services/EmailService.js');
+      const { EmailService } = await import('../services/EmailService.ts');
       const emailService = new EmailService(env.RESEND_API_KEY);
       
       await emailService.send({
@@ -1269,7 +1274,7 @@ export async function handleRequestLawyerReview(parameters: any, env: any, teamC
   const { urgency, complexity, matter_type } = parameters;
   
   // Send notification using NotificationService
-  const { NotificationService } = await import('../services/NotificationService.js');
+  const { NotificationService } = await import('../services/NotificationService.ts');
   const notificationService = new NotificationService(env);
   
   await notificationService.sendLawyerReviewNotification({

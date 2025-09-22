@@ -1,7 +1,7 @@
-import type { Env } from '../types.js';
-import { Logger } from './logger.js';
-import type { ConversationContext } from '../agents/legal-intake/conversationStateMachine.js';
-import { ConversationState } from '../agents/legal-intake/conversationStateMachine.js';
+import type { Env } from '../types.ts';
+import { Logger } from './logger.ts';
+import type { ConversationContext } from '../agents/legal-intake/conversationStateMachine.ts';
+import { ConversationState } from '../agents/legal-intake/conversationStateMachine.ts';
 
 // Matter type classification constant
 const MATTER_TYPE_CLASSIFICATION = `- MATTER TYPE CLASSIFICATION:
@@ -118,6 +118,13 @@ ${fileAnalysisStep}
 • Use create_matter tool when you have all required fields: name, matter_type, description, and at least one contact method (email or phone)
 • Use show_contact_form tool when you have enough legal information and need to collect contact details
 • After calling create_matter tool, do not call it again unless the tool indicates failure or missing fields
+
+**TOOL CALLING FORMAT:**
+When you need to call a tool, respond with EXACTLY this format:
+TOOL_CALL: tool_name
+PARAMETERS: {valid JSON}
+
+Do NOT include any other text before or after the tool call. The tool call must be the ONLY content in your response.
 **INTENT DETECTION:**
 • PRICING INTENT: Look for words like "cost", "fee", "price", "charge", "money", "how much", "costs", "expensive", "cheap", "affordable"
 
@@ -207,24 +214,46 @@ PARAMETERS: {"invoice_id": "inv-abc123-def456", "amount": 7500, "currency": "USD
 
 {
   "hasLegalIssue": boolean,
+  "hasOpposingParty": boolean,
   "legalIssueType": string or null,
   "description": string or null,
+  "opposingParty": string or null,
   "isSensitiveMatter": boolean,
   "isGeneralInquiry": boolean,
   "shouldCreateMatter": boolean,
-  "state": string
+  "state": string,
+  "hasAskedUrgency": boolean,
+  "urgencyLevel": string or null,
+  "hasAskedTimeline": boolean,
+  "timeline": string or null,
+  "hasAskedBudget": boolean,
+  "budget": string or null,
+  "hasAskedPreviousLawyer": boolean,
+  "hasPreviousLawyer": boolean or null,
+  "isQualifiedLead": boolean
 }
 
 Conversation text: ${safeConversationText}
 
 Rules:
 - hasLegalIssue: true if a legal problem is described
+- hasOpposingParty: true if an opposing party is mentioned
 - legalIssueType: classify as "Family Law", "Employment Law", "Personal Injury", "Business Law", "Criminal Law", "General Consultation", etc.
 - description: brief description of the legal issue
+- opposingParty: name or description of opposing party if mentioned
 - isSensitiveMatter: true if it involves criminal, injury, death, emergency, etc.
 - isGeneralInquiry: true if asking about services, pricing, general questions
 - shouldCreateMatter: true if we have enough legal information to proceed with contact form
 - state: current conversation state (INITIAL, COLLECTING_LEGAL_ISSUE, SHOWING_CONTACT_FORM, READY_TO_CREATE_MATTER, etc.)
+- hasAskedUrgency: true if urgency has been discussed
+- urgencyLevel: "high", "medium", "low", or null
+- hasAskedTimeline: true if timeline has been discussed
+- timeline: timeline description or null
+- hasAskedBudget: true if budget has been discussed
+- budget: budget information or null
+- hasAskedPreviousLawyer: true if previous lawyer has been discussed
+- hasPreviousLawyer: true/false if they have/haven't consulted other lawyers, null if not discussed
+- isQualifiedLead: true if they show serious intent, urgency, and haven't consulted other lawyers
 
 Return only the JSON object, no other text.`;
   }
@@ -277,8 +306,10 @@ Return only the JSON object, no other text.`;
 
     // Validate required fields and types
     const requiredFields: (keyof ConversationContext)[] = [
-      'hasLegalIssue', 'legalIssueType', 'description',
-      'isSensitiveMatter', 'isGeneralInquiry', 'shouldCreateMatter', 'state'
+      'hasLegalIssue', 'hasOpposingParty', 'legalIssueType', 'description', 'opposingParty',
+      'isSensitiveMatter', 'isGeneralInquiry', 'shouldCreateMatter', 'state',
+      'hasAskedUrgency', 'urgencyLevel', 'hasAskedTimeline', 'timeline',
+      'hasAskedBudget', 'budget', 'hasAskedPreviousLawyer', 'hasPreviousLawyer', 'isQualifiedLead'
     ];
 
     for (const field of requiredFields) {
@@ -289,7 +320,8 @@ Return only the JSON object, no other text.`;
 
     // Validate boolean fields
     const booleanFields: (keyof ConversationContext)[] = [
-      'hasLegalIssue', 'isSensitiveMatter', 'isGeneralInquiry', 'shouldCreateMatter'
+      'hasLegalIssue', 'hasOpposingParty', 'isSensitiveMatter', 'isGeneralInquiry', 'shouldCreateMatter',
+      'hasAskedUrgency', 'hasAskedTimeline', 'hasAskedBudget', 'hasAskedPreviousLawyer', 'isQualifiedLead'
     ];
 
     for (const field of booleanFields) {
@@ -300,7 +332,7 @@ Return only the JSON object, no other text.`;
 
     // Validate nullable string fields
     const nullableStringFields: (keyof ConversationContext)[] = [
-      'legalIssueType', 'description'
+      'legalIssueType', 'description', 'opposingParty', 'urgencyLevel', 'timeline', 'budget'
     ];
 
     for (const field of nullableStringFields) {
@@ -309,17 +341,38 @@ Return only the JSON object, no other text.`;
       }
     }
 
+    // Validate nullable boolean fields
+    const nullableBooleanFields: (keyof ConversationContext)[] = [
+      'hasPreviousLawyer'
+    ];
+
+    for (const field of nullableBooleanFields) {
+      if (parsedObj[field] !== null && typeof parsedObj[field] !== 'boolean') {
+        throw new Error(`Field ${field} must be boolean or null, got ${typeof parsedObj[field]}`);
+      }
+    }
+
     // Construct and return a properly typed ConversationContext after validation
     const result: ConversationContext = {
       hasLegalIssue: parsedObj.hasLegalIssue as boolean,
-      hasOpposingParty: false, // Always false - opposing party collected via contact form
+      hasOpposingParty: parsedObj.hasOpposingParty as boolean,
       legalIssueType: parsedObj.legalIssueType as string | null,
       description: parsedObj.description as string | null,
-      opposingParty: null, // Always null - opposing party collected via contact form
+      opposingParty: parsedObj.opposingParty as string | null,
       isSensitiveMatter: parsedObj.isSensitiveMatter as boolean,
       isGeneralInquiry: parsedObj.isGeneralInquiry as boolean,
       shouldCreateMatter: parsedObj.shouldCreateMatter as boolean,
-      state: parsedObj.state as ConversationState || ConversationState.GATHERING_INFORMATION
+      state: parsedObj.state as ConversationState || ConversationState.GATHERING_INFORMATION,
+      // Lead qualification fields
+      hasAskedUrgency: parsedObj.hasAskedUrgency as boolean,
+      urgencyLevel: parsedObj.urgencyLevel as string | null,
+      hasAskedTimeline: parsedObj.hasAskedTimeline as boolean,
+      timeline: parsedObj.timeline as string | null,
+      hasAskedBudget: parsedObj.hasAskedBudget as boolean,
+      budget: parsedObj.budget as string | null,
+      hasAskedPreviousLawyer: parsedObj.hasAskedPreviousLawyer as boolean,
+      hasPreviousLawyer: parsedObj.hasPreviousLawyer as boolean | null,
+      isQualifiedLead: parsedObj.isQualifiedLead as boolean
     };
     
     return result;

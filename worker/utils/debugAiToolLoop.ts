@@ -8,15 +8,28 @@
  * 4. Provides detailed diagnostics for AI tool calling issues
  */
 
-import { ToolDefinition } from '../agents/legal-intake/index';
-import { ConversationContext, ConversationState } from '../agents/legal-intake/conversationStateMachine';
-import { Logger } from './logger';
+import { ToolDefinition } from '../agents/legal-intake/index.ts';
+import { ConversationContext, ConversationState } from '../agents/legal-intake/conversationStateMachine.ts';
+import { Logger } from './logger.ts';
 
 /**
  * Generate a unique correlation ID for tracking debug sessions
  */
 function generateCorrelationId(): string {
-  return `debug-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const timestamp = Date.now();
+  let randomSegment: string;
+  
+  // Try to use crypto.getRandomValues() for stronger entropy
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const array = new Uint8Array(4);
+    crypto.getRandomValues(array);
+    randomSegment = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  } else {
+    // Fallback to Math.random() if crypto is unavailable
+    randomSegment = Math.random().toString(16).substr(2, 8);
+  }
+  
+  return `debug-${timestamp}-${randomSegment}`;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConversationStateMachine, ConversationState } from '../../worker/agents/legal-intake/conversationStateMachine.js';
 import { hasContactInformation } from '../../worker/utils/contactInfoUtils.js';
+import type { Env } from '../../worker/types.js';
 
 // Mock the contact info utility
 vi.mock('../../worker/utils/contactInfoUtils.js', () => ({
@@ -33,7 +34,17 @@ vi.mock('../../worker/services/AIService.js', () => ({
 }));
 
 describe('ConversationStateMachine Business Logic', () => {
-  const mockEnv = {} as any;
+  // Create a properly typed mock environment that satisfies the Env interface
+  // Using Record<string, any> for Cloudflare-specific types that aren't used in these tests
+  const mockEnv: Env = {
+    AI: {} as any, // Mock AI interface - not used in these specific tests
+    DB: {} as any, // Mock D1Database - not used in these specific tests
+    CHAT_SESSIONS: {} as any, // Mock KVNamespace - not used in these specific tests
+    RESEND_API_KEY: 'test-api-key',
+    DOC_EVENTS: {} as any, // Mock Queue - not used in these specific tests
+    PARALEGAL_TASKS: {} as any, // Mock Queue - not used in these specific tests
+    PARALEGAL_AGENT: {} as any // Mock DurableObjectNamespace - not used in these specific tests
+  };
   const mockConversationText = 'Test conversation text';
 
   beforeEach(() => {
@@ -54,7 +65,7 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: false
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.js').PromptBuilder.extractConversationInfo)
+      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(false);
@@ -77,7 +88,7 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: true
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.js').PromptBuilder.extractConversationInfo)
+      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(false);
@@ -100,7 +111,7 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: false
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.js').PromptBuilder.extractConversationInfo)
+      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(true);
@@ -123,7 +134,7 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: true
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.js').PromptBuilder.extractConversationInfo)
+      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(true);
@@ -146,7 +157,7 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: true
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.js').PromptBuilder.extractConversationInfo)
+      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(false);
@@ -169,7 +180,7 @@ describe('ConversationStateMachine Business Logic', () => {
         shouldCreateMatter: false
       };
 
-      vi.mocked(require('../../worker/utils/promptBuilder.js').PromptBuilder.extractConversationInfo)
+      vi.mocked(require('../../worker/utils/promptBuilder.ts').PromptBuilder.extractConversationInfo)
         .mockResolvedValue(mockContext);
       
       vi.mocked(hasContactInformation).mockReturnValue(false);

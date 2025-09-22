@@ -280,6 +280,7 @@ export const showContactForm: ToolDefinition<{}> = {
   parameters: {
     type: 'object',
     properties: {},
+    required: [],
     additionalProperties: false
   }
 };
@@ -373,7 +374,6 @@ export const createPaymentInvoice: ToolDefinition<CreatePaymentInvoiceParams> = 
           email: { 
             type: 'string' as const, 
             description: 'Recipient email address',
-            format: 'email',
             maxLength: 255
           },
           name: { 
@@ -389,7 +389,6 @@ export const createPaymentInvoice: ToolDefinition<CreatePaymentInvoiceParams> = 
       due_date: { 
         type: 'string' as const, 
         description: 'Invoice due date in ISO 8601 format (YYYY-MM-DD)',
-        format: 'date',
         pattern: '^\\d{4}-\\d{2}-\\d{2}$'
       },
       description: { 
@@ -584,10 +583,11 @@ export async function runLegalIntakeAgentStream(
   attachments: readonly FileAttachment[] = []
 ): Promise<AgentResponse | void> {
   
-  // Add comprehensive error handling to catch null reference errors
-  try {
   // Generate correlation ID for error tracking
   const correlationId = LegalIntakeLogger.generateCorrelationId();
+  
+  // Add comprehensive error handling to catch null reference errors
+  try {
   
   console.log('🔍 Starting runLegalIntakeAgentStream with correlationId:', correlationId);
   console.log('🔍 Messages count:', messages?.length || 0);
@@ -812,14 +812,14 @@ export async function runLegalIntakeAgentStream(
     teamId
   );
   
-  // Handle system prompt generation error
-  let systemPrompt: string;
-  if (!systemPromptResult.success) {
-    Logger.error('Failed to generate system prompt', {
-      correlationId,
-      error: systemPromptResult.error.message,
-      state: businessResult.success ? businessResult.data.state : context.state
-    });
+    // Handle system prompt generation error
+    let systemPrompt: string;
+    if (!systemPromptResult.success) {
+      Logger.error('Failed to generate system prompt', {
+        correlationId,
+        error: systemPromptResult.error?.message || 'Unknown error',
+        state: businessResult.success ? businessResult.data.state : context.state
+      });
     
     // Use fallback system prompt
     systemPrompt = `You are a helpful legal assistant. Please help the user with their legal inquiry.`;
@@ -1231,7 +1231,7 @@ export async function runLegalIntakeAgentStream(
         parameters
       );
       
-      let toolResult: ErrorResult<unknown>;
+      let toolResult: any;
       try {
         toolResult = await handler(parameters, env, teamConfig, correlationId, sessionId, teamId);
         // Note: Raw toolResult logging removed to prevent PII exposure
@@ -1345,7 +1345,7 @@ export async function runLegalIntakeAgentStream(
           data: {
             fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
             required: ['name', 'email', 'phone'],
-            message: toolResult.data?.message || 'Please fill out the contact form below.'
+            message: (toolResult.data as any)?.message || 'Please fill out the contact form below.'
           }
         })}\n\n`;
         controller.enqueue(new TextEncoder().encode(contactFormEvent));
@@ -1566,20 +1566,16 @@ export async function runLegalIntakeAgentStream(
         });
       }
     } else {
-      return {
-        response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
-        metadata: {
-          correlationId,
-          error: {
-            message: errorMessage,
-            stack: errorStack
-          },
-          inputMessageCount: formattedMessages.length,
-          lastUserMessage,
-          sessionId,
-          teamId
-        }
-      };
+        return {
+          response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
+          metadata: {
+            error: errorMessage,
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage,
+            sessionId,
+            teamId
+          }
+        };
     }
   }
   
@@ -1627,7 +1623,8 @@ export async function runLegalIntakeAgentStream(
       response: 'I apologize, but I encountered a critical error processing your request. Please try again.',
       metadata: {
         error: error instanceof Error ? error.message : String(error),
-        correlationId: correlationId || 'unknown',
+        inputMessageCount: messages?.length || 0,
+        lastUserMessage: null,
         sessionId,
         teamId
       }

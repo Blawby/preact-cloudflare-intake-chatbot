@@ -1,7 +1,7 @@
-import { Logger } from '../../utils/logger.js';
-import { PromptBuilder } from '../../utils/promptBuilder.js';
-import type { Env } from '../../types.js';
-import { hasContactInformation as hasContactInfo, detectContactInfo, logContactInfoDetection } from '../../utils/contactInfoUtils.js';
+import { Logger } from '../../utils/logger.ts';
+import { PromptBuilder } from '../../utils/promptBuilder.ts';
+import type { Env } from '../../types.ts';
+import { hasContactInformation as hasContactInfo, detectContactInfo, logContactInfoDetection } from '../../utils/contactInfoUtils.ts';
 import {
   ConversationStateError,
   AIServiceError,
@@ -12,7 +12,7 @@ import {
   ErrorResult,
   createErrorResult,
   createSuccessResult
-} from './errors.js';
+} from './errors.ts';
 
 export enum ConversationState {
   INITIAL = 'INITIAL',
@@ -25,7 +25,8 @@ export enum ConversationState {
   CREATING_MATTER = 'CREATING_MATTER',
   MATTER_CREATED = 'MATTER_CREATED',
   MATTER_CREATION_FAILED = 'MATTER_CREATION_FAILED',
-  GATHERING_INFORMATION = 'GATHERING_INFORMATION'
+  GATHERING_INFORMATION = 'GATHERING_INFORMATION',
+  COMPLETED = 'COMPLETED'
 }
 
 export interface ConversationContext {
@@ -229,15 +230,17 @@ export class ConversationStateMachine {
         let context: ConversationContext;
         try {
           context = await PromptBuilder.extractConversationInfo(conversationText, env);
-          console.log('🔍 Conversation context extracted:', {
+          Logger.info('Conversation context extracted successfully', {
             hasLegalIssue: context.hasLegalIssue,
             legalIssueType: context.legalIssueType,
             description: context.description,
             isQualifiedLead: context.isQualifiedLead
           });
         } catch (error) {
-          console.log('🔍 Failed to extract conversation context:', error);
-          Logger.error('Failed to extract conversation context:', error);
+          Logger.error('Failed to extract conversation context', {
+            error: error,
+            conversationText: conversationText
+          });
           return ConversationState.GATHERING_INFORMATION;
         }
         

@@ -1,10 +1,10 @@
-import { Page, expect } from '@playwright/test';
+import { Page, expect, Locator } from '@playwright/test';
 
 /**
  * Helper function to set up the chat interface for testing
  * Navigates to the page, waits for chat container, and returns input elements
  */
-export async function setupChat(page: Page): Promise<{ input: any; sendButton: any }> {
+export async function setupChat(page: Page): Promise<{ input: Locator; sendButton: Locator }> {
   // Navigate to the chat interface
   await page.goto('/');
   await expect(page.locator('[data-testid="chat-container"]')).toBeVisible();
@@ -24,8 +24,8 @@ export async function setupChat(page: Page): Promise<{ input: any; sendButton: a
  */
 export async function sendMessageAndWait(
   page: Page,
-  input: any,
-  sendButton: any,
+  input: Locator,
+  sendButton: Locator,
   message: string,
   expectedUserCount: number,
   expectedAiCount: number
@@ -39,8 +39,8 @@ export async function sendMessageAndWait(
  * Helper function to fill and send a message, then wait for send readiness
  */
 export async function fillAndSendMessage(
-  input: any,
-  sendButton: any,
+  input: Locator,
+  sendButton: Locator,
   message: string
 ): Promise<void> {
   await input.fill(message);

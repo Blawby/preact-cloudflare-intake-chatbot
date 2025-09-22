@@ -11,8 +11,8 @@
  *   node scripts/test-ai-tool-loop.js --quick
  */
 
-const { testToolLoop, quickToolLoopTest, testToolScenarios } = require('../worker/utils/testToolLoop.ts');
-const { debugAiToolLoop, quickDebugAiToolLoop } = require('../worker/utils/debugAiToolLoop.ts');
+import { testToolLoop, quickToolLoopTest, testToolScenarios } from '../worker/utils/testToolLoop.ts';
+import { debugAiToolLoop, quickDebugAiToolLoop } from '../worker/utils/debugAiToolLoop.ts';
 
 async function main() {
   const args = process.argv.slice(2);

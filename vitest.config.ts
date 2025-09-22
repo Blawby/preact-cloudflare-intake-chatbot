@@ -31,6 +31,10 @@ export default defineConfig({
       ]
     }
   },
+  esbuild: {
+    target: 'es2020',
+    loader: 'ts'
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),

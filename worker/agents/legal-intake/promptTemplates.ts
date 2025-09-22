@@ -1,5 +1,5 @@
-import type { ConversationContext, ConversationState } from './conversationStateMachine.js';
-import { LegalIntakeLogger } from './legalIntakeLogger.js';
+import type { ConversationContext, ConversationState } from './conversationStateMachine.ts';
+import { LegalIntakeLogger } from './legalIntakeLogger.ts';
 
 // Constants for sanitizeString length limits
 const MAX_LEGAL_ISSUE_TYPE_LENGTH = 50;
@@ -15,15 +15,8 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
     return null;
   }
 
-  // Validate and coerce maxLength parameter
-  const validatedMaxLength = typeof maxLength === 'number' && 
-                            Number.isInteger(maxLength) && 
-                            maxLength > 0 
-                            ? maxLength 
-                            : 1000;
-
-  // Early return for non-positive maxLength (after validation)
-  if (validatedMaxLength <= 0) {
+  // Guard clause: validate maxLength at function entry
+  if (typeof maxLength !== 'number' || !Number.isInteger(maxLength) || maxLength <= 0) {
     return null;
   }
 
@@ -50,9 +43,9 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
     // Trim whitespace
     .trim();
 
-  // Limit length to prevent buffer overflow attacks using validated maxLength
-  if (sanitized.length > validatedMaxLength) {
-    sanitized = sanitized.substring(0, validatedMaxLength) + '...';
+  // Limit length to prevent buffer overflow attacks
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength) + '...';
   }
 
   return sanitized.length > 0 ? sanitized : null;

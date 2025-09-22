@@ -160,11 +160,23 @@ export function logContactInfoDetection(
   detection: ContactInfoMatch, 
   correlationId?: string
 ): void {
-  console.log('🔍 Contact information detection:', {
+  // Parameter validation with guard clauses
+  if (typeof conversationText !== 'string') {
+    throw new Error('conversationText must be a string');
+  }
+  if (!detection || typeof detection !== 'object') {
+    throw new Error('detection must be a ContactInfoMatch object');
+  }
+
+  // Use structured logging (replace with your logging framework)
+  const logData = {
+    level: 'info',
+    message: 'Contact information detection',
     correlationId,
     hasContactInfo: hasContactInformation(conversationText),
     isComplete: isContactInfoComplete(conversationText),
     detection,
     conversationText: conversationText.substring(0, 300) + '...'
-  });
+  };
+  console.log(JSON.stringify(logData));
 }

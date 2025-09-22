@@ -1,8 +1,8 @@
-import { Logger } from '../../utils/logger.js';
-import { PromptBuilder } from '../../utils/promptBuilder.js';
-import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.js';
-import { buildSystemPrompt } from './promptTemplates.js';
-import type { Env } from '../../types.js';
+import { Logger } from '../../utils/logger.ts';
+import { PromptBuilder } from '../../utils/promptBuilder.ts';
+import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.ts';
+import { buildSystemPrompt } from './promptTemplates.ts';
+import type { Env } from '../../types.ts';
 import {
   BusinessLogicError,
   ConversationStateError,
@@ -14,7 +14,7 @@ import {
   ErrorResult,
   createErrorResult,
   createSuccessResult
-} from './errors.js';
+} from './errors.ts';
 
 export interface MatterParams {
   name?: string;

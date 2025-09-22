@@ -42,7 +42,7 @@ function validateRequest(request: Request): boolean {
   return true;
 }
 
-export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+export async function handleRequest(request: Request, env: Env, ctx: any): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -73,7 +73,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     
     if (path === '/api/agent/stream') {
       console.log('✅ Matched agent route');
-      response = await handleAgentStream(request, env, CORS_HEADERS);
+      response = await handleAgentStream(request, env);
     } else if (path.startsWith('/api/teams')) {
       response = await handleTeams(request, env);
     } else if (path.startsWith('/api/forms')) {

@@ -57,6 +57,7 @@ interface MessageProps {
 	onContactFormSubmit?: (data: ContactData) => void;
 	isLoading?: boolean;
 	aiState?: 'thinking' | 'processing' | 'generating';
+	toolMessage?: string;
 	// Feedback props
 	id?: string;
 	sessionId?: string;
@@ -184,6 +185,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	onContactFormSubmit,
 	isLoading,
 	aiState,
+	toolMessage,
 	id,
 	sessionId,
 	teamId,
@@ -248,6 +250,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					<AIThinkingIndicator 
 						variant={aiState || 'thinking'} 
 						content={content || undefined}
+						toolMessage={toolMessage}
 					/>
 				)}
 				

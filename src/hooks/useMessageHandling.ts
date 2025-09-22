@@ -1,6 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
 import { ChatMessageUI } from '../../worker/types';
 import { ContactData } from '../components/ContactForm';
+
+// Tool name to user-friendly message mapping
+const TOOL_LOADING_MESSAGES: Record<string, string> = {
+  'show_contact_form': 'Preparing contact form...',
+  'create_matter': 'Creating your case file...',
+  'request_lawyer_review': 'Requesting lawyer review...',
+  'analyze_document': 'Analyzing document...',
+  'create_payment_invoice': 'Creating payment invoice...'
+};
 // API endpoints - moved inline since api.ts was removed
 const getAgentStreamEndpoint = () => {
   // In test environment, use full backend URL since proxy is not available
@@ -178,11 +187,27 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     break;
                     
                   case 'tool_call':
-                    // Tool call detected, show processing message
+                    // Tool call detected, show processing message with tool-specific text
+                    const toolName = data.toolName || data.name;
+                    const toolMessage = toolName ? TOOL_LOADING_MESSAGES[toolName] : undefined;
+                    
+                    // Log tool call for test monitoring
+                    if (typeof window !== 'undefined') {
+                      if (!(window as any).__toolCalls) {
+                        (window as any).__toolCalls = [];
+                      }
+                      (window as any).__toolCalls.push({
+                        tool: toolName,
+                        timestamp: Date.now(),
+                        data: data
+                      });
+                    }
+                    
                     updateAIMessage(placeholderId, { 
                       content: currentContent,
                       isLoading: true,
-                      aiState: 'processing'
+                      aiState: 'processing',
+                      toolMessage: toolMessage
                     });
                     break;
                     
@@ -213,6 +238,11 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                       isLoading: false,
                       aiState: null
                     });
+                    
+                    // Log conversation state if available
+                    if (data.conversationState && typeof window !== 'undefined') {
+                      (window as any).__conversationState = data.conversationState;
+                    }
                     break;
                     
                   case 'error':

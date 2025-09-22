@@ -233,6 +233,8 @@ export interface UIMessageExtras {
   };
   /** @deprecated Prefer deriving loading from aiState. */
   isLoading?: boolean;
+  /** Custom message to show during tool calls */
+  toolMessage?: string;
 }
 
 // UI-specific ChatMessage interface that extends the base ChatMessage

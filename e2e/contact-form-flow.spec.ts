@@ -1,5 +1,46 @@
 import { test, expect } from '@playwright/test';
 
+// TypeScript interfaces for debug hook functions
+interface DebugContactData {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  opposingParty?: string;
+}
+
+interface DebugSSEEvent {
+  type: 'connected' | 'text' | 'typing' | 'tool_call' | 'tool_result' | 'final' | 'error' | 'security_block' | 'contact_form' | 'complete' | 'tool_error';
+  text?: string;
+  toolName?: string;
+  name?: string;
+  result?: {
+    message?: string;
+    data?: {
+      payment_embed?: unknown;
+    };
+  };
+  response?: string;
+  message?: string;
+  data?: {
+    fields?: string[];
+    required?: string[];
+    message?: string;
+  };
+  toolName?: string;
+  allowRetry?: boolean;
+  correlationId?: string;
+}
+
+// Window interface augmentation for debug functions
+declare global {
+  interface Window {
+    __DEBUG_SEND_MESSAGE__?: (message: string, attachments?: unknown[]) => void;
+    __DEBUG_SSE_EVENTS__?: (data: DebugSSEEvent) => void;
+    __DEBUG_CONTACT_FORM__?: (contactData: DebugContactData, message: string) => void;
+  }
+}
+
 /**
  * 🎭 E2E Test: Complete Contact Form Flow
  * 
@@ -15,13 +56,13 @@ test.describe('Contact Form Flow', () => {
   test('Complete legal intake with contact form submission', async ({ page }) => {
     // Set up debug hooks before navigation
     await page.addInitScript(() => {
-      window.__DEBUG_SEND_MESSAGE__ = (message, attachments) => {
+      window.__DEBUG_SEND_MESSAGE__ = (message: string, attachments?: unknown[]) => {
         console.log('[TEST] sendMessage called:', message, attachments ? attachments.length : 0);
       };
-      window.__DEBUG_SSE_EVENTS__ = (data) => {
+      window.__DEBUG_SSE_EVENTS__ = (data: DebugSSEEvent) => {
         console.log('[TEST] SSE Event:', data.type, data);
       };
-      window.__DEBUG_CONTACT_FORM__ = (contactData, message) => {
+      window.__DEBUG_CONTACT_FORM__ = (contactData: DebugContactData, message: string) => {
         console.log('[TEST] Contact form submitted:', contactData, message);
       };
     });

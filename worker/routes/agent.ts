@@ -3,11 +3,11 @@ import type { TeamConfig } from '../services/TeamService';
 import { parseJsonBody } from '../utils';
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index';
 import { HttpErrors, handleError, createSuccessResponse, CORS_HEADERS, SECURITY_HEADERS } from '../errorHandler';
-import { validateInput, getSecurityResponse } from '../middleware/inputValidation.js';
-import { SecurityLogger } from '../utils/securityLogger.js';
-import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.js';
-import { rateLimit, getClientId } from '../middleware/rateLimit.js';
-import { safeIncludes, safeToLowerCase } from '../utils/safeStringUtils.js';
+import { validateInput, getSecurityResponse } from '../middleware/inputValidation.ts';
+import { SecurityLogger } from '../utils/securityLogger.ts';
+import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.ts';
+import { rateLimit, getClientId } from '../middleware/rateLimit.ts';
+import { safeIncludes, safeToLowerCase } from '../utils/safeStringUtils.ts';
 
 // Interface for the request body in the route method
 interface RouteBody {

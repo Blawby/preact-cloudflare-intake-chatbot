@@ -1,5 +1,5 @@
-import { Logger } from '../../utils/logger.js';
-import type { ConversationContext, ConversationState } from './conversationStateMachine.js';
+import { Logger } from '../../utils/logger.ts';
+import type { ConversationContext, ConversationState } from './conversationStateMachine.ts';
 
 /**
  * Legal intake operation types for structured logging
@@ -84,6 +84,19 @@ export interface StateTransitionLogEntry extends LegalIntakeLogEntry {
   };
 }
 
+/**
+ * Context information for matter creation operations, tracking both presence flags and optional values
+ * @property hasName - Presence flag indicating whether name information is available
+ * @property hasEmail - Presence flag indicating whether email information is available
+ * @property hasPhone - Presence flag indicating whether phone information is available
+ * @property hasLocation - Presence flag indicating whether location information is available
+ * @property hasDescription - Presence flag indicating whether description information is available
+ * @property name - Optional string containing the actual name value
+ * @property email - Optional string containing the actual email value
+ * @property phone - Optional string containing the actual phone value
+ * @property location - Optional string containing the actual location value
+ * @property description - Optional string containing the actual description value
+ */
 export interface MatterCreationContext {
   hasName: boolean;
   hasEmail: boolean;

@@ -167,6 +167,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         onContactFormSubmit={onContactFormSubmit}
                         isLoading={(message as any).isLoading}
                         aiState={(message as any).aiState}
+                        toolMessage={(message as any).toolMessage}
                         id={message.id}
                         sessionId={sessionId}
                         teamId={teamId}

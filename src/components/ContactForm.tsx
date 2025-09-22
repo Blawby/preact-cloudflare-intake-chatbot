@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
+import { useTheme } from '../hooks/useTheme';
 
 export interface ContactFormProps {
   onSubmit: (data: ContactData) => void | Promise<void>;
@@ -25,6 +26,7 @@ interface FormErrors {
 }
 
 export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'location', 'opposingParty'], required = ['name', 'email', 'phone'], message }: ContactFormProps): JSX.Element {
+  const { isDark } = useTheme();
   const [formData, setFormData] = useState<ContactData>({
     name: '',
     email: '',
@@ -108,14 +110,14 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
       // Submit the form
       await onSubmit(formData);
     } catch (error) {
-      // Structured logging with contextual metadata
+      // Structured logging with contextual metadata (PII sanitized)
       const logData = {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         formData: {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
+          hasName: !!formData.name,
+          hasEmail: !!formData.email,
+          hasPhone: !!formData.phone,
           location: formData.location,
           opposingParty: formData.opposingParty
         },
@@ -132,9 +134,9 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
   };
 
   return (
-    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm" data-testid="contact-form">
+    <div class="bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-6 shadow-sm" data-testid="contact-form">
       {message && (
-        <div class="mb-4 text-gray-700">
+        <div class="mb-4 text-gray-700 dark:text-gray-300">
           {message}
         </div>
       )}
@@ -142,7 +144,7 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
       <form onSubmit={handleSubmit} class="space-y-4">
         {fields.includes('name') && (
           <div>
-            <label for="contact-name" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="contact-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Full Name {required.includes('name') && <span class="text-red-500">*</span>}
             </label>
             <input
@@ -151,21 +153,21 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
               type="text"
               value={formData.name}
               onInput={(e) => handleInputChange('name', (e.target as HTMLInputElement).value)}
-              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
+              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
+                errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Enter your full name"
               disabled={isSubmitting}
             />
             {errors.name && (
-              <p class="mt-1 text-sm text-red-600">{errors.name}</p>
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
             )}
           </div>
         )}
 
         {fields.includes('email') && (
           <div>
-            <label for="contact-email" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="contact-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Email Address {required.includes('email') && <span class="text-red-500">*</span>}
             </label>
             <input
@@ -174,21 +176,21 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
               type="email"
               value={formData.email}
               onInput={(e) => handleInputChange('email', (e.target as HTMLInputElement).value)}
-              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
+              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
+                errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Enter your email address"
               disabled={isSubmitting}
             />
             {errors.email && (
-              <p class="mt-1 text-sm text-red-600">{errors.email}</p>
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
             )}
           </div>
         )}
 
         {fields.includes('phone') && (
           <div>
-            <label for="contact-phone" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="contact-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Phone Number {required.includes('phone') && <span class="text-red-500">*</span>}
             </label>
             <input
@@ -197,21 +199,21 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
               type="tel"
               value={formData.phone}
               onInput={(e) => handleInputChange('phone', (e.target as HTMLInputElement).value)}
-              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.phone ? 'border-red-500' : 'border-gray-300'
+              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
+                errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Enter your phone number"
               disabled={isSubmitting}
             />
             {errors.phone && (
-              <p class="mt-1 text-sm text-red-600">{errors.phone}</p>
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{errors.phone}</p>
             )}
           </div>
         )}
 
         {fields.includes('location') && (
           <div>
-            <label for="contact-location" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="contact-location" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Location {required.includes('location') && <span class="text-red-500">*</span>}
             </label>
             <input
@@ -220,21 +222,21 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
               type="text"
               value={formData.location}
               onInput={(e) => handleInputChange('location', (e.target as HTMLInputElement).value)}
-              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.location ? 'border-red-500' : 'border-gray-300'
+              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
+                errors.location ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Enter your city and state"
               disabled={isSubmitting}
             />
             {errors.location && (
-              <p class="mt-1 text-sm text-red-600">{errors.location}</p>
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{errors.location}</p>
             )}
           </div>
         )}
 
         {fields.includes('opposingParty') && (
           <div>
-            <label for="contact-opposing-party" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="contact-opposing-party" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Opposing Party (Optional)
             </label>
             <input
@@ -243,7 +245,7 @@ export function ContactForm({ onSubmit, fields = ['name', 'email', 'phone', 'loc
               type="text"
               value={formData.opposingParty || ''}
               onInput={(e) => handleInputChange('opposingParty', (e.target as HTMLInputElement).value)}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
               placeholder="Name of the other party involved (if any)"
               disabled={isSubmitting}
             />
