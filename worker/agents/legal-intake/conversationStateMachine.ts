@@ -16,13 +16,10 @@ import {
 export enum ConversationState {
   INITIAL = 'INITIAL',
   GENERAL_INQUIRY = 'GENERAL_INQUIRY',
-  COLLECTING_NAME = 'COLLECTING_NAME',
   COLLECTING_LEGAL_ISSUE = 'COLLECTING_LEGAL_ISSUE',
   COLLECTING_DETAILS = 'COLLECTING_DETAILS',
-  COLLECTING_EMAIL = 'COLLECTING_EMAIL',
-  COLLECTING_PHONE = 'COLLECTING_PHONE',
-  COLLECTING_LOCATION = 'COLLECTING_LOCATION',
-  COLLECTING_OPPOSING_PARTY = 'COLLECTING_OPPOSING_PARTY',
+  QUALIFYING_LEAD = 'QUALIFYING_LEAD',
+  SHOWING_CONTACT_FORM = 'SHOWING_CONTACT_FORM',
   READY_TO_CREATE_MATTER = 'READY_TO_CREATE_MATTER',
   MATTER_CREATED = 'MATTER_CREATED',
   MATTER_CREATION_FAILED = 'MATTER_CREATION_FAILED',
@@ -30,23 +27,25 @@ export enum ConversationState {
 }
 
 export interface ConversationContext {
-  hasName: boolean;
   hasLegalIssue: boolean;
-  hasEmail: boolean;
-  hasPhone: boolean;
-  hasLocation: boolean;
   hasOpposingParty: boolean;
-  name: string | null;
   legalIssueType: string | null;
   description: string | null;
-  email: string | null;
-  phone: string | null;
-  location: string | null;
   opposingParty: string | null;
   isSensitiveMatter: boolean;
   isGeneralInquiry: boolean;
   shouldCreateMatter: boolean;
   state: ConversationState;
+  // Lead qualification fields
+  hasAskedUrgency: boolean;
+  urgencyLevel: string | null;
+  hasAskedTimeline: boolean;
+  timeline: string | null;
+  hasAskedBudget: boolean;
+  budget: string | null;
+  hasAskedPreviousLawyer: boolean;
+  hasPreviousLawyer: boolean | null;
+  isQualifiedLead: boolean;
 }
 
 export class ConversationStateMachine {
@@ -72,8 +71,8 @@ export class ConversationStateMachine {
         try {
           const context = await PromptBuilder.extractConversationInfo(conversationText, env);
           
-          // If we have substantial information (name, legal issue, contact info), it's not a general inquiry
-          if (context.hasName && context.legalIssueType && (context.hasEmail || context.hasPhone)) {
+          // If we have substantial legal information, it's not a general inquiry
+          if (context.legalIssueType && context.description) {
             return false;
           }
           
@@ -130,12 +129,11 @@ export class ConversationStateMachine {
         // For intake agent, we need essential information before creating matters
         // This ensures we have the details needed for a lawyer to contact the client
         
-        // Minimum required: name + legal issue + description
-        const hasMinimumInfo = context.hasName && 
-                              Boolean(context.legalIssueType) && 
+        // Minimum required: legal issue + description
+        const hasMinimumInfo = Boolean(context.legalIssueType) && 
                               Boolean(context.description);
         
-        // For sensitive matters, only require minimum info
+        // For sensitive matters, only require minimum legal info
         const sensitiveResult = this.isSensitiveMatter(context);
         if (!sensitiveResult.success) {
           throw new ConversationStateError('Failed to determine if matter is sensitive', {
@@ -148,11 +146,8 @@ export class ConversationStateMachine {
           return hasMinimumInfo;
         }
         
-        // For standard matters, require minimum info + contact method + location
-        const hasContactMethod = context.hasEmail || context.hasPhone;
-        const hasLocation = context.hasLocation;
-        
-        return hasMinimumInfo && hasContactMethod && hasLocation;
+        // For standard matters, require minimum legal info
+        return hasMinimumInfo;
       },
       {
         context: context,
@@ -257,10 +252,6 @@ export class ConversationStateMachine {
         const isSensitiveMatter = sensitiveResult.data;
 
         // Determine what we're missing - prioritize the most important missing pieces
-        if (!context.hasName) {
-          return ConversationState.COLLECTING_NAME;
-        }
-
         if (!context.legalIssueType || !context.hasLegalIssue) {
           return ConversationState.COLLECTING_LEGAL_ISSUE;
         }
@@ -269,26 +260,13 @@ export class ConversationStateMachine {
           return ConversationState.COLLECTING_DETAILS;
         }
 
-        // For sensitive matters, we can create a matter with minimal information
-        if (isSensitiveMatter) {
-          return ConversationState.READY_TO_CREATE_MATTER;
+        // NEW: Lead qualification step - ask qualifying questions before showing contact form
+        if (!context.isQualifiedLead) {
+          return ConversationState.QUALIFYING_LEAD;
         }
 
-        // For standard matters, collect contact information - FAIL FAST if missing
-        if (!context.hasEmail && !context.hasPhone) {
-          return ConversationState.COLLECTING_EMAIL;
-        }
-
-        if (!context.hasLocation) {
-          return ConversationState.COLLECTING_LOCATION;
-        }
-
-        // Opposing party is optional, but ask if we don't have it yet
-        if (!context.hasOpposingParty) {
-          return ConversationState.COLLECTING_OPPOSING_PARTY;
-        }
-
-        return ConversationState.INITIAL;
+        // If we have all legal information AND lead is qualified, show contact form
+        return ConversationState.SHOWING_CONTACT_FORM;
       },
       {
         conversationText: conversationText?.substring(0, 100) + '...',
@@ -346,17 +324,8 @@ export class ConversationStateMachine {
             }
             return "Can you tell me more about your legal situation? What specific help do you need?";
           
-          case ConversationState.COLLECTING_EMAIL:
-            return "I need a way to contact you. Could you please provide your email address?";
-          
-          case ConversationState.COLLECTING_PHONE:
-            return "I need a way to contact you. Could you please provide your phone number?";
-          
-          case ConversationState.COLLECTING_LOCATION:
-            return "Could you please tell me your city and state? This helps us understand if we can assist you in your area.";
-          
-          case ConversationState.COLLECTING_OPPOSING_PARTY:
-            return "Is there another party involved in this matter? If so, could you tell me their name?";
+          case ConversationState.SHOWING_CONTACT_FORM:
+            return "I have enough information about your legal matter. Let me show you a contact form to collect your information.";
           
           case ConversationState.READY_TO_CREATE_MATTER:
             return "I have all the information I need. Let me create a matter for you.";

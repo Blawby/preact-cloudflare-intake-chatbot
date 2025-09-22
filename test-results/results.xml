@@ -1,0 +1,27 @@
+<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="29.137361999999996">
+<testsuite name="lead-qualification-flow.spec.ts" timestamp="2025-09-22T06:04:30.501Z" hostname="chromium" tests="1" failures="0" skipped="0" time="23.534" errors="0">
+<testcase name="Lead Qualification Flow › AI asks qualifying questions before showing contact form" classname="lead-qualification-flow.spec.ts" time="23.534">
+<system-out>
+<![CDATA[📡 SSE Response: [33m200[39m http://localhost:8787/api/agent/stream
+✅ User message appeared
+✅ AI message appeared
+AI Message: I'm so sorry to hear that you were injured in a car crash. Back pain can be a real challenge to deal with. I'm here to help you navigate the process of seeking compensation for your injuries.
+
+Can you tell me a bit more about what happened in the crash? Was it a minor fender bender or a more serious collision? And
+AI Message Length: [33m315[39m
+✅ AI is asking qualifying questions
+📡 SSE Response: [33m200[39m http://localhost:8787/api/agent/stream
+✅ Second user message appeared
+Second AI Message: It sounds like time is of the essence in this matter.
+AI is asking more qualifying questions, providing additional context...
+📡 SSE Response: [33m200[39m http://localhost:8787/api/agent/stream
+✅ Third user message appeared
+Final AI Message: Based on what you've told me, it sounds like you're a serious and motivated potential client. I'm going to show you a contact form
+✅ AI is asking for contact details after qualification
+✅ Lead qualification flow test completed successfully!
+🎉 Complete lead qualification flow works!
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

@@ -1,7 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
 import { ChatMessageUI } from '../../worker/types';
+import { ContactData } from '../components/ContactForm';
 // API endpoints - moved inline since api.ts was removed
-const getAgentStreamEndpoint = () => '/api/agent/stream';
+const getAgentStreamEndpoint = () => {
+  // In test environment, use full backend URL since proxy is not available
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '5174') {
+    return 'http://localhost:8787/api/agent/stream';
+  }
+  return '/api/agent/stream';
+};
 
 // Define proper types for message history
 interface ChatMessageHistoryEntry {
@@ -18,12 +25,29 @@ interface UseMessageHandlingOptions {
 export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHandlingOptions) => {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Debug hooks for test environment
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__DEBUG_AI_MESSAGES__ = (messages: any[]) => {
+        console.log('[TEST] Current messages:', messages.map((m) => ({ role: m.role, isUser: m.isUser, id: m.id })));
+      };
+      (window as any).__DEBUG_AI_MESSAGES__(messages);
+    }
+  }, [messages]);
 
   // Helper function to update AI message with aiState
   const updateAIMessage = useCallback((messageId: string, updates: Partial<ChatMessageUI & { isUser: false }>) => {
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
-    ));
+    setMessages(prev => {
+      const updated = prev.map(msg => 
+        msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
+      );
+      // Debug hook for test environment
+      if (typeof window !== 'undefined' && (window as any).__DEBUG_AI_MESSAGES__) {
+        (window as any).__DEBUG_AI_MESSAGES__(updated);
+      }
+      return updated;
+    });
   }, []);
 
   // Helper function to update any message (for user messages, aiState will be ignored)
@@ -120,6 +144,10 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                 // Concatenate all data lines with newline separators
                 const combinedData = dataLines.map(line => line.slice(6)).join('\n');
                 const data = JSON.parse(combinedData);
+                // Debug hook for test environment
+                if (typeof window !== 'undefined' && (window as any).__DEBUG_SSE_EVENTS__) {
+                  (window as any).__DEBUG_SSE_EVENTS__(data);
+                }
                 
                 switch (data.type) {
                   case 'connected':
@@ -205,6 +233,16 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     });
                     break;
                     
+                  case 'contact_form':
+                    // Contact form requested
+                    updateAIMessage(placeholderId, { 
+                      content: currentContent,
+                      contactForm: data.data,
+                      isLoading: false,
+                      aiState: null
+                    });
+                    break;
+                    
                   case 'complete':
                     // Stream completed
                     updateAIMessage(placeholderId, { 
@@ -230,6 +268,11 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
 
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
+    // Debug hook for test environment
+    if (typeof window !== 'undefined' && (window as any).__DEBUG_SEND_MESSAGE__) {
+      (window as any).__DEBUG_SEND_MESSAGE__(message, attachments);
+    }
+    
     // Create user message
     const userMessage: ChatMessageUI = {
       id: crypto.randomUUID(),
@@ -280,6 +323,29 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     }
   }, [messages, teamId, sessionId, createMessageHistory, sendMessageWithStreaming, onError, updateAIMessage]);
 
+  // Handle contact form submission
+  const handleContactFormSubmit = useCallback(async (contactData: ContactData) => {
+    try {
+      // Format contact data as a structured message
+      const contactMessage = `Contact Information:
+Name: ${contactData.name}
+Email: ${contactData.email}
+Phone: ${contactData.phone}
+Location: ${contactData.location}${contactData.opposingParty ? `\nOpposing Party: ${contactData.opposingParty}` : ''}`;
+
+      // Debug hook for test environment
+      if (typeof window !== 'undefined' && (window as any).__DEBUG_CONTACT_FORM__) {
+        (window as any).__DEBUG_CONTACT_FORM__(contactData, contactMessage);
+      }
+
+      // Send the contact information as a user message
+      await sendMessage(contactMessage);
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      onError?.(error instanceof Error ? error.message : 'Failed to submit contact information');
+    }
+  }, [sendMessage, onError]);
+
   // Add message to the list
   const addMessage = useCallback((message: ChatMessageUI) => {
     setMessages(prev => [...prev, message]);
@@ -316,6 +382,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   return {
     messages,
     sendMessage,
+    handleContactFormSubmit,
     addMessage,
     updateMessage,
     clearMessages,

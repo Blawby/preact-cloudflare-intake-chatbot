@@ -27,7 +27,7 @@ export function App() {
 		onError: (error) => console.error('Team config error:', error)
 	});
 
-	const { messages, sendMessage, addMessage, cancelStreaming } = useMessageHandling({
+	const { messages, sendMessage, handleContactFormSubmit, addMessage, cancelStreaming } = useMessageHandling({
 		teamId,
 		sessionId,
 		onError: (error) => console.error('Message handling error:', error)
@@ -192,7 +192,7 @@ export function App() {
 				<ChatContainer
 					messages={messages}
 					onSendMessage={sendMessage}
-
+					onContactFormSubmit={handleContactFormSubmit}
 					teamConfig={{
 						name: teamConfig.name,
 						profileImage: teamConfig.profileImage,

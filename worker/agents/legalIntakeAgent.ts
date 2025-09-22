@@ -211,26 +211,6 @@ const AI_MODEL_CONFIG = {
 } as const;
 
 // Tool definitions with structured schemas
-export const requestContactForm = {
-  name: 'request_contact_form',
-  description: 'Request contact information by displaying a contact form component in the chat',
-  parameters: {
-    type: 'object',
-    properties: {
-      reason: { 
-        type: 'string', 
-        description: 'Reason for requesting contact information',
-        examples: [
-          'To schedule a consultation',
-          'To provide legal assistance',
-          'To follow up on your inquiry',
-          'To connect you with the right attorney'
-        ]
-      }
-    },
-    required: ['reason']
-  }
-};
 
 export const createMatter = {
   name: 'create_matter',
@@ -502,9 +482,18 @@ async function handleCreatePaymentInvoice(
   }
 }
 
+// Handler for showing contact form
+async function handleShowContactForm(parameters: any, env: any, teamConfig?: any): Promise<{ success: boolean; action: string; message: string }> {
+  return {
+    success: true,
+    action: 'show_contact_form',
+    message: 'Please fill out the contact form below so we can get in touch with you.'
+  };
+}
+
 // Tool handlers mapping
 export const TOOL_HANDLERS = {
-  request_contact_form: handleRequestContactForm,
+  show_contact_form: handleShowContactForm,
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
   analyze_document: handleAnalyzeDocument,

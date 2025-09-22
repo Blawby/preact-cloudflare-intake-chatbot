@@ -67,6 +67,13 @@ interface FeatureFlags {
      */
     enablePaymentIframe: boolean;
 
+    /**
+     * Enable lead qualification flow
+     * When false, AI will show contact form immediately after getting legal issue info
+     * When true, AI will ask qualifying questions before showing contact form
+     */
+    enableLeadQualification: boolean;
+
 }
 
 const featureConfig: FeatureFlags = {
@@ -80,6 +87,7 @@ const featureConfig: FeatureFlags = {
     enableConsultationButton: false, // Hide consultation request button
     enableMobileBottomNav: false, // Temporarily hide mobile bottom nav
     enablePaymentIframe: false, // Disable payment iframe/drawer - only show "Open in Browser" button
+    enableLeadQualification: true, // Enable lead qualification flow - AI asks questions before contact form
 };
 
 // For development environment, you can override settings

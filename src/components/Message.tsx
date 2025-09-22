@@ -11,6 +11,7 @@ import PaymentEmbed from './PaymentEmbed';
 import TeamProfile from './TeamProfile';
 import { Button } from './ui/Button';
 import { AIThinkingIndicator } from './AIThinkingIndicator';
+import { ContactForm, ContactData } from './ContactForm';
 import { features } from '../config/features';
 import {
 	DocumentIcon,
@@ -42,12 +43,18 @@ interface MessageProps {
 		description?: string;
 		paymentId?: string;
 	};
+	contactForm?: {
+		fields: string[];
+		required: string[];
+		message?: string;
+	};
 	teamConfig?: {
 		name: string;
 		profileImage: string | null;
 		teamId: string;
 	};
 	onOpenSidebar?: () => void;
+	onContactFormSubmit?: (data: ContactData) => void;
 	isLoading?: boolean;
 	aiState?: 'thinking' | 'processing' | 'generating';
 	// Feedback props
@@ -171,8 +178,10 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	files = [], 
 	matterCanvas,
 	paymentEmbed,
+	contactForm,
 	teamConfig,
 	onOpenSidebar,
+	onContactFormSubmit,
 	isLoading,
 	aiState,
 	id,
@@ -220,7 +229,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 			isUser 
 				? 'ml-auto mr-0 bg-light-message-bg-user dark:bg-dark-message-bg-user text-light-text dark:text-dark-text w-fit' 
 				: 'mr-0 ml-0 w-full min-h-12 min-w-30'
-		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`}>
+		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`} data-testid={isUser ? "user-message" : "ai-message"}>
 			{/* Agent handles welcome messages - no special logic needed */}
 			<div className="text-base leading-6 min-h-4">
 				{/* Show content if available and not loading */}
@@ -265,6 +274,16 @@ const Message: FunctionComponent<MessageProps> = memo(({
 								console.log('Payment completed:', paymentId);
 								// TODO: Handle payment completion
 							}}
+					/>
+				)}
+				
+				{/* Display contact form */}
+				{contactForm && onContactFormSubmit && (
+					<ContactForm
+						fields={contactForm.fields}
+						required={contactForm.required}
+						message={contactForm.message}
+						onSubmit={onContactFormSubmit}
 					/>
 				)}
 				

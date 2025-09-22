@@ -2,6 +2,30 @@
 
 A production-ready legal intake chatbot built with Cloudflare Workers AI, featuring intelligent conversation handling, step-by-step information collection, and automated matter creation with payment integration.
 
+## 🎯 **Lead Qualification Feature**
+
+The chatbot now includes an intelligent lead qualification system that ensures only serious potential clients are shown the contact form:
+
+### How It Works
+1. **Initial Legal Issue Collection**: AI collects the basic legal issue and description
+2. **Lead Qualification Questions**: AI asks qualifying questions about:
+   - Urgency of the matter
+   - Timeline for resolution
+   - Previous legal consultation
+   - Intent to pursue legal action
+3. **Contact Form Display**: Only after qualifying the lead does the AI show the contact form
+4. **Matter Creation**: After contact form submission, the AI creates the legal matter
+
+### Feature Flag
+The lead qualification can be toggled via the `enableLeadQualification` feature flag in `src/config/features.ts`:
+- `true`: AI asks qualifying questions before showing contact form (default)
+- `false`: AI shows contact form immediately after getting legal issue info
+
+### Testing
+- **API Tests**: Verify lead qualification logic and tool gating
+- **Playwright Tests**: End-to-end testing of the qualification conversation flow
+- **Health Checks**: Validate AI tool loop integrity and state transitions
+
 ## 🔒 **Security & Configuration**
 
 ### Team Configuration Security
@@ -464,6 +488,170 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 │   └── paralegal/      # Paralegal service tests
 ├── vitest.config.ts     # Fast tests configuration
 └── public/              # Static assets
+```
+
+## 🤖 **AI Tool Calling Best Practices**
+
+### Critical Principles for Reliable AI Tool Integration
+
+Based on extensive testing and debugging, here are the **essential principles** that ensure AI tool calling works reliably:
+
+#### 📌 **1. Always Pass Tools Explicitly in Model Calls**
+
+**❌ WRONG:**
+```typescript
+// Missing tools parameter - AI can't call any tools
+const aiResult = await env.AI.run(model, {
+  messages: [...],
+  // tools: missing!
+});
+```
+
+**✅ CORRECT:**
+```typescript
+// Always include tools array, even if AI might not use them
+const aiResult = await env.AI.run(model, {
+  messages: [...],
+  tools: availableTools, // Essential for any tool flow
+});
+```
+
+**Why:** Even if you think "the AI won't need tools yet" — they must be there for any tool flow to work.
+
+#### 📌 **2. Never Trust `response` for Tool Calls**
+
+**❌ WRONG:**
+```typescript
+// This will break when AI calls tools
+const response = aiResult.response; // null when tool_calls exist
+if (response.includes('tool')) { /* broken logic */ }
+```
+
+**✅ CORRECT:**
+```typescript
+// Check for tool_calls first, then handle response
+const hasToolCalls = aiResult.tool_calls && aiResult.tool_calls.length > 0;
+if (hasToolCalls) {
+  // Handle tool calls
+  const toolCall = aiResult.tool_calls[0];
+  // ...
+} else {
+  // Handle text response
+  const response = aiResult.response;
+  // ...
+}
+```
+
+**Why:** When `tool_calls` exist, `response` is `null` by spec. Don't let that break your logic flow.
+
+#### 📌 **3. Log Actual Model Payloads for Debugging**
+
+**✅ ALWAYS LOG:**
+```typescript
+// Essential debugging logs
+console.log('[SYSTEM PROMPT]', systemPrompt);
+console.log('[TOOLS PASSED]', availableTools.map(t => t.name));
+console.log('[AI RAW RESULT]', JSON.stringify(aiResult, null, 2));
+```
+
+**Why:** If AI isn't acting right, these logs reveal exactly what the model received and returned.
+
+#### 📌 **4. Kill Stale Context Code Aggressively**
+
+**❌ WRONG:**
+```typescript
+// Old flags that no longer serve a purpose
+if (context.hasEmail && context.hasPhone) {
+  // This logic is dead if you're using a contact form
+}
+```
+
+**✅ CORRECT:**
+```typescript
+// Clean context - only what's actually needed
+if (context.legalIssueType && context.description) {
+  // Clear, purpose-driven logic
+}
+```
+
+**Why:** Don't trust old flags like `hasEmail` or `hasOpposingParty` — if you're using a form, they have no role.
+
+### 🧪 **Development Tools for AI Tool Calling**
+
+#### **Health Check Function**
+```typescript
+function validateAIToolLoop(tools, systemPrompt, state, context) {
+  const issues = [];
+  
+  // Check if show_contact_form is included in tools
+  if (!tools.some(tool => tool.name === 'show_contact_form')) {
+    issues.push('❌ show_contact_form tool is NOT included in availableTools array');
+  }
+  
+  // Check if system prompt mentions the tool
+  if (!systemPrompt.includes('show_contact_form')) {
+    issues.push('❌ System prompt does NOT mention show_contact_form tool');
+  }
+  
+  // Check state machine logic
+  if (state === 'SHOWING_CONTACT_FORM' && !context.legalIssueType) {
+    issues.push('❌ State is SHOWING_CONTACT_FORM but missing legal issue info');
+  }
+  
+  return { isValid: issues.length === 0, issues };
+}
+```
+
+#### **Debug Utility**
+```typescript
+function debugAiToolLoop(aiResult, tools, systemPrompt) {
+  console.log('🔍 AI Tool Loop Debug:');
+  console.log('  Tools available:', tools.map(t => t.name));
+  console.log('  System prompt length:', systemPrompt.length);
+  console.log('  AI response type:', aiResult.tool_calls ? 'tool_calls' : 'text');
+  console.log('  Tool calls:', aiResult.tool_calls?.map(tc => tc.name) || 'none');
+  console.log('  Response text:', aiResult.response?.substring(0, 100) || 'null');
+}
+```
+
+### 🚨 **Common Pitfalls to Avoid**
+
+1. **Missing Tools Parameter**: The #1 cause of "AI not calling tools"
+2. **Response vs Tool Calls**: Don't check `response` when `tool_calls` exist
+3. **Stale Context Flags**: Remove old `hasEmail`, `hasPhone` logic when using forms
+4. **Silent Failures**: Always log the raw AI response for debugging
+5. **Variable Scope Issues**: Ensure all variables are properly scoped in tool call paths
+
+### 🎯 **Success Pattern**
+
+```typescript
+// The bulletproof pattern that works every time
+const availableTools = [createMatter, showContactForm, requestLawyerReview];
+
+// 1. Always pass tools
+const aiResult = await env.AI.run(model, {
+  messages: [...],
+  tools: availableTools, // Essential!
+});
+
+// 2. Check tool_calls first
+const hasToolCalls = aiResult.tool_calls && aiResult.tool_calls.length > 0;
+
+if (hasToolCalls) {
+  // 3. Handle tool calls
+  const toolCall = aiResult.tool_calls[0];
+  const handler = TOOL_HANDLERS[toolCall.name];
+  const result = await handler(toolCall.arguments);
+  
+  // 4. Emit SSE event
+  controller.enqueue(new TextEncoder().encode(
+    `data: ${JSON.stringify({ type: 'tool_result', result })}\n\n`
+  ));
+} else {
+  // 5. Handle text response
+  const response = aiResult.response;
+  // Process regular text response...
+}
 ```
 
 ## 🔒 **Security & Best Practices**

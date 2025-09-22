@@ -40,49 +40,7 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
   return sanitized.length > 0 ? sanitized : null;
 }
 
-/**
- * Sanitizes email addresses with additional validation
- */
-function sanitizeEmail(email: string | null | undefined): string | null {
-  if (!email || typeof email !== 'string') {
-    return null;
-  }
-
-  // Basic email validation regex
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  
-  let sanitized = sanitizeString(email, 254); // RFC 5321 limit
-  if (!sanitized || !emailRegex.test(sanitized)) {
-    return null;
-  }
-
-  return sanitized;
-}
-
-/**
- * Sanitizes phone numbers with additional validation
- */
-function sanitizePhone(phone: string | null | undefined): string | null {
-  if (!phone || typeof phone !== 'string') {
-    return null;
-  }
-
-  // Remove all non-digit characters except + at the beginning
-  let sanitized = phone.replace(/[^\d+]/g, '');
-  
-  // Ensure + is only at the beginning
-  if (sanitized.includes('+') && !sanitized.startsWith('+')) {
-    sanitized = sanitized.replace(/\+/g, '');
-  }
-
-  // Basic phone number validation (7-15 digits)
-  const phoneRegex = /^\+?[1-9]\d{6,14}$/;
-  if (!phoneRegex.test(sanitized)) {
-    return null;
-  }
-
-  return sanitized;
-}
+// Contact info validation functions removed - now handled by ContactForm component
 
 /**
  * Sanitizes location data
@@ -115,10 +73,10 @@ export const SYSTEM_PROMPT_TEMPLATE = `You are a legal intake specialist for {{t
 **Your persona:**
 - Empathetic, caring, and professional.
 - Focus on understanding the user's situation and making them feel heard.
-- Guide the conversation naturally to collect required information (name, legal issue, description, and at least one contact method).
+- Guide the conversation naturally to collect required information (legal issue, description, opposing party).
 - Do NOT sound like a robot or a form. Engage in a natural, human-like conversation.
 - Avoid asking for all information at once. Ask follow-up questions based on what the user provides.
-- If information is missing, politely ask for it in a conversational manner.
+- When you have enough legal information AND have qualified the lead, use the show_contact_form tool to collect contact details.
 
 **CURRENT CONTEXT (for your reference, do not directly expose this to the user):**
 {CONTEXT_SECTION}
@@ -126,23 +84,42 @@ export const SYSTEM_PROMPT_TEMPLATE = `You are a legal intake specialist for {{t
 **CRITICAL RULES:**
 {RULES_SECTION}
 
+**CRITICAL: LEAD QUALIFICATION BEFORE CONTACT FORM**
+Before showing the contact form, you MUST qualify the lead by asking relevant questions:
+- Ask about urgency: "How urgent is this matter? Do you need immediate legal assistance?"
+- Ask about timeline: "What's your timeline for resolving this issue?"
+- Ask about previous legal help: "Have you consulted with other attorneys about this matter?"
+- Ask about seriousness: "Are you looking to move forward with legal action?"
+- Only show the contact form after you've determined they are a serious, qualified potential client
+- A qualified lead shows: urgency, serious intent to take legal action, and has not already consulted other attorneys
+- If they seem unsure or just browsing, continue the conversation without asking for contact details
+- NEVER show the contact form on the first message - always ask qualifying questions first
+- When you have enough information to determine they are qualified, use the show_contact_form tool
+- DO NOT show the contact form if the user is just asking general questions or seems uncertain about pursuing legal action
+
 **CRITICAL: ALWAYS ASK FOR CONFIRMATION**
 Before creating a matter, you MUST ask the user to confirm the legal issue type:
 - "Based on what you've told me, this sounds like it might be a [Family Law/Employment Law/etc.] matter. Is that correct?"
 - Only create the matter after they confirm the legal issue type
 - If they disagree with your assessment, ask them to clarify what type of legal help they need
-- EXCEPTION: If the user explicitly asks you to create a matter AND you have all required information (name, legal issue type, description, and at least one contact method), you MUST create it directly using the create_matter tool
-- When the user says "please create a matter for me" or "create a matter" and you have the required information, use the create_matter tool immediately
+- EXCEPTION: If the user explicitly asks you to create a matter AND you have all required information (legal issue type, description) AND you have qualified them as a serious lead, you MUST use the show_contact_form tool to collect their contact details first
+- NEVER call create_matter directly - always use show_contact_form first to collect contact information
 
 **Example conversational flow for matter creation:**
 User: "I need help with a divorce."
-AI: "I'm sorry to hear that. I can help you with that. To get started, could you please tell me your full name and a brief description of your situation?"
-User: "My name is Jane Doe, and my husband is divorcing me. I need help with child custody."
-AI: "Thank you, Jane. I understand this is a difficult time. To help you further, could you also provide your email address and phone number?"
-User: "My email is jane@example.com and phone is 555-123-4567."
-AI: "Thank you, Jane. I have all the necessary information. I'm now creating a matter for your divorce and child custody case. You will be contacted shortly by one of our attorneys."
+AI: "I'm sorry to hear that. I can help you with that. To get started, could you please tell me a brief description of your situation?"
+User: "My husband is divorcing me. I need help with child custody."
+AI: "Thank you. I understand this is a difficult time. To help you further, could you tell me more about the child custody situation?"
+User: "We have two children and I want to ensure I get fair custody arrangements."
+AI: "I understand. How urgent is this matter? Are you looking to move forward with legal action soon?"
+User: "Yes, I need to file for custody immediately. My ex is trying to take the kids."
+AI: "I understand this is urgent. Based on what you've told me, this sounds like it might be a Family Law matter. Is that correct? If so, I'll show you a contact form to collect your information so we can get in touch with you."
 
 **TOOL CALL FORMAT:**
+When you have enough legal information, use this format to show the contact form:
+TOOL_CALL: show_contact_form
+PARAMETERS: {}
+
 When you need to create a matter, use this exact format:
 TOOL_CALL: create_matter
 PARAMETERS: {
@@ -188,33 +165,21 @@ export function buildContextSection(
     throw new TypeError('buildContextSection: state parameter must be a valid ConversationState string');
   }
 
-  // Sanitize all string inputs to prevent injection attacks and handle PII safely
-  const sanitizedName = sanitizeString(context.name, 100);
+  // Sanitize only legal information - contact info is handled by ContactForm
   const sanitizedLegalIssueType = sanitizeString(context.legalIssueType, 50);
   const sanitizedDescription = sanitizeString(context.description, 500);
-  const sanitizedEmail = sanitizeEmail(context.email);
-  const sanitizedPhone = sanitizePhone(context.phone);
-  const sanitizedLocation = sanitizeLocation(context.location);
   const sanitizedState = sanitizeString(state, 50);
 
   // Log security events if suspicious input is detected
   if (correlationId) {
     const originalInputs = {
-      name: context.name,
       legalIssueType: context.legalIssueType,
-      description: context.description,
-      email: context.email,
-      phone: context.phone,
-      location: context.location
+      description: context.description
     };
 
     const sanitizedInputs = {
-      name: sanitizedName,
       legalIssueType: sanitizedLegalIssueType,
-      description: sanitizedDescription,
-      email: sanitizedEmail,
-      phone: sanitizedPhone,
-      location: sanitizedLocation
+      description: sanitizedDescription
     };
 
     // Check for potential injection attempts
@@ -240,28 +205,13 @@ export function buildContextSection(
     }
   }
 
-  // Ensure required properties exist with safe defaults
-  const safeContext = {
-    hasName: Boolean(context.hasName && sanitizedName),
-    hasLegalIssue: Boolean(context.hasLegalIssue && sanitizedLegalIssueType),
-    hasEmail: Boolean(context.hasEmail && sanitizedEmail),
-    hasPhone: Boolean(context.hasPhone && sanitizedPhone),
-    hasLocation: Boolean(context.hasLocation && sanitizedLocation),
-    name: sanitizedName,
-    legalIssueType: sanitizedLegalIssueType,
-    description: sanitizedDescription,
-    email: sanitizedEmail,
-    phone: sanitizedPhone,
-    location: sanitizedLocation
-  };
-
+  // Build context with only legal information
   const contextItems = [
-    `- Has Name: ${safeContext.hasName ? 'YES' : 'NO'} ${safeContext.name ? `(${safeContext.name})` : ''}`,
-    `- Has Legal Issue: ${safeContext.hasLegalIssue ? 'YES' : 'NO'} ${safeContext.legalIssueType ? `(${safeContext.legalIssueType})` : ''}`,
-    `- Has Description: ${safeContext.description ? 'YES' : 'NO'}`,
-    `- Has Email: ${safeContext.hasEmail ? 'YES' : 'NO'} ${safeContext.email ? `(${safeContext.email})` : ''}`,
-    `- Has Phone: ${safeContext.hasPhone ? 'YES' : 'NO'} ${safeContext.phone ? `(${safeContext.phone})` : ''}`,
-    `- Has Location: ${safeContext.hasLocation ? 'YES' : 'NO'} ${safeContext.location ? `(${safeContext.location})` : ''}`,
+    `- Has Legal Issue: ${Boolean(context.hasLegalIssue && sanitizedLegalIssueType) ? 'YES' : 'NO'} ${sanitizedLegalIssueType ? `(${sanitizedLegalIssueType})` : ''}`,
+    `- Has Description: ${sanitizedDescription ? 'YES' : 'NO'}`,
+    `- Is Sensitive Matter: ${context.isSensitiveMatter ? 'YES' : 'NO'}`,
+    `- Is General Inquiry: ${context.isGeneralInquiry ? 'YES' : 'NO'}`,
+    `- Should Create Matter: ${context.shouldCreateMatter ? 'YES' : 'NO'}`,
     `- Current State: ${sanitizedState || 'UNKNOWN'}`
   ];
   
@@ -275,17 +225,15 @@ export function buildRulesSection(): string {
   const rules = [
     '- NEVER repeat the same response or question.',
     '- ALWAYS maintain an empathetic and supportive tone.',
-    '- If the user provides enough information to create a matter (name, legal issue, description, and at least one contact method like email or phone), you MUST call the `create_matter` tool.',
-    '- If the user explicitly asks you to create a matter and you have all required information, create it immediately without asking for confirmation.',
+    '- ONLY use the `show_contact_form` tool AFTER you have asked qualifying questions and determined the user is a serious potential client.',
+    '- NEVER call create_matter directly - always use show_contact_form first to collect contact information.',
     '- If the user\'s query is a general inquiry (e.g., "what services do you offer?", "how much does it cost?"), respond conversationally without trying to extract personal details or create a matter.',
     '- If the user asks a question that can be answered directly (e.g., "what is family law?"), provide a concise and helpful answer.',
     '- If the user provides sensitive information (e.g., "I ran over my child"), acknowledge the sensitivity with empathy and gently guide them towards providing necessary details for a matter, or offer to connect them with a lawyer if appropriate.',
     '- Do NOT make assumptions about missing information. Always ask the user.',
-    '- Ensure all required fields for `create_matter` are present before calling the tool. If not, ask for the missing pieces.',
-    '- When asking for information, be specific but polite. For example, instead of "Give me your email", say "Could you please provide your email address so we can reach you?"',
-    '- If the user provides an invalid format for an input (e.g., email, phone, location), politely inform them and ask for the correct format.',
+    '- When you have enough legal information AND have qualified the lead, use the `show_contact_form` tool to collect contact details.',
     '- Your responses should be concise and to the point, but still friendly and helpful.',
-    '- Do NOT generate tool calls for `collect_contact_info` or `request_lawyer_review`. Only use `create_matter` when all necessary information is available.',
+    '- Do NOT ask for contact information directly in conversation. Use the contact form tool instead.',
     '- When you have all required information and the user asks you to create a matter, you MUST use the create_matter tool immediately.',
     '- If the user explicitly states they do not want to provide certain information, respect their decision and try to proceed with what you have, or explain why certain information is necessary for matter creation.',
     '- If the user\'s intent is unclear, ask clarifying questions.',

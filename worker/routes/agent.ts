@@ -467,17 +467,20 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
           }));
           await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, fileAttachments);
           
-          // Send completion event
-          controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));
-          controller.close();
+          // Note: runLegalIntakeAgentStream handles stream closure internally
+          // No need to close the controller here as it's already closed by the agent
         } catch (error) {
           console.error('❌ Streaming error:', error);
-          const errorEvent = `data: ${JSON.stringify({
-            type: 'error',
-            message: 'An error occurred while processing your request'
-          })}\n\n`;
-          controller.enqueue(new TextEncoder().encode(errorEvent));
-          controller.close();
+          try {
+            const errorEvent = `data: ${JSON.stringify({
+              type: 'error',
+              message: 'An error occurred while processing your request'
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+            controller.close();
+          } catch (closeError) {
+            console.log('Controller already closed, ignoring error event');
+          }
         }
       }
     });

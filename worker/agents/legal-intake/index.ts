@@ -6,6 +6,7 @@ import { ConversationStateMachine, ConversationState, ConversationContext } from
 import { TOOL_HANDLERS } from '../legalIntakeAgent.js';
 import { ToolCallParser, ToolCall, ToolCallParseResult } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
+import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
 import type { Env, Team, ChatMessage } from '../../types.js';
 import type { ErrorResult } from './errors.js';
 import { ExternalServiceError, ConfigurationError, LegalIntakeError } from './errors.js';
@@ -17,10 +18,12 @@ import { ExternalServiceError, ConfigurationError, LegalIntakeError } from './er
  */
 function extractToolResponse<T>(toolResult: ErrorResult<T>): string {
   if (toolResult.success) {
+    // Check for message directly on toolResult first, then in data
+    const directMessage = (toolResult as any).message;
     const data = toolResult.data as { message?: string; response?: string };
-    return data.message || data.response || 'Tool executed successfully.';
+    return directMessage || data.message || data.response || 'Tool executed successfully.';
   } else {
-    return toolResult.error.toUserResponse();
+    return toolResult.error?.toUserResponse?.() || toolResult.error?.message || 'An error occurred while executing the tool.';
   }
 }
 
@@ -147,7 +150,7 @@ export interface ToolDefinition<T = Record<string, unknown>> {
 // Tool definitions with structured schemas
 export const createMatter: ToolDefinition<CreateMatterParams> = {
   name: 'create_matter',
-  description: 'Create a new legal matter with all required information',
+  description: 'Create a new legal matter with all required information. ONLY use this tool AFTER the user has submitted the contact form and you have all their contact details. This tool creates the actual legal matter record.',
   parameters: {
     type: 'object',
     properties: {
@@ -193,35 +196,12 @@ export const createMatter: ToolDefinition<CreateMatterParams> = {
   }
 };
 
-export const requestContactForm: ToolDefinition<CollectContactInfoParams> = {
-  name: 'request_contact_form',
-  description: 'Collect contact information from the user',
+export const showContactForm: ToolDefinition<{}> = {
+  name: 'show_contact_form',
+  description: 'Show the contact form to collect user contact information. ONLY use this tool AFTER you have qualified the lead by asking about urgency, timeline, and intent to take legal action. Do NOT use this tool on the first message or for unqualified leads.',
   parameters: {
     type: 'object',
-    properties: {
-      name: { 
-        type: 'string' as const, 
-        description: 'Client full name',
-        minLength: 2,
-        maxLength: 100
-      },
-      phone: { 
-        type: 'string' as const, 
-        description: 'Client phone number',
-        pattern: '^[\\+]?[1-9][\\d\\s\\-\\(\\)]{7,15}$'
-      },
-      email: { 
-        type: 'string' as const, 
-        description: 'Client email address',
-        pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
-      },
-      location: { 
-        type: 'string' as const, 
-        description: 'Client location (city and state)',
-        maxLength: 100
-      }
-    },
-    required: ['name'] as const,
+    properties: {},
     additionalProperties: false
   }
 };
@@ -281,7 +261,7 @@ export const analyzeDocument: ToolDefinition<AnalyzeDocumentParams> = {
 };
 
 // Alias for backward compatibility
-export const collectContactInfo = requestContactForm;
+export const collectContactInfo = showContactForm;
 
 export const createPaymentInvoice: ToolDefinition<CreatePaymentInvoiceParams> = {
   name: 'create_payment_invoice',
@@ -391,6 +371,128 @@ export interface AgentResponse {
   };
 }
 
+/**
+ * Get available tools based on conversation state
+ * This ensures AI can only call appropriate tools for the current state
+ */
+function getAvailableToolsForState(
+  state: ConversationState,
+  context: ConversationContext
+): ToolDefinition<any>[] {
+  const allTools = [
+    createMatter,
+    showContactForm,
+    requestLawyerReview,
+    createPaymentInvoice
+  ];
+
+  switch (state) {
+    case ConversationState.GATHERING_INFORMATION:
+    case ConversationState.COLLECTING_LEGAL_ISSUE:
+    case ConversationState.COLLECTING_DETAILS:
+    case ConversationState.QUALIFYING_LEAD:
+      // During information gathering and lead qualification, no tools should be available
+      // This forces the AI to have a conversation instead of jumping to tools
+      return [];
+      
+    case ConversationState.SHOWING_CONTACT_FORM:
+      // Only show_contact_form should be available
+      return [showContactForm];
+      
+    case ConversationState.CREATING_MATTER:
+      // Only create_matter should be available after contact form submission
+      return [createMatter];
+      
+    case ConversationState.COMPLETED:
+      // All tools available for follow-up actions
+      return allTools;
+      
+    default:
+      // Fallback: no tools available to prevent unexpected behavior
+      return [];
+  }
+}
+
+/**
+ * AI Tool Loop Health Check - MANDATORY validation before any tool changes
+ * This function validates the entire AI tool calling pipeline
+ */
+function validateAIToolLoop(
+  availableTools: ToolDefinition<any>[],
+  systemPrompt: string,
+  state: ConversationState,
+  context: ConversationContext,
+  correlationId?: string
+): { isValid: boolean; issues: string[] } {
+  const issues: string[] = [];
+
+  // 1. Check if show_contact_form is included in tools (only when it should be available)
+  const hasShowContactFormTool = availableTools.some(tool => tool.name === 'show_contact_form');
+  if (state === ConversationState.SHOWING_CONTACT_FORM && !hasShowContactFormTool) {
+    issues.push('❌ show_contact_form tool is NOT included in availableTools array when state is SHOWING_CONTACT_FORM');
+  }
+  
+  // Check if tools are properly gated by state
+  if (state === ConversationState.QUALIFYING_LEAD && availableTools.length > 0) {
+    issues.push('❌ Tools should not be available during QUALIFYING_LEAD state');
+  }
+
+  // 2. Check if system prompt mentions show_contact_form
+  const systemPromptMentionsShowContactForm = systemPrompt.includes('show_contact_form');
+  if (!systemPromptMentionsShowContactForm) {
+    issues.push('❌ System prompt does NOT mention show_contact_form tool');
+  }
+
+  // 3. Check if state machine correctly determines SHOWING_CONTACT_FORM
+  const shouldShowContactForm = context.legalIssueType && context.description && context.isQualifiedLead;
+  const stateIsShowingContactForm = state === ConversationState.SHOWING_CONTACT_FORM;
+  if (shouldShowContactForm && !stateIsShowingContactForm) {
+    issues.push(`❌ State machine should be SHOWING_CONTACT_FORM but is ${state}`);
+  }
+
+  // 4. Check if context has required legal info for contact form
+  if (state === ConversationState.SHOWING_CONTACT_FORM) {
+    if (!context.hasLegalIssue || !context.legalIssueType) {
+      issues.push('❌ State is SHOWING_CONTACT_FORM but missing legal issue info');
+    }
+    if (!context.description) {
+      issues.push('❌ State is SHOWING_CONTACT_FORM but missing description');
+    }
+    if (!context.isQualifiedLead) {
+      issues.push('❌ State is SHOWING_CONTACT_FORM but lead is not qualified');
+    }
+  }
+
+  // 5. Check if buildContextSection is safe (no broken references)
+  try {
+    // This would throw if there are undefined function calls
+    const contextSection = systemPrompt.includes('- Has Legal Issue:') && 
+                          systemPrompt.includes('- Has Description:') &&
+                          systemPrompt.includes('- Current State:');
+    if (!contextSection) {
+      issues.push('❌ Context section appears malformed in system prompt');
+    }
+  } catch (error) {
+    issues.push(`❌ Context section generation failed: ${error}`);
+  }
+
+  const isValid = issues.length === 0;
+  
+  // Log results
+  if (correlationId) {
+    Logger.debug('🔍 AI Tool Loop Health Check:', {
+      correlationId,
+      isValid,
+      issues,
+      toolNames: availableTools.map(tool => tool.name),
+      state,
+      hasLegalInfo: Boolean(context.legalIssueType && context.description)
+    });
+  }
+
+  return { isValid, issues };
+}
+
 // Unified legal intake agent that handles both streaming and non-streaming responses
 export async function runLegalIntakeAgentStream(
   env: Env, 
@@ -486,6 +588,18 @@ export async function runLegalIntakeAgentStream(
     content: msg.content
   }));
 
+  // 🧪 DIAGNOSTIC: Check for contact form submissions
+  const lastUserMessage = formattedMessages[formattedMessages.length - 1];
+  if (lastUserMessage?.role === 'user' && lastUserMessage.content.includes('Contact Information:')) {
+    Logger.debug('🧪 Received contact form submission:', {
+      correlationId,
+      sessionId,
+      teamId,
+      contactFormContent: lastUserMessage.content,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   // Check if we've already completed a matter creation in this conversation
   // For multi-turn conversations, preserve role information for better context
   const conversationTextRaw = formattedMessages
@@ -523,7 +637,11 @@ export async function runLegalIntakeAgentStream(
         response: completionMessage
       })}\n\n`;
       controller.enqueue(new TextEncoder().encode(finalEvent));
-      controller.close();
+      try {
+        controller.close();
+      } catch (closeError) {
+        console.log('Controller already closed, ignoring close attempt');
+      }
     } else {
       return {
         response: completionMessage,
@@ -610,6 +728,7 @@ export async function runLegalIntakeAgentStream(
   // Hoist tool parsing variables to function scope
   let toolName: string | null = null;
   let parameters: Record<string, unknown> | null = null;
+  let response: string | null = null;
   
   try {
     Logger.debug('🔄 Starting agent...');
@@ -622,6 +741,17 @@ export async function runLegalIntakeAgentStream(
     // Use AI call with retry logic
     Logger.debug('🤖 Calling AI model...');
     
+    // Log system prompt for debugging (first 500 chars)
+    Logger.debug('📝 System prompt preview:', {
+      correlationId,
+      promptPreview: systemPrompt.substring(0, 500) + (systemPrompt.length > 500 ? '...' : ''),
+      promptLength: systemPrompt.length,
+      state: businessResult.success ? businessResult.data.state : context.state,
+      contextHasLegalIssue: context.hasLegalIssue,
+      contextLegalIssueType: context.legalIssueType,
+      contextDescription: context.description ? 'YES' : 'NO'
+    });
+    
     // Log AI model call start
     const aiCallStartTime = Date.now();
     LegalIntakeLogger.logAIModelCall(
@@ -632,12 +762,86 @@ export async function runLegalIntakeAgentStream(
       AI_MODEL_CONFIG.model
     );
     
+    // Define tools available to AI based on conversation state
+    const currentState = businessResult.success ? businessResult.data.state : context.state;
+    const availableTools = getAvailableToolsForState(currentState, fullContext);
+    
+    // Log state transition for debugging
+    if (currentState !== context.state) {
+      Logger.debug('🔄 State transition:', {
+        correlationId,
+        from: context.state,
+        to: currentState,
+        reason: 'Business logic determined new state'
+      });
+    }
+    
+    // Log tools being passed to AI for debugging
+    Logger.debug('🔧 Tools passed to AI:', {
+      correlationId,
+      toolNames: availableTools.map(tool => tool.name),
+      toolCount: availableTools.length,
+      systemPromptLength: systemPrompt.length,
+      currentState,
+      contextSummary: {
+        hasLegalIssue: Boolean(fullContext.legalIssueType),
+        hasDescription: Boolean(fullContext.description),
+        isQualifiedLead: fullContext.isQualifiedLead,
+        state: currentState
+      }
+    });
+
+    // Log conversation state for audit/debugging
+    Logger.info('📊 Conversation State:', {
+      correlationId,
+      sessionId,
+      teamId,
+      state: currentState,
+      messageCount: formattedMessages.length,
+      hasLegalIssue: Boolean(fullContext.legalIssueType),
+      hasDescription: Boolean(fullContext.description),
+      isQualifiedLead: fullContext.isQualifiedLead,
+      availableTools: availableTools.map(tool => tool.name),
+      timestamp: new Date().toISOString()
+    });
+    
+    // MANDATORY: Validate AI tool loop before calling AI
+    const healthCheck = validateAIToolLoop(
+      availableTools,
+      systemPrompt,
+      businessResult.success ? businessResult.data.state : context.state,
+      fullContext,
+      correlationId
+    );
+    
+    if (!healthCheck.isValid) {
+      Logger.error('🚨 AI Tool Loop Health Check FAILED:', {
+        correlationId,
+        issues: healthCheck.issues
+      });
+      
+      // Emit health check failure via SSE
+      if (controller) {
+        controller.enqueue(new TextEncoder().encode(
+          `data: ${JSON.stringify({
+            type: 'error',
+            message: 'AI Tool Loop Health Check Failed',
+            details: healthCheck.issues,
+            correlationId
+          })}\n\n`
+        ));
+      }
+    } else {
+      Logger.debug('✅ AI Tool Loop Health Check PASSED');
+    }
+    
     const aiResult = await withAIRetry(
       () => env.AI.run(AI_MODEL_CONFIG.model as any, {
         messages: [
           { role: 'system', content: systemPrompt },
           ...formattedMessages
         ],
+        tools: availableTools,
         max_tokens: AI_MODEL_CONFIG.maxTokens,
         temperature: AI_MODEL_CONFIG.temperature
       }),
@@ -648,64 +852,26 @@ export async function runLegalIntakeAgentStream(
       }
     );
     
+    // Log raw AI response for debugging
+    console.log('[RAW_AI_RESPONSE]', JSON.stringify(aiResult, null, 2));
     Logger.debug('✅ AI result:', aiResult);
     
-    // Runtime validation of aiResult structure
-    const response = (typeof aiResult === 'object' && aiResult !== null && typeof (aiResult as any).response === 'string') 
-      ? (aiResult as any).response 
-      : 'I apologize, but I encountered an error processing your request.';
+    // Check for tool calls first
+    const hasToolCalls = aiResult && typeof aiResult === 'object' && (aiResult as any).tool_calls && Array.isArray((aiResult as any).tool_calls) && (aiResult as any).tool_calls.length > 0;
     
-    // Log AI model response
-    const aiCallEndTime = Date.now();
-    const processingTime = aiCallEndTime - aiCallStartTime;
-    LegalIntakeLogger.logAIModelCall(
-      correlationId,
-      sessionId,
-      teamId,
-      'ai_model_response' as any,
-      AI_MODEL_CONFIG.model,
-      undefined, // tokenCount not available from Cloudflare AI
-      response?.length,
-      processingTime
-    );
-    Logger.debug('📝 Full response:', response);
-    
-    // Check if response is empty or too short
-    if (!response || response.trim().length < 10) {
-      Logger.error('❌ AI returned empty or very short response:', response);
-      const fallbackResponse = 'I apologize, but I encountered an error processing your request. Please try again.';
+    if (hasToolCalls) {
+      Logger.debug('🔧 Tool calls detected:', (aiResult as any).tool_calls);
       
-      if (controller) {
-        const errorEvent = `data: ${JSON.stringify({
-          type: 'final',
-          response: fallbackResponse
-        })}\n\n`;
-        controller.enqueue(new TextEncoder().encode(errorEvent));
-        
-        // Close the stream after sending fallback response
-        controller.close();
-      } else {
-        return {
-          response: fallbackResponse,
-          metadata: {
-            error: 'Empty AI response',
-            inputMessageCount: formattedMessages.length,
-            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
-            sessionId,
-            teamId
-          }
-        };
-      }
-      return;
-    }
-    
-    // Parse tool call using ToolCallParser
-    const parseResult = ToolCallParser.parseToolCall(response);
-    
-    if (parseResult.success && parseResult.toolCall) {
-      Logger.debug('Tool call detected in response');
+      // Handle tool calls
+      const toolCalls = (aiResult as any).tool_calls;
+      const firstToolCall = toolCalls[0];
       
-      // Handle streaming case
+      toolName = firstToolCall.name;
+      parameters = firstToolCall.arguments || {};
+      
+      Logger.debug('🔧 Processing tool call:', { toolName, parameters });
+      
+      // Handle streaming case for tool calls
       if (controller) {
         const typingEvent = `data: ${JSON.stringify({
           type: 'typing',
@@ -713,32 +879,141 @@ export async function runLegalIntakeAgentStream(
         })}\n\n`;
         controller.enqueue(new TextEncoder().encode(typingEvent));
       }
+    } else {
+      // Handle regular text response
+      response = (typeof aiResult === 'object' && aiResult !== null && typeof (aiResult as any).response === 'string') 
+        ? (aiResult as any).response 
+        : 'I apologize, but I encountered an error processing your request.';
       
-      toolName = parseResult.toolCall.toolName;
-      parameters = parseResult.toolCall.parameters;
+      Logger.debug('📝 No tool call detected, handling regular response:', response);
       
-      Logger.debug('Parsed tool call:', { 
-        toolName, 
-        parameters: parseResult.toolCall.sanitizedParameters || parameters
-      });
-    } else if (parseResult.error && parseResult.error !== 'No tool call detected') {
-      Logger.error('Tool call parsing failed:', parseResult.error);
-      if (controller) {
-        const errorEvent = `data: ${JSON.stringify({
-          type: 'error',
-          message: 'Failed to parse tool parameters. Please try rephrasing your request.'
-        })}\n\n`;
-        controller.enqueue(new TextEncoder().encode(errorEvent));
-      }
-      return {
-        response: 'I encountered an error processing your request. Please try rephrasing your request.',
-        metadata: { 
-          error: parseResult.error, 
-          inputMessageCount: formattedMessages.length,
-          lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+      // Stream the text response directly
+      if (controller && response) {
+        // Stream the response as text chunks
+        const words = response.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          const word = words[i];
+          const textEvent = `data: ${JSON.stringify({
+            type: 'text',
+            text: i === 0 ? word : ' ' + word
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(textEvent));
+          
+          // Add small delay between words for streaming effect
+          if (i < words.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
         }
-      };
+        
+        // Send final response event
+        const finalEvent = `data: ${JSON.stringify({
+          type: 'final',
+          response: response
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(finalEvent));
+      }
+      
+      return;
+      
+      // Log AI model response
+      const aiCallEndTime = Date.now();
+      const processingTime = aiCallEndTime - aiCallStartTime;
+      LegalIntakeLogger.logAIModelCall(
+        correlationId,
+        sessionId,
+        teamId,
+        'ai_model_response' as any,
+        AI_MODEL_CONFIG.model,
+        undefined, // tokenCount not available from Cloudflare AI
+        response?.length,
+        processingTime
+      );
+      Logger.debug('📝 Full response:', response);
+      
+      // Check if response is empty or too short
+      if (!response || response.trim().length < 10) {
+        Logger.error('❌ AI returned empty or very short response:', response);
+        const fallbackResponse = 'I apologize, but I encountered an error processing your request. Please try again.';
+        
+        if (controller) {
+          const errorEvent = `data: ${JSON.stringify({
+            type: 'final',
+            response: fallbackResponse
+          })}\n\n`;
+          try {
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+          } catch (closeError) {
+            console.log('Controller already closed, ignoring fallback error event');
+          }
+          
+          // Close the stream after sending fallback response
+          try {
+        controller.close();
+      } catch (closeError) {
+        console.log('Controller already closed, ignoring close attempt');
+      }
+        } else {
+          return {
+            response: fallbackResponse,
+            metadata: {
+              error: 'Empty AI response',
+              inputMessageCount: formattedMessages.length,
+              lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null,
+              sessionId,
+              teamId
+            }
+          };
+        }
+        return;
+      }
+      
+      // For text responses, continue to the tool execution logic below
+      // (This will be handled by the existing logic)
     }
+    
+    // Handle tool calls (this should only happen when tools are available)
+    if (hasToolCalls) {
+      // Parse tool call using ToolCallParser for text-based tool calls
+      const parseResult = ToolCallParser.parseToolCall(response);
+    
+      if (parseResult.success && parseResult.toolCall) {
+        Logger.debug('Tool call detected in response');
+        
+        // Handle streaming case
+        if (controller) {
+          const typingEvent = `data: ${JSON.stringify({
+            type: 'typing',
+            text: 'Processing your request...'
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(typingEvent));
+        }
+        
+        toolName = parseResult.toolCall.toolName;
+        parameters = parseResult.toolCall.parameters;
+        
+        Logger.debug('Parsed tool call:', { 
+          toolName, 
+          parameters: parseResult.toolCall.sanitizedParameters || parameters
+        });
+      } else if (parseResult.error && parseResult.error !== 'No tool call detected') {
+        Logger.error('Tool call parsing failed:', parseResult.error);
+        if (controller) {
+          const errorEvent = `data: ${JSON.stringify({
+            type: 'error',
+            message: 'Failed to parse tool parameters. Please try rephrasing your request.'
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(errorEvent));
+        }
+        return {
+          response: 'I encountered an error processing your request. Please try rephrasing your request.',
+          metadata: { 
+            error: parseResult.error, 
+            inputMessageCount: formattedMessages.length,
+            lastUserMessage: formattedMessages[formattedMessages.length - 1]?.content || null
+          }
+        };
+      }
+    } // Close the if (!hasToolCalls) block
     
     // Check if we have valid tool call data
     if (toolName && parameters) {
@@ -747,7 +1022,7 @@ export async function runLegalIntakeAgentStream(
         const toolEvent = `data: ${JSON.stringify({
           type: 'tool_call',
           name: toolName,
-          parameters: parseResult.toolCall.sanitizedParameters || parameters
+          parameters: parameters
         })}\n\n`;
         controller.enqueue(new TextEncoder().encode(toolEvent));
       }
@@ -774,7 +1049,11 @@ export async function runLegalIntakeAgentStream(
             message: `Unknown tool: ${toolName}`
           })}\n\n`;
           controller.enqueue(new TextEncoder().encode(errorEvent));
-          controller.close();
+          try {
+        controller.close();
+      } catch (closeError) {
+        console.log('Controller already closed, ignoring close attempt');
+      }
         }
         return {
           response: `I'm sorry, but I don't know how to handle that type of request.`,
@@ -802,6 +1081,9 @@ export async function runLegalIntakeAgentStream(
         // Note: Raw toolResult logging removed to prevent PII exposure
         // LegalIntakeLogger.logToolCall handles sanitized logging above
         
+        // Record successful tool usage for monitoring
+        ToolUsageMonitor.recordToolUsage(toolName, toolResult.success);
+        
         // Log successful tool call
         LegalIntakeLogger.logToolCall(
           correlationId,
@@ -814,6 +1096,9 @@ export async function runLegalIntakeAgentStream(
         );
       } catch (error) {
         Logger.error('Tool execution failed:', error);
+        
+        // Record failed tool usage for monitoring
+        ToolUsageMonitor.recordToolUsage(toolName, false);
         
         // Log failed tool call
         LegalIntakeLogger.logToolCall(
@@ -884,6 +1169,28 @@ export async function runLegalIntakeAgentStream(
         };
       }
       
+      // Special handling for show_contact_form tool
+      if (toolName === 'show_contact_form' && toolResult.success) {
+        // Send contact form event to frontend
+        const contactFormEvent = `data: ${JSON.stringify({
+          type: 'contact_form',
+          data: {
+            fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
+            required: ['name', 'email', 'phone'],
+            message: toolResult.data?.message || 'Please fill out the contact form below.'
+          }
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(contactFormEvent));
+        
+        // Close the stream after sending contact form event
+        try {
+        controller.close();
+      } catch (closeError) {
+        console.log('Controller already closed, ignoring close attempt');
+      }
+        return;
+      }
+      
       // For streaming case, send the tool result as the response
       const finalResponse = extractToolResponse(toolResult);
       
@@ -910,7 +1217,11 @@ export async function runLegalIntakeAgentStream(
       controller.enqueue(new TextEncoder().encode(finalEvent));
       
       // Close the stream after sending final event
-      controller.close();
+      try {
+        controller.close();
+      } catch (closeError) {
+        console.log('Controller already closed, ignoring close attempt');
+      }
       
       // Return after tool execution for streaming case
       return;
@@ -918,6 +1229,11 @@ export async function runLegalIntakeAgentStream(
     
     // If no tool call detected, handle the regular response
     Logger.debug('📝 No tool call detected, handling regular response');
+    
+    // Ensure response is defined (this should only happen if no tool calls and no text response)
+    if (!response) {
+      response = 'I apologize, but I encountered an error processing your request.';
+    }
     
     if (controller) {
       // Streaming case: simulate streaming by sending response in chunks
@@ -942,7 +1258,11 @@ export async function runLegalIntakeAgentStream(
       controller.enqueue(new TextEncoder().encode(finalEvent));
       
       // Close the stream after sending final event
-      controller.close();
+      try {
+        controller.close();
+      } catch (closeError) {
+        console.log('Controller already closed, ignoring close attempt');
+      }
     } else {
       // Non-streaming case: return the response directly
       // Log agent completion
@@ -1017,7 +1337,11 @@ export async function runLegalIntakeAgentStream(
       
       // Safely close controller with try/catch
       try {
+        try {
         controller.close();
+      } catch (closeError) {
+        console.log('Controller already closed, ignoring close attempt');
+      }
       } catch (closeError) {
         Logger.error('Error closing SSE controller', {
           correlationId,

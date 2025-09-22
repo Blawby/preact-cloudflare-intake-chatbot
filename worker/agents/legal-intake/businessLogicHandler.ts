@@ -20,9 +20,9 @@ export interface MatterParams {
   name?: string;
   matter_type?: string;
   description?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
+  email?: string; // set by ContactForm only
+  phone?: string; // set by ContactForm only
+  location?: string; // set by ContactForm only
   opposing_party?: string;
 }
 
@@ -41,23 +41,25 @@ export class BusinessLogicHandler {
    */
   public static createMinimalContext(): ConversationContext {
     return {
-      hasName: false,
       hasLegalIssue: false,
-      hasEmail: false,
-      hasPhone: false,
-      hasLocation: false,
       hasOpposingParty: false,
-      name: null,
       legalIssueType: null,
       description: null,
-      email: null,
-      phone: null,
-      location: null,
       opposingParty: null,
       isSensitiveMatter: false,
       isGeneralInquiry: true,
       shouldCreateMatter: false,
-      state: ConversationState.GATHERING_INFORMATION
+      state: ConversationState.GATHERING_INFORMATION,
+      // Lead qualification fields
+      hasAskedUrgency: false,
+      urgencyLevel: null,
+      hasAskedTimeline: false,
+      timeline: null,
+      hasAskedBudget: false,
+      budget: null,
+      hasAskedPreviousLawyer: false,
+      hasPreviousLawyer: null,
+      isQualifiedLead: false
     };
   }
 

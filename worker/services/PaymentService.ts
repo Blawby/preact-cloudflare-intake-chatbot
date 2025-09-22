@@ -72,6 +72,25 @@ export interface PaymentConfig {
   matterTypePricing?: Record<string, number>; // matter type -> price in cents
 }
 
+// Invoice creation error codes for better error handling
+type InvoiceErrorCode = 
+  | 'NETWORK_TIMEOUT'
+  | 'NETWORK_ABORT' 
+  | 'SERVER_ERROR'
+  | 'VALIDATION_ERROR'
+  | 'AUTHENTICATION_ERROR'
+  | 'RATE_LIMIT_ERROR'
+  | 'UNKNOWN_ERROR';
+
+interface InvoiceResult {
+  success: boolean;
+  invoiceUrl?: string;
+  paymentId?: string;
+  error?: string;
+  errorCode?: InvoiceErrorCode;
+  isIndeterminate?: boolean; // true if we can't determine if invoice was created server-side
+}
+
 export class PaymentService {
   private env: Env;
   private mcpServerUrl: string;
@@ -480,24 +499,6 @@ export class PaymentService {
     return `invoice-${hash}`;
   }
 
-  // Invoice creation error codes for better error handling
-  type InvoiceErrorCode = 
-    | 'NETWORK_TIMEOUT'
-    | 'NETWORK_ABORT' 
-    | 'SERVER_ERROR'
-    | 'VALIDATION_ERROR'
-    | 'AUTHENTICATION_ERROR'
-    | 'RATE_LIMIT_ERROR'
-    | 'UNKNOWN_ERROR';
-
-  interface InvoiceResult {
-    success: boolean;
-    invoiceUrl?: string;
-    paymentId?: string;
-    error?: string;
-    errorCode?: InvoiceErrorCode;
-    isIndeterminate?: boolean; // true if we can't determine if invoice was created server-side
-  }
 
   /**
    * Creates an invoice with retry logic for transient failures
