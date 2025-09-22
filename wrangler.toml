@@ -56,7 +56,7 @@ binding = "DOC_EVENTS"
 
 # Durable Objects migration to delete old ParalegalAgent class
 [[migrations]]
-tag = "v1"
+tag = "v2"
 new_classes = []
 deleted_classes = ["ParalegalAgent"]
 
