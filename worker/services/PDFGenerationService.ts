@@ -373,7 +373,8 @@ export class PDFGenerationService {
       
       // Add a page
       let page = pdfDoc.addPage([612, 792]); // Letter size
-      const { width, height } = page.getSize();
+      const { width } = page.getSize();
+      let { height } = page.getSize();
       
       // Extract content from structured data for PDF generation
       const content = this.extractContentFromOptions(options);

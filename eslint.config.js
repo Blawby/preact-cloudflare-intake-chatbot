@@ -9,7 +9,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y';
 export default [
   // Base JavaScript configuration
   js.configs.recommended,
-  
+
   // Global ignores
   {
     ignores: [
@@ -28,44 +28,43 @@ export default [
     ]
   },
 
-  // Frontend TypeScript files configuration
+  // Application source (TypeScript + JavaScript, frontend)
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
-        ecmaFeatures: {
-          jsx: true
-        }
+        ecmaFeatures: { jsx: true }
       },
       globals: {
-        // Browser globals for frontend
-        'window': 'readonly',
-        'document': 'readonly',
-        'console': 'readonly',
-        'fetch': 'readonly',
-        'URL': 'readonly',
-        'URLSearchParams': 'readonly',
-        'FormData': 'readonly',
-        'Blob': 'readonly',
-        'File': 'readonly',
-        'FileReader': 'readonly',
-        'atob': 'readonly',
-        'btoa': 'readonly',
-        'setTimeout': 'readonly',
-        'clearTimeout': 'readonly',
-        'setInterval': 'readonly',
-        'clearInterval': 'readonly',
-        'alert': 'readonly',
-        'confirm': 'readonly',
-        'prompt': 'readonly',
-        'localStorage': 'readonly',
-        'sessionStorage': 'readonly',
-        'navigator': 'readonly',
-        'location': 'readonly',
-        'history': 'readonly'
+        window: 'readonly',
+        document: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        File: 'readonly',
+        FileReader: 'readonly',
+        atob: 'readonly',
+        btoa: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        alert: 'readonly',
+        confirm: 'readonly',
+        prompt: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        navigator: 'readonly',
+        location: 'readonly',
+        history: 'readonly',
+        crypto: 'readonly',
+        HTMLTextAreaElement: 'readonly'
       }
     },
     plugins: {
@@ -75,42 +74,31 @@ export default [
       'jsx-a11y': fixupPluginRules(jsxA11y)
     },
     rules: {
-      // TypeScript specific rules (basic recommended only)
+      // TypeScript rules
       ...typescript.configs.recommended.rules,
-      
-      // React/Preact rules
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+
+      // React/JSX + hooks + a11y
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.configs.recommended.rules,
-      
-      // Custom overrides
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_'
-      }],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-non-null-assertion': 'warn',
-      
-      // React/JSX rules (works with Preact)
-      'react/jsx-uses-react': 'off', // Not needed with Preact
-      'react/react-in-jsx-scope': 'off', // Not needed with Preact
-      'react/prop-types': 'off', // Using TypeScript instead
+      'react/jsx-uses-react': 'off',
+      'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off',
       'react/jsx-key': 'error',
       'react/jsx-no-duplicate-props': 'error',
       'react/jsx-no-undef': 'error',
       'react/no-unknown-property': 'error',
       'react/self-closing-comp': 'error',
-      
-      // React Hooks rules
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      
-      
-      // General rules
+
+      // General best practices
       'no-console': 'warn',
       'no-debugger': 'error',
-      'no-unused-vars': 'off', // Using TypeScript version instead
+      'no-unused-vars': 'off', // handled by TS rule
       'prefer-const': 'error',
       'no-var': 'error',
       'object-shorthand': 'error',
@@ -124,144 +112,75 @@ export default [
     }
   },
 
-  // Worker TypeScript files configuration
+  // Worker files (TS/JS)
   {
     files: ['worker/**/*.{ts,js}'],
     languageOptions: {
       parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module'
-      },
+      parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
       globals: {
-        // Cloudflare Workers globals
-        'Request': 'readonly',
-        'Response': 'readonly',
-        'Headers': 'readonly',
-        'URL': 'readonly',
-        'URLSearchParams': 'readonly',
-        'FormData': 'readonly',
-        'Blob': 'readonly',
-        'File': 'readonly',
-        'ReadableStream': 'readonly',
-        'WritableStream': 'readonly',
-        'TransformStream': 'readonly',
-        'crypto': 'readonly',
-        'fetch': 'readonly',
-        'console': 'readonly',
-        'setTimeout': 'readonly',
-        'clearTimeout': 'readonly',
-        'setInterval': 'readonly',
-        'clearInterval': 'readonly',
-        'addEventListener': 'readonly',
-        'removeEventListener': 'readonly',
-        'dispatchEvent': 'readonly',
-        'atob': 'readonly',
-        'btoa': 'readonly',
-        'TextEncoder': 'readonly',
-        'TextDecoder': 'readonly',
-        'AbortController': 'readonly',
-        'AbortSignal': 'readonly',
-        'Buffer': 'readonly',
-        'ReadableStreamDefaultController': 'readonly'
+        Request: 'readonly',
+        Response: 'readonly',
+        Headers: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        File: 'readonly',
+        ReadableStream: 'readonly',
+        WritableStream: 'readonly',
+        TransformStream: 'readonly',
+        crypto: 'readonly',
+        fetch: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        addEventListener: 'readonly',
+        removeEventListener: 'readonly',
+        dispatchEvent: 'readonly',
+        atob: 'readonly',
+        btoa: 'readonly',
+        TextEncoder: 'readonly',
+        TextDecoder: 'readonly',
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        Buffer: 'readonly',
+        ReadableStreamDefaultController: 'readonly'
       }
     },
-    plugins: {
-      '@typescript-eslint': typescript
-    },
+    plugins: { '@typescript-eslint': typescript },
     rules: {
       ...typescript.configs.recommended.rules,
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_'
-      }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': 'off', // Console is useful in workers
+      'no-console': 'off',
       'no-unused-vars': 'off'
     }
   },
 
-  // JavaScript files configuration
-  {
-    files: ['src/**/*.{js,jsx}'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true
-        }
-      }
-    },
-    plugins: {
-      react: fixupPluginRules(react),
-      'react-hooks': fixupPluginRules(reactHooks),
-      'jsx-a11y': fixupPluginRules(jsxA11y)
-    },
-    rules: {
-      // React/Preact rules
-      ...react.configs.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
-      ...jsxA11y.configs.recommended.rules,
-      
-      // React/JSX rules (works with Preact)
-      'react/jsx-uses-react': 'off', // Not needed with Preact
-      'react/react-in-jsx-scope': 'off', // Not needed with Preact
-      'react/prop-types': 'off', // Using TypeScript instead
-      'react/jsx-key': 'error',
-      'react/jsx-no-duplicate-props': 'error',
-      'react/jsx-no-undef': 'error',
-      'react/no-unknown-property': 'error',
-      'react/self-closing-comp': 'error',
-      
-      // React Hooks rules
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-      
-      // General rules
-      'no-console': 'warn',
-      'no-debugger': 'error',
-      'no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_'
-      }],
-      'prefer-const': 'error',
-      'no-var': 'error',
-      'object-shorthand': 'error',
-      'prefer-template': 'error'
-    },
-    settings: {
-      react: {
-        version: 'detect',
-        pragma: 'h'
-      }
-    }
-  },
-
-
-  // Test files configuration
+  // Tests (TS/JS/JSX/TSX)
   {
     files: ['**/*.{test,spec}.{ts,tsx,js,jsx}', 'tests/**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
       globals: {
-        'describe': 'readonly',
-        'it': 'readonly',
-        'test': 'readonly',
-        'expect': 'readonly',
-        'beforeEach': 'readonly',
-        'afterEach': 'readonly',
-        'beforeAll': 'readonly',
-        'afterAll': 'readonly',
-        'vi': 'readonly',
-        'vitest': 'readonly'
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        vi: 'readonly',
+        vitest: 'readonly'
       }
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off', // Tests often need any
-      'no-console': 'off', // Console is useful in tests
-      '@typescript-eslint/no-non-null-assertion': 'off' // Tests often use non-null assertions
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      'no-console': 'off'
     }
   }
 ];
