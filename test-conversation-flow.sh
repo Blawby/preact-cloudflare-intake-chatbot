@@ -52,7 +52,7 @@ make_request() {
     echo -e "${YELLOW}📤 Request: $test_name${NC}"
     echo -e "${YELLOW}   Team: $team_id | Session: $session_id${NC}"
     
-    local response=$(curl -s "$BASE_URL/api/agent/stream" \
+    local response=$(curl -s --max-time 30 "$BASE_URL/api/agent/stream" \
         -X POST \
         -H "Content-Type: application/json" \
         -d "{

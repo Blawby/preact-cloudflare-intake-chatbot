@@ -15,6 +15,9 @@ export interface PaymentRequest {
   };
   teamId: string;
   sessionId: string;
+  invoiceId?: string;
+  currency?: string;
+  dueDate?: string;
 }
 
 export interface PaymentResponse {

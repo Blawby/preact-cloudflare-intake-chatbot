@@ -1,6 +1,9 @@
 # Local development environment variables (Worker Secrets Only)
 # Copy this file to .dev.vars and fill in your actual values
 
+# Environment Configuration
+NODE_ENV=development
+
 # API Keys and Tokens (SENSITIVE)
 BLAWBY_API_TOKEN=your_blawby_api_token_here
 LAWYER_SEARCH_API_KEY=your_lawyer_search_api_key_here
