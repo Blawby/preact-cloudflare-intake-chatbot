@@ -107,6 +107,7 @@ export const HttpErrors = {
   forbidden: (message: string = 'Forbidden', details?: any) => createHttpError(403, message, details),
   notFound: (message: string = 'Not found', details?: any) => createHttpError(404, message, details),
   methodNotAllowed: (message: string = 'Method not allowed', details?: any) => createHttpError(405, message, details),
+  payloadTooLarge: (message: string = 'Payload too large', details?: any) => createHttpError(413, message, details),
   conflict: (message: string, details?: any) => createHttpError(409, message, details),
   unprocessableEntity: (message: string, details?: any) => createHttpError(422, message, details),
   tooManyRequests: (message: string = 'Too many requests', details?: any) => createHttpError(429, message, details),

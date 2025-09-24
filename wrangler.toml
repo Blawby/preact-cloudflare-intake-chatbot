@@ -54,11 +54,7 @@ binding = "DOC_EVENTS"
 # [[queues.consumers]]
 # queue = "doc-events"
 
-# Durable Objects migration to delete old ParalegalAgent class
-[[migrations]]
-tag = "v2"
-new_classes = []
-deleted_classes = ["ParalegalAgent"]
+# Durable Objects migrations removed - no longer using Durable Objects
 
 # Domain configuration for ai.blawby.com
 [env.production]
