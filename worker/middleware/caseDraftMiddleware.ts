@@ -1,7 +1,27 @@
-import type { ConversationContext } from './conversationContextManager.js';
+import type { ConversationContext, CaseDraft } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
+import type { Env, AgentMessage } from '../types.js';
 import { ConversationContextManager } from './conversationContextManager.js';
+
+// Case information extracted from user message
+interface CaseInfo {
+  matterType?: string;
+  facts?: string[];
+  timeline?: string;
+  parties?: Array<{ role: string; name?: string }>;
+  documents?: string[];
+  evidence?: string[];
+  jurisdiction?: string;
+  urgency?: 'low' | 'normal' | 'high' | 'urgent';
+}
+
+// Middleware response type
+interface MiddlewareResponse {
+  context: ConversationContext;
+  response: string;
+  shouldStop: boolean;
+}
 
 /**
  * Case Draft Middleware - handles case building and organization requests
@@ -10,31 +30,37 @@ import { ConversationContextManager } from './conversationContextManager.js';
 export const caseDraftMiddleware: PipelineMiddleware = {
   name: 'caseDraftMiddleware',
   
-  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    // Build conversation text for context-aware analysis
+    const conversationText = messages.map(msg => msg.content).join(' ');
+    const latestMessage = messages[messages.length - 1];
+    
     // Check if user is requesting case draft building
     const caseDraftKeywords = [
       'build a case draft',
       'organize my case',
-      'case summary',
       'case preparation',
       'prepare my case',
       'case file',
       'case organization',
       'structure my case',
       'case building',
-      'organize case information'
+      'organize case information',
+      'help me build a case draft',
+      'can you help me build a case draft',
+      'i need help building a case draft'
     ];
 
     const isCaseDraftRequest = caseDraftKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword.toLowerCase())
+      latestMessage.content.toLowerCase().includes(keyword.toLowerCase())
     );
 
     if (!isCaseDraftRequest) {
       return { context };
     }
 
-    // Extract case information from the message
-    const caseInfo = extractCaseInformation(message);
+    // Extract case information from the full conversation
+    const caseInfo = extractCaseInformation(conversationText);
     
     // Update context with case draft
     const updatedContext = ConversationContextManager.updateCaseDraft(context, {
@@ -45,7 +71,7 @@ export const caseDraftMiddleware: PipelineMiddleware = {
       documents: caseInfo.documents || [],
       evidence: caseInfo.evidence || [],
       jurisdiction: caseInfo.jurisdiction || '',
-      urgency: caseInfo.urgency || 'medium',
+      urgency: caseInfo.urgency || 'normal',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       status: 'draft'
@@ -65,16 +91,7 @@ export const caseDraftMiddleware: PipelineMiddleware = {
 /**
  * Extract case information from user message
  */
-function extractCaseInformation(message: string): {
-  matterType?: string;
-  facts?: string[];
-  timeline?: string;
-  parties?: Array<{ role: string; name?: string }>;
-  documents?: string[];
-  evidence?: string[];
-  jurisdiction?: string;
-  urgency?: string;
-} {
+function extractCaseInformation(message: string): CaseInfo {
   const matterTypes = [
     'family law', 'employment law', 'business law', 'contract review',
     'intellectual property', 'personal injury', 'criminal law', 'civil law',
@@ -102,8 +119,10 @@ function extractCaseInformation(message: string): {
   }
 
   // Extract urgency
-  let urgency = 'medium';
+  let urgency: 'low' | 'normal' | 'high' | 'urgent' = 'normal';
   if (message.toLowerCase().includes('urgent') || message.toLowerCase().includes('emergency')) {
+    urgency = 'urgent';
+  } else if (message.toLowerCase().includes('high priority') || message.toLowerCase().includes('important')) {
     urgency = 'high';
   } else if (message.toLowerCase().includes('not urgent') || message.toLowerCase().includes('routine')) {
     urgency = 'low';
@@ -129,7 +148,7 @@ function extractCaseInformation(message: string): {
 /**
  * Generate a case summary response
  */
-function generateCaseSummary(caseInfo: any): string {
+function generateCaseSummary(caseInfo: CaseInfo): string {
   let response = "I've started organizing your case information. Here's what I've gathered so far:\n\n";
 
   if (caseInfo.matterType) {

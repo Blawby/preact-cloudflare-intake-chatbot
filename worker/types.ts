@@ -22,6 +22,7 @@ export interface Env {
   BLAWBY_TEAM_ULID?: string;
   IDEMPOTENCY_SALT?: string;
   PAYMENT_IDEMPOTENCY_SECRET?: string;
+  LAWYER_SEARCH_API_KEY?: string;
   
   // Environment flags
   NODE_ENV?: string;

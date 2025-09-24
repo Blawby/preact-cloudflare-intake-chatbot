@@ -1,6 +1,7 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
+import type { Env, AgentMessage } from '../types.js';
 
 // Pre-compiled regex patterns for better performance and accuracy
 const LEGAL_MATTER_PATTERNS = {
@@ -33,7 +34,8 @@ const GENERAL_LEGAL_PATTERNS = [
 export const businessScopeValidator: PipelineMiddleware = {
   name: 'businessScopeValidator',
   
-  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    const latestMessage = messages[messages.length - 1];
     const availableServices = teamConfig?.availableServices || [];
     
     // If team offers General Consultation, allow most requests
@@ -54,7 +56,7 @@ export const businessScopeValidator: PipelineMiddleware = {
     }
 
     // Check current message for legal matter types
-    const currentMessageMatters = extractLegalMatterTypes(message);
+    const currentMessageMatters = extractLegalMatterTypes(latestMessage.content);
     
     if (currentMessageMatters.length > 0) {
       const hasRelevantService = currentMessageMatters.some(matter => 
@@ -83,7 +85,7 @@ export const businessScopeValidator: PipelineMiddleware = {
     }
 
     // Check for general legal requests when no specific matter is established
-    if (isGeneralLegalRequest(message) && context.establishedMatters.length === 0) {
+    if (isGeneralLegalRequest(latestMessage.content) && context.establishedMatters.length === 0) {
       const response = getGeneralLegalResponse(availableServices, teamConfig);
       
       return {

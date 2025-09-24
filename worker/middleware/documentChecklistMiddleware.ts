@@ -1,6 +1,7 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
+import type { Env, AgentMessage } from '../types.js';
 import { ConversationContextManager } from './conversationContextManager.js';
 
 /**
@@ -10,7 +11,11 @@ import { ConversationContextManager } from './conversationContextManager.js';
 export const documentChecklistMiddleware: PipelineMiddleware = {
   name: 'documentChecklistMiddleware',
   
-  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    // Build conversation text for context-aware analysis
+    const conversationText = messages.map(msg => msg.content).join(' ');
+    const latestMessage = messages[messages.length - 1];
+    
     // Check if user is requesting document checklist
     const documentKeywords = [
       'document checklist',
@@ -26,29 +31,25 @@ export const documentChecklistMiddleware: PipelineMiddleware = {
     ];
 
     const isDocumentRequest = documentKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword.toLowerCase())
+      latestMessage.content.toLowerCase().includes(keyword.toLowerCase())
     );
 
     if (!isDocumentRequest) {
       return { context };
     }
 
-    // Determine matter type from context or message
-    const matterType = determineMatterType(message, context);
+    // Determine matter type from context or conversation
+    const matterType = determineMatterType(conversationText, context);
     
     // Generate document checklist
     const documents = generateDocumentChecklist(matterType);
     
     // Update context with document checklist
     const updatedContext = ConversationContextManager.updateDocumentChecklist(context, {
-      matterType,
-      documents: documents.map(doc => ({
-        id: doc.id,
-        name: doc.name,
-        description: doc.description,
-        required: doc.required,
-        status: 'missing'
-      })),
+      matter_type: matterType,
+      required: documents.filter(doc => doc.required).map(doc => doc.name),
+      provided: [],
+      missing: documents.filter(doc => doc.required).map(doc => doc.name),
       last_updated: new Date().toISOString()
     });
 

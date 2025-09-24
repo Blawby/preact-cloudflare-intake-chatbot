@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { Button } from './ui/Button';
-import { DocumentArrowDownIcon, DocumentTextIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { DocumentArrowDownIcon, DocumentTextIcon, ClockIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../hooks/useTheme';
 
 interface GeneratedPDF {
@@ -28,7 +28,7 @@ const PDFGeneration: FunctionComponent<PDFGenerationProps> = ({
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
   const formatDate = (dateString: string): string => {
@@ -57,7 +57,7 @@ const PDFGeneration: FunctionComponent<PDFGenerationProps> = ({
         </div>
       </div>
 
-      <div className={`p-4 rounded-md ${isDark ? 'bg-dark-bg' : 'bg-gray-50'} border border-gray-200 dark:border-dark-border mb-4`}>
+      <div className={`p-4 rounded-md ${isDark ? 'bg-dark-bg border border-dark-border' : 'bg-gray-50 border border-gray-200'} mb-4`}>
         <div className="flex items-center mb-3">
           <DocumentTextIcon className={`w-5 h-5 mr-2 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
           <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -124,10 +124,23 @@ const PDFGeneration: FunctionComponent<PDFGenerationProps> = ({
         </ul>
       </div>
 
-      <div className={`mt-4 p-3 rounded-md ${isDark ? 'bg-yellow-900/20 border border-yellow-800' : 'bg-yellow-50 border border-yellow-200'}`}>
-        <p className={`text-sm ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>
-          <strong>Note:</strong> This PDF is ready to share with attorneys and contains all the information needed for initial consultations. Keep a copy for your records.
-        </p>
+      <div 
+        className={`mt-4 p-3 rounded-md ${isDark ? 'bg-yellow-900/20 border border-yellow-800' : 'bg-yellow-50 border border-yellow-200'}`}
+        role="status"
+        aria-atomic="true"
+        aria-label="Important note about PDF usage"
+      >
+        <div className="flex items-start">
+          <ExclamationTriangleIcon className={`w-5 h-5 mr-2 mt-0.5 flex-shrink-0 ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`} aria-hidden="true" />
+          <div>
+            <h4 className={`text-sm font-medium mb-1 ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>
+              Note:
+            </h4>
+            <p className={`text-sm ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>
+              This PDF is ready to share with attorneys and contains all the information needed for initial consultations. Keep a copy for your records.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

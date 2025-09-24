@@ -1,12 +1,14 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
+import type { Env, AgentMessage } from '../types.js';
 
 export interface PipelineMiddleware {
   name: string;
   execute: (
-    message: string,
+    messages: AgentMessage[],
     context: ConversationContext,
-    teamConfig: TeamConfig
+    teamConfig: TeamConfig,
+    env: Env
   ) => Promise<{ 
     context: ConversationContext; 
     response?: string;
@@ -21,15 +23,16 @@ export interface PipelineResult {
 }
 
 /**
- * Runs a message through a pipeline of middleware functions
+ * Runs a conversation through a pipeline of middleware functions
  * Each middleware can update context and optionally provide a response
  * If a middleware provides a response, the pipeline stops (graceful degradation)
  */
 export async function runPipeline(
-  message: string,
+  messages: AgentMessage[],
   context: ConversationContext,
   teamConfig: TeamConfig,
-  middlewares: PipelineMiddleware[]
+  middlewares: PipelineMiddleware[],
+  env: Env
 ): Promise<PipelineResult> {
   let updatedContext = context;
   let finalResponse = "";
@@ -37,7 +40,7 @@ export async function runPipeline(
 
   for (const middleware of middlewares) {
     try {
-      const result = await middleware.execute(message, updatedContext, teamConfig);
+      const result = await middleware.execute(messages, updatedContext, teamConfig, env);
       
       // Update context from this middleware
       updatedContext = result.context;
@@ -79,25 +82,27 @@ export async function runPipeline(
 export function createLoggingMiddleware(): PipelineMiddleware {
   return {
     name: 'logging',
-    execute: async (message, context, teamConfig) => {
+    execute: async (messages, context, teamConfig, env) => {
       // Null-safe access with defaults
-      const safeMessage = String(message || '').substring(0, 100);
+      const latestMessage = messages[messages.length - 1];
+      const safeMessage = latestMessage ? String(latestMessage.content || '').substring(0, 100) : '';
       const safeContext = context || {};
       const safeTeamConfig = teamConfig || {};
       
       console.log('Pipeline execution:', {
-        message: safeMessage,
+        messageCount: messages.length,
+        latestMessage: safeMessage,
         context: {
-          establishedMatters: safeContext.establishedMatters || [],
-          userIntent: safeContext.userIntent || 'unclear',
-          sessionId: safeContext.sessionId || 'unknown'
+          establishedMatters: context.establishedMatters || [],
+          userIntent: context.userIntent || 'unclear',
+          sessionId: context.sessionId || 'unknown'
         },
         teamConfig: {
-          availableServices: safeTeamConfig.availableServices || []
+          availableServices: teamConfig.availableServices || []
         }
       });
       
-      return { context: safeContext };
+      return { context };
     }
   };
 }

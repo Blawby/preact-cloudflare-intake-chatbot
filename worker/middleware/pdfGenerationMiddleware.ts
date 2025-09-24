@@ -1,6 +1,7 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
+import type { Env, AgentMessage } from '../types.js';
 import { ConversationContextManager } from './conversationContextManager.js';
 import { PDFGenerationService } from '../services/PDFGenerationService.js';
 
@@ -11,7 +12,8 @@ import { PDFGenerationService } from '../services/PDFGenerationService.js';
 export const pdfGenerationMiddleware: PipelineMiddleware = {
   name: 'pdfGenerationMiddleware',
   
-  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    const latestMessage = messages[messages.length - 1];
     // Check if user is requesting PDF generation
     const pdfKeywords = [
       'generate pdf',
@@ -28,11 +30,16 @@ export const pdfGenerationMiddleware: PipelineMiddleware = {
       'generate report',
       'create report',
       'download case summary',
-      'export case summary'
+      'export case summary',
+      'i want to generate a pdf',
+      'can you generate a pdf',
+      'please generate a pdf',
+      'generate a pdf case summary',
+      'create a pdf case summary'
     ];
 
     const isPDFRequest = pdfKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword.toLowerCase())
+      latestMessage.content.toLowerCase().includes(keyword.toLowerCase())
     );
 
     if (!isPDFRequest) {
@@ -62,25 +69,34 @@ Would you like me to help you build a case draft first?`;
     // Generate PDF from existing case draft
     try {
       const pdfResult = await PDFGenerationService.generateCaseSummaryPDF({
-        caseDraft: context.caseDraft,
-        clientName: context.clientName,
-        teamName: teamConfig?.name || 'Legal Services',
-        teamBrandColor: teamConfig?.brandColor || '#2563eb'
+        caseDraft: {
+          ...context.caseDraft,
+          jurisdiction: context.caseDraft.jurisdiction || 'Unknown',
+          urgency: context.caseDraft.urgency || 'normal'
+        },
+        clientName: context.contactInfo?.name,
+        teamName: teamConfig?.description || 'Legal Services',
+        teamBrandColor: teamConfig?.brandColor || '#334e68'
       }, env);
 
       if (pdfResult.success && pdfResult.pdfBuffer) {
-        const filename = PDFGenerationService.generateFilename(context.caseDraft, context.clientName);
+        const filename = PDFGenerationService.generateFilename({
+          ...context.caseDraft,
+          jurisdiction: context.caseDraft.jurisdiction || 'Unknown',
+          urgency: context.caseDraft.urgency || 'normal'
+        }, context.contactInfo?.name);
         
         // Update context with PDF information
-        const updatedContext = ConversationContextManager.updateContext(context, {
+        const updatedContext = {
           ...context,
           generatedPDF: {
             filename,
             size: pdfResult.pdfBuffer.byteLength,
             generatedAt: new Date().toISOString(),
             matterType: context.caseDraft.matter_type
-          }
-        });
+          },
+          lastUpdated: Date.now()
+        };
 
         const response = `Perfect! I've generated a professional PDF case summary for your ${context.caseDraft.matter_type} case.
 

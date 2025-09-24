@@ -1,6 +1,7 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
+import type { Env } from '../types.js';
 import { JurisdictionValidator as JurisdictionValidatorUtil, type JurisdictionConfig } from '../schemas/jurisdictionConfig.js';
 
 /**
@@ -10,7 +11,7 @@ import { JurisdictionValidator as JurisdictionValidatorUtil, type JurisdictionCo
 export const jurisdictionValidator: PipelineMiddleware = {
   name: 'jurisdictionValidator',
   
-  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig) => {
+  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
     const jurisdiction = teamConfig?.jurisdiction as JurisdictionConfig | undefined;
     
     // If no jurisdiction restrictions, allow all
@@ -53,13 +54,15 @@ export const jurisdictionValidator: PipelineMiddleware = {
         };
       }
     } else if (jurisdiction.requireLocation) {
-      // Location required but not provided - ask for location
-      const locationRequest = `To help you best, could you please tell me your city and state? This helps us provide location-specific legal guidance.`;
-      
-      return {
-        context,
-        response: locationRequest
+      // Location required but not provided - add warning to context but don't stop pipeline
+      const updatedContext = {
+        ...context,
+        safetyFlags: [...(context.safetyFlags || []), 'location_required']
       };
+      
+      // Don't stop the pipeline - let other middleware handle the request
+      // The skipToLawyerMiddleware can still show contact forms
+      return { context: updatedContext };
     }
 
     // No jurisdiction issues - continue pipeline

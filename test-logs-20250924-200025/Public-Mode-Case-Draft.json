@@ -1,0 +1,7 @@
+data: {"type":"connected"}
+
+data: {"type":"pipeline_response","response":"I've started organizing your case information. Here's what I've gathered so far:\n\n**Jurisdiction:** ca\n**Urgency:** normal\n\n**Key Facts Identified:**\n1. Family law matter\n\n**Next Steps:**\n• Please provide more details about your situation\n• Share any relevant documents or evidence\n• Let me know about any important dates or timeline\n• I can help you organize this into a comprehensive case summary\n\nWould you like to continue building your case draft with more specific information?","middlewareUsed":["logging","contentPolicyFilter","businessScopeValidator","skipToLawyerMiddleware","jurisdictionValidator","caseDraftMiddleware"],"context":{"establishedMatters":["Family Law"],"userIntent":"intake","conversationPhase":"qualifying"}}
+
+data: {"type":"matter_canvas","data":{"matterId":"general-consultation","matterNumber":"CASE-1758718842439","service":"General Consultation","matterSummary":"Family law matter","answers":{}}}
+
+data: {"type":"complete"}

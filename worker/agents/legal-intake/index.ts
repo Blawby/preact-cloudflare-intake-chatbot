@@ -67,6 +67,8 @@ export interface ConversationContext {
   hasAskedPreviousLawyer: boolean;
   hasPreviousLawyer: boolean | null;
   isQualifiedLead: boolean;
+  // Safety flags for middleware integration
+  safetyFlags?: string[];
 }
 
 // Tool parameter interfaces
@@ -327,20 +329,36 @@ function detectContextFast(conversationText: string): ConversationContext {
 // Build system prompt function
 function buildSystemPrompt(context: ConversationContext, teamConfig: any): string {
   const teamName = teamConfig?.name || 'our law firm';
+  const jurisdiction = teamConfig?.jurisdiction;
+  
+  // Check if location is required
+  const requiresLocation = jurisdiction?.requireLocation;
+  const locationRequirement = requiresLocation ? 
+    `\nIMPORTANT: This team requires location information (city and state) before proceeding with contact forms or matter creation. Always ask for location first if not provided.` : '';
+  
+  // Check if there's a location requirement flag in context
+  const hasLocationFlag = context.safetyFlags?.includes('location_required');
+  const locationFlagMessage = hasLocationFlag ? 
+    `\nURGENT: The user's location is required before proceeding. Ask for their city and state immediately.` : '';
+  
+  // Check if this is a skip-to-lawyer scenario
+  const isSkipToLawyer = context.userIntent === 'skip_to_lawyer' || context.conversationPhase === 'showing_contact_form';
+  const skipToLawyerMessage = isSkipToLawyer ? 
+    `\nURGENT: The user wants to skip the intake process and contact the legal team directly. You MUST immediately show the contact form using the show_contact_form tool.` : '';
   
   return `You are a legal intake specialist for ${teamName}.
 
-Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}
+Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}${locationRequirement}${locationFlagMessage}${skipToLawyerMessage}
 
 Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document
 
 Rules:
-- Use create_matter when you have name + legal issue + contact info
-- Use show_contact_form when you have legal issue but need contact info
+- Use create_matter when you have name + legal issue + contact info${requiresLocation ? ' + location' : ''}
+- Use show_contact_form when user wants to contact team OR when you have legal issue but need contact info
 - Be conversational and helpful
-- Ask qualifying questions to understand urgency and timeline
 - Note: Case drafting, document checklists, and skip-to-lawyer are now handled automatically by the system
-- Only show contact form after qualifying the lead
+- Show contact form when user wants to contact team - no questions asked
+- Don't rush to contact forms - let users explore case preparation tools first
 
 Tool calling format:
 TOOL_CALL: tool_name
@@ -351,7 +369,7 @@ TOOL_CALL: show_contact_form
 PARAMETERS: {}
 
 TOOL_CALL: create_matter
-PARAMETERS: {"name": "John Doe", "matter_type": "Family Law", "description": "Divorce and child custody case", "email": "john@example.com", "phone": "555-123-4567"}
+PARAMETERS: {"name": "John Doe", "matter_type": "Family Law", "description": "Divorce and child custody case", "email": "john@example.com", "phone": "555-123-4567"${requiresLocation ? ', "location": "Raleigh, NC"' : ''}}
 
 // Note: build_case_draft, show_document_checklist, and skip_to_lawyer are now handled by middleware
 
@@ -504,11 +522,18 @@ async function handleToolCall(
 
     // Special handling for show_contact_form
     if (toolName === 'show_contact_form' && toolResult.success) {
+      // Check if location is required for this team
+      const requiresLocation = (teamConfig as any)?.jurisdiction?.requireLocation;
+      const requiredFields = ['name', 'email', 'phone'];
+      if (requiresLocation) {
+        requiredFields.push('location');
+      }
+      
       await emitSSEEvent(controller, {
         type: 'contact_form',
         data: {
           fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
-          required: ['name', 'email', 'phone'],
+          required: requiredFields,
           message: ('data' in toolResult ? (toolResult.data as any)?.message : null) || 'Please fill out the contact form below.'
         }
       });

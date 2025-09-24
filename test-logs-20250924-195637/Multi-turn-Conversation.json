@@ -1,0 +1,9 @@
+data: {"type":"connected"}
+
+data: {"type":"connected"}
+
+data: {"type":"text","text":"It sounds like you're going through a difficult time. Being unfairly accused and then fired can be very stressful and emotional. Can you tell me more about what happened? What was the reason your boss gave for firing you, and do you have any evidence or witnesses that might support your side of the story?\n\nAlso, would you like to create a matter for your case? This will help us keep track of your case and ensure that we have all the necessary information. If you're ready, we can use the create_matter tool to get started."}
+
+data: {"type":"final","response":"It sounds like you're going through a difficult time. Being unfairly accused and then fired can be very stressful and emotional. Can you tell me more about what happened? What was the reason your boss gave for firing you, and do you have any evidence or witnesses that might support your side of the story?\n\nAlso, would you like to create a matter for your case? This will help us keep track of your case and ensure that we have all the necessary information. If you're ready, we can use the create_matter tool to get started."}
+
+data: {"type":"complete"}

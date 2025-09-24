@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
+import ContactOptionsModal from './ContactOptionsModal';
 import {
   UserIcon,
   BuildingOfficeIcon,
@@ -11,7 +12,8 @@ import {
   GlobeAltIcon,
   ClockIcon,
   CurrencyDollarIcon,
-  LanguageIcon
+  ChatBubbleLeftRightIcon,
+  EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
 import { useTheme } from '../hooks/useTheme';
 
@@ -50,10 +52,20 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
 }) => {
   const { isDark } = useTheme();
   const [selectedLawyer, setSelectedLawyer] = useState<LawyerProfile | null>(null);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   const handleContactLawyer = (lawyer: LawyerProfile) => {
-    setSelectedLawyer(lawyer);
     onContactLawyer(lawyer);
+  };
+
+  const openContactModal = (lawyer: LawyerProfile) => {
+    setSelectedLawyer(lawyer);
+    setIsContactModalOpen(true);
+  };
+
+  const closeContactModal = () => {
+    setIsContactModalOpen(false);
+    setSelectedLawyer(null);
   };
 
   const renderStars = (rating: number) => {
@@ -170,7 +182,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
               
               {lawyer.languages && lawyer.languages.length > 0 && (
                 <div className="flex items-center text-sm text-gray-600">
-                  <LanguageIcon className="w-4 h-4 mr-2 text-gray-400" />
+                  <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2 text-gray-400" />
                   {lawyer.languages.join(', ')}
                 </div>
               )}
@@ -209,38 +221,14 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
             )}
 
             <div className="flex justify-between items-center">
-              <div className="flex space-x-2">
-                {lawyer.phone && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<PhoneIcon className="w-4 h-4" />}
-                    onClick={() => window.open(`tel:${lawyer.phone}`)}
-                  >
-                    Call
-                  </Button>
-                )}
-                {lawyer.email && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<EnvelopeIcon className="w-4 h-4" />}
-                    onClick={() => window.open(`mailto:${lawyer.email}`)}
-                  >
-                    Email
-                  </Button>
-                )}
-                {lawyer.website && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<GlobeAltIcon className="w-4 h-4" />}
-                    onClick={() => window.open(lawyer.website, '_blank')}
-                  >
-                    Website
-                  </Button>
-                )}
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<EllipsisVerticalIcon className="w-4 h-4" />}
+                onClick={() => openContactModal(lawyer)}
+              >
+                Contact Options
+              </Button>
               
               <Button
                 variant="primary"
@@ -263,6 +251,15 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
             </Button>
           </p>
         </div>
+      )}
+
+      {selectedLawyer && (
+        <ContactOptionsModal
+          lawyer={selectedLawyer}
+          isOpen={isContactModalOpen}
+          onClose={closeContactModal}
+          onContactLawyer={handleContactLawyer}
+        />
       )}
     </div>
   );

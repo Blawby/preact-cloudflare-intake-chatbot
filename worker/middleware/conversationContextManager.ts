@@ -1,4 +1,4 @@
-import type { Env } from '../types.js';
+import type { Env, AgentMessage } from '../types.js';
 
 export interface CaseDraft {
   matter_type: string;
@@ -33,6 +33,28 @@ export interface GeneratedPDF {
   matterType: string;
 }
 
+export interface LawyerSearchResults {
+  matterType: string;
+  lawyers: Array<{
+    id: string;
+    name: string;
+    firm?: string;
+    location: string;
+    practiceAreas: string[];
+    rating?: number;
+    reviewCount?: number;
+    phone?: string;
+    email?: string;
+    website?: string;
+    bio?: string;
+    experience?: string;
+    languages?: string[];
+    consultationFee?: number;
+    availability?: string;
+  }>;
+  total: number;
+}
+
 export interface ConversationContext {
   sessionId: string;
   teamId: string;
@@ -58,6 +80,7 @@ export interface ConversationContext {
   caseDraft?: CaseDraft;
   documentChecklist?: DocumentChecklist;
   generatedPDF?: GeneratedPDF;
+  lawyerSearchResults?: LawyerSearchResults;
 }
 
 export class ConversationContextManager {
@@ -127,39 +150,44 @@ export class ConversationContextManager {
   }
 
   /**
-   * Update context with new message information
+   * Update context with full conversation history
    */
   static updateContext(
     context: ConversationContext,
-    message: string
+    messages: AgentMessage[]
   ): ConversationContext {
     const updated = { ...context };
-    updated.messageCount += 1;
+    updated.messageCount = messages.length;
     updated.lastUpdated = Date.now();
 
-    // Extract legal matter types from message
-    const legalMatterTypes = this.extractLegalMatterTypes(message);
+    // Build conversation history from all messages
+    const conversationText = messages.map(msg => msg.content).join(' ');
+    const userMessages = messages.filter(msg => msg.role === 'user' || msg.isUser);
+    const latestUserMessage = userMessages[userMessages.length - 1];
+
+    // Extract legal matter types from full conversation
+    const legalMatterTypes = this.extractLegalMatterTypes(conversationText);
     legalMatterTypes.forEach(matter => {
       if (!updated.establishedMatters.includes(matter)) {
         updated.establishedMatters.push(matter);
       }
     });
 
-    // Update user intent based on message content using updated context
-    updated.userIntent = this.determineUserIntent(message, updated);
+    // Update user intent based on full conversation context
+    updated.userIntent = this.determineUserIntent(conversationText, updated);
 
-    // Update conversation phase using updated context
-    updated.conversationPhase = this.determineConversationPhase(updated, message);
+    // Update conversation phase using full conversation context
+    updated.conversationPhase = this.determineConversationPhase(updated, conversationText);
 
-    // Extract contact information
-    const contactInfo = this.extractContactInfo(message);
+    // Extract contact information from full conversation
+    const contactInfo = this.extractContactInfo(conversationText);
     if (contactInfo.name) updated.contactInfo.name = contactInfo.name;
     if (contactInfo.email) updated.contactInfo.email = contactInfo.email;
     if (contactInfo.phone) updated.contactInfo.phone = contactInfo.phone;
     if (contactInfo.location) updated.contactInfo.location = contactInfo.location;
 
-    // Extract jurisdiction
-    const jurisdiction = this.extractJurisdiction(message);
+    // Extract jurisdiction from full conversation
+    const jurisdiction = this.extractJurisdiction(conversationText);
     if (jurisdiction) updated.jurisdiction = jurisdiction;
 
     return updated;

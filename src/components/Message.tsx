@@ -15,6 +15,7 @@ import { ContactForm, ContactData } from './ContactForm';
 import DocumentChecklist from './DocumentChecklist';
 import LawyerSearchResults from './LawyerSearchResults';
 import PDFGeneration from './PDFGeneration';
+import { useToastContext } from '../contexts/ToastContext';
 import { features } from '../config/features';
 import {
 	DocumentIcon,
@@ -221,6 +222,9 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	matterCanvas,
 	paymentEmbed,
 	contactForm,
+	documentChecklist,
+	lawyerSearchResults,
+	generatedPDF,
 	teamConfig,
 	onOpenSidebar,
 	onContactFormSubmit,
@@ -234,6 +238,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	onFeedbackSubmit
 }) => {
 	const [isClient, setIsClient] = useState(false);
+	const { showSuccess, showError, showInfo } = useToastContext();
 	const [ReactMarkdown, setReactMarkdown] = useState<any>(null);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [selectedMedia, setSelectedMedia] = useState<any>(null);
@@ -316,7 +321,11 @@ const Message: FunctionComponent<MessageProps> = memo(({
 							description={paymentEmbed.description}
 						onPaymentComplete={(paymentId) => {
 							// Handle payment completion
-							alert(`Payment ${paymentId} completed successfully! Your consultation is now scheduled.`);
+							showSuccess('Payment received', `Payment ${paymentId} completed successfully.`);
+							
+							// TODO: Trigger scheduling flow separately if needed
+							// This could be handled by the parent component or a separate service
+							// showInfo('Scheduling', 'We will contact you shortly to schedule your consultation.');
 						}}
 					/>
 				)}
@@ -387,24 +396,60 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				{generatedPDF && (
 					<PDFGeneration
 						pdf={generatedPDF}
-						onDownload={() => {
-							// Create a blob and trigger download
-							const blob = new Blob(['PDF content would be here'], { type: 'application/pdf' });
-							const url = URL.createObjectURL(blob);
-							const a = document.createElement('a');
-							a.href = url;
-							a.download = generatedPDF.filename;
-							document.body.appendChild(a);
-							a.click();
-							document.body.removeChild(a);
-							URL.revokeObjectURL(url);
+						onDownload={async () => {
+							try {
+								// Show loading state
+								showInfo('Downloading PDF', 'Preparing your case summary for download...');
+								
+								// Request PDF from backend
+								const response = await fetch('/api/pdf/download', {
+									method: 'POST',
+									headers: {
+										'Content-Type': 'application/json',
+									},
+									body: JSON.stringify({
+										filename: generatedPDF.filename,
+										matterType: generatedPDF.matterType,
+										generatedAt: generatedPDF.generatedAt
+									})
+								});
+
+								if (!response.ok) {
+									throw new Error(`Failed to download PDF: ${response.statusText}`);
+								}
+
+								// Get the PDF blob
+								const pdfBlob = await response.blob();
+								
+								// Create download link
+								const url = URL.createObjectURL(pdfBlob);
+								const a = document.createElement('a');
+								a.href = url;
+								a.download = generatedPDF.filename;
+								document.body.appendChild(a);
+								a.click();
+								document.body.removeChild(a);
+								URL.revokeObjectURL(url);
+								
+								showSuccess('PDF Downloaded', 'Your case summary has been downloaded successfully.');
+							} catch (error) {
+								console.error('PDF download error:', error);
+								showError('Download Failed', 'Unable to download PDF. Please try again or contact support.');
+							}
 						}}
 						onRegenerate={() => {
-							// Trigger PDF regeneration by sending a message
+							// Trigger PDF regeneration by sending a message to the AI
 							if (onContactFormSubmit) {
-								// This would trigger a new PDF generation request
-								// For now, we'll show a message to the user
-								alert('PDF regeneration requested. Please ask the AI to generate a new PDF.');
+								showInfo('Regenerating PDF', 'Requesting a new PDF generation...');
+								// This would trigger the AI to regenerate the PDF
+								// The AI will handle this through the PDF generation middleware
+								onContactFormSubmit({
+									name: '',
+									email: '',
+									phone: '',
+									location: '',
+									opposingParty: 'Please regenerate my case summary PDF'
+								});
 							}
 						}}
 					/>

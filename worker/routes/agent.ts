@@ -107,12 +107,12 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     // Load conversation context
     const context = await ConversationContextManager.load(sessionId || 'default', teamId || 'default', env);
 
-    // Update context with the latest message before running pipeline
-    const updatedContext = ConversationContextManager.updateContext(context, latestMessage.content);
+    // Update context with the full conversation before running pipeline
+    const updatedContext = ConversationContextManager.updateContext(context, messages);
 
-    // Run through pipeline with updated context
+    // Run through pipeline with full conversation history
     const pipelineResult = await runPipeline(
-      latestMessage.content,
+      messages,
       updatedContext,
       teamConfig,
       [
@@ -124,7 +124,8 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
         caseDraftMiddleware,
         documentChecklistMiddleware,
         pdfGenerationMiddleware
-      ]
+      ],
+      env
     );
 
     // Save updated context
@@ -133,20 +134,104 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       console.warn('Failed to save conversation context for session:', pipelineResult.context.sessionId);
     }
 
-    // If pipeline provided a response, return it
+    // If pipeline provided a response, return it with UI components
     if (pipelineResult.response && pipelineResult.response !== 'AI_HANDLE') {
-      const responseEvent = `data: ${JSON.stringify({
-        type: 'pipeline_response',
-        response: pipelineResult.response,
-        middlewareUsed: pipelineResult.middlewareUsed,
-        context: {
-          establishedMatters: pipelineResult.context.establishedMatters,
-          userIntent: pipelineResult.context.userIntent,
-          conversationPhase: pipelineResult.context.conversationPhase
+      // Create streaming response to include UI components
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            // Send initial connection event
+            controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
+            
+            // Send the main response
+            const responseEvent = `data: ${JSON.stringify({
+              type: 'pipeline_response',
+              response: pipelineResult.response,
+              middlewareUsed: pipelineResult.middlewareUsed,
+              context: {
+                establishedMatters: pipelineResult.context.establishedMatters,
+                userIntent: pipelineResult.context.userIntent,
+                conversationPhase: pipelineResult.context.conversationPhase
+              }
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(responseEvent));
+            
+            // Check for UI components in context and send them as separate events
+            if (pipelineResult.context.caseDraft) {
+              const matterCanvasEvent = `data: ${JSON.stringify({
+                type: 'matter_canvas',
+                data: {
+                  matterId: pipelineResult.context.caseDraft.matter_type.toLowerCase().replace(/\s+/g, '-'),
+                  matterNumber: `CASE-${Date.now()}`,
+                  service: pipelineResult.context.caseDraft.matter_type,
+                  matterSummary: pipelineResult.context.caseDraft.key_facts?.join(' ') || 'Case information organized',
+                  answers: {}
+                }
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(matterCanvasEvent));
+            }
+            
+            if (pipelineResult.context.documentChecklist) {
+              const documentChecklistEvent = `data: ${JSON.stringify({
+                type: 'document_checklist',
+                data: {
+                  matterType: pipelineResult.context.documentChecklist.matter_type,
+                  documents: pipelineResult.context.documentChecklist.required.map(name => ({
+                    id: name.toLowerCase().replace(/\s+/g, '-'),
+                    name: name,
+                    description: `Required document for ${pipelineResult.context.documentChecklist.matter_type}`,
+                    required: true,
+                    status: 'missing'
+                  }))
+                }
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(documentChecklistEvent));
+            }
+            
+            if (pipelineResult.context.generatedPDF) {
+              const pdfGenerationEvent = `data: ${JSON.stringify({
+                type: 'pdf_generation',
+                data: {
+                  filename: pipelineResult.context.generatedPDF.filename,
+                  size: pipelineResult.context.generatedPDF.size,
+                  generatedAt: pipelineResult.context.generatedPDF.generatedAt,
+                  matterType: pipelineResult.context.generatedPDF.matterType
+                }
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(pdfGenerationEvent));
+            }
+            
+            if (pipelineResult.context.lawyerSearchResults) {
+              const lawyerSearchEvent = `data: ${JSON.stringify({
+                type: 'lawyer_search',
+                data: {
+                  matterType: pipelineResult.context.lawyerSearchResults.matterType,
+                  lawyers: pipelineResult.context.lawyerSearchResults.lawyers,
+                  total: pipelineResult.context.lawyerSearchResults.total
+                }
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(lawyerSearchEvent));
+            }
+            
+            
+
+              // Send completion event
+              controller.enqueue(new TextEncoder().encode('data: {"type":"complete"}\n\n'));
+              controller.close();
+            
+          } catch (error) {
+            console.error('Error in pipeline response stream:', error);
+            const errorEvent = `data: ${JSON.stringify({
+              type: 'error',
+              message: error instanceof Error ? error.message : String(error)
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorEvent));
+            controller.close();
+          }
         }
-      })}\n\n`;
+      });
       
-      return new Response(responseEvent, { headers });
+      return new Response(stream, { headers });
     }
 
     // Pipeline didn't provide a response - let AI handle it

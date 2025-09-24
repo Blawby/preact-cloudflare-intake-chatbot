@@ -24,11 +24,8 @@ interface PDFGenerationOptions {
 }
 
 export class PDFGenerationService {
-  private static BASE_URL: string;
-
   public static initialize(env: Env) {
-    this.BASE_URL = env.PDF_GENERATION_API_URL || 'https://api.html-pdf-node.com';
-    Logger.info(`[PDFGenerationService] Initialized with BASE_URL: ${this.BASE_URL}`);
+    Logger.info(`[PDFGenerationService] Initialized - using local pdf-lib for PDF generation`);
   }
 
   /**
@@ -63,16 +60,38 @@ export class PDFGenerationService {
   }
 
   /**
+   * Escape HTML special characters to prevent XSS
+   */
+  private static escapeHtml(unsafe: string): string {
+    return unsafe
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+  }
+
+  /**
    * Generate HTML content for the case summary
    */
   private static generateHTML(options: PDFGenerationOptions): string {
     const { caseDraft, clientName, teamName, teamBrandColor } = options;
-    const brandColor = teamBrandColor || '#2563eb';
+    const brandColor = teamBrandColor || '#334e68'; // Use your app's primary-700 color as default
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
+
+    // Escape all user-provided strings
+    const escapedClientName = clientName ? this.escapeHtml(clientName) : '';
+    const escapedTeamName = teamName ? this.escapeHtml(teamName) : '';
+    const escapedMatterType = this.escapeHtml(caseDraft.matter_type);
+    const escapedJurisdiction = this.escapeHtml(caseDraft.jurisdiction);
+    const escapedUrgency = this.escapeHtml(caseDraft.urgency);
+    const escapedStatus = this.escapeHtml(caseDraft.status);
+    const escapedTimeline = caseDraft.timeline ? this.escapeHtml(caseDraft.timeline) : '';
 
     return `
 <!DOCTYPE html>
@@ -80,16 +99,16 @@ export class PDFGenerationService {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Case Summary - ${caseDraft.matter_type}</title>
+    <title>Case Summary - ${escapedMatterType}</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #1a1a1a;
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
+            padding: 1.5rem;
+            background-color: #ffffff;
         }
         
         .header {
@@ -106,29 +125,29 @@ export class PDFGenerationService {
         }
         
         .header .subtitle {
-            color: #666;
-            margin: 5px 0 0 0;
-            font-size: 16px;
+            color: #6b7280;
+            margin: 0.5rem 0 0 0;
+            font-size: 1rem;
         }
         
         .case-info {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
+            background-color: #f9fafb;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
             border-left: 4px solid ${brandColor};
         }
         
         .case-info h2 {
             color: ${brandColor};
-            margin: 0 0 15px 0;
-            font-size: 20px;
+            margin: 0 0 1rem 0;
+            font-size: 1.25rem;
         }
         
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 1rem;
         }
         
         .info-item {
@@ -138,26 +157,26 @@ export class PDFGenerationService {
         
         .info-label {
             font-weight: 600;
-            color: #555;
-            font-size: 14px;
-            margin-bottom: 5px;
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
         }
         
         .info-value {
-            color: #333;
-            font-size: 16px;
+            color: #1a1a1a;
+            font-size: 1rem;
         }
         
         .section {
-            margin-bottom: 30px;
+            margin-bottom: 2rem;
         }
         
         .section h2 {
             color: ${brandColor};
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            font-size: 20px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.25rem;
+            font-size: 1.25rem;
         }
         
         .facts-list {
@@ -166,10 +185,10 @@ export class PDFGenerationService {
         }
         
         .facts-list li {
-            background-color: #f8f9fa;
-            margin-bottom: 10px;
-            padding: 12px 15px;
-            border-radius: 6px;
+            background-color: #f9fafb;
+            margin-bottom: 0.75rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
             border-left: 3px solid ${brandColor};
         }
         
@@ -179,10 +198,10 @@ export class PDFGenerationService {
         }
         
         .parties-list li {
-            background-color: #f8f9fa;
-            margin-bottom: 10px;
-            padding: 12px 15px;
-            border-radius: 6px;
+            background-color: #f9fafb;
+            margin-bottom: 0.75rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
             border-left: 3px solid ${brandColor};
         }
         
@@ -192,57 +211,57 @@ export class PDFGenerationService {
         }
         
         .documents-list li, .evidence-list li {
-            background-color: #f8f9fa;
-            margin-bottom: 8px;
-            padding: 10px 15px;
-            border-radius: 6px;
-            border-left: 3px solid #28a745;
+            background-color: #f0fdf4;
+            margin-bottom: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border-left: 3px solid #10b981;
         }
         
         .urgency-high {
-            color: #dc3545;
+            color: #dc2626;
             font-weight: 600;
         }
         
         .urgency-medium {
-            color: #ffc107;
+            color: #d97706;
             font-weight: 600;
         }
         
         .urgency-low {
-            color: #28a745;
+            color: #059669;
             font-weight: 600;
         }
         
         .disclaimer {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 6px;
-            padding: 15px;
-            margin-top: 30px;
-            font-size: 14px;
-            color: #856404;
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 2rem;
+            font-size: 0.875rem;
+            color: #92400e;
         }
         
         .disclaimer h3 {
-            margin: 0 0 10px 0;
-            color: #856404;
-            font-size: 16px;
+            margin: 0 0 0.75rem 0;
+            color: #92400e;
+            font-size: 1rem;
         }
         
         .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
+            margin-top: 2.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid #e5e7eb;
             text-align: center;
-            color: #666;
-            font-size: 14px;
+            color: #6b7280;
+            font-size: 0.875rem;
         }
         
         @media print {
             body {
                 margin: 0;
-                padding: 15px;
+                padding: 1rem;
             }
         }
     </style>
@@ -250,7 +269,7 @@ export class PDFGenerationService {
 <body>
     <div class="header">
         <h1>Legal Case Summary</h1>
-        <p class="subtitle">${teamName || 'Legal Services'} • Generated on ${currentDate}</p>
+        <p class="subtitle">${escapedTeamName || 'Legal Services'} • Generated on ${currentDate}</p>
     </div>
 
     <div class="case-info">
@@ -258,25 +277,25 @@ export class PDFGenerationService {
         <div class="info-grid">
             <div class="info-item">
                 <span class="info-label">Matter Type</span>
-                <span class="info-value">${caseDraft.matter_type}</span>
+                <span class="info-value">${escapedMatterType}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Jurisdiction</span>
-                <span class="info-value">${caseDraft.jurisdiction}</span>
+                <span class="info-value">${escapedJurisdiction}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Urgency Level</span>
-                <span class="info-value urgency-${caseDraft.urgency}">${caseDraft.urgency.toUpperCase()}</span>
+                <span class="info-value urgency-${escapedUrgency}">${escapedUrgency.toUpperCase()}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Status</span>
-                <span class="info-value">${caseDraft.status.toUpperCase()}</span>
+                <span class="info-value">${escapedStatus.toUpperCase()}</span>
             </div>
         </div>
-        ${clientName ? `
+        ${escapedClientName ? `
         <div class="info-item" style="margin-top: 15px;">
             <span class="info-label">Client</span>
-            <span class="info-value">${clientName}</span>
+            <span class="info-value">${escapedClientName}</span>
         </div>
         ` : ''}
     </div>
@@ -284,14 +303,14 @@ export class PDFGenerationService {
     <div class="section">
         <h2>Key Facts</h2>
         <ul class="facts-list">
-            ${caseDraft.key_facts.map(fact => `<li>${fact}</li>`).join('')}
+            ${caseDraft.key_facts.map(fact => `<li>${this.escapeHtml(fact)}</li>`).join('')}
         </ul>
     </div>
 
-    ${caseDraft.timeline ? `
+    ${escapedTimeline ? `
     <div class="section">
         <h2>Timeline</h2>
-        <p>${caseDraft.timeline}</p>
+        <p>${escapedTimeline}</p>
     </div>
     ` : ''}
 
@@ -301,8 +320,8 @@ export class PDFGenerationService {
         <ul class="parties-list">
             ${caseDraft.parties.map(party => `
                 <li>
-                    <strong>${party.role}:</strong> ${party.name || 'Name not provided'}
-                    ${party.relationship ? ` (${party.relationship})` : ''}
+                    <strong>${this.escapeHtml(party.role)}:</strong> ${party.name ? this.escapeHtml(party.name) : 'Name not provided'}
+                    ${party.relationship ? ` (${this.escapeHtml(party.relationship)})` : ''}
                 </li>
             `).join('')}
         </ul>
@@ -313,7 +332,7 @@ export class PDFGenerationService {
     <div class="section">
         <h2>Available Documents</h2>
         <ul class="documents-list">
-            ${caseDraft.documents.map(doc => `<li>${doc}</li>`).join('')}
+            ${caseDraft.documents.map(doc => `<li>${this.escapeHtml(doc)}</li>`).join('')}
         </ul>
     </div>
     ` : ''}
@@ -322,7 +341,7 @@ export class PDFGenerationService {
     <div class="section">
         <h2>Evidence</h2>
         <ul class="evidence-list">
-            ${caseDraft.evidence.map(ev => `<li>${ev}</li>`).join('')}
+            ${caseDraft.evidence.map(ev => `<li>${this.escapeHtml(ev)}</li>`).join('')}
         </ul>
     </div>
     ` : ''}
@@ -333,7 +352,7 @@ export class PDFGenerationService {
     </div>
 
     <div class="footer">
-        <p>Generated by ${teamName || 'Legal Services'} on ${currentDate}</p>
+        <p>Generated by ${escapedTeamName || 'Legal Services'} on ${currentDate}</p>
         <p>This document contains confidential information and should be treated accordingly.</p>
     </div>
 </body>
@@ -341,36 +360,135 @@ export class PDFGenerationService {
   }
 
   /**
-   * Convert HTML to PDF using jsPDF
+   * Convert HTML to PDF using pdf-lib
    * This creates a real PDF document with proper formatting
    */
   private static async convertHTMLToPDF(html: string, env: Env): Promise<ArrayBuffer> {
     try {
-      // For Cloudflare Workers, we'll use a server-side PDF generation approach
-      // Since jsPDF is a client-side library, we'll create a structured PDF using a different approach
+      // Import pdf-lib dynamically for Cloudflare Workers compatibility
+      const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
       
-      const pdfBuffer = await this.generateStructuredPDF(html);
-      return pdfBuffer;
+      // Create a new PDF document
+      const pdfDoc = await PDFDocument.create();
+      
+      // Add a page
+      const page = pdfDoc.addPage([612, 792]); // Letter size
+      const { width, height } = page.getSize();
+      
+      // Extract content from HTML for PDF generation
+      const content = this.extractContentFromHTML(html);
+      
+      // Add fonts
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      
+      // Set up text styling
+      const fontSize = 12;
+      const lineHeight = fontSize * 1.2;
+      let yPosition = height - 50; // Start from top with margin
+      
+      // Helper function to add text with word wrapping
+      const addText = (text: string, font: any, size: number, color: any, maxWidth?: number) => {
+        if (maxWidth) {
+          const words = text.split(' ');
+          let line = '';
+          let currentY = yPosition;
+          
+          for (const word of words) {
+            const testLine = line + (line ? ' ' : '') + word;
+            const textWidth = font.widthOfTextAtSize(testLine, size);
+            
+            if (textWidth > maxWidth && line) {
+              page.drawText(line, {
+                x: 50,
+                y: currentY,
+                size,
+                font,
+                color,
+              });
+              line = word;
+              currentY -= lineHeight;
+            } else {
+              line = testLine;
+            }
+          }
+          
+          if (line) {
+            page.drawText(line, {
+              x: 50,
+              y: currentY,
+              size,
+              font,
+              color,
+            });
+            yPosition = currentY - lineHeight;
+          }
+        } else {
+          page.drawText(text, {
+            x: 50,
+            y: yPosition,
+            size,
+            font,
+            color,
+          });
+          yPosition -= lineHeight;
+        }
+      };
+      
+      // Add title
+      addText(content.title, boldFont, 18, rgb(0.2, 0.2, 0.2));
+      yPosition -= 10;
+      
+      // Add subtitle
+      if (content.subtitle) {
+        addText(content.subtitle, font, 12, rgb(0.4, 0.4, 0.4));
+        yPosition -= 20;
+      }
+      
+      // Add case overview section
+      addText('CASE OVERVIEW', boldFont, 14, rgb(0.2, 0.2, 0.2));
+      yPosition -= 10;
+      
+      addText(`Matter Type: ${content.matterType}`, font, fontSize, rgb(0, 0, 0), width - 100);
+      addText(`Jurisdiction: ${content.jurisdiction}`, font, fontSize, rgb(0, 0, 0), width - 100);
+      addText(`Urgency Level: ${content.urgency}`, font, fontSize, rgb(0, 0, 0), width - 100);
+      addText(`Generated: ${content.generatedDate}`, font, fontSize, rgb(0, 0, 0), width - 100);
+      yPosition -= 20;
+      
+      // Add key facts section
+      if (content.keyFacts && content.keyFacts.length > 0) {
+        addText('KEY FACTS', boldFont, 14, rgb(0.2, 0.2, 0.2));
+        yPosition -= 10;
+        
+        content.keyFacts.forEach((fact: string, index: number) => {
+          addText(`${index + 1}. ${fact}`, font, fontSize, rgb(0, 0, 0), width - 100);
+        });
+        yPosition -= 20;
+      }
+      
+      // Add disclaimer
+      addText('IMPORTANT LEGAL DISCLAIMER', boldFont, 14, rgb(0.2, 0.2, 0.2));
+      yPosition -= 10;
+      
+      const disclaimerText = 'This document is not legal advice. This case summary is prepared for informational purposes only and should not be construed as legal advice. It is recommended that you consult with a qualified attorney to discuss your specific legal situation and obtain proper legal counsel.';
+      addText(disclaimerText, font, fontSize, rgb(0, 0, 0), width - 100);
+      yPosition -= 30;
+      
+      // Add footer
+      addText('Generated by Blawby AI Legal Services', font, 10, rgb(0.4, 0.4, 0.4));
+      addText(`Date: ${content.generatedDate}`, font, 10, rgb(0.4, 0.4, 0.4));
+      addText('This document contains confidential information and should be treated accordingly.', font, 10, rgb(0.4, 0.4, 0.4));
+      
+      // Serialize the PDF to bytes
+      const pdfBytes = await pdfDoc.save();
+      return pdfBytes.buffer as ArrayBuffer;
+      
     } catch (error) {
       Logger.error('[PDFGenerationService] PDF conversion failed:', error);
       throw new Error('Failed to generate PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
-  /**
-   * Generate a structured PDF using a server-side approach
-   * This creates a real PDF document with proper formatting
-   */
-  private static async generateStructuredPDF(html: string): Promise<ArrayBuffer> {
-    // Extract content from HTML for PDF generation
-    const content = this.extractContentFromHTML(html);
-    
-    // Create PDF using a structured approach
-    const pdfContent = this.createPDFDocument(content);
-    
-    // Convert to ArrayBuffer
-    return new TextEncoder().encode(pdfContent).buffer;
-  }
 
   /**
    * Extract structured content from HTML
@@ -404,43 +522,6 @@ export class PDFGenerationService {
     };
   }
 
-  /**
-   * Create a structured PDF document
-   */
-  private static createPDFDocument(content: any): string {
-    // Create a structured PDF-like document
-    const pdfLines = [
-      'LEGAL CASE SUMMARY',
-      '==================',
-      '',
-      content.title,
-      content.subtitle,
-      '',
-      'CASE OVERVIEW',
-      '-------------',
-      `Matter Type: ${content.matterType}`,
-      `Jurisdiction: ${content.jurisdiction}`,
-      `Urgency Level: ${content.urgency}`,
-      `Generated: ${content.generatedDate}`,
-      '',
-      'KEY FACTS',
-      '---------',
-      ...content.keyFacts.map((fact: string, index: number) => `${index + 1}. ${fact}`),
-      '',
-      'IMPORTANT LEGAL DISCLAIMER',
-      '-------------------------',
-      'This document is not legal advice. This case summary is prepared for',
-      'informational purposes only and should not be construed as legal advice.',
-      'It is recommended that you consult with a qualified attorney to discuss',
-      'your specific legal situation and obtain proper legal counsel.',
-      '',
-      'Generated by Blawby AI Legal Services',
-      `Date: ${content.generatedDate}`,
-      'This document contains confidential information and should be treated accordingly.'
-    ];
-
-    return pdfLines.join('\n');
-  }
 
   /**
    * Generate a PDF filename based on case information

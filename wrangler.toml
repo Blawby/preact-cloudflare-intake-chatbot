@@ -40,7 +40,7 @@ LAWYER_SEARCH_API_URL = "https://search.blawby.com"
 # LAWYER_SEARCH_API_KEY should be set via: wrangler secret put LAWYER_SEARCH_API_KEY
 
 # PDF Generation Configuration
-PDF_GENERATION_API_URL = "https://api.html-pdf-node.com"
+# PDF generation is handled locally using pdf-lib - no external API needed
 
 # Cloudflare AI Configuration
 CLOUDFLARE_ACCOUNT_ID = "fa3dc6c06433f6b0ea78d95bce23ad91"

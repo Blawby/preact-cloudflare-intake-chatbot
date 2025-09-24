@@ -44,6 +44,8 @@
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/preact": "^3.2.4",
 		"@types/node-fetch": "^2.6.13",
+		"@typescript-eslint/eslint-plugin": "^8.44.1",
+		"@typescript-eslint/parser": "^8.44.1",
 		"@vitest/ui": "^2.1.5",
 		"autoprefixer": "^10.4.21",
 		"critters": "^0.0.23",

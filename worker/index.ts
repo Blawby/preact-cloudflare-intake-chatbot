@@ -11,6 +11,7 @@ import {
   handleAnalyze,
   handleReview,
   handlePayment,
+  handlePDF,
   handleDebug
 } from './routes';
 import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
@@ -87,6 +88,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handleReview(request, env);
     } else if (path.startsWith('/api/payment')) {
       response = await handlePayment(request, env);
+    } else if (path.startsWith('/api/pdf')) {
+      response = await handlePDF(request, env);
     } else if (path.startsWith('/api/debug')) {
       response = await handleDebug(request, env);
     } else if (path === '/api/health') {

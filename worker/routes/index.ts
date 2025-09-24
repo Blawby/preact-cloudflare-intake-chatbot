@@ -9,4 +9,5 @@ export { handleAnalyze } from './analyze';
 
 export { handleReview } from './review';
 export { handlePayment } from './payment';
+export { handlePDF } from './pdf';
 export { handleDebug } from './debug'; 

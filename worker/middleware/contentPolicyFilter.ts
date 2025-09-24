@@ -1,6 +1,7 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
+import type { Env, AgentMessage } from '../types.js';
 
 // Pre-compiled regex patterns for better performance and accuracy
 const JAILBREAK_PATTERNS = [
@@ -58,14 +59,16 @@ const LEGAL_CONTEXT_KEYWORDS = [
 /**
  * Content Policy Filter - handles safety and security concerns
  * This is the first line of defense against inappropriate content
+ * Now conversation-aware: considers full conversation context for better accuracy
  */
 export const contentPolicyFilter: PipelineMiddleware = {
   name: 'contentPolicyFilter',
   
-  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
     // Note: teamConfig parameter is currently unused but kept for interface compatibility
     // Future enhancement: could use team-specific content policies
-    const violations = checkForViolations(message, context);
+    const latestMessage = messages[messages.length - 1];
+    const violations = checkForViolations(latestMessage.content, context, messages);
     
     if (violations.length > 0) {
       // Log security violations (privacy-safe)
@@ -73,8 +76,9 @@ export const contentPolicyFilter: PipelineMiddleware = {
         sessionId: context.sessionId,
         teamId: context.teamId,
         violations,
-        messageLength: message.length,
-        messageHash: message.length > 0 ? Buffer.from(message).toString('base64').substring(0, 8) : ''
+        messageCount: messages.length,
+        messageLength: latestMessage.content.length,
+        messageHash: latestMessage.content.length > 0 ? Buffer.from(latestMessage.content).toString('base64').substring(0, 8) : ''
       });
 
       // Update context with safety flags
@@ -100,8 +104,9 @@ export const contentPolicyFilter: PipelineMiddleware = {
 
 /**
  * Check for various types of content policy violations
+ * Now conversation-aware for better accuracy
  */
-function checkForViolations(message: string, context: ConversationContext): string[] {
+function checkForViolations(message: string, context: ConversationContext, messages: AgentMessage[]): string[] {
   const violations: string[] = [];
   const lowerMessage = message.toLowerCase();
 
@@ -110,8 +115,8 @@ function checkForViolations(message: string, context: ConversationContext): stri
     violations.push('jailbreak_attempt');
   }
 
-  // 2. Non-legal requests (but be context-aware)
-  if (isNonLegalRequest(message, context)) {
+  // 2. Non-legal requests (but be context-aware with conversation history)
+  if (isNonLegalRequest(message, context, messages)) {
     violations.push('non_legal_request');
   }
 
@@ -121,7 +126,7 @@ function checkForViolations(message: string, context: ConversationContext): stri
   }
 
   // 4. Spam or repetitive content
-  if (isSpamContent(message, context)) {
+  if (isSpamContent(message, context, messages)) {
     violations.push('spam_content');
   }
 
@@ -136,21 +141,31 @@ function isJailbreakAttempt(message: string): boolean {
 }
 
 /**
- * Check for non-legal requests (context-aware with legal whitelisting)
+ * Check for non-legal requests (context-aware with legal whitelisting and conversation history)
  */
-function isNonLegalRequest(message: string, context: ConversationContext): boolean {
+function isNonLegalRequest(message: string, context: ConversationContext, messages: AgentMessage[]): boolean {
   // If we have established legal context, be more permissive
   if (context.establishedMatters.length > 0) {
     return false; // Allow follow-up questions in legal context
   }
 
-  // Check for legal context keywords first - if present, allow the message
+  // Check for legal context keywords in the current message
   const hasLegalContext = LEGAL_CONTEXT_KEYWORDS.some(keyword => 
     message.toLowerCase().includes(keyword.toLowerCase())
   );
   
   if (hasLegalContext) {
     return false; // Allow messages with legal context
+  }
+
+  // Check for legal context in conversation history
+  const conversationText = messages.map(msg => msg.content).join(' ');
+  const hasConversationLegalContext = LEGAL_CONTEXT_KEYWORDS.some(keyword => 
+    conversationText.toLowerCase().includes(keyword.toLowerCase())
+  );
+  
+  if (hasConversationLegalContext) {
+    return false; // Allow follow-up questions in legal conversation
   }
 
   // Check for specific non-legal patterns
@@ -169,23 +184,40 @@ function isAbusiveContent(message: string): boolean {
 }
 
 /**
- * Check for spam or repetitive content
+ * Check for spam or repetitive content (now conversation-aware)
  */
-function isSpamContent(message: string, context: ConversationContext): boolean {
-  // Check for excessive repetition
+function isSpamContent(message: string, context: ConversationContext, messages: AgentMessage[]): boolean {
+  // Extract user messages only for spam detection
+  const userMessages = messages.filter(m => m.role === 'user');
+  const latestUserMessage = userMessages.at(-1)?.content ?? '';
+  const prev3UserMessages = userMessages.slice(-4, -1).map(m => m.content);
+  
+
+  // Length check (latest user message only)
+  const isTooLong = latestUserMessage.length > 2000;
+  if (isTooLong) {
+    return true;
+  }
+
+  // Repetition check (latest vs previous 3 user messages only)
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  const repeatedAgainstPrev3 = prev3UserMessages
+    .map(normalize)
+    .includes(normalize(latestUserMessage));
+  
+  if (repeatedAgainstPrev3) {
+    return true;
+  }
+
+  // Internal repetition within latest message only
   if (context.messageCount > 10) {
-    const words = message.toLowerCase().split(/\s+/);
+    const words = latestUserMessage.toLowerCase().split(/\s+/);
     const uniqueWords = new Set(words);
     
     // If message is mostly repeated words, flag as spam
     if (words.length > 5 && uniqueWords.size < words.length * 0.3) {
       return true;
     }
-  }
-
-  // Check for excessive length (potential spam)
-  if (message.length > 2000) {
-    return true;
   }
 
   return false;

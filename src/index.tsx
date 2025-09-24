@@ -5,9 +5,12 @@ import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
 import AppLayout from './components/AppLayout';
 import { SEOHead } from './components/SEOHead';
+import ToastContainer from './components/ToastContainer';
+import { ToastProvider } from './contexts/ToastContext';
 import { useMessageHandling } from './hooks/useMessageHandling';
 import { useFileUpload } from './hooks/useFileUpload';
 import { useTeamConfig } from './hooks/useTeamConfig';
+import { useToast } from './hooks/useToast';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
 import './index.css';
@@ -26,6 +29,8 @@ export function App() {
 	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
 		onError: (error) => console.error('Team config error:', error)
 	});
+
+	const { toasts, removeToast } = useToast();
 
 	const { messages, sendMessage, handleContactFormSubmit, addMessage, cancelStreaming } = useMessageHandling({
 		teamId,
@@ -167,12 +172,13 @@ export function App() {
 	// Handle navigation to chats - removed since bottom nav is disabled
 
 	return (
-		<>
+		<ToastProvider>
 			<SEOHead 
 				teamConfig={teamConfig}
 				currentUrl={typeof window !== 'undefined' ? window.location.href : undefined}
 			/>
 			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
+			<ToastContainer toasts={toasts} onRemoveToast={removeToast} />
 			
 			<AppLayout
 				teamNotFound={teamNotFound}
@@ -216,7 +222,7 @@ export function App() {
 					isReadyToUpload={isReadyToUpload}
 				/>
 			</AppLayout>
-		</>
+		</ToastProvider>
 	);
 }
 

@@ -1,20 +1,47 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
-import { LawyerSearchService } from '../services/LawyerSearchService.js';
+import { LawyerSearchService, type LawyerSearchResponse } from '../services/LawyerSearchService.js';
 import { QuotaExceededError, LawyerSearchError, LawyerSearchTimeoutError } from '../utils/lawyerSearchErrors.js';
 import { Logger } from '../utils/logger.js';
-import type { Env } from '../types.js';
+import type { Env, AgentMessage } from '../types.js';
+
+// Matter information extracted from user message
+interface MatterInfo {
+  matterType: string;
+  urgency: string;
+  reason: string;
+}
+
+// Middleware response type
+interface MiddlewareResponse {
+  context: ConversationContext;
+  response: string;
+  shouldStop: boolean;
+  metadata?: {
+    action: string;
+    lawyers?: LawyerSearchResponse['lawyers'];
+    total?: number;
+    matterType?: string;
+    alternatives?: string[];
+  };
+}
 
 /**
  * Skip to Lawyer Middleware - handles requests to skip intake and go directly to lawyers
  * Routes to contact form (team mode) or lawyer search (public mode)
+ * Now conversation-aware: only triggers on explicit skip requests, not casual mentions
  */
 export const skipToLawyerMiddleware: PipelineMiddleware = {
   name: 'skipToLawyerMiddleware',
   
-  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    // Build conversation text for context-aware analysis
+    const conversationText = messages.map(msg => msg.content).join(' ');
+    const latestMessage = messages[messages.length - 1];
+    
     // Check if user wants to skip intake and go directly to a lawyer
+    // Only trigger on explicit requests, not casual mentions in conversation
     const skipKeywords = [
       'skip the intake',
       'skip intake',
@@ -29,29 +56,43 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
       'hire a lawyer',
       'lawyer now',
       'urgent lawyer',
-      'immediate lawyer'
+      'immediate lawyer',
+      'contact your team',
+      'want to contact your team',
+      'contact the team',
+      'want to contact the team',
+      'connect with your team',
+      'speak to your team',
+      'talk to your team'
     ];
 
+    // Only check the latest message for skip requests to avoid false positives
+    // from earlier conversation context
     const isSkipRequest = skipKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword.toLowerCase())
+      latestMessage.content.toLowerCase().includes(keyword.toLowerCase())
     );
 
-    if (!isSkipRequest) {
+    // Additional context check: if we're in the middle of a conversation about a legal issue,
+    // be more conservative about triggering skip
+    const hasEstablishedLegalContext = context.establishedMatters.length > 0 || 
+                                     context.conversationPhase !== 'initial';
+    
+    if (!isSkipRequest || (hasEstablishedLegalContext && messages.length > 3)) {
       return { context };
     }
 
-    // Determine if this is public mode or team mode
-    const isPublicMode = determineMode(teamConfig);
+    // Determine if this is public mode or team mode based on teamId
+    const isPublicMode = determineMode(context.teamId);
     
     Logger.debug('[skipToLawyerMiddleware] Team config:', {
-      teamId: teamConfig?.id,
-      slug: teamConfig?.slug,
-      name: teamConfig?.name,
-      isPublicMode
+      teamId: context.teamId,
+      isPublicMode,
+      messageCount: messages.length,
+      hasEstablishedLegalContext
     });
     
-    // Extract matter type and urgency from message
-    const matterInfo = extractMatterInfo(message);
+    // Extract matter type and urgency from conversation context
+    const matterInfo = extractMatterInfo(conversationText);
 
     if (isPublicMode) {
       // Public mode: Trigger lawyer search
@@ -66,15 +107,15 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
 /**
  * Determine if this is public mode or team mode
  */
-function determineMode(teamConfig: TeamConfig | null): boolean {
-  // Public mode: no team config, or specific public teams
-  if (!teamConfig || !teamConfig.id) {
+function determineMode(teamId: string | null | undefined): boolean {
+  // Public mode: no team ID, or specific public teams
+  if (!teamId) {
     return true;
   }
 
   // Check if this is a public team (like blawby-ai)
   const publicTeams = ['blawby-ai'];
-  if (publicTeams.includes(teamConfig.slug || '')) {
+  if (publicTeams.includes(teamId)) {
     return true;
   }
 
@@ -85,11 +126,7 @@ function determineMode(teamConfig: TeamConfig | null): boolean {
 /**
  * Extract matter type and urgency from message
  */
-function extractMatterInfo(message: string): {
-  matterType: string;
-  urgency: string;
-  reason: string;
-} {
+function extractMatterInfo(message: string): MatterInfo {
   const matterTypes = [
     'family law', 'employment law', 'business law', 'contract review',
     'intellectual property', 'personal injury', 'criminal law', 'civil law',
@@ -116,12 +153,7 @@ function extractMatterInfo(message: string): {
 /**
  * Handle public mode - trigger lawyer search
  */
-async function handlePublicMode(matterInfo: any, context: ConversationContext, env: Env): Promise<{
-  context: ConversationContext;
-  response: string;
-  shouldStop: boolean;
-  metadata?: any;
-}> {
+async function handlePublicMode(matterInfo: MatterInfo, context: ConversationContext, env: Env): Promise<MiddlewareResponse> {
   try {
     Logger.debug('[skipToLawyerMiddleware] Attempting lawyer search for:', matterInfo);
     
@@ -134,8 +166,8 @@ async function handlePublicMode(matterInfo: any, context: ConversationContext, e
     // Attempt to search for lawyers
     const searchResult = await LawyerSearchService.searchLawyersByMatterType(
       matterInfo.matterType,
-      undefined, // location - could be extracted from context if available
-      env.LAWYER_SEARCH_API_KEY
+      env.LAWYER_SEARCH_API_KEY,
+      undefined // location - could be extracted from context if available
     );
 
     Logger.info('[skipToLawyerMiddleware] Lawyer search successful:', {
@@ -147,8 +179,19 @@ async function handlePublicMode(matterInfo: any, context: ConversationContext, e
       `${index + 1}. **${lawyer.name}**${lawyer.firm ? ` (${lawyer.firm})` : ''}\n   📍 ${lawyer.location}\n   ⭐ ${lawyer.rating ? `${lawyer.rating}/5` : 'No rating'}${lawyer.phone ? `\n   📞 ${lawyer.phone}` : ''}${lawyer.email ? `\n   ✉️ ${lawyer.email}` : ''}`
     ).join('\n\n')}\n\n**Next Steps:**\n• Contact any of these lawyers directly\n• Ask about consultation fees and availability\n• Schedule a consultation to discuss your case\n\nWould you like me to help you prepare your case information before meeting with a lawyer?`;
 
+    // Update context with lawyer search results
+    const updatedContext = {
+      ...context,
+      lawyerSearchResults: {
+        matterType: matterInfo.matterType,
+        lawyers: searchResult.lawyers,
+        total: searchResult.total
+      },
+      lastUpdated: Date.now()
+    };
+
     return {
-      context,
+      context: updatedContext,
       response,
       shouldStop: true,
       metadata: {
@@ -179,13 +222,8 @@ async function handlePublicMode(matterInfo: any, context: ConversationContext, e
 /**
  * Handle quota exceeded or other errors by pivoting to case preparation
  */
-function handleQuotaExceededFallback(matterInfo: any, context: ConversationContext, errorMessage: string): {
-  context: ConversationContext;
-  response: string;
-  shouldStop: boolean;
-  metadata?: any;
-} {
-  const response = `${errorMessage}\n\n**But don't worry!** I can help you in an even better way. Let me help you:\n\n📋 **Prepare Your Case Completely**\n• Organize all your facts and timeline\n• Create a professional case summary\n• Generate a PDF you can share with any lawyer\n• Build a document checklist\n\n💡 **Why This Is Actually Better:**\n• You'll be prepared for any lawyer consultation\n• You can shop around with confidence\n• You'll save time and money in consultations\n• You'll look professional and organized\n\n🔍 **Finding Lawyers:**\n• Contact your local bar association\n• Use online directories like Avvo or Justia\n• Ask for referrals from friends/family\n• Check with legal aid organizations\n\n**Would you like me to help you build a comprehensive case summary that you can use with any lawyer you find?**\n\nJust tell me about your ${matterInfo.matterType} situation and I'll help you organize everything into a professional case file.`;
+function handleQuotaExceededFallback(matterInfo: MatterInfo, context: ConversationContext, errorMessage: string): MiddlewareResponse {
+  const response = `${errorMessage}\n\n**But don't worry!** I can help you in an even better way. Let me help you:\n\n📋 **Prepare Your Case Completely**\n• Organize all your facts and timeline\n• Create a professional case summary\n• Generate a PDF you can share with any qualified lawyer\n• Build a document checklist\n\n💡 **Why This Is Actually Better:**\n• You'll be prepared for any lawyer consultation\n• You can shop around with confidence\n• You'll save time and money in consultations\n• You'll look professional and organized\n\n🔍 **Finding Qualified Lawyers:**\n• Contact your local bar association\n• Use online directories like Avvo or Justia\n• Ask for referrals from friends/family\n• Check with legal aid organizations\n\n**Would you like me to help you build a comprehensive case summary that you can use with any qualified lawyer you find?**\n\nJust tell me about your ${matterInfo.matterType} situation and I'll help you organize everything into a professional case file.`;
 
   return {
     context,
@@ -202,16 +240,28 @@ function handleQuotaExceededFallback(matterInfo: any, context: ConversationConte
 /**
  * Handle team mode - show contact form
  */
-function handleTeamMode(matterInfo: any, context: ConversationContext): {
-  context: ConversationContext;
-  response: string;
-  shouldStop: boolean;
-} {
-  const response = `I understand you want to skip the intake process and connect directly with our legal team. ${matterInfo.reason}. I'll show you our contact form so we can get in touch with you right away.\n\n**Contact Information Required:**\n• Full Name\n• Email Address\n• Phone Number\n• Location (City, State)\n• Brief description of your ${matterInfo.matterType} matter\n\n**What happens next:**\n• Our team will review your information\n• A qualified attorney will contact you within 24 hours\n• We'll schedule a consultation to discuss your case\n• You'll receive personalized legal guidance\n\nPlease fill out the contact form below and we'll connect you with the right attorney for your ${matterInfo.matterType} needs.`;
+function handleTeamMode(matterInfo: MatterInfo, context: ConversationContext): MiddlewareResponse {
+  // Check if location is required but not provided
+  const needsLocation = context.safetyFlags?.includes('location_required');
+  
+  // Instead of returning a text response, set a flag in context to trigger contact form
+  const updatedContext = {
+    ...context,
+    userIntent: 'skip_to_lawyer' as const,
+    conversationPhase: 'showing_contact_form' as const,
+    // Store the matter info for the AI agent to use
+    establishedMatters: [{
+      matterType: matterInfo.matterType,
+      urgency: matterInfo.urgency,
+      description: matterInfo.reason,
+      status: 'pending_contact_form'
+    }],
+    lastUpdated: Date.now()
+  };
 
+  // Return context without stopping - let AI agent handle the contact form
   return {
-    context,
-    response,
-    shouldStop: true
+    context: updatedContext,
+    shouldStop: false
   };
 }

@@ -48,6 +48,11 @@ export class LawyerSearchService {
     params: LawyerSearchParams,
     apiKey: string
   ): Promise<LawyerSearchResponse> {
+    // Validate API key before making any network calls
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+      throw new Error('Invalid API key: API key is required and must be a non-empty string');
+    }
+
     try {
       Logger.debug('[LawyerSearchService] Searching lawyers with params:', params);
 
@@ -108,27 +113,11 @@ export class LawyerSearchService {
         throw new LawyerSearchError(`Lawyer search service is temporarily unavailable. Please try again in a few minutes.`, response.status);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       Logger.debug('[LawyerSearchService] API response:', data);
 
       // Transform the response to match our interface
-      const lawyers: LawyerProfile[] = data.lawyers?.map((lawyer: any) => ({
-        id: lawyer.id || lawyer.lawyer_id,
-        name: lawyer.name || lawyer.full_name,
-        firm: lawyer.firm || lawyer.law_firm,
-        location: lawyer.location || `${lawyer.city}, ${lawyer.state}`,
-        practiceAreas: lawyer.practice_areas || lawyer.specialties || [],
-        rating: lawyer.rating || lawyer.avg_rating,
-        reviewCount: lawyer.review_count || lawyer.total_reviews,
-        phone: lawyer.phone || lawyer.phone_number,
-        email: lawyer.email || lawyer.email_address,
-        website: lawyer.website || lawyer.firm_website,
-        bio: lawyer.bio || lawyer.description,
-        experience: lawyer.experience || lawyer.years_experience,
-        languages: lawyer.languages || lawyer.spoken_languages,
-        consultationFee: lawyer.consultation_fee || lawyer.hourly_rate,
-        availability: lawyer.availability || lawyer.next_available
-      })) || [];
+      const lawyers: LawyerProfile[] = (data.lawyers || []).map(this.mapToLawyerProfile.bind(this));
 
       const result: LawyerSearchResponse = {
         lawyers,
@@ -166,8 +155,8 @@ export class LawyerSearchService {
    */
   static async searchLawyersByMatterType(
     matterType: string,
-    location?: string,
-    apiKey: string
+    apiKey: string,
+    location?: string
   ): Promise<LawyerSearchResponse> {
     const params: LawyerSearchParams = {
       practiceArea: this.mapMatterTypeToPracticeArea(matterType),
@@ -210,14 +199,45 @@ export class LawyerSearchService {
   }
 
   /**
+   * Transform raw lawyer data to LawyerProfile interface with fallback mapping
+   */
+  private static mapToLawyerProfile(raw: any): LawyerProfile {
+    return {
+      id: raw.id || raw.lawyer_id,
+      name: raw.name || raw.full_name,
+      firm: raw.firm || raw.law_firm,
+      location: raw.location || `${raw.city}, ${raw.state}`,
+      practiceAreas: raw.practice_areas || raw.specialties || [],
+      rating: raw.rating || raw.avg_rating,
+      reviewCount: raw.review_count || raw.total_reviews,
+      phone: raw.phone || raw.phone_number,
+      email: raw.email || raw.email_address,
+      website: raw.website || raw.firm_website,
+      bio: raw.bio || raw.description,
+      experience: raw.experience || raw.years_experience,
+      languages: raw.languages || raw.spoken_languages,
+      consultationFee: raw.consultation_fee || raw.hourly_rate,
+      availability: raw.availability || raw.next_available
+    };
+  }
+
+  /**
    * Get lawyer details by ID
    */
   static async getLawyerById(
     lawyerId: string,
     apiKey: string
   ): Promise<LawyerProfile | null> {
+    // Validate API key before making any network calls
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+      throw new Error('Invalid API key: API key is required and must be a non-empty string');
+    }
+
     try {
       Logger.debug('[LawyerSearchService] Getting lawyer by ID:', lawyerId);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       const response = await fetch(`${this.BASE_URL}/lawyers/${lawyerId}`, {
         method: 'GET',
@@ -225,8 +245,11 @@ export class LawyerSearchService {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'User-Agent': 'Blawby-AI-Chatbot/1.0'
-        }
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -244,33 +267,27 @@ export class LawyerSearchService {
         throw new Error(`Lawyer details API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       Logger.debug('[LawyerSearchService] Lawyer details response:', data);
 
       // Transform the response
-      const lawyer: LawyerProfile = {
-        id: data.id || data.lawyer_id,
-        name: data.name || data.full_name,
-        firm: data.firm || data.law_firm,
-        location: data.location || `${data.city}, ${data.state}`,
-        practiceAreas: data.practice_areas || data.specialties || [],
-        rating: data.rating || data.avg_rating,
-        reviewCount: data.review_count || data.total_reviews,
-        phone: data.phone || data.phone_number,
-        email: data.email || data.email_address,
-        website: data.website || data.firm_website,
-        bio: data.bio || data.description,
-        experience: data.experience || data.years_experience,
-        languages: data.languages || data.spoken_languages,
-        consultationFee: data.consultation_fee || data.hourly_rate,
-        availability: data.availability || data.next_available
-      };
+      const lawyer: LawyerProfile = this.mapToLawyerProfile(data);
 
       return lawyer;
 
     } catch (error) {
       Logger.error('[LawyerSearchService] Get lawyer by ID failed:', error);
-      throw error;
+      
+      if (error.name === 'AbortError') {
+        throw new LawyerSearchTimeoutError('Our lawyer search is taking longer than expected. This sometimes happens when the service is busy.');
+      }
+      
+      // Re-throw our custom errors
+      if (error instanceof LawyerSearchTimeoutError) {
+        throw error;
+      }
+      
+      throw new LawyerSearchError('We\'re having trouble connecting to our lawyer search service right now. Please try again in a few minutes.');
     }
   }
 }
