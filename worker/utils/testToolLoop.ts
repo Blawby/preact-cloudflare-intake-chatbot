@@ -9,7 +9,7 @@
  */
 
 import { ToolDefinition } from '../agents/legal-intake/index.ts';
-import { ConversationContext, ConversationState } from '../agents/legal-intake/conversationStateMachine.ts';
+import { ConversationContext, ConversationState } from '../agents/legal-intake/legalIntakeLogger.ts';
 import { Env } from '../types.ts';
 
 export interface ToolLoopTestConfig {

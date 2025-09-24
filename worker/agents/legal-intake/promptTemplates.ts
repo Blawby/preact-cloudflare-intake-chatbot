@@ -1,4 +1,4 @@
-import type { ConversationContext, ConversationState } from './conversationStateMachine.js';
+import type { ConversationContext, ConversationState } from './legalIntakeLogger.js';
 import { LegalIntakeLogger } from './legalIntakeLogger.js';
 
 /**

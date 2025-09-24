@@ -1,8 +1,5 @@
 import { Logger } from '../../utils/logger.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
-import { PromptBuilder, CloudflareAIResponse } from '../../utils/promptBuilder.js';
-import { BusinessLogicHandler } from './businessLogicHandler.js';
-import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.js';
 import { TOOL_HANDLERS, Currency, Recipient, ISODateString } from '../legalIntakeAgent.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
@@ -10,6 +7,7 @@ import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
 import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../types.js';
 import type { ErrorResult } from './errors.js';
 import { safeIncludes } from '../../utils/safeStringUtils.js';
+import { TeamService } from '../../services/TeamService.js';
 
 // Type definitions and constants
 interface AIModelConfig {
@@ -33,11 +31,43 @@ const MATTER_TYPES = [
 const COMPLEXITY_LEVELS = ['Low', 'Medium', 'High', 'Very High'] as const;
 const ANALYSIS_TYPES = ['general', 'legal_document', 'contract', 'government_form', 'medical_document', 'image', 'resume'] as const;
 
-// Use the existing LegalIntakeOperation enum for type safety
-
 export type MatterType = typeof MATTER_TYPES[number];
 export type ComplexityLevel = typeof COMPLEXITY_LEVELS[number];
 export type AnalysisType = typeof ANALYSIS_TYPES[number];
+
+// Simplified conversation state enum
+export enum ConversationState {
+  INITIAL = 'INITIAL',
+  GATHERING_INFORMATION = 'GATHERING_INFORMATION',
+  QUALIFYING_LEAD = 'QUALIFYING_LEAD',
+  SHOWING_CONTACT_FORM = 'SHOWING_CONTACT_FORM',
+  READY_TO_CREATE_MATTER = 'READY_TO_CREATE_MATTER',
+  CREATING_MATTER = 'CREATING_MATTER',
+  COMPLETED = 'COMPLETED'
+}
+
+// Simplified conversation context interface
+export interface ConversationContext {
+  hasLegalIssue: boolean;
+  hasOpposingParty: boolean;
+  legalIssueType: string | null;
+  description: string | null;
+  opposingParty: string | null;
+  isSensitiveMatter: boolean;
+  isGeneralInquiry: boolean;
+  shouldCreateMatter: boolean;
+  state: ConversationState;
+  // Lead qualification fields
+  hasAskedUrgency: boolean;
+  urgencyLevel: string | null;
+  hasAskedTimeline: boolean;
+  timeline: string | null;
+  hasAskedBudget: boolean;
+  budget: string | null;
+  hasAskedPreviousLawyer: boolean;
+  hasPreviousLawyer: boolean | null;
+  isQualifiedLead: boolean;
+}
 
 // Tool parameter interfaces
 export interface CreateMatterParams {
@@ -190,6 +220,162 @@ export interface CloudflareLocation {
   readonly timezone?: string;
 }
 
+// Team configuration cache
+const teamConfigCache = new Map<string, { config: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getTeamConfig(teamId: string, env: Env): Promise<any> {
+  if (teamConfigCache.has(teamId)) {
+    const cached = teamConfigCache.get(teamId)!;
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.config;
+    }
+  }
+  
+  const teamService = new TeamService(env);
+  const config = await teamService.getTeam(teamId);
+  teamConfigCache.set(teamId, { config, timestamp: Date.now() });
+  return config;
+}
+
+// Fast context detection function (no AI calls)
+function detectContextFast(conversationText: string): ConversationContext {
+  const lowerText = conversationText.toLowerCase();
+  
+  // Legal issue detection (simple keyword matching)
+  const legalPatterns = {
+    'Family Law': ['divorce', 'custody', 'child support', 'family dispute', 'marriage', 'paternity', 'alimony'],
+    'Employment Law': ['fired', 'wrongful termination', 'discrimination', 'harassment', 'wage', 'overtime', 'employment', 'workplace'],
+    'Personal Injury': ['accident', 'injured', 'car crash', 'personal injury', 'damage', 'liability', 'negligence', 'slip and fall'],
+    'Landlord/Tenant': ['eviction', 'rent', 'landlord', 'tenant', 'rental', 'housing', 'lease'],
+    'Criminal Law': ['arrested', 'charged', 'dui', 'criminal', 'arrest', 'charges', 'trial', 'violation'],
+    'Business Law': ['contract', 'business', 'partnership', 'corporate', 'company', 'startup', 'llc', 'corporation'],
+    'Civil Law': ['civil', 'dispute', 'lawsuit', 'tort'],
+    'Contract Review': ['contract', 'agreement', 'terms', 'clause', 'legal document'],
+    'Property Law': ['property', 'real estate', 'land', 'deed', 'title'],
+    'Administrative Law': ['government', 'administrative', 'regulatory', 'compliance'],
+    'General Consultation': ['legal advice', 'legal help', 'lawyer', 'attorney', 'legal question']
+  };
+
+  let legalIssueType = null;
+  for (const [type, keywords] of Object.entries(legalPatterns)) {
+    if (keywords.some(keyword => lowerText.includes(keyword))) {
+      legalIssueType = type;
+      break;
+    }
+  }
+
+  // Contact detection
+  const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(conversationText);
+  const hasPhone = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(conversationText);
+  const hasName = /(?:my name is|i'm|i am|call me)\s+([A-Za-z\s]+)/i.test(conversationText);
+  
+  // Opposing party detection
+  const hasOpposingParty = /(?:opposing|against|versus|vs\.?)\s+([A-Za-z\s]+)/i.test(conversationText);
+  
+  // Sensitive matter detection
+  const sensitiveKeywords = ['criminal', 'arrest', 'jail', 'prison', 'charges', 'court date', 'accident', 'injury', 'hospital', 'medical', 'death', 'fatal', 'domestic violence', 'abuse', 'harassment', 'threat', 'danger', 'emergency', 'urgent', 'immediate', 'asap', 'right now'];
+  const isSensitiveMatter = sensitiveKeywords.some(keyword => lowerText.includes(keyword));
+  
+  // General inquiry detection
+  const generalInquiryPatterns = ['services in my area', 'pricing', 'cost', 'what services', 'do you provide', 'not sure if you provide', 'concerned about cost', 'tell me about pricing', 'not sure what kind', 'what kind of help'];
+  const isGeneralInquiry = generalInquiryPatterns.some(pattern => lowerText.includes(pattern));
+  
+  // State determination
+  let state = ConversationState.GATHERING_INFORMATION;
+  if (legalIssueType) {
+    if (hasEmail || hasPhone) {
+      state = ConversationState.READY_TO_CREATE_MATTER;
+    } else {
+      state = ConversationState.QUALIFYING_LEAD;
+    }
+  } else if (isGeneralInquiry) {
+    state = ConversationState.GATHERING_INFORMATION;
+  }
+
+  // Lead qualification (simple heuristics)
+  const hasUrgency = ['urgent', 'immediate', 'asap', 'emergency', 'right now'].some(word => lowerText.includes(word));
+  const hasTimeline = ['timeline', 'when', 'how long', 'deadline'].some(word => lowerText.includes(word));
+  const hasBudget = ['cost', 'price', 'fee', 'budget', 'afford'].some(word => lowerText.includes(word));
+  const hasPreviousLawyer = ['other lawyer', 'previous attorney', 'consulted', 'already have'].some(word => lowerText.includes(word));
+  
+  const isQualifiedLead = legalIssueType && (hasUrgency || hasTimeline) && !hasPreviousLawyer;
+
+  return {
+    hasLegalIssue: !!legalIssueType,
+    hasOpposingParty,
+    legalIssueType,
+    description: legalIssueType ? `Client seeking help with ${legalIssueType.toLowerCase()}` : null,
+    opposingParty: hasOpposingParty ? 'Opposing party mentioned' : null,
+    isSensitiveMatter,
+    isGeneralInquiry,
+    shouldCreateMatter: !!(legalIssueType && (hasEmail || hasPhone)),
+    state,
+    // Lead qualification fields
+    hasAskedUrgency: hasUrgency,
+    urgencyLevel: hasUrgency ? 'high' : null,
+    hasAskedTimeline: hasTimeline,
+    timeline: hasTimeline ? 'Timeline mentioned' : null,
+    hasAskedBudget: hasBudget,
+    budget: hasBudget ? 'Budget discussed' : null,
+    hasAskedPreviousLawyer: hasPreviousLawyer,
+    hasPreviousLawyer: hasPreviousLawyer ? true : null,
+    isQualifiedLead
+  };
+}
+
+// Build system prompt function
+function buildSystemPrompt(context: ConversationContext, teamConfig: any): string {
+  const teamName = teamConfig?.name || 'our law firm';
+  
+  return `You are a legal intake specialist for ${teamName}.
+
+Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}
+
+Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document
+
+Rules:
+- Use create_matter when you have name + legal issue + contact info
+- Use show_contact_form when you have legal issue but need contact info
+- Be conversational and helpful
+- Ask qualifying questions to understand urgency and timeline
+- Only show contact form after qualifying the lead
+
+Tool calling format:
+TOOL_CALL: tool_name
+PARAMETERS: {valid JSON}
+
+Example tool calls:
+TOOL_CALL: show_contact_form
+PARAMETERS: {}
+
+TOOL_CALL: create_matter
+PARAMETERS: {"name": "John Doe", "matter_type": "Family Law", "description": "Divorce and child custody case", "email": "john@example.com", "phone": "555-123-4567"}
+
+Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.`;
+}
+
+// Get available tools based on context
+function getAvailableToolsForState(state: ConversationState, context: ConversationContext): ToolDefinition<any>[] {
+  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument];
+
+  switch (state) {
+    case ConversationState.GATHERING_INFORMATION:
+      return [analyzeDocument]; // Only document analysis during initial gathering
+    case ConversationState.QUALIFYING_LEAD:
+      return context.isQualifiedLead ? [showContactForm] : [];
+    case ConversationState.SHOWING_CONTACT_FORM:
+      return [showContactForm];
+    case ConversationState.READY_TO_CREATE_MATTER:
+    case ConversationState.CREATING_MATTER:
+      return [createMatter];
+    case ConversationState.COMPLETED:
+      return allTools;
+    default:
+      return [];
+  }
+}
+
 // Type guards
 function hasMessageProperty(obj: unknown): obj is { message: string } {
   return obj !== null && typeof obj === 'object' && 'message' in obj && typeof (obj as Record<string, unknown>).message === 'string';
@@ -199,9 +385,9 @@ function hasResponseProperties(obj: unknown): obj is { message?: string; respons
   return obj !== null && typeof obj === 'object' && ('message' in obj || 'response' in obj);
 }
 
-function hasToolCalls(aiResult: unknown): aiResult is CloudflareAIResponse & { tool_calls: NonNullable<CloudflareAIResponse['tool_calls']> } {
+function hasToolCalls(aiResult: unknown): aiResult is { tool_calls: NonNullable<any> } {
   return aiResult !== null && typeof aiResult === 'object' && 'tool_calls' in aiResult && 
-         Array.isArray((aiResult as CloudflareAIResponse).tool_calls) && (aiResult as CloudflareAIResponse).tool_calls!.length > 0;
+         Array.isArray((aiResult as any).tool_calls) && (aiResult as any).tool_calls!.length > 0;
 }
 
 // Utility functions
@@ -228,89 +414,10 @@ function extractToolResponse<T>(toolResult: ErrorResult<T>): string {
 
 function extractAIResponse(aiResult: unknown): string {
   if (aiResult !== null && typeof aiResult === 'object' && 'response' in aiResult) {
-    const response = (aiResult as CloudflareAIResponse).response;
+    const response = (aiResult as any).response;
     return typeof response === 'string' ? response : 'I apologize, but I encountered an error processing your request.';
   }
   return 'I apologize, but I encountered an error processing your request.';
-}
-
-function getAvailableToolsForState(state: ConversationState, context: ConversationContext): ToolDefinition<any>[] {
-  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice];
-
-  switch (state) {
-    case ConversationState.GATHERING_INFORMATION:
-    case ConversationState.COLLECTING_LEGAL_ISSUE:
-    case ConversationState.COLLECTING_DETAILS:
-      return [];
-    case ConversationState.QUALIFYING_LEAD:
-      return context.isQualifiedLead ? [showContactForm] : [];
-    case ConversationState.SHOWING_CONTACT_FORM:
-      return [showContactForm];
-    case ConversationState.READY_TO_CREATE_MATTER:
-    case ConversationState.CREATING_MATTER:
-      return [createMatter];
-    case ConversationState.COMPLETED:
-      return allTools;
-    default:
-      return [];
-  }
-}
-
-function validateAIToolLoop(
-  availableTools: ToolDefinition<any>[],
-  systemPrompt: string,
-  state: ConversationState,
-  context: ConversationContext,
-  correlationId?: string
-): { isValid: boolean; issues: string[] } {
-  const issues: string[] = [];
-
-  const hasShowContactFormTool = availableTools.some(tool => tool.name === 'show_contact_form');
-  if (state === ConversationState.SHOWING_CONTACT_FORM && !hasShowContactFormTool) {
-    issues.push('show_contact_form tool is NOT included in availableTools array when state is SHOWING_CONTACT_FORM');
-  }
-
-  if (state === ConversationState.QUALIFYING_LEAD && availableTools.length > 0 && !hasShowContactFormTool) {
-    issues.push('show_contact_form should be available during QUALIFYING_LEAD state');
-  }
-
-  const systemPromptMentionsShowContactForm = safeIncludes(systemPrompt, 'show_contact_form');
-  if (!systemPromptMentionsShowContactForm) {
-    issues.push('System prompt does NOT mention show_contact_form tool');
-  }
-
-  const shouldShowContactForm = context.legalIssueType && context.description && context.isQualifiedLead;
-  const stateIsShowingContactForm = state === ConversationState.SHOWING_CONTACT_FORM;
-  if (shouldShowContactForm && !stateIsShowingContactForm) {
-    issues.push(`State machine should be SHOWING_CONTACT_FORM but is ${state}`);
-  }
-
-  if (state === ConversationState.SHOWING_CONTACT_FORM) {
-    if (!context.hasLegalIssue || !context.legalIssueType) {
-      issues.push('State is SHOWING_CONTACT_FORM but missing legal issue info');
-    }
-    if (!context.description) {
-      issues.push('State is SHOWING_CONTACT_FORM but missing description');
-    }
-    if (!context.isQualifiedLead) {
-      issues.push('State is SHOWING_CONTACT_FORM but lead is not qualified');
-    }
-  }
-
-  const isValid = issues.length === 0;
-  
-  if (correlationId) {
-    Logger.debug('AI Tool Loop Health Check:', {
-      correlationId,
-      isValid,
-      issues,
-      toolNames: availableTools.map(tool => tool.name),
-      state,
-      hasLegalInfo: Boolean(context.legalIssueType && context.description)
-    });
-  }
-
-  return { isValid, issues };
 }
 
 // SSE Helper functions
@@ -320,7 +427,7 @@ async function emitSSEEvent(controller: ReadableStreamDefaultController<Uint8Arr
   try {
     const eventData = `data: ${JSON.stringify(event)}\n\n`;
     controller.enqueue(new TextEncoder().encode(eventData));
-      } catch (error) {
+  } catch (error) {
     Logger.warn('Failed to emit SSE event', { event: event.type, error });
   }
 }
@@ -328,10 +435,10 @@ async function emitSSEEvent(controller: ReadableStreamDefaultController<Uint8Arr
 async function emitComplete(controller: ReadableStreamDefaultController<Uint8Array> | undefined): Promise<void> {
   await emitSSEEvent(controller, { type: 'complete' });
     
-    if (controller) {
-      try {
-        controller.close();
-      } catch (closeError) {
+  if (controller) {
+    try {
+      controller.close();
+    } catch (closeError) {
       Logger.debug('Controller already closed or closing');
     }
   }
@@ -344,16 +451,6 @@ async function emitError(controller: ReadableStreamDefaultController<Uint8Array>
     message: errorMessage,
     correlationId
   });
-}
-  
-// Context extraction with fallback
-async function safeExtractContext(conversationText: string, env: Env): Promise<ConversationContext> {
-  try {
-    return await PromptBuilder.extractConversationInfo(conversationText, env);
-  } catch (error) {
-    Logger.debug('AI context extraction failed, using minimal context:', error);
-    return BusinessLogicHandler.createMinimalContext();
-  }
 }
 
 // Tool call handlers
@@ -450,7 +547,7 @@ async function handleParsedToolCall(
       Logger.error('Tool call parsing failed:', parseResult.error);
       await emitError(controller, 'Failed to parse tool parameters. Please try rephrasing your request.', correlationId);
     }
-      return;
+    return;
   }
 
   const { toolName, parameters } = parseResult.toolCall;
@@ -484,7 +581,7 @@ function looksLikeToolCall(response: string): boolean {
   return typeof response === 'string' && safeIncludes(response.toLowerCase(), 'tool_call');
 }
 
-// Main agent function
+// Main agent function - SIMPLIFIED TO SINGLE AI CALL
 export async function runLegalIntakeAgentStream(
   env: Env, 
   messages: readonly AgentMessage[], 
@@ -503,13 +600,11 @@ export async function runLegalIntakeAgentStream(
     // Initial connection
     await emitSSEEvent(controller, { type: 'connected' });
 
-    // Team configuration
+    // Team configuration with caching
     let teamConfig: unknown = null;
     if (teamId) {
       try {
-        const { TeamService } = await import('../../services/TeamService.js');
-        const teamService = new TeamService(env);
-        teamConfig = await teamService.getTeam(teamId);
+        teamConfig = await getTeamConfig(teamId, env);
       } catch (error) {
         Logger.error('Failed to retrieve team configuration', { teamId, error: error instanceof Error ? error.message : String(error) });
         await emitError(controller, 'Failed to retrieve team configuration', correlationId);
@@ -536,7 +631,7 @@ export async function runLegalIntakeAgentStream(
     if (hasCompletionCues || hasToolInvocation) {
       const completionMessage = "I've already helped you create a matter for your case. A lawyer will contact you within 24 hours to discuss your situation further. Is there anything else I can help you with?";
       
-        if (controller) {
+      if (controller) {
         await emitSSEEvent(controller, { type: 'final', response: completionMessage });
         await emitComplete(controller);
       } else {
@@ -545,43 +640,22 @@ export async function runLegalIntakeAgentStream(
           response: completionMessage,
           metadata: { 
             conversationComplete: true, 
-          sessionId,
-          teamId,
+            sessionId,
+            teamId,
             inputMessageCount: messages.length,
             lastUserMessage
           }
         };
       }
-        return;
-      }
-      
-    // Extract context and determine state
-    const baseContext = await safeExtractContext(conversationText, env);
-    const businessResult = await BusinessLogicHandler.handleConversation(conversationText, env, teamConfig);
-    const context = { ...baseContext, state: businessResult.success ? businessResult.data.state : baseContext.state };
+      return;
+    }
+    
+    // FAST CONTEXT DETECTION (no AI calls)
+    const context = detectContextFast(conversationText);
     
     // Get available tools and system prompt
     const availableTools = getAvailableToolsForState(context.state, context);
-    const systemPromptResult = BusinessLogicHandler.getSystemPromptForAI(context.state, context, correlationId, sessionId, teamId, teamConfig);
-    
-    if (!systemPromptResult.success) {
-      const errorResult = systemPromptResult as Extract<typeof systemPromptResult, { success: false }>;
-      Logger.error('Failed to generate system prompt', { correlationId, error: errorResult.error.message });
-      await emitError(controller, 'Failed to generate system prompt', correlationId);
-      await emitComplete(controller);
-        return;
-      }
-      
-    const systemPrompt = systemPromptResult.data;
-
-    // Validate tool loop
-    const healthCheck = validateAIToolLoop(availableTools, systemPrompt, context.state, context, correlationId);
-    if (!healthCheck.isValid) {
-      Logger.error('AI Tool Loop Health Check FAILED:', { correlationId, issues: healthCheck.issues });
-      await emitError(controller, 'AI Tool Loop Health Check Failed', correlationId);
-      await emitComplete(controller);
-      return;
-    }
+    const systemPrompt = buildSystemPrompt(context, teamConfig);
     
     // Log conversation state
     Logger.info('Conversation State:', {
@@ -591,7 +665,7 @@ export async function runLegalIntakeAgentStream(
       availableTools: availableTools.map(tool => tool.name)
     });
 
-    // Call AI
+    // SINGLE AI CALL
     LegalIntakeLogger.logAIModelCall(correlationId, sessionId, teamId, LegalIntakeOperation.AI_MODEL_CALL, AI_MODEL_CONFIG.model);
     
     const aiResult = await withAIRetry(
@@ -630,12 +704,12 @@ export async function runLegalIntakeAgentStream(
     
     if (!controller) {
       const lastUserMessage = messages.filter(msg => msg.isUser).pop()?.content || null;
-        return {
-          response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
-          metadata: {
-            error: errorMessage,
-      sessionId,
-      teamId,
+      return {
+        response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
+        metadata: {
+          error: errorMessage,
+          sessionId,
+          teamId,
           inputMessageCount: messages.length,
           lastUserMessage
         }

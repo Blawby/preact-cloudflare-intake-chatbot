@@ -1,5 +1,34 @@
 import { Logger } from '../../utils/logger.ts';
-import type { ConversationContext, ConversationState } from './conversationStateMachine.ts';
+
+// Types moved here for performance optimization (conversationStateMachine.ts deleted)
+export enum ConversationState {
+  GATHERING_INFORMATION = 'gathering_information',
+  QUALIFYING_LEAD = 'qualifying_lead', 
+  READY_TO_CREATE_MATTER = 'ready_to_create_matter',
+  MATTER_CREATED = 'matter_created',
+  COMPLETED = 'completed'
+}
+
+export interface ConversationContext {
+  sessionId: string;
+  teamId: string;
+  establishedMatters: string[];
+  jurisdiction: string;
+  hasName: boolean;
+  hasLegalIssue: boolean;
+  hasEmail: boolean;
+  hasPhone: boolean;
+  hasLocation: boolean;
+  hasOpposingParty: boolean;
+  isSensitiveMatter: boolean;
+  isGeneralInquiry: boolean;
+  shouldCreateMatter: boolean;
+  state: ConversationState;
+  legalIssueType?: string;
+  urgency?: string;
+  estimatedValue?: string;
+  userIntent?: string;
+}
 
 /**
  * Legal intake operation types for structured logging

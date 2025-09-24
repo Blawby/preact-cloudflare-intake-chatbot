@@ -5,7 +5,7 @@ import { LegalIntakeLogger, LegalIntakeOperation, type MatterCreationContext } f
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import type { Env } from '../../types.js';
 import type { TeamConfig } from '../../services/TeamService.js';
-import { ConversationState } from './conversationStateMachine.js';
+import { ConversationState } from './legalIntakeLogger.js';
 
 // Re-export the canonical TOOL_HANDLERS registry to prevent drift
 export { TOOL_HANDLERS } from '../legalIntakeAgent.js';

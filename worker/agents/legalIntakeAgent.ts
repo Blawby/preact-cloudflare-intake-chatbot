@@ -5,7 +5,7 @@ import { TeamService } from '../services/TeamService.ts';
 import { PaymentServiceFactory, type PaymentResult } from '../services/PaymentServiceFactory.ts';
 import { createValidationError, createSuccessResponse, type ToolResponse } from '../utils/responseUtils.ts';
 import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.ts';
-import { PromptBuilder } from '../utils/promptBuilder.ts';
+// PromptBuilder removed for performance optimization
 import { Logger } from '../utils/logger.ts';
 import { ToolCallParser } from '../utils/toolCallParser.ts';
 import { withRetry } from '../utils/retry.ts';
@@ -721,8 +721,19 @@ export async function runLegalIntakeAgentStream(
     return;
   }
 
-  // Build system prompt using the new PromptBuilder
-  const systemPrompt = PromptBuilder.buildSystemPrompt(cloudflareLocation, [...attachments], conversationText);
+  // Build simple system prompt (PromptBuilder removed for performance)
+  const systemPrompt = `You are a legal intake specialist. Help users with legal matters and use tools when appropriate.
+
+Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document
+
+Rules:
+- Use create_matter when you have name + legal issue + contact info
+- Use show_contact_form when you have legal issue but need contact info
+- Be conversational and helpful
+
+Tool calling format:
+TOOL_CALL: tool_name
+PARAMETERS: {valid JSON}`;
 
   // Hoist tool parsing variables to function scope
   let toolName: string | null = null;
