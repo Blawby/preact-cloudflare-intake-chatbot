@@ -1,5 +1,5 @@
 import { Logger } from '../../utils/logger.js';
-import { LegalIntakeLogger } from './legalIntakeLogger.js';
+import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
 import { PromptBuilder, CloudflareAIResponse } from '../../utils/promptBuilder.js';
 import { BusinessLogicHandler } from './businessLogicHandler.js';
 import { ConversationStateMachine, ConversationState, ConversationContext } from './conversationStateMachine.js';
@@ -32,6 +32,8 @@ const MATTER_TYPES = [
 
 const COMPLEXITY_LEVELS = ['Low', 'Medium', 'High', 'Very High'] as const;
 const ANALYSIS_TYPES = ['general', 'legal_document', 'contract', 'government_form', 'medical_document', 'image', 'resume'] as const;
+
+// Use the existing LegalIntakeOperation enum for type safety
 
 export type MatterType = typeof MATTER_TYPES[number];
 export type ComplexityLevel = typeof COMPLEXITY_LEVELS[number];
@@ -241,7 +243,7 @@ function getAvailableToolsForState(state: ConversationState, context: Conversati
     case ConversationState.COLLECTING_DETAILS:
       return [];
     case ConversationState.QUALIFYING_LEAD:
-      return []; // No tools during qualification - just conversation
+      return context.isQualifiedLead ? [showContactForm] : [];
     case ConversationState.SHOWING_CONTACT_FORM:
       return [showContactForm];
     case ConversationState.READY_TO_CREATE_MATTER:
@@ -296,7 +298,7 @@ function validateAIToolLoop(
   }
 
   const isValid = issues.length === 0;
-
+  
   if (correlationId) {
     Logger.debug('AI Tool Loop Health Check:', {
       correlationId,
@@ -318,18 +320,18 @@ async function emitSSEEvent(controller: ReadableStreamDefaultController<Uint8Arr
   try {
     const eventData = `data: ${JSON.stringify(event)}\n\n`;
     controller.enqueue(new TextEncoder().encode(eventData));
-  } catch (error) {
+      } catch (error) {
     Logger.warn('Failed to emit SSE event', { event: event.type, error });
   }
 }
 
 async function emitComplete(controller: ReadableStreamDefaultController<Uint8Array> | undefined): Promise<void> {
   await emitSSEEvent(controller, { type: 'complete' });
-  
-  if (controller) {
-    try {
-      controller.close();
-    } catch (closeError) {
+    
+    if (controller) {
+      try {
+        controller.close();
+      } catch (closeError) {
       Logger.debug('Controller already closed or closing');
     }
   }
@@ -343,7 +345,7 @@ async function emitError(controller: ReadableStreamDefaultController<Uint8Array>
     correlationId
   });
 }
-
+  
 // Context extraction with fallback
 async function safeExtractContext(conversationText: string, env: Env): Promise<ConversationContext> {
   try {
@@ -375,18 +377,18 @@ async function handleToolCall(
   const handler = TOOL_HANDLERS[toolName as keyof typeof TOOL_HANDLERS];
   if (!handler) {
     Logger.warn(`Unknown tool: ${toolName}`);
-    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, 'tool_call_failed' as any, toolName, parameters, undefined, new Error(`Unknown tool: ${toolName}`));
+    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_FAILED, toolName, parameters, undefined, new Error(`Unknown tool: ${toolName}`));
     await emitError(controller, `Unknown tool: ${toolName}`, correlationId);
     return;
   }
 
-  LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, 'tool_call_start' as any, toolName, parameters);
+  LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_START, toolName, parameters);
 
   try {
     const toolResult = await handler(parameters, env, teamConfig, correlationId, sessionId, teamId);
     
     ToolUsageMonitor.recordToolUsage(toolName, toolResult.success);
-    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, 'tool_call_success' as any, toolName, parameters, toolResult);
+    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_SUCCESS, toolName, parameters, toolResult);
 
     await emitSSEEvent(controller, {
       type: 'tool_result',
@@ -427,7 +429,7 @@ async function handleToolCall(
   } catch (error) {
     Logger.error('Tool execution failed:', error);
     ToolUsageMonitor.recordToolUsage(toolName, false);
-    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, 'tool_call_failed' as any, toolName, parameters, undefined, error instanceof Error ? error : new Error(String(error)));
+    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_FAILED, toolName, parameters, undefined, error instanceof Error ? error : new Error(String(error)));
     await emitError(controller, 'Tool execution failed. Please try again.', correlationId);
   }
 }
@@ -448,7 +450,7 @@ async function handleParsedToolCall(
       Logger.error('Tool call parsing failed:', parseResult.error);
       await emitError(controller, 'Failed to parse tool parameters. Please try rephrasing your request.', correlationId);
     }
-    return;
+      return;
   }
 
   const { toolName, parameters } = parseResult.toolCall;
@@ -534,7 +536,7 @@ export async function runLegalIntakeAgentStream(
     if (hasCompletionCues || hasToolInvocation) {
       const completionMessage = "I've already helped you create a matter for your case. A lawyer will contact you within 24 hours to discuss your situation further. Is there anything else I can help you with?";
       
-      if (controller) {
+        if (controller) {
         await emitSSEEvent(controller, { type: 'final', response: completionMessage });
         await emitComplete(controller);
       } else {
@@ -543,16 +545,16 @@ export async function runLegalIntakeAgentStream(
           response: completionMessage,
           metadata: { 
             conversationComplete: true, 
-            sessionId, 
-            teamId,
+          sessionId,
+          teamId,
             inputMessageCount: messages.length,
             lastUserMessage
           }
         };
       }
-      return;
-    }
-
+        return;
+      }
+      
     // Extract context and determine state
     const baseContext = await safeExtractContext(conversationText, env);
     const businessResult = await BusinessLogicHandler.handleConversation(conversationText, env, teamConfig);
@@ -567,9 +569,9 @@ export async function runLegalIntakeAgentStream(
       Logger.error('Failed to generate system prompt', { correlationId, error: errorResult.error.message });
       await emitError(controller, 'Failed to generate system prompt', correlationId);
       await emitComplete(controller);
-      return;
-    }
-
+        return;
+      }
+      
     const systemPrompt = systemPromptResult.data;
 
     // Validate tool loop
@@ -580,7 +582,7 @@ export async function runLegalIntakeAgentStream(
       await emitComplete(controller);
       return;
     }
-
+    
     // Log conversation state
     Logger.info('Conversation State:', {
       correlationId, sessionId, teamId, state: context.state,
@@ -590,7 +592,7 @@ export async function runLegalIntakeAgentStream(
     });
 
     // Call AI
-    LegalIntakeLogger.logAIModelCall(correlationId, sessionId, teamId, 'ai_model_call' as any, AI_MODEL_CONFIG.model);
+    LegalIntakeLogger.logAIModelCall(correlationId, sessionId, teamId, LegalIntakeOperation.AI_MODEL_CALL, AI_MODEL_CONFIG.model);
     
     const aiResult = await withAIRetry(
       () => env.AI.run(AI_MODEL_CONFIG.model as any, {
@@ -608,7 +610,7 @@ export async function runLegalIntakeAgentStream(
     // Log AI response metadata
     const processingTime = Date.now() - aiCallStartTime;
     const response = extractAIResponse(aiResult);
-    LegalIntakeLogger.logAIModelCall(correlationId, sessionId, teamId, 'ai_model_response' as any, AI_MODEL_CONFIG.model, undefined, response.length, processingTime);
+    LegalIntakeLogger.logAIModelCall(correlationId, sessionId, teamId, LegalIntakeOperation.AI_MODEL_RESPONSE, AI_MODEL_CONFIG.model, undefined, response.length, processingTime);
 
     // Handle AI response
     if (hasToolCalls(aiResult)) {
@@ -628,12 +630,12 @@ export async function runLegalIntakeAgentStream(
     
     if (!controller) {
       const lastUserMessage = messages.filter(msg => msg.isUser).pop()?.content || null;
-      return {
-        response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
-        metadata: { 
-          error: errorMessage, 
-          sessionId, 
-          teamId,
+        return {
+          response: "I encountered an error processing your request. Please try again or contact support if the issue persists.",
+          metadata: {
+            error: errorMessage,
+      sessionId,
+      teamId,
           inputMessageCount: messages.length,
           lastUserMessage
         }

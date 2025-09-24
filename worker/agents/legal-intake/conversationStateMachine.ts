@@ -313,11 +313,6 @@ export class ConversationStateMachine {
           return ConversationState.COLLECTING_DETAILS;
         }
 
-        // If lead not yet qualified, keep asking qualifying questions
-        if (!context.isQualifiedLead && context.legalIssueType && context.description) {
-          return ConversationState.QUALIFYING_LEAD;
-        }
-
         // If user explicitly asked for a lawyer (skip-to-lawyer intent)
         if (/lawyer|attorney|talk to.*lawyer|speak to.*attorney|need a lawyer|want a lawyer|hire.*lawyer/i.test(conversationText)) {
           console.log('🔍 User explicitly requested lawyer - showing contact form');
