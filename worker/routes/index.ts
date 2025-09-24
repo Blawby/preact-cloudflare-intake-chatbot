@@ -3,6 +3,8 @@ export { handleRoot } from './root';
 export { handleAgentStreamV2 as handleAgentStream } from './agent';
 export { handleForms } from './forms';
 export { handleTeams } from './teams';
+export { handleMessages } from './messages';
+export { handleSessions } from './sessions';
 
 export { handleFiles } from './files';
 export { handleAnalyze } from './analyze';

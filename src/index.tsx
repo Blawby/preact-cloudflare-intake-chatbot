@@ -18,7 +18,40 @@ import './index.css';
 export function App() {
 	// Core state
 	const [clearInputTrigger, setClearInputTrigger] = useState(0);
-	const [sessionId] = useState<string>(() => crypto.randomUUID());
+	const [sessionId] = useState<string>(() => {
+		// Check URL parameters first for session ID
+		if (typeof window !== 'undefined') {
+			const urlParams = new URLSearchParams(window.location.search);
+			const urlSessionId = urlParams.get('session');
+			
+			if (urlSessionId && urlSessionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+				// Valid UUID in URL, use it and store in localStorage
+				localStorage.setItem('blawby-session-id', urlSessionId);
+				return urlSessionId;
+			}
+			
+			// No valid URL session, try localStorage
+			const stored = localStorage.getItem('blawby-session-id');
+			if (stored) {
+				// Update URL to include session for shareability
+				const newUrl = new URL(window.location.href);
+				newUrl.searchParams.set('session', stored);
+				window.history.replaceState(null, '', newUrl.toString());
+				return stored;
+			}
+		}
+		
+		// Create new session
+		const newSessionId = crypto.randomUUID();
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('blawby-session-id', newSessionId);
+			// Update URL to include new session
+			const newUrl = new URL(window.location.href);
+			newUrl.searchParams.set('session', newSessionId);
+			window.history.replaceState(null, '', newUrl.toString());
+		}
+		return newSessionId;
+	});
 	const [currentTab, setCurrentTab] = useState<'chats'>('chats');
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
@@ -137,9 +170,35 @@ export function App() {
 		// Could show a toast notification here
 	}, []);
 
+	// Handle request consultation
+	const handleRequestConsultation = useCallback(() => {
+		console.log('Request consultation clicked');
+		// This could trigger a modal, redirect, or send a message
+		// For now, we'll just log it
+	}, []);
 
+	// Handle conversation switching
+	const handleSwitchConversation = useCallback((newSessionId: string) => {
+		console.log('Switching to conversation:', newSessionId);
+		
+		// Update URL to include new session
+		const newUrl = new URL(window.location.href);
+		newUrl.searchParams.set('session', newSessionId);
+		window.history.pushState(null, '', newUrl.toString());
+		
+		// Update localStorage
+		localStorage.setItem('blawby-session-id', newSessionId);
+		
+		// Refresh the page to load the new session
+		window.location.reload();
+	}, []);
 
-
+	// Handle new conversation
+	const handleNewConversation = useCallback(() => {
+		console.log('Starting new conversation');
+		// This will be handled by the LeftSidebar's createNewConversation
+		// and then call handleSwitchConversation
+	}, []);
 
 	// Handle media capture
 	const handleMediaCaptureWrapper = async (blob: Blob, type: 'audio' | 'video') => {
@@ -178,7 +237,10 @@ export function App() {
 			<AppLayout
 				teamNotFound={teamNotFound}
 				teamId={teamId}
+				sessionId={sessionId}
 				onRetryTeamConfig={handleRetryTeamConfig}
+				onSwitchConversation={handleSwitchConversation}
+				onNewConversation={handleNewConversation}
 				currentTab={currentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
@@ -188,7 +250,7 @@ export function App() {
 					description: teamConfig.description
 				}}
 				messages={messages}
-
+				onRequestConsultation={handleRequestConsultation}
 			>
 				<ChatContainer
 					messages={messages}

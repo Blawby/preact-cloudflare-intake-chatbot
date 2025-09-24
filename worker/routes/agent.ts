@@ -64,10 +64,36 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
   };
 
   try {
-    const rawBody = await parseJsonBody(request);
+    // Add early debugging BEFORE parsing
+    console.log('🔍 Raw request received:', {
+      method: request.method,
+      url: request.url,
+      headers: Object.fromEntries(request.headers.entries()),
+      contentType: request.headers.get('Content-Type')
+    });
+    
+    // Get raw body text for debugging
+    const rawText = await request.text();
+    console.log('🔍 Raw request body text:', rawText);
+    
+    // Parse the JSON from the raw text
+    let rawBody;
+    try {
+      rawBody = JSON.parse(rawText);
+      console.log('🔍 Parsed JSON body:', JSON.stringify(rawBody, null, 2));
+    } catch (parseError) {
+      console.error('❌ JSON parsing failed:', parseError);
+      throw HttpErrors.badRequest('Invalid JSON in request body');
+    }
     
     // Runtime validation of request body
     if (!isValidRouteBody(rawBody)) {
+      console.error('❌ Invalid request body detected:', {
+        hasMessages: Array.isArray(rawBody?.messages),
+        messagesLength: rawBody?.messages?.length,
+        firstMessage: rawBody?.messages?.[0],
+        rawBody: rawBody
+      });
       throw HttpErrors.badRequest('Invalid request body format. Expected messages array with valid message objects.');
     }
     

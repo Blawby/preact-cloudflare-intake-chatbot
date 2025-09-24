@@ -128,10 +128,11 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
 
   // Try to store file metadata in database, but don't fail if it doesn't work
   try {
-    // First check if the team exists, if not, create a minimal entry
+    // First check if the team exists by slug or id, get the actual team ID
     const teamCheckStmt = env.DB.prepare('SELECT id FROM teams WHERE id = ? OR slug = ?');
     const existingTeam = await teamCheckStmt.bind(teamId, teamId).first();
     
+    let actualTeamId = teamId;
     if (!existingTeam) {
       console.log('Team not found in database, creating minimal entry:', teamId);
       // Create a minimal team entry if it doesn't exist
@@ -146,21 +147,25 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
         JSON.stringify({ aiModel: 'llama', requiresPayment: false })
       ).run();
       console.log('Team created in database:', teamId);
+    } else {
+      actualTeamId = existingTeam.id; // Use the actual team ID from database
+      console.log('Found existing team:', { teamId, actualTeamId });
     }
 
-    // Check if the session exists, if not, create a minimal entry
-    const sessionCheckStmt = env.DB.prepare('SELECT id FROM chat_sessions WHERE id = ?');
-    const existingSession = await sessionCheckStmt.bind(sessionId).first();
+    // Check if the conversation exists, if not, create a minimal entry
+    const conversationCheckStmt = env.DB.prepare('SELECT id FROM conversations WHERE session_id = ?');
+    const existingConversation = await conversationCheckStmt.bind(sessionId).first();
     
-    if (!existingSession) {
-      console.log('Session not found in database, creating minimal entry:', sessionId);
-      // Create a minimal session entry if it doesn't exist
-      const createSessionStmt = env.DB.prepare(`
-        INSERT OR IGNORE INTO chat_sessions (id, team_id, created_at, updated_at) 
-        VALUES (?, ?, datetime('now'), datetime('now'))
+    if (!existingConversation) {
+      console.log('Conversation not found in database, creating minimal entry for session:', sessionId);
+      // Create a minimal conversation entry if it doesn't exist
+      const conversationId = crypto.randomUUID();
+      const createConversationStmt = env.DB.prepare(`
+        INSERT OR IGNORE INTO conversations (id, team_id, session_id, created_at, updated_at) 
+        VALUES (?, ?, ?, datetime('now'), datetime('now'))
       `);
-      await createSessionStmt.bind(sessionId, teamId).run();
-      console.log('Session created in database:', sessionId);
+      await createConversationStmt.bind(conversationId, actualTeamId, sessionId).run();
+      console.log('Conversation created in database:', conversationId);
     }
 
     const stmt = env.DB.prepare(`
@@ -172,11 +177,11 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
 
     await stmt.bind(
       fileId,
-      teamId,
+      actualTeamId, // Use the actual team ID from database
       sessionId,
       file.name,
       `${fileId}.${fileExtension}`,
-      storageKey,
+      storageKey, // This is the complete R2 path: uploads/teamId/sessionId/fileId.ext
       fileExtension,
       file.size,
       file.type
@@ -251,6 +256,113 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
     }
   }
 
+  // File list endpoint for a session (must come before file download to avoid conflict)
+  if (path.startsWith('/api/files/list/') && request.method === 'GET') {
+    try {
+      const sessionId = path.split('/').pop();
+      if (!sessionId) {
+        throw HttpErrors.badRequest('Session ID is required');
+      }
+
+      console.log('File list request for session:', sessionId);
+
+      // Get files from database for this session
+      const stmt = env.DB.prepare(`
+        SELECT id, original_name, file_name, file_type, file_size, mime_type, created_at
+        FROM files 
+        WHERE session_id = ? AND is_deleted = FALSE
+        ORDER BY created_at DESC
+      `);
+      const files = await stmt.bind(sessionId).all();
+
+      console.log('Found files for session:', files.results?.length || 0);
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          files: files.results || [],
+          count: files.results?.length || 0
+        }
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...SECURITY_HEADERS
+        }
+      });
+
+    } catch (error) {
+      console.error('File list error:', error);
+      return handleError(error);
+    }
+  }
+
+  // File delete endpoint
+  if (path.startsWith('/api/files/') && 
+      !path.startsWith('/api/files/upload') && 
+      !path.startsWith('/api/files/list/') && 
+      request.method === 'DELETE') {
+    try {
+      const fileId = path.split('/').pop();
+      if (!fileId) {
+        throw HttpErrors.badRequest('File ID is required');
+      }
+
+      console.log('File deletion request for:', fileId);
+
+      // Get file metadata from database first
+      const fileStmt = env.DB.prepare(`
+        SELECT id, file_path, original_name, session_id, team_id, is_deleted
+        FROM files 
+        WHERE id = ? AND is_deleted = FALSE
+      `);
+      const fileRecord = await fileStmt.bind(fileId).first();
+
+      if (!fileRecord) {
+        throw HttpErrors.notFound('File not found or already deleted');
+      }
+
+      console.log('Found file to delete:', {
+        id: fileRecord.id,
+        name: fileRecord.original_name,
+        path: fileRecord.file_path,
+        sessionId: fileRecord.session_id
+      });
+
+      // Soft delete in database first
+      const deleteStmt = env.DB.prepare(`
+        UPDATE files 
+        SET is_deleted = TRUE, updated_at = datetime('now')
+        WHERE id = ?
+      `);
+      await deleteStmt.bind(fileId).run();
+
+      console.log('File marked as deleted in database:', fileId);
+
+      // Delete from R2 storage
+      try {
+        if (fileRecord.file_path) {
+          await env.R2_BUCKET.delete(fileRecord.file_path);
+          console.log('File deleted from R2 storage:', fileRecord.file_path);
+        }
+      } catch (r2Error) {
+        console.warn('Failed to delete file from R2 storage:', r2Error);
+        // Don't fail the request if R2 deletion fails - file is already soft-deleted in DB
+      }
+
+      return createSuccessResponse({
+        fileId: fileId,
+        fileName: fileRecord.original_name,
+        deleted: true,
+        message: 'File deleted successfully'
+      });
+
+    } catch (error) {
+      console.error('File deletion error:', error);
+      return handleError(error);
+    }
+  }
+
   // File download endpoint
   if (path.startsWith('/api/files/') && request.method === 'GET') {
     try {
@@ -261,65 +373,51 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
 
       console.log('File download request:', { fileId, path });
 
+      // Get file from R2 bucket
+      if (!env.FILES_BUCKET) {
+        throw HttpErrors.internalServerError('File storage is not configured');
+      }
+
       // Try to get file metadata from database first
       let fileRecord = null;
+      let filePath = null;
+      
       try {
         const stmt = env.DB.prepare(`
           SELECT * FROM files WHERE id = ? AND is_deleted = FALSE
         `);
         fileRecord = await stmt.bind(fileId).first();
         console.log('Database file record:', fileRecord);
+        
+        if (fileRecord?.file_path) {
+          filePath = fileRecord.file_path;
+          console.log('Using database file path:', filePath);
+        }
       } catch (dbError) {
         console.warn('Failed to get file metadata from database:', dbError);
         // Continue without database metadata
       }
 
-      // Get file from R2 bucket
-      if (!env.FILES_BUCKET) {
-        throw HttpErrors.internalServerError('File storage is not configured');
-      }
-
-      // Try to construct the file path from the fileId if we don't have database metadata
-      let filePath = fileRecord?.file_path;
+      // If we don't have the file path from database, try to find it in R2
       if (!filePath) {
-        // Extract teamId and sessionId from fileId format: teamId-sessionId-timestamp-random
-        // The teamId can contain hyphens, so we need to be more careful about parsing
-        const lastHyphenIndex = fileId.lastIndexOf('-');
-        const secondLastHyphenIndex = fileId.lastIndexOf('-', lastHyphenIndex - 1);
+        console.log('No database file path, searching R2 for fileId:', fileId);
         
-        if (lastHyphenIndex !== -1 && secondLastHyphenIndex !== -1) {
-          // The format is: teamId-sessionId-timestamp-random
-          // We need to find where the sessionId ends and timestamp begins
-          const parts = fileId.split('-');
-          if (parts.length >= 4) {
-            // The last two parts are timestamp and random string
-            const timestamp = parts[parts.length - 2];
-            const randomString = parts[parts.length - 1];
-            
-            // Everything before the timestamp is teamId-sessionId
-            const teamIdAndSessionId = parts.slice(0, -2).join('-');
-            
-            // Find the sessionId (it's a UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-            const sessionIdMatch = teamIdAndSessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-            
-            if (sessionIdMatch) {
-              const sessionId = sessionIdMatch[0];
-              const teamId = teamIdAndSessionId.substring(0, teamIdAndSessionId.length - sessionId.length - 1); // -1 for the hyphen
-              
-              console.log('Parsed fileId:', { teamId, sessionId, timestamp, randomString });
-              
-              // Try to find the file in R2 with a pattern match
-              const prefix = `uploads/${teamId}/${sessionId}/${fileId}`;
-              console.log('Looking for file with prefix:', prefix);
-              // List objects with this prefix
-              const objects = await env.FILES_BUCKET.list({ prefix });
-              console.log('R2 objects found:', objects.objects.length);
-              if (objects.objects.length > 0) {
-                filePath = objects.objects[0].key;
-                console.log('Found file path:', filePath);
-              }
-            }
-          }
+        // Search for files with this fileId across all uploads
+        const searchPrefix = 'uploads/';
+        const allObjects = await env.FILES_BUCKET.list({ prefix: searchPrefix });
+        
+        // Find the object that contains our fileId
+        const matchingObject = allObjects.objects.find(obj => 
+          obj.key.includes(fileId) && obj.key.endsWith(fileId) || 
+          obj.key.includes(`/${fileId}.`)
+        );
+        
+        if (matchingObject) {
+          filePath = matchingObject.key;
+          console.log('Found file in R2:', filePath);
+        } else {
+          console.log('File not found in R2 search for fileId:', fileId);
+          console.log('Available objects:', allObjects.objects.map(obj => obj.key));
         }
       }
 
@@ -337,10 +435,22 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
 
       console.log('File found in R2, returning response');
 
-              // Return file with appropriate headers
-        const headers = new Headers();
+      // Return file with appropriate headers
+      const headers = new Headers();
       headers.set('Content-Type', fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream');
-      headers.set('Content-Disposition', `inline; filename="${fileRecord?.original_name || fileId}"`);
+      
+      // Get filename with extension from database, or extract from R2 path
+      let filename = fileRecord?.original_name;
+      if (!filename && filePath) {
+        // Extract filename from R2 path: uploads/teamId/sessionId/fileId.ext
+        const pathParts = filePath.split('/');
+        filename = pathParts[pathParts.length - 1]; // Gets "fileId.ext"
+      }
+      if (!filename) {
+        filename = fileId; // Fallback to just fileId
+      }
+      
+      headers.set('Content-Disposition', `inline; filename="${filename}"`);
       if (fileRecord?.file_size) {
         headers.set('Content-Length', fileRecord.file_size.toString());
       }
@@ -360,11 +470,12 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         headers
       });
 
-          } catch (error) {
-        console.error('File download error:', error);
-        return handleError(error);
-      }
+    } catch (error) {
+      console.error('File download error:', error);
+      return handleError(error);
+    }
   }
+
 
   throw HttpErrors.notFound('Invalid file endpoint');
 } 

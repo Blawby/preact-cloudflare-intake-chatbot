@@ -23,7 +23,10 @@ const messages = {
 interface AppLayoutProps {
   teamNotFound: boolean;
   teamId: string;
+  sessionId?: string;
   onRetryTeamConfig: () => void;
+  onSwitchConversation?: (sessionId: string) => void;
+  onNewConversation?: () => void;
   currentTab: 'chats';
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: (open: boolean) => void;
@@ -40,7 +43,10 @@ interface AppLayoutProps {
 const AppLayout: FunctionComponent<AppLayoutProps> = ({
   teamNotFound,
   teamId,
+  sessionId,
   onRetryTeamConfig,
+  onSwitchConversation,
+  onNewConversation,
   currentTab,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
@@ -75,10 +81,13 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     <div className="max-md:h-[100dvh] md:h-screen w-full flex">
       {/* Left Sidebar - Fixed width, hidden on mobile */}
       {features.enableLeftSidebar && (
-        <div className="w-20 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
+        <div className="w-80 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
           <LeftSidebar
             currentRoute={currentTab}
+            currentSessionId={sessionId}
             onOpenMenu={() => onToggleMobileSidebar(true)}
+            onSwitchConversation={onSwitchConversation}
+            onNewConversation={onNewConversation}
             teamConfig={{
               name: teamConfig.name,
               profileImage: teamConfig.profileImage,
@@ -111,7 +120,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           {onRequestConsultation && (
             <div className="flex flex-col gap-3">
               <Button
-                onClick={handleRequestConsultation}
+                onClick={onRequestConsultation}
                 variant="primary"
                 type="button"
                 icon={<UserIcon className="w-4 h-4" />}
@@ -123,7 +132,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
 
           {/* Media Section */}
           <div className="border-t border-gray-200 dark:border-dark-border pt-4">
-            <MediaSidebar messages={chatMessages} />
+            <MediaSidebar messages={chatMessages} sessionId={sessionId} />
           </div>
 
           {/* Privacy & Support Section */}
@@ -149,6 +158,9 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       <MobileSidebar
         isOpen={isMobileSidebarOpen}
         onClose={() => onToggleMobileSidebar(false)}
+        currentSessionId={sessionId}
+        onSwitchConversation={onSwitchConversation}
+        onNewConversation={onNewConversation}
         teamConfig={{
           name: teamConfig.name,
           profileImage: teamConfig.profileImage,

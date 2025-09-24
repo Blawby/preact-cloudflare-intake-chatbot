@@ -7,7 +7,11 @@ import {
   DocumentTextIcon, 
   TableCellsIcon,
   EyeIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  PresentationChartLineIcon,
+  ArchiveBoxIcon,
+  CodeBracketIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import { 
   aggregateMediaFromMessages, 
@@ -19,9 +23,11 @@ import {
 import { Button } from './ui/Button';
 import Modal from './Modal';
 import MediaContent from './MediaContent';
+import { useSessionFiles } from '../hooks/useSessionFiles';
 
 interface MediaSidebarProps {
   messages: any[];
+  sessionId?: string | null;
 }
 
 const iconMap = {
@@ -30,7 +36,10 @@ const iconMap = {
   MusicalNoteIcon,
   DocumentIcon,
   DocumentTextIcon,
-  TableCellsIcon
+  TableCellsIcon,
+  PresentationChartLineIcon,
+  ArchiveBoxIcon,
+  CodeBracketIcon
 };
 
 const categoryLabels = {
@@ -41,32 +50,192 @@ const categoryLabels = {
   other: 'Other Files'
 };
 
-export default function MediaSidebar({ messages }: MediaSidebarProps) {
+// Helper function to categorize files by MIME type
+function getCategoryFromMimeType(mimeType: string): 'image' | 'video' | 'audio' | 'document' | 'other' {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (
+    mimeType.includes('pdf') || 
+    mimeType.includes('document') || 
+    mimeType.includes('text') ||
+    mimeType.includes('word') ||
+    mimeType.includes('excel') ||
+    mimeType.includes('powerpoint') ||
+    mimeType.includes('presentation') ||
+    mimeType.includes('spreadsheet')
+  ) return 'document';
+  return 'other';
+}
+
+// Helper function to get specific file icon based on MIME type
+function getFileIcon(mimeType: string, fileName: string) {
+  // Images
+  if (mimeType.startsWith('image/')) return PhotoIcon;
+  
+  // Videos
+  if (mimeType.startsWith('video/')) return VideoCameraIcon;
+  
+  // Audio
+  if (mimeType.startsWith('audio/')) return MusicalNoteIcon;
+  
+  // Documents by MIME type
+  if (mimeType.includes('pdf')) return DocumentIcon;
+  if (mimeType.includes('word')) return DocumentTextIcon;
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return TableCellsIcon;
+  if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return PresentationChartLineIcon;
+  
+  // Documents by file extension
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  if (extension) {
+    if (['txt', 'md', 'rtf'].includes(extension)) return DocumentTextIcon;
+    if (['csv', 'xlsx', 'xls'].includes(extension)) return TableCellsIcon;
+    if (['ppt', 'pptx'].includes(extension)) return PresentationChartLineIcon;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension)) return ArchiveBoxIcon;
+    if (['js', 'ts', 'html', 'css', 'json', 'xml', 'py', 'java', 'cpp', 'c'].includes(extension)) return CodeBracketIcon;
+  }
+  
+  // Default document icon
+  if (mimeType.includes('text') || mimeType.includes('document')) return DocumentTextIcon;
+  
+  // Default for everything else
+  return DocumentIcon;
+}
+
+export default function MediaSidebar({ messages, sessionId }: MediaSidebarProps) {
   const [selectedMedia, setSelectedMedia] = useState<AggregatedMedia | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const mediaGroups = aggregateMediaFromMessages(messages);
-  const totalFiles = mediaGroups.reduce((sum, group) => sum + group.files.length, 0);
+  // Get files from database for this session
+  const { files: sessionFiles, isLoading: isLoadingFiles, error: filesError, deleteFile } = useSessionFiles({
+    sessionId,
+    enabled: !!sessionId
+  });
+
+  // Get media from messages (existing functionality)
+  const messageMediaGroups = aggregateMediaFromMessages(messages);
+
+  // Convert session files to AggregatedMedia format
+  const sessionMediaFiles: (AggregatedMedia & { fileId: string })[] = sessionFiles.map(file => ({
+    name: file.original_name,
+    url: `/api/files/${file.id}`,
+    size: file.file_size,
+    category: getCategoryFromMimeType(file.mime_type),
+    type: file.mime_type,
+    timestamp: new Date(file.created_at).getTime(),
+    fileId: file.id // Add file ID for deletion
+  }));
+
+  // Create a unified media collection with deduplication and proper categorization
+  const allMediaMap = new Map<string, AggregatedMedia & { fileId?: string }>();
+
+  // Add message files first
+  messageMediaGroups.forEach(group => {
+    group.files.forEach(file => {
+      const key = `${file.name}-${file.size}`;
+      if (!allMediaMap.has(key)) {
+        allMediaMap.set(key, file);
+      }
+    });
+  });
+
+  // Add session files, but avoid duplicates and ensure proper categorization
+  sessionMediaFiles.forEach(file => {
+    const key = `${file.name}-${file.size}`;
+    if (!allMediaMap.has(key)) {
+      allMediaMap.set(key, file);
+    } else {
+      // File exists from message, but add fileId for deletion capability
+      const existingFile = allMediaMap.get(key)!;
+      allMediaMap.set(key, { ...existingFile, fileId: file.fileId });
+    }
+  });
+
+  // Group files by category
+  const categoryMap = new Map<string, (AggregatedMedia & { fileId?: string })[]>();
+  
+  for (const file of allMediaMap.values()) {
+    const category = file.category;
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, []);
+    }
+    categoryMap.get(category)!.push(file);
+  }
+
+  // Convert to MediaGroup format, sorted by timestamp (newest first)
+  const allMediaGroups: MediaGroup[] = Array.from(categoryMap.entries()).map(([category, files]) => ({
+    category,
+    files: files.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+  }));
+
+  // Calculate total files
+  const totalFiles = allMediaMap.size;
+  
+  // Handle file deletion
+  const handleDeleteFile = async (fileId: string) => {
+    setIsDeleting(true);
+    try {
+      const success = await deleteFile(fileId);
+      if (success) {
+        setFileToDelete(null);
+        console.log('File deleted successfully');
+      }
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const confirmDelete = (fileId: string) => {
+    setFileToDelete(fileId);
+  };
+
+  const cancelDelete = () => {
+    setFileToDelete(null);
+  };
+
+  // Session files are now properly integrated into category groups above
 
   const handleMediaClick = (media: AggregatedMedia) => {
-    if (media.category === 'image' || media.category === 'video') {
-      setSelectedMedia(media);
-      setIsModalOpen(true);
-    } else {
-      // For documents and other files, trigger download
-      const link = document.createElement('a');
-      link.href = media.url;
-      link.download = media.name;
-      link.click();
+    try {
+      if (media.category === 'image' || media.category === 'video') {
+        setSelectedMedia(media);
+        setIsModalOpen(true);
+      } else {
+        // For documents and other files, trigger download
+        const link = document.createElement('a');
+        link.href = media.url;
+        link.download = media.name;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Failed to open/download file:', error);
+      // Could show a toast notification here
     }
   };
 
   const handleDownload = (media: AggregatedMedia, e: Event) => {
-    e.stopPropagation();
-    const link = document.createElement('a');
-    link.href = media.url;
-    link.download = media.name;
-    link.click();
+    try {
+      e.stopPropagation();
+      const link = document.createElement('a');
+      link.href = media.url;
+      link.download = media.name;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      // Could show a toast notification here
+    }
   };
 
   if (totalFiles === 0) {
@@ -89,15 +258,40 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
           Media, Files, and Links ({totalFiles})
         </h4>
         <div className="flex flex-col gap-4">
+          {isLoadingFiles && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-center py-2">
+                <div className="text-sm text-gray-500 dark:text-gray-400">Loading files...</div>
+              </div>
+              {/* Skeleton loader */}
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-center gap-3 p-2 rounded-lg animate-pulse">
+                  <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-1"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                  <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {filesError && (
+            <div className="flex items-center justify-center py-4">
+              <div className="text-sm text-red-500">Error loading files: {filesError}</div>
+            </div>
+          )}
+          
           <div className="flex flex-col gap-3">
-            {mediaGroups.map((group) => (
+            {allMediaGroups.map((group) => (
               <div key={group.category} className="flex flex-col gap-2">
                 <h5 className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   {categoryLabels[group.category]} ({group.files.length})
                 </h5>
                 <div className="flex flex-col gap-2">
                   {group.files.map((media) => {
-                    const IconComponent = iconMap[getFileIconName(media.category, media.name) as keyof typeof iconMap] || DocumentIcon;
+                    const IconComponent = getFileIcon(media.type, media.name);
                     
                     return (
                       <div 
@@ -128,15 +322,34 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                           </div>
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-xs text-accent-500">{formatFileSize(media.size)}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => handleDownload(media, e)}
-                              title="Download file"
-                              className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
-                            >
-                              <ArrowDownTrayIcon className="w-3 h-3" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => handleDownload(media, e)}
+                                title="Download file"
+                                className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
+                              >
+                                <ArrowDownTrayIcon className="w-3 h-3" />
+                              </Button>
+                              
+                              {/* Show delete button only for files that have a fileId (uploaded files) */}
+                              {(media as any).fileId && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    confirmDelete((media as any).fileId);
+                                  }}
+                                  title="Delete file"
+                                  className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors duration-200"
+                                  disabled={isDeleting}
+                                >
+                                  <TrashIcon className="w-3 h-3 text-red-500 hover:text-red-600" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -161,6 +374,51 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
           showCloseButton={true}
         >
           <MediaContent media={selectedMedia} />
+        </Modal>
+      )}
+
+      {/* Confirmation dialog for file deletion */}
+      {fileToDelete && (
+        <Modal
+          isOpen={!!fileToDelete}
+          onClose={cancelDelete}
+          type="dialog"
+          showCloseButton={false}
+        >
+          <div className="p-6">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <TrashIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            
+            <h3 className="text-lg font-semibold text-center mb-2 text-gray-900 dark:text-white">
+              Delete File
+            </h3>
+            
+            <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete this file? This action cannot be undone.
+            </p>
+            
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="secondary"
+                onClick={cancelDelete}
+                disabled={isDeleting}
+                className="px-4 py-2"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => handleDeleteFile(fileToDelete)}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </>

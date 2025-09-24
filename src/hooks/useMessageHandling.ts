@@ -54,8 +54,115 @@ interface UseMessageHandlingOptions {
 
 export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHandlingOptions) => {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   
+  // Helper function to save message to database
+  const saveMessageToDatabase = useCallback(async (message: ChatMessageUI) => {
+    if (!sessionId) return;
+
+    try {
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: message.content,
+          isUser: message.isUser,
+          sessionId: sessionId,
+          teamId: teamId,
+          metadata: {
+            id: message.id,
+            timestamp: message.timestamp,
+            role: message.role,
+            files: message.files || [],
+            // Include other message properties as metadata
+            ...(message.matterCanvas && { matterCanvas: message.matterCanvas }),
+            ...(message.paymentEmbed && { paymentEmbed: message.paymentEmbed }),
+            ...(message.contactForm && { contactForm: message.contactForm }),
+            ...(message.documentChecklist && { documentChecklist: message.documentChecklist }),
+            ...(message.lawyerSearchResults && { lawyerSearchResults: message.lawyerSearchResults }),
+            ...(message.generatedPDF && { generatedPDF: message.generatedPDF })
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save message: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Message saved to database:', result.data.messageId);
+    } catch (error) {
+      console.error('❌ Failed to save message to database:', error);
+      // Don't throw - we don't want to break the chat flow if database save fails
+    }
+  }, [sessionId, teamId]);
+
+  // Load messages when session changes
+  useEffect(() => {
+    if (!sessionId || isLoadingMessages) return;
+
+    console.log('🔄 Loading messages for session:', sessionId);
+    setIsLoadingMessages(true);
+    
+    const loadMessages = async () => {
+      try {
+        const response = await fetch(`/api/messages/${sessionId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load messages: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        const dbMessages = result.data.messages || [];
+        
+        console.log('✅ Loaded messages from database:', dbMessages.length);
+
+        // Convert database messages to ChatMessageUI format
+        const convertedMessages: ChatMessageUI[] = dbMessages.map((dbMsg: any) => {
+          const metadata = dbMsg.metadata ? JSON.parse(dbMsg.metadata) : {};
+          
+          return {
+            id: metadata.id || crypto.randomUUID(),
+            content: dbMsg.content,
+            isUser: dbMsg.is_user === 1, // SQLite uses 1/0 for boolean
+            role: metadata.role || (dbMsg.is_user ? 'user' : 'assistant'),
+            timestamp: metadata.timestamp || new Date(dbMsg.created_at).getTime(),
+            files: metadata.files || [],
+            // Restore other message properties from metadata
+            ...(metadata.matterCanvas && { matterCanvas: metadata.matterCanvas }),
+            ...(metadata.paymentEmbed && { paymentEmbed: metadata.paymentEmbed }),
+            ...(metadata.contactForm && { contactForm: metadata.contactForm }),
+            ...(metadata.documentChecklist && { documentChecklist: metadata.documentChecklist }),
+            ...(metadata.lawyerSearchResults && { lawyerSearchResults: metadata.lawyerSearchResults }),
+            ...(metadata.generatedPDF && { generatedPDF: metadata.generatedPDF })
+          };
+        });
+
+        setMessages(convertedMessages);
+        
+      } catch (error) {
+        console.error('❌ Failed to load messages from database:', error);
+        onError?.(`Failed to load conversation history: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    };
+
+    loadMessages();
+  }, [sessionId]); // Only depend on sessionId
+
+  // Helper function to manually reload messages (for external use)
+  const loadMessagesFromDatabase = useCallback(async () => {
+    if (!sessionId) return;
+    
+    // Trigger the effect by temporarily clearing and restoring sessionId
+    // This is a bit of a hack but ensures the effect runs
+    window.location.reload();
+  }, [sessionId]);
+
   // Debug hooks for test environment (development only)
   useEffect(() => {
     if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined') {
@@ -69,16 +176,28 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   // Helper function to update AI message with aiState
   const updateAIMessage = useCallback((messageId: string, updates: Partial<ChatMessageUI & { isUser: false }>) => {
     setMessages(prev => {
-      const updated = prev.map(msg => 
-        msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
-      );
+      const updated = prev.map(msg => {
+        if (msg.id === messageId && !msg.isUser) {
+          const updatedMsg = { ...msg, ...updates } as ChatMessageUI;
+          
+          // If this update marks the message as complete (not loading) and has content, save to database
+          if (updates.isLoading === false && updatedMsg.content && updatedMsg.content.trim()) {
+            // Save AI message to database (async, don't block UI)
+            saveMessageToDatabase(updatedMsg);
+          }
+          
+          return updatedMsg;
+        }
+        return msg;
+      });
+      
       // Debug hook for test environment
       if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_AI_MESSAGES__) {
         (window as any).__DEBUG_AI_MESSAGES__(updated);
       }
       return updated;
     });
-  }, []);
+  }, [saveMessageToDatabase]);
 
   // Helper function to update any message (for user messages, aiState will be ignored)
   const updateMessageHelper = useCallback((messageId: string, updates: Partial<ChatMessageUI>) => {
@@ -120,13 +239,36 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     
     const apiEndpoint = getAgentStreamEndpoint();
     
+    // Sanitize attachments to ensure JSON serialization works
+    const sanitizedAttachments = attachments.map(attachment => ({
+      name: attachment.name,
+      size: attachment.size,
+      type: attachment.type,
+      url: attachment.url
+    }));
+
     // Create the request body
     const requestBody = {
       messages: messageHistory,
       teamId: teamId,
       sessionId: sessionId,
-      attachments: attachments
+      attachments: sanitizedAttachments
     };
+
+    // DEBUG: Log the request body before serialization
+    console.log('🔍 Request body before JSON.stringify:', requestBody);
+    console.log('🔍 Original attachments:', attachments);
+    console.log('🔍 Sanitized attachments:', sanitizedAttachments);
+    
+    // DEBUG: Test JSON serialization
+    try {
+      const serialized = JSON.stringify(requestBody);
+      console.log('✅ JSON serialization successful, length:', serialized.length);
+    } catch (error) {
+      console.error('❌ JSON serialization failed:', error);
+      console.error('❌ Problematic request body:', requestBody);
+      throw new Error(`Failed to serialize request body: ${error.message}`);
+    }
 
     try {
       // Use fetch with POST to send the request and get the stream
@@ -388,6 +530,9 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     
     setMessages(prev => [...prev, userMessage]);
     
+    // Save user message to database
+    saveMessageToDatabase(userMessage);
+    
     // Add a placeholder AI message immediately that will be updated
     const placeholderId = Date.now().toString();
     const placeholderMessage: ChatMessageUI = {
@@ -500,11 +645,13 @@ Location: ${contactData.location ? '[PROVIDED]' : '[NOT PROVIDED]'}${contactData
 
   return {
     messages,
+    isLoadingMessages,
     sendMessage,
     handleContactFormSubmit,
     addMessage,
     updateMessage,
     clearMessages,
-    cancelStreaming
+    cancelStreaming,
+    loadMessagesFromDatabase
   };
 }; 

@@ -27,6 +27,7 @@
 		"@tailwindcss/typography": "^0.5.16",
 		"@types/dompurify": "^3.0.5",
 		"dompurify": "^3.2.6",
+		"form-data": "^4.0.4",
 		"framer-motion": "^12.23.12",
 		"html2canvas": "^1.4.1",
 		"jspdf": "^3.0.3",
