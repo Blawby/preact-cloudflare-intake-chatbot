@@ -1,6 +1,6 @@
 import { Logger } from '../../utils/logger.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
-import { TOOL_HANDLERS, Currency, Recipient, ISODateString, buildCaseDraft, showDocumentChecklist, skipToLawyer } from '../legalIntakeAgent.js';
+import { TOOL_HANDLERS, Currency, Recipient, ISODateString } from '../legalIntakeAgent.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
 import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
@@ -332,16 +332,14 @@ function buildSystemPrompt(context: ConversationContext, teamConfig: any): strin
 
 Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}
 
-Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document, build_case_draft, show_document_checklist, skip_to_lawyer
+Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document
 
 Rules:
 - Use create_matter when you have name + legal issue + contact info
 - Use show_contact_form when you have legal issue but need contact info
-- Use build_case_draft when you have organized case information but want to structure it for attorney review
-- Use show_document_checklist when you need to gather specific documents for the case
-- Use skip_to_lawyer when the user explicitly wants to skip intake and connect directly with a lawyer
 - Be conversational and helpful
 - Ask qualifying questions to understand urgency and timeline
+- Note: Case drafting, document checklists, and skip-to-lawyer are now handled automatically by the system
 - Only show contact form after qualifying the lead
 
 Tool calling format:
@@ -355,21 +353,14 @@ PARAMETERS: {}
 TOOL_CALL: create_matter
 PARAMETERS: {"name": "John Doe", "matter_type": "Family Law", "description": "Divorce and child custody case", "email": "john@example.com", "phone": "555-123-4567"}
 
-TOOL_CALL: build_case_draft
-PARAMETERS: {"matter_type": "Family Law", "key_facts": ["Married for 5 years", "Two children ages 3 and 7", "Husband wants full custody", "Discovered infidelity 6 months ago"], "timeline": "Married 2019, children born 2021 and 2017, infidelity discovered June 2024", "parties": [{"role": "client", "name": "Jane Doe"}, {"role": "opposing party", "name": "John Doe", "relationship": "husband"}], "documents": ["Marriage certificate", "Children's birth certificates"], "evidence": ["Text messages showing infidelity", "Photos of affair"], "jurisdiction": "North Carolina", "urgency": "high"}
-
-TOOL_CALL: show_document_checklist
-PARAMETERS: {"matter_type": "Family Law", "documents": [{"id": "marriage_cert", "name": "Marriage Certificate", "description": "Official marriage certificate", "required": true}, {"id": "birth_certs", "name": "Children's Birth Certificates", "description": "Birth certificates for both children", "required": true}, {"id": "financial_docs", "name": "Financial Documents", "description": "Bank statements, tax returns, pay stubs", "required": false}]}
-
-TOOL_CALL: skip_to_lawyer
-PARAMETERS: {"reason": "urgent matter", "matter_type": "Family Law", "urgency": "high"}
+// Note: build_case_draft, show_document_checklist, and skip_to_lawyer are now handled by middleware
 
 Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.`;
 }
 
 // Get available tools based on context
 function getAvailableToolsForState(state: ConversationState, context: ConversationContext): ToolDefinition<any>[] {
-  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument, buildCaseDraft, showDocumentChecklist, skipToLawyer];
+  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument];
 
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:
@@ -420,7 +411,13 @@ function extractToolResponse<T>(toolResult: ErrorResult<T>): string {
     return 'Tool executed successfully.';
   } else {
     const errorResult = toolResult as Extract<ErrorResult<T>, { success: false }>;
-    return errorResult.error.toUserResponse() || errorResult.error.message || 'An error occurred while executing the tool.';
+    if (errorResult.error && typeof errorResult.error.toUserResponse === 'function') {
+      return errorResult.error.toUserResponse();
+    } else if (errorResult.error && errorResult.error.message) {
+      return errorResult.error.message;
+    } else {
+      return 'An error occurred while executing the tool.';
+    }
   }
 }
 
@@ -518,35 +515,7 @@ async function handleToolCall(
       return;
     }
 
-    // Special handling for skip_to_lawyer
-    if (toolName === 'skip_to_lawyer' && toolResult.success) {
-      const toolData = 'data' in toolResult ? (toolResult.data as any) : null;
-      const action = toolData?.action;
-      
-      if (action === 'show_contact_form') {
-        // Team mode: Show contact form
-        await emitSSEEvent(controller, {
-          type: 'contact_form',
-          data: {
-            fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
-            required: ['name', 'email', 'phone'],
-            message: toolData?.message || 'Please fill out the contact form below to connect with our legal team.'
-          }
-        });
-      } else if (action === 'search_lawyers') {
-        // Public mode: Trigger lawyer search
-        await emitSSEEvent(controller, {
-          type: 'lawyer_search',
-          data: {
-            matter_type: toolData?.matter_type,
-            urgency: toolData?.urgency,
-            reason: toolData?.reason,
-            message: toolData?.message || 'Searching for qualified lawyers in your area...'
-          }
-        });
-      }
-      return;
-    }
+    // Note: skip_to_lawyer is now handled by middleware, not as an AI tool
 
     const finalResponse = extractToolResponse(toolResult as ErrorResult<any>);
 

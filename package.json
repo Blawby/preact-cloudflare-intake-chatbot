@@ -25,6 +25,8 @@
 		"@types/dompurify": "^3.0.5",
 		"dompurify": "^3.2.6",
 		"framer-motion": "^12.23.12",
+		"html2canvas": "^1.4.1",
+		"jspdf": "^3.0.3",
 		"libphonenumber-js": "^1.12.10",
 		"pdf-lib": "^1.17.1",
 		"preact": "^10.25.3",

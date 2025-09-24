@@ -142,26 +142,7 @@ When you have enough case information, use this format to show the contact form:
 TOOL_CALL: show_contact_form
 PARAMETERS: {}
 
-When you want to organize case information into a structured draft, use this format:
-TOOL_CALL: build_case_draft
-PARAMETERS: {
-  "matter_type": "Family Law",
-  "key_facts": ["Married for 5 years", "Two children ages 3 and 7", "Husband wants full custody", "Discovered infidelity 6 months ago"],
-  "timeline": "Married 2019, children born 2021 and 2017, infidelity discovered June 2024",
-  "parties": [{"role": "client", "name": "Jane Doe"}, {"role": "opposing party", "name": "John Doe", "relationship": "husband"}],
-  "documents": ["Marriage certificate", "Children's birth certificates"],
-  "evidence": ["Text messages showing infidelity", "Photos of affair"],
-  "jurisdiction": "North Carolina",
-  "urgency": "high"
-}
-
-When the user wants to skip intake and connect directly with a lawyer, use this format:
-TOOL_CALL: skip_to_lawyer
-PARAMETERS: {
-  "reason": "urgent matter",
-  "matter_type": "Family Law",
-  "urgency": "high"
-}
+// Note: build_case_draft and skip_to_lawyer are now handled by middleware
 
 When you need to create a matter, use this exact format:
 TOOL_CALL: create_matter
@@ -244,13 +225,7 @@ When you have enough legal information, use this format to show the contact form
 TOOL_CALL: show_contact_form
 PARAMETERS: {}
 
-When the user wants to skip intake and connect directly with a lawyer, use this format:
-TOOL_CALL: skip_to_lawyer
-PARAMETERS: {
-  "reason": "urgent matter",
-  "matter_type": "Employment Law",
-  "urgency": "high"
-}
+// Note: skip_to_lawyer is now handled by middleware
 
 When you need to create a matter, use this exact format:
 TOOL_CALL: create_matter

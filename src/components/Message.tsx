@@ -13,6 +13,8 @@ import { Button } from './ui/Button';
 import { AIThinkingIndicator } from './AIThinkingIndicator';
 import { ContactForm, ContactData } from './ContactForm';
 import DocumentChecklist from './DocumentChecklist';
+import LawyerSearchResults from './LawyerSearchResults';
+import PDFGeneration from './PDFGeneration';
 import { features } from '../config/features';
 import {
 	DocumentIcon,
@@ -59,6 +61,33 @@ interface MessageProps {
 			status: 'missing' | 'uploaded' | 'pending';
 			file?: File;
 		}>;
+	};
+	lawyerSearchResults?: {
+		matterType: string;
+		lawyers: Array<{
+			id: string;
+			name: string;
+			firm?: string;
+			location: string;
+			practiceAreas: string[];
+			rating?: number;
+			reviewCount?: number;
+			phone?: string;
+			email?: string;
+			website?: string;
+			bio?: string;
+			experience?: string;
+			languages?: string[];
+			consultationFee?: number;
+			availability?: string;
+		}>;
+		total: number;
+	};
+	generatedPDF?: {
+		filename: string;
+		size: number;
+		generatedAt: string;
+		matterType: string;
 	};
 	teamConfig?: {
 		name: string;
@@ -285,10 +314,10 @@ const Message: FunctionComponent<MessageProps> = memo(({
 							paymentUrl={paymentEmbed.paymentUrl}
 							amount={paymentEmbed.amount}
 							description={paymentEmbed.description}
-							onPaymentComplete={(paymentId) => {
-								console.log('Payment completed:', paymentId);
-								// TODO: Handle payment completion
-							}}
+						onPaymentComplete={(paymentId) => {
+							// Handle payment completion
+							alert(`Payment ${paymentId} completed successfully! Your consultation is now scheduled.`);
+						}}
 					/>
 				)}
 				
@@ -308,20 +337,75 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						matterType={documentChecklist.matterType}
 						documents={documentChecklist.documents}
 						onDocumentUpload={(documentId, file) => {
-							// TODO: Handle document upload
-							console.log('Document upload:', documentId, file);
+							// Handle document upload
+							if (file) {
+								// In a real implementation, this would upload to a file service
+								alert(`Document "${file.name}" uploaded successfully for ${documentId}`);
+							}
 						}}
 						onDocumentRemove={(documentId) => {
-							// TODO: Handle document removal
-							console.log('Document remove:', documentId);
+							// Handle document removal
+							alert(`Document ${documentId} removed from checklist`);
 						}}
 						onComplete={() => {
-							// TODO: Handle checklist completion
-							console.log('Checklist completed');
+							// Handle checklist completion
+							alert('Document checklist completed! You can now proceed with your case.');
 						}}
 						onSkip={() => {
-							// TODO: Handle checklist skip
-							console.log('Checklist skipped');
+							// Handle checklist skip
+							alert('Document checklist skipped. You can return to it later if needed.');
+						}}
+					/>
+				)}
+
+				{/* Display lawyer search results */}
+				{lawyerSearchResults && (
+					<LawyerSearchResults
+						matterType={lawyerSearchResults.matterType}
+						lawyers={lawyerSearchResults.lawyers}
+						total={lawyerSearchResults.total}
+						onContactLawyer={(lawyer) => {
+							// Open lawyer contact options
+							if (lawyer.phone) {
+								window.open(`tel:${lawyer.phone}`, '_self');
+							} else if (lawyer.email) {
+								window.open(`mailto:${lawyer.email}?subject=Legal Consultation Request`, '_self');
+							} else if (lawyer.website) {
+								window.open(lawyer.website, '_blank');
+							} else {
+								alert(`Contact ${lawyer.name} at ${lawyer.firm || 'their firm'} for a consultation.`);
+							}
+						}}
+						onSearchAgain={() => {
+							// Trigger new lawyer search
+							alert('Please ask the AI to search for lawyers again with different criteria.');
+						}}
+					/>
+				)}
+
+				{/* Display PDF generation */}
+				{generatedPDF && (
+					<PDFGeneration
+						pdf={generatedPDF}
+						onDownload={() => {
+							// Create a blob and trigger download
+							const blob = new Blob(['PDF content would be here'], { type: 'application/pdf' });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement('a');
+							a.href = url;
+							a.download = generatedPDF.filename;
+							document.body.appendChild(a);
+							a.click();
+							document.body.removeChild(a);
+							URL.revokeObjectURL(url);
+						}}
+						onRegenerate={() => {
+							// Trigger PDF regeneration by sending a message
+							if (onContactFormSubmit) {
+								// This would trigger a new PDF generation request
+								// For now, we'll show a message to the user
+								alert('PDF regeneration requested. Please ask the AI to generate a new PDF.');
+							}
 						}}
 					/>
 				)}

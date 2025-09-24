@@ -7,6 +7,10 @@ import { contentPolicyFilter } from '../middleware/contentPolicyFilter.js';
 import { businessScopeValidator } from '../middleware/businessScopeValidator.js';
 import { jurisdictionValidator } from '../middleware/jurisdictionValidator.js';
 import { createLoggingMiddleware } from '../middleware/pipeline.js';
+import { caseDraftMiddleware } from '../middleware/caseDraftMiddleware.js';
+import { documentChecklistMiddleware } from '../middleware/documentChecklistMiddleware.js';
+import { skipToLawyerMiddleware } from '../middleware/skipToLawyerMiddleware.js';
+import { pdfGenerationMiddleware } from '../middleware/pdfGenerationMiddleware.js';
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index.js';
 import { getCloudflareLocation } from '../utils/cloudflareLocationValidator.js';
 
@@ -115,7 +119,11 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
         createLoggingMiddleware(),
         contentPolicyFilter,
         businessScopeValidator,
-        jurisdictionValidator
+        skipToLawyerMiddleware, // Move skip middleware before jurisdiction validator
+        jurisdictionValidator,
+        caseDraftMiddleware,
+        documentChecklistMiddleware,
+        pdfGenerationMiddleware
       ]
     );
 

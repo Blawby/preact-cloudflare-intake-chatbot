@@ -26,6 +26,13 @@ export interface DocumentChecklist {
   last_updated: string;
 }
 
+export interface GeneratedPDF {
+  filename: string;
+  size: number;
+  generatedAt: string;
+  matterType: string;
+}
+
 export interface ConversationContext {
   sessionId: string;
   teamId: string;
@@ -50,6 +57,7 @@ export interface ConversationContext {
   // Case draft and document tracking
   caseDraft?: CaseDraft;
   documentChecklist?: DocumentChecklist;
+  generatedPDF?: GeneratedPDF;
 }
 
 export class ConversationContextManager {

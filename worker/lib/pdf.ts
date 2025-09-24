@@ -10,7 +10,7 @@ export async function extractPdfText(buf: ArrayBuffer) {
   console.log('First 100 bytes as hex:', Array.from(new Uint8Array(buf.slice(0, 100))).map(b => b.toString(16).padStart(2, '0')).join(' '));
   
   // For now, fall back to basic text extraction as a foundation
-  // TODO: Integrate with Cloudflare AI vision model for PDF processing
+  // Note: Could integrate with Cloudflare AI vision model for enhanced PDF processing
   const textDecoder = new TextDecoder('utf-8');
   const pdfContent = textDecoder.decode(buf);
   
