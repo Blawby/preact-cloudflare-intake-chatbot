@@ -1,9 +1,0 @@
-data: {"type":"connected"}
-
-data: {"type":"connected"}
-
-data: {"type":"text","text":"I'm so glad you reached out to us. My name is [Your Name], and I'm a legal intake specialist here at Blawby AI. I'm here to help you understand your legal options and guide you through the process.\n\nCan you please tell me a little bit about what's going on? What kind of legal issue are you facing? Is it related to a specific area of law, such as family law, employment law, or something else?"}
-
-data: {"type":"final","response":"I'm so glad you reached out to us. My name is [Your Name], and I'm a legal intake specialist here at Blawby AI. I'm here to help you understand your legal options and guide you through the process.\n\nCan you please tell me a little bit about what's going on? What kind of legal issue are you facing? Is it related to a specific area of law, such as family law, employment law, or something else?"}
-
-data: {"type":"complete"}

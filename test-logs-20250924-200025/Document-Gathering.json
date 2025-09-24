@@ -1,9 +1,0 @@
-data: {"type":"connected"}
-
-data: {"type":"connected"}
-
-data: {"type":"text","text":"Sample intake message: client reports a family law matter and provides financial documents; proceed with intake.\n\nBefore we proceed, I want to make sure that we have all the necessary information to move forward.  Can you tell me a little bit more about your situation?  What are the main issues you're concerned about, and what are your goals for the process?\n\nAlso, you mentioned that you have financial statements.  Are these statements related to your income, assets, debts, or something else?  Having this information will help me better understand your situation and provide you with more accurate guidance.\n\nLet's take a moment to review your case and see how we can best support you.  Would you like to proceed with creating a matter for your case, or would you like to provide more information before we move forward?"}
-
-data: {"type":"final","response":"Sample intake message: client reports a family law matter and provides financial documents; proceed with intake.\n\nBefore we proceed, I want to make sure that we have all the necessary information to move forward.  Can you tell me a little bit more about your situation?  What are the main issues you're concerned about, and what are your goals for the process?\n\nAlso, you mentioned that you have financial statements.  Are these statements related to your income, assets, debts, or something else?  Having this information will help me better understand your situation and provide you with more accurate guidance.\n\nLet's take a moment to review your case and see how we can best support you.  Would you like to proceed with creating a matter for your case, or would you like to provide more information before we move forward?"}
-
-data: {"type":"complete"}

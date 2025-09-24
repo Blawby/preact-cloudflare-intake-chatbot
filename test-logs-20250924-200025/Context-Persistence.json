@@ -1,9 +1,0 @@
-data: {"type":"connected"}
-
-data: {"type":"connected"}
-
-data: {"type":"text","text":"Eviction can be a very stressful and overwhelming experience. Can you tell me a bit more about what's going on? What's the situation with your landlord? Have you received a notice to vacate or are you being threatened with eviction?\n\nAlso, do you have any documentation related to your rental agreement or any communication with your landlord that you'd like to share with me?"}
-
-data: {"type":"final","response":"Eviction can be a very stressful and overwhelming experience. Can you tell me a bit more about what's going on? What's the situation with your landlord? Have you received a notice to vacate or are you being threatened with eviction?\n\nAlso, do you have any documentation related to your rental agreement or any communication with your landlord that you'd like to share with me?"}
-
-data: {"type":"complete"}

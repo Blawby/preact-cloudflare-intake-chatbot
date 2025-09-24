@@ -1,5 +1,0 @@
-data: {"type":"connected"}
-
-data: {"type":"pipeline_response","response":"I understand you want to skip the intake process and connect directly with our legal team. Skip intake, I need a family lawyer. I'll show you our contact form so we can get in touch with you right away.\n\n**Contact Information Required:**\n• Full Name\n• Email Address\n• Phone Number\n• Location (City, State)\n• Brief description of your family law matter\n\n**What happens next:**\n• Our team will review your information\n• A qualified attorney will contact you within 24 hours\n• We'll schedule a consultation to discuss your case\n• You'll receive personalized legal guidance\n\nPlease fill out the contact form below and we'll connect you with the right attorney for your family law needs.","middlewareUsed":["logging","contentPolicyFilter","businessScopeValidator","skipToLawyerMiddleware"],"context":{"establishedMatters":["Intellectual Property"],"userIntent":"intake","conversationPhase":"qualifying"}}
-
-data: {"type":"complete"}
