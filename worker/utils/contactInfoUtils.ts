@@ -93,7 +93,7 @@ export function hasContactInformation(conversationText: string): boolean {
   return hasCoreInfo || hasHeaderWithInfo;
 }
 
-// Export alias for consistency with usage in conversationStateMachine
+// Export alias for backward compatibility
 export const hasContactInfo = hasContactInformation;
 
 /**
