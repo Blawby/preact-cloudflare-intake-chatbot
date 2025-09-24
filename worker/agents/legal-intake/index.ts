@@ -266,8 +266,8 @@ function detectContextFast(conversationText: string): ConversationContext {
   }
 
   // Contact detection
-  const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(conversationText);
-  const hasPhone = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(conversationText);
+  const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(conversationText);
+  const hasPhone = /\b(?:\+?1[-.]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(conversationText);
   const hasName = /(?:my name is|i'm|i am|call me)\s+([A-Za-z\s]+)/i.test(conversationText);
   
   // Opposing party detection
