@@ -129,11 +129,15 @@ export class JurisdictionValidator {
     const words = text.split(/\s+/);
     const targetWords = target.split(/\s+/);
     
-    // For multi-word targets, check if they appear as consecutive words
+    // For multi-word targets, use word-boundary aware regex
     if (targetWords.length > 1) {
-      const targetPhrase = targetWords.join(' ');
-      const textPhrase = words.join(' ');
-      return textPhrase.includes(targetPhrase);
+      // Escape each target word for regex and wrap with word boundaries
+      const escapedWords = targetWords.map(word => 
+        word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      );
+      const pattern = escapedWords.map(word => `\\b${word}\\b`).join('\\s+');
+      const regex = new RegExp(pattern, 'i');
+      return regex.test(text);
     }
     
     // For single words, check if the word exists

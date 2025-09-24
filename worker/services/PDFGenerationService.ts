@@ -372,7 +372,7 @@ export class PDFGenerationService {
       const pdfDoc = await PDFDocument.create();
       
       // Add a page
-      const page = pdfDoc.addPage([612, 792]); // Letter size
+      let page = pdfDoc.addPage([612, 792]); // Letter size
       const { width, height } = page.getSize();
       
       // Extract content from structured data for PDF generation
@@ -387,18 +387,22 @@ export class PDFGenerationService {
       const lineHeight = fontSize * 1.2;
       let yPosition = height - 50; // Start from top with margin
       
-      // Helper function to check if we need a new page
+      // Helper function to check if we need a new page and add one if needed
       const checkPageOverflow = (requiredSpace: number = 20) => {
         if (yPosition < requiredSpace + 50) {
-          Logger.warn('[PDFGenerationService] Content overflow detected, truncating remaining content');
-          return true;
+          // Add a new page and reset position
+          const newPage = pdfDoc.addPage([612, 792]);
+          page = newPage; // Update page reference
+          yPosition = height - 50; // Reset to top of new page
+          Logger.info('[PDFGenerationService] Added new page due to content overflow');
+          return false; // Content can continue on new page
         }
         return false;
       };
 
       // Helper function to add section headers with overflow protection
       const addSectionHeader = (title: string) => {
-        if (checkPageOverflow(30)) return false; // Need more space for headers
+        checkPageOverflow(30); // Need more space for headers (will add new page if needed)
         addText(title, boldFont, 14, rgb(0.2, 0.2, 0.2));
         yPosition -= 10;
         return true;
@@ -406,10 +410,8 @@ export class PDFGenerationService {
 
       // Helper function to add text with word wrapping and page overflow protection
       const addText = (text: string, font: any, size: number, color: any, maxWidth?: number) => {
-        // Check for page overflow before adding text
-        if (checkPageOverflow()) {
-          return; // Stop adding content to prevent overflow
-        }
+        // Check for page overflow before adding text (will add new page if needed)
+        checkPageOverflow();
 
         if (maxWidth) {
           const words = text.split(' ');
@@ -421,10 +423,8 @@ export class PDFGenerationService {
             const textWidth = font.widthOfTextAtSize(testLine, size);
             
             if (textWidth > maxWidth && line) {
-              // Check if we have space for this line
-              if (checkPageOverflow()) {
-                return;
-              }
+              // Check if we have space for this line (will add new page if needed)
+              checkPageOverflow();
               
               page.drawText(line, {
                 x: 50,
@@ -440,7 +440,9 @@ export class PDFGenerationService {
             }
           }
           
-          if (line && !checkPageOverflow()) {
+          if (line) {
+            // Check for page overflow before drawing final line (will add new page if needed)
+            checkPageOverflow();
             page.drawText(line, {
               x: 50,
               y: currentY,
@@ -483,64 +485,60 @@ export class PDFGenerationService {
       
       // Add key facts section
       if (content.keyFacts && content.keyFacts.length > 0) {
-        if (addSectionHeader('KEY FACTS')) {
-          content.keyFacts.forEach((fact: string, index: number) => {
-            addText(`${index + 1}. ${fact}`, font, fontSize, rgb(0, 0, 0), width - 100);
-          });
-          yPosition -= 20;
-        }
+        addSectionHeader('KEY FACTS');
+        content.keyFacts.forEach((fact: string, index: number) => {
+          addText(`${index + 1}. ${fact}`, font, fontSize, rgb(0, 0, 0), width - 100);
+        });
+        yPosition -= 20;
       }
 
       // Add timeline section
       if (content.timeline) {
-        if (addSectionHeader('TIMELINE')) {
-          addText(content.timeline, font, fontSize, rgb(0, 0, 0), width - 100);
-          yPosition -= 20;
-        }
+        addSectionHeader('TIMELINE');
+        addText(content.timeline, font, fontSize, rgb(0, 0, 0), width - 100);
+        yPosition -= 20;
       }
 
       // Add parties section
       if (content.parties && content.parties.length > 0) {
-        if (addSectionHeader('PARTIES INVOLVED')) {
-          content.parties.forEach((party: any, index: number) => {
-            const partyText = `${party.role}: ${party.name || 'Name not provided'}${party.relationship ? ` (${party.relationship})` : ''}`;
-            addText(partyText, font, fontSize, rgb(0, 0, 0), width - 100);
-          });
-          yPosition -= 20;
-        }
+        addSectionHeader('PARTIES INVOLVED');
+        content.parties.forEach((party: any, index: number) => {
+          const partyText = `${party.role}: ${party.name || 'Name not provided'}${party.relationship ? ` (${party.relationship})` : ''}`;
+          addText(partyText, font, fontSize, rgb(0, 0, 0), width - 100);
+        });
+        yPosition -= 20;
       }
 
       // Add documents section
       if (content.documents && content.documents.length > 0) {
-        if (addSectionHeader('AVAILABLE DOCUMENTS')) {
-          content.documents.forEach((doc: string, index: number) => {
-            addText(`• ${doc}`, font, fontSize, rgb(0, 0, 0), width - 100);
-          });
-          yPosition -= 20;
-        }
+        addSectionHeader('AVAILABLE DOCUMENTS');
+        content.documents.forEach((doc: string, index: number) => {
+          addText(`• ${doc}`, font, fontSize, rgb(0, 0, 0), width - 100);
+        });
+        yPosition -= 20;
       }
 
       // Add evidence section
       if (content.evidence && content.evidence.length > 0) {
-        if (addSectionHeader('EVIDENCE')) {
-          content.evidence.forEach((ev: string, index: number) => {
-            addText(`• ${ev}`, font, fontSize, rgb(0, 0, 0), width - 100);
-          });
-          yPosition -= 20;
-        }
+        addSectionHeader('EVIDENCE');
+        content.evidence.forEach((ev: string, index: number) => {
+          addText(`• ${ev}`, font, fontSize, rgb(0, 0, 0), width - 100);
+        });
+        yPosition -= 20;
       }
       
       // Add disclaimer
-      if (addSectionHeader('IMPORTANT LEGAL DISCLAIMER')) {
-        const disclaimerText = 'This document is not legal advice. This case summary is prepared for informational purposes only and should not be construed as legal advice. It is recommended that you consult with a qualified attorney to discuss your specific legal situation and obtain proper legal counsel.';
-        addText(disclaimerText, font, fontSize, rgb(0, 0, 0), width - 100);
-        yPosition -= 30;
-      }
+      addSectionHeader('IMPORTANT LEGAL DISCLAIMER');
+      const disclaimerText = 'This document is not legal advice. This case summary is prepared for informational purposes only and should not be construed as legal advice. It is recommended that you consult with a qualified attorney to discuss your specific legal situation and obtain proper legal counsel.';
+      addText(disclaimerText, font, fontSize, rgb(0, 0, 0), width - 100);
+      yPosition -= 30;
       
-      // Add footer
-      addText(`Generated by ${content.teamName || 'Legal Services'}`, font, 10, rgb(0.4, 0.4, 0.4));
-      addText(`Date: ${content.generatedDate}`, font, 10, rgb(0.4, 0.4, 0.4));
-      addText('This document contains confidential information and should be treated accordingly.', font, 10, rgb(0.4, 0.4, 0.4));
+      // Add footer with overflow protection
+      if (!checkPageOverflow(40)) { // Need space for 3 lines of footer
+        addText(`Generated by ${content.teamName || 'Legal Services'}`, font, 10, rgb(0.4, 0.4, 0.4));
+        addText(`Date: ${content.generatedDate}`, font, 10, rgb(0.4, 0.4, 0.4));
+        addText('This document contains confidential information and should be treated accordingly.', font, 10, rgb(0.4, 0.4, 0.4));
+      }
       
       // Serialize the PDF to bytes
       const pdfBytes = await pdfDoc.save();

@@ -1,11 +1,9 @@
-/* eslint-disable import/no-unresolved */
 import js from '@eslint/js';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
-import importPlugin from 'eslint-plugin-import';
 
 export default [
   // Base JavaScript configuration
@@ -29,9 +27,9 @@ export default [
     ]
   },
 
-  // TypeScript files configuration (without project for better performance)
+  // Frontend TypeScript files configuration
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -40,15 +38,40 @@ export default [
         ecmaFeatures: {
           jsx: true
         }
-        // Removed project: './tsconfig.json' to avoid performance issues
+      },
+      globals: {
+        // Browser globals for frontend
+        'window': 'readonly',
+        'document': 'readonly',
+        'console': 'readonly',
+        'fetch': 'readonly',
+        'URL': 'readonly',
+        'URLSearchParams': 'readonly',
+        'FormData': 'readonly',
+        'Blob': 'readonly',
+        'File': 'readonly',
+        'FileReader': 'readonly',
+        'atob': 'readonly',
+        'btoa': 'readonly',
+        'setTimeout': 'readonly',
+        'clearTimeout': 'readonly',
+        'setInterval': 'readonly',
+        'clearInterval': 'readonly',
+        'alert': 'readonly',
+        'confirm': 'readonly',
+        'prompt': 'readonly',
+        'localStorage': 'readonly',
+        'sessionStorage': 'readonly',
+        'navigator': 'readonly',
+        'location': 'readonly',
+        'history': 'readonly'
       }
     },
     plugins: {
       '@typescript-eslint': typescript,
       react,
       'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y,
-      import: importPlugin
+      'jsx-a11y': jsxA11y
     },
     rules: {
       // TypeScript specific rules (basic recommended only)
@@ -58,9 +81,6 @@ export default [
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.configs.recommended.rules,
-      
-      // Import rules
-      ...importPlugin.configs.recommended.rules,
       
       // Custom overrides
       '@typescript-eslint/no-unused-vars': ['error', { 
@@ -85,26 +105,6 @@ export default [
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
       
-      // Import rules
-      'import/order': ['error', {
-        groups: [
-          'builtin',
-          'external',
-          'internal',
-          'parent',
-          'sibling',
-          'index'
-        ],
-        'newlines-between': 'always',
-        alphabetize: {
-          order: 'asc',
-          caseInsensitive: true
-        }
-      }],
-      'import/no-unresolved': 'off', // TypeScript handles this
-      'import/named': 'off', // TypeScript handles this
-      'import/default': 'off', // TypeScript handles this
-      'import/namespace': 'off', // TypeScript handles this
       
       // General rules
       'no-console': 'warn',
@@ -119,13 +119,65 @@ export default [
       react: {
         version: 'detect',
         pragma: 'h'
-      },
-      'import/resolver': {
-        typescript: {
-          alwaysTryTypes: true
-          // Removed project reference for better performance
-        }
       }
+    }
+  },
+
+  // Worker TypeScript files configuration
+  {
+    files: ['worker/**/*.{ts,js}'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module'
+      },
+      globals: {
+        // Cloudflare Workers globals
+        'Request': 'readonly',
+        'Response': 'readonly',
+        'Headers': 'readonly',
+        'URL': 'readonly',
+        'URLSearchParams': 'readonly',
+        'FormData': 'readonly',
+        'Blob': 'readonly',
+        'File': 'readonly',
+        'ReadableStream': 'readonly',
+        'WritableStream': 'readonly',
+        'TransformStream': 'readonly',
+        'crypto': 'readonly',
+        'fetch': 'readonly',
+        'console': 'readonly',
+        'setTimeout': 'readonly',
+        'clearTimeout': 'readonly',
+        'setInterval': 'readonly',
+        'clearInterval': 'readonly',
+        'addEventListener': 'readonly',
+        'removeEventListener': 'readonly',
+        'dispatchEvent': 'readonly',
+        'atob': 'readonly',
+        'btoa': 'readonly',
+        'TextEncoder': 'readonly',
+        'TextDecoder': 'readonly',
+        'AbortController': 'readonly',
+        'AbortSignal': 'readonly',
+        'Buffer': 'readonly',
+        'ReadableStreamDefaultController': 'readonly'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': typescript
+    },
+    rules: {
+      ...typescript.configs.recommended.rules,
+      '@typescript-eslint/no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_'
+      }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'no-console': 'off', // Console is useful in workers
+      'no-unused-vars': 'off'
     }
   },
 
@@ -144,17 +196,13 @@ export default [
     plugins: {
       react,
       'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y,
-      import: importPlugin
+      'jsx-a11y': jsxA11y
     },
     rules: {
       // React/Preact rules
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.configs.recommended.rules,
-      
-      // Import rules
-      ...importPlugin.configs.recommended.rules,
       
       // React/JSX rules (works with Preact)
       'react/jsx-uses-react': 'off', // Not needed with Preact
@@ -191,47 +239,6 @@ export default [
     }
   },
 
-  // Worker-specific configuration
-  {
-    files: ['worker/**/*.{ts,js}'],
-    languageOptions: {
-      globals: {
-        // Cloudflare Workers globals
-        'Request': 'readonly',
-        'Response': 'readonly',
-        'Headers': 'readonly',
-        'URL': 'readonly',
-        'URLSearchParams': 'readonly',
-        'FormData': 'readonly',
-        'Blob': 'readonly',
-        'File': 'readonly',
-        'ReadableStream': 'readonly',
-        'WritableStream': 'readonly',
-        'TransformStream': 'readonly',
-        'crypto': 'readonly',
-        'fetch': 'readonly',
-        'console': 'readonly',
-        'setTimeout': 'readonly',
-        'clearTimeout': 'readonly',
-        'setInterval': 'readonly',
-        'clearInterval': 'readonly',
-        'addEventListener': 'readonly',
-        'removeEventListener': 'readonly',
-        'dispatchEvent': 'readonly',
-        'atob': 'readonly',
-        'btoa': 'readonly',
-        'TextEncoder': 'readonly',
-        'TextDecoder': 'readonly',
-        'AbortController': 'readonly',
-        'AbortSignal': 'readonly'
-      }
-    },
-    rules: {
-      // Worker-specific rules
-      'no-console': 'off', // Console is useful in workers
-      '@typescript-eslint/no-explicit-any': 'warn' // More lenient for worker code
-    }
-  },
 
   // Test files configuration
   {

@@ -55,7 +55,6 @@
 		"critters": "^0.0.23",
 		"eslint": "^8.57.1",
 		"eslint-config-preact": "^1.5.0",
-		"eslint-plugin-import": "^2.32.0",
 		"eslint-plugin-jsx-a11y": "^6.10.2",
 		"eslint-plugin-preact": "^0.1.0",
 		"eslint-plugin-react": "^7.37.5",
