@@ -1,15 +1,16 @@
-import type { Env, FileAttachment } from '../types';
-import type { TeamConfig } from '../services/TeamService';
-import { parseJsonBody } from '../utils';
-import { runLegalIntakeAgentStream } from '../agents/legal-intake/index';
-import { HttpErrors, handleError, createSuccessResponse, CORS_HEADERS, SECURITY_HEADERS } from '../errorHandler';
-import { validateInput, getSecurityResponse } from '../middleware/inputValidation.ts';
-import { SecurityLogger } from '../utils/securityLogger.ts';
-import { getCloudflareLocation, isCloudflareLocationSupported, getLocationDescription } from '../utils/cloudflareLocationValidator.ts';
-import { rateLimit, getClientId } from '../middleware/rateLimit.ts';
-import { safeIncludes, safeToLowerCase } from '../utils/safeStringUtils.ts';
+import type { Env } from '../types.js';
+import { parseJsonBody } from '../utils.js';
+import { HttpErrors, CORS_HEADERS } from '../errorHandler.js';
+import { runPipeline } from '../middleware/pipeline.js';
+import { ConversationContextManager } from '../middleware/conversationContextManager.js';
+import { contentPolicyFilter } from '../middleware/contentPolicyFilter.js';
+import { businessScopeValidator } from '../middleware/businessScopeValidator.js';
+import { jurisdictionValidator } from '../middleware/jurisdictionValidator.js';
+import { createLoggingMiddleware } from '../middleware/pipeline.js';
+import { runLegalIntakeAgentStream } from '../agents/legal-intake/index.js';
+import { getCloudflareLocation } from '../utils/cloudflareLocationValidator.js';
 
-// Interface for the request body in the route method
+// Interface for the request body
 interface RouteBody {
   messages: Array<{
     role: 'user' | 'assistant' | 'system';
@@ -18,7 +19,7 @@ interface RouteBody {
   teamId?: string;
   sessionId?: string;
   attachments?: Array<{
-    id?: string; // Optional id field for backward compatibility
+    id?: string;
     name: string;
     size: number;
     type: string;
@@ -26,356 +27,11 @@ interface RouteBody {
   }>;
 }
 
-// Validation error class for contextual error messages
-class ValidationError extends Error {
-  constructor(message: string, public context?: string) {
-    super(message);
-    this.name = 'ValidationError';
-  }
-}
-
-// Validate a single message with contextual error information
-function validateMessage(msg: unknown, index: number): void {
-  if (typeof msg !== 'object' || msg === null) {
-    throw new ValidationError(`Message at index ${index} must be an object`, `message[${index}]`);
-  }
-
-  const message = msg as Record<string, unknown>;
-
-  // Check if content exists and is a string
-  if (typeof message.content !== 'string') {
-    throw new ValidationError(
-      `Message at index ${index} must have a string 'content' property`, 
-      `message[${index}].content`
-    );
-  }
-
-  // Check if role exists and is one of the allowed values
-  if (message.role !== 'user' && message.role !== 'assistant' && message.role !== 'system') {
-    throw new ValidationError(
-      `Message at index ${index} must have a 'role' property with value 'user', 'assistant', or 'system'`, 
-      `message[${index}].role`
-    );
-  }
-}
-
-// Validate messages array
-function validateMessages(messages: unknown): void {
-  if (!Array.isArray(messages)) {
-    throw new ValidationError('Request body must have a "messages" property that is an array', 'messages');
-  }
-
-  // Validate each message in the array
-  for (let i = 0; i < messages.length; i++) {
-    validateMessage(messages[i], i);
-  }
-}
-
-// Validate a single attachment with contextual error information
-function validateAttachment(att: unknown, index: number): void {
-  if (typeof att !== 'object' || att === null) {
-    throw new ValidationError(
-      `Attachment at index ${index} must be an object`, 
-      `attachment[${index}]`
-    );
-  }
-
-  const attachment = att as Record<string, unknown>;
-
-  // Check required attachment fields
-  if (typeof attachment.name !== 'string') {
-    throw new ValidationError(
-      `Attachment at index ${index} must have a string 'name' property`, 
-      `attachment[${index}].name`
-    );
-  }
-
-  if (typeof attachment.size !== 'number') {
-    throw new ValidationError(
-      `Attachment at index ${index} must have a number 'size' property`, 
-      `attachment[${index}].size`
-    );
-  }
-
-  if (typeof attachment.type !== 'string') {
-    throw new ValidationError(
-      `Attachment at index ${index} must have a string 'type' property`, 
-      `attachment[${index}].type`
-    );
-  }
-
-  if (typeof attachment.url !== 'string') {
-    throw new ValidationError(
-      `Attachment at index ${index} must have a string 'url' property`, 
-      `attachment[${index}].url`
-    );
-  }
-
-  // Validate optional id field
-  if (attachment.id !== undefined && typeof attachment.id !== 'string') {
-    throw new ValidationError(
-      `Attachment at index ${index} 'id' property must be a string if provided`, 
-      `attachment[${index}].id`
-    );
-  }
-}
-
-// Validate attachments array
-function validateAttachments(attachments: unknown): void {
-  if (!Array.isArray(attachments)) {
-    throw new ValidationError('Attachments property must be an array', 'attachments');
-  }
-
-  // Validate each attachment in the array
-  for (let i = 0; i < attachments.length; i++) {
-    validateAttachment(attachments[i], i);
-  }
-}
-
-// Type guard function for runtime validation of RouteBody
-function isValidRouteBody(obj: unknown): obj is RouteBody {
-  try {
-    // Check if obj is an object and not null
-    if (typeof obj !== 'object' || obj === null) {
-      return false;
-    }
-
-    const body = obj as Record<string, unknown>;
-
-    // Validate messages array
-    validateMessages(body.messages);
-
-    // Validate optional fields
-    if (body.teamId !== undefined && typeof body.teamId !== 'string') {
-      throw new ValidationError('teamId must be a string if provided', 'teamId');
-    }
-
-    if (body.sessionId !== undefined && typeof body.sessionId !== 'string') {
-      throw new ValidationError('sessionId must be a string if provided', 'sessionId');
-    }
-
-    // Validate attachments if present
-    if (body.attachments !== undefined) {
-      validateAttachments(body.attachments);
-    }
-
-    return true;
-  } catch (error) {
-    // Log validation errors for debugging
-    if (error instanceof ValidationError) {
-      console.error(`Validation failed: ${error.message} (context: ${error.context})`);
-    } else {
-      console.error('Unexpected validation error:', error);
-    }
-    return false;
-  }
-}
-
-// Supervisor router for intent-based routing between agents
-// Helper functions for intent detection
-function wantsHuman(text: string, messages?: any[]): boolean {
-  // Check if user is responding "yes" to attorney referral
-  if (messages && messages.length >= 2) {
-    const previousMessage = messages[messages.length - 2]?.content?.toLowerCase() || '';
-    const currentMessage = text.toLowerCase();
-    
-    console.log('🔍 Checking attorney referral acceptance:');
-    console.log('  Previous message:', previousMessage ? previousMessage.substring(0, 100) : 'null');
-    console.log('  Current message:', currentMessage);
-    console.log('  Has attorney suggestion:', safeIncludes(previousMessage, 'would you like me to connect you with'));
-    console.log('  Is affirmative:', ['yes', 'yeah', 'sure', 'ok'].includes(currentMessage));
-    
-    // If previous message suggested attorney and current is affirmative
-    if (safeIncludes(previousMessage, 'would you like me to connect you with') && 
-        (currentMessage === 'yes' || currentMessage === 'yeah' || currentMessage === 'sure' || currentMessage === 'ok')) {
-      console.log('✅ Attorney referral accepted - routing to intake!');
-      return true;
-    }
-  }
-  
-  const regularMatch = /\b(lawyer|attorney|human|person|call|phone|consult|consultation)\b/i.test(text);
-  console.log('🔍 Regular wantsHuman check:', regularMatch, 'for text:', text);
-  return regularMatch;
-}
-
-function needsDocAnalysis(text: string, attachments?: any[]): boolean {
-  return (attachments?.length ?? 0) > 0 || /\b(analy[sz]e|scan|ocr|pdf|document)\b/i.test(text);
-}
-
-class SupervisorRouter {
-  constructor(private env: Env) {}
-
-  async route(body: RouteBody, teamConfig: TeamConfig): Promise<'intake'> {
-    // Simplified routing - always use intake agent for everything
-    console.log('📋 Routing to Intake Agent (simplified)');
-    return 'intake';
-  }
-
-  private shouldRouteToParalegal(text: string, body: any): boolean {
-    const messages = body.messages || [];
-    const allContent = messages.map((msg: any) => msg.content || '').join(' ').toLowerCase();
-    
-    // Check if this looks like a post-payment/post-intake scenario
-    const hasCompletedIntake = this.hasCompletedIntakeFlow(messages);
-    const isPostPaymentQuery = this.isPostPaymentQuery(text, messages);
-    
-    if (hasCompletedIntake && isPostPaymentQuery) {
-      console.log('🎯 Detected post-payment scenario, routing to Paralegal Agent');
-      return true;
-    }
-
-    // Direct paralegal keywords (explicit requests)
-    const paralegalKeywords = [
-      'matter formation', 'engagement letter', 'conflict check', 'retainer',
-      'checklist', 'stage', 'document requirements', 'fee scope',
-      'filing prep', 'case status', 'paralegal'
-    ];
-
-    if (paralegalKeywords.some(keyword => safeIncludes(safeToLowerCase(text), keyword))) {
-      return true;
-    }
-
-    // Post-payment/consultation phrases (explicit)
-    const postPaymentKeywords = [
-      'paid', 'payment complete', 'now what', 'next steps', 'what happens now',
-      'consultation', 'proceeding', 'continue', 'move forward', 'what now'
-    ];
-
-    if (postPaymentKeywords.some(keyword => safeIncludes(safeToLowerCase(text), keyword))) {
-      // Only route to paralegal if there's legal context
-      const hasLegalContext = safeIncludes(allContent, 'legal') || 
-                             safeIncludes(allContent, 'lawyer') || 
-                             safeIncludes(allContent, 'attorney') ||
-                             safeIncludes(allContent, 'divorce') ||
-                             safeIncludes(allContent, 'employment') ||
-                             safeIncludes(allContent, 'matter');
-      return hasLegalContext;
-    }
-
-    return false;
-  }
-
-  private hasCompletedIntakeFlow(messages: any[]): boolean {
-    const allContent = messages.map((msg: any) => msg.content || '').join(' ').toLowerCase();
-    
-    // Look for signs of completed intake
-    const intakeCompletionMarkers = [
-      'perfect! i have all the information',
-      'here\'s a summary of your matter',
-      'consultation fee',
-      'pay $',
-      'payment using the embedded',
-      'lawyer will contact you within',
-      'matter created',
-
-    ];
-    
-    return intakeCompletionMarkers.some(marker => safeIncludes(allContent, marker));
-  }
-
-  private isPostPaymentQuery(text: string, messages: any[]): boolean {
-    const lowerText = text.toLowerCase();
-    const recentMessages = messages.slice(-3); // Look at last 3 messages
-    
-    // Simple acknowledgments that could indicate payment completion
-    const acknowledgments = ['ok', 'yes', 'done', 'completed', 'finished', 'thanks'];
-    
-    // Check if user just gave a simple acknowledgment after payment prompt
-    if (acknowledgments.includes(lowerText.trim())) {
-      // Check if previous assistant message mentioned payment
-      const lastAssistantMsg = messages.filter(msg => msg.role === 'assistant').pop();
-      if (lastAssistantMsg && lastAssistantMsg.content) {
-        const assistantContent = lastAssistantMsg.content.toLowerCase();
-        return safeIncludes(assistantContent, 'pay $') || 
-               safeIncludes(assistantContent, 'payment') || 
-               safeIncludes(assistantContent, 'consultation fee');
-      }
-    }
-    
-    // Explicit post-payment queries
-    const postPaymentQueries = [
-      'what now', 'now what', 'what next', 'next steps', 'what happens',
-      'proceed', 'continue', 'move forward', 'what do we do'
-    ];
-    
-    return postPaymentQueries.some(query => safeIncludes(lowerText, query));
-  }
-
-  private shouldRouteToAnalysis(body: any): boolean {
-    // Route to analysis for document analysis requests
-    const hasAttachments = (body.attachments?.length || 0) > 0;
-    const latestMessage = body.messages?.at(-1)?.content || '';
-    const analysisKeywords = ['analyze document', 'pdf', 'ocr', 'extract', 'review document'];
-    
-    return hasAttachments || analysisKeywords.some(keyword => 
-      safeIncludes(safeToLowerCase(latestMessage), keyword)
-    );
-  }
-
-  private isInIntakeFlow(messages: any[]): boolean {
-    const allContent = messages.map((msg: any) => msg.content || '').join(' ').toLowerCase();
-    
-    // Check for intake flow indicators
-    const intakeMarkers = [
-      'can you please provide your full name',
-      'thank you! now i need your phone number',
-      'thank you! now i need your email address',
-      'could you please provide a valid phone number',
-      'could you please provide a valid email address',
-      'i need your name to proceed',
-      'i have your contact information',
-      'the phone number you provided',
-      'the email address you provided'
-    ];
-    
-    // If any intake markers are present, user is in intake flow
-    const hasIntakeMarkers = intakeMarkers.some(marker => safeIncludes(allContent, marker));
-    
-    // Also check if user has already provided contact info (sign they're in intake)
-    const hasProvidedContactInfo = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(allContent) || // phone pattern
-                                   /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/.test(allContent); // email pattern
-    
-    console.log(`📋 Intake flow check: markers=${hasIntakeMarkers}, contact=${hasProvidedContactInfo}`);
-    
-    return hasIntakeMarkers || hasProvidedContactInfo;
-  }
-}
-
-// Helper functions for supervisor router
-function extractClientInfo(messages: any[]): any {
-  // Extract client information from conversation history
-  // This is a simplified version - in production, you'd parse more thoroughly
-  const allContent = messages.map(m => m.content).join(' ').toLowerCase();
-  
-  return {
-    hasName: safeIncludes(allContent, 'name') || safeIncludes(allContent, 'i am') || safeIncludes(allContent, 'my name'),
-    hasPhone: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(allContent),
-    hasEmail: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(allContent),
-    hasLocation: safeIncludes(allContent, 'live in') || safeIncludes(allContent, 'located in') || safeIncludes(allContent, 'from')
-  };
-}
-
-function formatParalegalResponse(paralegalData: any): string {
-  const { stage, checklist, nextActions, missing, directive, handoffMessage } = paralegalData;
-  
-  // Check if this is a handoff to intake
-  if (directive === 'handoff_to_intake') {
-    return `${handoffMessage || 'Let me help you with this.'}\n\nI'll collect your information so we can get you the right assistance.`;
-  }
-  
-  // For now, always hand off to intake for conversational responses
-  // The Paralegal Agent will determine when to hand off based on the conversation
-  return `Hi! I'm your AI Paralegal. I can help you understand your legal situation and gather what we need to move forward. If things get complex, I'll connect you with a lawyer.
-
-Can you tell me more about what's going on with your case? The more details you share, the better I can help you figure out next steps.`;
-}
-
-
-
-// New streaming endpoint for real-time AI responses
-export async function handleAgentStream(request: Request, env: Env): Promise<Response> {
-  console.log('🚀 Streaming endpoint called!');
-  
+/**
+ * Modern pipeline-based agent handler
+ * Uses context-aware middleware instead of hard security filters
+ */
+export async function handleAgentStreamV2(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
@@ -398,20 +54,19 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
       throw HttpErrors.badRequest('Invalid request body format. Expected messages array with valid message objects.');
     }
     
-    const body = rawBody;
-    console.log('📥 Request metadata: messageCount=', body.messages?.length, 'attachmentCount=', body.attachments?.length || 0);
-    
+    const body = rawBody as RouteBody;
     const { messages, teamId, sessionId, attachments = [] } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw HttpErrors.badRequest('No message content provided');
     }
+
     const latestMessage = messages[messages.length - 1];
     if (!latestMessage?.content) {
       throw HttpErrors.badRequest('No message content provided');
     }
 
-    // Get team configuration for security validation
+    // Get team configuration
     let teamConfig = null;
     if (teamId) {
       try {
@@ -420,122 +75,151 @@ export async function handleAgentStream(request: Request, env: Env): Promise<Res
         const rawTeamConfig = await aiService.getTeamConfig(teamId);
         teamConfig = rawTeamConfig;
       } catch (error) {
-        console.warn('Failed to get team config for security validation:', error);
+        console.warn('Failed to get team config:', error);
       }
     }
 
     // Get Cloudflare location data
     const cloudflareLocation = getCloudflareLocation(request);
-    console.log('Cloudflare location data:', cloudflareLocation);
 
-    // Security validation with Cloudflare location
-    const validation = await validateInput(body, teamConfig, cloudflareLocation);
-    if (!validation.isValid) {
-      SecurityLogger.logInputValidation(validation, latestMessage.content, teamId);
-      
-      const securityResponse = getSecurityResponse(validation.violations || [], teamConfig);
-      
-      // Send security block as a single SSE event
-      const securityEvent = `data: ${JSON.stringify({
-        type: 'security_block',
-        response: securityResponse,
-        reason: validation.reason,
-        violations: validation.violations
+    // Load conversation context
+    const context = await ConversationContextManager.load(sessionId || 'default', teamId || 'default', env);
+
+    // Run through pipeline
+    const pipelineResult = await runPipeline(
+      latestMessage.content,
+      context,
+      teamConfig,
+      [
+        createLoggingMiddleware(),
+        contentPolicyFilter,
+        businessScopeValidator,
+        jurisdictionValidator
+      ]
+    );
+
+    // Save updated context
+    await ConversationContextManager.save(pipelineResult.context, env);
+
+    // If pipeline provided a response, return it
+    if (pipelineResult.response && pipelineResult.response !== 'AI_HANDLE') {
+      const responseEvent = `data: ${JSON.stringify({
+        type: 'pipeline_response',
+        response: pipelineResult.response,
+        middlewareUsed: pipelineResult.middlewareUsed,
+        context: {
+          establishedMatters: pipelineResult.context.establishedMatters,
+          userIntent: pipelineResult.context.userIntent,
+          conversationPhase: pipelineResult.context.conversationPhase
+        }
       })}\n\n`;
       
-      return new Response(securityEvent, { headers });
+      return new Response(responseEvent, { headers });
     }
 
-    console.log('✅ Security validation passed, creating stream...');
+    // Pipeline didn't provide a response - let AI handle it
+    console.log('✅ Pipeline passed, creating AI stream...');
 
     // Create streaming response using ReadableStream
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          console.log('🔄 Starting streaming agent...');
-          
           // Send initial connection event
           controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
           
-          // Simplified routing - always use intake agent
-          console.log('📞 Using simplified intake agent routing...');
-          const fileAttachments: FileAttachment[] = attachments.map(att => ({
-            id: att.id || crypto.randomUUID(), // Use provided id or generate UUID
+          // Convert messages to the format expected by the AI agent
+          const formattedMessages = messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }));
+
+          const fileAttachments = attachments.map(att => ({
+            id: att.id || crypto.randomUUID(),
             name: att.name,
             type: att.type,
             size: att.size,
             url: att.url
           }));
-          try {
-            await runLegalIntakeAgentStream(env, messages, teamId, sessionId, cloudflareLocation, controller, fileAttachments);
-          } catch (error) {
-            console.error('🚨 ERROR in runLegalIntakeAgentStream:', {
-              error: error instanceof Error ? error.message : String(error),
-              stack: error instanceof Error ? error.stack : undefined,
-              teamId,
-              sessionId,
-              messageCount: messages?.length || 0
-            });
-            
-            // Send error event via SSE
-            const errorEvent = `data: ${JSON.stringify({
-              type: 'error',
-              message: `Agent error: ${error instanceof Error ? error.message : String(error)}`,
-              correlationId: `route_${Date.now()}`
-            })}\n\n`;
-            controller.enqueue(new TextEncoder().encode(errorEvent));
-            
-            // Send complete event
-            const completeEvent = `data: ${JSON.stringify({
-              type: 'complete'
-            })}\n\n`;
-            controller.enqueue(new TextEncoder().encode(completeEvent));
-            
-            // Close controller
-            controller.close();
-            return;
-          }
+
+          // Run the AI agent with updated context
+          await runLegalIntakeAgentStream(
+            env, 
+            formattedMessages, 
+            teamId, 
+            sessionId, 
+            cloudflareLocation, 
+            controller, 
+            fileAttachments
+          );
           
-          // Ensure stream is properly closed after agent completes
-          try {
-            const completeEvent = `data: ${JSON.stringify({
-              type: 'complete'
-            })}\n\n`;
-            controller.enqueue(new TextEncoder().encode(completeEvent));
-            console.log('✅ SSE complete event sent from route handler');
-          } catch (completeError) {
-            console.log('❌ Failed to send complete event from route handler:', completeError);
-          }
-          
-          // Close the controller
-          try {
-            controller.close();
-          } catch (closeError) {
-            console.log('Controller already closed, ignoring close attempt');
-          }
         } catch (error) {
-          console.error('❌ Streaming error:', error);
-          try {
-            const errorEvent = `data: ${JSON.stringify({
-              type: 'error',
-              message: 'An error occurred while processing your request'
-            })}\n\n`;
-            controller.enqueue(new TextEncoder().encode(errorEvent));
-            controller.close();
-          } catch (closeError) {
-            console.log('Controller already closed, ignoring error event');
-          }
+          console.error('🚨 ERROR in AI agent:', error);
+          
+          // Send error event via SSE
+          const errorEvent = `data: ${JSON.stringify({
+            type: 'error',
+            message: `Agent error: ${error instanceof Error ? error.message : String(error)}`,
+            correlationId: `route_${Date.now()}`
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(errorEvent));
+          
+          // Send complete event
+          const completeEvent = `data: ${JSON.stringify({
+            type: 'complete'
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(completeEvent));
+          
+          // Close controller
+          controller.close();
         }
       }
     });
 
     return new Response(stream, { headers });
+
   } catch (error) {
-    console.error('❌ Route error:', error);
+    console.error('🚨 ERROR in agent route:', error);
+    
     const errorEvent = `data: ${JSON.stringify({
       type: 'error',
-      message: error.message || 'An error occurred'
+      message: error instanceof Error ? error.message : String(error),
+      correlationId: `route_${Date.now()}`
     })}\n\n`;
+    
     return new Response(errorEvent, { headers });
   }
+}
+
+/**
+ * Validate request body format
+ */
+function isValidRouteBody(obj: unknown): obj is RouteBody {
+  if (!obj || typeof obj !== 'object') {
+    return false;
+  }
+
+  const body = obj as Record<string, unknown>;
+  
+  if (!Array.isArray(body.messages)) {
+    return false;
+  }
+
+  // Validate each message
+  for (const message of body.messages) {
+    if (!message || typeof message !== 'object') {
+      return false;
+    }
+    
+    const msg = message as Record<string, unknown>;
+    
+    if (typeof msg.role !== 'string' || !['user', 'assistant', 'system'].includes(msg.role)) {
+      return false;
+    }
+    
+    if (typeof msg.content !== 'string') {
+      return false;
+    }
+  }
+
+  return true;
 }

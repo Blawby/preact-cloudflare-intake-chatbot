@@ -1,6 +1,6 @@
 export { handleHealth } from './health';
 export { handleRoot } from './root';
-export { handleAgentStream } from './agent';
+export { handleAgentStreamV2 as handleAgentStream } from './agent';
 export { handleForms } from './forms';
 export { handleTeams } from './teams';
 
