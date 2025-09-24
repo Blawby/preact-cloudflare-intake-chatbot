@@ -1,5 +1,31 @@
 import type { Env } from '../types.js';
 
+export interface CaseDraft {
+  matter_type: string;
+  key_facts: string[];
+  timeline?: string;
+  parties: Array<{
+    role: string;
+    name?: string;
+    relationship?: string;
+  }>;
+  documents: string[];
+  evidence: string[];
+  jurisdiction?: string;
+  urgency?: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'draft' | 'ready';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentChecklist {
+  matter_type: string;
+  required: string[];
+  provided: string[];
+  missing: string[];
+  last_updated: string;
+}
+
 export interface ConversationContext {
   sessionId: string;
   teamId: string;
@@ -21,6 +47,9 @@ export interface ConversationContext {
     phone?: string;
     location?: string;
   };
+  // Case draft and document tracking
+  caseDraft?: CaseDraft;
+  documentChecklist?: DocumentChecklist;
 }
 
 export class ConversationContextManager {
@@ -83,7 +112,9 @@ export class ConversationContextManager {
       urgencyLevel: null,
       timeline: null,
       hasPreviousLawyer: null,
-      contactInfo: {}
+      contactInfo: {},
+      caseDraft: undefined,
+      documentChecklist: undefined
     };
   }
 
@@ -249,5 +280,108 @@ export class ConversationContextManager {
     }
 
     return null;
+  }
+
+  /**
+   * Update case draft in conversation context
+   */
+  static updateCaseDraft(
+    context: ConversationContext,
+    caseDraft: CaseDraft
+  ): ConversationContext {
+    const updated = { ...context };
+    updated.caseDraft = {
+      ...caseDraft,
+      updated_at: new Date().toISOString()
+    };
+    updated.lastUpdated = Date.now();
+    return updated;
+  }
+
+  /**
+   * Update document checklist in conversation context
+   */
+  static updateDocumentChecklist(
+    context: ConversationContext,
+    documentChecklist: DocumentChecklist
+  ): ConversationContext {
+    const updated = { ...context };
+    updated.documentChecklist = {
+      ...documentChecklist,
+      last_updated: new Date().toISOString()
+    };
+    updated.lastUpdated = Date.now();
+    return updated;
+  }
+
+  /**
+   * Add document to checklist
+   */
+  static addDocumentToChecklist(
+    context: ConversationContext,
+    documentType: string
+  ): ConversationContext {
+    const updated = { ...context };
+    
+    if (!updated.documentChecklist) {
+      return updated;
+    }
+
+    const checklist = { ...updated.documentChecklist };
+    
+    // Add to provided if not already there
+    if (!checklist.provided.includes(documentType)) {
+      checklist.provided.push(documentType);
+    }
+    
+    // Remove from missing if it was there
+    checklist.missing = checklist.missing.filter(doc => doc !== documentType);
+    
+    updated.documentChecklist = {
+      ...checklist,
+      last_updated: new Date().toISOString()
+    };
+    updated.lastUpdated = Date.now();
+    
+    return updated;
+  }
+
+  /**
+   * Initialize document checklist for a matter type
+   */
+  static async initializeDocumentChecklist(
+    context: ConversationContext,
+    matterType: string,
+    env: Env
+  ): Promise<ConversationContext> {
+    const updated = { ...context };
+    
+    try {
+      // Import DocumentRequirementService
+      const { DocumentRequirementService } = await import('../services/DocumentRequirementService.js');
+      const docService = new DocumentRequirementService(env);
+      const requirements = await docService.getRequirements(matterType);
+      
+      updated.documentChecklist = {
+        matter_type: matterType,
+        required: requirements.requirements.map(req => req.documentType),
+        provided: [],
+        missing: requirements.requirements.map(req => req.documentType),
+        last_updated: new Date().toISOString()
+      };
+      updated.lastUpdated = Date.now();
+    } catch (error) {
+      console.warn('Failed to initialize document checklist:', error);
+      // Create basic checklist if service fails
+      updated.documentChecklist = {
+        matter_type: matterType,
+        required: ['General case documents'],
+        provided: [],
+        missing: ['General case documents'],
+        last_updated: new Date().toISOString()
+      };
+    }
+    
+    return updated;
   }
 }

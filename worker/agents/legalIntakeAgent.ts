@@ -294,6 +294,63 @@ export const analyzeDocument = {
   }
 };
 
+export const buildCaseDraft = {
+  name: 'build_case_draft',
+  description: 'Build a structured case draft with organized information for attorney review',
+  parameters: {
+    type: 'object',
+    properties: {
+      matter_type: { 
+        type: 'string', 
+        description: 'Type of legal matter',
+        enum: ['Family Law', 'Employment Law', 'Landlord/Tenant', 'Personal Injury', 'Business Law', 'Criminal Law', 'Civil Law', 'Contract Review', 'Property Law', 'Administrative Law', 'General Consultation']
+      },
+      key_facts: { 
+        type: 'array', 
+        items: { type: 'string' },
+        description: 'Key facts and events in chronological order'
+      },
+      timeline: { 
+        type: 'string', 
+        description: 'Timeline of events and important dates'
+      },
+      parties: { 
+        type: 'array', 
+        items: {
+          type: 'object',
+          properties: {
+            role: { type: 'string', description: 'Role in the case (e.g., client, opposing party, witness)' },
+            name: { type: 'string', description: 'Name of the party' },
+            relationship: { type: 'string', description: 'Relationship to the case' }
+          },
+          required: ['role']
+        },
+        description: 'Parties involved in the case'
+      },
+      documents: { 
+        type: 'array', 
+        items: { type: 'string' },
+        description: 'Documents mentioned or available'
+      },
+      evidence: { 
+        type: 'array', 
+        items: { type: 'string' },
+        description: 'Evidence and supporting materials'
+      },
+      jurisdiction: { 
+        type: 'string', 
+        description: 'Jurisdiction or location where the matter occurred'
+      },
+      urgency: { 
+        type: 'string', 
+        description: 'Urgency level of the matter',
+        enum: ['low', 'normal', 'high', 'urgent']
+      }
+    },
+    required: ['matter_type', 'key_facts']
+  }
+};
+
 export const createPaymentInvoice = {
   name: 'create_payment_invoice',
   description: 'Create a payment invoice for consultation or legal services',
@@ -646,7 +703,8 @@ export const TOOL_HANDLERS = {
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
   analyze_document: handleAnalyzeDocument,
-  create_payment_invoice: handleCreatePaymentInvoice
+  create_payment_invoice: handleCreatePaymentInvoice,
+  build_case_draft: handleBuildCaseDraft
 };
 
 // Unified legal intake agent that handles both streaming and non-streaming responses
@@ -870,7 +928,12 @@ PARAMETERS: {valid JSON}`;
       
       let toolResult;
       try {
-        toolResult = await handler(parameters, env, teamConfig);
+        // Pass additional parameters for build_case_draft tool
+        if (toolName === 'build_case_draft') {
+          toolResult = await handler(parameters, env, teamConfig, sessionId, teamId);
+        } else {
+          toolResult = await handler(parameters, env, teamConfig);
+        }
         Logger.debug('Tool execution result:', toolResult);
       } catch (error) {
         Logger.error('Tool execution failed:', error);
@@ -1426,5 +1489,126 @@ export async function handleAnalyzeDocument(parameters: any, env: any, teamConfi
     organizations,
     dates,
     keyFacts
+  });
+}
+
+export async function handleBuildCaseDraft(parameters: any, env: any, teamConfig: any, sessionId?: string, teamId?: string) {
+  Logger.debug('[handleBuildCaseDraft] parameters:', ToolCallParser.sanitizeParameters(parameters));
+  
+  const { 
+    matter_type, 
+    key_facts, 
+    timeline, 
+    parties, 
+    documents, 
+    evidence, 
+    jurisdiction, 
+    urgency 
+  } = parameters;
+  
+  // Validate required fields
+  if (!matter_type || !key_facts || !Array.isArray(key_facts) || key_facts.length === 0) {
+    return createValidationError("I need the matter type and key facts to build your case draft. Could you please provide the type of legal matter and the main facts of your case?");
+  }
+  
+  // Validate matter type
+  if (!ValidationService.validateMatterType(matter_type)) {
+    return createValidationError("I need to understand your legal situation better. Could you please describe what type of legal help you need? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or general consultation.");
+  }
+  
+  // Build structured case draft
+  const caseDraft = {
+    matter_type,
+    key_facts,
+    timeline: timeline || 'Timeline not specified',
+    parties: parties || [],
+    documents: documents || [],
+    evidence: evidence || [],
+    jurisdiction: jurisdiction || 'Jurisdiction not specified',
+    urgency: urgency || 'normal',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    status: 'draft' as const
+  };
+
+  // Save case draft to conversation context if session info is available
+  if (sessionId && teamId) {
+    try {
+      const { ConversationContextManager } = await import('../middleware/conversationContextManager.js');
+      const context = await ConversationContextManager.load(sessionId, teamId, env);
+      const updatedContext = ConversationContextManager.updateCaseDraft(context, caseDraft);
+      
+      // Initialize document checklist for this matter type
+      const contextWithChecklist = await ConversationContextManager.initializeDocumentChecklist(
+        updatedContext, 
+        matter_type, 
+        env
+      );
+      
+      await ConversationContextManager.save(contextWithChecklist, env);
+      Logger.debug('[handleBuildCaseDraft] Case draft saved to conversation context');
+    } catch (error) {
+      Logger.warn('[handleBuildCaseDraft] Failed to save case draft to context:', error);
+      // Continue without failing the operation
+    }
+  }
+  
+  // Create comprehensive case summary
+  let summaryMessage = `Perfect! I've organized your case information into a structured draft. Here's your case summary:\n\n`;
+  
+  summaryMessage += `**Case Type:** ${matter_type}\n`;
+  summaryMessage += `**Jurisdiction:** ${caseDraft.jurisdiction}\n`;
+  summaryMessage += `**Urgency:** ${caseDraft.urgency}\n\n`;
+  
+  summaryMessage += `**Key Facts:**\n`;
+  key_facts.forEach((fact, index) => {
+    summaryMessage += `${index + 1}. ${fact}\n`;
+  });
+  
+  if (timeline) {
+    summaryMessage += `\n**Timeline:**\n${timeline}\n`;
+  }
+  
+  if (parties && parties.length > 0) {
+    summaryMessage += `\n**Parties Involved:**\n`;
+    parties.forEach(party => {
+      summaryMessage += `• ${party.role}: ${party.name || 'Name not provided'}${party.relationship ? ` (${party.relationship})` : ''}\n`;
+    });
+  }
+  
+  if (documents && documents.length > 0) {
+    summaryMessage += `\n**Documents Available:**\n`;
+    documents.forEach(doc => {
+      summaryMessage += `• ${doc}\n`;
+    });
+  }
+  
+  if (evidence && evidence.length > 0) {
+    summaryMessage += `\n**Evidence:**\n`;
+    evidence.forEach(ev => {
+      summaryMessage += `• ${ev}\n`;
+    });
+  }
+  
+  summaryMessage += `\n**Next Steps:**\n`;
+  summaryMessage += `• Review this case summary for accuracy\n`;
+  summaryMessage += `• Gather any missing documents or evidence\n`;
+  summaryMessage += `• Consider what additional information might be helpful\n`;
+  summaryMessage += `• This summary can be shared with attorneys for consultation\n\n`;
+  
+  summaryMessage += `Would you like me to help you gather any additional information or documents for your case?`;
+  
+  Logger.debug('[handleBuildCaseDraft] case draft created successfully');
+  
+  return createSuccessResponse(summaryMessage, {
+    caseDraft,
+    matter_type,
+    key_facts,
+    timeline,
+    parties,
+    documents,
+    evidence,
+    jurisdiction,
+    urgency
   });
 }
