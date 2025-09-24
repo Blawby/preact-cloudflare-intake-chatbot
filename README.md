@@ -406,7 +406,6 @@ npm test
 npm run test:all
 
 # Run specific test types:
-npm run test:e2e        # End-to-end tests with Playwright
 
 # Run tests in watch mode
 npm run test:watch
@@ -417,8 +416,6 @@ npm run test:coverage
 # Run tests with UI interface
 npm run test:ui
 
-# For CI: Install Playwright browsers once before E2E tests
-npx playwright install
 ```
 
 ### Test Configuration

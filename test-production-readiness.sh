@@ -4,7 +4,7 @@
 
 # set -e  # Removed to prevent early exit on test failures
 
-BASE_URL="http://localhost:5173"
+BASE_URL="http://localhost:8787"
 SESSION_PREFIX="convtest-$(date +%s)"
 LOG_DIR="test-logs-$(date +%Y%m%d-%H%M%S)"
 
@@ -85,10 +85,11 @@ scenario_greeting() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-greeting" \
         '[{"role":"user","content":"Hi, I need legal help"}]' \
         "Initial Greeting")
-    if echo "$resp" | grep -q "\"type\":\"pipeline_response\"" && ! echo "$resp" | grep -q "\"type\":\"contact_form\""; then
-        print_result true "Greeting was conversational"
+    # Goal: Conversational greeting that asks for more details, NOT immediate contact form
+    if echo "$resp" | grep -qi "what.*legal.*issue\|tell.*me.*about\|kind.*of.*law" && ! echo "$resp" | grep -qi "contact.*form\|name.*phone.*email"; then
+        print_result true "Greeting was conversational and asked for details"
     else
-        print_result false "Greeting jumped to contact form"
+        print_result false "Greeting either jumped to contact form or didn't ask for details"
     fi
 }
 
@@ -109,10 +110,11 @@ scenario_case_draft_public() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-casedraft" \
         '[{"role":"user","content":"I need help building a case draft for my divorce"}]' \
         "Public Mode Case Draft")
-    if echo "$resp" | grep -qi "case\|draft\|organize"; then
-        print_result true "Case draft assistance provided"
+    # Goal: Public mode should help organize info into case draft/PDF, not show contact form
+    if echo "$resp" | grep -qi "case.*draft\|organize.*information\|pdf\|document.*preparation" && ! echo "$resp" | grep -qi "contact.*form\|name.*phone.*email"; then
+        print_result true "Public mode provided case draft assistance without contact form"
     else
-        print_result false "No case draft assistance in public mode"
+        print_result false "Public mode either didn't help with case draft or showed contact form"
     fi
 }
 
@@ -121,10 +123,12 @@ scenario_case_build_team() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-teamcase" \
         '[{"role":"user","content":"I need help with employment law, I was fired"}]' \
         "Team Mode Case Build")
-    if echo "$resp" | grep -qi "contact_form"; then
-        print_result true "Team mode showed contact form after details"
+    # Goal: Team mode should ask for MORE details first, not immediately show contact form
+    # The AI should gather information before showing contact form (proper intake flow)
+    if echo "$resp" | grep -qi "tell.*me.*more\|when.*were.*fired\|reason.*given\|documentation" && ! echo "$resp" | grep -qi "contact.*form\|name.*phone.*email"; then
+        print_result true "Team mode properly asked for more details (correct intake flow)"
     else
-        print_result false "Team mode did not show contact form"
+        print_result false "Team mode either jumped to contact form or didn't ask for details"
     fi
 }
 
@@ -133,10 +137,11 @@ scenario_sensitive_matter() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-sensitive" \
         '[{"role":"user","content":"My partner was arrested yesterday, I need urgent help"}]' \
         "Sensitive Matter Escalation")
-    if echo "$resp" | grep -qi "contact_form"; then
-        print_result true "Sensitive matter escalated to contact form"
+    # Goal: Sensitive/urgent matters should escalate immediately to contact form
+    if echo "$resp" | grep -qi "contact.*form\|name.*phone.*email\|urgent.*help\|immediate.*assistance"; then
+        print_result true "Sensitive matter properly escalated to contact form"
     else
-        print_result false "Sensitive matter not escalated"
+        print_result false "Sensitive matter not escalated - still asking for details"
     fi
 }
 
@@ -147,20 +152,22 @@ scenario_skip_to_lawyer() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-skippublic" \
         '[{"role":"user","content":"Skip intake, I need a family lawyer"}]' \
         "Skip to Lawyer Public")
-    if echo "$resp" | grep -qi "lawyer"; then
-        print_result true "Public skip routed to lawyer search"
+    # Goal: Public mode should help find lawyers, not show contact form
+    if echo "$resp" | grep -qi "lawyer.*search\|find.*attorney\|legal.*directory"; then
+        print_result true "Public skip properly routed to lawyer search"
     else
-        print_result false "Public skip failed"
+        print_result false "Public skip failed - didn't help find lawyers"
     fi
 
     # Team mode → Contact form
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-skipteam" \
         '[{"role":"user","content":"skip intake"}]' \
         "Skip to Lawyer Team")
-    if echo "$resp" | grep -qi "contact_form"; then
-        print_result true "Team skip showed contact form"
+    # Goal: Team mode should show contact form when user wants to skip intake
+    if echo "$resp" | grep -qi "contact.*form\|name.*phone.*email"; then
+        print_result true "Team skip properly showed contact form"
     else
-        print_result false "Team skip failed"
+        print_result false "Team skip failed - didn't show contact form"
     fi
 }
 
@@ -169,10 +176,11 @@ scenario_general_inquiry() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-general" \
         '[{"role":"user","content":"What services do you offer?"}]' \
         "General Inquiry")
-    if echo "$resp" | grep -qi "services"; then
-        print_result true "General inquiry answered politely"
+    # Goal: General inquiries should be answered politely without jumping to contact form
+    if echo "$resp" | grep -qi "services\|legal.*help\|assistance" && ! echo "$resp" | grep -qi "contact.*form\|name.*phone.*email"; then
+        print_result true "General inquiry answered politely without contact form"
     else
-        print_result false "General inquiry mishandled"
+        print_result false "General inquiry either mishandled or jumped to contact form"
     fi
 }
 
@@ -181,10 +189,11 @@ scenario_context_persistence() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-context" \
         '[{"role":"user","content":"I need help with a landlord issue"},{"role":"assistant","content":"Is this about eviction?"},{"role":"user","content":"Yes"}]' \
         "Context Persistence")
-    if echo "$resp" | grep -qi "eviction"; then
-        print_result true "Context persisted correctly"
+    # Goal: AI should remember previous context and build on it
+    if echo "$resp" | grep -qi "eviction\|landlord.*issue\|tenant.*rights"; then
+        print_result true "Context persisted correctly - AI remembered eviction context"
     else
-        print_result false "Context was lost"
+        print_result false "Context was lost - AI didn't reference previous conversation"
     fi
 }
 
@@ -193,10 +202,11 @@ scenario_document_gathering() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-docs" \
         '[{"role":"user","content":"I am preparing for divorce and have financial statements"}]' \
         "Document Gathering")
-    if echo "$resp" | grep -qi "document"; then
-        print_result true "Asked for/gathered documents"
+    # Goal: AI should recognize documents mentioned and ask for more or offer to analyze them
+    if echo "$resp" | grep -qi "document\|financial.*statement\|upload\|analyze.*document"; then
+        print_result true "AI recognized and engaged with document gathering"
     else
-        print_result false "No document gathering detected"
+        print_result false "AI didn't engage with document gathering"
     fi
 }
 

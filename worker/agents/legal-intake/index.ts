@@ -8,7 +8,13 @@ import { withAIRetry } from '../../utils/retry.js';
 import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
 import { safeIncludes } from '../../utils/safeStringUtils.js';
 
-import { TOOL_HANDLERS, Currency, Recipient, ISODateString } from '../legalIntakeAgent.js';
+// Import types and utilities
+import { ValidationService } from '../../services/ValidationService.js';
+import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
+import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
+import { analyzeFile, getAnalysisQuestion } from '../../utils/fileAnalysisUtils.js';
+import { isLocationSupported } from '../../utils/locationValidator.js';
+import { createSuccessResult, createErrorResult, ValidationError } from './errors.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
 
 // Type definitions and constants
@@ -36,6 +42,73 @@ const ANALYSIS_TYPES = ['general', 'legal_document', 'contract', 'government_for
 export type MatterType = typeof MATTER_TYPES[number];
 export type ComplexityLevel = typeof COMPLEXITY_LEVELS[number];
 export type AnalysisType = typeof ANALYSIS_TYPES[number];
+
+// Currency enum for type-safe currency handling
+export enum Currency {
+  USD = 'USD',
+  CAD = 'CAD',
+  EUR = 'EUR',
+  GBP = 'GBP'
+}
+
+// Branded type for ISO date strings to ensure proper format
+export type ISODateString = string & { __isoDate: true };
+
+// Recipient interface with explicit required fields
+export interface Recipient {
+  readonly email: string;
+  readonly name: string;
+}
+
+// Runtime validation helper for ISO 8601 date format
+export function validateISODate(dateString: string): dateString is ISODateString {
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+  const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  
+  if (!isoDateRegex.test(dateString) && !simpleDateRegex.test(dateString)) {
+    return false;
+  }
+  
+  const date = new Date(dateString);
+  return !isNaN(date.getTime()) && date.toISOString().startsWith(dateString.split('T')[0]);
+}
+
+// Contact form interfaces
+export interface ContactFormField {
+  readonly required: boolean;
+  readonly label: string;
+}
+
+export interface ContactFormFields {
+  readonly name: ContactFormField;
+  readonly email: ContactFormField;
+  readonly phone: ContactFormField;
+  readonly location: ContactFormField;
+  readonly opposing_party: ContactFormField;
+  readonly message: ContactFormField;
+}
+
+export interface ContactFormData {
+  readonly reason: string;
+  readonly fields: ContactFormFields;
+  readonly submitText: string;
+}
+
+export interface ContactFormParameters {
+  readonly reason?: string;
+  readonly name?: string;
+  readonly email?: string;
+  readonly phone?: string;
+  readonly location?: string;
+  readonly message?: string;
+}
+
+export interface ContactFormResponse {
+  readonly success: boolean;
+  readonly action: string;
+  readonly message: string;
+  readonly contactForm: ContactFormData;
+}
 
 // Simplified conversation state enum
 export enum ConversationState {
@@ -261,7 +334,7 @@ function detectContextFast(conversationText: string): ConversationContext {
     'Contract Review': ['contract', 'agreement', 'terms', 'clause', 'legal document'],
     'Property Law': ['property', 'real estate', 'land', 'deed', 'title'],
     'Administrative Law': ['government', 'administrative', 'regulatory', 'compliance'],
-    'General Consultation': ['legal advice', 'legal help', 'lawyer', 'attorney', 'legal question']
+    'General Consultation': ['legal advice', 'lawyer', 'attorney', 'legal question']
   };
 
   let legalIssueType = null;
@@ -367,11 +440,14 @@ Available tools: create_matter, show_contact_form, request_lawyer_review, create
 
 Rules:
 - Use create_matter when you have name + legal issue + contact info${requiresLocation ? ' + location' : ''}
-- Use show_contact_form when user wants to contact team OR when you have legal issue but need contact info
-- Be conversational and helpful
+- Use show_contact_form ONLY after qualifying the lead with questions about urgency, timeline, and seriousness
+- Be conversational and helpful - ask qualifying questions before showing contact form
 - Note: Case drafting, document checklists, and skip-to-lawyer are now handled automatically by the system
-- Show contact form when user wants to contact team - no questions asked
+- For simple greetings like "Hi, I need legal help", respond conversationally and ask for more details
 - Don't rush to contact forms - let users explore case preparation tools first
+- ALWAYS ask qualifying questions before showing contact form: "How urgent is this?", "What's your timeline?", "Are you looking to move forward with legal action?"
+- Only show contact form when user explicitly asks to skip intake or contact the team directly
+- For employment law issues, ask specific questions like: "When were you fired?", "What reason was given?", "Do you have any documentation?"
 
 Tool calling format:
 TOOL_CALL: tool_name
@@ -395,8 +471,12 @@ function getAvailableToolsForState(state: ConversationState, context: Conversati
 
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:
-      return [analyzeDocument]; // Only document analysis during initial gathering
+      // For simple greetings, provide no tools - let AI respond conversationally
+      // Only provide document analysis if there are actual attachments
+      return context.hasLegalIssue ? [analyzeDocument] : [];
     case ConversationState.QUALIFYING_LEAD:
+      // Only provide contact form if lead is highly qualified
+      // Otherwise, let AI ask qualifying questions first
       return context.isQualifiedLead ? [showContactForm] : [];
     case ConversationState.SHOWING_CONTACT_FORM:
       return [showContactForm];
@@ -419,9 +499,9 @@ function hasResponseProperties(obj: unknown): obj is { message?: string; respons
   return obj !== null && typeof obj === 'object' && ('message' in obj || 'response' in obj);
 }
 
-function hasToolCalls(aiResult: unknown): aiResult is { tool_calls: NonNullable<unknown> } {
+function hasToolCalls(aiResult: unknown): aiResult is { tool_calls: unknown[] } {
   return aiResult !== null && typeof aiResult === 'object' && 'tool_calls' in aiResult && 
-         Array.isArray((aiResult as Record<string, unknown>).tool_calls) && (aiResult as Record<string, unknown>).tool_calls!.length > 0;
+         Array.isArray((aiResult as Record<string, unknown>).tool_calls) && ((aiResult as Record<string, unknown>).tool_calls as unknown[]).length > 0;
 }
 
 // Utility functions
@@ -468,7 +548,7 @@ async function emitSSEEvent(controller: globalThis.ReadableStreamDefaultControll
     const eventData = `data: ${JSON.stringify(event)}\n\n`;
     controller.enqueue(new TextEncoder().encode(eventData));
   } catch (error) {
-    Logger.warn('Failed to emit SSE event', { event: event.type, error });
+    Logger.warn('Failed to emit SSE event', { event: (event as any)?.type, error });
   }
 }
 
@@ -536,7 +616,7 @@ async function handleToolCall(
     // Special handling for show_contact_form
     if (toolName === 'show_contact_form' && toolResult.success) {
       // Check if location is required for this team
-      const requiresLocation = (teamConfig as Record<string, unknown>)?.jurisdiction?.requireLocation;
+      const requiresLocation = (teamConfig as any)?.jurisdiction?.requireLocation;
       const requiredFields = ['name', 'email', 'phone'];
       if (requiresLocation) {
         requiredFields.push('location');
@@ -718,7 +798,7 @@ export async function runLegalIntakeAgentStream(
     LegalIntakeLogger.logAIModelCall(correlationId, sessionId, teamId, LegalIntakeOperation.AI_MODEL_CALL, AI_MODEL_CONFIG.model);
     
     const aiResult = await withAIRetry(
-      () => env.AI.run(AI_MODEL_CONFIG.model as string, {
+      () => env.AI.run(AI_MODEL_CONFIG.model as any, {
         messages: [
           { role: 'system', content: systemPrompt },
           ...buildPrompt(messages, context)
@@ -737,7 +817,8 @@ export async function runLegalIntakeAgentStream(
 
     // Handle AI response
     if (hasToolCalls(aiResult)) {
-      await handleToolCall(aiResult.tool_calls[0], env, teamConfig, controller, correlationId, sessionId, teamId);
+      const toolCall = aiResult.tool_calls[0] as { name: string; arguments?: Record<string, unknown> };
+      await handleToolCall(toolCall, env, teamConfig, controller, correlationId, sessionId, teamId);
     } else if (looksLikeToolCall(response)) {
       await handleParsedToolCall(response, env, teamConfig, controller, correlationId, sessionId, teamId);
     } else {
@@ -768,3 +849,546 @@ export async function runLegalIntakeAgentStream(
     await emitComplete(controller);
   }
 }
+
+// Tool handlers - extracted from the old legalIntakeAgent.ts
+export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
+  Logger.debug('[handleCreateMatter] parameters:', ToolCallParser.sanitizeParameters(parameters));
+  const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
+  
+  // Check for placeholder values
+  if (ValidationService.hasPlaceholderValues(phone, email)) {
+    return createValidationError("I need your actual contact information to proceed. Could you please provide your real phone number and email address?");
+  }
+  
+  // Validate required fields
+  if (!matter_type || !description || !name) {
+    return createValidationError("I'm missing some essential information. Could you please provide your name, contact information, and describe your legal issue?");
+  }
+  
+  // Validate matter type
+  if (!ValidationService.validateMatterType(matter_type)) {
+    return createValidationError("I need to understand your legal situation better. Could you please describe what type of legal help you need? For example: family law, employment issues, landlord-tenant disputes, personal injury, business law, or general consultation.");
+  }
+  
+  // Set default urgency if not provided
+  const finalUrgency = urgency || 'unknown';
+  
+  // Validate name format
+  if (!ValidationService.validateName(name)) {
+    return createValidationError("I need your full name to proceed. Could you please provide your complete name?");
+  }
+  
+  // Validate email if provided
+  if (email && !ValidationService.validateEmail(email)) {
+    return createValidationError("The email address you provided doesn't appear to be valid. Could you please provide a valid email address?");
+  }
+  
+  // Validate phone if provided
+  if (phone && phone.trim() !== '') {
+    const phoneValidation = ValidationService.validatePhone(phone);
+    if (!phoneValidation.isValid) {
+      return createValidationError(`The phone number you provided doesn't appear to be valid: ${phoneValidation.error}. Could you please provide a valid phone number?`);
+    }
+  }
+  
+  // Validate location if provided
+  if (location && !ValidationService.validateLocation(location)) {
+    return createValidationError("Could you please provide your city and state or country?");
+  }
+  
+  if (!phone && !email) {
+    return createValidationError("I need at least one way to contact you to proceed. Could you provide either your phone number or email address?");
+  }
+  
+  // Process payment using the PaymentServiceFactory
+  const paymentRequest = {
+    customerInfo: {
+      name: name,
+      email: email || '',
+      phone: phone || '',
+      location: location || ''
+    },
+    matterInfo: {
+      type: matter_type,
+      description: description,
+      urgency: finalUrgency,
+      opposingParty: opposing_party || ''
+    },
+    teamId: (() => {
+      if (teamConfig?.id) {
+        return teamConfig.id;
+      }
+      if (env.BLAWBY_TEAM_ULID) {
+        console.warn('⚠️  Using environment variable BLAWBY_TEAM_ULID as fallback - team configuration not found in database');
+        return env.BLAWBY_TEAM_ULID;
+      }
+      console.error('❌ CRITICAL: No team ID available for payment processing');
+      throw new Error('Team ID not configured - cannot process payment. Check database configuration.');
+    })(),
+    sessionId: 'session-' + Date.now()
+  };
+  
+  const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(env, paymentRequest, teamConfig);
+  
+  // Build summary message
+  const requiresPayment = teamConfig?.config?.requiresPayment || false;
+  const consultationFee = teamConfig?.config?.consultationFee || 0;
+  
+  let summaryMessage = `Perfect! I have all the information I need. Here's a summary of your matter:
+
+**Client Information:**
+- Name: ${name}
+- Contact: ${phone || 'Not provided'}${email ? `, ${email}` : ''}${location ? `, ${location}` : ''}`;
+
+  if (opposing_party) {
+    summaryMessage += `
+- Opposing Party: ${opposing_party}`;
+  }
+
+  summaryMessage += `
+
+**Matter Details:**
+- Type: ${matter_type}
+- Description: ${description}
+- Urgency: ${finalUrgency}`;
+
+  if (requiresPayment && consultationFee > 0) {
+    if (invoiceUrl) {
+      summaryMessage += `
+
+Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
+
+**Next Steps:**
+1. Please complete the payment using the embedded payment form below
+2. Once payment is confirmed, a lawyer will contact you within 24 hours
+
+Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
+    } else {
+      summaryMessage += `
+
+Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
+
+**Next Steps:**
+1. Please complete the payment using this link: ${teamConfig?.config?.paymentLink || 'Payment link will be sent shortly'}
+2. Once payment is confirmed, a lawyer will contact you within 24 hours
+
+Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
+    }
+  } else {
+    summaryMessage += `
+
+I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.`;
+  }
+  
+  const result = createSuccessResponse(summaryMessage, {
+    matter_type,
+    description,
+    urgency: finalUrgency,
+    name,
+    phone,
+    email,
+    location,
+    opposing_party,
+    requires_payment: requiresPayment,
+    consultation_fee: consultationFee,
+    payment_link: invoiceUrl || teamConfig?.config?.paymentLink,
+    payment_embed: invoiceUrl ? {
+      paymentUrl: invoiceUrl,
+      amount: consultationFee,
+      description: `${matter_type}: ${description}`,
+      paymentId: paymentId
+    } : null
+  });
+  
+  Logger.debug('[handleCreateMatter] result created successfully');
+  return result;
+}
+
+export async function handleRequestLawyerReview(parameters: any, env: any, teamConfig: any) {
+  const { urgency, complexity, matter_type } = parameters;
+  
+  // Send notification using NotificationService
+  const { NotificationService } = await import('../../services/NotificationService.js');
+  const notificationService = new NotificationService(env);
+  
+  await notificationService.sendLawyerReviewNotification({
+    type: 'lawyer_review',
+    teamConfig,
+    matterInfo: {
+      type: matter_type,
+      urgency,
+      complexity
+    }
+  });
+  
+  return createSuccessResponse("I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further.");
+}
+
+export async function handleAnalyzeDocument(parameters: any, env: any, teamConfig: any) {
+  const { file_id, analysis_type, specific_question } = parameters;
+  
+  Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
+  Logger.debug('File ID:', ToolCallParser.sanitizeParameters(file_id));
+  Logger.debug('Analysis Type:', ToolCallParser.sanitizeParameters(analysis_type));
+  Logger.debug('Specific Question:', ToolCallParser.sanitizeParameters(specific_question));
+  
+  // Get the appropriate analysis question
+  const customQuestion = getAnalysisQuestion(analysis_type, specific_question);
+  
+  // Perform the analysis
+  const fileAnalysis = await analyzeFile(env, file_id, customQuestion);
+  
+  if (!fileAnalysis) {
+    return createValidationError("I'm sorry, I couldn't analyze that document. The file may not be accessible or may not be in a supported format. Could you please try uploading it again or provide more details about what you'd like me to help you with?");
+  }
+  
+  // Check if the analysis returned an error response (low confidence indicates error)
+  if (fileAnalysis.confidence === 0.0) {
+    return createValidationError(fileAnalysis.summary || "I'm sorry, I couldn't analyze that document. Please try uploading it again or contact support if the issue persists.");
+  }
+  
+  // Add document type to analysis
+  fileAnalysis.documentType = analysis_type;
+  
+  // Log the analysis results
+  Logger.debug('=== DOCUMENT ANALYSIS RESULTS ===');
+  Logger.debug('Document Type:', ToolCallParser.sanitizeParameters(analysis_type));
+  Logger.debug('Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
+  Logger.debug('Summary:', ToolCallParser.sanitizeParameters(fileAnalysis.summary));
+  Logger.debug('Key Facts:', ToolCallParser.sanitizeParameters(fileAnalysis.key_facts));
+  Logger.debug('Entities:', ToolCallParser.sanitizeParameters(fileAnalysis.entities));
+  Logger.debug('Action Items:', ToolCallParser.sanitizeParameters(fileAnalysis.action_items));
+  Logger.debug('================================');
+  
+  // Create a legally-focused response that guides toward matter creation
+  let response = '';
+  
+  // Extract key information for legal intake
+  const parties = fileAnalysis.entities?.people || [];
+  const organizations = fileAnalysis.entities?.orgs || [];
+  const dates = fileAnalysis.entities?.dates || [];
+  const keyFacts = fileAnalysis.key_facts || [];
+  
+  // Determine likely matter type based on document analysis
+  let suggestedMatterType = 'General Consultation';
+  if (analysis_type === 'contract' || fileAnalysis.summary?.toLowerCase().includes('contract')) {
+    suggestedMatterType = 'Contract Review';
+  } else if (analysis_type === 'medical_document' || fileAnalysis.summary?.toLowerCase().includes('medical')) {
+    suggestedMatterType = 'Personal Injury';
+  } else if (analysis_type === 'government_form' || fileAnalysis.summary?.toLowerCase().includes('form')) {
+    suggestedMatterType = 'Administrative Law';
+  } else if (analysis_type === 'image' && (fileAnalysis.summary?.toLowerCase().includes('accident') || fileAnalysis.summary?.toLowerCase().includes('injury'))) {
+    suggestedMatterType = 'Personal Injury';
+  } else if (analysis_type === 'image' && fileAnalysis.summary?.toLowerCase().includes('property')) {
+    suggestedMatterType = 'Property Law';
+  }
+  
+  // Build legally-focused response
+  response += `I've analyzed your document and here's what I found:\n\n`;
+  
+  // Document identification
+  if (fileAnalysis.summary) {
+    response += `**Document Analysis:** ${fileAnalysis.summary}\n\n`;
+  }
+  
+  // Key legal details
+  if (parties.length > 0) {
+    response += `**Parties Involved:** ${parties.join(', ')}\n`;
+  }
+  
+  if (organizations.length > 0) {
+    response += `**Organizations:** ${organizations.join(', ')}\n`;
+  }
+  
+  if (dates.length > 0) {
+    response += `**Important Dates:** ${dates.join(', ')}\n`;
+  }
+  
+  if (keyFacts.length > 0) {
+    response += `**Key Facts:**\n`;
+    keyFacts.slice(0, 3).forEach(fact => {
+      response += `• ${fact}\n`;
+    });
+  }
+  
+  response += `\n**Suggested Legal Matter Type:** ${suggestedMatterType}\n\n`;
+  
+  // Legal guidance and next steps
+  response += `Based on this analysis, I can help you:\n`;
+  response += `• Create a legal matter for attorney review\n`;
+  response += `• Identify potential legal issues or concerns\n`;
+  response += `• Determine appropriate legal services needed\n`;
+  response += `• Prepare for consultation with an attorney\n\n`;
+  
+  // Call to action
+  response += `Would you like me to create a legal matter for this ${suggestedMatterType.toLowerCase()} case? I'll need your contact information to get started.`;
+  
+  Logger.debug('=== FINAL ANALYSIS RESPONSE ===');
+  Logger.debug('Response:', ToolCallParser.sanitizeParameters(response));
+  Logger.debug('Response Length:', `${response.length} characters`);
+  Logger.debug('Response Type:', ToolCallParser.sanitizeParameters(analysis_type));
+  Logger.debug('Suggested Matter Type:', ToolCallParser.sanitizeParameters(suggestedMatterType));
+  Logger.debug('Response Confidence:', `${(fileAnalysis.confidence * 100).toFixed(1)}%`);
+  Logger.debug('==============================');
+  
+  return createSuccessResponse(response, {
+    ...fileAnalysis,
+    suggestedMatterType,
+    parties,
+    organizations,
+    dates,
+    keyFacts
+  });
+}
+
+// Payment invoice handler with proper TypeScript types and dependency injection
+export async function handleCreatePaymentInvoice(
+  parameters: any, 
+  env: Env, 
+  teamConfig?: any
+): Promise<any> {
+  // Generate unique session ID for idempotency
+  const sessionId = crypto.randomUUID();
+  
+  // Validate team configuration
+  if (!teamConfig?.id) {
+    return {
+      success: false,
+      error: 'Team configuration missing: team ID is required for payment processing',
+      errorDetails: {
+        code: 'MISSING_TEAM_CONFIG',
+        message: 'Team configuration is missing or invalid',
+        retryable: false,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  const { 
+    invoice_id,
+    amount, 
+    currency,
+    recipient,
+    description,
+    due_date
+  } = parameters;
+
+  try {
+    // Create payment service using dependency injection
+    const paymentService = PaymentServiceFactory.createPaymentService(env);
+    
+    // Create payment request with proper typing and unique session ID
+    const paymentRequest = {
+      customerInfo: {
+        name: recipient.name,
+        email: recipient.email,
+        phone: '', // Not provided in new schema
+        location: '' // Default empty location as required by PaymentRequest interface
+      },
+      matterInfo: {
+        type: 'consultation', // Default type since not in new schema
+        description: description,
+        urgency: 'normal', // Default urgency as required by PaymentRequest interface
+        opposingParty: '' // Default empty opposing party
+      },
+      teamId: teamConfig.id, // Use validated team ID
+      sessionId: sessionId, // Use generated unique session ID for idempotency
+      invoiceId: invoice_id, // Add invoice ID
+      currency: currency, // Add currency
+      dueDate: due_date // Add due date if provided
+    };
+
+    // Call payment service with retry logic (handled internally)
+    const result = await paymentService.createInvoice(paymentRequest);
+
+    if (result.success) {
+      return {
+        success: true,
+        action: 'show_payment',
+        message: `I've created a payment invoice for your consultation. Please complete the payment to proceed.`,
+        payment: {
+          invoiceUrl: result.invoiceUrl!,
+          paymentId: result.paymentId!,
+          amount: amount,
+          serviceType: 'consultation',
+          sessionId: sessionId // Include session ID for correlation
+        }
+      };
+    } else {
+      // Return detailed error information for debugging
+      return {
+        success: false,
+        error: result.error || 'Failed to create payment invoice',
+        errorDetails: {
+          code: 'PAYMENT_SERVICE_ERROR',
+          message: result.error || 'Failed to create payment invoice',
+          retryable: true, // Payment service errors are generally retryable
+          timestamp: new Date().toISOString(),
+          sessionId: sessionId, // Include session ID for correlation
+          originalError: result.error
+        }
+      };
+    }
+  } catch (error) {
+    // Log detailed error information
+    Logger.error('❌ Payment invoice creation failed:', error);
+    
+    // Return detailed error payload for debugging
+    return {
+      success: false,
+      error: 'Payment service unavailable. Please try again later.',
+      errorDetails: {
+        code: 'PAYMENT_SERVICE_EXCEPTION',
+        message: 'Payment service threw an exception during invoice creation',
+        retryable: true,
+        timestamp: new Date().toISOString(),
+        sessionId: sessionId, // Include session ID for correlation
+        originalError: error instanceof Error ? error.message : String(error)
+      }
+    };
+  }
+}
+
+// Validation utilities for contact form parameters
+function validateContactFormParameters(parameters: unknown): { isValid: boolean; error?: string; params?: ContactFormParameters } {
+  // Check if parameters exist and is an object
+  if (!parameters || typeof parameters !== 'object') {
+    return { isValid: false, error: 'Invalid parameters: expected object' };
+  }
+
+  const params = parameters as Record<string, unknown>;
+  const resultParams: Partial<ContactFormParameters> = {};
+  
+  // Validate reason if provided
+  if (params.reason !== undefined) {
+    if (typeof params.reason !== 'string' || params.reason.trim().length === 0) {
+      return { isValid: false, error: 'Invalid reason: expected non-empty string' };
+    }
+    (resultParams as any).reason = params.reason;
+  }
+
+  // Validate name if provided
+  if (params.name !== undefined) {
+    if (typeof params.name !== 'string' || params.name.trim().length === 0) {
+      return { isValid: false, error: 'Invalid name: expected non-empty string' };
+    }
+    (resultParams as any).name = params.name;
+  }
+
+  // Validate email if provided
+  if (params.email !== undefined) {
+    if (typeof params.email !== 'string' || !ValidationService.validateEmail(params.email)) {
+      return { isValid: false, error: 'Invalid email: expected valid email address' };
+    }
+    (resultParams as any).email = params.email;
+  }
+
+  // Validate phone if provided
+  if (params.phone !== undefined) {
+    if (typeof params.phone !== 'string') {
+      return { isValid: false, error: 'Invalid phone: expected string' };
+    }
+    if (params.phone.trim() !== '') {
+      const phoneValidation = ValidationService.validatePhone(params.phone);
+      if (!phoneValidation.isValid) {
+        return { isValid: false, error: `Invalid phone: ${phoneValidation.error}` };
+      }
+    }
+    (resultParams as any).phone = params.phone;
+  }
+
+  // Validate location if provided
+  if (params.location !== undefined) {
+    if (typeof params.location !== 'string' || params.location.trim().length === 0) {
+      return { isValid: false, error: 'Invalid location: expected non-empty string' };
+    }
+    (resultParams as any).location = params.location;
+  }
+
+  // Validate message if provided
+  if (params.message !== undefined) {
+    if (typeof params.message !== 'string' || params.message.trim().length === 0) {
+      return { isValid: false, error: 'Invalid message: expected non-empty string' };
+    }
+    (resultParams as any).message = params.message;
+  }
+
+  return { 
+    isValid: true, 
+    params: Object.keys(resultParams).length ? (resultParams as ContactFormParameters) : undefined
+  };
+}
+
+// Handler for showing contact form with proper types and validation
+export async function handleShowContactForm(
+  parameters: unknown, 
+  env: Env, 
+  teamConfig?: any,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+): Promise<ErrorResult<ContactFormResponse>> {
+  try {
+    // Validate parameters
+    const validation = validateContactFormParameters(parameters);
+    if (!validation.isValid) {
+      const error = new ValidationError(
+        validation.error || 'Invalid parameters provided',
+        {
+          parameters: parameters,
+          method: 'handleShowContactForm',
+          correlationId,
+          sessionId,
+          teamId
+        }
+      );
+      return createErrorResult(error);
+    }
+
+    const params = validation.params || {};
+    const reason = params.reason || 'your legal matter';
+
+    const response: ContactFormResponse = {
+      success: true,
+      action: 'show_contact_form',
+      message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`,
+      contactForm: {
+        reason,
+        fields: {
+          name: { required: true, label: 'Full Name' },
+          email: { required: true, label: 'Email Address' },
+          phone: { required: false, label: 'Phone Number' },
+          location: { required: true, label: 'Location (City, State)' },
+          opposing_party: { required: false, label: 'Opposing Party (if applicable)' },
+          message: { required: false, label: 'Additional Details' }
+        },
+        submitText: 'Submit Contact Form'
+      }
+    };
+
+    return createSuccessResult(response);
+  } catch (error) {
+    Logger.error('[handleShowContactForm] Unexpected error:', error);
+    const validationError = new ValidationError(
+      'An unexpected error occurred while processing your request. Please try again.',
+      {
+        originalError: error instanceof Error ? error.message : String(error),
+        method: 'handleShowContactForm',
+        correlationId,
+        sessionId,
+        teamId
+      }
+    );
+    return createErrorResult(validationError);
+  }
+}
+
+// Tool handlers mapping
+export const TOOL_HANDLERS = {
+  show_contact_form: handleShowContactForm,
+  create_matter: handleCreateMatter,
+  request_lawyer_review: handleRequestLawyerReview,
+  analyze_document: handleAnalyzeDocument,
+  create_payment_invoice: handleCreatePaymentInvoice
+  // Note: build_case_draft, show_document_checklist, and skip_to_lawyer are now handled by middleware
+};

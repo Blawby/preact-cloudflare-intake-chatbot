@@ -17,7 +17,6 @@ export default [
       'node_modules/**',
       'worker/node_modules/**',
       'coverage/**',
-      'playwright-report/**',
       'test-results/**',
       'test-logs-*/**',
       '*.min.js',
@@ -28,7 +27,7 @@ export default [
     ]
   },
 
-  // Application source (TypeScript + JavaScript, frontend)
+  // Application source (frontend TS/JS + JSX/TSX)
   {
     files: ['src/**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
@@ -77,8 +76,8 @@ export default [
       // TypeScript rules
       ...typescript.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn', // TODO: tighten to error once types are cleaned up
+      '@typescript-eslint/no-non-null-assertion': 'warn', // TODO: consider stricter null safety later
 
       // React/JSX + hooks + a11y
       ...react.configs.recommended.rules,
@@ -86,17 +85,17 @@ export default [
       ...jsxA11y.configs.recommended.rules,
       'react/jsx-uses-react': 'off',
       'react/react-in-jsx-scope': 'off',
-      'react/prop-types': 'off',
+      'react/prop-types': 'off', // using TS instead
       'react/jsx-key': 'error',
       'react/jsx-no-duplicate-props': 'error',
       'react/jsx-no-undef': 'error',
       'react/no-unknown-property': 'error',
       'react/self-closing-comp': 'error',
       'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/exhaustive-deps': 'warn', // TODO: consider error once deps are stabilized
 
       // General best practices
-      'no-console': 'warn',
+      'no-console': 'warn', // TODO: leave as warn, but may allow in production logging
       'no-debugger': 'error',
       'no-unused-vars': 'off', // handled by TS rule
       'prefer-const': 'error',
@@ -112,7 +111,7 @@ export default [
     }
   },
 
-  // Worker files (TS/JS)
+  // Worker files (Cloudflare Workers runtime)
   {
     files: ['worker/**/*.{ts,js}'],
     languageOptions: {
@@ -147,20 +146,22 @@ export default [
         AbortController: 'readonly',
         AbortSignal: 'readonly',
         Buffer: 'readonly',
-        ReadableStreamDefaultController: 'readonly'
+        ReadableStreamDefaultController: 'readonly',
+        ExecutionContext: 'readonly', // TODO: validate Worker typing approach
+        process: 'readonly' // TODO: replace with CF-safe env vars if possible
       }
     },
     plugins: { '@typescript-eslint': typescript },
     rules: {
       ...typescript.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn', // TODO: progressively tighten
+      'no-console': 'off', // keep console logging for Workers (debugging/forensics)
       'no-unused-vars': 'off'
     }
   },
 
-  // Tests (TS/JS/JSX/TSX)
+  // Tests (Vitest / Jest style globals)
   {
     files: ['**/*.{test,spec}.{ts,tsx,js,jsx}', 'tests/**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
@@ -178,9 +179,9 @@ export default [
       }
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-non-null-assertion': 'off',
-      'no-console': 'off'
+      '@typescript-eslint/no-explicit-any': 'off', // TODO: re-enable once tests are typed
+      '@typescript-eslint/no-non-null-assertion': 'off', // tests often assert non-null
+      'no-console': 'off' // console useful in tests
     }
   }
 ];

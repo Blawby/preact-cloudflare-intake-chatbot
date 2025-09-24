@@ -1,6 +1,6 @@
 import { env, applyD1Migrations, fetchMock } from "cloudflare:test";
 import type { Env } from '../worker/types';
-import { Currency } from '../worker/agents/legalIntakeAgent.js';
+import { Currency } from '../worker/agents/legal-intake/index.js';
 
 // TypeScript interfaces for team configuration
 interface FeatureFlags {

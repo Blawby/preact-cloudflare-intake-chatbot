@@ -73,11 +73,43 @@ export class PDFGenerationService {
   }
 
   /**
+   * Validate and sanitize brand color to prevent CSS injection
+   * Only allows safe hex color formats (#RRGGBB or #RGB)
+   */
+  public static validateBrandColor(color: string | undefined): string {
+    if (!color) {
+      return '#334e68'; // Default fallback
+    }
+
+    // Whitelist of allowed theme colors for additional safety
+    const allowedColors = [
+      '#334e68', '#1e40af', '#7c3aed', '#dc2626', '#ea580c', 
+      '#d97706', '#059669', '#0891b2', '#be185d', '#4338ca',
+      '#0f172a', '#374151', '#6b7280', '#9ca3af', '#d1d5db'
+    ];
+
+    // Check if it's in the whitelist first
+    if (allowedColors.includes(color.toLowerCase())) {
+      return color.toLowerCase();
+    }
+
+    // Validate hex color format: #RRGGBB or #RGB
+    const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+    if (hexColorRegex.test(color)) {
+      return color.toLowerCase();
+    }
+
+    // If validation fails, return default
+    Logger.warn('[PDFGenerationService] Invalid brand color provided, using default', { providedColor: color });
+    return '#334e68';
+  }
+
+  /**
    * Generate HTML content for the case summary
    */
   private static generateHTML(options: PDFGenerationOptions): string {
     const { caseDraft, clientName, teamName, teamBrandColor } = options;
-    const brandColor = teamBrandColor || '#334e68'; // Use your app's primary-700 color as default
+    const brandColor = this.validateBrandColor(teamBrandColor); // Validate and sanitize brand color
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -373,8 +405,7 @@ export class PDFGenerationService {
       
       // Add a page
       let page = pdfDoc.addPage([612, 792]); // Letter size
-      const { width } = page.getSize();
-      let { height } = page.getSize();
+      let { width, height } = page.getSize();
       
       // Extract content from structured data for PDF generation
       const content = this.extractContentFromOptions(options);
@@ -394,7 +425,9 @@ export class PDFGenerationService {
           // Add a new page and reset position
           const newPage = pdfDoc.addPage([612, 792]);
           page = newPage; // Update page reference
-          height = newPage.getHeight(); // Recalculate height from new page
+          const newSize = newPage.getSize(); // Get both width and height
+          width = newSize.width;
+          height = newSize.height;
           yPosition = height - 50; // Reset to top of new page
           Logger.info('[PDFGenerationService] Added new page due to content overflow');
           return true; // New page was added
@@ -413,7 +446,9 @@ export class PDFGenerationService {
       // Helper function to add text with word wrapping and page overflow protection
       const addText = (text: string, font: any, size: number, color: any, maxWidth?: number) => {
         // Check for page overflow before adding text (will add new page if needed)
-        checkPageOverflow();
+        if (checkPageOverflow()) {
+          // yPosition already reset; align local cursor
+        }
 
         if (maxWidth) {
           const words = text.split(' ');
@@ -426,7 +461,9 @@ export class PDFGenerationService {
             
             if (textWidth > maxWidth && line) {
               // Check if we have space for this line (will add new page if needed)
-              checkPageOverflow();
+              if (checkPageOverflow()) {
+                currentY = yPosition;
+              }
               
               page.drawText(line, {
                 x: 50,
@@ -444,7 +481,9 @@ export class PDFGenerationService {
           
           if (line) {
             // Check for page overflow before drawing final line (will add new page if needed)
-            checkPageOverflow();
+            if (checkPageOverflow()) {
+              currentY = yPosition;
+            }
             page.drawText(line, {
               x: 50,
               y: currentY,
@@ -544,7 +583,7 @@ export class PDFGenerationService {
       
       // Serialize the PDF to bytes
       const pdfBytes = await pdfDoc.save();
-      return pdfBytes.buffer as ArrayBuffer;
+      return pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength) as ArrayBuffer;
       
     } catch (error) {
       Logger.error('[PDFGenerationService] PDF conversion failed:', error);
@@ -587,9 +626,26 @@ export class PDFGenerationService {
    */
   public static generateFilename(caseDraft: CaseDraft, clientName?: string): string {
     const date = new Date().toISOString().split('T')[0];
-    const matterType = caseDraft.matter_type.toLowerCase().replace(/\s+/g, '-');
-    const client = clientName ? `-${clientName.toLowerCase().replace(/\s+/g, '-')}` : '';
     
-    return `case-summary-${matterType}${client}-${date}.pdf`;
+    // Defensively handle missing fields and normalize strings
+    const safeMatter = (caseDraft?.matter_type ?? 'unknown')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase();
+    
+    const safeClient = (clientName ?? '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase();
+    
+    const client = safeClient ? `-${safeClient}` : '';
+    
+    return `case-summary-${safeMatter}${client}-${date}.pdf`;
   }
 }

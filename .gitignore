@@ -33,8 +33,7 @@ build
 coverage
 .nyc_output
 
-# Playwright test results and reports
-playwright-report/
+# Test results
 test-results/
 
 # Test logs

@@ -1,6 +1,6 @@
 import type { Env } from '../types';
 import { withRetry } from '../utils/retry.js';
-import { Currency } from '../agents/legalIntakeAgent.js';
+import { Currency } from '../agents/legal-intake/index.js';
 
 export interface PaymentRequest {
   customerInfo: {

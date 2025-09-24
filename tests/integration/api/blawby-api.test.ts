@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
-import { Currency } from '../../../worker/agents/legalIntakeAgent.js';
+import { Currency } from '../../../worker/agents/legal-intake/index.js';
 
 // Real Blawby API configuration for integration testing
 const BLAWBY_API_URL = 'https://staging.blawby.com';

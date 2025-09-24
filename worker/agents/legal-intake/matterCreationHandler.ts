@@ -8,7 +8,7 @@ import type { TeamConfig } from '../../services/TeamService.js';
 import { ConversationState } from './legalIntakeLogger.js';
 
 // Re-export the canonical TOOL_HANDLERS registry to prevent drift
-export { TOOL_HANDLERS } from '../legalIntakeAgent.js';
+export { TOOL_HANDLERS } from './index.js';
 import {
   MatterCreationError,
   ValidationError,
