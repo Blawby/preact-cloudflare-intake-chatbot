@@ -402,12 +402,11 @@ npx wrangler dev  # Cloudflare Worker API server
 # Run all tests with real API calls (requires wrangler dev server)
 npm test
 
-# Run all tests (unit/integration + E2E + AI tools):
+# Run all tests (unit/integration + E2E):
 npm run test:all
 
 # Run specific test types:
 npm run test:e2e        # End-to-end tests with Playwright
-npm run test:ai-tools   # AI tool calling tests
 
 # Run tests in watch mode
 npm run test:watch
@@ -631,10 +630,10 @@ function validateAIToolLoop(tools, systemPrompt, state, context) {
 
 #### **Debug Utility (Production-Safe)**
 ```typescript
-function debugAiToolLoop(aiResult, tools, systemPrompt) {
+function debugAiResponse(aiResult, tools, systemPrompt) {
   const isDev = process.env.NODE_ENV === 'development';
   
-  console.log('🔍 AI Tool Loop Debug:');
+  console.log('🔍 AI Response Debug:');
   console.log('  Tools available:', tools.map(t => t.name));
   console.log('  System prompt length:', systemPrompt.length);
   console.log('  AI response type:', aiResult.tool_calls ? 'tool_calls' : 'text');
