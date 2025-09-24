@@ -2,6 +2,59 @@ import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 
+// Pre-compiled regex patterns for better performance and accuracy
+const JAILBREAK_PATTERNS = [
+  /\b(ignore\s+instructions|ignore\s+previous\s+instructions)\b/i,
+  /\b(system\s+prompt|bypass\s+restrictions|override\s+restrictions)\b/i,
+  /\b(change\s+role|override\s+instructions|disregard\s+instructions)\b/i,
+  /\b(forget\s+rules|ignore\s+rules|disregard\s+rules)\b/i,
+  /\b(act\s+as\s+[^a-z]|pretend\s+to\s+be\s+[^a-z])\b/i,
+  /\b(you\s+are\s+now|from\s+now\s+on)\b/i,
+  /\b(disregard\s+previous|ignore\s+previous)\b/i
+] as const;
+
+const TECHNICAL_PATTERNS = [
+  /\b(cd\s+\w+|ls\s+\w*|sudo\s+\w+|bash\s+\w*)\b/i,
+  /\b(terminal\s+commands?|command\s+line\s+interface)\b/i,
+  /\b(programming\s+help|coding\s+help|script\s+writing)\b/i,
+  /\b(javascript\s+help|python\s+help|html\s+help|css\s+help)\b/i,
+  /\b(hack\s+into|crack\s+password|exploit\s+vulnerability)\b/i
+] as const;
+
+const ENTERTAINMENT_PATTERNS = [
+  /\b(play\s+game|gaming|entertainment\s+only|just\s+for\s+fun)\b/i,
+  /\b(roleplay\s+scenario|role\s+play\s+game|pretend\s+scenario)\b/i,
+  /\b(legal\s+trivia\s+game|case\s+study\s+game|hypothetical\s+game)\b/i,
+  /\b(for\s+entertainment\s+only|entertainment\s+purposes\s+only)\b/i
+] as const;
+
+const GENERAL_KNOWLEDGE_PATTERNS = [
+  /\b(tell\s+me\s+about\s+geography|explain\s+geography|describe\s+geography)\b/i,
+  /\b(tell\s+me\s+about\s+history|explain\s+history|describe\s+history)\b/i,
+  /\b(tell\s+me\s+about\s+science|explain\s+science|describe\s+science)\b/i,
+  /\b(tell\s+me\s+about\s+technology|explain\s+technology|describe\s+technology)\b/i,
+  /\b(tell\s+me\s+about\s+politics|explain\s+politics|describe\s+politics)\b/i,
+  /\b(write\s+story|create\s+art|design\s+logo)\b/i,
+  /\b(creative\s+writing|artistic\s+expression|imaginative\s+writing)\b/i
+] as const;
+
+const ABUSIVE_PATTERNS = [
+  /\b(kill\s+someone|murder\s+someone|suicide\s+methods?)\b/i,
+  /\b(bomb\s+making|explosive\s+devices?|weapon\s+making)\b/i,
+  /\b(hate\s+speech|racist\s+comments?|sexist\s+comments?|homophobic\s+comments?)\b/i,
+  /\b(threat\s+to\s+kill|threaten\s+violence|violent\s+threats?)\b/i
+] as const;
+
+// Legal context keywords that should whitelist messages
+const LEGAL_CONTEXT_KEYWORDS = [
+  'legal', 'law', 'attorney', 'lawyer', 'court', 'lawsuit', 'contract', 'agreement',
+  'litigation', 'settlement', 'mediation', 'arbitration', 'compliance', 'regulation',
+  'statute', 'case', 'precedent', 'jurisdiction', 'evidence', 'testimony', 'deposition',
+  'motion', 'brief', 'pleading', 'discovery', 'subpoena', 'injunction', 'judgment',
+  'appeal', 'verdict', 'damages', 'liability', 'negligence', 'breach', 'tort',
+  'criminal', 'civil', 'constitutional', 'administrative', 'federal', 'state', 'local'
+] as const;
+
 /**
  * Content Policy Filter - handles safety and security concerns
  * This is the first line of defense against inappropriate content
@@ -10,15 +63,18 @@ export const contentPolicyFilter: PipelineMiddleware = {
   name: 'contentPolicyFilter',
   
   execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig) => {
+    // Note: teamConfig parameter is currently unused but kept for interface compatibility
+    // Future enhancement: could use team-specific content policies
     const violations = checkForViolations(message, context);
     
     if (violations.length > 0) {
-      // Log security violations
+      // Log security violations (privacy-safe)
       console.warn('Content policy violation detected:', {
         sessionId: context.sessionId,
         teamId: context.teamId,
         violations,
-        message: message.substring(0, 100)
+        messageLength: message.length,
+        messageHash: message.length > 0 ? Buffer.from(message).toString('base64').substring(0, 8) : ''
       });
 
       // Update context with safety flags
@@ -76,21 +132,11 @@ function checkForViolations(message: string, context: ConversationContext): stri
  * Check for jailbreak attempts
  */
 function isJailbreakAttempt(message: string): boolean {
-  const jailbreakPatterns = [
-    /(ignore.*instructions)/i,
-    /(system prompt|bypass.*restrictions)/i,
-    /(change.*role|override.*instructions)/i,
-    /(ignore.*previous|forget.*rules)/i,
-    /(act.*as|pretend.*to.*be)/i,
-    /(you are now|from now on)/i,
-    /(disregard.*previous)/i
-  ];
-
-  return jailbreakPatterns.some(pattern => pattern.test(message));
+  return JAILBREAK_PATTERNS.some(pattern => pattern.test(message));
 }
 
 /**
- * Check for non-legal requests (context-aware)
+ * Check for non-legal requests (context-aware with legal whitelisting)
  */
 function isNonLegalRequest(message: string, context: ConversationContext): boolean {
   // If we have established legal context, be more permissive
@@ -98,48 +144,28 @@ function isNonLegalRequest(message: string, context: ConversationContext): boole
     return false; // Allow follow-up questions in legal context
   }
 
-  const nonLegalPatterns = [
-    // Technical/Programming
-    /(^cd\s|^ls\s|^sudo\s|^bash\s|\.py$|<script>|SELECT .* FROM)/i,
-    /(terminal|command line|shell|programming|coding|script)/i,
-    /(javascript|python|html|css|sql|api)/i,
-    /(hack|crack|exploit|vulnerability)/i,
-    
-    // Entertainment/Role-playing
-    /(play game|game|entertainment|fun|trivia)/i,
-    /(roleplay|role play|role-playing|scenario)/i,
-    /(act as client|be the client|pretend to be client)/i,
-    /(legal trivia|case study|hypothetical)/i,
-    /(for entertainment|entertainment purposes)/i,
-    
-    // General Knowledge/Research (but allow if in legal context)
-    /(write.*document|create.*document|research.*)/i,
-    /(tell me about.*geography|tell me about.*history|tell me about.*science|tell me about.*technology|tell me about.*politics)/i,
-    /(explain.*geography|explain.*history|explain.*science|explain.*technology|explain.*politics)/i,
-    /(describe.*geography|describe.*history|describe.*science|describe.*technology|describe.*politics)/i,
-    /(geography|history|science|technology|politics)/i,
-    /(write.*story|create.*content|generate.*)/i,
-    
-    // Creative Tasks
-    /(write.*poem|create.*art|design.*)/i,
-    /(creative|artistic|imaginative)/i
-  ];
+  // Check for legal context keywords first - if present, allow the message
+  const hasLegalContext = LEGAL_CONTEXT_KEYWORDS.some(keyword => 
+    message.toLowerCase().includes(keyword.toLowerCase())
+  );
+  
+  if (hasLegalContext) {
+    return false; // Allow messages with legal context
+  }
 
-  return nonLegalPatterns.some(pattern => pattern.test(message));
+  // Check for specific non-legal patterns
+  const hasTechnicalPattern = TECHNICAL_PATTERNS.some(pattern => pattern.test(message));
+  const hasEntertainmentPattern = ENTERTAINMENT_PATTERNS.some(pattern => pattern.test(message));
+  const hasGeneralKnowledgePattern = GENERAL_KNOWLEDGE_PATTERNS.some(pattern => pattern.test(message));
+
+  return hasTechnicalPattern || hasEntertainmentPattern || hasGeneralKnowledgePattern;
 }
 
 /**
  * Check for abusive or harmful content
  */
 function isAbusiveContent(message: string): boolean {
-  const abusivePatterns = [
-    /(kill|murder|suicide|self-harm)/i,
-    /(bomb|explosive|weapon)/i,
-    /(hate speech|racist|sexist|homophobic)/i,
-    /(threat|threaten|violence)/i
-  ];
-
-  return abusivePatterns.some(pattern => pattern.test(message));
+  return ABUSIVE_PATTERNS.some(pattern => pattern.test(message));
 }
 
 /**

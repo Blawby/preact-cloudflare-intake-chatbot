@@ -99,7 +99,10 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     );
 
     // Save updated context
-    await ConversationContextManager.save(pipelineResult.context, env);
+    const saveSuccess = await ConversationContextManager.save(pipelineResult.context, env);
+    if (!saveSuccess) {
+      console.warn('Failed to save conversation context for session:', pipelineResult.context.sessionId);
+    }
 
     // If pipeline provided a response, return it
     if (pipelineResult.response && pipelineResult.response !== 'AI_HANDLE') {

@@ -88,7 +88,6 @@ export function createLoggingMiddleware(): PipelineMiddleware {
           sessionId: context.sessionId
         },
         teamConfig: {
-          slug: teamConfig.slug,
           availableServices: teamConfig.availableServices
         }
       });

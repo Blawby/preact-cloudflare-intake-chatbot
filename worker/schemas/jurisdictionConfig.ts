@@ -131,28 +131,31 @@ export class JurisdictionValidator {
     
     const locationLower = location.toLowerCase();
     
-    // Check states
+    // Check states (use word boundaries for precise matching)
     if (config.supportedStates) {
-      const stateMatch = config.supportedStates.some(state => 
-        locationLower.includes(state.toLowerCase()) ||
-        locationLower.includes(getStateName(state).toLowerCase())
-      );
+      const stateMatch = config.supportedStates.some(state => {
+        const stateRegex = new RegExp(`\\b${state.toLowerCase()}\\b`, 'i');
+        const stateNameRegex = new RegExp(`\\b${getStateName(state).toLowerCase()}\\b`, 'i');
+        return stateRegex.test(location) || stateNameRegex.test(location);
+      });
       if (stateMatch) return true;
     }
     
     // Check counties
     if (config.supportedCounties) {
-      const countyMatch = config.supportedCounties.some(county => 
-        locationLower.includes(county.toLowerCase())
-      );
+      const countyMatch = config.supportedCounties.some(county => {
+        const countyRegex = new RegExp(`\\b${county.toLowerCase()}\\b`, 'i');
+        return countyRegex.test(location);
+      });
       if (countyMatch) return true;
     }
     
     // Check cities
     if (config.supportedCities) {
-      const cityMatch = config.supportedCities.some(city => 
-        locationLower.includes(city.toLowerCase())
-      );
+      const cityMatch = config.supportedCities.some(city => {
+        const cityRegex = new RegExp(`\\b${city.toLowerCase()}\\b`, 'i');
+        return cityRegex.test(location);
+      });
       if (cityMatch) return true;
     }
     

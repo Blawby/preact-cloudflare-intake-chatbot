@@ -52,15 +52,17 @@ export class ConversationContextManager {
   /**
    * Save conversation context to KV storage
    */
-  static async save(context: ConversationContext, env: Env): Promise<void> {
+  static async save(context: ConversationContext, env: Env): Promise<boolean> {
     const key = `${this.KV_PREFIX}${context.sessionId}:${context.teamId}`;
     
     try {
       await env.CHAT_SESSIONS.put(key, JSON.stringify(context), {
         expirationTtl: this.TTL
       });
+      return true;
     } catch (error) {
       console.error('Failed to save conversation context:', error);
+      return false;
     }
   }
 
@@ -90,8 +92,7 @@ export class ConversationContextManager {
    */
   static updateContext(
     context: ConversationContext,
-    message: string,
-    teamConfig: any
+    message: string
   ): ConversationContext {
     const updated = { ...context };
     updated.messageCount += 1;
@@ -158,8 +159,6 @@ export class ConversationContextManager {
    * Determine user intent from message content
    */
   private static determineUserIntent(message: string, context: ConversationContext): ConversationContext['userIntent'] {
-    const lowerMessage = message.toLowerCase();
-
     // Check for explicit lawyer contact requests
     if (/(need a lawyer|want a lawyer|talk to a lawyer|speak with attorney|hire an attorney)/i.test(message)) {
       return 'lawyer_contact';
