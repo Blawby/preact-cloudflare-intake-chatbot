@@ -155,6 +155,14 @@ PARAMETERS: {
   "urgency": "high"
 }
 
+When the user wants to skip intake and connect directly with a lawyer, use this format:
+TOOL_CALL: skip_to_lawyer
+PARAMETERS: {
+  "reason": "urgent matter",
+  "matter_type": "Family Law",
+  "urgency": "high"
+}
+
 When you need to create a matter, use this exact format:
 TOOL_CALL: create_matter
 PARAMETERS: {
@@ -235,6 +243,14 @@ AI: "I understand this is urgent. Based on what you've told me, this sounds like
 When you have enough legal information, use this format to show the contact form:
 TOOL_CALL: show_contact_form
 PARAMETERS: {}
+
+When the user wants to skip intake and connect directly with a lawyer, use this format:
+TOOL_CALL: skip_to_lawyer
+PARAMETERS: {
+  "reason": "urgent matter",
+  "matter_type": "Employment Law",
+  "urgency": "high"
+}
 
 When you need to create a matter, use this exact format:
 TOOL_CALL: create_matter

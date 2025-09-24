@@ -1,6 +1,6 @@
 import { Logger } from '../../utils/logger.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
-import { TOOL_HANDLERS, Currency, Recipient, ISODateString, buildCaseDraft, showDocumentChecklist } from '../legalIntakeAgent.js';
+import { TOOL_HANDLERS, Currency, Recipient, ISODateString, buildCaseDraft, showDocumentChecklist, skipToLawyer } from '../legalIntakeAgent.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
 import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
@@ -332,13 +332,14 @@ function buildSystemPrompt(context: ConversationContext, teamConfig: any): strin
 
 Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}
 
-Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document, build_case_draft, show_document_checklist
+Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document, build_case_draft, show_document_checklist, skip_to_lawyer
 
 Rules:
 - Use create_matter when you have name + legal issue + contact info
 - Use show_contact_form when you have legal issue but need contact info
 - Use build_case_draft when you have organized case information but want to structure it for attorney review
 - Use show_document_checklist when you need to gather specific documents for the case
+- Use skip_to_lawyer when the user explicitly wants to skip intake and connect directly with a lawyer
 - Be conversational and helpful
 - Ask qualifying questions to understand urgency and timeline
 - Only show contact form after qualifying the lead
@@ -360,12 +361,15 @@ PARAMETERS: {"matter_type": "Family Law", "key_facts": ["Married for 5 years", "
 TOOL_CALL: show_document_checklist
 PARAMETERS: {"matter_type": "Family Law", "documents": [{"id": "marriage_cert", "name": "Marriage Certificate", "description": "Official marriage certificate", "required": true}, {"id": "birth_certs", "name": "Children's Birth Certificates", "description": "Birth certificates for both children", "required": true}, {"id": "financial_docs", "name": "Financial Documents", "description": "Bank statements, tax returns, pay stubs", "required": false}]}
 
+TOOL_CALL: skip_to_lawyer
+PARAMETERS: {"reason": "urgent matter", "matter_type": "Family Law", "urgency": "high"}
+
 Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.`;
 }
 
 // Get available tools based on context
 function getAvailableToolsForState(state: ConversationState, context: ConversationContext): ToolDefinition<any>[] {
-  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument, buildCaseDraft, showDocumentChecklist];
+  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument, buildCaseDraft, showDocumentChecklist, skipToLawyer];
 
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:
@@ -511,6 +515,36 @@ async function handleToolCall(
           message: ('data' in toolResult ? (toolResult.data as any)?.message : null) || 'Please fill out the contact form below.'
         }
       });
+      return;
+    }
+
+    // Special handling for skip_to_lawyer
+    if (toolName === 'skip_to_lawyer' && toolResult.success) {
+      const toolData = 'data' in toolResult ? (toolResult.data as any) : null;
+      const action = toolData?.action;
+      
+      if (action === 'show_contact_form') {
+        // Team mode: Show contact form
+        await emitSSEEvent(controller, {
+          type: 'contact_form',
+          data: {
+            fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
+            required: ['name', 'email', 'phone'],
+            message: toolData?.message || 'Please fill out the contact form below to connect with our legal team.'
+          }
+        });
+      } else if (action === 'search_lawyers') {
+        // Public mode: Trigger lawyer search
+        await emitSSEEvent(controller, {
+          type: 'lawyer_search',
+          data: {
+            matter_type: toolData?.matter_type,
+            urgency: toolData?.urgency,
+            reason: toolData?.reason,
+            message: toolData?.message || 'Searching for qualified lawyers in your area...'
+          }
+        });
+      }
       return;
     }
 

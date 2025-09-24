@@ -383,6 +383,33 @@ export const showDocumentChecklist = {
   }
 };
 
+export const skipToLawyer = {
+  name: 'skip_to_lawyer',
+  description: 'Skip the intake process and connect the user directly with a lawyer. Routes to contact form (team mode) or lawyer search (public mode)',
+  parameters: {
+    type: 'object',
+    properties: {
+      reason: { 
+        type: 'string', 
+        description: 'Reason for skipping intake (e.g., "urgent matter", "need immediate help", "complex case")',
+        maxLength: 200
+      },
+      matter_type: { 
+        type: 'string', 
+        description: 'Type of legal matter if known',
+        maxLength: 100
+      },
+      urgency: { 
+        type: 'string', 
+        description: 'Urgency level of the matter',
+        enum: ['low', 'normal', 'high', 'urgent'],
+        default: 'normal'
+      }
+    },
+    required: ['reason']
+  }
+};
+
 export const createPaymentInvoice = {
   name: 'create_payment_invoice',
   description: 'Create a payment invoice for consultation or legal services',
@@ -737,7 +764,8 @@ export const TOOL_HANDLERS = {
   analyze_document: handleAnalyzeDocument,
   create_payment_invoice: handleCreatePaymentInvoice,
   build_case_draft: handleBuildCaseDraft,
-  show_document_checklist: handleShowDocumentChecklist
+  show_document_checklist: handleShowDocumentChecklist,
+  skip_to_lawyer: handleSkipToLawyer
 };
 
 // Unified legal intake agent that handles both streaming and non-streaming responses
@@ -1685,4 +1713,46 @@ export async function handleShowDocumentChecklist(parameters: any, env: any, tea
       documents: documentChecklist
     }
   });
+}
+
+export async function handleSkipToLawyer(parameters: any, env: any, teamConfig: any, sessionId?: string, teamId?: string) {
+  Logger.debug('[handleSkipToLawyer] parameters:', ToolCallParser.sanitizeParameters(parameters));
+  
+  const { reason, matter_type, urgency = 'normal' } = parameters;
+  
+  // Validate required fields
+  if (!reason) {
+    return createValidationError("I need to understand why you want to skip the intake process. Could you please provide a reason?");
+  }
+  
+  // Determine if this is team mode or public mode
+  const isTeamMode = teamConfig && teamConfig.id && teamConfig.id !== 'blawby-ai';
+  
+  if (isTeamMode) {
+    // Team mode: Show contact form
+    Logger.debug('[handleSkipToLawyer] Team mode detected, showing contact form');
+    
+    const response = `I understand you want to skip the intake process and connect directly with our legal team. ${reason}. I'll show you our contact form so we can get in touch with you right away.`;
+    
+    return createSuccessResponse(response, {
+      action: 'show_contact_form',
+      reason: reason,
+      matter_type: matter_type,
+      urgency: urgency,
+      mode: 'team'
+    });
+  } else {
+    // Public mode: Trigger lawyer search
+    Logger.debug('[handleSkipToLawyer] Public mode detected, triggering lawyer search');
+    
+    const response = `I understand you want to skip the intake process and find a lawyer directly. ${reason}. I'll help you search for qualified lawyers in your area who can assist with your ${matter_type || 'legal matter'}.`;
+    
+    return createSuccessResponse(response, {
+      action: 'search_lawyers',
+      reason: reason,
+      matter_type: matter_type,
+      urgency: urgency,
+      mode: 'public'
+    });
+  }
 }
