@@ -19,7 +19,8 @@ send_message() {
     echo "Response:"
     
     # Send the message and capture the streaming response
-    local response=$(curl -X POST "$BASE_URL" \
+    local response
+    response=$(curl -X POST "$BASE_URL" \
         -H "Content-Type: application/json" \
         -d "{
             \"messages\": [

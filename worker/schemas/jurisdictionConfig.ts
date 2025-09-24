@@ -203,3 +203,6 @@ function getStateName(stateCode: string): string {
   
   return stateNames[stateCode.toUpperCase()] || stateCode;
 }
+
+// Export alias for backward compatibility
+export const JurisdictionValidatorUtil = JurisdictionValidator;

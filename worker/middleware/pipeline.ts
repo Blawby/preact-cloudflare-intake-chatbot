@@ -80,19 +80,24 @@ export function createLoggingMiddleware(): PipelineMiddleware {
   return {
     name: 'logging',
     execute: async (message, context, teamConfig) => {
+      // Null-safe access with defaults
+      const safeMessage = String(message || '').substring(0, 100);
+      const safeContext = context || {};
+      const safeTeamConfig = teamConfig || {};
+      
       console.log('Pipeline execution:', {
-        message: message.substring(0, 100),
+        message: safeMessage,
         context: {
-          establishedMatters: context.establishedMatters,
-          userIntent: context.userIntent,
-          sessionId: context.sessionId
+          establishedMatters: safeContext.establishedMatters || [],
+          userIntent: safeContext.userIntent || 'unclear',
+          sessionId: safeContext.sessionId || 'unknown'
         },
         teamConfig: {
-          availableServices: teamConfig.availableServices
+          availableServices: safeTeamConfig.availableServices || []
         }
       });
       
-      return { context };
+      return { context: safeContext };
     }
   };
 }

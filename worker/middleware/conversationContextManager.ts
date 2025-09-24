@@ -106,11 +106,11 @@ export class ConversationContextManager {
       }
     });
 
-    // Update user intent based on message content
-    updated.userIntent = this.determineUserIntent(message, context);
+    // Update user intent based on message content using updated context
+    updated.userIntent = this.determineUserIntent(message, updated);
 
-    // Update conversation phase
-    updated.conversationPhase = this.determineConversationPhase(context, message);
+    // Update conversation phase using updated context
+    updated.conversationPhase = this.determineConversationPhase(updated, message);
 
     // Extract contact information
     const contactInfo = this.extractContactInfo(message);

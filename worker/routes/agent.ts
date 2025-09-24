@@ -32,6 +32,19 @@ interface RouteBody {
  * Uses context-aware middleware instead of hard security filters
  */
 export async function handleAgentStreamV2(request: Request, env: Env): Promise<Response> {
+  // Handle CORS preflight requests
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': CORS_HEADERS['Access-Control-Allow-Origin'] || '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400'
+      }
+    });
+  }
+
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
@@ -66,6 +79,11 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       throw HttpErrors.badRequest('No message content provided');
     }
 
+    // Ensure the latest message is from a user
+    if (latestMessage.role !== 'user') {
+      throw HttpErrors.badRequest('Latest message must be from user');
+    }
+
     // Get team configuration
     let teamConfig = null;
     if (teamId) {
@@ -85,10 +103,13 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     // Load conversation context
     const context = await ConversationContextManager.load(sessionId || 'default', teamId || 'default', env);
 
-    // Run through pipeline
+    // Update context with the latest message before running pipeline
+    const updatedContext = ConversationContextManager.updateContext(context, latestMessage.content);
+
+    // Run through pipeline with updated context
     const pipelineResult = await runPipeline(
       latestMessage.content,
-      context,
+      updatedContext,
       teamConfig,
       [
         createLoggingMiddleware(),
@@ -221,6 +242,22 @@ function isValidRouteBody(obj: unknown): obj is RouteBody {
     
     if (typeof msg.content !== 'string') {
       return false;
+    }
+  }
+
+  // Optional fields validation
+  if (body.teamId !== undefined && typeof body.teamId !== 'string') return false;
+  if (body.sessionId !== undefined && typeof body.sessionId !== 'string') return false;
+
+  if (body.attachments !== undefined) {
+    if (!Array.isArray(body.attachments)) return false;
+    for (const att of body.attachments as any[]) {
+      if (!att || typeof att !== 'object') return false;
+      const nameOk = typeof att.name === 'string' && att.name.length > 0;
+      const typeOk = typeof att.type === 'string' && att.type.length > 0;
+      const sizeOk = typeof att.size === 'number' && att.size >= 0 && Number.isFinite(att.size);
+      const urlOk = typeof att.url === 'string' && /^(https?):\/\//i.test(att.url);
+      if (!(nameOk && typeOk && sizeOk && urlOk)) return false;
     }
   }
 
