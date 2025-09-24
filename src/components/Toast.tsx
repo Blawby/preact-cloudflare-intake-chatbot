@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState, useRef } from 'preact/hooks';
+import { motion } from 'framer-motion';
 import { CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export interface Toast {
@@ -17,17 +17,30 @@ interface ToastProps {
 }
 
 const ToastComponent: FunctionComponent<ToastProps> = ({ toast, onRemove }) => {
-  const [isVisible, setIsVisible] = useState(true);
+  const [_isVisible, setIsVisible] = useState(true);
+  const visibilityTimerRef = useRef<number | null>(null);
+  const removalTimerRef = useRef<number | null>(null);
+
+  const handleRemove = () => {
+    setIsVisible(false);
+    removalTimerRef.current = globalThis.setTimeout(() => onRemove(toast.id), 300);
+  };
 
   useEffect(() => {
     const duration = toast.duration || 5000; // Default 5 seconds
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(() => onRemove(toast.id), 300); // Allow animation to complete
-    }, duration);
+    visibilityTimerRef.current = globalThis.setTimeout(handleRemove, duration);
 
-    return () => clearTimeout(timer);
-  }, [toast.id, toast.duration, onRemove]);
+    return () => {
+      if (visibilityTimerRef.current) {
+        globalThis.clearTimeout(visibilityTimerRef.current);
+        visibilityTimerRef.current = null;
+      }
+      if (removalTimerRef.current) {
+        globalThis.clearTimeout(removalTimerRef.current);
+        removalTimerRef.current = null;
+      }
+    };
+  }, [toast.id, toast.duration, onRemove, handleRemove]);
 
   const getIcon = () => {
     switch (toast.type) {
@@ -81,10 +94,7 @@ const ToastComponent: FunctionComponent<ToastProps> = ({ toast, onRemove }) => {
         </div>
         <div className="ml-4 flex-shrink-0">
           <button
-            onClick={() => {
-              setIsVisible(false);
-              setTimeout(() => onRemove(toast.id), 300);
-            }}
+            onClick={handleRemove}
             className="inline-flex text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-md"
           >
             <XMarkIcon className="h-4 w-4" />

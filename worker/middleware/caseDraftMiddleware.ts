@@ -52,7 +52,7 @@ export const caseDraftMiddleware: PipelineMiddleware = {
     ];
 
     const isCaseDraftRequest = caseDraftKeywords.some(keyword => 
-      latestMessage.content.toLowerCase().includes(keyword.toLowerCase())
+      conversationText.toLowerCase().includes(keyword.toLowerCase())
     );
 
     if (!isCaseDraftRequest) {

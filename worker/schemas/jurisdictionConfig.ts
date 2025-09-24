@@ -125,18 +125,15 @@ export class JurisdictionValidator {
   private static isWordMatch(text: string, target: string): boolean {
     if (!target || target.length === 0) return false;
     
-    // First check if the target appears as a complete phrase
-    if (text.includes(target)) {
-      return true;
-    }
-    
     // Split text into words (whitespace and punctuation boundaries)
     const words = text.split(/\s+/);
     const targetWords = target.split(/\s+/);
     
-    // For multi-word targets, check if all words are present
+    // For multi-word targets, check if they appear as consecutive words
     if (targetWords.length > 1) {
-      return targetWords.every(targetWord => words.includes(targetWord));
+      const targetPhrase = targetWords.join(' ');
+      const textPhrase = words.join(' ');
+      return textPhrase.includes(targetPhrase);
     }
     
     // For single words, check if the word exists

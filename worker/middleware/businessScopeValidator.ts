@@ -35,6 +35,12 @@ export const businessScopeValidator: PipelineMiddleware = {
   name: 'businessScopeValidator',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    // Guard clause: ensure we have at least one message
+    if (!messages || messages.length === 0) {
+      console.warn('businessScopeValidator: No messages provided');
+      return { context };
+    }
+    
     const latestMessage = messages[messages.length - 1];
     const availableServices = teamConfig?.availableServices || [];
     

@@ -1,5 +1,6 @@
-import { createContext } from 'preact';
+import { createContext, ComponentChildren } from 'preact';
 import { useContext } from 'preact/hooks';
+
 import { useToast } from '../hooks/useToast';
 
 interface ToastContextType {
@@ -11,7 +12,7 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
-export const ToastProvider = ({ children }: { children: preact.ComponentChildren }) => {
+export const ToastProvider = ({ children }: { children: ComponentChildren }) => {
   const { showSuccess, showError, showInfo, showWarning } = useToast();
 
   return (

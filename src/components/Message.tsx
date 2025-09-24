@@ -2,30 +2,25 @@ import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
 import { useState, useEffect } from 'preact/hooks';
 import DOMPurify from 'dompurify';
-import LazyMedia from './LazyMedia';
-import Modal from './Modal';
-import MediaContent from './MediaContent';
-import PaymentContent from './PaymentContent';
-import MatterCanvas from './MatterCanvas';
-import PaymentEmbed from './PaymentEmbed';
-import TeamProfile from './TeamProfile';
-import { Button } from './ui/Button';
-import { AIThinkingIndicator } from './AIThinkingIndicator';
-import { ContactForm, ContactData } from './ContactForm';
-import DocumentChecklist from './DocumentChecklist';
-import LawyerSearchResults from './LawyerSearchResults';
-import PDFGeneration from './PDFGeneration';
-import { useToastContext } from '../contexts/ToastContext';
-import { features } from '../config/features';
 import {
 	DocumentIcon,
 	DocumentTextIcon,
 	TableCellsIcon,
 	MusicalNoteIcon,
-	VideoCameraIcon,
-	ClipboardDocumentIcon
+	VideoCameraIcon
 } from '@heroicons/react/24/outline';
 import { FileAttachment } from '../../worker/types';
+import { useToastContext } from '../contexts/ToastContext';
+import { AIThinkingIndicator } from './AIThinkingIndicator';
+import { ContactForm, ContactData } from './ContactForm';
+import DocumentChecklist from './DocumentChecklist';
+import LawyerSearchResults from './LawyerSearchResults';
+import LazyMedia from './LazyMedia';
+import MatterCanvas from './MatterCanvas';
+import MediaContent from './MediaContent';
+import Modal from './Modal';
+import PaymentEmbed from './PaymentEmbed';
+import PDFGeneration from './PDFGeneration';
 
 
 
@@ -60,7 +55,7 @@ interface MessageProps {
 			description?: string;
 			required: boolean;
 			status: 'missing' | 'uploaded' | 'pending';
-			file?: File;
+			file?: globalThis.File;
 		}>;
 	};
 	lawyerSearchResults?: {
@@ -166,7 +161,7 @@ const getFileIcon = (file: FileAttachment) => {
 };
 
 const FilePreview: FunctionComponent<{ file: FileAttachment; onFileClick: (file: FileAttachment) => void }> = ({ file, onFileClick }) => {
-	const handleKeyDown = (e: KeyboardEvent) => {
+	const handleKeyDown = (e: globalThis.KeyboardEvent) => {
 		if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
 			e.preventDefault();
 			onFileClick(file);
@@ -225,17 +220,17 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	documentChecklist,
 	lawyerSearchResults,
 	generatedPDF,
-	teamConfig,
-	onOpenSidebar,
+	_teamConfig,
+	_onOpenSidebar,
 	onContactFormSubmit,
 	isLoading,
 	aiState,
 	toolMessage,
-	id,
-	sessionId,
-	teamId,
-	showFeedback = true,
-	onFeedbackSubmit
+	_id,
+	_sessionId,
+	_teamId,
+	_showFeedback = true,
+	_onFeedbackSubmit
 }) => {
 	const [isClient, setIsClient] = useState(false);
 	const { showSuccess, showError, showInfo } = useToastContext();
@@ -250,8 +245,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 			.then((module) => {
 				setReactMarkdown(() => module.default);
 			})
-			.catch((error) => {
-				console.error('Failed to load ReactMarkdown:', error);
+			.catch((_error) => {
 				// Keep ReactMarkdown as null to use fallback rendering
 			});
 	}, []);
@@ -349,20 +343,20 @@ const Message: FunctionComponent<MessageProps> = memo(({
 							// Handle document upload
 							if (file) {
 								// In a real implementation, this would upload to a file service
-								alert(`Document "${file.name}" uploaded successfully for ${documentId}`);
+								showSuccess('Document Uploaded', `Document "${file.name}" uploaded successfully for ${documentId}`);
 							}
 						}}
 						onDocumentRemove={(documentId) => {
 							// Handle document removal
-							alert(`Document ${documentId} removed from checklist`);
+							showInfo('Document Removed', `Document ${documentId} removed from checklist`);
 						}}
 						onComplete={() => {
 							// Handle checklist completion
-							alert('Document checklist completed! You can now proceed with your case.');
+							showSuccess('Checklist Complete', 'Document checklist completed! You can now proceed with your case.');
 						}}
 						onSkip={() => {
 							// Handle checklist skip
-							alert('Document checklist skipped. You can return to it later if needed.');
+							showInfo('Checklist Skipped', 'Document checklist skipped. You can return to it later if needed.');
 						}}
 					/>
 				)}
@@ -376,18 +370,18 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						onContactLawyer={(lawyer) => {
 							// Open lawyer contact options
 							if (lawyer.phone) {
-								window.open(`tel:${lawyer.phone}`, '_self');
+								globalThis.open(`tel:${lawyer.phone}`, '_self');
 							} else if (lawyer.email) {
-								window.open(`mailto:${lawyer.email}?subject=Legal Consultation Request`, '_self');
+								globalThis.open(`mailto:${lawyer.email}?subject=Legal Consultation Request`, '_self');
 							} else if (lawyer.website) {
-								window.open(lawyer.website, '_blank');
+								globalThis.open(lawyer.website, '_blank');
 							} else {
-								alert(`Contact ${lawyer.name} at ${lawyer.firm || 'their firm'} for a consultation.`);
+								showInfo('Contact Information', `Contact ${lawyer.name} at ${lawyer.firm || 'their firm'} for a consultation.`);
 							}
 						}}
 						onSearchAgain={() => {
 							// Trigger new lawyer search
-							alert('Please ask the AI to search for lawyers again with different criteria.');
+							showInfo('New Search', 'Please ask the AI to search for lawyers again with different criteria.');
 						}}
 					/>
 				)}
@@ -402,7 +396,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 								showInfo('Downloading PDF', 'Preparing your case summary for download...');
 								
 								// Request PDF from backend
-								const response = await fetch('/api/pdf/download', {
+								const response = await globalThis.fetch('/api/pdf/download', {
 									method: 'POST',
 									headers: {
 										'Content-Type': 'application/json',
@@ -422,34 +416,48 @@ const Message: FunctionComponent<MessageProps> = memo(({
 								const pdfBlob = await response.blob();
 								
 								// Create download link
-								const url = URL.createObjectURL(pdfBlob);
-								const a = document.createElement('a');
+								const url = globalThis.URL.createObjectURL(pdfBlob);
+								const a = globalThis.document.createElement('a');
 								a.href = url;
 								a.download = generatedPDF.filename;
-								document.body.appendChild(a);
+								globalThis.document.body.appendChild(a);
 								a.click();
-								document.body.removeChild(a);
-								URL.revokeObjectURL(url);
+								globalThis.document.body.removeChild(a);
+								globalThis.URL.revokeObjectURL(url);
 								
 								showSuccess('PDF Downloaded', 'Your case summary has been downloaded successfully.');
-							} catch (error) {
-								console.error('PDF download error:', error);
+							} catch (_error) {
 								showError('Download Failed', 'Unable to download PDF. Please try again or contact support.');
 							}
 						}}
-						onRegenerate={() => {
-							// Trigger PDF regeneration by sending a message to the AI
-							if (onContactFormSubmit) {
-								showInfo('Regenerating PDF', 'Requesting a new PDF generation...');
-								// This would trigger the AI to regenerate the PDF
-								// The AI will handle this through the PDF generation middleware
-								onContactFormSubmit({
-									name: '',
-									email: '',
-									phone: '',
-									location: '',
-									opposingParty: 'Please regenerate my case summary PDF'
+						onRegenerate={async () => {
+							showInfo('Regenerating PDF', 'Requesting a new PDF generation...');
+							
+							try {
+								// Direct API call to regenerate PDF
+								const response = await globalThis.fetch('/api/pdf/regenerate', {
+									method: 'POST',
+									headers: { 
+										'Content-Type': 'application/json' 
+									},
+									body: JSON.stringify({
+										filename: generatedPDF.filename,
+										matterType: generatedPDF.matterType,
+										generatedAt: generatedPDF.generatedAt
+									})
 								});
+
+								if (!response.ok) {
+									throw new Error(`Failed to regenerate PDF: ${response.statusText}`);
+								}
+
+								const _result = await response.json();
+								showSuccess('PDF Regenerated', 'Your case summary has been regenerated successfully.');
+								
+								// Optionally trigger a re-render or update the PDF data
+								// This could be handled by the parent component
+							} catch (_error) {
+								showError('Regeneration Failed', 'Unable to regenerate PDF. Please try again or contact support.');
 							}
 						}}
 					/>
@@ -480,11 +488,11 @@ const Message: FunctionComponent<MessageProps> = memo(({
 				
 				{otherFiles.map((file, index) => (
 					<FilePreview 
-						key={index} 
+						key={`other-${index}`} 
 						file={file} 
 						onFileClick={(file) => {
 							// For documents and other files, trigger download
-							const link = document.createElement('a');
+							const link = globalThis.document.createElement('a');
 							link.href = file.url;
 							link.download = file.name;
 							link.click();
@@ -492,7 +500,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					/>
 				))}
 				{audioFiles.map((file, index) => (
-					<div className="my-2 rounded-xl overflow-hidden max-w-75 w-full">
+					<div key={`audio-${index}`} className="my-2 rounded-xl overflow-hidden max-w-75 w-full">
 						<LazyMedia
 							src={file.url}
 							type={file.type}
@@ -502,7 +510,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					</div>
 				))}
 				{videoFiles.map((file, index) => (
-					<div className="my-2 rounded-xl overflow-hidden max-w-75 w-full">
+					<div key={`video-${index}`} className="my-2 rounded-xl overflow-hidden max-w-75 w-full">
 						<LazyMedia
 							src={file.url}
 							type={file.type}

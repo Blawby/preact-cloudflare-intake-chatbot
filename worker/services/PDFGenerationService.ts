@@ -37,7 +37,7 @@ export class PDFGenerationService {
   ): Promise<{ success: boolean; pdfBuffer?: ArrayBuffer; error?: string }> {
     try {
       const html = this.generateHTML(options);
-      const pdfBuffer = await this.convertHTMLToPDF(html, env);
+      const pdfBuffer = await this.convertHTMLToPDF(html, options, env);
       
       Logger.info('[PDFGenerationService] PDF generated successfully', {
         matterType: options.caseDraft.matter_type,
@@ -363,7 +363,7 @@ export class PDFGenerationService {
    * Convert HTML to PDF using pdf-lib
    * This creates a real PDF document with proper formatting
    */
-  private static async convertHTMLToPDF(html: string, env: Env): Promise<ArrayBuffer> {
+  private static async convertHTMLToPDF(html: string, options: PDFGenerationOptions, env: Env): Promise<ArrayBuffer> {
     try {
       // Import pdf-lib dynamically for Cloudflare Workers compatibility
       const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
@@ -375,8 +375,8 @@ export class PDFGenerationService {
       const page = pdfDoc.addPage([612, 792]); // Letter size
       const { width, height } = page.getSize();
       
-      // Extract content from HTML for PDF generation
-      const content = this.extractContentFromHTML(html);
+      // Extract content from structured data for PDF generation
+      const content = this.extractContentFromOptions(options);
       
       // Add fonts
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -387,8 +387,30 @@ export class PDFGenerationService {
       const lineHeight = fontSize * 1.2;
       let yPosition = height - 50; // Start from top with margin
       
-      // Helper function to add text with word wrapping
+      // Helper function to check if we need a new page
+      const checkPageOverflow = (requiredSpace: number = 20) => {
+        if (yPosition < requiredSpace + 50) {
+          Logger.warn('[PDFGenerationService] Content overflow detected, truncating remaining content');
+          return true;
+        }
+        return false;
+      };
+
+      // Helper function to add section headers with overflow protection
+      const addSectionHeader = (title: string) => {
+        if (checkPageOverflow(30)) return false; // Need more space for headers
+        addText(title, boldFont, 14, rgb(0.2, 0.2, 0.2));
+        yPosition -= 10;
+        return true;
+      };
+
+      // Helper function to add text with word wrapping and page overflow protection
       const addText = (text: string, font: any, size: number, color: any, maxWidth?: number) => {
+        // Check for page overflow before adding text
+        if (checkPageOverflow()) {
+          return; // Stop adding content to prevent overflow
+        }
+
         if (maxWidth) {
           const words = text.split(' ');
           let line = '';
@@ -399,6 +421,11 @@ export class PDFGenerationService {
             const textWidth = font.widthOfTextAtSize(testLine, size);
             
             if (textWidth > maxWidth && line) {
+              // Check if we have space for this line
+              if (checkPageOverflow()) {
+                return;
+              }
+              
               page.drawText(line, {
                 x: 50,
                 y: currentY,
@@ -413,7 +440,7 @@ export class PDFGenerationService {
             }
           }
           
-          if (line) {
+          if (line && !checkPageOverflow()) {
             page.drawText(line, {
               x: 50,
               y: currentY,
@@ -446,8 +473,7 @@ export class PDFGenerationService {
       }
       
       // Add case overview section
-      addText('CASE OVERVIEW', boldFont, 14, rgb(0.2, 0.2, 0.2));
-      yPosition -= 10;
+      addSectionHeader('CASE OVERVIEW');
       
       addText(`Matter Type: ${content.matterType}`, font, fontSize, rgb(0, 0, 0), width - 100);
       addText(`Jurisdiction: ${content.jurisdiction}`, font, fontSize, rgb(0, 0, 0), width - 100);
@@ -457,25 +483,62 @@ export class PDFGenerationService {
       
       // Add key facts section
       if (content.keyFacts && content.keyFacts.length > 0) {
-        addText('KEY FACTS', boldFont, 14, rgb(0.2, 0.2, 0.2));
-        yPosition -= 10;
-        
-        content.keyFacts.forEach((fact: string, index: number) => {
-          addText(`${index + 1}. ${fact}`, font, fontSize, rgb(0, 0, 0), width - 100);
-        });
-        yPosition -= 20;
+        if (addSectionHeader('KEY FACTS')) {
+          content.keyFacts.forEach((fact: string, index: number) => {
+            addText(`${index + 1}. ${fact}`, font, fontSize, rgb(0, 0, 0), width - 100);
+          });
+          yPosition -= 20;
+        }
+      }
+
+      // Add timeline section
+      if (content.timeline) {
+        if (addSectionHeader('TIMELINE')) {
+          addText(content.timeline, font, fontSize, rgb(0, 0, 0), width - 100);
+          yPosition -= 20;
+        }
+      }
+
+      // Add parties section
+      if (content.parties && content.parties.length > 0) {
+        if (addSectionHeader('PARTIES INVOLVED')) {
+          content.parties.forEach((party: any, index: number) => {
+            const partyText = `${party.role}: ${party.name || 'Name not provided'}${party.relationship ? ` (${party.relationship})` : ''}`;
+            addText(partyText, font, fontSize, rgb(0, 0, 0), width - 100);
+          });
+          yPosition -= 20;
+        }
+      }
+
+      // Add documents section
+      if (content.documents && content.documents.length > 0) {
+        if (addSectionHeader('AVAILABLE DOCUMENTS')) {
+          content.documents.forEach((doc: string, index: number) => {
+            addText(`• ${doc}`, font, fontSize, rgb(0, 0, 0), width - 100);
+          });
+          yPosition -= 20;
+        }
+      }
+
+      // Add evidence section
+      if (content.evidence && content.evidence.length > 0) {
+        if (addSectionHeader('EVIDENCE')) {
+          content.evidence.forEach((ev: string, index: number) => {
+            addText(`• ${ev}`, font, fontSize, rgb(0, 0, 0), width - 100);
+          });
+          yPosition -= 20;
+        }
       }
       
       // Add disclaimer
-      addText('IMPORTANT LEGAL DISCLAIMER', boldFont, 14, rgb(0.2, 0.2, 0.2));
-      yPosition -= 10;
-      
-      const disclaimerText = 'This document is not legal advice. This case summary is prepared for informational purposes only and should not be construed as legal advice. It is recommended that you consult with a qualified attorney to discuss your specific legal situation and obtain proper legal counsel.';
-      addText(disclaimerText, font, fontSize, rgb(0, 0, 0), width - 100);
-      yPosition -= 30;
+      if (addSectionHeader('IMPORTANT LEGAL DISCLAIMER')) {
+        const disclaimerText = 'This document is not legal advice. This case summary is prepared for informational purposes only and should not be construed as legal advice. It is recommended that you consult with a qualified attorney to discuss your specific legal situation and obtain proper legal counsel.';
+        addText(disclaimerText, font, fontSize, rgb(0, 0, 0), width - 100);
+        yPosition -= 30;
+      }
       
       // Add footer
-      addText('Generated by Blawby AI Legal Services', font, 10, rgb(0.4, 0.4, 0.4));
+      addText(`Generated by ${content.teamName || 'Legal Services'}`, font, 10, rgb(0.4, 0.4, 0.4));
       addText(`Date: ${content.generatedDate}`, font, 10, rgb(0.4, 0.4, 0.4));
       addText('This document contains confidential information and should be treated accordingly.', font, 10, rgb(0.4, 0.4, 0.4));
       
@@ -491,34 +554,30 @@ export class PDFGenerationService {
 
 
   /**
-   * Extract structured content from HTML
+   * Extract structured content from options (more reliable than HTML parsing)
    */
-  private static extractContentFromHTML(html: string): any {
-    // Parse HTML to extract structured content
-    const titleMatch = html.match(/<h1[^>]*>(.*?)<\/h1>/);
-    const subtitleMatch = html.match(/<p class="subtitle"[^>]*>(.*?)<\/p>/);
-    const matterTypeMatch = html.match(/<span class="info-value">(.*?)<\/span>/);
-    const jurisdictionMatch = html.match(/<span class="info-value">(.*?)<\/span>/g);
-    const urgencyMatch = html.match(/<span class="info-value urgency-(\w+)">(.*?)<\/span>/);
-    
-    // Extract key facts
-    const factsMatches = html.match(/<li>(.*?)<\/li>/g);
-    const keyFacts = factsMatches ? factsMatches.map(match => 
-      match.replace(/<[^>]*>/g, '').trim()
-    ) : [];
+  private static extractContentFromOptions(options: PDFGenerationOptions): any {
+    const { caseDraft, clientName, teamName } = options;
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
 
     return {
-      title: titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : 'Legal Case Summary',
-      subtitle: subtitleMatch ? subtitleMatch[1].replace(/<[^>]*>/g, '').trim() : '',
-      matterType: matterTypeMatch ? matterTypeMatch[1].replace(/<[^>]*>/g, '').trim() : 'General Consultation',
-      jurisdiction: jurisdictionMatch && jurisdictionMatch[1] ? jurisdictionMatch[1].replace(/<[^>]*>/g, '').trim() : 'Not specified',
-      urgency: urgencyMatch ? urgencyMatch[2].replace(/<[^>]*>/g, '').trim() : 'Normal',
-      keyFacts: keyFacts,
-      generatedDate: new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
+      title: 'Legal Case Summary',
+      subtitle: `${teamName || 'Legal Services'} • Generated on ${currentDate}`,
+      matterType: caseDraft.matter_type || 'General Consultation',
+      jurisdiction: caseDraft.jurisdiction || 'Not specified',
+      urgency: caseDraft.urgency || 'Normal',
+      keyFacts: caseDraft.key_facts || [],
+      timeline: caseDraft.timeline,
+      parties: caseDraft.parties || [],
+      documents: caseDraft.documents || [],
+      evidence: caseDraft.evidence || [],
+      clientName: clientName,
+      teamName: teamName,
+      generatedDate: currentDate
     };
   }
 

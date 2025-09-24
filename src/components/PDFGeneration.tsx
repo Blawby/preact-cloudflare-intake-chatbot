@@ -1,7 +1,9 @@
 import { FunctionComponent } from 'preact';
-import { Button } from './ui/Button';
 import { DocumentArrowDownIcon, DocumentTextIcon, ClockIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+
 import { useTheme } from '../hooks/useTheme';
+
+import { Button } from './ui/Button';
 
 interface GeneratedPDF {
   filename: string;
@@ -112,7 +114,7 @@ const PDFGeneration: FunctionComponent<PDFGenerationProps> = ({
 
       <div className={`mt-4 p-3 rounded-md ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
         <h4 className={`text-sm font-medium mb-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
-          What's included in your PDF:
+          What&apos;s included in your PDF:
         </h4>
         <ul className={`text-sm space-y-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
           <li>• Professional case overview and matter type</li>

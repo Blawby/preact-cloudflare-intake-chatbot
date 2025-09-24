@@ -1,13 +1,15 @@
+import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../types.js';
+import type { ErrorResult } from './errors.js';
+
+import { TeamService } from '../../services/TeamService.js';
 import { Logger } from '../../utils/logger.js';
-import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
-import { TOOL_HANDLERS, Currency, Recipient, ISODateString } from '../legalIntakeAgent.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
 import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
-import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../types.js';
-import type { ErrorResult } from './errors.js';
 import { safeIncludes } from '../../utils/safeStringUtils.js';
-import { TeamService } from '../../services/TeamService.js';
+
+import { TOOL_HANDLERS, Currency, Recipient, ISODateString } from '../legalIntakeAgent.js';
+import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
 
 // Type definitions and constants
 interface AIModelConfig {
@@ -69,6 +71,9 @@ export interface ConversationContext {
   isQualifiedLead: boolean;
   // Safety flags for middleware integration
   safetyFlags?: string[];
+  // User intent and conversation phase (set by middleware)
+  userIntent?: 'intake' | 'lawyer_contact' | 'general_info' | 'unclear' | 'skip_to_lawyer';
+  conversationPhase?: 'initial' | 'gathering_info' | 'qualifying' | 'contact_collection' | 'completed' | 'showing_contact_form';
 }
 
 // Tool parameter interfaces
@@ -155,7 +160,7 @@ export const createMatter: ToolDefinition<CreateMatterParams> = {
   }
 };
 
-export const showContactForm: ToolDefinition<{}> = {
+export const showContactForm: ToolDefinition<Record<string, never>> = {
   name: 'show_contact_form',
   description: 'CRITICAL: ONLY use this tool AFTER you have had a full conversation, qualified the lead, and determined they are serious about legal action.',
   parameters: {
@@ -223,10 +228,10 @@ export interface CloudflareLocation {
 }
 
 // Team configuration cache
-const teamConfigCache = new Map<string, { config: any; timestamp: number }>();
+const teamConfigCache = new Map<string, { config: unknown; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-async function getTeamConfig(teamId: string, env: Env): Promise<any> {
+async function getTeamConfig(teamId: string, env: Env): Promise<unknown> {
   if (teamConfigCache.has(teamId)) {
     const cached = teamConfigCache.get(teamId)!;
     if (Date.now() - cached.timestamp < CACHE_TTL) {
@@ -270,7 +275,7 @@ function detectContextFast(conversationText: string): ConversationContext {
   // Contact detection
   const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(conversationText);
   const hasPhone = /\b(?:\+?1[-.]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(conversationText);
-  const hasName = /(?:my name is|i'm|i am|call me)\s+([A-Za-z\s]+)/i.test(conversationText);
+  const _hasName = /(?:my name is|i'm|i am|call me)\s+([A-Za-z\s]+)/i.test(conversationText);
   
   // Opposing party detection
   const hasOpposingParty = /(?:opposing|against|versus|vs\.?)\s+([A-Za-z\s]+)/i.test(conversationText);
@@ -327,7 +332,7 @@ function detectContextFast(conversationText: string): ConversationContext {
 }
 
 // Build system prompt function
-function buildSystemPrompt(context: ConversationContext, teamConfig: any): string {
+function buildSystemPrompt(context: ConversationContext, teamConfig: unknown): string {
   const teamName = teamConfig?.name || 'our law firm';
   const jurisdiction = teamConfig?.jurisdiction;
   
@@ -448,7 +453,7 @@ function extractAIResponse(aiResult: unknown): string {
 }
 
 // SSE Helper functions
-async function emitSSEEvent(controller: ReadableStreamDefaultController<Uint8Array> | undefined, event: any): Promise<void> {
+async function emitSSEEvent(controller: globalThis.ReadableStreamDefaultController<Uint8Array> | undefined, event: unknown): Promise<void> {
   if (!controller) return;
   
   try {
@@ -459,19 +464,19 @@ async function emitSSEEvent(controller: ReadableStreamDefaultController<Uint8Arr
   }
 }
 
-async function emitComplete(controller: ReadableStreamDefaultController<Uint8Array> | undefined): Promise<void> {
+async function emitComplete(controller: globalThis.ReadableStreamDefaultController<Uint8Array> | undefined): Promise<void> {
   await emitSSEEvent(controller, { type: 'complete' });
     
   if (controller) {
     try {
       controller.close();
-    } catch (closeError) {
+    } catch (_closeError) {
       Logger.debug('Controller already closed or closing');
     }
   }
 }
 
-async function emitError(controller: ReadableStreamDefaultController<Uint8Array> | undefined, error: unknown, correlationId: string): Promise<void> {
+async function emitError(controller: globalThis.ReadableStreamDefaultController<Uint8Array> | undefined, error: unknown, correlationId: string): Promise<void> {
   const errorMessage = error instanceof Error ? error.message : String(error);
   await emitSSEEvent(controller, {
     type: 'error',
@@ -485,7 +490,7 @@ async function handleToolCall(
   toolCall: { name: string; arguments?: Record<string, unknown> },
   env: Env,
   teamConfig: unknown,
-  controller: ReadableStreamDefaultController<Uint8Array> | undefined,
+  controller: globalThis.ReadableStreamDefaultController<Uint8Array> | undefined,
   correlationId: string,
   sessionId?: string,
   teamId?: string
@@ -548,7 +553,7 @@ async function handleToolCall(
       await emitSSEEvent(controller, {
         type: 'tool_error',
         response: finalResponse,
-        toolName: toolName,
+        toolName,
         allowRetry: true
       });
       return; // Don't close - allow retry
@@ -571,7 +576,7 @@ async function handleParsedToolCall(
   response: string,
   env: Env,
   teamConfig: unknown,
-  controller: ReadableStreamDefaultController<Uint8Array> | undefined,
+  controller: globalThis.ReadableStreamDefaultController<Uint8Array> | undefined,
   correlationId: string,
   sessionId?: string,
   teamId?: string
@@ -602,11 +607,11 @@ async function streamTextResponse(response: string, controller: ReadableStreamDe
 
   await emitSSEEvent(controller, {
     type: 'final',
-    response: response
+      response
   });
 }
 
-function buildPrompt(messages: readonly AgentMessage[], context: ConversationContext): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
+function buildPrompt(messages: readonly AgentMessage[], _context: ConversationContext): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
   return messages.map(msg => ({
     role: msg.role || (msg.isUser ? 'user' : 'assistant'),
     content: msg.content || ''

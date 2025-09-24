@@ -1,7 +1,8 @@
-import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
-import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
+import type { TeamConfig } from '../services/TeamService.js';
+
+import type { ConversationContext } from './conversationContextManager.js';
+import type { PipelineMiddleware } from './pipeline.js';
 
 // Pre-compiled regex patterns for better performance and accuracy
 const JAILBREAK_PATTERNS = [
@@ -64,9 +65,16 @@ const LEGAL_CONTEXT_KEYWORDS = [
 export const contentPolicyFilter: PipelineMiddleware = {
   name: 'contentPolicyFilter',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, _teamConfig: TeamConfig, _env: Env) => {
     // Note: teamConfig parameter is currently unused but kept for interface compatibility
     // Future enhancement: could use team-specific content policies
+    
+    // Guard clause: ensure we have at least one message
+    if (!messages || messages.length === 0) {
+      console.warn('contentPolicyFilter: No messages provided');
+      return { context };
+    }
+    
     const latestMessage = messages[messages.length - 1];
     const violations = checkForViolations(latestMessage.content, context, messages);
     
@@ -78,7 +86,7 @@ export const contentPolicyFilter: PipelineMiddleware = {
         violations,
         messageCount: messages.length,
         messageLength: latestMessage.content.length,
-        messageHash: latestMessage.content.length > 0 ? Buffer.from(latestMessage.content).toString('base64').substring(0, 8) : ''
+        messageHash: latestMessage.content.length > 0 ? globalThis.btoa(latestMessage.content).substring(0, 8) : ''
       });
 
       // Update context with safety flags
@@ -108,7 +116,6 @@ export const contentPolicyFilter: PipelineMiddleware = {
  */
 function checkForViolations(message: string, context: ConversationContext, messages: AgentMessage[]): string[] {
   const violations: string[] = [];
-  const lowerMessage = message.toLowerCase();
 
   // 1. Jailbreak attempts
   if (isJailbreakAttempt(message)) {
@@ -158,8 +165,11 @@ function isNonLegalRequest(message: string, context: ConversationContext, messag
     return false; // Allow messages with legal context
   }
 
-  // Check for legal context in conversation history
-  const conversationText = messages.map(msg => msg.content).join(' ');
+  // Check for legal context in conversation history (user messages only)
+  const conversationText = messages
+    .filter(msg => msg.role === 'user')
+    .map(msg => msg.content)
+    .join(' ');
   const hasConversationLegalContext = LEGAL_CONTEXT_KEYWORDS.some(keyword => 
     conversationText.toLowerCase().includes(keyword.toLowerCase())
   );
@@ -226,7 +236,7 @@ function isSpamContent(message: string, context: ConversationContext, messages: 
 /**
  * Get appropriate response for violation type
  */
-function getViolationResponse(violations: string[], context: ConversationContext): string {
+function getViolationResponse(violations: string[], _context: ConversationContext): string {
   if (violations.includes('jailbreak_attempt')) {
     return "I'm a legal intake specialist and can only help with legal matters. I cannot change my role or provide other types of assistance.";
   }

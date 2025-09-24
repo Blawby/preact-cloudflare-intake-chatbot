@@ -85,9 +85,17 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
           </h3>
           <button
             onClick={onClose}
-            className={`p-1 rounded-md ${isDark ? 'hover:bg-dark-hover' : 'hover:bg-gray-100'}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClose();
+              }
+            }}
+            className={`p-1 rounded-md transition-colors ${isDark ? 'hover:bg-dark-hover' : 'hover:bg-gray-100'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+            aria-label="Close contact options modal"
+            type="button"
           >
-            <XMarkIcon className="w-5 h-5 text-gray-500" />
+            <XMarkIcon className="w-5 h-5 text-gray-500" aria-hidden="true" />
           </button>
         </div>
 
