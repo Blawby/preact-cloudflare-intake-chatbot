@@ -75,6 +75,16 @@ export async function handleMessages(request: Request, env: Env): Promise<Respon
 
       console.log('Saving message for session:', sessionId, 'isUser:', isUser);
 
+      // Validate session exists in sessions table first
+      const sessionValidationStmt = env.DB.prepare(`
+        SELECT id, team_id FROM sessions WHERE id = ? AND status = 'active'
+      `);
+      const sessionRecord = await sessionValidationStmt.bind(sessionId).first();
+
+      if (!sessionRecord) {
+        throw HttpErrors.badRequest('Invalid or expired session ID');
+      }
+
       // Get or create conversation
       let conversationId: string;
       
@@ -85,25 +95,20 @@ export async function handleMessages(request: Request, env: Env): Promise<Respon
 
       if (existingConversation) {
         conversationId = existingConversation.id;
+        console.log('Using existing conversation:', conversationId);
       } else {
-        // Create new conversation
+        // Create new conversation linked to the validated session
         conversationId = crypto.randomUUID();
         
-        // Get team ID if provided, otherwise use default
-        let actualTeamId = teamId;
-        if (!actualTeamId) {
-          // Default to blawby-ai team
-          const teamCheckStmt = env.DB.prepare('SELECT id FROM teams WHERE slug = ?');
-          const defaultTeam = await teamCheckStmt.bind('blawby-ai').first();
-          actualTeamId = defaultTeam?.id || '01K0TNGNKTM4Q0AG0XF0A8ST0Q';
-        }
+        // Use the team ID from the session record
+        const actualTeamId = sessionRecord.team_id;
 
         const createConversationStmt = env.DB.prepare(`
-          INSERT INTO conversations (id, team_id, session_id, created_at, updated_at)
-          VALUES (?, ?, ?, datetime('now'), datetime('now'))
+          INSERT INTO conversations (id, team_id, session_id, status, created_at, updated_at)
+          VALUES (?, ?, ?, 'active', datetime('now'), datetime('now'))
         `);
         await createConversationStmt.bind(conversationId, actualTeamId, sessionId).run();
-        console.log('Created new conversation:', conversationId);
+        console.log('✅ Created new conversation linked to session:', conversationId, 'teamId:', actualTeamId);
       }
 
       // Save message

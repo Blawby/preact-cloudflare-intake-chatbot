@@ -24,7 +24,7 @@ experimental_remote = true
 [[d1_databases]]
 binding = "DB"
 database_name = "blawby-ai-chatbot"
-database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf"  # blawby-ai-chatbot
+database_id = "39e61e89-fd5e-4aa2-8ec5-ed0df17426ef"  # blawby-ai-chatbot
 experimental_remote = true
 
 # Resend API key for email notifications (set via wrangler secret put RESEND_API_KEY)
@@ -85,7 +85,7 @@ kv_namespaces = [
   { binding = "CHAT_SESSIONS", id = "9ca96bd55b2d4455bad3fe0cda914f14", preview_id = "e7bbadb101d44a828fb3ef34528b3540", experimental_remote = true }
 ]
 d1_databases = [
-  { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf", experimental_remote = true }
+  { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "39e61e89-fd5e-4aa2-8ec5-ed0df17426ef", experimental_remote = true }
 ]
 # Updated to use modern nested producers syntax
 [[env.production.queues.producers]]

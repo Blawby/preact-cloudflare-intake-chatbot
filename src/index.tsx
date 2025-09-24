@@ -9,6 +9,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { useMessageHandling } from './hooks/useMessageHandling';
 import { useFileUpload } from './hooks/useFileUpload';
 import { useTeamConfig } from './hooks/useTeamConfig';
+import { useEnhancedSession } from './hooks/useEnhancedSession';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
 import './index.css';
@@ -18,40 +19,6 @@ import './index.css';
 export function App() {
 	// Core state
 	const [clearInputTrigger, setClearInputTrigger] = useState(0);
-	const [sessionId] = useState<string>(() => {
-		// Check URL parameters first for session ID
-		if (typeof window !== 'undefined') {
-			const urlParams = new URLSearchParams(window.location.search);
-			const urlSessionId = urlParams.get('session');
-			
-			if (urlSessionId && urlSessionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-				// Valid UUID in URL, use it and store in localStorage
-				localStorage.setItem('blawby-session-id', urlSessionId);
-				return urlSessionId;
-			}
-			
-			// No valid URL session, try localStorage
-			const stored = localStorage.getItem('blawby-session-id');
-			if (stored) {
-				// Update URL to include session for shareability
-				const newUrl = new URL(window.location.href);
-				newUrl.searchParams.set('session', stored);
-				window.history.replaceState(null, '', newUrl.toString());
-				return stored;
-			}
-		}
-		
-		// Create new session
-		const newSessionId = crypto.randomUUID();
-		if (typeof window !== 'undefined') {
-			localStorage.setItem('blawby-session-id', newSessionId);
-			// Update URL to include new session
-			const newUrl = new URL(window.location.href);
-			newUrl.searchParams.set('session', newSessionId);
-			window.history.replaceState(null, '', newUrl.toString());
-		}
-		return newSessionId;
-	});
 	const [currentTab, setCurrentTab] = useState<'chats'>('chats');
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
@@ -59,6 +26,22 @@ export function App() {
 	// Use custom hooks
 	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
 		onError: (error) => console.error('Team config error:', error)
+	});
+
+	// Enhanced session management
+	const { 
+		sessionId, 
+		sessionData, 
+		isLoading: isSessionLoading, 
+		error: sessionError,
+		isValid: isSessionValid,
+		userFingerprint 
+	} = useEnhancedSession({
+		teamId: teamId || 'blawby-ai',
+		autoCreate: true,
+		autoRefresh: true,
+		refreshInterval: 30, // Refresh every 30 minutes
+		crossTabSync: true // Enable cross-tab synchronization
 	});
 
 	const { messages, sendMessage, handleContactFormSubmit, addMessage, cancelStreaming } = useMessageHandling({
@@ -225,6 +208,54 @@ export function App() {
 
 
 	// Handle navigation to chats - removed since bottom nav is disabled
+
+	// Debug session information
+	useEffect(() => {
+		console.log('🔍 Enhanced Session Debug:', {
+			sessionId,
+			sessionData,
+			isSessionLoading,
+			sessionError,
+			isSessionValid,
+			userFingerprint,
+			teamId
+		});
+	}, [sessionId, sessionData, isSessionLoading, sessionError, isSessionValid, userFingerprint, teamId]);
+
+	// Show loading state while session is being created/validated
+	if (isSessionLoading) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+					<p className="text-gray-600 dark:text-gray-400">Initializing session...</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Show error state if session failed to create
+	if (sessionError && !sessionId) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="text-center max-w-md p-6">
+					<div className="text-red-500 mb-4">⚠️</div>
+					<h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						Session Error
+					</h2>
+					<p className="text-gray-600 dark:text-gray-400 mb-4">
+						{sessionError}
+					</p>
+					<button 
+						onClick={() => window.location.reload()}
+						className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+					>
+						Retry
+					</button>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<ToastProvider>

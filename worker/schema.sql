@@ -11,6 +11,21 @@ CREATE TABLE IF NOT EXISTS teams (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Sessions table - Enhanced session management
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY, -- UUID for session
+  team_id TEXT NOT NULL,
+  user_fingerprint TEXT, -- For anonymous user identification across devices
+  device_info JSON, -- Browser, OS, screen resolution, etc.
+  location_info JSON, -- IP-based location (optional)
+  status TEXT DEFAULT 'active', -- active, expired, terminated
+  last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
+  expires_at DATETIME, -- Session expiration (30 days from last access)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
 -- Conversations table
 CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
@@ -25,7 +40,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   ip_address TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  FOREIGN KEY (team_id) REFERENCES teams(id),
+  FOREIGN KEY (session_id) REFERENCES sessions(id)
 );
 
 -- Messages table
@@ -283,6 +299,13 @@ INSERT OR IGNORE INTO lawyers (id, team_id, name, email, phone, specialties, rol
 ('paralegal-1', '01K0TNGNKVCFT7V78Y4QF0PKH5', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL);
 
 -- Performance Indexes
+-- Sessions
+CREATE INDEX IF NOT EXISTS idx_sessions_team_id ON sessions(team_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_fingerprint ON sessions(user_fingerprint);
+CREATE INDEX IF NOT EXISTS idx_sessions_last_accessed ON sessions(last_accessed DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
 -- Conversations
 CREATE INDEX IF NOT EXISTS idx_conversations_session_id ON conversations(session_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_team_id ON conversations(team_id);
