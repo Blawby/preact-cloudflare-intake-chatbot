@@ -8,6 +8,18 @@ set -e
 echo "🚀 Blawby AI Chatbot - Quick Start"
 echo "=================================="
 
+# Setup environment file if it doesn't exist
+if [ ! -f ".dev.vars" ]; then
+    echo "📝 Setting up environment file..."
+    if [ -f "dev.vars.example" ]; then
+        cp dev.vars.example .dev.vars
+        echo "✅ Created .dev.vars from example"
+        echo "   (You can edit it later with your actual API keys)"
+    else
+        echo "⚠️  Warning: dev.vars.example not found"
+    fi
+fi
+
 # Create local database (ignore if already exists)
 wrangler d1 create blawby-ai-chatbot --local 2>/dev/null || echo "Database already exists ✓"
 
