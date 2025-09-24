@@ -1,18 +1,15 @@
-import { Logger } from '../../utils/logger.ts';
-import { PromptBuilder } from '../../utils/promptBuilder.ts';
-import type { Env } from '../../types.ts';
-import { hasContactInformation as hasContactInfo, detectContactInfo, logContactInfoDetection } from '../../utils/contactInfoUtils.ts';
+import { Logger } from '../../utils/logger.js';
+import { PromptBuilder } from '../../utils/promptBuilder.js';
+import type { Env } from '../../types.js';
+import { hasContactInformation as hasContactInfo, detectContactInfo, logContactInfoDetection } from '../../utils/contactInfoUtils.js';
 import {
   ConversationStateError,
-  AIServiceError,
   ValidationError,
   LegalIntakeError,
   withErrorHandling,
   withErrorHandlingSync,
-  ErrorResult,
-  createErrorResult,
-  createSuccessResult
-} from './errors.ts';
+  ErrorResult
+} from './errors.js';
 
 export enum ConversationState {
   INITIAL = 'INITIAL',
@@ -316,16 +313,26 @@ export class ConversationStateMachine {
           return ConversationState.COLLECTING_DETAILS;
         }
 
-        // If we have all legal information AND lead is qualified, show contact form
-        console.log('🔍 Final state determination: SHOWING_CONTACT_FORM');
-        console.log('🔍 Context for contact form:', {
-          hasLegalIssue: context.hasLegalIssue,
-          legalIssueType: context.legalIssueType,
-          description: context.description,
-          isQualifiedLead: context.isQualifiedLead,
-          reason: 'Legal info complete, lead qualified, contact info needed'
-        });
-        return ConversationState.SHOWING_CONTACT_FORM;
+        // If lead not yet qualified, keep asking qualifying questions
+        if (!context.isQualifiedLead && context.legalIssueType && context.description) {
+          return ConversationState.QUALIFYING_LEAD;
+        }
+
+        // If user explicitly asked for a lawyer (skip-to-lawyer intent)
+        if (/lawyer|attorney|talk to.*lawyer|speak to.*attorney|need a lawyer|want a lawyer|hire.*lawyer/i.test(conversationText)) {
+          console.log('🔍 User explicitly requested lawyer - showing contact form');
+          return ConversationState.SHOWING_CONTACT_FORM;
+        }
+
+        // If this is a sensitive matter that needs immediate attention
+        if (isSensitiveMatter) {
+          console.log('🔍 Sensitive matter detected - showing contact form');
+          return ConversationState.SHOWING_CONTACT_FORM;
+        }
+
+        // Otherwise, don't force contact form yet — keep gathering information
+        console.log('🔍 Continuing conversation - not ready for contact form yet');
+        return ConversationState.GATHERING_INFORMATION;
       },
       {
         conversationText: conversationText?.substring(0, 100) + '...',

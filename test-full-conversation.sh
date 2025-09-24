@@ -33,14 +33,19 @@ send_message() {
             \"sessionId\": \"$SESSION_ID\"
         }" \
         --no-buffer \
-        --max-time 8 \
+        --max-time 30 \
         --silent --show-error 2>/dev/null)
     
     if [ $? -eq 0 ]; then
-        echo "$response" | head -20  # Show first 20 lines of response
+        echo "$response" | head -30  # Show first 30 lines of response
         echo "... (response continues)"
     else
         echo "Request failed or timed out"
+        # Show partial response if available
+        if [ -n "$response" ]; then
+            echo "Partial response received:"
+            echo "$response" | head -10
+        fi
     fi
     
     echo ""
