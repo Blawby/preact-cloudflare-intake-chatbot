@@ -41,8 +41,6 @@ export default defineConfig({
       '~': resolve(__dirname, './'),
       '@tests': resolve(__dirname, './tests'),
       '@fixtures': resolve(__dirname, './tests/fixtures'),
-      'worker_threads': resolve(__dirname, './tests/stubs/worker_threads.ts'),
-      'node:worker_threads': resolve(__dirname, './tests/stubs/worker_threads.ts')
     }
   }
 }); 

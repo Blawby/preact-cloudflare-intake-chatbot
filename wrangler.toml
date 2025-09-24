@@ -43,9 +43,23 @@ LAWYER_SEARCH_API_URL = "https://search.blawby.com"
 # PDF generation is handled locally using pdf-lib - no external API needed
 
 # Cloudflare AI Configuration
-CLOUDFLARE_ACCOUNT_ID = "fa3dc6c06433f6b0ea78d95bce23ad91"
 CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
 # CLOUDFLARE_API_TOKEN should be set via: wrangler secret put CLOUDFLARE_API_TOKEN
+# CLOUDFLARE_ACCOUNT_ID should be set via: wrangler secret put CLOUDFLARE_ACCOUNT_ID
+
+# Environment flags
+NODE_ENV = "development"
+DEBUG = "false"
+
+# AI Model Configuration (used in worker/agents/legal-intake/index.ts)
+AI_MODEL = "llama-3.1-8b-instant"
+
+# Analysis Configuration (used in worker/routes/analyze.ts)
+ANALYSIS_TIMEOUT_MS = "60000"
+
+# Rate Limiting Configuration (referenced in README)
+RATE_LIMIT_REQUESTS_PER_MINUTE = "60"
+RATE_LIMIT_BURST_SIZE = "10"
 
 # R2 bucket for file storage
 [[r2_buckets]]

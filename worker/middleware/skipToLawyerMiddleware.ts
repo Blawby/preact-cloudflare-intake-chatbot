@@ -1,7 +1,8 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
-import { LawyerSearchService, type LawyerSearchResponse } from '../services/LawyerSearchService.js';
+import { LawyerSearchService } from '../services/LawyerSearchService.js';
+import type { LawyerSearchResponse } from '../schemas/lawyer';
 import { QuotaExceededError, LawyerSearchError, LawyerSearchTimeoutError } from '../utils/lawyerSearchErrors.js';
 import { Logger } from '../utils/logger.js';
 import type { Env, AgentMessage } from '../types.js';
@@ -272,6 +273,7 @@ function handleTeamMode(matterInfo: MatterInfo, context: ConversationContext): M
   // Return context without stopping - let AI agent handle the contact form
   return {
     context: updatedContext,
+    response: '', // Empty response since AI agent will handle the contact form
     shouldStop: false
   };
 }

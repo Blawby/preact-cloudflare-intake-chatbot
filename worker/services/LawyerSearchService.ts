@@ -1,40 +1,7 @@
 import { Logger } from '../utils/logger';
 import { QuotaExceededError, LawyerSearchError, LawyerSearchTimeoutError } from '../utils/lawyerSearchErrors';
+import type { LawyerProfile, LawyerSearchParams, LawyerSearchResponse } from '../schemas/lawyer';
 
-export interface LawyerProfile {
-  id: string;
-  name: string;
-  firm?: string;
-  location: string;
-  practiceAreas: string[];
-  rating?: number;
-  reviewCount?: number;
-  phone?: string;
-  email?: string;
-  website?: string;
-  bio?: string;
-  experience?: string;
-  languages?: string[];
-  consultationFee?: number;
-  availability?: string;
-}
-
-export interface LawyerSearchParams {
-  state?: string;
-  city?: string;
-  practiceArea?: string;
-  zipCode?: string;
-  radius?: number;
-  limit?: number;
-}
-
-export interface LawyerSearchResponse {
-  lawyers: LawyerProfile[];
-  total: number;
-  page: number;
-  limit: number;
-  hasMore: boolean;
-}
 
 export class LawyerSearchService {
   private static readonly BASE_URL = 'https://search.blawby.com';

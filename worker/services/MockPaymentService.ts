@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { PaymentRequest, PaymentResponse } from './PaymentService';
+import type { PaymentRequest, PaymentResponse } from '../schemas/payment';
 
 export class MockPaymentService {
   private env: Env;

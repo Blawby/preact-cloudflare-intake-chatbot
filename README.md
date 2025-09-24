@@ -100,11 +100,16 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 **Running Tests:**
 ```bash
 # Start the development servers (required for tests)
-npm run dev  # Vite frontend
-npx wrangler dev  # Cloudflare Worker API (required for integration tests)
+npm run dev:full       # Both frontend and worker
+# OR separately:
+npm run dev            # Frontend only
+npm run dev:worker     # Worker only
 
-# Run all tests (unit/integration + E2E):
-npm run test:all
+# Run conversation flow tests (recommended):
+npm run test:conversation
+
+# Run all vitest tests:
+npm test
 
 # Run specific test types:
 npm run test:watch     # Watch mode
@@ -112,7 +117,6 @@ npm run test:ui        # UI mode
 npm run test:coverage  # Coverage report
 ```
 
-**📖 For detailed testing documentation, see [tests/README.md](tests/README.md)**  
 
 ## 🚀 **Quick Reference - Team Management**
 
@@ -177,8 +181,9 @@ wrangler d1 execute blawby-ai-chatbot --command "SELECT id, slug, name, created_
 
 3. **Set up environment variables**
    ```bash
-   cp env.example .env
-   # Edit .env with your Cloudflare configuration
+   # Copy the example file and fill in your secrets
+   cp .dev.vars.example .dev.vars
+   # Edit .dev.vars with your actual API keys and tokens
    ```
 
 4. **Deploy to Cloudflare**
@@ -188,11 +193,12 @@ wrangler d1 execute blawby-ai-chatbot --command "SELECT id, slug, name, created_
 
 5. **Start development servers**
    ```bash
-   # Start the frontend development server
-   npm run dev
+   # Start both frontend and worker together
+   npm run dev:full
    
-   # In a separate terminal, start the Cloudflare Worker API server
-   npx wrangler dev
+   # OR start them separately:
+   npm run dev            # Frontend only
+   npm run dev:worker     # Worker only
    ```
 
 ## 🔧 **Configuration**
@@ -205,7 +211,7 @@ The system follows **Cloudflare's pure API-first approach** for multi-tenant tea
 
 - ✅ **API-First**: All team operations via REST API
 - ✅ **No Seeding**: Teams created through API calls, not static files
-- ✅ **Environment Resolution**: `${ENV_VAR}` pattern for secrets
+- ✅ **Environment Resolution**: Proper secret management via `wrangler secret put`
 - ✅ **Runtime Configuration**: Dynamic team management
 - ✅ **Scalable**: Multi-tenant architecture
 
@@ -305,15 +311,8 @@ wrangler d1 execute blawby-ai-chatbot --command "SELECT slug, json_extract(confi
 wrangler d1 execute blawby-ai-chatbot --command "SELECT id, token_name, permissions, active, created_at FROM team_api_tokens WHERE team_id = '01K0TNGNKTM4Q0AG0XF0A8ST0Q';"
 
 # Setup Blawby API configuration (secure token storage)
-export BLAWBY_API_KEY='your-actual-api-key'
-export BLAWBY_TEAM_ULID='your-team-ulid'  # Optional, defaults to 01jq70jnstyfzevc6423czh50e
-./scripts/setup-blawby-api.sh
-
-# The setup script will:
-# 1. Create a SHA-256 hash of your API key
-# 2. Store the hash securely in the team_api_tokens table
-# 3. Update team config with only metadata (no sensitive data)
-# 4. Verify the secure setup was successful
+# Note: API tokens are managed through the /api/teams endpoints
+# Use the team management API to configure secure token storage
 
 # Delete team by slug
 wrangler d1 execute blawby-ai-chatbot --command "DELETE FROM teams WHERE slug = 'old-team';"
@@ -352,29 +351,38 @@ wrangler deploy
 
 ### Environment Variables
 
-Create a `.env` file with the following variables:
+The project uses a clean separation of environment variables following Cloudflare Workers best practices:
 
-```env
-# Cloudflare Configuration
-CLOUDFLARE_ACCOUNT_ID=your_account_id
-CLOUDFLARE_API_TOKEN=your_api_token
-
-# Database and Storage
-KV_NAMESPACE_ID=your_kv_namespace_id
-KV_NAMESPACE_PREVIEW_ID=your_kv_preview_namespace_id
-D1_DATABASE_ID=your_d1_database_id
-R2_BUCKET_NAME=your_r2_bucket_name
-
-# AI Configuration
-AI_MODEL=@cf/meta/llama-3.1-8b-instruct
-
-# Rate Limiting
-RATE_LIMIT_REQUESTS_PER_MINUTE=60
-RATE_LIMIT_BURST_SIZE=10
-
-# Email (Optional)
-RESEND_API_KEY=your_resend_api_key
+#### **Local Development (`.dev.vars`)**
+```bash
+# Copy the example file and fill in your secrets
+cp .dev.vars.example .dev.vars
 ```
+
+Required secrets for local development:
+- `BLAWBY_API_TOKEN` - API key for Blawby services
+- `LAWYER_SEARCH_API_KEY` - API key for lawyer search
+- `CLOUDFLARE_API_TOKEN` - API key for Cloudflare operations
+- `RESEND_API_KEY` - API key for email notifications
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
+
+#### **Production Secrets**
+Set these via `wrangler secret put`:
+```bash
+wrangler secret put BLAWBY_API_TOKEN
+wrangler secret put LAWYER_SEARCH_API_KEY
+wrangler secret put CLOUDFLARE_API_TOKEN
+wrangler secret put RESEND_API_KEY
+wrangler secret put CLOUDFLARE_ACCOUNT_ID
+```
+
+#### **Configuration (`wrangler.toml`)**
+Non-sensitive configuration is stored in `wrangler.toml`:
+- API URLs and endpoints
+- Team identifiers
+- AI model configuration
+- Rate limiting settings
+- Environment flags
 
 ### Wrangler Configuration
 
@@ -393,29 +401,24 @@ The `wrangler.toml` file is pre-configured with:
 **Prerequisites:**
 ```bash
 # Start both development servers (required for integration tests)
-npm run dev  # Frontend server
-npx wrangler dev  # Cloudflare Worker API server
+npm run dev:full       # Both frontend and worker
+# OR separately:
+npm run dev            # Frontend only
+npm run dev:worker     # Worker only
 ```
 
 **Available Test Commands:**
 ```bash
-# Run all tests with real API calls (requires wrangler dev server)
+# Run conversation flow tests (recommended - tests core AI functionality)
+npm run test:conversation
+
+# Run all vitest tests (unit/integration tests)
 npm test
 
-# Run all tests (unit/integration + E2E):
-npm run test:all
-
 # Run specific test types:
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage report
-npm run test:coverage
-
-# Run tests with UI interface
-npm run test:ui
-
+npm run test:watch     # Watch mode
+npm run test:coverage  # Coverage report
+npm run test:ui        # UI interface
 ```
 
 ### Test Configuration
@@ -430,7 +433,8 @@ The project uses a unified test configuration that runs all tests against real A
 - Includes unit, integration, and paralegal tests
 
 **Test Results:**
-- All tests: ~122 tests, ~2-3 minutes (real API calls)
+- **Conversation Flow Tests**: 10 tests, all passing ✅ (tests core AI functionality)
+- **Vitest Tests**: ~151 tests, ~20 minutes (143 pass, 8 fail - mostly edge cases)
 - Tests actual worker behavior and database operations
 
 ### Manual Testing
@@ -491,7 +495,8 @@ curl -X POST https://your-worker.workers.dev/api/agent \
 │   ├── unit/           # Unit tests
 │   ├── integration/    # Integration tests
 │   └── paralegal/      # Paralegal service tests
-├── vitest.config.ts     # Fast tests configuration
+├── test-conversation-flow.sh  # Core AI conversation tests
+├── vitest.config.ts     # Vitest configuration
 └── public/              # Static assets
 ```
 

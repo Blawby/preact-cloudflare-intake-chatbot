@@ -1,5 +1,6 @@
 #!/bin/bash
-# Comprehensive Conversation Flow Test Suite
+# Blawby AI Chatbot - Conversation Flow Test Suite
+# Tests all conversation scenarios for production readiness
 # Covers both public (blawby-ai) and team (north-carolina-legal-services) modes
 
 # set -e  # Removed to prevent early exit on test failures
@@ -20,9 +21,9 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 CRITICAL_FAILURES=0
 
-# Create log directory
-mkdir -p "$LOG_DIR"
-echo -e "${BLUE}📁 Logging responses to: $LOG_DIR${NC}"
+# Create log directory in organized structure
+mkdir -p "test-results/production-readiness/$LOG_DIR"
+echo -e "${BLUE}📁 Logging responses to: test-results/production-readiness/$LOG_DIR${NC}"
 
 ###############################################
 # Helpers
@@ -46,7 +47,7 @@ make_request() {
     local messages_json=$3
     local test_name=$4
 
-    local log_file="$LOG_DIR/${test_name//[^a-zA-Z0-9]/-}.json"
+    local log_file="test-results/production-readiness/$LOG_DIR/${test_name//[^a-zA-Z0-9]/-}.json"
     
     echo -e "${YELLOW}📤 Request: $test_name${NC}"
     echo -e "${YELLOW}   Team: $team_id | Session: $session_id${NC}"
@@ -235,9 +236,38 @@ echo -e "${RED}🚨 Critical Failures: $CRITICAL_FAILURES${NC}"
 echo ""
 
 echo ""
-echo -e "${BLUE}📁 Detailed response logs saved to: $LOG_DIR${NC}"
+echo -e "${BLUE}📁 Detailed response logs saved to: test-results/production-readiness/$LOG_DIR${NC}"
 echo -e "${YELLOW}   Each test response is saved as a separate JSON file${NC}"
 echo -e "${YELLOW}   Use these logs to debug why specific features aren't working${NC}"
+echo ""
+echo -e "${BLUE}🔍 To view the logs, use these terminal commands:${NC}"
+echo -e "${YELLOW}   # View all test log files:${NC}"
+echo -e "   ls -la test-results/production-readiness/$LOG_DIR/"
+echo ""
+echo -e "${YELLOW}   # View a specific test response:${NC}"
+echo -e "   cat test-results/production-readiness/$LOG_DIR/Initial-Greeting.json | jq ."
+echo ""
+echo -e "${YELLOW}   # View all responses in a readable format:${NC}"
+echo -e "   for file in test-results/production-readiness/$LOG_DIR/*.json; do echo \"=== \$(basename \$file) ===\"; cat \$file | jq .; echo; done"
+echo ""
+echo -e "${YELLOW}   # Search for specific content across all logs:${NC}"
+echo -e "   grep -r \"contact.*form\" test-results/production-readiness/$LOG_DIR/ || echo \"No contact forms found\""
+echo ""
+echo -e "${BLUE}📋 Development Commands:${NC}"
+echo -e "${YELLOW}   # Start frontend only:${NC}"
+echo -e "   npm run dev"
+echo ""
+echo -e "${YELLOW}   # Start worker only:${NC}"
+echo -e "   npm run dev:worker"
+echo ""
+echo -e "${YELLOW}   # Start both frontend and worker:${NC}"
+echo -e "   npm run dev:full"
+echo ""
+echo -e "${YELLOW}   # Check worker health:${NC}"
+echo -e "   curl -s http://localhost:8787/api/health"
+echo ""
+echo -e "${YELLOW}   # Run this conversation test:${NC}"
+echo -e "   npm run test:conversation"
 echo ""
 
 if [ $CRITICAL_FAILURES -eq 0 ]; then

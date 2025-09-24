@@ -1,7 +1,8 @@
 import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { parseJsonBody } from '../utils';
-import { PaymentService, PaymentRequest } from '../services/PaymentService';
+import { PaymentService } from '../services/PaymentService';
+import { PaymentRequest } from '../schemas';
 import { MockPaymentService } from '../services/MockPaymentService';
 
 export async function handlePayment(request: Request, env: Env): Promise<Response> {

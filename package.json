@@ -6,6 +6,8 @@
 	},
 	"scripts": {
 		"dev": "vite",
+		"dev:worker": "wrangler dev --port 8787",
+		"dev:full": "concurrently \"npm run dev\" \"npm run dev:worker\"",
 		"build": "vite build",
 		"preview": "vite preview",
 		"lint": "eslint .",
@@ -15,7 +17,10 @@
 		"test:all": "npm run test",
 		"test:watch": "vitest --watch",
 		"test:ui": "vitest --ui",
-		"test:coverage": "vitest --coverage"
+		"test:coverage": "vitest --coverage",
+		"test:conversation": "./test-conversation-flow.sh",
+		"deploy": "wrangler deploy",
+		"deploy:preview": "wrangler deploy --env preview"
 	},
 	"dependencies": {
 		"@heroicons/react": "^2.2.0",
@@ -47,6 +52,7 @@
 		"@typescript-eslint/parser": "^8.44.1",
 		"@vitest/ui": "^2.1.5",
 		"autoprefixer": "^10.4.21",
+		"concurrently": "^8.2.2",
 		"critters": "^0.0.23",
 		"eslint": "^9.36.0",
 		"eslint-plugin-jsx-a11y": "^6.10.2",

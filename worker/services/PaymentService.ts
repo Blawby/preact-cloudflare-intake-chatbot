@@ -1,96 +1,11 @@
 import type { Env } from '../types';
 import { withRetry } from '../utils/retry.js';
 import { Currency } from '../agents/legal-intake/index.js';
+import type { PaymentRequest, PaymentResponse, InvoiceCreateRequest, InvoiceCreateResponse, CustomerCreateRequest, CustomerCreateResponse, PaymentConfig, InvoiceErrorCode, InvoiceResult } from '../schemas/payment';
 
-export interface PaymentRequest {
-  customerInfo: {
-    name: string;
-    email: string;
-    phone: string;
-    location: string;
-  };
-  matterInfo: {
-    type: string;
-    description: string;
-    urgency: string;
-    opposingParty?: string;
-  };
-  teamId: string;
-  sessionId: string;
-}
 
-export interface PaymentResponse {
-  success: boolean;
-  invoiceUrl?: string;
-  paymentId?: string;
-  status?: string;
-  error?: string;
-}
 
-export interface InvoiceCreateRequest {
-  customer_id: string;
-  currency: Currency;
-  due_date: string;
-  status: string;
-  line_items: Array<{
-    description: string;
-    quantity: number;
-    unit_price: number;
-    line_total: number;
-  }>;
-}
 
-export interface InvoiceCreateResponse {
-  data: {
-    id: string;
-    payment_link: string;
-  };
-}
-
-export interface CustomerCreateResponse {
-  data: {
-    id: string;
-  };
-}
-
-export interface CustomerCreateRequest {
-  name: string;
-  email: string;
-  phone: string;
-  currency: Currency;
-  status: string;
-  team_id: string;
-  address_line_1?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-}
-
-export interface PaymentConfig {
-  defaultPrice: number; // in cents
-  currency: Currency;
-  dueDateDays: number;
-  matterTypePricing?: Record<string, number>; // matter type -> price in cents
-}
-
-// Invoice creation error codes for better error handling
-type InvoiceErrorCode = 
-  | 'NETWORK_TIMEOUT'
-  | 'NETWORK_ABORT' 
-  | 'SERVER_ERROR'
-  | 'VALIDATION_ERROR'
-  | 'AUTHENTICATION_ERROR'
-  | 'RATE_LIMIT_ERROR'
-  | 'UNKNOWN_ERROR';
-
-interface InvoiceResult {
-  success: boolean;
-  invoiceUrl?: string;
-  paymentId?: string;
-  error?: string;
-  errorCode?: InvoiceErrorCode;
-  isIndeterminate?: boolean; // true if we can't determine if invoice was created server-side
-}
 
 export class PaymentService {
   private env: Env;
@@ -538,7 +453,7 @@ export class PaymentService {
               const errorText = await response.text();
               const error = new Error(`Invoice creation failed: ${response.status} - ${errorText}`);
               // Add error code based on HTTP status
-              (error as any).errorCode = response.status >= 500 ? 'SERVER_ERROR' :
+              (error as Error & { errorCode?: InvoiceErrorCode }).errorCode = response.status >= 500 ? 'SERVER_ERROR' :
                                         response.status === 401 ? 'AUTHENTICATION_ERROR' :
                                         response.status === 429 ? 'RATE_LIMIT_ERROR' :
                                         response.status >= 400 ? 'VALIDATION_ERROR' : 'UNKNOWN_ERROR';
@@ -605,8 +520,8 @@ export class PaymentService {
         } else if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
           errorCode = 'NETWORK_TIMEOUT';
           isIndeterminate = true; // Timeout could still create invoice server-side
-        } else if ((error as any).errorCode) {
-          errorCode = (error as any).errorCode;
+        } else if ((error as Error & { errorCode?: InvoiceErrorCode }).errorCode) {
+          errorCode = (error as Error & { errorCode?: InvoiceErrorCode }).errorCode!;
           // Server errors and rate limits are indeterminate
           isIndeterminate = errorCode === 'SERVER_ERROR' || errorCode === 'RATE_LIMIT_ERROR';
         }
@@ -876,7 +791,7 @@ export class PaymentService {
    * @param teamConsultationFee - The consultation fee from team config (can be any type)
    * @returns A valid number representing the consultation fee in dollars
    */
-  private validateConsultationFee(teamConsultationFee: any): number {
+  private validateConsultationFee(teamConsultationFee: unknown): number {
     if (teamConsultationFee !== undefined && teamConsultationFee !== null) {
       const parsedFee = parseFloat(String(teamConsultationFee));
       if (isFinite(parsedFee) && parsedFee > 0) {
