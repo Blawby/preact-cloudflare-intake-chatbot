@@ -1,7 +1,7 @@
 import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
-import type { Env } from '../types.js';
+import type { Env, AgentMessage } from '../types.js';
 import { JurisdictionValidator as JurisdictionValidatorUtil, type JurisdictionConfig } from '../schemas/jurisdictionConfig.js';
 
 /**
@@ -11,7 +11,7 @@ import { JurisdictionValidator as JurisdictionValidatorUtil, type JurisdictionCo
 export const jurisdictionValidator: PipelineMiddleware = {
   name: 'jurisdictionValidator',
   
-  execute: async (message: string, context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
     const jurisdiction = teamConfig?.jurisdiction as JurisdictionConfig | undefined;
     
     // If no jurisdiction restrictions, allow all
@@ -26,6 +26,10 @@ export const jurisdictionValidator: PipelineMiddleware = {
       return { context }; // Bypass if config is invalid
     }
 
+    // Get the latest message content
+    const latestMessage = messages[messages.length - 1];
+    const message = latestMessage?.content || '';
+    
     // Check if user is in supported jurisdiction
     const userLocation = context.jurisdiction || extractLocationFromMessage(message);
     

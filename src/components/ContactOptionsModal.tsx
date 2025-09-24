@@ -11,24 +11,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { useTheme } from '../hooks/useTheme';
-
-interface LawyerProfile {
-  id: string;
-  name: string;
-  firm?: string;
-  location: string;
-  practiceAreas: string[];
-  rating?: number;
-  reviewCount?: number;
-  phone?: string;
-  email?: string;
-  website?: string;
-  bio?: string;
-  experience?: string;
-  languages?: string[];
-  consultationFee?: number;
-  availability?: string;
-}
+import type { LawyerProfile } from '../../worker/services/LawyerSearchService';
 
 interface ContactOptionsModalProps {
   lawyer: LawyerProfile;
@@ -67,8 +50,32 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
   };
 
   const handleWebsite = () => {
-    window.open(lawyer.website, '_blank', 'noopener,noreferrer');
-    onClose();
+    if (!lawyer.website) {
+      onClose();
+      return;
+    }
+
+    try {
+      // Normalize URL by adding https:// if no protocol is specified
+      let urlString = lawyer.website;
+      if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+        urlString = `https://${urlString}`;
+      }
+
+      const url = new URL(urlString);
+      
+      // Only allow http and https protocols
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        window.open(url.href, '_blank', 'noopener,noreferrer');
+        onClose();
+      } else {
+        throw new Error('Invalid protocol');
+      }
+    } catch (error) {
+      console.error('Invalid URL:', error);
+      onClose();
+      // Could optionally show an error message to the user here
+    }
   };
 
   const handleContactLawyer = () => {

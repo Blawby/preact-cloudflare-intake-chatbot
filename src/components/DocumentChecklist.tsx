@@ -166,7 +166,7 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
                         onChange={(e) => handleFileSelect(doc.id, e)}
                       />
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         icon={<CloudArrowUpIcon className="w-4 h-4" />}
                       >

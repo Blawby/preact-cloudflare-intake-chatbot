@@ -41,6 +41,7 @@ interface LawyerSearchResultsProps {
   total: number;
   onContactLawyer: (lawyer: LawyerProfile) => void;
   onSearchAgain: () => void;
+  onLoadMore?: () => void;
 }
 
 const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
@@ -48,7 +49,8 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
   lawyers,
   total,
   onContactLawyer,
-  onSearchAgain
+  onSearchAgain,
+  onLoadMore
 }) => {
   const { isDark } = useTheme();
   const [selectedLawyer, setSelectedLawyer] = useState<LawyerProfile | null>(null);
@@ -246,7 +248,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
         <div className="mt-4 text-center">
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Showing {lawyers.length} of {total} lawyers. 
-            <Button variant="ghost" size="sm" onClick={onSearchAgain} className="ml-1">
+            <Button variant="ghost" size="sm" onClick={onLoadMore || onSearchAgain} className="ml-1">
               Load More
             </Button>
           </p>

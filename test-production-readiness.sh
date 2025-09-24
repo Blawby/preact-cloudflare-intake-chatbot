@@ -85,7 +85,7 @@ scenario_greeting() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-greeting" \
         '[{"role":"user","content":"Hi, I need legal help"}]' \
         "Initial Greeting")
-    if echo "$resp" | grep -q "\"type\":\"text\"" && ! echo "$resp" | grep -q "\"type\":\"contact_form\""; then
+    if echo "$resp" | grep -q "\"type\":\"pipeline_response\"" && ! echo "$resp" | grep -q "\"type\":\"contact_form\""; then
         print_result true "Greeting was conversational"
     else
         print_result false "Greeting jumped to contact form"

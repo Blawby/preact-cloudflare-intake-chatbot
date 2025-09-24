@@ -46,7 +46,12 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
   // POST /api/pdf/download - Download generated PDF
   if (path === '/api/pdf/download' && request.method === 'POST') {
     try {
-      const body = await parseJsonBody(request) as PDFDownloadRequest;
+      let body: PDFDownloadRequest;
+      try {
+        body = await parseJsonBody(request) as PDFDownloadRequest;
+      } catch {
+        throw HttpErrors.badRequest('Invalid JSON');
+      }
 
       // Validate required fields
       if (!body.filename || !body.matterType || !body.generatedAt) {
@@ -83,7 +88,9 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
               'Content-Length': pdfResult.pdfBuffer.byteLength.toString(),
               'Cache-Control': 'no-cache, no-store, must-revalidate',
               'Pragma': 'no-cache',
-              'Expires': '0'
+              'Expires': '0',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Expose-Headers': 'Content-Disposition, Content-Length'
             }
           });
         } else {
@@ -102,18 +109,28 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
   // POST /api/pdf/generate - Generate new PDF
   if (path === '/api/pdf/generate' && request.method === 'POST') {
     try {
-      const body = await parseJsonBody(request) as {
+      let body: any;
+      try {
+        body = await parseJsonBody(request);
+        if (!body || typeof body !== 'object') {
+          throw new Error('Invalid JSON body');
+        }
+      } catch (parseError) {
+        throw HttpErrors.badRequest('Invalid JSON body');
+      }
+
+      const { sessionId, teamId, matterType } = body as {
         sessionId: string;
         teamId: string;
         matterType?: string;
       };
 
-      if (!body.sessionId || !body.teamId) {
+      if (!sessionId || !teamId) {
         throw HttpErrors.badRequest('Missing session ID or team ID');
       }
 
       // Load conversation context
-      const context = await ConversationContextManager.load(body.sessionId, body.teamId, env);
+      const context = await ConversationContextManager.load(sessionId, teamId, env);
       
       if (!context?.caseDraft) {
         throw HttpErrors.badRequest('No case draft found. Please create a case draft first.');

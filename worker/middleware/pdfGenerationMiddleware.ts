@@ -13,6 +13,11 @@ export const pdfGenerationMiddleware: PipelineMiddleware = {
   name: 'pdfGenerationMiddleware',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    // Guard against empty messages array
+    if (!messages || messages.length === 0) {
+      return { context };
+    }
+
     const latestMessage = messages[messages.length - 1];
     // Check if user is requesting PDF generation
     const pdfKeywords = [

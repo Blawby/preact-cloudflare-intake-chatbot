@@ -129,7 +129,7 @@ export interface ToolParameterProperty {
   readonly properties?: Record<string, ToolParameterProperty>;
 }
 
-export interface ToolDefinition<T = Record<string, unknown>> {
+export interface ToolDefinition<_T = Record<string, unknown>> {
   readonly name: string;
   readonly description: string;
   readonly parameters: {
@@ -331,8 +331,16 @@ function detectContextFast(conversationText: string): ConversationContext {
   };
 }
 
+// Team configuration interface
+interface TeamConfig {
+  name?: string;
+  jurisdiction?: {
+    requireLocation?: boolean;
+  };
+}
+
 // Build system prompt function
-function buildSystemPrompt(context: ConversationContext, teamConfig: unknown): string {
+function buildSystemPrompt(context: ConversationContext, teamConfig: TeamConfig): string {
   const teamName = teamConfig?.name || 'our law firm';
   const jurisdiction = teamConfig?.jurisdiction;
   
@@ -382,7 +390,7 @@ Be empathetic and professional. Focus on understanding the client's legal needs 
 }
 
 // Get available tools based on context
-function getAvailableToolsForState(state: ConversationState, context: ConversationContext): ToolDefinition<any>[] {
+function getAvailableToolsForState(state: ConversationState, context: ConversationContext): ToolDefinition<Record<string, unknown>>[] {
   const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument];
 
   switch (state) {
@@ -411,9 +419,9 @@ function hasResponseProperties(obj: unknown): obj is { message?: string; respons
   return obj !== null && typeof obj === 'object' && ('message' in obj || 'response' in obj);
 }
 
-function hasToolCalls(aiResult: unknown): aiResult is { tool_calls: NonNullable<any> } {
+function hasToolCalls(aiResult: unknown): aiResult is { tool_calls: NonNullable<unknown> } {
   return aiResult !== null && typeof aiResult === 'object' && 'tool_calls' in aiResult && 
-         Array.isArray((aiResult as any).tool_calls) && (aiResult as any).tool_calls!.length > 0;
+         Array.isArray((aiResult as Record<string, unknown>).tool_calls) && (aiResult as Record<string, unknown>).tool_calls!.length > 0;
 }
 
 // Utility functions
@@ -446,7 +454,7 @@ function extractToolResponse<T>(toolResult: ErrorResult<T>): string {
 
 function extractAIResponse(aiResult: unknown): string {
   if (aiResult !== null && typeof aiResult === 'object' && 'response' in aiResult) {
-    const response = (aiResult as any).response;
+    const response = (aiResult as Record<string, unknown>).response;
     return typeof response === 'string' ? response : 'I apologize, but I encountered an error processing your request.';
   }
   return 'I apologize, but I encountered an error processing your request.';
@@ -528,7 +536,7 @@ async function handleToolCall(
     // Special handling for show_contact_form
     if (toolName === 'show_contact_form' && toolResult.success) {
       // Check if location is required for this team
-      const requiresLocation = (teamConfig as any)?.jurisdiction?.requireLocation;
+      const requiresLocation = (teamConfig as Record<string, unknown>)?.jurisdiction?.requireLocation;
       const requiredFields = ['name', 'email', 'phone'];
       if (requiresLocation) {
         requiredFields.push('location');
@@ -539,7 +547,7 @@ async function handleToolCall(
         data: {
           fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
           required: requiredFields,
-          message: ('data' in toolResult ? (toolResult.data as any)?.message : null) || 'Please fill out the contact form below.'
+          message: ('data' in toolResult ? (toolResult.data as Record<string, unknown>)?.message : null) || 'Please fill out the contact form below.'
         }
       });
       return;
@@ -547,7 +555,7 @@ async function handleToolCall(
 
     // Note: skip_to_lawyer is now handled by middleware, not as an AI tool
 
-    const finalResponse = extractToolResponse(toolResult as ErrorResult<any>);
+    const finalResponse = extractToolResponse(toolResult as ErrorResult<Record<string, unknown>>);
 
     if (!toolResult.success && toolName === 'create_matter') {
       await emitSSEEvent(controller, {
@@ -710,7 +718,7 @@ export async function runLegalIntakeAgentStream(
     LegalIntakeLogger.logAIModelCall(correlationId, sessionId, teamId, LegalIntakeOperation.AI_MODEL_CALL, AI_MODEL_CONFIG.model);
     
     const aiResult = await withAIRetry(
-      () => env.AI.run(AI_MODEL_CONFIG.model as any, {
+      () => env.AI.run(AI_MODEL_CONFIG.model as string, {
         messages: [
           { role: 'system', content: systemPrompt },
           ...buildPrompt(messages, context)

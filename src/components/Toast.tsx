@@ -1,5 +1,5 @@
 import { FunctionComponent } from 'preact';
-import { useEffect, useState, useRef } from 'preact/hooks';
+import { useEffect, useRef, useCallback } from 'preact/hooks';
 import { motion } from 'framer-motion';
 import { CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
@@ -17,17 +17,14 @@ interface ToastProps {
 }
 
 const ToastComponent: FunctionComponent<ToastProps> = ({ toast, onRemove }) => {
-  const [_isVisible, setIsVisible] = useState(true);
   const visibilityTimerRef = useRef<number | null>(null);
-  const removalTimerRef = useRef<number | null>(null);
 
-  const handleRemove = () => {
-    setIsVisible(false);
-    removalTimerRef.current = globalThis.setTimeout(() => onRemove(toast.id), 300);
-  };
+  const handleRemove = useCallback(() => {
+    onRemove(toast.id);
+  }, [onRemove, toast.id]);
 
   useEffect(() => {
-    const duration = toast.duration || 5000; // Default 5 seconds
+    const duration = Math.max(1000, toast.duration ?? 5000); // Clamp duration to minimum 1 second
     visibilityTimerRef.current = globalThis.setTimeout(handleRemove, duration);
 
     return () => {
@@ -35,12 +32,8 @@ const ToastComponent: FunctionComponent<ToastProps> = ({ toast, onRemove }) => {
         globalThis.clearTimeout(visibilityTimerRef.current);
         visibilityTimerRef.current = null;
       }
-      if (removalTimerRef.current) {
-        globalThis.clearTimeout(removalTimerRef.current);
-        removalTimerRef.current = null;
-      }
     };
-  }, [toast.id, toast.duration, onRemove, handleRemove]);
+  }, [toast.id, toast.duration, handleRemove]);
 
   const getIcon = () => {
     switch (toast.type) {

@@ -81,6 +81,12 @@ export interface ConversationContext {
   documentChecklist?: DocumentChecklist;
   generatedPDF?: GeneratedPDF;
   lawyerSearchResults?: LawyerSearchResults;
+  // Pending contact form for skip-to-lawyer flow
+  pendingContactForm?: {
+    matterType: string;
+    urgency: string;
+    reason: string;
+  };
 }
 
 export class ConversationContextManager {
@@ -145,7 +151,9 @@ export class ConversationContextManager {
       hasPreviousLawyer: null,
       contactInfo: {},
       caseDraft: undefined,
-      documentChecklist: undefined
+      documentChecklist: undefined,
+      generatedPDF: undefined,
+      lawyerSearchResults: undefined
     };
   }
 
@@ -364,6 +372,14 @@ export class ConversationContextManager {
     }
 
     const checklist = { ...updated.documentChecklist };
+    
+    // Ensure provided and missing are arrays
+    if (!Array.isArray(checklist.provided)) {
+      checklist.provided = [];
+    }
+    if (!Array.isArray(checklist.missing)) {
+      checklist.missing = [];
+    }
     
     // Add to provided if not already there
     if (!checklist.provided.includes(documentType)) {

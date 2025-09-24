@@ -1,4 +1,4 @@
-import type { ConversationContext } from './conversationContextManager.js';
+import type { ConversationContext, DocumentChecklist } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
@@ -12,6 +12,11 @@ export const documentChecklistMiddleware: PipelineMiddleware = {
   name: 'documentChecklistMiddleware',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    // Guard against empty messages array
+    if (!messages || messages.length === 0) {
+      return { context };
+    }
+
     // Build conversation text for context-aware analysis
     const conversationText = messages.map(msg => msg.content).join(' ');
     const latestMessage = messages[messages.length - 1];

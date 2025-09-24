@@ -36,9 +36,19 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
   name: 'skipToLawyerMiddleware',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+    // Guard against empty messages array
+    if (!messages || messages.length === 0) {
+      return { context };
+    }
+
     // Build conversation text for context-aware analysis
     const conversationText = messages.map(msg => msg.content).join(' ');
     const latestMessage = messages[messages.length - 1];
+    
+    // Guard against missing or invalid message content
+    if (!latestMessage || !latestMessage.content || typeof latestMessage.content !== 'string') {
+      return { context };
+    }
     
     // Check if user wants to skip intake and go directly to a lawyer
     // Only trigger on explicit requests, not casual mentions in conversation
@@ -242,20 +252,20 @@ function handleQuotaExceededFallback(matterInfo: MatterInfo, context: Conversati
  */
 function handleTeamMode(matterInfo: MatterInfo, context: ConversationContext): MiddlewareResponse {
   // Check if location is required but not provided
-  const needsLocation = context.safetyFlags?.includes('location_required');
+  const _needsLocation = context.safetyFlags?.includes('location_required');
   
   // Instead of returning a text response, set a flag in context to trigger contact form
   const updatedContext = {
     ...context,
-    userIntent: 'skip_to_lawyer' as const,
-    conversationPhase: 'showing_contact_form' as const,
+    userIntent: 'lawyer_contact' as const,
+    conversationPhase: 'contact_collection' as const,
     // Store the matter info for the AI agent to use
-    establishedMatters: [{
+    establishedMatters: [matterInfo.matterType],
+    pendingContactForm: {
       matterType: matterInfo.matterType,
       urgency: matterInfo.urgency,
-      description: matterInfo.reason,
-      status: 'pending_contact_form'
-    }],
+      reason: matterInfo.reason
+    },
     lastUpdated: Date.now()
   };
 

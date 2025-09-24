@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import { fixupPluginRules } from '@eslint/compat';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 import react from 'eslint-plugin-react';
@@ -69,9 +70,9 @@ export default [
     },
     plugins: {
       '@typescript-eslint': typescript,
-      react,
-      'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y
+      react: fixupPluginRules(react),
+      'react-hooks': fixupPluginRules(reactHooks),
+      'jsx-a11y': fixupPluginRules(jsxA11y)
     },
     rules: {
       // TypeScript specific rules (basic recommended only)
@@ -183,7 +184,7 @@ export default [
 
   // JavaScript files configuration
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['src/**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -194,9 +195,9 @@ export default [
       }
     },
     plugins: {
-      react,
-      'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y
+      react: fixupPluginRules(react),
+      'react-hooks': fixupPluginRules(reactHooks),
+      'jsx-a11y': fixupPluginRules(jsxA11y)
     },
     rules: {
       // React/Preact rules

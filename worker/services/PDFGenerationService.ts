@@ -87,11 +87,11 @@ export class PDFGenerationService {
     // Escape all user-provided strings
     const escapedClientName = clientName ? this.escapeHtml(clientName) : '';
     const escapedTeamName = teamName ? this.escapeHtml(teamName) : '';
-    const escapedMatterType = this.escapeHtml(caseDraft.matter_type);
-    const escapedJurisdiction = this.escapeHtml(caseDraft.jurisdiction);
-    const escapedUrgency = this.escapeHtml(caseDraft.urgency);
-    const escapedStatus = this.escapeHtml(caseDraft.status);
-    const escapedTimeline = caseDraft.timeline ? this.escapeHtml(caseDraft.timeline) : '';
+    const escapedMatterType = this.escapeHtml(caseDraft?.matter_type ?? '');
+    const escapedJurisdiction = this.escapeHtml(caseDraft?.jurisdiction ?? '');
+    const escapedUrgency = this.escapeHtml(caseDraft?.urgency ?? '');
+    const escapedStatus = this.escapeHtml(caseDraft?.status ?? '');
+    const escapedTimeline = caseDraft?.timeline ? this.escapeHtml(caseDraft.timeline) : '';
 
     return `
 <!DOCTYPE html>
@@ -303,7 +303,7 @@ export class PDFGenerationService {
     <div class="section">
         <h2>Key Facts</h2>
         <ul class="facts-list">
-            ${caseDraft.key_facts.map(fact => `<li>${this.escapeHtml(fact)}</li>`).join('')}
+            ${(caseDraft?.key_facts ?? []).map(fact => `<li>${this.escapeHtml(fact)}</li>`).join('')}
         </ul>
     </div>
 
@@ -314,34 +314,34 @@ export class PDFGenerationService {
     </div>
     ` : ''}
 
-    ${caseDraft.parties.length > 0 ? `
+    ${(caseDraft?.parties ?? []).length > 0 ? `
     <div class="section">
         <h2>Parties Involved</h2>
         <ul class="parties-list">
-            ${caseDraft.parties.map(party => `
+            ${(caseDraft?.parties ?? []).map(party => `
                 <li>
-                    <strong>${this.escapeHtml(party.role)}:</strong> ${party.name ? this.escapeHtml(party.name) : 'Name not provided'}
-                    ${party.relationship ? ` (${this.escapeHtml(party.relationship)})` : ''}
+                    <strong>${this.escapeHtml(party?.role ?? '')}:</strong> ${party?.name ? this.escapeHtml(party.name) : 'Name not provided'}
+                    ${party?.relationship ? ` (${this.escapeHtml(party.relationship)})` : ''}
                 </li>
             `).join('')}
         </ul>
     </div>
     ` : ''}
 
-    ${caseDraft.documents.length > 0 ? `
+    ${(caseDraft?.documents ?? []).length > 0 ? `
     <div class="section">
         <h2>Available Documents</h2>
         <ul class="documents-list">
-            ${caseDraft.documents.map(doc => `<li>${this.escapeHtml(doc)}</li>`).join('')}
+            ${(caseDraft?.documents ?? []).map(doc => `<li>${this.escapeHtml(doc)}</li>`).join('')}
         </ul>
     </div>
     ` : ''}
 
-    ${caseDraft.evidence.length > 0 ? `
+    ${(caseDraft?.evidence ?? []).length > 0 ? `
     <div class="section">
         <h2>Evidence</h2>
         <ul class="evidence-list">
-            ${caseDraft.evidence.map(ev => `<li>${this.escapeHtml(ev)}</li>`).join('')}
+            ${(caseDraft?.evidence ?? []).map(ev => `<li>${this.escapeHtml(ev)}</li>`).join('')}
         </ul>
     </div>
     ` : ''}
@@ -393,11 +393,12 @@ export class PDFGenerationService {
           // Add a new page and reset position
           const newPage = pdfDoc.addPage([612, 792]);
           page = newPage; // Update page reference
+          height = newPage.getHeight(); // Recalculate height from new page
           yPosition = height - 50; // Reset to top of new page
           Logger.info('[PDFGenerationService] Added new page due to content overflow');
-          return false; // Content can continue on new page
+          return true; // New page was added
         }
-        return false;
+        return false; // No new page needed
       };
 
       // Helper function to add section headers with overflow protection

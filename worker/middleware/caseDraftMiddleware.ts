@@ -1,5 +1,5 @@
 import type { ConversationContext, CaseDraft } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { TeamConfig } from '../agents/legal-intake/promptTemplates.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
 import { ConversationContextManager } from './conversationContextManager.js';

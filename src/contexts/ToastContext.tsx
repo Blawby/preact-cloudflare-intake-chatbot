@@ -2,6 +2,7 @@ import { createContext, ComponentChildren } from 'preact';
 import { useContext } from 'preact/hooks';
 
 import { useToast } from '../hooks/useToast';
+import ToastContainer from '../components/ToastContainer';
 
 interface ToastContextType {
   showSuccess: (title: string, message?: string, duration?: number) => string;
@@ -13,11 +14,12 @@ interface ToastContextType {
 const ToastContext = createContext<ToastContextType | null>(null);
 
 export const ToastProvider = ({ children }: { children: ComponentChildren }) => {
-  const { showSuccess, showError, showInfo, showWarning } = useToast();
+  const { toasts, removeToast, showSuccess, showError, showInfo, showWarning } = useToast();
 
   return (
     <ToastContext.Provider value={{ showSuccess, showError, showInfo, showWarning }}>
       {children}
+      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
     </ToastContext.Provider>
   );
 };

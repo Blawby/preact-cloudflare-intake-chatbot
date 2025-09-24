@@ -79,8 +79,7 @@ export class LawyerSearchService {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'Blawby-AI-Chatbot/1.0'
+          'Content-Type': 'application/json'
         },
         signal: controller.signal
       });
@@ -243,8 +242,7 @@ export class LawyerSearchService {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'Blawby-AI-Chatbot/1.0'
+          'Content-Type': 'application/json'
         },
         signal: controller.signal
       });

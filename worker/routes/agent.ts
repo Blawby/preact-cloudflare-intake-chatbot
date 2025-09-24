@@ -172,16 +172,19 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
             }
             
             if (pipelineResult.context.documentChecklist) {
+              const { documentChecklist } = pipelineResult.context;
+              const providedSet = new Set((documentChecklist.provided || []).map(name => name.toLowerCase().trim()));
+              
               const documentChecklistEvent = `data: ${JSON.stringify({
                 type: 'document_checklist',
                 data: {
-                  matterType: pipelineResult.context.documentChecklist.matter_type,
-                  documents: pipelineResult.context.documentChecklist.required.map(name => ({
+                  matterType: documentChecklist.matter_type,
+                  documents: (documentChecklist.required || []).map(name => ({
                     id: name.toLowerCase().replace(/\s+/g, '-'),
                     name: name,
-                    description: `Required document for ${pipelineResult.context.documentChecklist.matter_type}`,
+                    description: `Required document for ${documentChecklist.matter_type}`,
                     required: true,
-                    status: 'missing'
+                    status: providedSet.has(name.toLowerCase().trim()) ? 'provided' : 'missing'
                   }))
                 }
               })}\n\n`;

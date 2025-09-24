@@ -220,17 +220,17 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	documentChecklist,
 	lawyerSearchResults,
 	generatedPDF,
-	_teamConfig,
-	_onOpenSidebar,
+	teamConfig: _teamConfig,
+	onOpenSidebar: _onOpenSidebar,
 	onContactFormSubmit,
 	isLoading,
 	aiState,
 	toolMessage,
-	_id,
-	_sessionId,
-	_teamId,
-	_showFeedback = true,
-	_onFeedbackSubmit
+	id: _id,
+	sessionId: _sessionId,
+	teamId: _teamId,
+	showFeedback: _showFeedback = true,
+	onFeedbackSubmit: _onFeedbackSubmit
 }) => {
 	const [isClient, setIsClient] = useState(false);
 	const { showSuccess, showError, showInfo } = useToastContext();

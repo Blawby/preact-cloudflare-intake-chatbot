@@ -37,6 +37,9 @@ coverage
 playwright-report/
 test-results/
 
+# Test logs
+test-logs-*/
+
 # Environment variables
 .env
 .env.local
