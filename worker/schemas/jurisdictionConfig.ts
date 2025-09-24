@@ -119,6 +119,18 @@ export class JurisdictionValidator {
   }
   
   /**
+   * Safe word-aware string matching to avoid ReDoS vulnerabilities
+   * Checks if target appears as a complete word in the text
+   */
+  private static isWordMatch(text: string, target: string): boolean {
+    if (!target || target.length === 0) return false;
+    
+    // Split text into words (whitespace and punctuation boundaries)
+    const words = text.split(/\s+/);
+    return words.some(word => word === target);
+  }
+
+  /**
    * Check if a location is supported by the jurisdiction
    */
   static isLocationSupported(
@@ -131,12 +143,12 @@ export class JurisdictionValidator {
     
     const locationLower = location.toLowerCase();
     
-    // Check states (use word boundaries for precise matching)
+    // Check states (use word-aware string matching to avoid ReDoS)
     if (config.supportedStates) {
       const stateMatch = config.supportedStates.some(state => {
-        const stateRegex = new RegExp(`\\b${state.toLowerCase()}\\b`, 'i');
-        const stateNameRegex = new RegExp(`\\b${getStateName(state).toLowerCase()}\\b`, 'i');
-        return stateRegex.test(location) || stateNameRegex.test(location);
+        const stateLower = state.toLowerCase();
+        const stateNameLower = getStateName(state).toLowerCase();
+        return this.isWordMatch(locationLower, stateLower) || this.isWordMatch(locationLower, stateNameLower);
       });
       if (stateMatch) return true;
     }
@@ -144,8 +156,8 @@ export class JurisdictionValidator {
     // Check counties
     if (config.supportedCounties) {
       const countyMatch = config.supportedCounties.some(county => {
-        const countyRegex = new RegExp(`\\b${county.toLowerCase()}\\b`, 'i');
-        return countyRegex.test(location);
+        const countyLower = county.toLowerCase();
+        return this.isWordMatch(locationLower, countyLower);
       });
       if (countyMatch) return true;
     }
@@ -153,8 +165,8 @@ export class JurisdictionValidator {
     // Check cities
     if (config.supportedCities) {
       const cityMatch = config.supportedCities.some(city => {
-        const cityRegex = new RegExp(`\\b${city.toLowerCase()}\\b`, 'i');
-        return cityRegex.test(location);
+        const cityLower = city.toLowerCase();
+        return this.isWordMatch(locationLower, cityLower);
       });
       if (cityMatch) return true;
     }

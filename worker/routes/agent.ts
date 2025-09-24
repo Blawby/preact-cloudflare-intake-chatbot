@@ -157,6 +157,23 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
             content: msg.content
           }));
 
+          // Validate attachment sizes before processing
+          const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB limit
+          const oversizedAttachments: string[] = [];
+          
+          for (const att of attachments) {
+            if (att.size > MAX_ATTACHMENT_SIZE) {
+              oversizedAttachments.push(`${att.name} (${(att.size / 1024 / 1024).toFixed(1)}MB)`);
+            }
+          }
+          
+          if (oversizedAttachments.length > 0) {
+            throw HttpErrors.payloadTooLarge(
+              `Attachment size limit exceeded. Maximum allowed size is ${MAX_ATTACHMENT_SIZE / 1024 / 1024}MB. ` +
+              `Oversized attachments: ${oversizedAttachments.join(', ')}`
+            );
+          }
+
           const fileAttachments = attachments.map(att => ({
             id: att.id || crypto.randomUUID(),
             name: att.name,
