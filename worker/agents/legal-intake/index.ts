@@ -1,6 +1,6 @@
 import { Logger } from '../../utils/logger.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
-import { TOOL_HANDLERS, Currency, Recipient, ISODateString, buildCaseDraft } from '../legalIntakeAgent.js';
+import { TOOL_HANDLERS, Currency, Recipient, ISODateString, buildCaseDraft, showDocumentChecklist } from '../legalIntakeAgent.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
 import { ToolUsageMonitor } from '../../utils/toolUsageMonitor.js';
@@ -332,12 +332,13 @@ function buildSystemPrompt(context: ConversationContext, teamConfig: any): strin
 
 Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}
 
-Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document, build_case_draft
+Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document, build_case_draft, show_document_checklist
 
 Rules:
 - Use create_matter when you have name + legal issue + contact info
 - Use show_contact_form when you have legal issue but need contact info
 - Use build_case_draft when you have organized case information but want to structure it for attorney review
+- Use show_document_checklist when you need to gather specific documents for the case
 - Be conversational and helpful
 - Ask qualifying questions to understand urgency and timeline
 - Only show contact form after qualifying the lead
@@ -356,12 +357,15 @@ PARAMETERS: {"name": "John Doe", "matter_type": "Family Law", "description": "Di
 TOOL_CALL: build_case_draft
 PARAMETERS: {"matter_type": "Family Law", "key_facts": ["Married for 5 years", "Two children ages 3 and 7", "Husband wants full custody", "Discovered infidelity 6 months ago"], "timeline": "Married 2019, children born 2021 and 2017, infidelity discovered June 2024", "parties": [{"role": "client", "name": "Jane Doe"}, {"role": "opposing party", "name": "John Doe", "relationship": "husband"}], "documents": ["Marriage certificate", "Children's birth certificates"], "evidence": ["Text messages showing infidelity", "Photos of affair"], "jurisdiction": "North Carolina", "urgency": "high"}
 
+TOOL_CALL: show_document_checklist
+PARAMETERS: {"matter_type": "Family Law", "documents": [{"id": "marriage_cert", "name": "Marriage Certificate", "description": "Official marriage certificate", "required": true}, {"id": "birth_certs", "name": "Children's Birth Certificates", "description": "Birth certificates for both children", "required": true}, {"id": "financial_docs", "name": "Financial Documents", "description": "Bank statements, tax returns, pay stubs", "required": false}]}
+
 Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.`;
 }
 
 // Get available tools based on context
 function getAvailableToolsForState(state: ConversationState, context: ConversationContext): ToolDefinition<any>[] {
-  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument, buildCaseDraft];
+  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument, buildCaseDraft, showDocumentChecklist];
 
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:

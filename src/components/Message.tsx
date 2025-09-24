@@ -12,6 +12,7 @@ import TeamProfile from './TeamProfile';
 import { Button } from './ui/Button';
 import { AIThinkingIndicator } from './AIThinkingIndicator';
 import { ContactForm, ContactData } from './ContactForm';
+import DocumentChecklist from './DocumentChecklist';
 import { features } from '../config/features';
 import {
 	DocumentIcon,
@@ -47,6 +48,17 @@ interface MessageProps {
 		fields: string[];
 		required: string[];
 		message?: string;
+	};
+	documentChecklist?: {
+		matterType: string;
+		documents: Array<{
+			id: string;
+			name: string;
+			description?: string;
+			required: boolean;
+			status: 'missing' | 'uploaded' | 'pending';
+			file?: File;
+		}>;
 	};
 	teamConfig?: {
 		name: string;
@@ -287,6 +299,30 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						required={contactForm.required}
 						message={contactForm.message}
 						onSubmit={onContactFormSubmit}
+					/>
+				)}
+				
+				{/* Display document checklist */}
+				{documentChecklist && (
+					<DocumentChecklist
+						matterType={documentChecklist.matterType}
+						documents={documentChecklist.documents}
+						onDocumentUpload={(documentId, file) => {
+							// TODO: Handle document upload
+							console.log('Document upload:', documentId, file);
+						}}
+						onDocumentRemove={(documentId) => {
+							// TODO: Handle document removal
+							console.log('Document remove:', documentId);
+						}}
+						onComplete={() => {
+							// TODO: Handle checklist completion
+							console.log('Checklist completed');
+						}}
+						onSkip={() => {
+							// TODO: Handle checklist skip
+							console.log('Checklist skipped');
+						}}
 					/>
 				)}
 				

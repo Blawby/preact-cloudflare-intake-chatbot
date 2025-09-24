@@ -351,6 +351,38 @@ export const buildCaseDraft = {
   }
 };
 
+export const showDocumentChecklist = {
+  name: 'show_document_checklist',
+  description: 'Show a document checklist for the user to upload required documents for their case',
+  parameters: {
+    type: 'object',
+    properties: {
+      matter_type: { 
+        type: 'string', 
+        description: 'Type of legal matter for the document checklist',
+        maxLength: 100
+      },
+      documents: { 
+        type: 'array', 
+        items: { 
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Unique identifier for the document' },
+            name: { type: 'string', description: 'Display name of the document' },
+            description: { type: 'string', description: 'Description of what the document is for' },
+            required: { type: 'boolean', description: 'Whether this document is required' }
+          },
+          required: ['id', 'name', 'required']
+        },
+        description: 'List of documents needed for the case',
+        minItems: 1,
+        maxItems: 15
+      }
+    },
+    required: ['matter_type', 'documents']
+  }
+};
+
 export const createPaymentInvoice = {
   name: 'create_payment_invoice',
   description: 'Create a payment invoice for consultation or legal services',
@@ -704,7 +736,8 @@ export const TOOL_HANDLERS = {
   request_lawyer_review: handleRequestLawyerReview,
   analyze_document: handleAnalyzeDocument,
   create_payment_invoice: handleCreatePaymentInvoice,
-  build_case_draft: handleBuildCaseDraft
+  build_case_draft: handleBuildCaseDraft,
+  show_document_checklist: handleShowDocumentChecklist
 };
 
 // Unified legal intake agent that handles both streaming and non-streaming responses
@@ -1610,5 +1643,46 @@ export async function handleBuildCaseDraft(parameters: any, env: any, teamConfig
     evidence,
     jurisdiction,
     urgency
+  });
+}
+
+export async function handleShowDocumentChecklist(parameters: any, env: any, teamConfig: any) {
+  Logger.debug('[handleShowDocumentChecklist] parameters:', ToolCallParser.sanitizeParameters(parameters));
+  
+  const { matter_type, documents } = parameters;
+  
+  // Validate required fields
+  if (!matter_type || !documents || !Array.isArray(documents) || documents.length === 0) {
+    return createValidationError("I need the matter type and document list to show the checklist. Could you please provide the type of legal matter and the documents needed?");
+  }
+  
+  // Validate matter type
+  if (!ValidationService.validateMatterType(matter_type)) {
+    return createValidationError("I need to understand your legal situation better. Could you please describe what type of legal help you need?");
+  }
+  
+  // Validate documents array
+  for (const doc of documents) {
+    if (!doc.id || !doc.name || typeof doc.required !== 'boolean') {
+      return createValidationError("Each document in the checklist needs an ID, name, and required status. Please check the document list.");
+    }
+  }
+  
+  // Initialize document checklist with 'missing' status
+  const documentChecklist = documents.map(doc => ({
+    ...doc,
+    status: 'missing' as const
+  }));
+  
+  // Create response message
+  const response = `I've prepared a document checklist for your ${matter_type} case. Please upload the documents listed below. Required documents are marked with a red icon and must be completed before we can proceed.`;
+  
+  Logger.debug('[handleShowDocumentChecklist] document checklist created successfully');
+  
+  return createSuccessResponse(response, {
+    documentChecklist: {
+      matterType: matter_type,
+      documents: documentChecklist
+    }
   });
 }
