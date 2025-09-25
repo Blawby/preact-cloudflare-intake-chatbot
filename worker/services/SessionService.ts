@@ -167,84 +167,106 @@ export class SessionService {
     sessionToken?: string;
     retentionHorizonDays?: number;
   }): Promise<SessionResolution> {
-    const sessionId = options.sessionId ?? crypto.randomUUID();
-    const sessionToken = options.sessionToken ?? crypto.randomUUID();
+    const teamId = options.teamId.trim();
+    const sessionId = options.sessionId?.trim() ?? crypto.randomUUID();
+    const providedToken = options.sessionToken?.trim() ?? null;
+    const initialToken = providedToken ?? crypto.randomUUID();
     const nowIso = toIsoString();
     const retention = options.retentionHorizonDays ?? DEFAULT_RETENTION_DAYS;
-    const tokenHashValue = await hashToken(sessionToken);
+    const initialTokenHash = await hashToken(initialToken);
 
-    // Security check: if sessionId is provided, ensure it doesn't belong to another team
-    if (options.sessionId) {
-      const existingSession = await this.getSessionById(env, sessionId);
-      if (existingSession && existingSession.teamId !== options.teamId) {
-        throw new Error(`Session ${sessionId} already exists and belongs to a different team`);
-      }
-    }
+    const insertStmt = env.DB.prepare(`
+      INSERT INTO chat_sessions (
+        id, team_id, token_hash, state, status_reason, retention_horizon_days,
+        is_hold, created_at, updated_at, last_active
+      ) VALUES (?, ?, ?, 'active', NULL, ?, 0, ?, ?, ?)
+      ON CONFLICT(id) DO NOTHING
+    `);
 
-    // Use a more secure approach: separate INSERT and UPDATE operations
-    const existingSession = await this.getSessionById(env, sessionId);
-    
-    if (existingSession) {
-      // Session exists - only allow updates if it belongs to the same team
-      if (existingSession.teamId !== options.teamId) {
-        throw new Error(`Session ${sessionId} belongs to team ${existingSession.teamId}, cannot be accessed by team ${options.teamId}`);
-      }
-      
-      // Update existing session (same team)
-      const updateStmt = env.DB.prepare(`
-        UPDATE chat_sessions 
-        SET state = 'active',
-            retention_horizon_days = ?,
-            updated_at = ?,
-            last_active = ?
-        WHERE id = ? AND team_id = ?
-      `);
-      
-      await updateStmt.bind(
-        retention,
-        nowIso,
-        nowIso,
-        sessionId,
-        options.teamId
-      ).run();
-      
-    } else {
-      // Create new session
-      const insertStmt = env.DB.prepare(`
-        INSERT INTO chat_sessions (
-          id, team_id, token_hash, state, status_reason, retention_horizon_days,
-          is_hold, created_at, updated_at, last_active
-        ) VALUES (?, ?, ?, 'active', NULL, ?, 0, ?, ?, ?)
-      `);
-      
-      await insertStmt.bind(
-        sessionId,
-        options.teamId,
-        tokenHashValue,
-        retention,
-        nowIso,
-        nowIso,
-        nowIso
-      ).run();
-    }
+    const insertResult = await insertStmt.bind(
+      sessionId,
+      teamId,
+      initialTokenHash,
+      retention,
+      nowIso,
+      nowIso,
+      nowIso
+    ).run();
+
+    let sessionToken = initialToken;
+    let cookie: string | undefined;
+    const insertedChanges = ((insertResult.meta ?? {}) as { changes?: number }).changes ?? 0;
+    let isNew = insertResult.success && insertedChanges > 0;
 
     const session = await this.getSessionById(env, sessionId);
     if (!session) {
       throw new Error('Failed to persist session');
     }
 
-    // Final security check: ensure the session belongs to the expected team
-    if (session.teamId !== options.teamId) {
-      throw new Error(`Session creation failed: team mismatch (expected ${options.teamId}, got ${session.teamId})`);
+    if (session.teamId !== teamId) {
+      throw new Error(`Session ${sessionId} belongs to team ${session.teamId}, cannot be accessed by team ${teamId}`);
     }
 
-    const cookie = this.buildSessionCookie(sessionToken);
+    if (isNew) {
+      cookie = this.buildSessionCookie(sessionToken);
+    } else {
+      let needsTokenRotation = false;
+
+      if (!providedToken && session.tokenHash) {
+        // Client lacked a token; rotate to issue a fresh one.
+        sessionToken = crypto.randomUUID();
+        needsTokenRotation = true;
+      } else if (!session.tokenHash) {
+        // No token stored yet – use provided one or create a fresh token.
+        sessionToken = providedToken ?? crypto.randomUUID();
+        needsTokenRotation = true;
+      } else if (providedToken) {
+        const matches = await tokensMatch(providedToken, session.tokenHash);
+        if (!matches) {
+          sessionToken = crypto.randomUUID();
+          needsTokenRotation = true;
+        } else {
+          sessionToken = providedToken;
+        }
+      } else {
+        // No provided token and no stored hash handled above, so this means we need to rotate.
+        sessionToken = crypto.randomUUID();
+        needsTokenRotation = true;
+      }
+
+      if (needsTokenRotation) {
+        await this.setSessionToken(env, sessionId, sessionToken);
+        cookie = this.buildSessionCookie(sessionToken);
+      }
+
+      const updateStmt = env.DB.prepare(`
+        UPDATE chat_sessions
+           SET state = 'active',
+               retention_horizon_days = ?,
+               updated_at = ?,
+               last_active = ?
+         WHERE id = ? AND team_id = ?
+      `);
+
+      await updateStmt.bind(
+        retention,
+        nowIso,
+        nowIso,
+        sessionId,
+        teamId
+      ).run();
+    }
+
+    const refreshedSession = await this.getSessionById(env, sessionId);
+    if (!refreshedSession) {
+      throw new Error('Failed to load session after creation');
+    }
 
     return {
-      session,
+      session: refreshedSession,
       sessionToken,
       cookie,
-      isNew: true
+      isNew
     };
   }
 
@@ -323,6 +345,11 @@ export class SessionService {
   }
 
   static async persistMessage(env: Env, input: PersistedMessageInput): Promise<void> {
+    const session = await this.getSessionById(env, input.sessionId);
+    if (!session || session.teamId !== input.teamId) {
+      throw new Error('Cannot persist message: session not found or team mismatch');
+    }
+
     const messageId = input.messageId ?? crypto.randomUUID();
     const createdAt = toIsoString(input.createdAt);
     const metadata = input.metadata ? JSON.stringify(input.metadata) : null;
@@ -335,6 +362,8 @@ export class SessionService {
         content = excluded.content,
         metadata = excluded.metadata,
         token_count = excluded.token_count
+       WHERE chat_messages.team_id = excluded.team_id
+         AND chat_messages.session_id = excluded.session_id
     `);
 
     await stmt.bind(
