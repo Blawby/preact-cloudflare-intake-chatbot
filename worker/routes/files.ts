@@ -253,6 +253,11 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         responseHeaders.append('Set-Cookie', sessionResolution.cookie);
       }
 
+      // Add security headers
+      Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+        responseHeaders.set(key, value);
+      });
+
       return new Response(JSON.stringify(responseBody), {
         status: 200,
         headers: responseHeaders

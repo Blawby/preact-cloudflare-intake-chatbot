@@ -2,13 +2,7 @@ import { parseJsonBody } from '../utils.js';
 import { HttpErrors } from '../errorHandler.js';
 import type { Env } from '../types.js';
 import { SessionService } from '../services/SessionService.js';
-
-interface SessionRequestBody {
-  teamId?: string;
-  sessionId?: string;
-  sessionToken?: string;
-  retentionHorizonDays?: number;
-}
+import { sessionRequestBodySchema } from '../schemas/validation.js';
 
 function normalizeTeamId(teamId?: string | null): string {
   if (!teamId) {
@@ -44,7 +38,18 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
 
   // POST /api/sessions
   if (segments.length === 2 && request.method === 'POST') {
-    const body = await parseJsonBody(request) as SessionRequestBody;
+    const rawBody = await parseJsonBody(request);
+    
+    // Runtime validation of request body
+    const validationResult = sessionRequestBodySchema.safeParse(rawBody);
+    if (!validationResult.success) {
+      const errorMessages = validationResult.error.issues.map(err => 
+        `${err.path.join('.')}: ${err.message}`
+      ).join(', ');
+      throw HttpErrors.badRequest(`Invalid request body: ${errorMessages}`);
+    }
+    
+    const body = validationResult.data;
     const teamId = normalizeTeamId(body.teamId);
 
     const resolution = await SessionService.resolveSession(env, {
