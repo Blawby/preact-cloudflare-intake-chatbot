@@ -663,6 +663,27 @@ async function handleToolCall(
       result: toolResult
     });
 
+    // Persist tool call result as assistant message
+    if (sessionId && teamId) {
+      try {
+        const { SessionService } = await import('../../services/SessionService.js');
+        const toolResponseContent = `Tool ${toolName} executed: ${toolResult.success ? 'Success' : 'Failed'}`;
+        await SessionService.persistMessage(env, {
+          sessionId,
+          teamId,
+          role: 'assistant',
+          content: toolResponseContent,
+          metadata: { 
+            source: 'legal-intake-agent',
+            toolCall: { name: toolName, parameters, result: toolResult }
+          }
+        });
+        console.log('✓ Tool call result persisted to database');
+      } catch (persistError) {
+        console.warn('Failed to persist tool call result:', persistError);
+      }
+    }
+
     // Special handling for show_contact_form
     if (toolName === 'show_contact_form' && toolResult.success) {
       const contactFormResponse = (toolResult.data && typeof toolResult.data === 'object')
@@ -711,6 +732,28 @@ async function handleToolCall(
     ToolUsageMonitor.recordToolUsage(toolName, false);
     LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_FAILED, toolName, parameters, undefined, error instanceof Error ? error : new Error(String(error)));
     await emitError(controller, 'Tool execution failed. Please try again.', correlationId);
+    
+    // Persist error as assistant message
+    if (sessionId && teamId) {
+      try {
+        const { SessionService } = await import('../../services/SessionService.js');
+        await SessionService.persistMessage(env, {
+          sessionId,
+          teamId,
+          role: 'assistant',
+          content: 'Tool execution failed. Please try again.',
+          metadata: { 
+            source: 'legal-intake-agent',
+            error: true,
+            toolCall: { name: toolName, parameters },
+            errorMessage: error instanceof Error ? error.message : String(error)
+          }
+        });
+        console.log('✓ Tool call error persisted to database');
+      } catch (persistError) {
+        console.warn('Failed to persist tool call error:', persistError);
+      }
+    }
   }
 }
 
@@ -737,7 +780,7 @@ async function handleParsedToolCall(
   await handleToolCall({ name: toolName, arguments: parameters }, env, teamConfig, controller, correlationId, sessionId, teamId);
 }
 
-async function streamTextResponse(response: string, controller: ReadableStreamDefaultController<Uint8Array> | undefined): Promise<void> {
+async function streamTextResponse(response: string, controller: ReadableStreamDefaultController<Uint8Array> | undefined, env?: Env, sessionId?: string, teamId?: string): Promise<void> {
   if (!response || response.trim().length < 10) {
     response = 'I apologize, but I encountered an error processing your request.';
   }
@@ -751,6 +794,23 @@ async function streamTextResponse(response: string, controller: ReadableStreamDe
     type: 'final',
       response
   });
+
+  // Persist AI response to database
+  if (env && sessionId && teamId) {
+    try {
+      const { SessionService } = await import('../../services/SessionService.js');
+      await SessionService.persistMessage(env, {
+        sessionId,
+        teamId,
+        role: 'assistant',
+        content: response,
+        metadata: { source: 'legal-intake-agent' }
+      });
+      console.log('✓ AI response persisted to database');
+    } catch (persistError) {
+      console.warn('Failed to persist AI response:', persistError);
+    }
+  }
 }
 
 function buildPrompt(messages: readonly AgentMessage[], _context: ConversationContext): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
@@ -886,7 +946,7 @@ export async function runLegalIntakeAgentStream(
     } else if (looksLikeToolCall(response)) {
       await handleParsedToolCall(response, env, teamConfig, controller, correlationId, sessionId, teamId);
     } else {
-      await streamTextResponse(response, controller);
+      await streamTextResponse(response, controller, env, sessionId, teamId);
     }
 
   } catch (error) {
@@ -895,6 +955,28 @@ export async function runLegalIntakeAgentStream(
     LegalIntakeLogger.logAgentError(correlationId, sessionId, teamId, error instanceof Error ? error : new Error(String(error)));
     
     await emitError(controller, errorMessage, correlationId);
+    
+    // Persist error as assistant message
+    if (sessionId && teamId) {
+      try {
+        const { SessionService } = await import('../../services/SessionService.js');
+        await SessionService.persistMessage(env, {
+          sessionId,
+          teamId,
+          role: 'assistant',
+          content: `I encountered an error: ${errorMessage}`,
+          metadata: { 
+            source: 'legal-intake-agent',
+            error: true,
+            errorMessage,
+            correlationId
+          }
+        });
+        console.log('✓ Agent error persisted to database');
+      } catch (persistError) {
+        console.warn('Failed to persist agent error:', persistError);
+      }
+    }
     
     if (!controller) {
       const lastUserMessage = messages.filter(msg => msg.isUser).pop()?.content || null;

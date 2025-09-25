@@ -25,13 +25,25 @@ export function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get('Origin');
   
   // If credentials are needed, echo the origin instead of using '*'
-  // For now, we're setting credentials to false globally as per the review
+  if (origin) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      'Access-Control-Max-Age': '86400',
+      'Access-Control-Allow-Credentials': 'true',
+      'Vary': 'Origin'
+    };
+  }
+  
+  // Fallback for local development
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': 'http://localhost:5173',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
     'Access-Control-Max-Age': '86400',
-    'Access-Control-Allow-Credentials': 'false'
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin'
   };
 }
 

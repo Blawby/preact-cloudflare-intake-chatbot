@@ -1,6 +1,6 @@
 import type { Env } from '../types.js';
 import { parseJsonBody } from '../utils.js';
-import { HttpErrors, CORS_HEADERS } from '../errorHandler.js';
+import { HttpErrors, CORS_HEADERS, getCorsHeaders } from '../errorHandler.js';
 import { runPipeline } from '../middleware/pipeline.js';
 import { ConversationContextManager } from '../middleware/conversationContextManager.js';
 import { contentPolicyFilter } from '../middleware/contentPolicyFilter.js';
@@ -70,19 +70,14 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
   const headers = new Headers({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Methods': CORS_HEADERS['Access-Control-Allow-Methods'] || 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': CORS_HEADERS['Access-Control-Allow-Headers'] || 'Content-Type'
+    'Connection': 'keep-alive'
   });
 
   // Set proper CORS headers for cross-origin requests with cookies
-  if (origin) {
-    headers.set('Access-Control-Allow-Origin', origin);
-    headers.set('Access-Control-Allow-Credentials', 'true');
-    headers.set('Vary', 'Origin');
-  } else {
-    headers.set('Access-Control-Allow-Origin', CORS_HEADERS['Access-Control-Allow-Origin'] || '*');
-  }
+  const corsHeaders = getCorsHeaders(request);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    headers.set(key, value);
+  });
 
   try {
     const rawBody = await parseJsonBody(request);
