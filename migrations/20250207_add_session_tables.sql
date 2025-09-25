@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_team_state ON chat_sessions(team_id, state);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_last_active ON chat_sessions(last_active);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_token_hash_team ON chat_sessions(token_hash, team_id);
 
 CREATE TABLE IF NOT EXISTS chat_messages (
   id TEXT PRIMARY KEY,

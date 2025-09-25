@@ -173,18 +173,25 @@ export class SessionService {
     const retention = options.retentionHorizonDays ?? DEFAULT_RETENTION_DAYS;
     const tokenHashValue = await hashToken(sessionToken);
 
+    // Security check: if sessionId is provided, ensure it doesn't belong to another team
+    if (options.sessionId) {
+      const existingSession = await this.getSessionById(env, sessionId);
+      if (existingSession && existingSession.teamId !== options.teamId) {
+        throw new Error(`Session ${sessionId} already exists and belongs to a different team`);
+      }
+    }
+
     const stmt = env.DB.prepare(`
       INSERT INTO chat_sessions (
         id, team_id, token_hash, state, status_reason, retention_horizon_days,
         is_hold, created_at, updated_at, last_active
       ) VALUES (?, ?, ?, 'active', NULL, ?, 0, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
-        team_id = excluded.team_id,
-        token_hash = excluded.token_hash,
         state = 'active',
         retention_horizon_days = excluded.retention_horizon_days,
         updated_at = excluded.updated_at,
         last_active = excluded.last_active
+      WHERE team_id = excluded.team_id
     `);
 
     await stmt.bind(
@@ -200,6 +207,11 @@ export class SessionService {
     const session = await this.getSessionById(env, sessionId);
     if (!session) {
       throw new Error('Failed to persist session');
+    }
+
+    // Final security check: ensure the session belongs to the expected team
+    if (session.teamId !== options.teamId) {
+      throw new Error(`Session creation failed: team mismatch (expected ${options.teamId}, got ${session.teamId})`);
     }
 
     const cookie = this.buildSessionCookie(sessionToken);

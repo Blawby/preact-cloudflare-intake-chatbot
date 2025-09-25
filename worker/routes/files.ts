@@ -213,6 +213,14 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       const normalizedTeamId = teamId.trim();
       const normalizedSessionId = sessionId.trim();
 
+      // Validate that trimmed IDs are not empty
+      if (!normalizedTeamId) {
+        throw HttpErrors.badRequest('teamId cannot be empty after trimming');
+      }
+      if (!normalizedSessionId) {
+        throw HttpErrors.badRequest('sessionId cannot be empty after trimming');
+      }
+
       const sessionResolution = await SessionService.resolveSession(env, {
         request,
         sessionId: normalizedSessionId,

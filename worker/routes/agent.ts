@@ -122,11 +122,14 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const resolvedSessionId = sessionResolution.session.id;
     const resolvedTeamId = sessionResolution.session.teamId;
 
+    // Security check: ensure session belongs to the requested team
+    if (resolvedTeamId !== effectiveTeamId) {
+      throw HttpErrors.forbidden('Session does not belong to the specified team');
+    }
+
     if (sessionResolution.cookie) {
       headers.append('Set-Cookie', sessionResolution.cookie);
     }
-
-    effectiveTeamId = resolvedTeamId;
 
     // Persist the latest user message for auditing
     try {
