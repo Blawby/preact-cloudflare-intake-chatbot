@@ -9,6 +9,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { useMessageHandling } from './hooks/useMessageHandling';
 import { useFileUpload } from './hooks/useFileUpload';
 import { useTeamConfig } from './hooks/useTeamConfig';
+import { useChatSession } from './hooks/useChatSession';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
 import './index.css';
@@ -18,7 +19,6 @@ import './index.css';
 export function App() {
 	// Core state
 	const [clearInputTrigger, setClearInputTrigger] = useState(0);
-	const [sessionId] = useState<string>(() => crypto.randomUUID());
 	const [currentTab, setCurrentTab] = useState<'chats'>('chats');
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
@@ -27,6 +27,13 @@ export function App() {
 	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
 		onError: (error) => console.error('Team config error:', error)
 	});
+
+	const {
+		sessionId,
+		isInitializing: isSessionInitializing,
+		error: sessionError,
+		refreshSession
+	} = useChatSession(teamId);
 
 	const { messages, sendMessage, handleContactFormSubmit, addMessage, cancelStreaming } = useMessageHandling({
 		teamId,
@@ -49,6 +56,18 @@ export function App() {
 		sessionId,
 		onError: (error) => console.error('File upload error:', error)
 	});
+
+	useEffect(() => {
+		if (sessionError) {
+			console.error('Session initialization error:', sessionError);
+		}
+	}, [sessionError]);
+
+	const isSessionReady = Boolean(sessionId);
+
+	const handleRetrySession = useCallback(() => {
+		refreshSession().catch((error) => console.error('Session retry failed:', error));
+	}, [refreshSession]);
 
 	// Add intro message when team config is loaded and no messages exist
 	useEffect(() => {
@@ -188,34 +207,54 @@ export function App() {
 					description: teamConfig.description
 				}}
 				messages={messages}
-
 			>
-				<ChatContainer
-					messages={messages}
-					onSendMessage={sendMessage}
-					onContactFormSubmit={handleContactFormSubmit}
-					teamConfig={{
-						name: teamConfig.name,
-						profileImage: teamConfig.profileImage,
-						teamId,
-						description: teamConfig.description
-					}}
-					onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-					sessionId={sessionId}
-					teamId={teamId}
-					onFeedbackSubmit={handleFeedbackSubmit}
-                    previewFiles={previewFiles}
-                    removePreviewFile={removePreviewFile}
-                    clearPreviewFiles={clearPreviewFiles}
-
-                    handleCameraCapture={handleCameraCapture}
-                    handleFileSelect={handleFileSelect}
-					handleMediaCapture={handleMediaCaptureWrapper}
-                    isRecording={isRecording}
-                    setIsRecording={setIsRecording}
-					clearInput={clearInputTrigger > 0}
-					isReadyToUpload={isReadyToUpload}
-				/>
+				<div className="relative h-full">
+					<ChatContainer
+						messages={messages}
+						onSendMessage={sendMessage}
+						onContactFormSubmit={handleContactFormSubmit}
+						teamConfig={{
+							name: teamConfig.name,
+							profileImage: teamConfig.profileImage,
+							teamId,
+							description: teamConfig.description
+						}}
+						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+						sessionId={sessionId}
+						teamId={teamId}
+						onFeedbackSubmit={handleFeedbackSubmit}
+						previewFiles={previewFiles}
+						removePreviewFile={removePreviewFile}
+						clearPreviewFiles={clearPreviewFiles}
+						handleCameraCapture={handleCameraCapture}
+						handleFileSelect={handleFileSelect}
+							handleMediaCapture={handleMediaCaptureWrapper}
+							isRecording={isRecording}
+							setIsRecording={setIsRecording}
+							clearInput={clearInputTrigger > 0}
+							isReadyToUpload={isReadyToUpload}
+							isSessionReady={isSessionReady}
+						/>
+					{!isSessionReady && (
+						<div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-sm z-[1200] px-6 text-center">
+							<p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+								{sessionError ? 'Unable to establish a secure session.' : 'Setting up a secure session...'}
+							</p>
+							<p className="text-xs text-gray-500 dark:text-gray-400">
+								{sessionError ? 'Please try again.' : 'This will only take a moment.'}
+							</p>
+							{sessionError && (
+								<button
+									onClick={() => handleRetrySession()}
+									className="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-60"
+									disabled={isSessionInitializing}
+								>
+									Retry session
+								</button>
+							)}
+						</div>
+					)}
+				</div>
 			</AppLayout>
 		</ToastProvider>
 	);

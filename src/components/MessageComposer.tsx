@@ -21,6 +21,7 @@ interface MessageComposerProps {
   onKeyDown: (e: KeyboardEvent) => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
   isReadyToUpload?: boolean;
+  isSessionReady?: boolean;
 
 }
 
@@ -38,6 +39,7 @@ const MessageComposer = ({
   onKeyDown,
   textareaRef,
   isReadyToUpload,
+  isSessionReady,
 }: MessageComposerProps) => {
   const handleInput = (e: JSX.TargetedEvent<HTMLTextAreaElement, Event>) => {
     const t = e.currentTarget;
@@ -48,6 +50,7 @@ const MessageComposer = ({
 
   const handleSubmit = () => {
     if (!inputValue.trim() && previewFiles.length === 0) return;
+    if (isSessionReady === false) return;
     onSubmit();
     const el = textareaRef.current;
     if (el) { el.style.height = ''; }
@@ -115,7 +118,11 @@ const MessageComposer = ({
         <div className="flex items-center gap-3 w-full">
           {!isRecording && (
             <div className="flex-shrink-0">
-              <FileMenu onFileSelect={handleFileSelect} onCameraCapture={handleCameraCapture} isReadyToUpload={isReadyToUpload} />
+              <FileMenu
+                onFileSelect={handleFileSelect}
+                onCameraCapture={handleCameraCapture}
+                isReadyToUpload={isSessionReady === false ? false : isReadyToUpload}
+              />
             </div>
           )}
           
@@ -130,6 +137,7 @@ const MessageComposer = ({
               onInput={handleInput}
               onKeyDown={onKeyDown}
               aria-label="Message input"
+              disabled={isSessionReady === false}
             />
           </div>
 
@@ -141,8 +149,12 @@ const MessageComposer = ({
               type="submit"
               variant={inputValue.trim() || previewFiles.length > 0 ? 'primary' : 'secondary'}
               size="sm"
-              disabled={!inputValue.trim() && previewFiles.length === 0}
-              aria-label={!inputValue.trim() && previewFiles.length === 0 ? 'Send message (disabled)' : 'Send message'}
+              disabled={(!inputValue.trim() && previewFiles.length === 0) || isSessionReady === false}
+              aria-label={isSessionReady === false
+                ? 'Send message (waiting for secure session)'
+                : (!inputValue.trim() && previewFiles.length === 0
+                  ? 'Send message (disabled)'
+                  : 'Send message')}
               className="w-8 h-8 p-0 rounded-full"
               icon={<ArrowUpIcon className="w-3.5 h-3.5" aria-hidden="true" />}
               data-testid="message-send-button"
@@ -152,7 +164,9 @@ const MessageComposer = ({
       </div>
 
       <div className="text-xs text-gray-600 dark:text-gray-400 text-center py-1 opacity-80 mt-1">
-        Blawby can make mistakes. Check for important information.
+        {isSessionReady === false
+          ? 'Setting up a secure session...'
+          : 'Blawby can make mistakes. Check for important information.'}
       </div>
     </form>
   );

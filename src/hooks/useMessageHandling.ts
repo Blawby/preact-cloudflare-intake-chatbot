@@ -29,7 +29,7 @@ const getAgentStreamEndpoint = (): string => {
       // Validate the base URL using URL constructor to ensure it's absolute
       new URL(baseUrl);
       return `${baseUrl}/api/agent/stream`;
-    } catch (error) {
+    } catch (_error) {
       console.warn('Invalid base URL provided, falling back to relative path:', baseUrl);
       // Fall through to fallback logic
     }
@@ -47,14 +47,14 @@ interface ChatMessageHistoryEntry {
 }
 
 interface UseMessageHandlingOptions {
-  teamId: string;
-  sessionId: string;
+  teamId?: string;
+  sessionId?: string;
   onError?: (error: string) => void;
 }
 
 export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHandlingOptions) => {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const abortControllerRef = useRef<globalThis.AbortController | null>(null);
   
   // Debug hooks for test environment (development only)
   useEffect(() => {
@@ -78,13 +78,6 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       }
       return updated;
     });
-  }, []);
-
-  // Helper function to update any message (for user messages, aiState will be ignored)
-  const updateMessageHelper = useCallback((messageId: string, updates: Partial<ChatMessageUI>) => {
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId ? { ...msg, ...updates } as ChatMessageUI : msg
-    ));
   }, []);
 
   // Create message history from existing messages
@@ -116,16 +109,26 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     }
     
     // Create new abort controller
-    abortControllerRef.current = new AbortController();
+    abortControllerRef.current = new globalThis.AbortController();
     
+    const effectiveTeamId = (teamId ?? '').trim();
+    const effectiveSessionId = (sessionId ?? '').trim();
+
+    if (!effectiveTeamId || !effectiveSessionId) {
+      const errorMessage = 'Secure session is still initializing. Please wait and try again.';
+      console.warn(errorMessage);
+      onError?.(errorMessage);
+      throw new Error(errorMessage);
+    }
+
     const apiEndpoint = getAgentStreamEndpoint();
     
     // Create the request body
     const requestBody = {
       messages: messageHistory,
-      teamId: teamId,
-      sessionId: sessionId,
-      attachments: attachments
+      teamId: effectiveTeamId,
+      sessionId: effectiveSessionId,
+      attachments
     };
 
     try {
@@ -135,6 +138,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(requestBody),
         signal: abortControllerRef.current.signal
       });
@@ -149,11 +153,12 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
         throw new Error('No response body available');
       }
 
-      const decoder = new TextDecoder();
+      const decoder = new globalThis.TextDecoder();
       let buffer = '';
       let currentContent = '';
 
       try {
+        let combinedData: string | undefined;
         while (true) {
           const { done, value } = await reader.read();
           
@@ -172,7 +177,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
             if (dataLines.length > 0) {
               try {
                 // Concatenate all data lines with newline separators
-                const combinedData = dataLines.map(line => line.slice(6)).join('\n');
+                combinedData = dataLines.map(line => line.slice(6)).join('\n');
                 const data = JSON.parse(combinedData);
                 
                 // Validate data object structure
@@ -223,12 +228,12 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                   case 'typing':
                     // Show typing indicator during tool calls
                     updateAIMessage(placeholderId, { 
-                      content: currentContent + '...',
+                      content: `${currentContent}...`,
                       isLoading: true 
                     });
                     break;
                     
-                  case 'tool_call':
+                  case 'tool_call': {
                     // Validate data object structure and extract tool information safely
                     let toolName: string | undefined;
                     let toolMessage: string | undefined;
@@ -269,9 +274,10 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                       content: currentContent,
                       isLoading: true,
                       aiState: 'processing',
-                      toolMessage: toolMessage
+                      toolMessage
                     });
                     break;
+                  }
                     
                 case 'tool_result': {
                   // Tool result received, merge content and any structured payload
@@ -320,7 +326,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                   break;
                 }
                     
-                  case 'final':
+                case 'final':
                     // Final response received
                     updateAIMessage(placeholderId, { 
                       content: data.response || currentContent,
@@ -394,7 +400,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       console.error('Streaming error:', error);
       throw error;
     }
-  }, [teamId, sessionId, updateAIMessage]);
+  }, [teamId, sessionId, onError, updateAIMessage]);
 
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
@@ -403,6 +409,16 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       (window as any).__DEBUG_SEND_MESSAGE__(message, attachments);
     }
     
+    const effectiveTeamId = (teamId ?? '').trim();
+    const effectiveSessionId = (sessionId ?? '').trim();
+
+    if (!effectiveTeamId || !effectiveSessionId) {
+      const errorMessage = 'Secure session is still initializing. Please wait a moment and try again.';
+      console.warn(errorMessage);
+      onError?.(errorMessage);
+      return;
+    }
+
     // Create user message
     const userMessage: ChatMessageUI = {
       id: crypto.randomUUID(),

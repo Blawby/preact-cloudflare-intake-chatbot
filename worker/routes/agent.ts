@@ -13,6 +13,7 @@ import { skipToLawyerMiddleware } from '../middleware/skipToLawyerMiddleware.js'
 import { pdfGenerationMiddleware } from '../middleware/pdfGenerationMiddleware.js';
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index.js';
 import { getCloudflareLocation } from '../utils/cloudflareLocationValidator.js';
+import { SessionService } from '../services/SessionService.js';
 
 // Interface for the request body
 interface RouteBody {
@@ -54,14 +55,14 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
   }
 
   // Set SSE headers for streaming
-  const headers = {
+  const headers = new Headers({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
     'Access-Control-Allow-Origin': CORS_HEADERS['Access-Control-Allow-Origin'] || '*',
     'Access-Control-Allow-Methods': CORS_HEADERS['Access-Control-Allow-Methods'] || 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': CORS_HEADERS['Access-Control-Allow-Headers'] || 'Content-Type',
-  };
+    'Access-Control-Allow-Headers': CORS_HEADERS['Access-Control-Allow-Headers'] || 'Content-Type'
+  });
 
   try {
     const rawBody = await parseJsonBody(request);
@@ -88,13 +89,78 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       throw HttpErrors.badRequest('Latest message must be from user');
     }
 
+    const trimmedSessionId = typeof sessionId === 'string' && sessionId.trim().length > 0
+      ? sessionId.trim()
+      : undefined;
+
+    let effectiveTeamId = typeof teamId === 'string' && teamId.trim().length > 0
+      ? teamId.trim()
+      : undefined;
+
+    if (!effectiveTeamId && trimmedSessionId) {
+      try {
+        const priorSession = await SessionService.getSessionById(env, trimmedSessionId);
+        if (priorSession) {
+          effectiveTeamId = priorSession.teamId;
+        }
+      } catch (lookupError) {
+        console.warn('Failed to lookup existing session before resolution', lookupError);
+      }
+    }
+
+    if (!effectiveTeamId) {
+      throw HttpErrors.badRequest('teamId is required for agent interactions');
+    }
+
+    const sessionResolution = await SessionService.resolveSession(env, {
+      request,
+      sessionId: trimmedSessionId,
+      teamId: effectiveTeamId,
+      createIfMissing: true
+    });
+
+    const resolvedSessionId = sessionResolution.session.id;
+    const resolvedTeamId = sessionResolution.session.teamId;
+
+    if (sessionResolution.cookie) {
+      headers.append('Set-Cookie', sessionResolution.cookie);
+    }
+
+    effectiveTeamId = resolvedTeamId;
+
+    // Persist the latest user message for auditing
+    try {
+      const metadata = attachments.length > 0
+        ? {
+            attachments: attachments.map(att => ({
+              id: att.id ?? null,
+              name: att.name,
+              size: att.size,
+              type: att.type,
+              url: att.url
+            }))
+          }
+        : undefined;
+
+      await SessionService.persistMessage(env, {
+        sessionId: resolvedSessionId,
+        teamId: resolvedTeamId,
+        role: 'user',
+        content: latestMessage.content,
+        metadata,
+        messageId: typeof (latestMessage as any).id === 'string' ? (latestMessage as any).id : undefined
+      });
+    } catch (persistError) {
+      console.warn('Failed to persist chat message to D1', persistError);
+    }
+
     // Get team configuration
     let teamConfig = null;
-    if (teamId) {
+    if (effectiveTeamId) {
       try {
         const { AIService } = await import('../services/AIService.js');
         const aiService = new AIService(env.AI, env);
-        const rawTeamConfig = await aiService.getTeamConfig(teamId);
+        const rawTeamConfig = await aiService.getTeamConfig(effectiveTeamId);
         teamConfig = rawTeamConfig;
       } catch (error) {
         console.warn('Failed to get team config:', error);
@@ -105,7 +171,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const cloudflareLocation = getCloudflareLocation(request);
 
     // Load conversation context
-    const context = await ConversationContextManager.load(sessionId || 'default', teamId || 'default', env);
+    const context = await ConversationContextManager.load(resolvedSessionId, resolvedTeamId, env);
 
     // Update context with the full conversation before running pipeline
     const updatedContext = ConversationContextManager.updateContext(context, messages);
@@ -280,12 +346,12 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
 
           // Run the AI agent with updated context
           await runLegalIntakeAgentStream(
-            env, 
-            formattedMessages, 
-            teamId, 
-            sessionId, 
-            cloudflareLocation, 
-            controller, 
+            env,
+            formattedMessages,
+            effectiveTeamId,
+            resolvedSessionId,
+            cloudflareLocation,
+            controller,
             fileAttachments
           );
           

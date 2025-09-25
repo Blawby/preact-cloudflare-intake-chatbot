@@ -32,6 +32,7 @@ interface ChatContainerProps {
   isRecording: boolean;
   setIsRecording: (v: boolean) => void;
   isReadyToUpload?: boolean;
+  isSessionReady?: boolean;
 
   // Input control prop
   clearInput?: boolean;
@@ -55,6 +56,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   isRecording,
   setIsRecording,
   isReadyToUpload,
+  isSessionReady,
   clearInput
 }) => {
   const [inputValue, setInputValue] = useState('');
@@ -165,6 +167,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           onKeyDown={handleKeyDown}
           textareaRef={textareaRef}
           isReadyToUpload={isReadyToUpload}
+          isSessionReady={isSessionReady}
         />
       </main>
     </div>
