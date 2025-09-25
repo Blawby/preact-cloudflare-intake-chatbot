@@ -258,11 +258,9 @@ export function sanitizePII(
  * Useful when you need to track content without storing PII
  */
 export async function createContentHash(content: string | null | undefined): Promise<string> {
-  if (content === null || content === undefined) {
-    throw new TypeError('Content must be a non-null string');
-  }
-
-  const safeContent = typeof content === 'string' ? content : String(content);
+  const safeContent = content === null || content === undefined
+    ? ''
+    : (typeof content === 'string' ? content : String(content));
   
   // Convert string to UTF-8 bytes
   const encoder = new TextEncoder();

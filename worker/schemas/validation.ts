@@ -64,9 +64,9 @@ export const teamConfigSchema = z.object({
   voice: z.object({
     enabled: z.boolean().optional(),
     provider: z.enum(['cloudflare', 'elevenlabs', 'custom']).optional(),
-    voiceId: z.string().min(1).optional(),
-    displayName: z.string().min(1).optional(),
-    previewUrl: z.string().url().optional()
+    voiceId: z.string().min(1).optional().nullable(),
+    displayName: z.string().min(1).optional().nullable(),
+    previewUrl: z.string().url().optional().nullable()
   }).optional(),
 
 });

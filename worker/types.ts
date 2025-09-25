@@ -102,9 +102,9 @@ export interface Team {
     voice: {
       enabled: boolean;
       provider: 'cloudflare' | 'elevenlabs' | 'custom';
-      voiceId?: string;
-      displayName?: string;
-      previewUrl?: string;
+      voiceId?: string | null;
+      displayName?: string | null;
+      previewUrl?: string | null;
     };
 
   };
