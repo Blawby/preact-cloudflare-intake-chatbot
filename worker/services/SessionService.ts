@@ -181,28 +181,52 @@ export class SessionService {
       }
     }
 
-    const stmt = env.DB.prepare(`
-      INSERT INTO chat_sessions (
-        id, team_id, token_hash, state, status_reason, retention_horizon_days,
-        is_hold, created_at, updated_at, last_active
-      ) VALUES (?, ?, ?, 'active', NULL, ?, 0, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        state = 'active',
-        retention_horizon_days = excluded.retention_horizon_days,
-        updated_at = excluded.updated_at,
-        last_active = excluded.last_active
-      WHERE team_id = excluded.team_id
-    `);
-
-    await stmt.bind(
-      sessionId,
-      options.teamId,
-      tokenHashValue,
-      retention,
-      nowIso,
-      nowIso,
-      nowIso
-    ).run();
+    // Use a more secure approach: separate INSERT and UPDATE operations
+    const existingSession = await this.getSessionById(env, sessionId);
+    
+    if (existingSession) {
+      // Session exists - only allow updates if it belongs to the same team
+      if (existingSession.teamId !== options.teamId) {
+        throw new Error(`Session ${sessionId} belongs to team ${existingSession.teamId}, cannot be accessed by team ${options.teamId}`);
+      }
+      
+      // Update existing session (same team)
+      const updateStmt = env.DB.prepare(`
+        UPDATE chat_sessions 
+        SET state = 'active',
+            retention_horizon_days = ?,
+            updated_at = ?,
+            last_active = ?
+        WHERE id = ? AND team_id = ?
+      `);
+      
+      await updateStmt.bind(
+        retention,
+        nowIso,
+        nowIso,
+        sessionId,
+        options.teamId
+      ).run();
+      
+    } else {
+      // Create new session
+      const insertStmt = env.DB.prepare(`
+        INSERT INTO chat_sessions (
+          id, team_id, token_hash, state, status_reason, retention_horizon_days,
+          is_hold, created_at, updated_at, last_active
+        ) VALUES (?, ?, ?, 'active', NULL, ?, 0, ?, ?, ?)
+      `);
+      
+      await insertStmt.bind(
+        sessionId,
+        options.teamId,
+        tokenHashValue,
+        retention,
+        nowIso,
+        nowIso,
+        nowIso
+      ).run();
+    }
 
     const session = await this.getSessionById(env, sessionId);
     if (!session) {
