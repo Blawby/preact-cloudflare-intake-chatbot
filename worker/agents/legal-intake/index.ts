@@ -421,10 +421,44 @@ interface TeamConfig {
   };
 }
 
+const PUBLIC_TEAM_IDS = new Set(['blawby-ai']);
+
+function isPublicMode(teamId?: string | null): boolean {
+  if (!teamId) {
+    return true;
+  }
+  return PUBLIC_TEAM_IDS.has(teamId);
+}
+
+function extractPromptTeamConfig(rawConfig: unknown): TeamConfig {
+  if (!rawConfig || typeof rawConfig !== 'object') {
+    return {};
+  }
+
+  if ('config' in rawConfig && typeof (rawConfig as any).config === 'object') {
+    const nested = (rawConfig as any).config;
+    return {
+      name: typeof (rawConfig as any).name === 'string' ? (rawConfig as any).name : undefined,
+      jurisdiction: typeof nested?.jurisdiction === 'object'
+        ? { requireLocation: Boolean((nested.jurisdiction as any)?.requireLocation) }
+        : undefined
+    };
+  }
+
+  return {
+    name: typeof (rawConfig as any).name === 'string' ? (rawConfig as any).name : undefined,
+    jurisdiction: typeof (rawConfig as any).jurisdiction === 'object'
+      ? { requireLocation: Boolean(((rawConfig as any).jurisdiction as any)?.requireLocation) }
+      : undefined
+  };
+}
+
 // Build system prompt function
-function buildSystemPrompt(context: ConversationContext, teamConfig: TeamConfig): string {
+function buildSystemPrompt(context: ConversationContext, teamConfigInput: unknown, teamId?: string | null): string {
+  const teamConfig = extractPromptTeamConfig(teamConfigInput);
   const teamName = teamConfig?.name || 'our law firm';
   const jurisdiction = teamConfig?.jurisdiction;
+  const publicMode = isPublicMode(teamId);
   
   // Check if location is required
   const requiresLocation = jurisdiction?.requireLocation;
@@ -440,6 +474,14 @@ function buildSystemPrompt(context: ConversationContext, teamConfig: TeamConfig)
   const isSkipToLawyer = context.userIntent === 'skip_to_lawyer' || context.conversationPhase === 'showing_contact_form';
   const skipToLawyerMessage = isSkipToLawyer ? 
     `\nURGENT: The user wants to skip the intake process and contact the legal team directly. You MUST immediately show the contact form using the show_contact_form tool.` : '';
+
+  const styleGuidance = publicMode
+    ? `- Keep responses to three short sentences or fewer.
+- Give the user one clear next step and reference existing checklists or PDFs instead of describing them in detail.
+- Avoid repeating prior details unless the user asks.`
+    : `- Confirm missing key facts in no more than two follow-up questions.
+- Transition to the contact form or explain precisely what is still needed instead of rehashing prior guidance.
+- Keep answers crisp and professional; avoid script-style introductions.`;
   
   return `You are a legal intake specialist for ${teamName}.
 
@@ -450,13 +492,13 @@ Available tools: create_matter, show_contact_form, request_lawyer_review, create
 Rules:
 - Use create_matter when you have name + legal issue + contact info${requiresLocation ? ' + location' : ''}
 - Use show_contact_form ONLY after qualifying the lead with questions about urgency, timeline, and seriousness
-- Be conversational and helpful - ask qualifying questions before showing contact form
-- Note: Case drafting, document checklists, and skip-to-lawyer are now handled automatically by the system
-- For simple greetings like "Hi, I need legal help", respond conversationally and ask for more details
-- Don't rush to contact forms - let users explore case preparation tools first
-- ALWAYS ask qualifying questions before showing contact form: "How urgent is this?", "What's your timeline?", "Are you looking to move forward with legal action?"
+- Always start by briefly reflecting the user’s latest concern so they know you understood (e.g., "I’m sorry you were fired").
+- Be concise and skip pleasantries; respond to the user's latest question directly
+- Let middleware-driven UI (case drafts, checklists, PDFs) speak for itself—mention them briefly rather than describing their contents
 - Only show contact form when user explicitly asks to skip intake or contact the team directly
 - For employment law issues, ask specific questions like: "When were you fired?", "What reason was given?", "Do you have any documentation?"
+- When you don’t yet have contact information, collect at least two concrete qualifiers (e.g., reason, timeline, urgency) before moving on.
+${styleGuidance}
 
 Tool calling format:
 TOOL_CALL: tool_name
@@ -797,7 +839,7 @@ export async function runLegalIntakeAgentStream(
     
     // Get available tools and system prompt
     const availableTools = getAvailableToolsForState(context.state, context);
-    const systemPrompt = buildSystemPrompt(context, teamConfig);
+    const systemPrompt = buildSystemPrompt(context, teamConfig, teamId);
     
     // Log conversation state
     Logger.info('Conversation State:', {
