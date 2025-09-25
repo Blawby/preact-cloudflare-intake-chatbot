@@ -458,7 +458,9 @@ function isValidRouteBody(obj: unknown): obj is RouteBody {
       const nameOk = typeof att.name === 'string' && att.name.length > 0;
       const typeOk = typeof att.type === 'string' && att.type.length > 0;
       const sizeOk = typeof att.size === 'number' && att.size >= 0 && Number.isFinite(att.size);
-      const urlOk = typeof att.url === 'string' && /^(https?):\/\//i.test(att.url);
+      const urlOk = typeof att.url === 'string' && (
+        /^(https?):\/\//i.test(att.url) || (att.url.startsWith('/') && !att.url.startsWith('//'))
+      );
       if (!(nameOk && typeOk && sizeOk && urlOk)) return false;
     }
   }

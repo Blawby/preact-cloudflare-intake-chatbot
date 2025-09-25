@@ -61,6 +61,13 @@ export const teamConfigSchema = z.object({
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   introMessage: z.string().min(1),
   profileImage: z.string().url().optional(),
+  voice: z.object({
+    enabled: z.boolean().optional(),
+    provider: z.enum(['cloudflare', 'elevenlabs', 'custom']).optional(),
+    voiceId: z.string().min(1).optional().nullable(),
+    displayName: z.string().min(1).optional().nullable(),
+    previewUrl: z.string().url().optional().nullable()
+  }).optional(),
 
 });
 

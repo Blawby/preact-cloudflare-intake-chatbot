@@ -1,5 +1,9 @@
 import { FunctionComponent } from 'preact';
-import { useEffect, useState, useCallback } from 'preact/hooks';
+import { useEffect, useState, useCallback, useRef } from 'preact/hooks';
+
+const DEBUG_UPDATE_EVENT = 'blawby:debug-update';
+const UPDATE_THROTTLE_MS = 1000;
+const FALLBACK_POLL_INTERVAL_MS = 5000;
 
 interface DebugOverlayProps {
   isVisible?: boolean;
@@ -17,112 +21,138 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const warningsRef = useRef<Record<string, boolean>>({});
+  const lastUpdateRef = useRef<number>(0);
+
+  const isDev = import.meta.env.DEV;
+  const shouldRender = isDev && isVisible;
+
+  const logMessage = useCallback((key: string, level: 'warn' | 'error' | 'debug', message: string, detail?: unknown) => {
+    if (level === 'debug') {
+      console.debug(message, detail);
+      return;
+    }
+
+    if (!warningsRef.current[key]) {
+      warningsRef.current[key] = true;
+      console[level](message, detail);
+    } else if (level === 'warn') {
+      console.debug(message, detail);
+    }
+  }, []);
+
+  const getWindowProperty = useCallback((key: string): unknown => {
+    try {
+      return (window as unknown as Record<string, unknown>)[key];
+    } catch (accessError) {
+      logMessage(`window-${key}`, 'warn', `Failed to access window.${key}`, accessError);
+      return undefined;
+    }
+  }, [logMessage]);
+
+  const validateToolCalls = useCallback((data: unknown): ToolCall[] => {
+    if (!Array.isArray(data)) {
+      logMessage('toolcalls-array', 'warn', '__toolCalls is not an array, using empty array as fallback', data);
+      return [];
+    }
+
+    return data.filter((item): item is ToolCall => {
+      if (typeof item !== 'object' || item === null) {
+        logMessage('toolcalls-item', 'warn', 'Invalid tool call item (not an object)', item);
+        return false;
+      }
+
+      const call = item as Record<string, unknown>;
+      const isValid =
+        typeof call.tool === 'string' &&
+        typeof call.timestamp === 'number' &&
+        call.data !== undefined;
+
+      if (!isValid) {
+        logMessage('toolcalls-structure', 'warn', 'Invalid tool call structure', call);
+      }
+
+      return isValid;
+    });
+  }, [logMessage]);
+
+  const validateConversationState = useCallback((data: unknown): string => {
+    if (typeof data === 'string') {
+      return data;
+    }
+
+    logMessage('conversation-state', 'warn', '__conversationState is not a string, using "unknown" as fallback', data);
+    return 'unknown';
+  }, [logMessage]);
+
+  const updateToolCalls = useCallback((): boolean => {
+    try {
+      const rawCalls = getWindowProperty('__toolCalls');
+      const validatedCalls = validateToolCalls(rawCalls);
+      setToolCalls(validatedCalls);
+      return true;
+    } catch (toolError) {
+      logMessage('toolcalls-error', 'error', 'Error updating tool calls', toolError);
+      const message = toolError instanceof Error ? toolError.message : 'Unknown error';
+      setError(`Tool calls error: ${message}`);
+      setToolCalls([]);
+      return false;
+    }
+  }, [getWindowProperty, validateToolCalls, logMessage]);
+
+  const updateConversationState = useCallback((): boolean => {
+    try {
+      const rawState = getWindowProperty('__conversationState');
+      const validatedState = validateConversationState(rawState);
+      setConversationState(validatedState);
+      return true;
+    } catch (stateError) {
+      logMessage('conversation-error', 'error', 'Error updating conversation state', stateError);
+      const message = stateError instanceof Error ? stateError.message : 'Unknown error';
+      setError(`Conversation state error: ${message}`);
+      setConversationState('unknown');
+      return false;
+    }
+  }, [getWindowProperty, validateConversationState, logMessage]);
+
+  const updateFromGlobals = useCallback((force = false) => {
+    if (!shouldRender) {
+      return;
+    }
+
+    const now = Date.now();
+    if (!force && now - lastUpdateRef.current < UPDATE_THROTTLE_MS) {
+      return;
+    }
+
+    lastUpdateRef.current = now;
+
+    const toolCallsSuccess = updateToolCalls();
+    const conversationStateSuccess = updateConversationState();
+
+    if (toolCallsSuccess && conversationStateSuccess) {
+      setError(null);
+      setLastUpdated(new Date());
+    }
+  }, [shouldRender, updateToolCalls, updateConversationState]);
 
   useEffect(() => {
-    if (!isVisible) return;
+    if (!shouldRender || typeof window === 'undefined') {
+      return;
+    }
 
-    // Type-safe helper to get window property
-    const getWindowProperty = (key: string): unknown => {
-      try {
-        return (window as unknown as Record<string, unknown>)[key];
-      } catch (error) {
-        console.warn(`Failed to access window.${key}:`, error);
-        return undefined;
-      }
+    updateFromGlobals(true);
+
+    const handleDebugUpdate = () => updateFromGlobals(false);
+    window.addEventListener(DEBUG_UPDATE_EVENT, handleDebugUpdate);
+
+    const fallbackInterval = window.setInterval(handleDebugUpdate, FALLBACK_POLL_INTERVAL_MS);
+
+    return () => {
+      window.removeEventListener(DEBUG_UPDATE_EVENT, handleDebugUpdate);
+      window.clearInterval(fallbackInterval);
     };
-
-    // Validate and parse tool calls
-    const validateToolCalls = (data: unknown): ToolCall[] => {
-      if (!Array.isArray(data)) {
-        console.warn('__toolCalls is not an array, using empty array as fallback');
-        return [];
-      }
-
-      return data.filter((item): item is ToolCall => {
-        if (typeof item !== 'object' || item === null) {
-          console.warn('Invalid tool call item (not an object):', item);
-          return false;
-        }
-
-        const call = item as Record<string, unknown>;
-        const isValid = 
-          typeof call.tool === 'string' &&
-          typeof call.timestamp === 'number' &&
-          call.data !== undefined;
-
-        if (!isValid) {
-          console.warn('Invalid tool call structure:', call);
-        }
-
-        return isValid;
-      });
-    };
-
-    // Validate conversation state
-    const validateConversationState = (data: unknown): string => {
-      if (typeof data === 'string') {
-        return data;
-      }
-      
-      console.warn('__conversationState is not a string, using "unknown" as fallback:', data);
-      return 'unknown';
-    };
-
-    // Centralized error handling
-    const handleError = (context: string, error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error(`Error in ${context}:`, error);
-      setError(`${context} error: ${errorMessage}`);
-    };
-
-    // Update tool calls from global variable
-    const updateToolCalls = (): boolean => {
-      try {
-        const rawCalls = getWindowProperty('__toolCalls');
-        const validatedCalls = validateToolCalls(rawCalls);
-        setToolCalls(validatedCalls);
-        return true;
-      } catch (error) {
-        handleError('Tool calls', error);
-        setToolCalls([]);
-        return false;
-      }
-    };
-
-    // Update conversation state from global variable
-    const updateConversationState = (): boolean => {
-      try {
-        const rawState = getWindowProperty('__conversationState');
-        const validatedState = validateConversationState(rawState);
-        setConversationState(validatedState);
-        return true;
-      } catch (error) {
-        handleError('Conversation state', error);
-        setConversationState('unknown');
-        return false;
-      }
-    };
-
-    // Centralized update function that handles both updates and error clearing
-    const performUpdate = () => {
-      const toolCallsSuccess = updateToolCalls();
-      const conversationStateSuccess = updateConversationState();
-      
-      // Only clear errors and update timestamp if both updates succeed
-      if (toolCallsSuccess && conversationStateSuccess) {
-        setError(null);
-        setLastUpdated(new Date());
-      }
-    };
-
-    // Initial update
-    performUpdate();
-
-    // Set up interval to update
-    const interval = setInterval(performUpdate, 1000);
-
-    return () => clearInterval(interval);
-  }, [isVisible]);
+  }, [shouldRender, updateFromGlobals]);
 
   // Keyboard navigation handler
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -142,13 +172,13 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
 
   // Add keyboard event listener when visible
   useEffect(() => {
-    if (!isVisible) return;
+    if (!shouldRender) return;
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isVisible, handleKeyDown]);
+  }, [shouldRender, handleKeyDown]);
 
-  if (!isVisible) return null;
+  if (!shouldRender) return null;
 
   return (
     <div 
