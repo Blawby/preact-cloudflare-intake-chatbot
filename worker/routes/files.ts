@@ -3,6 +3,18 @@ import { HttpErrors, handleError, SECURITY_HEADERS } from '../errorHandler';
 import { z } from 'zod';
 import { SessionService } from '../services/SessionService.js';
 
+// Filename sanitization helpers
+function sanitizeFilename(name: string): string {
+  // Remove CR/LF and control chars, collapse whitespace, and strip quotes
+  return name.replace(/[\r\n\t\0]/g, '').replace(/"+/, '').trim().slice(0, 200);
+}
+
+function encodeRFC5987ValueChars(str: string): string {
+  return encodeURIComponent(str)
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, '%2A');
+}
+
 // File upload validation schema
 const fileUploadValidationSchema = z.object({
   file: z.instanceof(File, { message: 'File is required' }),
@@ -327,53 +339,58 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       // Try to construct the file path from the fileId if we don't have database metadata
       let filePath = fileRecord?.file_path;
       if (!filePath) {
-        console.log('No database metadata found, attempting to find file by pattern matching');
+        console.log('No database metadata found; attempting to locate in R2');
         
-        // Try to find the file by searching R2 with the fileId as a prefix
-        // This is more reliable than trying to parse the complex fileId format
-        const searchPrefixes = [
-          `uploads/${fileId}`,  // Direct search with fileId
-          `uploads/*/${fileId}`, // Search in any team folder
-          `uploads/*/*/${fileId}` // Search in any team/session folder
-        ];
-        
-        for (const prefix of searchPrefixes) {
+        // Try to derive team/session from fileId: teamId-sessionId-timestamp-random
+        const parts = fileId.split('-');
+        if (parts.length >= 4) {
+          const teamPart = parts[0];
+          const sessionPart = parts[1];
+          const derivedPrefix = `uploads/${teamPart}/${sessionPart}/`;
+          
           try {
-            console.log('Searching R2 with prefix:', prefix);
-            const objects = await env.FILES_BUCKET.list({ prefix });
-            console.log(`Found ${objects.objects.length} objects with prefix: ${prefix}`);
-            
-            if (objects.objects.length > 0) {
-              // Find the exact match (should be only one)
-              const exactMatch = objects.objects.find(obj => 
-                obj.key.includes(fileId) && obj.key.endsWith(fileId.split('-').pop() || '')
-              );
-              
-              if (exactMatch) {
-                filePath = exactMatch.key;
-                console.log('Found file path via pattern matching:', filePath);
+            console.log('Searching R2 with derived prefix:', derivedPrefix);
+            let cursor: string | undefined = undefined;
+            do {
+              const { objects, truncated, cursor: next } = await env.FILES_BUCKET.list({ 
+                prefix: derivedPrefix, 
+                cursor, 
+                limit: 1000 
+              });
+              const match = objects.find(o => o.key.includes(`${fileId}.`));
+              if (match) {
+                filePath = match.key;
+                console.log('Found file path via derived prefix:', filePath);
                 break;
               }
-            }
-          } catch (searchError) {
-            console.warn(`Failed to search with prefix ${prefix}:`, searchError);
-            continue;
+              cursor = truncated ? next : undefined;
+            } while (!filePath && cursor);
+          } catch (err) {
+            console.warn('Derived-prefix search failed:', err);
           }
         }
         
-        // If still no filePath found, try a broader search
+        // If still no filePath found, try a paginated bucket scan (last resort)
         if (!filePath) {
           try {
             console.log('Attempting broader search for fileId:', fileId);
-            const allObjects = await env.FILES_BUCKET.list({ prefix: 'uploads/' });
-            const matchingObject = allObjects.objects.find(obj => 
-              obj.key.includes(fileId)
-            );
-            
-            if (matchingObject) {
-              filePath = matchingObject.key;
-              console.log('Found file path via broader search:', filePath);
-            }
+            let cursor: string | undefined = undefined;
+            do {
+              const { objects, truncated, cursor: next } = await env.FILES_BUCKET.list({
+                prefix: 'uploads/',
+                cursor,
+                limit: 1000,
+              });
+              const match = objects.find(obj =>
+                obj.key.includes(`${fileId}.`)
+              );
+              if (match) {
+                filePath = match.key;
+                console.log('Found file path via broader search:', filePath);
+                break;
+              }
+              cursor = truncated ? next : undefined;
+            } while (!filePath && cursor);
           } catch (broadSearchError) {
             console.warn('Failed broader search:', broadSearchError);
           }
@@ -397,30 +414,23 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
 
       console.log('File found in R2, returning response');
 
-      // Extract file extension from storage path if we don't have database metadata
+      // Determine filename and mime
       let originalFileName = fileRecord?.original_name;
       let mimeType = fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream';
       
       if (!originalFileName) {
-        // Extract file extension from the storage key
-        const pathParts = filePath.split('/');
-        const fileNameWithExt = pathParts[pathParts.length - 1]; // Get the last part (filename.ext)
-        const extension = fileNameWithExt.split('.').pop();
-        
-        if (extension) {
-          // Try to determine the original filename from the fileId and extension
-          // The fileId format is: teamId-sessionId-timestamp-random
-          // We'll use the fileId as the base name and add the extension
-          originalFileName = `${fileId}.${extension}`;
-        } else {
-          originalFileName = fileId;
-        }
+        const nameFromKey = filePath.split('/').pop() || `${fileId}`;
+        const ext = nameFromKey.includes('.') ? nameFromKey.split('.').pop() : undefined;
+        originalFileName = ext ? `${fileId}.${ext}` : fileId;
       }
+      
+      // Sanitize filename for headers
+      originalFileName = sanitizeFilename(originalFileName);
 
       // Return file with appropriate headers
       const headers = new Headers();
       headers.set('Content-Type', mimeType);
-      headers.set('Content-Disposition', `inline; filename="${originalFileName}"`);
+      headers.set('Content-Disposition', `inline; filename*=UTF-8''${encodeRFC5987ValueChars(originalFileName)}`);
       if (fileRecord?.file_size) {
         headers.set('Content-Length', fileRecord.file_size.toString());
       }
