@@ -79,16 +79,33 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
 
     // Only check the latest message for skip requests to avoid false positives
     // from earlier conversation context
+    const latestMessageText = latestMessage.content.toLowerCase();
     const isSkipRequest = skipKeywords.some(keyword => 
-      latestMessage.content.toLowerCase().includes(keyword.toLowerCase())
+      latestMessageText.includes(keyword.toLowerCase())
     );
+
+    const forceSkipKeywords = [
+      'need a lawyer',
+      'need a lawyer asap',
+      'lawyer asap',
+      'lawyer now',
+      'urgent lawyer',
+      'immediate lawyer',
+      'need an attorney',
+      'need an attorney asap',
+      'attorney asap',
+      'attorney now'
+    ];
+    const isUrgentDirectRequest = forceSkipKeywords.some(keyword => latestMessageText.includes(keyword));
 
     // Additional context check: if we're in the middle of a conversation about a legal issue,
     // be more conservative about triggering skip
     const hasEstablishedLegalContext = context.establishedMatters.length > 0 || 
                                      context.conversationPhase !== 'initial';
     
-    if (!isSkipRequest || (hasEstablishedLegalContext && messages.length > 3)) {
+    const shouldTriggerSkipFlow = isSkipRequest && (!hasEstablishedLegalContext || messages.length <= 3 || isUrgentDirectRequest);
+
+    if (!shouldTriggerSkipFlow) {
       return { context };
     }
 

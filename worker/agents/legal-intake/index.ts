@@ -15,7 +15,6 @@ import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
 import { ContactIntakeOrchestrator } from '../../services/ContactIntakeOrchestrator.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { analyzeFile, getAnalysisQuestion } from '../../utils/fileAnalysisUtils.js';
-import { isLocationSupported } from '../../utils/locationValidator.js';
 import { createSuccessResult, createErrorResult, ValidationError } from './errors.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
 
@@ -1098,9 +1097,64 @@ Your full submission has already been sent to our legal team for review${require
   return result;
 }
 
-export async function handleRequestLawyerReview(parameters: any, env: any, teamConfig: any) {
+export async function handleRequestLawyerReview(
+  parameters: any,
+  env: Env,
+  teamConfig: any,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+) {
   const { urgency, complexity, matter_type } = parameters;
-  
+
+  let contactName: string | undefined;
+  let contactEmail: string | undefined;
+  let contactPhone: string | undefined;
+  let matterDescription: string | undefined;
+
+  if (sessionId && teamId) {
+    try {
+      const context = await ConversationContextManager.load(sessionId, teamId, env);
+      contactName = context.contactInfo?.name?.trim() || undefined;
+      contactEmail = context.contactInfo?.email?.trim() || undefined;
+      contactPhone = context.contactInfo?.phone?.trim() || undefined;
+
+      if (context.caseDraft?.key_facts?.length) {
+        matterDescription = context.caseDraft.key_facts.join('\n');
+      } else if (context.pendingContactForm?.reason) {
+        matterDescription = context.pendingContactForm.reason;
+      }
+    } catch (error) {
+      Logger.warn('[handleRequestLawyerReview] Failed to load conversation context', {
+        correlationId,
+        sessionId,
+        teamId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  // Hardened contact and name validation, plus placeholder rejection
+  const hasValidEmail = Boolean(contactEmail && ValidationService.validateEmail(contactEmail));
+  const hasValidPhone = Boolean(contactPhone && ValidationService.validatePhone(contactPhone).isValid);
+  const hasReachableContact = hasValidEmail || hasValidPhone;
+  const isNameValid = Boolean(contactName && ValidationService.validateName(contactName));
+  const hasPlaceholders = ValidationService.hasPlaceholderValues(contactPhone, contactEmail);
+
+  if (!isNameValid || !hasReachableContact || hasPlaceholders) {
+    return createValidationError(
+      "I still need your real contact information before I can connect you with a lawyer. " +
+      "Please share your full name and either a valid email address or phone number."
+    );
+  }
+
+  // Optionally also validate the matter type before proceeding
+  if (parameters.matter_type && !ValidationService.validateMatterType(parameters.matter_type)) {
+    return createValidationError(
+      "Please confirm the type of legal matter so I can route your request correctly " +
+      "(e.g., family law, employment, landlord/tenant)."
+    );
+  }
   // Send notification using NotificationService
   const { NotificationService } = await import('../../services/NotificationService.js');
   const notificationService = new NotificationService(env);
@@ -1111,14 +1165,20 @@ export async function handleRequestLawyerReview(parameters: any, env: any, teamC
     matterInfo: {
       type: matter_type,
       urgency,
-      complexity
+      complexity,
+      description: matterDescription
+    },
+    clientInfo: {
+      name: contactName,
+      email: contactEmail,
+      phone: contactPhone
     }
   });
   
   return createSuccessResponse("I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further.");
 }
 
-export async function handleAnalyzeDocument(parameters: any, env: any, teamConfig: any) {
+export async function handleAnalyzeDocument(parameters: any, env: any, _teamConfig: any) {
   const { file_id, analysis_type, specific_question } = parameters;
   
   Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
@@ -1447,7 +1507,7 @@ export async function handleShowContactForm(
       try {
         const context = await ConversationContextManager.load(sessionId, teamId, env);
         if (context?.contactInfo) {
-          const sanitizedValues: NonNullable<ContactFormData['initialValues']> = {};
+          const sanitizedValues: Record<string, string> = {};
           const { contactInfo } = context;
 
           if (contactInfo.name && typeof contactInfo.name === 'string') {
@@ -1476,7 +1536,7 @@ export async function handleShowContactForm(
       }
     }
 
-    const response: ContactFormResponse = {
+    let response: ContactFormResponse = {
       success: true,
       action: 'show_contact_form',
       message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`,
@@ -1495,7 +1555,7 @@ export async function handleShowContactForm(
     };
 
     if (initialValues) {
-      const allowedInitialValues: NonNullable<ContactFormData['initialValues']> = {};
+      const allowedInitialValues: Record<string, string> = {};
       const contactFormFields = Object.keys(response.contactForm.fields);
       for (const fieldKey of contactFormFields) {
         const normalizedKey = fieldKey === 'opposing_party' ? 'opposingParty' : fieldKey;
@@ -1504,14 +1564,17 @@ export async function handleShowContactForm(
         }
         const value = initialValues[normalizedKey as keyof NonNullable<ContactFormData['initialValues']>];
         if (typeof value === 'string' && value.trim()) {
-          allowedInitialValues[normalizedKey as keyof NonNullable<ContactFormData['initialValues']>] = value.trim();
+          allowedInitialValues[normalizedKey] = value.trim();
         }
       }
 
       if (Object.keys(allowedInitialValues).length > 0) {
-        response.contactForm = {
-          ...response.contactForm,
-          initialValues: allowedInitialValues
+        response = {
+          ...response,
+          contactForm: {
+            ...response.contactForm,
+            initialValues: allowedInitialValues
+          } as ContactFormData
         };
       }
     }

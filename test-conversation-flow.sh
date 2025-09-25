@@ -172,6 +172,19 @@ scenario_skip_to_lawyer() {
     fi
 }
 
+scenario_urgent_mid_conversation() {
+    echo -e "${BLUE}🧪 Urgent Mid-Conversation Escalation${NC}"
+    resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-urgent-mid" \
+        '[{"role":"user","content":"I was driving the school bus and an accident happened."},{"role":"assistant","content":"I am so sorry to hear that. Can you share more details?"},{"role":"user","content":"The dog ran into the street and the police were called."},{"role":"assistant","content":"Thank you for letting me know. Were there any injuries?"},{"role":"user","content":"They are here now, I need a lawyer ASAP."}]' \
+        "Urgent Lawyer Escalation")
+
+    if echo "$resp" | grep -q '"type":"contact_form"' && ! echo "$resp" | grep -qi 'request_lawyer_review'; then
+        print_result true "Urgent mid-conversation message triggered contact form without premature lawyer review"
+    else
+        print_result false "Urgent mid-conversation flow failed (no contact form or lawyer review triggered too early)"
+    fi
+}
+
 scenario_general_inquiry() {
     echo -e "${BLUE}🧪 General Inquiry${NC}"
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-general" \
@@ -256,6 +269,7 @@ scenario_general_inquiry
 scenario_context_persistence
 scenario_document_gathering
 scenario_contact_form_prefill
+scenario_urgent_mid_conversation
 
 ###############################################
 # Summary
