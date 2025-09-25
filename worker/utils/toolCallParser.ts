@@ -88,60 +88,68 @@ export class ToolCallParser {
    * Parses tool call information from AI response
    */
   static parseToolCall(response: string): ToolCallParseResult {
-    // Check for tool call indicators
+    const trimmedResponse = response.trim();
+
+    // Fast path: the model replied with JSON like {"name":"foo","arguments":{...}}
+    if (trimmedResponse.startsWith('{')) {
+      const jsonResult = this.parseJsonToolCall(trimmedResponse);
+      if (jsonResult) {
+        return jsonResult;
+      }
+      // If JSON parsing failed, fall through to legacy TOOL_CALL handling so we surface
+      // meaningful validation errors instead of silently ignoring the payload.
+    }
+
+    // Legacy format: "TOOL_CALL: <name>" followed by PARAMETERS block.
     if (!safeIncludes(response, 'TOOL_CALL:')) {
       return { success: false, error: 'No tool call detected' };
     }
 
-    // Parse tool call
     const toolCallMatch = response.match(/TOOL_CALL:\s*([\w_]+)/);
     if (!toolCallMatch) {
-      return { 
-        success: false, 
-        error: 'Invalid tool call format - could not extract tool name' 
+      return {
+        success: false,
+        error: 'Invalid tool call format - could not extract tool name'
       };
     }
-    
+
     const toolName = toolCallMatch[1];
-    
-    // Find the start of PARAMETERS
+
     const parametersIndex = response.indexOf('PARAMETERS:');
     if (parametersIndex === -1) {
-      return { 
-        success: false, 
-        error: 'Incomplete tool call format - missing parameters' 
+      return {
+        success: false,
+        error: 'Incomplete tool call format - missing parameters'
       };
     }
-    
-    // Extract everything after PARAMETERS:
+
     const afterParameters = response
       .substring(parametersIndex + 'PARAMETERS:'.length)
       .trim();
-    
-    // Find the matching closing brace by counting braces
+
     let braceCount = 0;
     let endIndex = -1;
     let inString = false;
     let escapeNext = false;
-    
+
     for (let i = 0; i < afterParameters.length; i++) {
       const char = afterParameters[i];
-      
+
       if (escapeNext) {
         escapeNext = false;
         continue;
       }
-      
+
       if (char === '\\') {
         escapeNext = true;
         continue;
       }
-      
+
       if (char === '"' && !escapeNext) {
         inString = !inString;
         continue;
       }
-      
+
       if (!inString) {
         if (char === '{') {
           braceCount++;
@@ -154,48 +162,44 @@ export class ToolCallParser {
         }
       }
     }
-    
+
     if (endIndex === -1) {
-      return { 
-        success: false, 
-        error: 'Incomplete tool call format - invalid JSON structure' 
+      return {
+        success: false,
+        error: 'Incomplete tool call format - invalid JSON structure'
       };
     }
-    
+
     const parametersJson = afterParameters.substring(0, endIndex);
-    
-    // Parse the JSON parameters
+
     let parameters;
     try {
       parameters = JSON.parse(parametersJson);
     } catch (parseError) {
       Logger.error('Failed to parse tool parameters JSON:', parseError);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Invalid JSON in tool parameters',
         rawParameters: parametersJson
       };
     }
-    
-    // Validate parameters is an object (not null, not array, and is an object)
-    if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
-      return { 
-        success: false, 
+
+    if (!this.isPlainObject(parameters)) {
+      return {
+        success: false,
         error: 'Tool parameters must be a plain object (not an array)',
         rawParameters: parametersJson
       };
     }
-    
-    // Create a safe copy without prototype‐pollution risk and sanitize for logging
+
     const sanitized = this.sanitizeValue(parameters);
-    
-    // Return the parsed tool call with both raw and sanitized parameters
+
     return {
       success: true,
       toolCall: {
         toolName,
-        parameters: parameters, // Raw parameters for tool execution
-        sanitizedParameters: sanitized // Sanitized parameters for logging/telemetry
+        parameters,
+        sanitizedParameters: sanitized
       },
       rawParameters: parametersJson
     };
@@ -228,5 +232,78 @@ export class ToolCallParser {
 
     // Use the existing recursive sanitizeValue function for consistent behavior
     return this.sanitizeValue(parameters);
+  }
+
+  /**
+   * Parse a JSON tool call payload if present. Returns null when not applicable.
+   */
+  private static parseJsonToolCall(responseJson: string): ToolCallParseResult | null {
+    try {
+      const parsed = JSON.parse(responseJson);
+
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return null;
+      }
+
+      const toolName = typeof (parsed as any).name === 'string' ? (parsed as any).name : undefined;
+      if (!toolName) {
+        return null;
+      }
+
+      const rawArguments = (parsed as any).arguments ?? (parsed as any).params ?? (parsed as any).parameters ?? {};
+      const normalizedArguments = this.normalizeArguments(rawArguments);
+
+      if (!this.isPlainObject(normalizedArguments)) {
+        return {
+          success: false,
+          error: 'Tool arguments must be a JSON object',
+          rawParameters: typeof rawArguments === 'string' ? rawArguments : undefined
+        };
+      }
+
+      const sanitized = this.sanitizeValue(normalizedArguments);
+
+      return {
+        success: true,
+        toolCall: {
+          toolName,
+          parameters: normalizedArguments,
+          sanitizedParameters: sanitized
+        },
+        rawParameters: typeof rawArguments === 'string' ? rawArguments : undefined
+      };
+    } catch (error) {
+      Logger.warn('Failed to parse JSON tool call payload', error);
+      return {
+        success: false,
+        error: 'Invalid JSON tool call payload'
+      };
+    }
+  }
+
+  private static normalizeArguments(rawArguments: unknown): Record<string, unknown> | null {
+    if (typeof rawArguments === 'string') {
+      try {
+        const parsed = JSON.parse(rawArguments);
+        return this.isPlainObject(parsed) ? parsed : null;
+      } catch (error) {
+        Logger.warn('Failed to parse tool arguments JSON string', error);
+        return null;
+      }
+    }
+
+    if (this.isPlainObject(rawArguments)) {
+      return rawArguments as Record<string, unknown>;
+    }
+
+    if (rawArguments === undefined || rawArguments === null) {
+      return {};
+    }
+
+    return null;
+  }
+
+  private static isPlainObject(value: unknown): value is Record<string, unknown> {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
   }
 }

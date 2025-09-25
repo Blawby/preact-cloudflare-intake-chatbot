@@ -761,7 +761,17 @@ function buildPrompt(messages: readonly AgentMessage[], _context: ConversationCo
 }
 
 function looksLikeToolCall(response: string): boolean {
-  return typeof response === 'string' && safeIncludes(response.toLowerCase(), 'tool_call');
+  if (typeof response !== 'string') {
+    return false;
+  }
+
+  const lower = response.toLowerCase();
+  if (safeIncludes(lower, 'tool_call')) {
+    return true;
+  }
+
+  const trimmed = response.trim();
+  return trimmed.startsWith('{') && safeIncludes(lower, '"name"');
 }
 
 // Main agent function - SIMPLIFIED TO SINGLE AI CALL

@@ -254,6 +254,18 @@ scenario_contact_form_prefill() {
     else
         print_result false "Case summary PDF metadata missing from tool result"
     fi
+
+    if echo "$resp" | grep -q '"type":"tool_result"'; then
+        print_result true "Tool result event emitted for matter creation"
+    else
+        print_result false "Missing tool_result event for matter creation"
+    fi
+
+    if echo "$resp" | grep -qi '"text":"{\\"name\\"' || echo "$resp" | grep -qi '"response":"{\\"name\\"'; then
+        print_result false "Assistant response still contains raw JSON tool payload"
+    else
+        print_result true "Assistant response is human-readable (no raw JSON payload)"
+    fi
 }
 
 ###############################################
