@@ -186,9 +186,17 @@ async function handlePublicMode(matterInfo: MatterInfo, context: ConversationCon
       total: searchResult.total
     });
 
-    const response = `I found ${searchResult.total} qualified ${matterInfo.matterType} lawyers in your area! Here are the top matches:\n\n**Available Lawyers:**\n${searchResult.lawyers.slice(0, 5).map((lawyer, index) => 
-      `${index + 1}. **${lawyer.name}**${lawyer.firm ? ` (${lawyer.firm})` : ''}\n   📍 ${lawyer.location}\n   ⭐ ${lawyer.rating ? `${lawyer.rating}/5` : 'No rating'}${lawyer.phone ? `\n   📞 ${lawyer.phone}` : ''}${lawyer.email ? `\n   ✉️ ${lawyer.email}` : ''}`
-    ).join('\n\n')}\n\n**Next Steps:**\n• Contact any of these lawyers directly\n• Ask about consultation fees and availability\n• Schedule a consultation to discuss your case\n\nWould you like me to help you prepare your case information before meeting with a lawyer?`;
+    const lawyerSummaries = searchResult.lawyers.slice(0, 3).map((lawyer, index) => {
+      const parts = [
+        `${index + 1}. ${lawyer.name}${lawyer.firm ? ` (${lawyer.firm})` : ''}`,
+        lawyer.location ? `   • ${lawyer.location}` : null,
+        lawyer.phone ? `   • ${lawyer.phone}` : null,
+        lawyer.email ? `   • ${lawyer.email}` : null
+      ].filter(Boolean);
+      return parts.join('\n');
+    }).join('\n');
+
+    const response = `I found ${searchResult.total} ${matterInfo.matterType} lawyers who match what you're looking for.${lawyerSummaries ? `\n\nTop matches:\n${lawyerSummaries}` : ''}\n\nReach out to any of them directly, or tell me if you want help organizing your case summary and documents before you call.`;
 
     // Update context with lawyer search results
     const updatedContext = {
@@ -233,8 +241,9 @@ async function handlePublicMode(matterInfo: MatterInfo, context: ConversationCon
 /**
  * Handle quota exceeded or other errors by pivoting to case preparation
  */
+
 function handleQuotaExceededFallback(matterInfo: MatterInfo, context: ConversationContext, errorMessage: string): MiddlewareResponse {
-  const response = `${errorMessage}\n\n**But don't worry!** I can help you in an even better way. Let me help you:\n\n📋 **Prepare Your Case Completely**\n• Organize all your facts and timeline\n• Create a professional case summary\n• Generate a PDF you can share with any qualified lawyer\n• Build a document checklist\n\n💡 **Why This Is Actually Better:**\n• You'll be prepared for any lawyer consultation\n• You can shop around with confidence\n• You'll save time and money in consultations\n• You'll look professional and organized\n\n🔍 **Finding Qualified Lawyers:**\n• Contact your local bar association\n• Use online directories like Avvo or Justia\n• Ask for referrals from friends/family\n• Check with legal aid organizations\n\n**Would you like me to help you build a comprehensive case summary that you can use with any qualified lawyer you find?**\n\nJust tell me about your ${matterInfo.matterType} situation and I'll help you organize everything into a professional case file.`;
+  const response = `${errorMessage}\n\nLet's get you ready for the next lawyer you contact: share the key facts and I'll build a clean case summary, checklist, and PDF you can hand to anyone.`;
 
   return {
     context,
