@@ -162,6 +162,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         matterCanvas={(message as any).matterCanvas}
                         paymentEmbed={(message as any).paymentEmbed}
                         contactForm={(message as any).contactForm}
+                        generatedPDF={(message as any).generatedPDF}
                         teamConfig={teamConfig}
                         onOpenSidebar={onOpenSidebar}
                         onContactFormSubmit={onContactFormSubmit}

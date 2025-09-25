@@ -273,24 +273,52 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     });
                     break;
                     
-                  case 'tool_result':
-                    // Tool result received, update content
-                    if (data.result && data.result.message) {
-                      currentContent = data.result.message;
-                      
-                      // Extract payment embed data from streaming response
-                      const paymentEmbed = data.result?.data?.payment_embed;
-                      
-                      if (paymentEmbed) {
-                        console.log('Payment embed data received via streaming');
-                      }
-                      
-                      updateAIMessage(placeholderId, { 
-                        content: currentContent,
-                        paymentEmbed: paymentEmbed || undefined,
-                        isLoading: false 
-                      });
+                case 'tool_result': {
+                  // Tool result received, merge content and any structured payload
+                  if (data.result && data.result.message) {
+                    currentContent = data.result.message;
+                  }
+
+                  const paymentEmbed = data.result?.data?.payment_embed;
+                  const caseSummaryPdf = data.result?.data?.case_summary_pdf;
+
+                  const updates: Partial<ChatMessageUI & { isUser: false }> = {
+                    content: currentContent,
+                    isLoading: false
+                  };
+
+                  if (paymentEmbed) {
+                    updates.paymentEmbed = paymentEmbed;
+                  }
+
+                  if (caseSummaryPdf && typeof caseSummaryPdf === 'object') {
+                    const {
+                      filename,
+                      size,
+                      generatedAt,
+                      matterType,
+                      storageKey
+                    } = caseSummaryPdf as Record<string, unknown>;
+
+                    if (
+                      typeof filename === 'string' &&
+                      typeof generatedAt === 'string' &&
+                      typeof matterType === 'string' &&
+                      typeof size === 'number'
+                    ) {
+                      updates.generatedPDF = {
+                        filename,
+                        size,
+                        generatedAt,
+                        matterType,
+                        storageKey: typeof storageKey === 'string' ? storageKey : undefined
+                      };
                     }
+                  }
+
+                  updateAIMessage(placeholderId, updates);
+                  break;
+                }
                     break;
                     
                   case 'final':

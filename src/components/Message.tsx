@@ -46,6 +46,13 @@ interface MessageProps {
 		fields: string[];
 		required: string[];
 		message?: string;
+		initialValues?: {
+			name?: string;
+			email?: string;
+			phone?: string;
+			location?: string;
+			opposingParty?: string;
+		};
 	};
 	documentChecklist?: {
 		matterType: string;
@@ -84,6 +91,7 @@ interface MessageProps {
 		size: number;
 		generatedAt: string;
 		matterType: string;
+		storageKey?: string;
 	};
 	teamConfig?: {
 		name: string;
@@ -330,6 +338,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						fields={contactForm.fields}
 						required={contactForm.required}
 						message={contactForm.message}
+						initialValues={contactForm.initialValues}
 						onSubmit={onContactFormSubmit}
 					/>
 				)}
@@ -395,17 +404,31 @@ const Message: FunctionComponent<MessageProps> = memo(({
 								// Show loading state
 								showInfo('Downloading PDF', 'Preparing your case summary for download...');
 								
+								const downloadPayload: Record<string, unknown> = {
+									filename: generatedPDF.filename,
+									matterType: generatedPDF.matterType,
+									generatedAt: generatedPDF.generatedAt
+								};
+
+								if (_sessionId) {
+									downloadPayload.sessionId = _sessionId;
+								}
+
+								if (_teamId) {
+									downloadPayload.teamId = _teamId;
+								}
+
+								if (generatedPDF.storageKey) {
+									downloadPayload.storageKey = generatedPDF.storageKey;
+								}
+
 								// Request PDF from backend
 								const response = await globalThis.fetch('/api/pdf/download', {
 									method: 'POST',
 									headers: {
 										'Content-Type': 'application/json',
 									},
-									body: JSON.stringify({
-										filename: generatedPDF.filename,
-										matterType: generatedPDF.matterType,
-										generatedAt: generatedPDF.generatedAt
-									})
+									body: JSON.stringify(downloadPayload)
 								});
 
 								if (!response.ok) {
@@ -435,16 +458,30 @@ const Message: FunctionComponent<MessageProps> = memo(({
 							
 							try {
 								// Direct API call to regenerate PDF
+								const regeneratePayload: Record<string, unknown> = {
+									filename: generatedPDF.filename,
+									matterType: generatedPDF.matterType,
+									generatedAt: generatedPDF.generatedAt
+								};
+
+								if (_sessionId) {
+									regeneratePayload.sessionId = _sessionId;
+								}
+
+								if (_teamId) {
+									regeneratePayload.teamId = _teamId;
+								}
+
+								if (generatedPDF.storageKey) {
+									regeneratePayload.storageKey = generatedPDF.storageKey;
+								}
+
 								const response = await globalThis.fetch('/api/pdf/regenerate', {
 									method: 'POST',
 									headers: { 
 										'Content-Type': 'application/json' 
 									},
-									body: JSON.stringify({
-										filename: generatedPDF.filename,
-										matterType: generatedPDF.matterType,
-										generatedAt: generatedPDF.generatedAt
-									})
+									body: JSON.stringify(regeneratePayload)
 								});
 
 								if (!response.ok) {
