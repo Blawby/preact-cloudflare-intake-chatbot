@@ -1134,14 +1134,27 @@ export async function handleRequestLawyerReview(
     }
   }
 
-  const hasValidEmail = contactEmail && ValidationService.validateEmail(contactEmail);
-  const hasValidPhone = contactPhone && ValidationService.validatePhone(contactPhone).isValid;
+  // Hardened contact and name validation, plus placeholder rejection
+  const hasValidEmail = Boolean(contactEmail && ValidationService.validateEmail(contactEmail));
+  const hasValidPhone = Boolean(contactPhone && ValidationService.validatePhone(contactPhone).isValid);
   const hasReachableContact = hasValidEmail || hasValidPhone;
+  const isNameValid = Boolean(contactName && ValidationService.validateName(contactName));
+  const hasPlaceholders = ValidationService.hasPlaceholderValues(contactPhone, contactEmail);
 
-  if (!contactName || !hasReachableContact) {
-    return createValidationError("I still need your contact information before I can connect you with a lawyer. Please share your full name and either an email address or phone number.");
+  if (!isNameValid || !hasReachableContact || hasPlaceholders) {
+    return createValidationError(
+      "I still need your real contact information before I can connect you with a lawyer. " +
+      "Please share your full name and either a valid email address or phone number."
+    );
   }
 
+  // Optionally also validate the matter type before proceeding
+  if (parameters.matter_type && !ValidationService.validateMatterType(parameters.matter_type)) {
+    return createValidationError(
+      "Please confirm the type of legal matter so I can route your request correctly " +
+      "(e.g., family law, employment, landlord/tenant)."
+    );
+  }
   // Send notification using NotificationService
   const { NotificationService } = await import('../../services/NotificationService.js');
   const notificationService = new NotificationService(env);
