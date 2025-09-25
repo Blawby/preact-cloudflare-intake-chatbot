@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { 
   PhotoIcon, 
   VideoCameraIcon, 
@@ -107,12 +107,21 @@ export default function MediaSidebar({ messages, sessionId }: MediaSidebarProps)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Get files from database for this session
-  const { files: sessionFiles, isLoading: isLoadingFiles, error: filesError, deleteFile } = useSessionFiles({
+  const { files: sessionFiles, isLoading: isLoadingFiles, error: filesError, deleteFile, refetch } = useSessionFiles({
     sessionId,
     enabled: !!sessionId
   });
+
+  // Force refresh session files when component mounts to ensure we have latest data
+  useEffect(() => {
+    if (sessionId && refetch) {
+      console.log('🔄 MediaSidebar: Force refreshing session files to clear stale data');
+      refetch();
+    }
+  }, [sessionId, refetch]);
 
   // Get media from messages (existing functionality)
   const messageMediaGroups = aggregateMediaFromMessages(messages);
@@ -127,6 +136,32 @@ export default function MediaSidebar({ messages, sessionId }: MediaSidebarProps)
     timestamp: new Date(file.created_at).getTime(),
     fileId: file.id // Add file ID for deletion
   }));
+
+  // DEBUG: Log session files and their fileIds
+  console.log('🔍 Session files for delete buttons:', sessionFiles.map(f => ({ 
+    id: f.id, 
+    name: f.original_name,
+    hasFileId: !!f.id,
+    fullFileObject: f
+  })));
+  console.log('🔍 Session media files with fileId:', sessionMediaFiles.map(f => ({ 
+    name: f.name, 
+    fileId: f.fileId,
+    hasFileId: !!f.fileId,
+    url: f.url
+  })));
+  
+  // DEBUG: Also log message media to see if files are coming from messages instead
+  console.log('🔍 Message media groups:', messageMediaGroups.map(group => ({
+    category: group.category,
+    files: group.files.map(f => ({ name: f.name, hasFileId: !!(f as any).fileId }))
+  })));
+
+  // DEBUG: Check for stale data issue
+  if (sessionFiles.length === 0 && messageMediaGroups.some(group => group.files.length > 0)) {
+    console.log('⚠️ STALE DATA DETECTED: No session files but message media exists. Files may be from old cached message attachments.');
+    console.log('⚠️ Consider refreshing the page to clear stale message data.');
+  }
 
   // Create a unified media collection with deduplication and proper categorization
   const allMediaMap = new Map<string, AggregatedMedia & { fileId?: string }>();
@@ -145,7 +180,8 @@ export default function MediaSidebar({ messages, sessionId }: MediaSidebarProps)
   sessionMediaFiles.forEach(file => {
     const key = `${file.name}-${file.size}`;
     if (!allMediaMap.has(key)) {
-      allMediaMap.set(key, file);
+      // New file from session - ensure it has fileId
+      allMediaMap.set(key, { ...file, fileId: file.fileId });
     } else {
       // File exists from message, but add fileId for deletion capability
       const existingFile = allMediaMap.get(key)!;
@@ -172,18 +208,43 @@ export default function MediaSidebar({ messages, sessionId }: MediaSidebarProps)
 
   // Calculate total files
   const totalFiles = allMediaMap.size;
+
+  // DEBUG: Log final media map to see which files have fileId for delete buttons
+  console.log('🔍 Final allMediaMap for delete buttons:', 
+    Array.from(allMediaMap.entries()).map(([key, media]) => ({ 
+      key, 
+      name: media.name, 
+      fileId: (media as any).fileId,
+      hasFileId: !!(media as any).fileId,
+      category: media.category
+    }))
+  );
   
   // Handle file deletion
   const handleDeleteFile = async (fileId: string) => {
     setIsDeleting(true);
     try {
+      console.log('🗑️ Attempting to delete file:', fileId);
       const success = await deleteFile(fileId);
       if (success) {
         setFileToDelete(null);
-        console.log('File deleted successfully');
+        console.log('✅ File deleted successfully from MediaSidebar');
+        
+        // Force UI refresh after successful deletion
+        // The deleteFile function should already update local state, but this ensures consistency
+        if (refetch) {
+          console.log('🔄 Refetching session files after deletion');
+          await refetch();
+        }
+        
+        // Force component re-render to ensure UI updates
+        setRefreshTrigger(prev => prev + 1);
+        console.log('🔄 Triggering UI refresh after deletion');
+      } else {
+        console.error('❌ File deletion failed');
       }
     } catch (error) {
-      console.error('Failed to delete file:', error);
+      console.error('❌ Failed to delete file:', error);
     } finally {
       setIsDeleting(false);
     }
@@ -333,14 +394,46 @@ export default function MediaSidebar({ messages, sessionId }: MediaSidebarProps)
                                 <ArrowDownTrayIcon className="w-3 h-3" />
                               </Button>
                               
-                              {/* Show delete button only for files that have a fileId (uploaded files) */}
-                              {(media as any).fileId && (
+                              {/* Show delete button for files that have a fileId OR are from session (uploaded files) */}
+                              {(() => {
+                                const hasFileId = !!(media as any).fileId;
+                                const isFromSession = media.url && media.url.startsWith('/api/files/');
+                                const shouldShowDelete = hasFileId || isFromSession;
+                                
+                                console.log(`🔍 Delete button check for ${media.name}:`, { 
+                                  fileId: (media as any).fileId, 
+                                  hasFileId,
+                                  url: media.url,
+                                  isFromSession,
+                                  shouldShowDelete,
+                                  mediaObject: media 
+                                });
+                                return shouldShowDelete;
+                              })() && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    confirmDelete((media as any).fileId);
+                                    // Extract fileId from URL if not present in media object
+                                    const fileId = (media as any).fileId || 
+                                      (media.url && media.url.startsWith('/api/files/') ? 
+                                        media.url.split('/api/files/')[1].split('?')[0] : null);
+                                    
+                                    console.log('🗑️ Delete button clicked - debugging:', {
+                                      mediaName: media.name,
+                                      mediaUrl: media.url,
+                                      directFileId: (media as any).fileId,
+                                      extractedFileId: fileId,
+                                      fullMedia: media
+                                    });
+                                    
+                                    if (fileId) {
+                                      console.log('🗑️ Proceeding with deletion for fileId:', fileId);
+                                      confirmDelete(fileId);
+                                    } else {
+                                      console.error('❌ No fileId found for deletion:', media);
+                                    }
                                   }}
                                   title="Delete file"
                                   className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors duration-200"

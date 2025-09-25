@@ -92,8 +92,31 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
         hasMessages: Array.isArray(rawBody?.messages),
         messagesLength: rawBody?.messages?.length,
         firstMessage: rawBody?.messages?.[0],
+        hasAttachments: Array.isArray(rawBody?.attachments),
+        attachmentsLength: rawBody?.attachments?.length,
+        attachments: rawBody?.attachments,
         rawBody: rawBody
       });
+      
+      // Detailed attachment validation logging
+      if (rawBody?.attachments && Array.isArray(rawBody.attachments)) {
+        rawBody.attachments.forEach((att: any, index: number) => {
+          const nameOk = typeof att?.name === 'string' && att.name.length > 0;
+          const typeOk = typeof att?.type === 'string' && att.type.length > 0;
+          const sizeOk = typeof att?.size === 'number' && att.size >= 0 && Number.isFinite(att.size);
+          const urlOk = typeof att?.url === 'string' && /^(https?):\/\//i.test(att.url);
+          
+          console.error(`❌ Attachment ${index} validation failed:`, {
+            attachment: att,
+            nameOk,
+            typeOk,
+            sizeOk,
+            urlOk,
+            allValid: nameOk && typeOk && sizeOk && urlOk
+          });
+        });
+      }
+      
       throw HttpErrors.badRequest('Invalid request body format. Expected messages array with valid message objects.');
     }
     

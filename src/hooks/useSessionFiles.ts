@@ -66,11 +66,31 @@ export const useSessionFiles = ({
 
   const deleteFile = useCallback(async (fileId: string): Promise<boolean> => {
     try {
+      console.log('🗑️ useSessionFiles: Attempting to delete file:', fileId);
+      console.log('🗑️ useSessionFiles: Delete URL:', `/api/files/${fileId}`);
+      
       const response = await fetch(`/api/files/${fileId}`, {
         method: 'DELETE'
       });
 
+      console.log('🗑️ useSessionFiles: Delete response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url
+      });
+
       if (!response.ok) {
+        const errorText = await response.text().catch(() => 'No response text');
+        console.error('🗑️ useSessionFiles: Delete failed with response:', errorText);
+        
+        // If file not found (404), it might already be deleted - remove from UI anyway
+        if (response.status === 404) {
+          console.log('🗑️ File not found (404) - removing from UI as it may already be deleted');
+          setFiles(prev => prev.filter(file => file.id !== fileId));
+          return true; // Consider this a success since the file is gone
+        }
+        
         throw new Error(`Failed to delete file: ${response.status} ${response.statusText}`);
       }
 

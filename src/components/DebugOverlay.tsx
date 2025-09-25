@@ -34,7 +34,8 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
     // Validate and parse tool calls
     const validateToolCalls = (data: unknown): ToolCall[] => {
       if (!Array.isArray(data)) {
-        console.warn('__toolCalls is not an array, using empty array as fallback');
+        // Temporarily disabled to reduce console spam
+        // console.warn('__toolCalls is not an array, using empty array as fallback');
         return [];
       }
 
@@ -64,7 +65,8 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
         return data;
       }
       
-      console.warn('__conversationState is not a string, using "unknown" as fallback:', data);
+      // Temporarily disabled to reduce console spam
+      // console.warn('__conversationState is not a string, using "unknown" as fallback:', data);
       return 'unknown';
     };
 

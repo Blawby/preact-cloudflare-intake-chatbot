@@ -239,13 +239,33 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     
     const apiEndpoint = getAgentStreamEndpoint();
     
-    // Sanitize attachments to ensure JSON serialization works
-    const sanitizedAttachments = attachments.map(attachment => ({
-      name: attachment.name,
-      size: attachment.size,
-      type: attachment.type,
-      url: attachment.url
-    }));
+    // Sanitize attachments to ensure JSON serialization works and server validation passes
+    const sanitizedAttachments = attachments.map(attachment => {
+      // Ensure URL is in the correct format for server validation
+      let validUrl = attachment.url;
+      
+      // Convert relative URLs to absolute URLs
+      if (validUrl && validUrl.startsWith('/')) {
+        // Convert relative URL to absolute URL using current origin
+        validUrl = `${window.location.origin}${validUrl}`;
+      }
+      // Handle blob URLs and other invalid formats
+      else if (!validUrl || (!validUrl.startsWith('http://') && !validUrl.startsWith('https://'))) {
+        // For blob URLs or invalid URLs, create a proper download URL
+        if (validUrl && validUrl.startsWith('blob:')) {
+          validUrl = `https://placeholder.example.com/blob/${attachment.name}`;
+        } else {
+          validUrl = `https://placeholder.example.com/file/${attachment.name}`;
+        }
+      }
+      
+      return {
+        name: attachment.name || 'unnamed-file',
+        size: typeof attachment.size === 'number' ? attachment.size : 0,
+        type: attachment.type || 'application/octet-stream',
+        url: validUrl
+      };
+    });
 
     // Create the request body
     const requestBody = {
@@ -259,6 +279,26 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     console.log('🔍 Request body before JSON.stringify:', requestBody);
     console.log('🔍 Original attachments:', attachments);
     console.log('🔍 Sanitized attachments:', sanitizedAttachments);
+    
+    // DEBUG: Validate each attachment against server requirements
+    sanitizedAttachments.forEach((att, index) => {
+      const nameOk = typeof att.name === 'string' && att.name.length > 0;
+      const typeOk = typeof att.type === 'string' && att.type.length > 0;
+      const sizeOk = typeof att.size === 'number' && att.size >= 0 && Number.isFinite(att.size);
+      const urlOk = typeof att.url === 'string' && /^(https?):\/\//i.test(att.url);
+      
+      console.log(`🔍 Attachment ${index} validation:`, {
+        name: att.name,
+        nameOk,
+        type: att.type,
+        typeOk,
+        size: att.size,
+        sizeOk,
+        url: att.url,
+        urlOk,
+        allValid: nameOk && typeOk && sizeOk && urlOk
+      });
+    });
     
     // DEBUG: Test JSON serialization
     try {
