@@ -298,10 +298,22 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       let fileRecord = null;
       try {
         const stmt = env.DB.prepare(`
-          SELECT * FROM files WHERE id = ? AND is_deleted = FALSE
+          SELECT id, team_id, session_id, original_name, file_name, file_path, 
+                 file_type, file_size, mime_type, created_at
+          FROM files 
+          WHERE id = ? AND (is_deleted IS NULL OR is_deleted = FALSE)
         `);
         fileRecord = await stmt.bind(fileId).first();
         console.log('Database file record:', fileRecord);
+        
+        if (fileRecord) {
+          console.log('Found file in database:', {
+            id: fileRecord.id,
+            file_path: fileRecord.file_path,
+            original_name: fileRecord.original_name,
+            file_size: fileRecord.file_size
+          });
+        }
       } catch (dbError) {
         console.warn('Failed to get file metadata from database:', dbError);
         // Continue without database metadata
@@ -315,65 +327,100 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       // Try to construct the file path from the fileId if we don't have database metadata
       let filePath = fileRecord?.file_path;
       if (!filePath) {
-        // Extract teamId and sessionId from fileId format: teamId-sessionId-timestamp-random
-        // The teamId can contain hyphens, so we need to be more careful about parsing
-        const lastHyphenIndex = fileId.lastIndexOf('-');
-        const secondLastHyphenIndex = fileId.lastIndexOf('-', lastHyphenIndex - 1);
+        console.log('No database metadata found, attempting to find file by pattern matching');
         
-        if (lastHyphenIndex !== -1 && secondLastHyphenIndex !== -1) {
-          // The format is: teamId-sessionId-timestamp-random
-          // We need to find where the sessionId ends and timestamp begins
-          const parts = fileId.split('-');
-          if (parts.length >= 4) {
-            // The last two parts are timestamp and random string
-            const timestamp = parts[parts.length - 2];
-            const randomString = parts[parts.length - 1];
+        // Try to find the file by searching R2 with the fileId as a prefix
+        // This is more reliable than trying to parse the complex fileId format
+        const searchPrefixes = [
+          `uploads/${fileId}`,  // Direct search with fileId
+          `uploads/*/${fileId}`, // Search in any team folder
+          `uploads/*/*/${fileId}` // Search in any team/session folder
+        ];
+        
+        for (const prefix of searchPrefixes) {
+          try {
+            console.log('Searching R2 with prefix:', prefix);
+            const objects = await env.FILES_BUCKET.list({ prefix });
+            console.log(`Found ${objects.objects.length} objects with prefix: ${prefix}`);
             
-            // Everything before the timestamp is teamId-sessionId
-            const teamIdAndSessionId = parts.slice(0, -2).join('-');
-            
-            // Find the sessionId (it's a UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-            const sessionIdMatch = teamIdAndSessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-            
-            if (sessionIdMatch) {
-              const sessionId = sessionIdMatch[0];
-              const teamId = teamIdAndSessionId.substring(0, teamIdAndSessionId.length - sessionId.length - 1); // -1 for the hyphen
+            if (objects.objects.length > 0) {
+              // Find the exact match (should be only one)
+              const exactMatch = objects.objects.find(obj => 
+                obj.key.includes(fileId) && obj.key.endsWith(fileId.split('-').pop() || '')
+              );
               
-              console.log('Parsed fileId:', { teamId, sessionId, timestamp, randomString });
-              
-              // Try to find the file in R2 with a pattern match
-              const prefix = `uploads/${teamId}/${sessionId}/${fileId}`;
-              console.log('Looking for file with prefix:', prefix);
-              // List objects with this prefix
-              const objects = await env.FILES_BUCKET.list({ prefix });
-              console.log('R2 objects found:', objects.objects.length);
-              if (objects.objects.length > 0) {
-                filePath = objects.objects[0].key;
-                console.log('Found file path:', filePath);
+              if (exactMatch) {
+                filePath = exactMatch.key;
+                console.log('Found file path via pattern matching:', filePath);
+                break;
               }
             }
+          } catch (searchError) {
+            console.warn(`Failed to search with prefix ${prefix}:`, searchError);
+            continue;
+          }
+        }
+        
+        // If still no filePath found, try a broader search
+        if (!filePath) {
+          try {
+            console.log('Attempting broader search for fileId:', fileId);
+            const allObjects = await env.FILES_BUCKET.list({ prefix: 'uploads/' });
+            const matchingObject = allObjects.objects.find(obj => 
+              obj.key.includes(fileId)
+            );
+            
+            if (matchingObject) {
+              filePath = matchingObject.key;
+              console.log('Found file path via broader search:', filePath);
+            }
+          } catch (broadSearchError) {
+            console.warn('Failed broader search:', broadSearchError);
           }
         }
       }
 
       if (!filePath) {
-        console.log('No file path found for fileId:', fileId);
-        throw HttpErrors.notFound('File not found');
+        console.error('No file path found for fileId:', fileId);
+        console.error('Database record:', fileRecord);
+        throw HttpErrors.notFound('File not found - unable to locate file path');
       }
 
       console.log('Attempting to get file from R2:', filePath);
       const fileObject = await env.FILES_BUCKET.get(filePath);
       if (!fileObject) {
-        console.log('File not found in R2 storage:', filePath);
+        console.error('File not found in R2 storage:', filePath);
+        console.error('FileId:', fileId);
+        console.error('Database record:', fileRecord);
         throw HttpErrors.notFound('File not found in storage');
       }
 
       console.log('File found in R2, returning response');
 
-              // Return file with appropriate headers
-        const headers = new Headers();
-      headers.set('Content-Type', fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream');
-      headers.set('Content-Disposition', `inline; filename="${fileRecord?.original_name || fileId}"`);
+      // Extract file extension from storage path if we don't have database metadata
+      let originalFileName = fileRecord?.original_name;
+      let mimeType = fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream';
+      
+      if (!originalFileName) {
+        // Extract file extension from the storage key
+        const pathParts = filePath.split('/');
+        const fileNameWithExt = pathParts[pathParts.length - 1]; // Get the last part (filename.ext)
+        const extension = fileNameWithExt.split('.').pop();
+        
+        if (extension) {
+          // Try to determine the original filename from the fileId and extension
+          // The fileId format is: teamId-sessionId-timestamp-random
+          // We'll use the fileId as the base name and add the extension
+          originalFileName = `${fileId}.${extension}`;
+        } else {
+          originalFileName = fileId;
+        }
+      }
+
+      // Return file with appropriate headers
+      const headers = new Headers();
+      headers.set('Content-Type', mimeType);
+      headers.set('Content-Disposition', `inline; filename="${originalFileName}"`);
       if (fileRecord?.file_size) {
         headers.set('Content-Length', fileRecord.file_size.toString());
       }

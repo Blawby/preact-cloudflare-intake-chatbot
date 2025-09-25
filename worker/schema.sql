@@ -32,8 +32,7 @@ CREATE TABLE IF NOT EXISTS messages (
   is_user BOOLEAN NOT NULL,
   metadata JSON,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (conversation_id) REFERENCES conversations(id),
-  FOREIGN KEY (matter_id) REFERENCES matters(id)
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id)
 );
 
 
@@ -137,7 +136,6 @@ CREATE TABLE IF NOT EXISTS matter_events (
   metadata JSON, -- Additional structured data
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (matter_id) REFERENCES matters(id),
   FOREIGN KEY (created_by_lawyer_id) REFERENCES lawyers(id)
 );
 
@@ -168,7 +166,6 @@ CREATE TABLE IF NOT EXISTS files (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   deleted_at DATETIME,
   FOREIGN KEY (team_id) REFERENCES teams(id),
-  FOREIGN KEY (matter_id) REFERENCES matters(id),
   FOREIGN KEY (parent_file_id) REFERENCES files(id),
   FOREIGN KEY (uploaded_by_lawyer_id) REFERENCES lawyers(id)
 );
@@ -195,8 +192,7 @@ CREATE TABLE IF NOT EXISTS matter_questions (
   answer TEXT NOT NULL,
   source TEXT DEFAULT 'ai-form', -- 'ai-form' | 'human-entry' | 'followup'
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id),
-  FOREIGN KEY (matter_id) REFERENCES matters(id)
+  FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
 -- AI generated summaries table for markdown matter summaries
@@ -206,8 +202,7 @@ CREATE TABLE IF NOT EXISTS ai_generated_summaries (
   summary TEXT NOT NULL,
   model_used TEXT,
   prompt_snapshot TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (matter_id) REFERENCES matters(id)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- AI feedback table for user quality ratings and intent tags
@@ -272,7 +267,7 @@ CREATE TABLE IF NOT EXISTS team_api_tokens (
 );
 
 -- Insert sample lawyers
-INSERT INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES 
+INSERT OR IGNORE INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES 
 ('lawyer-1', 'test-team', 'Sarah Johnson', 'sarah@testlawfirm.com', '555-0101', '["Family Law", "Divorce", "Child Custody"]', 'attorney', 35000, 'CA123456', 'CA'),
 ('lawyer-2', 'test-team', 'Michael Chen', 'michael@testlawfirm.com', '555-0102', '["Employment Law", "Workplace Discrimination"]', 'attorney', 40000, 'CA789012', 'CA'),
 ('paralegal-1', 'test-team', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL); 

@@ -37,8 +37,7 @@
 		"preact-iso": "^2.9.1",
 		"preact-markdown": "^2.1.0",
 		"preact-render-to-string": "^6.5.13",
-		"react-markdown": "^10.1.0",
-		"zod": "^4.1.11"
+		"react-markdown": "^10.1.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.8.63",
@@ -74,6 +73,7 @@
 		"vite-plugin-html": "^3.2.2",
 		"vite-plugin-pwa": "^0.21.1",
 		"vitest": "^2.1.5",
-		"wrangler": "^4.38.0"
+		"wrangler": "^4.38.0",
+		"zod": "^4.1.11"
 	}
 }
