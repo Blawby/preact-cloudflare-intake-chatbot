@@ -2,8 +2,8 @@ import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 import { FileAttachment } from '../../worker/types';
 
 interface UseFileUploadOptions {
-  teamId: string;
-  sessionId: string;
+  teamId?: string;
+  sessionId?: string;
   onError?: (error: string) => void;
 }
 
@@ -19,6 +19,7 @@ async function uploadFileToBackend(file: File, teamId: string, sessionId: string
       method: 'POST',
       body: formData,
       signal,
+      credentials: 'include'
     });
     
     if (!response.ok) {
@@ -41,23 +42,26 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
 
+  const resolvedTeamId = (teamId ?? '').trim();
+  const resolvedSessionId = (sessionId ?? '').trim();
+
   // Check if we're ready to upload files
-  const isReadyToUpload = teamId && sessionId && teamId.trim() !== '' && sessionId.trim() !== '';
+  const isReadyToUpload = resolvedTeamId !== '' && resolvedSessionId !== '';
 
   // Shared file upload logic
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!isReadyToUpload) {
-      const error = `Cannot upload files yet. Waiting for team configuration to load. teamId: "${teamId}", sessionId: "${sessionId}"`;
+      const error = `Cannot upload files yet. Waiting for session to initialize. teamId: "${resolvedTeamId}", sessionId: "${resolvedSessionId}"`;
       console.error(error);
       onError?.(error);
       return;
     }
-    
+
     try {
       // Upload files in parallel for better UX
       const uploadPromises = files.map(async (file) => {
         try {
-          const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+          const uploaded = await uploadFileToBackend(file, resolvedTeamId, resolvedSessionId);
           return {
             name: uploaded.fileName,
             size: uploaded.fileSize || file.size,
@@ -81,7 +85,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
     } catch (error) {
       console.error('Upload batch failed:', error);
     }
-  }, [teamId, sessionId, isReadyToUpload, onError]);
+  }, [resolvedTeamId, resolvedSessionId, isReadyToUpload, onError]);
 
   // Handle camera capture
   const handleCameraCapture = useCallback(async (file: File) => {
@@ -91,17 +95,17 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
   // Handle file selection (now handles all file types including photos)
   const handleFileSelect = useCallback(async (files: File[]) => {
     if (!isReadyToUpload) {
-      const error = `Cannot upload files yet. Waiting for team configuration to load. teamId: "${teamId}", sessionId: "${sessionId}"`;
+      const error = `Cannot upload files yet. Waiting for session to initialize. teamId: "${resolvedTeamId}", sessionId: "${resolvedSessionId}"`;
       console.error(error);
       onError?.(error);
       return [];
     }
-    
+
     try {
       // Upload files in parallel for better UX
       const uploadPromises = files.map(async (file) => {
         try {
-          const uploaded = await uploadFileToBackend(file, teamId, sessionId);
+          const uploaded = await uploadFileToBackend(file, resolvedTeamId, resolvedSessionId);
           return {
             name: uploaded.fileName,
             size: uploaded.fileSize || file.size,
@@ -128,7 +132,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
       console.error('Upload batch failed:', error);
       return [];
     }
-  }, [teamId, sessionId, isReadyToUpload, onError]);
+  }, [resolvedTeamId, resolvedSessionId, isReadyToUpload, onError]);
 
   // Remove preview file
   const removePreviewFile = useCallback((index: number) => {

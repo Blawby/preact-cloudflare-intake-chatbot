@@ -13,6 +13,7 @@ import { skipToLawyerMiddleware } from '../middleware/skipToLawyerMiddleware.js'
 import { pdfGenerationMiddleware } from '../middleware/pdfGenerationMiddleware.js';
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index.js';
 import { getCloudflareLocation } from '../utils/cloudflareLocationValidator.js';
+import { SessionService } from '../services/SessionService.js';
 
 // Interface for the request body
 interface RouteBody {
@@ -38,14 +39,25 @@ interface RouteBody {
 export async function handleAgentStreamV2(request: Request, env: Env): Promise<Response> {
   // Handle CORS preflight requests
   if (request.method === 'OPTIONS') {
+    // Handle OPTIONS with proper CORS for cookies
+    const origin = request.headers.get('Origin');
+    const optionsHeaders: Record<string, string> = {
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400'
+    };
+
+    if (origin) {
+      optionsHeaders['Access-Control-Allow-Origin'] = origin;
+      optionsHeaders['Access-Control-Allow-Credentials'] = 'true';
+      optionsHeaders['Vary'] = 'Origin';
+    } else {
+      optionsHeaders['Access-Control-Allow-Origin'] = CORS_HEADERS['Access-Control-Allow-Origin'] || '*';
+    }
+
     return new Response(null, {
       status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': CORS_HEADERS['Access-Control-Allow-Origin'] || '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Max-Age': '86400'
-      }
+      headers: optionsHeaders
     });
   }
 
@@ -53,15 +65,24 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
 
-  // Set SSE headers for streaming
-  const headers = {
+  // Set SSE headers for streaming with proper CORS for cookies
+  const origin = request.headers.get('Origin');
+  const headers = new Headers({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': CORS_HEADERS['Access-Control-Allow-Origin'] || '*',
     'Access-Control-Allow-Methods': CORS_HEADERS['Access-Control-Allow-Methods'] || 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': CORS_HEADERS['Access-Control-Allow-Headers'] || 'Content-Type',
-  };
+    'Access-Control-Allow-Headers': CORS_HEADERS['Access-Control-Allow-Headers'] || 'Content-Type'
+  });
+
+  // Set proper CORS headers for cross-origin requests with cookies
+  if (origin) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Allow-Credentials', 'true');
+    headers.set('Vary', 'Origin');
+  } else {
+    headers.set('Access-Control-Allow-Origin', CORS_HEADERS['Access-Control-Allow-Origin'] || '*');
+  }
 
   try {
     // Add early debugging BEFORE parsing
@@ -137,13 +158,81 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       throw HttpErrors.badRequest('Latest message must be from user');
     }
 
+    const trimmedSessionId = typeof sessionId === 'string' && sessionId.trim().length > 0
+      ? sessionId.trim()
+      : undefined;
+
+    let effectiveTeamId = typeof teamId === 'string' && teamId.trim().length > 0
+      ? teamId.trim()
+      : undefined;
+
+    if (!effectiveTeamId && trimmedSessionId) {
+      try {
+        const priorSession = await SessionService.getSessionById(env, trimmedSessionId);
+        if (priorSession) {
+          effectiveTeamId = priorSession.teamId;
+        }
+      } catch (lookupError) {
+        console.warn('Failed to lookup existing session before resolution', lookupError);
+      }
+    }
+
+    if (!effectiveTeamId) {
+      throw HttpErrors.badRequest('teamId is required for agent interactions');
+    }
+
+    const sessionResolution = await SessionService.resolveSession(env, {
+      request,
+      sessionId: trimmedSessionId,
+      teamId: effectiveTeamId,
+      createIfMissing: true
+    });
+
+    const resolvedSessionId = sessionResolution.session.id;
+    const resolvedTeamId = sessionResolution.session.teamId;
+
+    // Security check: ensure session belongs to the requested team
+    if (resolvedTeamId !== effectiveTeamId) {
+      throw HttpErrors.forbidden('Session does not belong to the specified team');
+    }
+
+    if (sessionResolution.cookie) {
+      headers.append('Set-Cookie', sessionResolution.cookie);
+    }
+
+    // Persist the latest user message for auditing
+    try {
+      const metadata = attachments.length > 0
+        ? {
+            attachments: attachments.map(att => ({
+              id: att.id ?? null,
+              name: att.name,
+              size: att.size,
+              type: att.type,
+              url: att.url
+            }))
+          }
+        : undefined;
+
+      await SessionService.persistMessage(env, {
+        sessionId: resolvedSessionId,
+        teamId: resolvedTeamId,
+        role: 'user',
+        content: latestMessage.content,
+        metadata,
+        messageId: typeof (latestMessage as any).id === 'string' ? (latestMessage as any).id : undefined
+      });
+    } catch (persistError) {
+      console.warn('Failed to persist chat message to D1', persistError);
+    }
+
     // Get team configuration
     let teamConfig = null;
-    if (teamId) {
+    if (effectiveTeamId) {
       try {
         const { AIService } = await import('../services/AIService.js');
         const aiService = new AIService(env.AI, env);
-        const rawTeamConfig = await aiService.getTeamConfig(teamId);
+        const rawTeamConfig = await aiService.getTeamConfig(effectiveTeamId);
         teamConfig = rawTeamConfig;
       } catch (error) {
         console.warn('Failed to get team config:', error);
@@ -154,7 +243,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const cloudflareLocation = getCloudflareLocation(request);
 
     // Load conversation context
-    const context = await ConversationContextManager.load(sessionId || 'default', teamId || 'default', env);
+    const context = await ConversationContextManager.load(resolvedSessionId, resolvedTeamId, env);
 
     // Update context with the full conversation before running pipeline
     const updatedContext = ConversationContextManager.updateContext(context, messages);
@@ -329,12 +418,12 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
 
           // Run the AI agent with updated context
           await runLegalIntakeAgentStream(
-            env, 
-            formattedMessages, 
-            teamId, 
-            sessionId, 
-            cloudflareLocation, 
-            controller, 
+            env,
+            formattedMessages,
+            effectiveTeamId,
+            resolvedSessionId,
+            cloudflareLocation,
+            controller,
             fileAttachments
           );
           
@@ -418,7 +507,9 @@ function isValidRouteBody(obj: unknown): obj is RouteBody {
       const nameOk = typeof att.name === 'string' && att.name.length > 0;
       const typeOk = typeof att.type === 'string' && att.type.length > 0;
       const sizeOk = typeof att.size === 'number' && att.size >= 0 && Number.isFinite(att.size);
-      const urlOk = typeof att.url === 'string' && /^(https?):\/\//i.test(att.url);
+      const urlOk = typeof att.url === 'string' && (
+        /^(https?):\/\//i.test(att.url) || (att.url.startsWith('/') && !att.url.startsWith('//'))
+      );
       if (!(nameOk && typeOk && sizeOk && urlOk)) return false;
     }
   }

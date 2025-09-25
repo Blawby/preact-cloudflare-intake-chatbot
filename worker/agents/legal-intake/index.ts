@@ -2,6 +2,7 @@ import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../typ
 import type { ErrorResult } from './errors.js';
 
 import { TeamService } from '../../services/TeamService.js';
+import { ConversationContextManager } from '../../middleware/conversationContextManager.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
@@ -11,9 +12,9 @@ import { safeIncludes } from '../../utils/safeStringUtils.js';
 // Import types and utilities
 import { ValidationService } from '../../services/ValidationService.js';
 import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
+import { ContactIntakeOrchestrator } from '../../services/ContactIntakeOrchestrator.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { analyzeFile, getAnalysisQuestion } from '../../utils/fileAnalysisUtils.js';
-import { isLocationSupported } from '../../utils/locationValidator.js';
 import { createSuccessResult, createErrorResult, ValidationError } from './errors.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
 
@@ -92,6 +93,13 @@ export interface ContactFormData {
   readonly reason: string;
   readonly fields: ContactFormFields;
   readonly submitText: string;
+  readonly initialValues?: {
+    readonly name?: string;
+    readonly email?: string;
+    readonly phone?: string;
+    readonly location?: string;
+    readonly opposingParty?: string;
+  };
 }
 
 export interface ContactFormParameters {
@@ -412,10 +420,44 @@ interface TeamConfig {
   };
 }
 
+const PUBLIC_TEAM_IDS = new Set(['blawby-ai']);
+
+function isPublicMode(teamId?: string | null): boolean {
+  if (!teamId) {
+    return true;
+  }
+  return PUBLIC_TEAM_IDS.has(teamId);
+}
+
+function extractPromptTeamConfig(rawConfig: unknown): TeamConfig {
+  if (!rawConfig || typeof rawConfig !== 'object') {
+    return {};
+  }
+
+  if ('config' in rawConfig && typeof (rawConfig as any).config === 'object') {
+    const nested = (rawConfig as any).config;
+    return {
+      name: typeof (rawConfig as any).name === 'string' ? (rawConfig as any).name : undefined,
+      jurisdiction: typeof nested?.jurisdiction === 'object'
+        ? { requireLocation: Boolean((nested.jurisdiction as any)?.requireLocation) }
+        : undefined
+    };
+  }
+
+  return {
+    name: typeof (rawConfig as any).name === 'string' ? (rawConfig as any).name : undefined,
+    jurisdiction: typeof (rawConfig as any).jurisdiction === 'object'
+      ? { requireLocation: Boolean(((rawConfig as any).jurisdiction as any)?.requireLocation) }
+      : undefined
+  };
+}
+
 // Build system prompt function
-function buildSystemPrompt(context: ConversationContext, teamConfig: TeamConfig): string {
+function buildSystemPrompt(context: ConversationContext, teamConfigInput: unknown, teamId?: string | null): string {
+  const teamConfig = extractPromptTeamConfig(teamConfigInput);
   const teamName = teamConfig?.name || 'our law firm';
   const jurisdiction = teamConfig?.jurisdiction;
+  const publicMode = isPublicMode(teamId);
   
   // Check if location is required
   const requiresLocation = jurisdiction?.requireLocation;
@@ -431,6 +473,14 @@ function buildSystemPrompt(context: ConversationContext, teamConfig: TeamConfig)
   const isSkipToLawyer = context.userIntent === 'skip_to_lawyer' || context.conversationPhase === 'showing_contact_form';
   const skipToLawyerMessage = isSkipToLawyer ? 
     `\nURGENT: The user wants to skip the intake process and contact the legal team directly. You MUST immediately show the contact form using the show_contact_form tool.` : '';
+
+  const styleGuidance = publicMode
+    ? `- Keep responses to three short sentences or fewer.
+- Give the user one clear next step and reference existing checklists or PDFs instead of describing them in detail.
+- Avoid repeating prior details unless the user asks.`
+    : `- Confirm missing key facts in no more than two follow-up questions.
+- Transition to the contact form or explain precisely what is still needed instead of rehashing prior guidance.
+- Keep answers crisp and professional; avoid script-style introductions.`;
   
   return `You are a legal intake specialist for ${teamName}.
 
@@ -441,13 +491,13 @@ Available tools: create_matter, show_contact_form, request_lawyer_review, create
 Rules:
 - Use create_matter when you have name + legal issue + contact info${requiresLocation ? ' + location' : ''}
 - Use show_contact_form ONLY after qualifying the lead with questions about urgency, timeline, and seriousness
-- Be conversational and helpful - ask qualifying questions before showing contact form
-- Note: Case drafting, document checklists, and skip-to-lawyer are now handled automatically by the system
-- For simple greetings like "Hi, I need legal help", respond conversationally and ask for more details
-- Don't rush to contact forms - let users explore case preparation tools first
-- ALWAYS ask qualifying questions before showing contact form: "How urgent is this?", "What's your timeline?", "Are you looking to move forward with legal action?"
+- Always start by briefly reflecting the user’s latest concern so they know you understood (e.g., "I’m sorry you were fired").
+- Be concise and skip pleasantries; respond to the user's latest question directly
+- Let middleware-driven UI (case drafts, checklists, PDFs) speak for itself—mention them briefly rather than describing their contents
 - Only show contact form when user explicitly asks to skip intake or contact the team directly
 - For employment law issues, ask specific questions like: "When were you fired?", "What reason was given?", "Do you have any documentation?"
+- When you don’t yet have contact information, collect at least two concrete qualifiers (e.g., reason, timeline, urgency) before moving on.
+${styleGuidance}
 
 Tool calling format:
 TOOL_CALL: tool_name
@@ -615,6 +665,9 @@ async function handleToolCall(
 
     // Special handling for show_contact_form
     if (toolName === 'show_contact_form' && toolResult.success) {
+      const contactFormResponse = (toolResult.data && typeof toolResult.data === 'object')
+        ? toolResult.data as ContactFormResponse
+        : null;
       // Check if location is required for this team
       const requiresLocation = (teamConfig as any)?.jurisdiction?.requireLocation;
       const requiredFields = ['name', 'email', 'phone'];
@@ -627,7 +680,8 @@ async function handleToolCall(
         data: {
           fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
           required: requiredFields,
-          message: ('data' in toolResult ? (toolResult.data as Record<string, unknown>)?.message : null) || 'Please fill out the contact form below.'
+          message: ('data' in toolResult ? (toolResult.data as Record<string, unknown>)?.message : null) || 'Please fill out the contact form below.',
+          initialValues: contactFormResponse?.contactForm?.initialValues
         }
       });
       return;
@@ -784,7 +838,7 @@ export async function runLegalIntakeAgentStream(
     
     // Get available tools and system prompt
     const availableTools = getAvailableToolsForState(context.state, context);
-    const systemPrompt = buildSystemPrompt(context, teamConfig);
+    const systemPrompt = buildSystemPrompt(context, teamConfig, teamId);
     
     // Log conversation state
     Logger.info('Conversation State:', {
@@ -851,7 +905,14 @@ export async function runLegalIntakeAgentStream(
 }
 
 // Tool handlers - extracted from the old legalIntakeAgent.ts
-export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
+export async function handleCreateMatter(
+  parameters: any,
+  env: Env,
+  teamConfig: any,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+) {
   Logger.debug('[handleCreateMatter] parameters:', ToolCallParser.sanitizeParameters(parameters));
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
@@ -929,6 +990,24 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   };
   
   const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(env, paymentRequest, teamConfig);
+
+  const orchestrationResult = await ContactIntakeOrchestrator.finalizeSubmission({
+    env,
+    teamConfig: teamConfig ?? null,
+    sessionId,
+    teamId,
+    correlationId,
+    matter: {
+      matterType: matter_type,
+      description,
+      name,
+      email: email || undefined,
+      phone: phone || undefined,
+      location: location || undefined,
+      opposingParty: opposing_party || undefined,
+      urgency: finalUrgency
+    }
+  });
   
   // Build summary message
   const requiresPayment = teamConfig?.config?.requiresPayment || false;
@@ -979,6 +1058,18 @@ Please complete the payment to secure your consultation. If you have any questio
 
 I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.`;
   }
+
+  if (orchestrationResult.pdf) {
+    summaryMessage += `
+
+I've generated a case summary PDF (${orchestrationResult.pdf.filename}) you can download or share when you're ready.`;
+  }
+
+  if (orchestrationResult.notifications?.matterCreatedSent) {
+    summaryMessage += `
+
+Your full submission has already been sent to our legal team for review${requiresPayment && consultationFee > 0 ? ', and we alerted them that payment is pending.' : '.'}`;
+  }
   
   const result = createSuccessResponse(summaryMessage, {
     matter_type,
@@ -997,16 +1088,73 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
       amount: consultationFee,
       description: `${matter_type}: ${description}`,
       paymentId: paymentId
-    } : null
+    } : null,
+    case_summary_pdf: orchestrationResult.pdf ?? null,
+    notifications: orchestrationResult.notifications ?? null
   });
   
   Logger.debug('[handleCreateMatter] result created successfully');
   return result;
 }
 
-export async function handleRequestLawyerReview(parameters: any, env: any, teamConfig: any) {
+export async function handleRequestLawyerReview(
+  parameters: any,
+  env: Env,
+  teamConfig: any,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+) {
   const { urgency, complexity, matter_type } = parameters;
-  
+
+  let contactName: string | undefined;
+  let contactEmail: string | undefined;
+  let contactPhone: string | undefined;
+  let matterDescription: string | undefined;
+
+  if (sessionId && teamId) {
+    try {
+      const context = await ConversationContextManager.load(sessionId, teamId, env);
+      contactName = context.contactInfo?.name?.trim() || undefined;
+      contactEmail = context.contactInfo?.email?.trim() || undefined;
+      contactPhone = context.contactInfo?.phone?.trim() || undefined;
+
+      if (context.caseDraft?.key_facts?.length) {
+        matterDescription = context.caseDraft.key_facts.join('\n');
+      } else if (context.pendingContactForm?.reason) {
+        matterDescription = context.pendingContactForm.reason;
+      }
+    } catch (error) {
+      Logger.warn('[handleRequestLawyerReview] Failed to load conversation context', {
+        correlationId,
+        sessionId,
+        teamId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  // Hardened contact and name validation, plus placeholder rejection
+  const hasValidEmail = Boolean(contactEmail && ValidationService.validateEmail(contactEmail));
+  const hasValidPhone = Boolean(contactPhone && ValidationService.validatePhone(contactPhone).isValid);
+  const hasReachableContact = hasValidEmail || hasValidPhone;
+  const isNameValid = Boolean(contactName && ValidationService.validateName(contactName));
+  const hasPlaceholders = ValidationService.hasPlaceholderValues(contactPhone, contactEmail);
+
+  if (!isNameValid || !hasReachableContact || hasPlaceholders) {
+    return createValidationError(
+      "I still need your real contact information before I can connect you with a lawyer. " +
+      "Please share your full name and either a valid email address or phone number."
+    );
+  }
+
+  // Optionally also validate the matter type before proceeding
+  if (parameters.matter_type && !ValidationService.validateMatterType(parameters.matter_type)) {
+    return createValidationError(
+      "Please confirm the type of legal matter so I can route your request correctly " +
+      "(e.g., family law, employment, landlord/tenant)."
+    );
+  }
   // Send notification using NotificationService
   const { NotificationService } = await import('../../services/NotificationService.js');
   const notificationService = new NotificationService(env);
@@ -1017,14 +1165,20 @@ export async function handleRequestLawyerReview(parameters: any, env: any, teamC
     matterInfo: {
       type: matter_type,
       urgency,
-      complexity
+      complexity,
+      description: matterDescription
+    },
+    clientInfo: {
+      name: contactName,
+      email: contactEmail,
+      phone: contactPhone
     }
   });
   
   return createSuccessResponse("I've requested a lawyer review for your case due to its urgent nature. A lawyer will review your case and contact you to discuss further.");
 }
 
-export async function handleAnalyzeDocument(parameters: any, env: any, teamConfig: any) {
+export async function handleAnalyzeDocument(parameters: any, env: any, _teamConfig: any) {
   const { file_id, analysis_type, specific_question } = parameters;
   
   Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
@@ -1348,7 +1502,41 @@ export async function handleShowContactForm(
     const params = validation.params || {};
     const reason = params.reason || 'your legal matter';
 
-    const response: ContactFormResponse = {
+    let initialValues: ContactFormData['initialValues'];
+    if (sessionId && teamId) {
+      try {
+        const context = await ConversationContextManager.load(sessionId, teamId, env);
+        if (context?.contactInfo) {
+          const sanitizedValues: Record<string, string> = {};
+          const { contactInfo } = context;
+
+          if (contactInfo.name && typeof contactInfo.name === 'string') {
+            sanitizedValues.name = contactInfo.name.trim();
+          }
+          if (contactInfo.email && typeof contactInfo.email === 'string') {
+            sanitizedValues.email = contactInfo.email.trim();
+          }
+          if (contactInfo.phone && typeof contactInfo.phone === 'string') {
+            sanitizedValues.phone = contactInfo.phone.trim();
+          }
+          if (contactInfo.location && typeof contactInfo.location === 'string') {
+            sanitizedValues.location = contactInfo.location.trim();
+          }
+
+          if (Object.keys(sanitizedValues).length > 0) {
+            initialValues = sanitizedValues;
+          }
+        }
+      } catch (contextError) {
+        Logger.warn('[handleShowContactForm] Failed to load conversation context for initial values', {
+          sessionId,
+          teamId,
+          error: contextError instanceof Error ? contextError.message : String(contextError)
+        });
+      }
+    }
+
+    let response: ContactFormResponse = {
       success: true,
       action: 'show_contact_form',
       message: `I'd be happy to help you with ${reason.toLowerCase()}. Please fill out the contact form below so we can get in touch with you.`,
@@ -1365,6 +1553,31 @@ export async function handleShowContactForm(
         submitText: 'Submit Contact Form'
       }
     };
+
+    if (initialValues) {
+      const allowedInitialValues: Record<string, string> = {};
+      const contactFormFields = Object.keys(response.contactForm.fields);
+      for (const fieldKey of contactFormFields) {
+        const normalizedKey = fieldKey === 'opposing_party' ? 'opposingParty' : fieldKey;
+        if (normalizedKey === 'message') {
+          continue;
+        }
+        const value = initialValues[normalizedKey as keyof NonNullable<ContactFormData['initialValues']>];
+        if (typeof value === 'string' && value.trim()) {
+          allowedInitialValues[normalizedKey] = value.trim();
+        }
+      }
+
+      if (Object.keys(allowedInitialValues).length > 0) {
+        response = {
+          ...response,
+          contactForm: {
+            ...response.contactForm,
+            initialValues: allowedInitialValues
+          } as ContactFormData
+        };
+      }
+    }
 
     return createSuccessResult(response);
   } catch (error) {

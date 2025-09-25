@@ -1,4 +1,4 @@
-import type { Ai, KVNamespace, R2Bucket, D1Database, Queue, DurableObjectNamespace } from '@cloudflare/workers-types';
+import type { Ai, KVNamespace, R2Bucket, D1Database, Queue } from '@cloudflare/workers-types';
 
 // Environment interface with proper Cloudflare Workers types
 export interface Env {
@@ -36,7 +36,7 @@ export class HttpError extends Error {
   constructor(
     public status: number,
     public message: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'HttpError';
@@ -44,7 +44,7 @@ export class HttpError extends Error {
 }
 
 // Common response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -57,7 +57,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ChatSession {
@@ -66,7 +66,7 @@ export interface ChatSession {
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Matter types
@@ -78,7 +78,7 @@ export interface Matter {
   status: 'draft' | 'active' | 'closed';
   createdAt: number;
   updatedAt: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Team types
@@ -99,6 +99,13 @@ export interface Team {
     accentColor: string;
     introMessage: string;
     profileImage?: string;
+    voice: {
+      enabled: boolean;
+      provider: 'cloudflare' | 'elevenlabs' | 'custom';
+      voiceId?: string | null;
+      displayName?: string | null;
+      previewUrl?: string | null;
+    };
 
   };
 }
@@ -139,7 +146,7 @@ export interface FileUpload {
   size: number;
   url: string;
   uploadedAt: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Feedback types
@@ -155,7 +162,7 @@ export interface Feedback {
 
 
 // Request validation types
-export interface ValidatedRequest<T = any> {
+export interface ValidatedRequest<T = unknown> {
   data: T;
   env: Env;
   corsHeaders: Record<string, string>;
@@ -232,10 +239,24 @@ export interface UIMessageExtras {
   welcomeMessage?: WelcomeMessageData;
   matterCanvas?: MatterCanvasData;
   paymentEmbed?: PaymentEmbedData;
+  generatedPDF?: {
+    filename: string;
+    size: number;
+    generatedAt: string;
+    matterType: string;
+    storageKey?: string;
+  };
   contactForm?: {
     fields: string[];
     required: string[];
     message?: string;
+    initialValues?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      location?: string;
+      opposingParty?: string;
+    };
   };
   /** @deprecated Prefer deriving loading from aiState. */
   isLoading?: boolean;
@@ -255,11 +276,11 @@ export type ChatMessageUI =
       isUser: false;
       aiState?: AiState; // Assistant messages can have aiState
     })
-  | (ChatMessage & {
+  | (ChatMessage & UIMessageExtras & {
       role: 'system'; // Explicitly constrain role to 'system' for system messages
       isUser: false;
-      // System messages typically don't need most of these fields
-      // Keep only what makes sense for system messages
+      aiState?: AiState; // System messages can have aiState
+      // System messages can have UI extras but typically don't use most of them
     });
 
 // Agent message interface that extends ChatMessage with isUser property
@@ -269,7 +290,7 @@ export interface AgentMessage {
   readonly content: string;
   readonly isUser?: boolean;
   readonly timestamp?: number;
-  readonly metadata?: Record<string, any>;
+  readonly metadata?: Record<string, unknown>;
 }
 
 // Agent response interface

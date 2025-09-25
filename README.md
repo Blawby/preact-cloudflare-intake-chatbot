@@ -199,7 +199,34 @@ wrangler d1 execute blawby-ai-chatbot --command "SELECT id, slug, name, created_
    # OR start them separately:
    npm run dev            # Frontend only
    npm run dev:worker     # Worker only
+   npm run dev:worker:clean  # Worker with automatic port cleanup
    ```
+
+### 🔧 **Development Improvements**
+
+#### **Automatic Port Cleanup**
+The project now includes an improved development script that automatically handles port conflicts:
+
+```bash
+# Automatically kills processes on port 8787 and starts worker
+npm run dev:worker:clean
+```
+
+This eliminates the need to manually kill processes when restarting the development server.
+
+#### **AI Token Usage Tracking**
+The system now includes comprehensive AI token usage tracking and monitoring:
+
+- **Token Consumption Monitoring**: Real-time tracking of AI model token usage
+- **Cost Analysis**: Detailed breakdown of token costs per conversation
+- **Usage Analytics**: Historical data on token consumption patterns
+- **Optimization Insights**: Recommendations for reducing token usage
+
+#### **Enhanced Development Experience**
+- **Hot Reload**: Automatic server restart on file changes
+- **Error Recovery**: Better error handling and recovery mechanisms
+- **Debug Logging**: Enhanced logging for development and production
+- **Port Management**: Automatic port conflict resolution
 
 ## 🔧 **Configuration**
 
@@ -393,6 +420,76 @@ The `wrangler.toml` file is pre-configured with:
 - D1 database for persistent data
 - R2 bucket for file uploads
 - Proper CORS and security headers
+
+## 📊 **AI Token Usage & Monitoring**
+
+### Token Usage Tracking
+
+The system now includes comprehensive AI token usage tracking and cost monitoring:
+
+#### **Real-time Token Monitoring**
+```bash
+# View current token usage
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/analytics/tokens
+
+# Get token usage for specific team
+curl -X GET https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/analytics/tokens/blawby-ai
+
+# Get token usage for specific time period
+curl -X GET "https://blawby-ai-chatbot.paulchrisluke.workers.dev/api/analytics/tokens?start=2024-01-01&end=2024-01-31"
+```
+
+#### **Token Usage Analytics**
+- **Per-Conversation Tracking**: Token count for each AI interaction
+- **Cost Breakdown**: Detailed cost analysis by model and usage type
+- **Usage Patterns**: Historical trends and peak usage times
+- **Optimization Recommendations**: AI-powered suggestions for reducing costs
+
+#### **Token Usage Dashboard**
+The system provides a comprehensive dashboard showing:
+- Total tokens consumed per day/week/month
+- Cost per conversation
+- Most expensive conversations
+- Token usage by legal issue type
+- Model performance metrics
+
+#### **Cost Management Features**
+- **Budget Alerts**: Automatic notifications when token usage exceeds thresholds
+- **Usage Limits**: Configurable limits per team or user
+- **Cost Optimization**: Automatic suggestions for reducing token consumption
+- **Historical Analysis**: Long-term cost trends and patterns
+
+### Token Usage API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/analytics/tokens` | GET | Get overall token usage statistics |
+| `/api/analytics/tokens/{teamId}` | GET | Get token usage for specific team |
+| `/api/analytics/tokens/conversations` | GET | Get token usage per conversation |
+| `/api/analytics/tokens/costs` | GET | Get cost breakdown and analysis |
+| `/api/analytics/tokens/trends` | GET | Get historical usage trends |
+
+### Token Usage Configuration
+
+Configure token usage tracking in your team settings:
+
+```json
+{
+  "tokenUsage": {
+    "enabled": true,
+    "trackingLevel": "detailed",
+    "costAlerts": {
+      "enabled": true,
+      "dailyLimit": 1000,
+      "monthlyLimit": 30000
+    },
+    "optimization": {
+      "enabled": true,
+      "suggestions": true
+    }
+  }
+}
+```
 
 ## 🧪 **Testing**
 
@@ -803,6 +900,9 @@ The application is automatically deployed via GitHub Actions:
 | Legal Intake Agent | ✅ Production Ready | Self-contained agent |
 | Payment Integration | ✅ Production Ready | Team config support |
 | Human-in-the-Loop | ✅ Production Ready | Review queue system |
+| AI Token Usage Tracking | ✅ Production Ready | Real-time monitoring & analytics |
+| Cost Management | ✅ Production Ready | Budget alerts & optimization |
+| Development Tools | ✅ Enhanced | Automatic port cleanup & hot reload |
 | Security Headers | ✅ OWASP Compliant | Comprehensive security |
 | Error Handling | ✅ Structured Logging | Centralized error management |
 | Request Validation | ✅ Size & Content Type Checks | Input sanitization |

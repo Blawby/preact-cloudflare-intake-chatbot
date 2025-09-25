@@ -18,7 +18,7 @@ const SSN_PATTERNS = [
   /\b\d{3}\s\d{2}\s\d{4}\b/g // 123 45 6789
 ];
 
-const CONTEXTUAL_SSN_PATTERN = /(?:(?:SSN|Social\s+Security|SSN:|Social\s+Security\s+Number|SS#|SS\s*#)\s*:?\s*)(\d{9})\b/gi;
+const CONTEXTUAL_SSN_PATTERN = /(?:SSN|Social\s+Security(?:\s+Number)?|SS\s*#)\s*(?:number|is)?\s*:?[\s#]*?(\d{9})\b/gi;
 
 const ADDRESS_PATTERNS = [
   /\b\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Place|Pl|Way|Circle|Cir)\b/gi,
@@ -258,8 +258,9 @@ export function sanitizePII(
  * Useful when you need to track content without storing PII
  */
 export async function createContentHash(content: string | null | undefined): Promise<string> {
-  // Coerce null/undefined to empty string for consistent behavior with sanitizePII
-  const safeContent = content ?? '';
+  const safeContent = content === null || content === undefined
+    ? ''
+    : (typeof content === 'string' ? content : String(content));
   
   // Convert string to UTF-8 bytes
   const encoder = new TextEncoder();

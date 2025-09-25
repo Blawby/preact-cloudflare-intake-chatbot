@@ -292,9 +292,10 @@ describe('PII Sanitizer', () => {
       expect(hash1).not.toBe(hash2);
     });
 
-    it('should throw TypeError for null and undefined input', async () => {
-      await expect(createContentHash(null)).rejects.toThrow(TypeError);
-      await expect(createContentHash(undefined)).rejects.toThrow(TypeError);
+    it('should hash null and undefined input as empty content', async () => {
+      const emptyHash = await createContentHash('');
+      await expect(createContentHash(null)).resolves.toBe(emptyHash);
+      await expect(createContentHash(undefined)).resolves.toBe(emptyHash);
     });
 
     it('should create valid SHA-256 hex hashes', async () => {

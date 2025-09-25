@@ -1,5 +1,15 @@
 import { Env } from '../types.js';
 
+export type TeamVoiceProvider = 'cloudflare' | 'elevenlabs' | 'custom';
+
+export interface TeamVoiceConfig {
+  enabled: boolean;
+  provider: TeamVoiceProvider;
+  voiceId?: string;
+  displayName?: string;
+  previewUrl?: string;
+}
+
 export interface TeamConfig {
   aiModel?: string;
   consultationFee?: number;
@@ -21,6 +31,7 @@ export interface TeamConfig {
   accentColor?: string;
   introMessage?: string;
   profileImage?: string;
+  voice: TeamVoiceConfig;
   blawbyApi?: {
     enabled: boolean;
     apiKey?: string | null;  // Optional/nullable for migration to hash-at-rest
@@ -125,7 +136,7 @@ export class TeamService {
    * @returns Normalized team configuration with array fields
    */
   private normalizeConfigArrays(config: any): TeamConfig {
-    const normalized = { ...config };
+    const normalized: Partial<TeamConfig> & { voice?: unknown } = { ...config };
 
     // Normalize availableServices
     if (normalized.availableServices && !Array.isArray(normalized.availableServices)) {
@@ -142,7 +153,47 @@ export class TeamService {
       }
     }
 
-    return normalized;
+    normalized.voice = this.normalizeVoiceConfig(normalized.voice);
+
+    return normalized as TeamConfig;
+  }
+
+  private isValidVoiceProvider(value: unknown): value is TeamVoiceProvider {
+    return value === 'cloudflare' || value === 'elevenlabs' || value === 'custom';
+  }
+
+  private normalizeVoiceConfig(rawVoice: unknown): TeamVoiceConfig {
+    const baseConfig: TeamVoiceConfig = {
+      enabled: false,
+      provider: 'cloudflare'
+    };
+
+    if (!rawVoice || typeof rawVoice !== 'object') {
+      return baseConfig;
+    }
+
+    const voiceRecord = rawVoice as Record<string, unknown>;
+
+    const provider = this.isValidVoiceProvider(voiceRecord.provider) ? voiceRecord.provider : 'cloudflare';
+
+    const normalizedVoice: TeamVoiceConfig = {
+      enabled: Boolean(voiceRecord.enabled),
+      provider
+    };
+
+    if (typeof voiceRecord.voiceId === 'string' && voiceRecord.voiceId.trim().length > 0) {
+      normalizedVoice.voiceId = voiceRecord.voiceId.trim();
+    }
+
+    if (typeof voiceRecord.displayName === 'string' && voiceRecord.displayName.trim().length > 0) {
+      normalizedVoice.displayName = voiceRecord.displayName.trim();
+    }
+
+    if (typeof voiceRecord.previewUrl === 'string' && voiceRecord.previewUrl.trim().length > 0) {
+      normalizedVoice.previewUrl = voiceRecord.previewUrl.trim();
+    }
+
+    return normalizedVoice;
   }
 
   async getTeam(teamId: string): Promise<Team | null> {

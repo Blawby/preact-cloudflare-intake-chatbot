@@ -61,6 +61,13 @@ export const teamConfigSchema = z.object({
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   introMessage: z.string().min(1),
   profileImage: z.string().url().optional(),
+  voice: z.object({
+    enabled: z.boolean().optional(),
+    provider: z.enum(['cloudflare', 'elevenlabs', 'custom']).optional(),
+    voiceId: z.string().min(1).optional().nullable(),
+    displayName: z.string().min(1).optional().nullable(),
+    previewUrl: z.string().url().optional().nullable()
+  }).optional(),
 
 });
 
@@ -129,6 +136,14 @@ export const paginationSchema = z.object({
 
 export const teamIdQuerySchema = z.object({
   teamId: idSchema
+});
+
+// Session request body schema
+export const sessionRequestBodySchema = z.object({
+  teamId: z.string().min(1).optional(),
+  sessionId: z.string().min(1).optional(),
+  sessionToken: z.string().min(1).optional(),
+  retentionHorizonDays: z.number().int().positive().optional()
 });
 
 // Headers schemas
