@@ -63,9 +63,9 @@ function buildFallbackCaseDraft(
         ? [matter.description]
         : ['Client is seeking legal assistance.'],
     timeline: baseDraft?.timeline,
-    parties: Array.isArray(baseDraft?.parties) ? baseDraft!.parties : [],
-    documents: Array.isArray(baseDraft?.documents) ? baseDraft!.documents : [],
-    evidence: Array.isArray(baseDraft?.evidence) ? baseDraft!.evidence : [],
+    parties: baseDraft?.parties ?? [],
+    documents: baseDraft?.documents ?? [],
+    evidence: baseDraft?.evidence ?? [],
     jurisdiction: baseDraft?.jurisdiction || 'Unknown',
     urgency: normalizedUrgency,
     status: 'ready',

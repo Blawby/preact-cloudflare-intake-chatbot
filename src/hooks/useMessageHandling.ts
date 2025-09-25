@@ -319,7 +319,6 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                   updateAIMessage(placeholderId, updates);
                   break;
                 }
-                    break;
                     
                   case 'final':
                     // Final response received

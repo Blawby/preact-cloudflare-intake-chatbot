@@ -269,11 +269,11 @@ export type ChatMessageUI =
       isUser: false;
       aiState?: AiState; // Assistant messages can have aiState
     })
-  | (ChatMessage & {
+  | (ChatMessage & UIMessageExtras & {
       role: 'system'; // Explicitly constrain role to 'system' for system messages
       isUser: false;
-      // System messages typically don't need most of these fields
-      // Keep only what makes sense for system messages
+      aiState?: AiState; // System messages can have aiState
+      // System messages can have UI extras but typically don't use most of them
     });
 
 // Agent message interface that extends ChatMessage with isUser property
