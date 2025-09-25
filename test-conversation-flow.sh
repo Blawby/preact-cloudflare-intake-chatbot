@@ -211,6 +211,38 @@ scenario_document_gathering() {
     fi
 }
 
+scenario_contact_form_prefill() {
+    echo -e "${BLUE}🧪 Contact Form Prefill & Case Summary${NC}"
+
+    local session_id="$SESSION_PREFIX-prefill"
+    local initial_messages='[{"role":"user","content":"Hi, my name is Jane Doe. I am located in Raleigh, NC and my email is jane.doe@example.com with phone 919-555-1234. I was just fired and it is urgent - I want to speak with a lawyer right away."}]'
+
+    local resp=$(make_request "north-carolina-legal-services" "$session_id" \
+        "$initial_messages" \
+        "Team Contact Prefill")
+
+    if echo "$resp" | grep -q '"type":"contact_form"' && \
+       echo "$resp" | grep -q '"initialValues"' && \
+       echo "$resp" | grep -q 'Jane Doe'; then
+        print_result true "Contact form included prefilled initial values"
+    else
+        print_result false "Contact form did not include expected initial values"
+    fi
+
+    local pdf_session="$SESSION_PREFIX-prefill-pdf"
+    local pdf_messages='[{"role":"user","content":"Hi, I was just fired from my job yesterday and need urgent legal help."},{"role":"assistant","content":"I am sorry to hear that. Could you share your contact information so we can stay in touch?"},{"role":"user","content":"Contact Information:\\nName: Jane Doe\\nEmail: jane.doe@example.com\\nPhone: 919-555-1234\\nLocation: Raleigh, NC\\nOpposing Party: ACME Corp"}]'
+
+    resp=$(make_request "north-carolina-legal-services" "$pdf_session" \
+        "$pdf_messages" \
+        "Team Case Summary PDF")
+
+    if echo "$resp" | grep -q '"case_summary_pdf"'; then
+        print_result true "Matter creation returned case summary PDF metadata"
+    else
+        print_result false "Case summary PDF metadata missing from tool result"
+    fi
+}
+
 ###############################################
 # Run All Scenarios
 ###############################################
@@ -223,6 +255,7 @@ scenario_skip_to_lawyer
 scenario_general_inquiry
 scenario_context_persistence
 scenario_document_gathering
+scenario_contact_form_prefill
 
 ###############################################
 # Summary

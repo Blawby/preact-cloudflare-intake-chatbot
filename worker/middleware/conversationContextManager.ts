@@ -31,6 +31,8 @@ export interface GeneratedPDF {
   size: number;
   generatedAt: string;
   matterType: string;
+  storageKey?: string;
+  downloadUrl?: string;
 }
 
 export interface LawyerSearchResults {
@@ -171,7 +173,7 @@ export class ConversationContextManager {
     // Build conversation history from all messages
     const conversationText = messages.map(msg => msg.content).join(' ');
     const userMessages = messages.filter(msg => msg.role === 'user' || msg.isUser);
-    const latestUserMessage = userMessages[userMessages.length - 1];
+    const _latestUserMessage = userMessages[userMessages.length - 1];
 
     // Extract legal matter types from full conversation
     const legalMatterTypes = this.extractLegalMatterTypes(conversationText);
@@ -260,7 +262,7 @@ export class ConversationContextManager {
   /**
    * Determine conversation phase based on context
    */
-  private static determineConversationPhase(context: ConversationContext, message: string): ConversationContext['conversationPhase'] {
+  private static determineConversationPhase(context: ConversationContext, _message: string): ConversationContext['conversationPhase'] {
     // If we have contact info and legal matters, we're in contact collection
     if (context.contactInfo.name && context.contactInfo.email && context.establishedMatters.length > 0) {
       return 'contact_collection';

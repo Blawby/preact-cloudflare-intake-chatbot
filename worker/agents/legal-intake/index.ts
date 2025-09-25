@@ -2,6 +2,7 @@ import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../typ
 import type { ErrorResult } from './errors.js';
 
 import { TeamService } from '../../services/TeamService.js';
+import { ConversationContextManager } from '../../middleware/conversationContextManager.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
 import { withAIRetry } from '../../utils/retry.js';
@@ -11,6 +12,7 @@ import { safeIncludes } from '../../utils/safeStringUtils.js';
 // Import types and utilities
 import { ValidationService } from '../../services/ValidationService.js';
 import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
+import { ContactIntakeOrchestrator } from '../../services/ContactIntakeOrchestrator.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { analyzeFile, getAnalysisQuestion } from '../../utils/fileAnalysisUtils.js';
 import { isLocationSupported } from '../../utils/locationValidator.js';
@@ -92,6 +94,13 @@ export interface ContactFormData {
   readonly reason: string;
   readonly fields: ContactFormFields;
   readonly submitText: string;
+  readonly initialValues?: {
+    readonly name?: string;
+    readonly email?: string;
+    readonly phone?: string;
+    readonly location?: string;
+    readonly opposingParty?: string;
+  };
 }
 
 export interface ContactFormParameters {
@@ -615,6 +624,9 @@ async function handleToolCall(
 
     // Special handling for show_contact_form
     if (toolName === 'show_contact_form' && toolResult.success) {
+      const contactFormResponse = (toolResult.data && typeof toolResult.data === 'object')
+        ? toolResult.data as ContactFormResponse
+        : null;
       // Check if location is required for this team
       const requiresLocation = (teamConfig as any)?.jurisdiction?.requireLocation;
       const requiredFields = ['name', 'email', 'phone'];
@@ -627,7 +639,8 @@ async function handleToolCall(
         data: {
           fields: ['name', 'email', 'phone', 'location', 'opposingParty'],
           required: requiredFields,
-          message: ('data' in toolResult ? (toolResult.data as Record<string, unknown>)?.message : null) || 'Please fill out the contact form below.'
+          message: ('data' in toolResult ? (toolResult.data as Record<string, unknown>)?.message : null) || 'Please fill out the contact form below.',
+          initialValues: contactFormResponse?.contactForm?.initialValues
         }
       });
       return;
@@ -851,7 +864,14 @@ export async function runLegalIntakeAgentStream(
 }
 
 // Tool handlers - extracted from the old legalIntakeAgent.ts
-export async function handleCreateMatter(parameters: any, env: any, teamConfig: any) {
+export async function handleCreateMatter(
+  parameters: any,
+  env: Env,
+  teamConfig: any,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+) {
   Logger.debug('[handleCreateMatter] parameters:', ToolCallParser.sanitizeParameters(parameters));
   const { matter_type, description, urgency, name, phone, email, location, opposing_party } = parameters;
   
@@ -929,6 +949,24 @@ export async function handleCreateMatter(parameters: any, env: any, teamConfig: 
   };
   
   const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(env, paymentRequest, teamConfig);
+
+  const orchestrationResult = await ContactIntakeOrchestrator.finalizeSubmission({
+    env,
+    teamConfig: teamConfig ?? null,
+    sessionId,
+    teamId,
+    correlationId,
+    matter: {
+      matterType: matter_type,
+      description,
+      name,
+      email: email || undefined,
+      phone: phone || undefined,
+      location: location || undefined,
+      opposingParty: opposing_party || undefined,
+      urgency: finalUrgency
+    }
+  });
   
   // Build summary message
   const requiresPayment = teamConfig?.config?.requiresPayment || false;
@@ -979,6 +1017,18 @@ Please complete the payment to secure your consultation. If you have any questio
 
 I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.`;
   }
+
+  if (orchestrationResult.pdf) {
+    summaryMessage += `
+
+I've generated a case summary PDF (${orchestrationResult.pdf.filename}) you can download or share when you're ready.`;
+  }
+
+  if (orchestrationResult.notifications?.matterCreatedSent) {
+    summaryMessage += `
+
+Your full submission has already been sent to our legal team for review${requiresPayment && consultationFee > 0 ? ', and we alerted them that payment is pending.' : '.'}`;
+  }
   
   const result = createSuccessResponse(summaryMessage, {
     matter_type,
@@ -997,7 +1047,9 @@ I'll submit this to our legal team for review. A lawyer will contact you within 
       amount: consultationFee,
       description: `${matter_type}: ${description}`,
       paymentId: paymentId
-    } : null
+    } : null,
+    case_summary_pdf: orchestrationResult.pdf ?? null,
+    notifications: orchestrationResult.notifications ?? null
   });
   
   Logger.debug('[handleCreateMatter] result created successfully');
@@ -1348,6 +1400,40 @@ export async function handleShowContactForm(
     const params = validation.params || {};
     const reason = params.reason || 'your legal matter';
 
+    let initialValues: ContactFormData['initialValues'];
+    if (sessionId && teamId) {
+      try {
+        const context = await ConversationContextManager.load(sessionId, teamId, env);
+        if (context?.contactInfo) {
+          const sanitizedValues: NonNullable<ContactFormData['initialValues']> = {};
+          const { contactInfo } = context;
+
+          if (contactInfo.name && typeof contactInfo.name === 'string') {
+            sanitizedValues.name = contactInfo.name.trim();
+          }
+          if (contactInfo.email && typeof contactInfo.email === 'string') {
+            sanitizedValues.email = contactInfo.email.trim();
+          }
+          if (contactInfo.phone && typeof contactInfo.phone === 'string') {
+            sanitizedValues.phone = contactInfo.phone.trim();
+          }
+          if (contactInfo.location && typeof contactInfo.location === 'string') {
+            sanitizedValues.location = contactInfo.location.trim();
+          }
+
+          if (Object.keys(sanitizedValues).length > 0) {
+            initialValues = sanitizedValues;
+          }
+        }
+      } catch (contextError) {
+        Logger.warn('[handleShowContactForm] Failed to load conversation context for initial values', {
+          sessionId,
+          teamId,
+          error: contextError instanceof Error ? contextError.message : String(contextError)
+        });
+      }
+    }
+
     const response: ContactFormResponse = {
       success: true,
       action: 'show_contact_form',
@@ -1365,6 +1451,28 @@ export async function handleShowContactForm(
         submitText: 'Submit Contact Form'
       }
     };
+
+    if (initialValues) {
+      const allowedInitialValues: NonNullable<ContactFormData['initialValues']> = {};
+      const contactFormFields = Object.keys(response.contactForm.fields);
+      for (const fieldKey of contactFormFields) {
+        const normalizedKey = fieldKey === 'opposing_party' ? 'opposingParty' : fieldKey;
+        if (normalizedKey === 'message') {
+          continue;
+        }
+        const value = initialValues[normalizedKey as keyof NonNullable<ContactFormData['initialValues']>];
+        if (typeof value === 'string' && value.trim()) {
+          allowedInitialValues[normalizedKey as keyof NonNullable<ContactFormData['initialValues']>] = value.trim();
+        }
+      }
+
+      if (Object.keys(allowedInitialValues).length > 0) {
+        response.contactForm = {
+          ...response.contactForm,
+          initialValues: allowedInitialValues
+        };
+      }
+    }
 
     return createSuccessResult(response);
   } catch (error) {

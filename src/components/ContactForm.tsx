@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { Button } from './ui/Button';
 import { useTheme } from '../hooks/useTheme';
 
@@ -11,6 +11,7 @@ export interface ContactFormProps {
   fields?: string[];
   required?: string[];
   message?: string;
+  initialValues?: Partial<ContactData>;
 }
 
 export interface ContactData {
@@ -105,7 +106,23 @@ function validateContactFormProps(
   };
 }
 
-export function ContactForm({ onSubmit, fields = ALLOWED_FIELDS, required = ['name', 'email', 'phone'], message }: ContactFormProps): JSX.Element {
+function normalizeInitialValues(values?: Partial<ContactData>): Partial<ContactData> {
+  return {
+    name: typeof values?.name === 'string' && values.name.trim() ? values.name.trim() : undefined,
+    email: typeof values?.email === 'string' && values.email.trim() ? values.email.trim() : undefined,
+    phone: typeof values?.phone === 'string' && values.phone.trim() ? values.phone.trim() : undefined,
+    location: typeof values?.location === 'string' && values.location.trim() ? values.location.trim() : undefined,
+    opposingParty: typeof values?.opposingParty === 'string' && values.opposingParty.trim() ? values.opposingParty.trim() : undefined
+  };
+}
+
+export function ContactForm({
+  onSubmit,
+  fields = ALLOWED_FIELDS,
+  required = ['name', 'email', 'phone'],
+  message,
+  initialValues
+}: ContactFormProps): JSX.Element {
   // Validate props without mutation
   const validatedProps = validateContactFormProps(fields, required, message);
   const { fields: validFields, required: validRequired, message: validMessage } = validatedProps;
@@ -123,18 +140,27 @@ export function ContactForm({ onSubmit, fields = ALLOWED_FIELDS, required = ['na
     );
   }
 
+  const normalizedInitialValues = useMemo(() => normalizeInitialValues(initialValues), [
+    initialValues?.name,
+    initialValues?.email,
+    initialValues?.phone,
+    initialValues?.location,
+    initialValues?.opposingParty
+  ]);
+
   const { isDark } = useTheme();
-  const [formData, setFormData] = useState<ContactData>({
-    name: '',
-    email: '',
-    phone: '',
-    location: '',
-    opposingParty: ''
-  });
+  const [formData, setFormData] = useState<ContactData>(() => ({
+    name: normalizedInitialValues.name ?? '',
+    email: normalizedInitialValues.email ?? '',
+    phone: normalizedInitialValues.phone ?? '',
+    location: normalizedInitialValues.location ?? '',
+    opposingParty: normalizedInitialValues.opposingParty ?? ''
+  }));
   
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   const validateField = (field: keyof ContactData, value: string): string | undefined => {
     if (validRequired.includes(field as AllowedField) && !value.trim()) {
@@ -158,6 +184,9 @@ export function ContactForm({ onSubmit, fields = ALLOWED_FIELDS, required = ['na
 
   const handleInputChange = (field: keyof ContactData, value: string): void => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (!isDirty) {
+      setIsDirty(true);
+    }
     
     // Clear error when user starts typing
     if (errors[field]) {
@@ -248,6 +277,28 @@ export function ContactForm({ onSubmit, fields = ALLOWED_FIELDS, required = ['na
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (isDirty) {
+      return;
+    }
+
+    setFormData(prev => {
+      let changed = false;
+      const updated: ContactData = { ...prev };
+
+      for (const field of validFields) {
+        const key = field as keyof ContactData;
+        const value = normalizedInitialValues[key];
+        if (typeof value === 'string' && value.trim() && !prev[key]) {
+          updated[key] = value;
+          changed = true;
+        }
+      }
+
+      return changed ? updated : prev;
+    });
+  }, [normalizedInitialValues, validFields, isDirty]);
 
   return (
     <div class="bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-6 shadow-sm" data-testid="contact-form">
