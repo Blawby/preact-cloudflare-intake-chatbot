@@ -6,6 +6,7 @@ import {
   handleAgentStream,
   handleForms,
   handleTeams,
+  handleSessions,
 
   handleFiles,
   handleAnalyze,
@@ -79,6 +80,9 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handleTeams(request, env);
     } else if (path.startsWith('/api/forms')) {
       response = await handleForms(request, env);
+
+    } else if (path.startsWith('/api/sessions')) {
+      response = await handleSessions(request, env);
 
     } else if (path.startsWith('/api/files')) {
       response = await handleFiles(request, env);

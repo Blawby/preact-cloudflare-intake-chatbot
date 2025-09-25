@@ -1,6 +1,7 @@
 import type { Env } from '../types';
-import { HttpErrors, handleError, createSuccessResponse, SECURITY_HEADERS } from '../errorHandler';
+import { HttpErrors, handleError, SECURITY_HEADERS } from '../errorHandler';
 import { z } from 'zod';
+import { SessionService } from '../services/SessionService.js';
 
 // File upload validation schema
 const fileUploadValidationSchema = z.object({
@@ -148,21 +149,6 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
       console.log('Team created in database:', teamId);
     }
 
-    // Check if the session exists, if not, create a minimal entry
-    const sessionCheckStmt = env.DB.prepare('SELECT id FROM chat_sessions WHERE id = ?');
-    const existingSession = await sessionCheckStmt.bind(sessionId).first();
-    
-    if (!existingSession) {
-      console.log('Session not found in database, creating minimal entry:', sessionId);
-      // Create a minimal session entry if it doesn't exist
-      const createSessionStmt = env.DB.prepare(`
-        INSERT OR IGNORE INTO chat_sessions (id, team_id, created_at, updated_at) 
-        VALUES (?, ?, datetime('now'), datetime('now'))
-      `);
-      await createSessionStmt.bind(sessionId, teamId).run();
-      console.log('Session created in database:', sessionId);
-    }
-
     const stmt = env.DB.prepare(`
       INSERT INTO files (
         id, team_id, session_id, original_name, file_name, file_path, 
@@ -224,29 +210,76 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         throw HttpErrors.badRequest(fileValidation.error!);
       }
 
+      const normalizedTeamId = teamId.trim();
+      const normalizedSessionId = sessionId.trim();
+
+      // Validate that trimmed IDs are not empty
+      if (!normalizedTeamId) {
+        throw HttpErrors.badRequest('teamId cannot be empty after trimming');
+      }
+      if (!normalizedSessionId) {
+        throw HttpErrors.badRequest('sessionId cannot be empty after trimming');
+      }
+
+      const sessionResolution = await SessionService.resolveSession(env, {
+        request,
+        sessionId: normalizedSessionId,
+        teamId: normalizedTeamId,
+        createIfMissing: true
+      });
+
+      const resolvedTeamId = sessionResolution.session.teamId;
+      const resolvedSessionId = sessionResolution.session.id;
+
       // Store file
-      const { fileId, url } = await storeFile(file, teamId, sessionId, env);
+      const { fileId, url } = await storeFile(file, resolvedTeamId, resolvedSessionId, env);
 
       console.log('File upload successful:', {
         fileId,
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
-        teamId,
-        sessionId,
+        teamId: resolvedTeamId,
+        sessionId: resolvedSessionId,
         url
       });
 
-      return createSuccessResponse({
-        fileId,
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        url,
-        message: 'File uploaded successfully'
-             });
+      const responseBody = {
+        success: true,
+        data: {
+          fileId,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          url,
+          message: 'File uploaded successfully'
+        }
+      };
 
-              } catch (error) {
+      const responseHeaders = new Headers({ 'Content-Type': 'application/json' });
+      if (sessionResolution.cookie) {
+        responseHeaders.append('Set-Cookie', sessionResolution.cookie);
+      }
+
+      // Add CORS headers for cross-origin requests with cookies
+      const origin = request.headers.get('Origin');
+      if (origin) {
+        responseHeaders.set('Access-Control-Allow-Origin', origin);
+        responseHeaders.set('Access-Control-Allow-Credentials', 'true');
+        responseHeaders.set('Vary', 'Origin');
+      }
+
+      // Add security headers
+      Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+        responseHeaders.set(key, value);
+      });
+
+      return new Response(JSON.stringify(responseBody), {
+        status: 200,
+        headers: responseHeaders
+      });
+
+    } catch (error) {
       return handleError(error);
     }
   }
@@ -348,6 +381,14 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       // Propagate cache control from stored object if present
       if (fileObject.httpMetadata?.cacheControl) {
         headers.set('Cache-Control', fileObject.httpMetadata.cacheControl);
+      }
+      
+      // Add CORS headers for cross-origin requests with cookies
+      const origin = request.headers.get('Origin');
+      if (origin) {
+        headers.set('Access-Control-Allow-Origin', origin);
+        headers.set('Access-Control-Allow-Credentials', 'true');
+        headers.set('Vary', 'Origin');
       }
       
       // Add security headers

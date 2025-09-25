@@ -131,6 +131,14 @@ export const teamIdQuerySchema = z.object({
   teamId: idSchema
 });
 
+// Session request body schema
+export const sessionRequestBodySchema = z.object({
+  teamId: z.string().min(1).optional(),
+  sessionId: z.string().min(1).optional(),
+  sessionToken: z.string().min(1).optional(),
+  retentionHorizonDays: z.number().int().positive().optional()
+});
+
 // Headers schemas
 export const authHeadersSchema = z.object({
   authorization: z.string().regex(/^Bearer\s+/).optional()
