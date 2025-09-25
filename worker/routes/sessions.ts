@@ -137,5 +137,37 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     return createJsonResponse(data);
   }
 
+  // GET /api/sessions/:id/messages
+  if (segments.length === 4 && segments[3] === 'messages' && request.method === 'GET') {
+    const sessionId = segments[2];
+    if (!sessionId) {
+      throw HttpErrors.badRequest('Session ID is required');
+    }
+
+    const teamIdParam = url.searchParams.get('teamId');
+    if (!teamIdParam) {
+      throw HttpErrors.badRequest('teamId query parameter is required');
+    }
+
+    const teamId = normalizeTeamId(teamIdParam);
+
+    try {
+      const messages = await SessionService.getMessagesForSession(env, sessionId, teamId);
+      return createJsonResponse(messages);
+    } catch (error) {
+      console.warn('[SessionsRoute] Failed to retrieve messages', {
+        sessionId,
+        teamId,
+        message: error instanceof Error ? error.message : String(error)
+      });
+      
+      if (error instanceof Error && error.message.includes('not found')) {
+        throw HttpErrors.notFound('Session not found');
+      }
+      
+      throw HttpErrors.internalServerError('Failed to retrieve messages');
+    }
+  }
+
   throw HttpErrors.methodNotAllowed('Unsupported method for sessions endpoint');
 }

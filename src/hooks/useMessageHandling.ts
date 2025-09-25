@@ -19,6 +19,11 @@ declare global {
 
 // API endpoints - moved inline since api.ts was removed
 const getAgentStreamEndpoint = (): string => {
+  // For local development, always use relative path to leverage Vite proxy
+  if (import.meta.env.DEV) {
+    return '/api/agent/stream';
+  }
+  
   // Check for configurable base URL from environment or window override
   const envBaseUrl = import.meta.env.VITE_API_BASE as string | undefined;
   const windowBaseUrl = typeof window !== 'undefined' ? window.__API_BASE__ : undefined;
@@ -55,6 +60,65 @@ interface UseMessageHandlingOptions {
 export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHandlingOptions) => {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const abortControllerRef = useRef<globalThis.AbortController | null>(null);
+  const hasLoadedMessagesRef = useRef(false);
+  
+  // Load existing messages when session is ready
+  const loadExistingMessages = useCallback(async () => {
+    if (!teamId || !sessionId || hasLoadedMessagesRef.current) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/messages?teamId=${encodeURIComponent(teamId)}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Session not found, start fresh
+          console.log('Session not found, starting with empty messages');
+          hasLoadedMessagesRef.current = true;
+          return;
+        }
+        throw new Error(`Failed to load messages: ${response.status}`);
+      }
+
+      const json = await response.json();
+      if (!json?.success || !Array.isArray(json.data)) {
+        throw new Error('Invalid response format');
+      }
+
+      const loadedMessages: ChatMessageUI[] = json.data.map((msg: any) => ({
+        id: msg.id,
+        content: msg.content,
+        isUser: msg.role === 'user',
+        timestamp: new Date(msg.createdAt).getTime(),
+        isLoading: false,
+        aiState: msg.role === 'assistant' ? 'idle' : undefined,
+        files: msg.metadata?.attachments || []
+      }));
+
+      setMessages(loadedMessages);
+      hasLoadedMessagesRef.current = true;
+      console.log(`Loaded ${loadedMessages.length} existing messages`);
+    } catch (error) {
+      console.warn('Failed to load existing messages:', error);
+      hasLoadedMessagesRef.current = true; // Don't retry on error
+    }
+  }, [teamId, sessionId]);
+
+  // Load messages when session becomes available
+  useEffect(() => {
+    if (teamId && sessionId) {
+      loadExistingMessages();
+    }
+  }, [teamId, sessionId]); // Removed loadExistingMessages from dependencies to prevent infinite loop
+
+  // Reset loaded flag when session changes
+  useEffect(() => {
+    hasLoadedMessagesRef.current = false;
+  }, [sessionId, teamId]);
   
   // Debug hooks for test environment (development only)
   useEffect(() => {

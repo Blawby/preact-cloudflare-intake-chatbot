@@ -332,10 +332,11 @@ export class SessionService {
         isNew: false
       };
     } catch (error) {
-      console.warn('[SessionService] Falling back to ephemeral session', {
+      console.error('[SessionService] CRITICAL ERROR - Falling back to ephemeral session', {
         teamId: options.teamId,
         sessionId: options.sessionId,
-        message: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       });
       return this.createEphemeralSession(options.teamId, {
         sessionId: options.sessionId,
@@ -345,8 +346,20 @@ export class SessionService {
   }
 
   static async persistMessage(env: Env, input: PersistedMessageInput): Promise<void> {
+    console.log('[SessionService] Attempting to persist message', {
+      sessionId: input.sessionId,
+      teamId: input.teamId,
+      role: input.role,
+      contentLength: input.content?.length || 0
+    });
+    
     const session = await this.getSessionById(env, input.sessionId);
     if (!session || session.teamId !== input.teamId) {
+      console.error('[SessionService] Cannot persist message: session not found or team mismatch', {
+        sessionId: input.sessionId,
+        teamId: input.teamId,
+        foundSession: session ? { id: session.id, teamId: session.teamId } : null
+      });
       throw new Error('Cannot persist message: session not found or team mismatch');
     }
 
@@ -376,6 +389,46 @@ export class SessionService {
       input.tokenCount ?? null,
       createdAt
     ).run();
+    
+    console.log('[SessionService] Message persisted successfully', {
+      messageId,
+      sessionId: input.sessionId,
+      teamId: input.teamId,
+      role: input.role
+    });
+  }
+
+  static async getMessagesForSession(env: Env, sessionId: string, teamId: string): Promise<Array<{
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    metadata?: unknown;
+    tokenCount?: number;
+    createdAt: string;
+  }>> {
+    const session = await this.getSessionById(env, sessionId);
+    if (!session || session.teamId !== teamId) {
+      throw new Error('Cannot retrieve messages: session not found or team mismatch');
+    }
+
+    const stmt = env.DB.prepare(`
+      SELECT id, role, content, metadata, token_count, created_at
+      FROM chat_messages
+      WHERE session_id = ? AND team_id = ?
+      ORDER BY created_at ASC
+    `);
+
+    const result = await stmt.bind(sessionId, teamId).all<Record<string, unknown>>();
+    const rows = result.results || [];
+
+    return rows.map(row => ({
+      id: String(row.id),
+      role: row.role as 'user' | 'assistant' | 'system',
+      content: String(row.content),
+      metadata: row.metadata ? JSON.parse(String(row.metadata)) : undefined,
+      tokenCount: typeof row.token_count === 'number' ? row.token_count : undefined,
+      createdAt: String(row.created_at)
+    }));
   }
 
   private static createEphemeralSession(

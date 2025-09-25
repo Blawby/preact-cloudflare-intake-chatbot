@@ -3,6 +3,18 @@ import { HttpErrors, handleError, SECURITY_HEADERS } from '../errorHandler';
 import { z } from 'zod';
 import { SessionService } from '../services/SessionService.js';
 
+// Filename sanitization helpers
+function sanitizeFilename(name: string): string {
+  // Remove CR/LF and control chars, collapse whitespace, and strip quotes
+  return name.replace(/[\r\n\t\0]/g, '').replace(/"+/, '').trim().slice(0, 200);
+}
+
+function encodeRFC5987ValueChars(str: string): string {
+  return encodeURIComponent(str)
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, '%2A');
+}
+
 // File upload validation schema
 const fileUploadValidationSchema = z.object({
   file: z.instanceof(File, { message: 'File is required' }),
@@ -298,10 +310,22 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       let fileRecord = null;
       try {
         const stmt = env.DB.prepare(`
-          SELECT * FROM files WHERE id = ? AND is_deleted = FALSE
+          SELECT id, team_id, session_id, original_name, file_name, file_path, 
+                 file_type, file_size, mime_type, created_at
+          FROM files 
+          WHERE id = ? AND (is_deleted IS NULL OR is_deleted = FALSE)
         `);
         fileRecord = await stmt.bind(fileId).first();
         console.log('Database file record:', fileRecord);
+        
+        if (fileRecord) {
+          console.log('Found file in database:', {
+            id: fileRecord.id,
+            file_path: fileRecord.file_path,
+            original_name: fileRecord.original_name,
+            file_size: fileRecord.file_size
+          });
+        }
       } catch (dbError) {
         console.warn('Failed to get file metadata from database:', dbError);
         // Continue without database metadata
@@ -315,65 +339,98 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       // Try to construct the file path from the fileId if we don't have database metadata
       let filePath = fileRecord?.file_path;
       if (!filePath) {
-        // Extract teamId and sessionId from fileId format: teamId-sessionId-timestamp-random
-        // The teamId can contain hyphens, so we need to be more careful about parsing
-        const lastHyphenIndex = fileId.lastIndexOf('-');
-        const secondLastHyphenIndex = fileId.lastIndexOf('-', lastHyphenIndex - 1);
+        console.log('No database metadata found; attempting to locate in R2');
         
-        if (lastHyphenIndex !== -1 && secondLastHyphenIndex !== -1) {
-          // The format is: teamId-sessionId-timestamp-random
-          // We need to find where the sessionId ends and timestamp begins
-          const parts = fileId.split('-');
-          if (parts.length >= 4) {
-            // The last two parts are timestamp and random string
-            const timestamp = parts[parts.length - 2];
-            const randomString = parts[parts.length - 1];
-            
-            // Everything before the timestamp is teamId-sessionId
-            const teamIdAndSessionId = parts.slice(0, -2).join('-');
-            
-            // Find the sessionId (it's a UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-            const sessionIdMatch = teamIdAndSessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-            
-            if (sessionIdMatch) {
-              const sessionId = sessionIdMatch[0];
-              const teamId = teamIdAndSessionId.substring(0, teamIdAndSessionId.length - sessionId.length - 1); // -1 for the hyphen
-              
-              console.log('Parsed fileId:', { teamId, sessionId, timestamp, randomString });
-              
-              // Try to find the file in R2 with a pattern match
-              const prefix = `uploads/${teamId}/${sessionId}/${fileId}`;
-              console.log('Looking for file with prefix:', prefix);
-              // List objects with this prefix
-              const objects = await env.FILES_BUCKET.list({ prefix });
-              console.log('R2 objects found:', objects.objects.length);
-              if (objects.objects.length > 0) {
-                filePath = objects.objects[0].key;
-                console.log('Found file path:', filePath);
+        // Try to derive team/session from fileId: teamId-sessionId-timestamp-random
+        const parts = fileId.split('-');
+        if (parts.length >= 4) {
+          const teamPart = parts[0];
+          const sessionPart = parts[1];
+          const derivedPrefix = `uploads/${teamPart}/${sessionPart}/`;
+          
+          try {
+            console.log('Searching R2 with derived prefix:', derivedPrefix);
+            let cursor: string | undefined = undefined;
+            do {
+              const { objects, truncated, cursor: next } = await env.FILES_BUCKET.list({ 
+                prefix: derivedPrefix, 
+                cursor, 
+                limit: 1000 
+              });
+              const match = objects.find(o => o.key.includes(`${fileId}.`));
+              if (match) {
+                filePath = match.key;
+                console.log('Found file path via derived prefix:', filePath);
+                break;
               }
-            }
+              cursor = truncated ? next : undefined;
+            } while (!filePath && cursor);
+          } catch (err) {
+            console.warn('Derived-prefix search failed:', err);
+          }
+        }
+        
+        // If still no filePath found, try a paginated bucket scan (last resort)
+        if (!filePath) {
+          try {
+            console.log('Attempting broader search for fileId:', fileId);
+            let cursor: string | undefined = undefined;
+            do {
+              const { objects, truncated, cursor: next } = await env.FILES_BUCKET.list({
+                prefix: 'uploads/',
+                cursor,
+                limit: 1000,
+              });
+              const match = objects.find(obj =>
+                obj.key.includes(`${fileId}.`)
+              );
+              if (match) {
+                filePath = match.key;
+                console.log('Found file path via broader search:', filePath);
+                break;
+              }
+              cursor = truncated ? next : undefined;
+            } while (!filePath && cursor);
+          } catch (broadSearchError) {
+            console.warn('Failed broader search:', broadSearchError);
           }
         }
       }
 
       if (!filePath) {
-        console.log('No file path found for fileId:', fileId);
-        throw HttpErrors.notFound('File not found');
+        console.error('No file path found for fileId:', fileId);
+        console.error('Database record:', fileRecord);
+        throw HttpErrors.notFound('File not found - unable to locate file path');
       }
 
       console.log('Attempting to get file from R2:', filePath);
       const fileObject = await env.FILES_BUCKET.get(filePath);
       if (!fileObject) {
-        console.log('File not found in R2 storage:', filePath);
+        console.error('File not found in R2 storage:', filePath);
+        console.error('FileId:', fileId);
+        console.error('Database record:', fileRecord);
         throw HttpErrors.notFound('File not found in storage');
       }
 
       console.log('File found in R2, returning response');
 
-              // Return file with appropriate headers
-        const headers = new Headers();
-      headers.set('Content-Type', fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream');
-      headers.set('Content-Disposition', `inline; filename="${fileRecord?.original_name || fileId}"`);
+      // Determine filename and mime
+      let originalFileName = fileRecord?.original_name;
+      let mimeType = fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream';
+      
+      if (!originalFileName) {
+        const nameFromKey = filePath.split('/').pop() || `${fileId}`;
+        const ext = nameFromKey.includes('.') ? nameFromKey.split('.').pop() : undefined;
+        originalFileName = ext ? `${fileId}.${ext}` : fileId;
+      }
+      
+      // Sanitize filename for headers
+      originalFileName = sanitizeFilename(originalFileName);
+
+      // Return file with appropriate headers
+      const headers = new Headers();
+      headers.set('Content-Type', mimeType);
+      headers.set('Content-Disposition', `inline; filename*=UTF-8''${encodeRFC5987ValueChars(originalFileName)}`);
       if (fileRecord?.file_size) {
         headers.set('Content-Length', fileRecord.file_size.toString());
       }
