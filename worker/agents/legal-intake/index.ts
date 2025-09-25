@@ -1098,9 +1098,49 @@ Your full submission has already been sent to our legal team for review${require
   return result;
 }
 
-export async function handleRequestLawyerReview(parameters: any, env: any, teamConfig: any) {
+export async function handleRequestLawyerReview(
+  parameters: any,
+  env: Env,
+  teamConfig: any,
+  correlationId?: string,
+  sessionId?: string,
+  teamId?: string
+) {
   const { urgency, complexity, matter_type } = parameters;
-  
+
+  let contactName: string | undefined;
+  let contactEmail: string | undefined;
+  let contactPhone: string | undefined;
+  let matterDescription: string | undefined;
+
+  if (sessionId && teamId) {
+    try {
+      const context = await ConversationContextManager.load(sessionId, teamId, env);
+      contactName = context.contactInfo?.name?.trim() || undefined;
+      contactEmail = context.contactInfo?.email?.trim() || undefined;
+      contactPhone = context.contactInfo?.phone?.trim() || undefined;
+
+      if (context.caseDraft?.key_facts?.length) {
+        matterDescription = context.caseDraft.key_facts.join('\n');
+      } else if (context.pendingContactForm?.reason) {
+        matterDescription = context.pendingContactForm.reason;
+      }
+    } catch (error) {
+      Logger.warn('[handleRequestLawyerReview] Failed to load conversation context', {
+        correlationId,
+        sessionId,
+        teamId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  const hasReachableContact = Boolean((contactEmail && contactEmail.length > 3) || (contactPhone && contactPhone.length > 3));
+
+  if (!contactName || !hasReachableContact) {
+    return createValidationError("I still need your contact information before I can connect you with a lawyer. Please share your full name and either an email address or phone number.");
+  }
+
   // Send notification using NotificationService
   const { NotificationService } = await import('../../services/NotificationService.js');
   const notificationService = new NotificationService(env);
@@ -1111,7 +1151,13 @@ export async function handleRequestLawyerReview(parameters: any, env: any, teamC
     matterInfo: {
       type: matter_type,
       urgency,
-      complexity
+      complexity,
+      description: matterDescription
+    },
+    clientInfo: {
+      name: contactName,
+      email: contactEmail,
+      phone: contactPhone
     }
   });
   
