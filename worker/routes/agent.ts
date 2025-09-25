@@ -39,14 +39,25 @@ interface RouteBody {
 export async function handleAgentStreamV2(request: Request, env: Env): Promise<Response> {
   // Handle CORS preflight requests
   if (request.method === 'OPTIONS') {
+    // Handle OPTIONS with proper CORS for cookies
+    const origin = request.headers.get('Origin');
+    const optionsHeaders: Record<string, string> = {
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400'
+    };
+
+    if (origin) {
+      optionsHeaders['Access-Control-Allow-Origin'] = origin;
+      optionsHeaders['Access-Control-Allow-Credentials'] = 'true';
+      optionsHeaders['Vary'] = 'Origin';
+    } else {
+      optionsHeaders['Access-Control-Allow-Origin'] = CORS_HEADERS['Access-Control-Allow-Origin'] || '*';
+    }
+
     return new Response(null, {
       status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': CORS_HEADERS['Access-Control-Allow-Origin'] || '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Max-Age': '86400'
-      }
+      headers: optionsHeaders
     });
   }
 
@@ -54,15 +65,24 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
 
-  // Set SSE headers for streaming
+  // Set SSE headers for streaming with proper CORS for cookies
+  const origin = request.headers.get('Origin');
   const headers = new Headers({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': CORS_HEADERS['Access-Control-Allow-Origin'] || '*',
     'Access-Control-Allow-Methods': CORS_HEADERS['Access-Control-Allow-Methods'] || 'POST, OPTIONS',
     'Access-Control-Allow-Headers': CORS_HEADERS['Access-Control-Allow-Headers'] || 'Content-Type'
   });
+
+  // Set proper CORS headers for cross-origin requests with cookies
+  if (origin) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Allow-Credentials', 'true');
+    headers.set('Vary', 'Origin');
+  } else {
+    headers.set('Access-Control-Allow-Origin', CORS_HEADERS['Access-Control-Allow-Origin'] || '*');
+  }
 
   try {
     const rawBody = await parseJsonBody(request);
