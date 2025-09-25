@@ -235,25 +235,6 @@ export function App() {
 							isReadyToUpload={isReadyToUpload}
 							isSessionReady={isSessionReady}
 						/>
-					{!isSessionReady && (
-						<div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-sm z-[1200] px-6 text-center">
-							<p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-								{sessionError ? 'Unable to establish a secure session.' : 'Setting up a secure session...'}
-							</p>
-							<p className="text-xs text-gray-500 dark:text-gray-400">
-								{sessionError ? 'Please try again.' : 'This will only take a moment.'}
-							</p>
-							{sessionError && (
-								<button
-									onClick={() => handleRetrySession()}
-									className="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-60"
-									disabled={isSessionInitializing}
-								>
-									Retry session
-								</button>
-							)}
-						</div>
-					)}
 				</div>
 			</AppLayout>
 		</ToastProvider>

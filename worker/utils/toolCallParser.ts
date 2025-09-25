@@ -3,8 +3,8 @@ import { safeIncludes } from './safeStringUtils.js';
 
 export interface ToolCall {
   toolName: string;
-  parameters: any; // Raw parameters for tool execution
-  sanitizedParameters?: any; // Sanitized parameters for logging/telemetry
+  parameters: Record<string, unknown>; // Raw parameters for tool execution
+  sanitizedParameters?: Record<string, unknown>; // Sanitized parameters for logging/telemetry
 }
 
 export interface ToolCallParseResult {
@@ -47,7 +47,7 @@ export class ToolCallParser {
    * Recursively sanitizes values for logging (removes sensitive data)
    * @private
    */
-  private static sanitizeValue(obj: any, depth = 0): any {
+  private static sanitizeValue(obj: unknown, depth = 0): unknown {
     if (depth > 10) return '***DEPTH_LIMIT***'; // Prevent infinite recursion
     
     if (Array.isArray(obj)) {
@@ -192,7 +192,7 @@ export class ToolCallParser {
       };
     }
 
-    const sanitized = this.sanitizeValue(parameters);
+    const sanitized = this.sanitizeValue(parameters) as Record<string, unknown>;
 
     return {
       success: true,
@@ -225,7 +225,7 @@ export class ToolCallParser {
    * Sanitizes tool parameters for logging (removes sensitive data)
    * Returns a deep-copied sanitized structure without mutating the original
    */
-  static sanitizeParameters(parameters: any): any {
+  static sanitizeParameters(parameters: unknown): unknown {
     if (!parameters || typeof parameters !== 'object') {
       return parameters;
     }
@@ -245,12 +245,13 @@ export class ToolCallParser {
         return null;
       }
 
-      const toolName = typeof (parsed as any).name === 'string' ? (parsed as any).name : undefined;
+      const toolName = typeof (parsed as Record<string, unknown>).name === 'string' ? (parsed as Record<string, unknown>).name as string : undefined;
       if (!toolName) {
         return null;
       }
 
-      const rawArguments = (parsed as any).arguments ?? (parsed as any).params ?? (parsed as any).parameters ?? {};
+      const parsedObj = parsed as Record<string, unknown>;
+      const rawArguments = parsedObj.arguments ?? parsedObj.params ?? parsedObj.parameters ?? {};
       const normalizedArguments = this.normalizeArguments(rawArguments);
 
       if (!this.isPlainObject(normalizedArguments)) {
@@ -261,7 +262,7 @@ export class ToolCallParser {
         };
       }
 
-      const sanitized = this.sanitizeValue(normalizedArguments);
+      const sanitized = this.sanitizeValue(normalizedArguments) as Record<string, unknown>;
 
       return {
         success: true,
