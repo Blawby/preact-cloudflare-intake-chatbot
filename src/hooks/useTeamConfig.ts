@@ -16,6 +16,13 @@ interface TeamConfig {
     supportedCountries: string[];
     primaryState?: string;
   };
+  voice: {
+    enabled: boolean;
+    provider: 'cloudflare' | 'elevenlabs' | 'custom';
+    voiceId?: string | null;
+    displayName?: string | null;
+    previewUrl?: string | null;
+  };
 }
 
 interface UseTeamConfigOptions {
@@ -38,6 +45,13 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
       description: 'Available nationwide',
       supportedStates: ['all'],
       supportedCountries: ['US']
+    },
+    voice: {
+      enabled: false,
+      provider: 'cloudflare',
+      voiceId: null,
+      displayName: null,
+      previewUrl: null
     }
   });
 
@@ -107,6 +121,13 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
               description: 'Available nationwide',
               supportedStates: ['all'],
               supportedCountries: ['US']
+            },
+            voice: {
+              enabled: Boolean(team.config.voice?.enabled),
+              provider: team.config.voice?.provider || 'cloudflare',
+              voiceId: team.config.voice?.voiceId || null,
+              displayName: team.config.voice?.displayName || null,
+              previewUrl: team.config.voice?.previewUrl || null
             }
           };
           setTeamConfig(config);

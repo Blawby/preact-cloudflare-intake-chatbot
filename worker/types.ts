@@ -99,6 +99,13 @@ export interface Team {
     accentColor: string;
     introMessage: string;
     profileImage?: string;
+    voice: {
+      enabled: boolean;
+      provider: 'cloudflare' | 'elevenlabs' | 'custom';
+      voiceId?: string;
+      displayName?: string;
+      previewUrl?: string;
+    };
 
   };
 }
