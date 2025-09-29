@@ -54,7 +54,7 @@ export default function TeamProfile({
 			{/* Team Description - Only show for welcome variant */}
 			{description && variant === 'welcome' && (
 				<div className="text-center">
-					<p className="text-gray-500 dark:text-gray-400 text-center text-sm sm:text-base lg:text-lg leading-relaxed max-w-xs mx-auto">{description}</p>
+					<p className="text-gray-700 dark:text-gray-400 text-center text-sm sm:text-base lg:text-lg leading-relaxed max-w-xs mx-auto line-clamp-3">{description}</p>
 				</div>
 			)}
 		</div>

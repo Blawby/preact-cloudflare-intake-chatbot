@@ -203,9 +203,9 @@ export class ActivityService {
       matterId, matterId, teamId, since, since, until, until, typeFilter, typeFilter, actorType, actorType,
       // Session events filters  
       sessionId, sessionId, teamId, since, since, until, until, typeFilter, typeFilter, actorType, actorType,
-      // Cursor pagination
-      cursorData?.lastEventDate, cursorData?.lastEventDate, cursorData?.lastEventDate, 
-      cursorData?.lastCreatedAt, cursorData?.lastCreatedAt, cursorData?.lastId,
+      // Cursor pagination - ensure null instead of undefined
+      cursorData?.lastEventDate || null, cursorData?.lastEventDate || null, cursorData?.lastEventDate || null, 
+      cursorData?.lastCreatedAt || null, cursorData?.lastCreatedAt || null, cursorData?.lastId || null,
       // Limit
       validatedLimit
     ];
