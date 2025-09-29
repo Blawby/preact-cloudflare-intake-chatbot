@@ -268,6 +268,52 @@ scenario_contact_form_prefill() {
     fi
 }
 
+scenario_tool_call_display_bug() {
+    echo -e "${BLUE}🧪 Tool Call Display Bug (Raw JSON)${NC}"
+    
+    # This reproduces the exact conversation flow that shows raw JSON tool calls
+    local session_id="$SESSION_PREFIX-toolbug"
+    local messages='[
+        {"role":"user","content":"hello im getting a divorce"},
+        {"role":"assistant","content":"I am sorry to hear that you are going through a difficult time. Can you tell me a bit more about your situation? What are your main concerns regarding the divorce, such as child custody, property division, or spousal support?"},
+        {"role":"user","content":"property division one dog we love i want at LEAST 50% care"},
+        {"role":"assistant","content":"It sounds like you are concerned about the division of property, including your pet. In North Carolina, pets are considered property, but the court may consider their emotional value when making a decision.\\n\\nTo better understand your situation, can you tell me a bit more about the dog? For example, who has been caring for the dog primarily, and do you have any documentation, such as veterinary records or a pet care agreement, that might be relevant to the case?\\n\\nAlso, are you and your spouse in agreement on the divorce, or is it a contested matter?"},
+        {"role":"user","content":"we both care equally but I hate my soon to be ex wife"},
+        {"role":"assistant","content":"It sounds like there is a bit of tension between you and your soon-to-be ex-wife. While it is understandable that you may have strong feelings, I want to focus on gathering the necessary information to help you navigate the divorce process.\\n\\nSince you both care equally for the dog, we can work on finding a solution that works for both of you. However, I still need to confirm a few more details. Can you tell me your name and your soon-to-be ex-wife name, as well as your current address in North Carolina? This will help me better understand your situation and provide more tailored guidance."},
+        {"role":"user","content":"Tina Marie I live in durham"},
+        {"role":"assistant","content":"The phone number you provided does not appear to be valid: Please provide a real phone number, not a placeholder. Could you please provide a valid phone number?"},
+        {"role":"user","content":"you did not ask me for a phone number but its 6154459019"},
+        {"role":"user","content":"my name is not tina marie thats my spouse"},
+        {"role":"user","content":"paul luke paulchrisluke@yahoo.com"},
+        {"role":"user","content":"speak to lawyer"}
+    ]'
+
+    local resp=$(make_request "north-carolina-legal-services" "$session_id" \
+        "$messages" \
+        "Tool Call Display Bug")
+
+    # Check if raw JSON tool calls are being displayed instead of executed
+    if echo "$resp" | grep -q '"name":"create_matter"' && echo "$resp" | grep -q '"arguments":'; then
+        print_result false "CRITICAL: Raw JSON tool calls are being displayed to user instead of executed"
+    else
+        print_result true "Tool calls are properly executed, not displayed as raw JSON"
+    fi
+
+    # Check if proper tool_result events are emitted
+    if echo "$resp" | grep -q '"type":"tool_result"'; then
+        print_result true "Tool result events are properly emitted"
+    else
+        print_result false "Missing tool_result events - tools may not be executing"
+    fi
+
+    # Check if contact form is shown when user requests lawyer
+    if echo "$resp" | grep -q '"type":"contact_form"'; then
+        print_result true "Contact form properly shown when user requests lawyer"
+    else
+        print_result false "Contact form not shown when user requests lawyer"
+    fi
+}
+
 ###############################################
 # Run All Scenarios
 ###############################################
@@ -282,6 +328,7 @@ scenario_context_persistence
 scenario_document_gathering
 scenario_contact_form_prefill
 scenario_urgent_mid_conversation
+scenario_tool_call_display_bug
 
 ###############################################
 # Summary

@@ -503,6 +503,11 @@ Tool calling format:
 TOOL_CALL: tool_name
 PARAMETERS: {valid JSON}
 
+CRITICAL: When calling a tool, output ONLY the tool call format above. 
+Do NOT include any explanatory text before or after the tool call.
+Do NOT say things like "I'll call the tool" or "Here's the function call".
+Output the tool call format directly with no preamble.
+
 Example tool calls:
 TOOL_CALL: show_contact_form
 PARAMETERS: {}
@@ -766,10 +771,28 @@ function looksLikeToolCall(response: string): boolean {
   }
 
   const lower = response.toLowerCase();
+  
+  // Original pattern: TOOL_CALL: format
   if (safeIncludes(lower, 'tool_call')) {
     return true;
   }
 
+  // NEW: Detect JSON objects with "name" and "arguments" fields
+  // This catches: {"name": "tool_name", "arguments": {...}}
+  if (lower.includes('"name"') && lower.includes('"arguments"')) {
+    try {
+      const trimmed = response.trim();
+      // Try to find JSON object in the response
+      const jsonMatch = trimmed.match(/\{[^}]*"name"[^}]*"arguments"[^}]*\}/);
+      if (jsonMatch) {
+        return true;
+      }
+    } catch {
+      // Not valid JSON, continue checking
+    }
+  }
+
+  // Existing pattern check
   const trimmed = response.trim();
   return trimmed.startsWith('{') && safeIncludes(lower, '"name"');
 }
