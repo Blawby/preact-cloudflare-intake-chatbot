@@ -7,7 +7,7 @@ import {
   handleForms,
   handleTeams,
   handleSessions,
-
+  handleActivity,
   handleFiles,
   handleAnalyze,
   handleReview,
@@ -83,7 +83,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
 
     } else if (path.startsWith('/api/sessions')) {
       response = await handleSessions(request, env);
-
+    } else if (path.startsWith('/api/activity')) {
+      response = await handleActivity(request, env);
     } else if (path.startsWith('/api/files')) {
       response = await handleFiles(request, env);
     } else if (path === '/api/analyze') {

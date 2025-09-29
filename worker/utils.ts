@@ -47,6 +47,38 @@ export async function createMatterRecord(
       matterNumber,
       JSON.stringify({ sessionId, source: 'ai-intake' })
     ).run();
+    
+    // Create activity event for matter creation
+    try {
+      const { ActivityService } = await import('./services/ActivityService');
+      const activityService = new ActivityService(env);
+      
+      await activityService.createEvent({
+        type: 'matter_event',
+        eventType: 'matter_created',
+        title: 'Matter Created',
+        description: `New ${service} matter created: ${matterNumber}`,
+        eventDate: new Date().toISOString(),
+        actorType: 'system',
+        actorId: sessionId, // Using sessionId as actorId for now
+        metadata: {
+          matterId,
+          teamId,
+          sessionId,
+          service,
+          description,
+          urgency,
+          matterNumber,
+          source: 'ai-intake'
+        }
+      }, teamId);
+      
+      console.log('Activity event created for matter creation:', { matterId, matterNumber });
+    } catch (error) {
+      console.warn('Failed to create activity event for matter creation:', error);
+      // Don't fail matter creation if activity event creation fails
+    }
+    
     return matterId;
   } catch (error) {
     console.warn('Failed to create matter record:', error);

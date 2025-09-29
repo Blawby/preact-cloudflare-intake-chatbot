@@ -5,6 +5,9 @@ Connect the ActivityTimeline component to real backend data from `matter_events`
 
 ## Current State
 - ✅ Database schema exists (`matter_events`, `session_audit_events`)
+- ✅ Session-based authentication system with tenant isolation
+- ✅ Rate limiting infrastructure using `CHAT_SESSIONS` KV store
+- ✅ File upload system with proper tenant scoping
 - ❌ No API routes to fetch activity data
 - ❌ No services to retrieve events
 - ❌ ActivityTimeline uses hardcoded placeholder data
@@ -77,49 +80,34 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
 
 **Authentication & Authorization Requirements:**
 
-Both GET and POST endpoints require authentication and enforce tenant scoping:
+Both GET and POST endpoints use the existing session-based authentication system:
 
 **Authentication:**
-- **JWT Token**: Required in `Authorization: Bearer <jwt_token>` header
-- **Token Format**: JWT with standard claims (`sub`, `iat`, `exp`, `iss`) plus custom claims:
-  ```json
-  {
-    "sub": "user_123",
-    "iat": 1640995200,
-    "exp": 1641081600,
-    "iss": "blawby-ai-chatbot",
-    "tenant_id": "team_456",
-    "role": "user|lawyer|admin",
-    "permissions": ["activity:read", "activity:create"]
-  }
-  ```
+- **Session Token**: Uses existing `SessionService.resolveSession()` 
+- **Cookie-based**: Session tokens stored in cookies (existing system)
 - **Validation Steps**:
-  1. Verify JWT signature using shared secret from `env.JWT_SECRET`
-  2. Check token expiration (`exp` claim)
-  3. Validate issuer (`iss` claim must match expected value)
-  4. Extract tenant ID from `tenant_id` claim
-  5. Extract user role and permissions from claims
+  1. Extract session token from cookie or request body
+  2. Use `SessionService.resolveSession()` to validate session
+  3. Extract `teamId` from resolved session for tenant scoping
+  4. Verify session belongs to the requested team
 
 **Tenant Scoping:**
-- **Extraction**: Tenant ID extracted from JWT `tenant_id` claim
-- **Enforcement**: All queries MUST be scoped to the authenticated user's tenant
-- **Server-side Validation**: Verify user has access to requested `matterId`/`sessionId` within their tenant
-- **Data Isolation**: Never return events from other tenants, even if IDs match
+- **Extraction**: Tenant ID extracted from session's `teamId` field
+- **Enforcement**: All queries MUST be scoped to the authenticated session's team
+- **Server-side Validation**: Verify user has access to requested `matterId`/`sessionId` within their team
+- **Data Isolation**: Never return events from other teams, even if IDs match
 
-**Role-Based Access Control (RBAC):**
+**Access Control:**
 
 **GET /api/activity (Read Operations):**
-- **Roles with Read Access**: `user`, `lawyer`, `admin`
-- **Permission Required**: `activity:read`
-- **Scope**: Users can only read events for matters/sessions they have access to within their tenant
-- **Lawyer Access**: Lawyers can read events for all matters in their tenant
-- **Admin Access**: Admins can read all events in their tenant
+- **Access**: Any authenticated session can read events for their team
+- **Scope**: Users can only read events for matters/sessions within their team
+- **Validation**: Session must be valid and belong to the requested team
 
 **POST /api/activity (Create Operations):**
-- **Roles with Create Access**: `lawyer`, `admin` (users cannot create events directly)
-- **Permission Required**: `activity:create`
-- **Validation**: Verify user has access to the target matter/session before creating event
-- **Actor Assignment**: System automatically sets `actorId` to authenticated user's ID
+- **Access**: Any authenticated session can create events for their team
+- **Validation**: Verify session has access to the target matter/session before creating event
+- **Actor Assignment**: System automatically sets `actorId` to session ID or user identifier
 
 **GET /api/activity Query Parameters:**
 - `matterId` (optional): Filter events for specific matter
@@ -165,8 +153,8 @@ interface ActivityEvent {
 - Alternative: Cache-Control: no-store for highly sensitive activity feeds
 
 **Rate Limiting:**
-- 429 Too Many Requests when rate limit exceeded
-- Rate limit: 50 requests per minute per user/token+IP combination (configurable via environment)
+- Uses existing `rateLimit()` function with `CHAT_SESSIONS` KV store
+- Rate limit: 50 requests per minute per client (configurable via environment)
 - 304 Not Modified responses are excluded from rate limit counting
 - Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`
 - Error response: `{"error": "Rate limit exceeded", "retryAfter": 60}`
@@ -175,7 +163,7 @@ interface ActivityEvent {
 **Cursor Implementation:**
 - Signed base64url-encoded token containing minimal seek keys: `{lastEventDate, lastCreatedAt, limit}`
 - Filters are reconstructed from current request query parameters (not stored in cursor)
-- HMAC signature computed using server-side secret to prevent tampering
+- HMAC signature computed using existing `IDEMPOTENCY_SALT` or similar secret to prevent tampering
 - nextCursor computed from last item's sort fields plus current query params
 - Returns HTTP 400 when signature validation fails or token is tampered with
 
@@ -187,18 +175,22 @@ interface ActivityEvent {
 
 **Example Requests:**
 ```bash
-# Get first page of recent activity
+# Get first page of recent activity (session token in cookie)
 GET /api/activity?matterId=123&limit=25
+Cookie: session_token=abc123...
 
 # Get next page using signed cursor (filters reconstructed from query params)
 GET /api/activity?matterId=123&limit=25&cursor=eyJwYXlsb2FkIjoie1wibGFzdEV2ZW50RGF0ZVwiOlwiMjAyNC0wMS0xNVQxMDowMDowMFpcIixcImxhc3RDcmVhdGVkQXQiOlwiMjAyNC0wMS0xNVQxMDowMDowMFpcIixcImxpbWl0XCI6MjV9Iiwic2lnbmF0dXJlIjoiYWJjZGVmZ2hpamsifQ
+Cookie: session_token=abc123...
 
 # Filter by date range and event types
 GET /api/activity?matterId=123&since=2024-01-01T00:00:00Z&until=2024-01-31T23:59:59Z&type=payment_completed,image_added&limit=10
+Cookie: session_token=abc123...
 
 # Get session events with conditional caching
 GET /api/activity?sessionId=456&limit=50
-# Response includes: ETag: "abc123", Cache-Control: private, max-age=60, must-revalidate, Vary: Authorization, Cookie, X-Tenant-ID
+Cookie: session_token=abc123...
+# Response includes: ETag: "abc123", Cache-Control: private, max-age=60, must-revalidate, Vary: Cookie
 ```
 
 **Example Response:**
@@ -271,8 +263,8 @@ interface CreateActivityRequest {
 3. **Combined Approach**: Use both for maximum reliability
 
 **Server Deduplication Behavior:**
-- **Storage**: Store idempotency keys in KV store with TTL of 24 hours
-- **Key Format**: `idempotency:{tenant_id}:{idempotency_key}` or `idempotency:{tenant_id}:{client_event_id}`
+- **Storage**: Store idempotency keys in existing `CHAT_SESSIONS` KV store with TTL of 24 hours
+- **Key Format**: `idempotency:{team_id}:{idempotency_key}` or `idempotency:{team_id}:{client_event_id}`
 - **Check Process**: Before processing, check if key exists in KV store
 - **Response Handling**:
   - **409 Conflict**: Return existing event data if duplicate submission detected
@@ -286,14 +278,14 @@ interface CreateActivityRequest {
 - **200 OK**: Duplicate request, returning existing event
 - **409 Conflict**: Duplicate request with conflict details
 - **400 Bad Request**: Invalid request body or missing required fields
-- **401 Unauthorized**: Missing or invalid JWT token
-- **403 Forbidden**: Insufficient permissions or tenant access denied
+- **401 Unauthorized**: Missing or invalid session token
+- **403 Forbidden**: Session does not belong to requested team
 - **422 Unprocessable Entity**: Validation errors (invalid dates, missing matter/session access)
 
 **Example POST Request:**
 ```bash
 POST /api/activity
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Cookie: session_token=abc123...
 Idempotency-Key: payment_123_2024-01-15_10-30-00
 Content-Type: application/json
 
@@ -363,29 +355,30 @@ Content-Type: application/json
 **Implementation Notes for Developers:**
 
 **Required Implementation Steps:**
-1. **Token Validation**: Always validate JWT tokens before processing any request
-2. **Tenant Extraction**: Extract tenant ID from JWT claims and enforce scoping
-3. **RBAC Enforcement**: Check user permissions before allowing read/create operations
+1. **Session Validation**: Always validate session tokens using `SessionService.resolveSession()` before processing any request
+2. **Tenant Extraction**: Extract team ID from session and enforce scoping
+3. **Access Control**: Verify session belongs to the requested team before allowing read/create operations
 4. **Idempotency Check**: Check for existing idempotency keys BEFORE processing side effects
 5. **Data Persistence**: Only persist idempotency markers AFTER successful event creation
 6. **Error Handling**: Return appropriate HTTP status codes with descriptive error messages
 7. **Audit Logging**: Log all authentication failures and permission denials for security monitoring
 
 **Security Considerations:**
-- Never expose events from other tenants, even with matching IDs
+- Never expose events from other teams, even with matching IDs
 - Validate all input data and sanitize metadata fields
-- Implement rate limiting to prevent abuse
+- Use existing rate limiting infrastructure to prevent abuse
 - Log security events for monitoring and alerting
-- Use secure JWT secret management (environment variables, not hardcoded)
+- Leverage existing session-based security model
 
 #### 1.3 Add Event Creation Points
 Update existing services to create activity events:
 
 - **PaymentService**: Create events for payment completion/failure
-- **SessionService**: Create events for session milestones
+- **SessionService**: Create events for session milestones (already partially implemented)
 - **Legal Intake Agent**: Create events for matter creation, status changes
-- **File Upload Service**: Create events for all media types (images, videos, audio, documents, other files)
+- **File Upload Service**: Create events for all media types when files are uploaded (integrate with existing `storeFile()` function)
 - **Message Handling**: Track when different media types are shared in conversations
+- **Matter Creation**: Create events when matters are created via `createMatterRecord()`
 
 ### Phase 2: Frontend Integration
 
@@ -575,14 +568,14 @@ graph TD
 ## Implementation Order
 
 ### Week 1: Backend Foundation
-1. Create `ActivityService.ts` with comprehensive media event support
-2. Create `/api/activity` route
-3. Add event creation to existing services with file type categorization
+1. Create `ActivityService.ts` with session-based authentication
+2. Create `/api/activity` route using existing session system
+3. Add event creation to existing services (file upload, matter creation)
 4. Integrate with existing `mediaAggregation.ts` logic for file categorization
 5. Test with sample data across all media types
 
 ### Week 2: Frontend Integration
-1. Create `useActivity` hook
+1. Create `useActivity` hook with session-based authentication
 2. Update `ActivityTimeline` component to handle all media types
 3. Remove placeholder data
 4. Add loading/error states
@@ -694,11 +687,8 @@ const cursorData = {
   limit: 25
 };
 
-// Create HMAC signature
-const secret = env.CURSOR_SECRET; // Worker environment binding
-if (!secret) {
-  throw new Error('CURSOR_SECRET environment binding is required for cursor signing');
-}
+// Create HMAC signature using existing secret
+const secret = env.IDEMPOTENCY_SALT || 'fallback-cursor-secret';
 const payload = JSON.stringify(cursorData);
 const signature = createHmac('sha256', secret).update(payload).digest('hex');
 
@@ -721,11 +711,8 @@ function decodeCursor(cursor: string, currentFilters: any, env: Env) {
       .replace(/_/g, '/');
     const decoded = JSON.parse(Buffer.from(padded, 'base64').toString());
     
-    // Verify HMAC signature
-    const secret = env.CURSOR_SECRET;
-    if (!secret) {
-      throw new Error('CURSOR_SECRET environment binding is required for cursor verification');
-    }
+    // Verify HMAC signature using existing secret
+    const secret = env.IDEMPOTENCY_SALT || 'fallback-cursor-secret';
     const expectedSignature = createHmac('sha256', secret)
       .update(decoded.payload)
       .digest('hex');
@@ -798,4 +785,5 @@ function decodeCursor(cursor: string, currentFilters: any, env: Env) {
 2. **Performance**: Index database tables properly
 3. **Backwards Compatibility**: Maintain existing API contracts
 4. **Error Handling**: Graceful degradation when events fail to load
-5. **Security**: Validate event creation permissions
+5. **Security**: Leverage existing session-based security model
+6. **Session Integration**: Ensure activity events work seamlessly with existing session system

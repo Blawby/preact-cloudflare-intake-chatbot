@@ -122,7 +122,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           )}
 
           {/* Activity Timeline Section */}
-          <ActivityTimeline />
+          <ActivityTimeline teamId={teamId} />
 
           {/* Media Section */}
           <MediaSidebar messages={chatMessages} />
