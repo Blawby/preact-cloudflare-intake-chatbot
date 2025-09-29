@@ -20,6 +20,7 @@ Connect the ActivityTimeline component to real backend data from `matter_events`
 ```typescript
 export interface ActivityEvent {
   id: string;
+  uid: string; // Globally unique identifier across all sources (e.g., prefixed or UUID)
   type: 'matter_event' | 'session_event';
   eventType: string; // 'payment', 'status_change', 'document_added', etc.
   title: string;
@@ -74,11 +75,57 @@ export class ActivityService {
 export async function handleActivity(request: Request, env: Env): Promise<Response>
 ```
 
+**Authentication & Authorization Requirements:**
+
+Both GET and POST endpoints require authentication and enforce tenant scoping:
+
+**Authentication:**
+- **JWT Token**: Required in `Authorization: Bearer <jwt_token>` header
+- **Token Format**: JWT with standard claims (`sub`, `iat`, `exp`, `iss`) plus custom claims:
+  ```json
+  {
+    "sub": "user_123",
+    "iat": 1640995200,
+    "exp": 1641081600,
+    "iss": "blawby-ai-chatbot",
+    "tenant_id": "team_456",
+    "role": "user|lawyer|admin",
+    "permissions": ["activity:read", "activity:create"]
+  }
+  ```
+- **Validation Steps**:
+  1. Verify JWT signature using shared secret from `env.JWT_SECRET`
+  2. Check token expiration (`exp` claim)
+  3. Validate issuer (`iss` claim must match expected value)
+  4. Extract tenant ID from `tenant_id` claim
+  5. Extract user role and permissions from claims
+
+**Tenant Scoping:**
+- **Extraction**: Tenant ID extracted from JWT `tenant_id` claim
+- **Enforcement**: All queries MUST be scoped to the authenticated user's tenant
+- **Server-side Validation**: Verify user has access to requested `matterId`/`sessionId` within their tenant
+- **Data Isolation**: Never return events from other tenants, even if IDs match
+
+**Role-Based Access Control (RBAC):**
+
+**GET /api/activity (Read Operations):**
+- **Roles with Read Access**: `user`, `lawyer`, `admin`
+- **Permission Required**: `activity:read`
+- **Scope**: Users can only read events for matters/sessions they have access to within their tenant
+- **Lawyer Access**: Lawyers can read events for all matters in their tenant
+- **Admin Access**: Admins can read all events in their tenant
+
+**POST /api/activity (Create Operations):**
+- **Roles with Create Access**: `lawyer`, `admin` (users cannot create events directly)
+- **Permission Required**: `activity:create`
+- **Validation**: Verify user has access to the target matter/session before creating event
+- **Actor Assignment**: System automatically sets `actorId` to authenticated user's ID
+
 **GET /api/activity Query Parameters:**
 - `matterId` (optional): Filter events for specific matter
 - `sessionId` (optional): Filter events for specific session  
 - `limit` (optional, default: 25, max: 50): Number of events to return
-- `cursor` (optional): Opaque pagination token for next page
+- `cursor` (optional): Signed base64url-encoded pagination token for next page
 - `since` (optional): ISO 8601 timestamp - only return events after this time
 - `until` (optional): ISO 8601 timestamp - only return events before this time
 - `type` (optional): Comma-separated event types to filter by (e.g., "payment_completed,image_added")
@@ -88,13 +135,14 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
 ```typescript
 interface ActivityResponse {
   items: ActivityEvent[];
-  nextCursor?: string; // Opaque token for next page, null if no more results
+  nextCursor?: string; // Signed base64url token for next page, null if no more results
   total?: number; // Total count when feasible (not always available for performance)
   hasMore: boolean; // Convenience flag indicating if more results exist
 }
 
 interface ActivityEvent {
   id: string;
+  uid: string; // Globally unique identifier across all sources (e.g., prefixed or UUID)
   type: 'matter_event' | 'session_event';
   eventType: string;
   title: string;
@@ -107,39 +155,50 @@ interface ActivityEvent {
 }
 ```
 
-**Sorting:** Stable sort by `event_date DESC, created_at DESC` to ensure consistent pagination
+**Sorting:** Stable sort by `event_date DESC, created_at DESC, id DESC` to ensure consistent pagination
 
 **Caching:** 
 - ETag header based on content hash of results
 - If-None-Match conditional requests return 304 Not Modified
-- Cache-Control: public, max-age=60 (1 minute for real-time feel)
+- Cache-Control: private, max-age=60, must-revalidate (prevents shared cache leakage)
+- Vary: Authorization, Cookie, X-Tenant-ID (ensures per-user/tenant cache keys)
+- Alternative: Cache-Control: no-store for highly sensitive activity feeds
 
 **Rate Limiting:**
 - 429 Too Many Requests when rate limit exceeded
-- Rate limit: 100 requests per minute per IP
-- Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+- Rate limit: 50 requests per minute per user/token+IP combination (configurable via environment)
+- 304 Not Modified responses are excluded from rate limit counting
+- Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`
 - Error response: `{"error": "Rate limit exceeded", "retryAfter": 60}`
+- Retry-After header value matches the retryAfter field in error response body
 
 **Cursor Implementation:**
-- Opaque base64-encoded token containing: `{lastEventDate, lastCreatedAt, limit, filters}`
-- Generated by encoding JSON object with pagination state
-- Clients must not parse or modify cursor tokens
-- nextCursor computed by taking last item's sort fields + current query params
+- Signed base64url-encoded token containing minimal seek keys: `{lastEventDate, lastCreatedAt, limit}`
+- Filters are reconstructed from current request query parameters (not stored in cursor)
+- HMAC signature computed using server-side secret to prevent tampering
+- nextCursor computed from last item's sort fields plus current query params
+- Returns HTTP 400 when signature validation fails or token is tampered with
+
+**Cursor Error Handling:**
+- HTTP 400 Bad Request when cursor signature validation fails
+- HTTP 400 Bad Request when cursor is malformed or tampered with
+- Error response: `{"error": "Invalid cursor", "code": "INVALID_CURSOR"}`
+- Clients should discard invalid cursors and restart pagination from the beginning
 
 **Example Requests:**
 ```bash
 # Get first page of recent activity
 GET /api/activity?matterId=123&limit=25
 
-# Get next page using cursor
-GET /api/activity?matterId=123&limit=25&cursor=eyJsYXN0RXZlbnREYXRlIjoiMjAyNC0wMS0xNVQxMDowMDowMFoiLCJsYXN0Q3JlYXRlZEF0IjoiMjAyNC0wMS0xNVQxMDowMDowMFoifQ==
+# Get next page using signed cursor (filters reconstructed from query params)
+GET /api/activity?matterId=123&limit=25&cursor=eyJwYXlsb2FkIjoie1wibGFzdEV2ZW50RGF0ZVwiOlwiMjAyNC0wMS0xNVQxMDowMDowMFpcIixcImxhc3RDcmVhdGVkQXQiOlwiMjAyNC0wMS0xNVQxMDowMDowMFpcIixcImxpbWl0XCI6MjV9Iiwic2lnbmF0dXJlIjoiYWJjZGVmZ2hpamsifQ
 
 # Filter by date range and event types
 GET /api/activity?matterId=123&since=2024-01-01T00:00:00Z&until=2024-01-31T23:59:59Z&type=payment_completed,image_added&limit=10
 
 # Get session events with conditional caching
 GET /api/activity?sessionId=456&limit=50
-# Response includes: ETag: "abc123", Cache-Control: public, max-age=60
+# Response includes: ETag: "abc123", Cache-Control: private, max-age=60, must-revalidate, Vary: Authorization, Cookie, X-Tenant-ID
 ```
 
 **Example Response:**
@@ -148,6 +207,7 @@ GET /api/activity?sessionId=456&limit=50
   "items": [
     {
       "id": "evt_123",
+      "uid": "matter_evt_123_20240115_103000",
       "type": "matter_event",
       "eventType": "payment_completed",
       "title": "Payment Completed",
@@ -159,7 +219,8 @@ GET /api/activity?sessionId=456&limit=50
       "createdAt": "2024-01-15T10:30:05Z"
     },
     {
-      "id": "evt_124", 
+      "id": "evt_124",
+      "uid": "session_evt_124_20240115_091500", 
       "type": "session_event",
       "eventType": "image_added",
       "title": "Image Added",
@@ -176,6 +237,146 @@ GET /api/activity?sessionId=456&limit=50
   "total": 47
 }
 ```
+
+**Caching Security Considerations:**
+- **Private Caching**: `Cache-Control: private` ensures responses are only cached by the user's browser, never by shared proxies or CDNs
+- **Must-Revalidate**: Forces revalidation with server before serving stale content, ensuring data freshness
+- **Vary Headers**: `Vary: Authorization, Cookie, X-Tenant-ID` ensures separate cache entries per user/tenant
+- **ETag Validation**: Content-based ETags prevent serving stale data when activity changes
+- **Sensitive Data Option**: For highly sensitive activity feeds, use `Cache-Control: no-store` to disable caching entirely
+- **Authentication Headers**: Include all relevant auth headers in Vary to prevent cross-user cache pollution
+
+**POST /api/activity Request Body:**
+```typescript
+interface CreateActivityRequest {
+  type: 'matter_event' | 'session_event';
+  eventType: string;
+  title: string;
+  description: string;
+  eventDate: string; // ISO 8601 timestamp
+  matterId?: string; // Required for matter_event
+  sessionId?: string; // Required for session_event
+  metadata?: Record<string, any>;
+  // Idempotency mechanism (choose one):
+  idempotencyKey?: string; // Client-provided unique key
+  clientEventId?: string;  // Alternative: client-unique event ID
+}
+```
+
+**Idempotency Requirements:**
+
+**Mechanism Options:**
+1. **Idempotency-Key Header**: `Idempotency-Key: <unique-client-generated-key>`
+2. **Client Event ID**: Include `clientEventId` in request body
+3. **Combined Approach**: Use both for maximum reliability
+
+**Server Deduplication Behavior:**
+- **Storage**: Store idempotency keys in KV store with TTL of 24 hours
+- **Key Format**: `idempotency:{tenant_id}:{idempotency_key}` or `idempotency:{tenant_id}:{client_event_id}`
+- **Check Process**: Before processing, check if key exists in KV store
+- **Response Handling**:
+  - **409 Conflict**: Return existing event data if duplicate submission detected
+  - **200 OK**: Return existing event data (same as 409, but indicates success)
+  - **201 Created**: Return newly created event data
+- **Side Effects**: Only persist idempotency markers AFTER successful event creation
+- **TTL Management**: Keys expire after 24 hours to prevent indefinite storage
+
+**Response Codes:**
+- **201 Created**: New event successfully created
+- **200 OK**: Duplicate request, returning existing event
+- **409 Conflict**: Duplicate request with conflict details
+- **400 Bad Request**: Invalid request body or missing required fields
+- **401 Unauthorized**: Missing or invalid JWT token
+- **403 Forbidden**: Insufficient permissions or tenant access denied
+- **422 Unprocessable Entity**: Validation errors (invalid dates, missing matter/session access)
+
+**Example POST Request:**
+```bash
+POST /api/activity
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Idempotency-Key: payment_123_2024-01-15_10-30-00
+Content-Type: application/json
+
+{
+  "type": "matter_event",
+  "eventType": "payment_completed",
+  "title": "Payment Completed",
+  "description": "Payment of $500.00 processed successfully",
+  "eventDate": "2024-01-15T10:30:00Z",
+  "matterId": "matter_123",
+  "metadata": {
+    "amount": 500,
+    "currency": "USD",
+    "paymentMethod": "credit_card"
+  }
+}
+```
+
+**Example Responses:**
+
+**201 Created (New Event):**
+```json
+{
+  "id": "evt_789",
+  "uid": "matter_evt_789_20240115_103000",
+  "type": "matter_event",
+  "eventType": "payment_completed",
+  "title": "Payment Completed",
+  "description": "Payment of $500.00 processed successfully",
+  "eventDate": "2024-01-15T10:30:00Z",
+  "actorType": "lawyer",
+  "actorId": "lawyer_456",
+  "metadata": {
+    "amount": 500,
+    "currency": "USD",
+    "paymentMethod": "credit_card"
+  },
+  "createdAt": "2024-01-15T10:30:05Z"
+}
+```
+
+**409 Conflict (Duplicate):**
+```json
+{
+  "error": "Duplicate request detected",
+  "existingEvent": {
+    "id": "evt_789",
+    "uid": "matter_evt_789_20240115_103000",
+    "type": "matter_event",
+    "eventType": "payment_completed",
+    "title": "Payment Completed",
+    "description": "Payment of $500.00 processed successfully",
+    "eventDate": "2024-01-15T10:30:00Z",
+    "actorType": "lawyer",
+    "actorId": "lawyer_456",
+    "metadata": {
+      "amount": 500,
+      "currency": "USD",
+      "paymentMethod": "credit_card"
+    },
+    "createdAt": "2024-01-15T10:30:05Z"
+  },
+  "idempotencyKey": "payment_123_2024-01-15_10-30-00"
+}
+```
+
+**Implementation Notes for Developers:**
+
+**Required Implementation Steps:**
+1. **Token Validation**: Always validate JWT tokens before processing any request
+2. **Tenant Extraction**: Extract tenant ID from JWT claims and enforce scoping
+3. **RBAC Enforcement**: Check user permissions before allowing read/create operations
+4. **Idempotency Check**: Check for existing idempotency keys BEFORE processing side effects
+5. **Data Persistence**: Only persist idempotency markers AFTER successful event creation
+6. **Error Handling**: Return appropriate HTTP status codes with descriptive error messages
+7. **Audit Logging**: Log all authentication failures and permission denials for security monitoring
+
+**Security Considerations:**
+- Never expose events from other tenants, even with matching IDs
+- Validate all input data and sanitize metadata fields
+- Implement rate limiting to prevent abuse
+- Log security events for monitoring and alerting
+- Use secure JWT secret management (environment variables, not hardcoded)
 
 #### 1.3 Add Event Creation Points
 Update existing services to create activity events:
@@ -223,7 +424,7 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
   // Fetch activity events with pagination support
   // Handle loading states (initial load, load more, refresh)
   // Implement cursor-based pagination
-  // Support conditional caching with ETag/If-None-Match
+  // Support private caching with ETag/If-None-Match (prevents shared cache leakage)
   // Handle rate limiting (429 responses)
   // Return: { events, loading, error, hasMore, total, refresh, loadMore, reset, etag }
 }
@@ -257,7 +458,7 @@ interface ActivityTimelineProps {
 // Implement "Load More" button for pagination
 // Show loading indicators for different states
 // Handle rate limiting gracefully
-// Support conditional caching (304 responses)
+// Support private caching with conditional requests (304 responses)
 // Display total count when available
 ```
 
@@ -407,7 +608,7 @@ SELECT
   metadata,
   created_at
 FROM matter_events 
-WHERE matter_id = ? 
+WHERE (? IS NULL OR matter_id = ?) 
 ORDER BY event_date DESC, created_at DESC
 ```
 
@@ -421,7 +622,7 @@ SELECT
   payload,
   created_at
 FROM session_audit_events 
-WHERE session_id = ? 
+WHERE (? IS NULL OR session_id = ?) 
 ORDER BY created_at DESC
 ```
 
@@ -441,7 +642,7 @@ WITH combined_events AS (
     metadata,
     created_at
   FROM matter_events 
-  WHERE matter_id = ?
+  WHERE (? IS NULL OR matter_id = ?)
     AND (? IS NULL OR event_date >= ?) -- since filter
     AND (? IS NULL OR event_date <= ?) -- until filter
     AND (? IS NULL OR event_type IN (SELECT value FROM json_each(?))) -- type filter
@@ -461,7 +662,7 @@ WITH combined_events AS (
     json_object('payload', payload) as metadata, -- Safe JSON construction using SQLite's json_object()
     created_at
   FROM session_audit_events 
-  WHERE session_id = ?
+  WHERE (? IS NULL OR session_id = ?)
     AND (? IS NULL OR created_at >= ?) -- since filter
     AND (? IS NULL OR created_at <= ?) -- until filter
     AND (? IS NULL OR event_type IN (SELECT value FROM json_each(?))) -- type filter
@@ -469,9 +670,8 @@ WITH combined_events AS (
 ),
 filtered_events AS (
   SELECT * FROM combined_events
-  WHERE (? IS NULL OR event_date >= ?) -- cursor-based pagination: since last event_date
-    AND (? IS NULL OR (event_date = ? AND created_at < ?)) -- cursor-based pagination: since last created_at
-  ORDER BY event_date DESC, created_at DESC
+  WHERE (? IS NULL OR (event_date < ? OR (event_date = ? AND (created_at < ? OR (created_at = ? AND id < ?))))) -- cursor-based pagination: seek-style predicate for DESC order
+  ORDER BY event_date DESC, created_at DESC, id DESC
   LIMIT ? -- limit parameter
 )
 SELECT * FROM filtered_events;
@@ -482,20 +682,56 @@ SELECT COUNT(*) as total FROM combined_events;
 
 ### Cursor-Based Pagination Implementation
 ```typescript
-// Cursor contains: {lastEventDate, lastCreatedAt, limit, filters}
+import { createHmac } from 'crypto';
+
+// Cursor contains only minimal seek keys: {lastEventDate, lastCreatedAt, limit}
 const cursorData = {
   lastEventDate: "2024-01-15T09:15:00Z",
   lastCreatedAt: "2024-01-15T09:15:30Z", 
-  limit: 25,
-  filters: {matterId: "123", type: ["payment_completed"]}
+  limit: 25
 };
 
-// Encode cursor
-const cursor = btoa(JSON.stringify(cursorData));
+// Create HMAC signature
+const secret = process.env.CURSOR_SECRET; // Server-side secret
+const payload = JSON.stringify(cursorData);
+const signature = createHmac('sha256', secret).update(payload).digest('hex');
 
-// Decode cursor for query
-const decoded = JSON.parse(atob(cursor));
-// Use decoded.lastEventDate and decoded.lastCreatedAt for WHERE clauses
+// Combine payload and signature
+const signedData = { payload, signature };
+
+// Encode with base64url (URL-safe base64)
+const cursor = Buffer.from(JSON.stringify(signedData))
+  .toString('base64')
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+  .replace(/=/g, '');
+
+// Decode and verify cursor
+function decodeCursor(cursor: string, currentFilters: any) {
+  try {
+    // Decode base64url
+    const padded = cursor + '='.repeat((4 - cursor.length % 4) % 4)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    const decoded = JSON.parse(Buffer.from(padded, 'base64').toString());
+    
+    // Verify HMAC signature
+    const expectedSignature = createHmac('sha256', secret)
+      .update(decoded.payload)
+      .digest('hex');
+    
+    if (decoded.signature !== expectedSignature) {
+      throw new Error('Invalid cursor signature');
+    }
+    
+    const cursorData = JSON.parse(decoded.payload);
+    // Use cursorData.lastEventDate and cursorData.lastCreatedAt for WHERE clauses
+    // Reconstruct filters from current request parameters, not from cursor
+    return { ...cursorData, filters: currentFilters };
+  } catch (error) {
+    throw new Error('Invalid or tampered cursor');
+  }
+}
 ```
 
 ## Testing Strategy
