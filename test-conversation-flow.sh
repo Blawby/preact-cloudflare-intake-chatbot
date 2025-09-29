@@ -314,6 +314,53 @@ scenario_tool_call_display_bug() {
     fi
 }
 
+scenario_contact_form_detection_bug() {
+    echo -e "${BLUE}🧪 Contact Form Detection Bug (Landlord Harassment)${NC}"
+    
+    # This reproduces the exact conversation flow from the user's example
+    local session_id="$SESSION_PREFIX-contactbug"
+    local messages='[
+        {"role":"user","content":"hello i need help my landlord is harassing me for unpaid rent"},
+        {"role":"assistant","content":"I am sorry you are going through this. Can you tell me a bit more about the situation? When did you last pay rent, and what is the current amount you owe?"},
+        {"role":"user","content":"I owe 800 its late by 10 days ish"},
+        {"role":"assistant","content":"So you are about 10 days late on an $800 rent payment. Has your landlord given you any notice of eviction or taken any other actions against you?"},
+        {"role":"user","content":"no he is just calling and texting a ton"},
+        {"role":"assistant","content":"That sounds like harassment. In North Carolina, landlords are allowed to contact tenants to collect rent, but they are not allowed to harass or intimidate them. Have you kept any records of these calls and texts, such as dates, times, and the content of the messages?"},
+        {"role":"user","content":"no but I can get them"},
+        {"role":"assistant","content":"It is a good idea to document these interactions, as they can be useful evidence if you need to take further action. I would like to help you explore your options for dealing with your landlord behavior. Would you like to proceed with creating a matter to discuss this further with one of our attorneys?"},
+        {"role":"user","content":"yea"},
+        {"role":"assistant","content":"The email address you provided does not appear to be valid. Could you please provide a valid email address?"},
+        {"role":"user","content":"afsdklhj@yahoo.com"},
+        {"role":"assistant","content":"The phone number you provided does not appear to be valid: Please provide a real phone number, not a placeholder. Could you please provide a valid phone number?"},
+        {"role":"user","content":"6158889999"}
+    ]'
+
+    local resp=$(make_request "north-carolina-legal-services" "$session_id" \
+        "$messages" \
+        "Contact Form Detection Bug")
+
+    # Check if contact form is shown when user agrees to create matter
+    if echo "$resp" | grep -q '"type":"contact_form"'; then
+        print_result true "Contact form properly shown when user agrees to create matter"
+    else
+        print_result false "CRITICAL: Contact form not shown when user agrees to create matter"
+    fi
+
+    # Check if system properly collects contact info before proceeding
+    if echo "$resp" | grep -q '"type":"matter_created"' || echo "$resp" | grep -q '"type":"payment"'; then
+        print_result false "CRITICAL: System proceeding to payment/matter creation without proper contact form"
+    else
+        print_result true "System properly requires contact form before proceeding"
+    fi
+
+    # Check if contact info validation is working
+    if echo "$resp" | grep -q "valid email" || echo "$resp" | grep -q "valid phone"; then
+        print_result false "CRITICAL: Contact info validation failing - asking for valid info when user provided valid info"
+    else
+        print_result true "Contact info validation working correctly"
+    fi
+}
+
 ###############################################
 # Run All Scenarios
 ###############################################
@@ -329,6 +376,7 @@ scenario_document_gathering
 scenario_contact_form_prefill
 scenario_urgent_mid_conversation
 scenario_tool_call_display_bug
+scenario_contact_form_detection_bug
 
 ###############################################
 # Summary

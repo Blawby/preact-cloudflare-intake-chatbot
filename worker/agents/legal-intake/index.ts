@@ -356,7 +356,8 @@ function detectContextFast(conversationText: string): ConversationContext {
   // Contact detection
   const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(conversationText);
   const hasPhone = /\b(?:\+?1[-.]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(conversationText);
-  const _hasName = /(?:my name is|i'm|i am|call me)\s+([A-Za-z\s]+)/i.test(conversationText);
+  const hasName = /(?:my name is|i'm|i am|call me|name:|^|\s)([A-Z][a-z]+\s+[A-Z][a-z]+)/i.test(conversationText) ||
+                  /(?:name)\s*[:=]\s*([A-Za-z\s]+)/i.test(conversationText);
   
   // Opposing party detection
   const hasOpposingParty = /(?:opposing|against|versus|vs\.?)\s+([A-Za-z\s]+)/i.test(conversationText);
@@ -372,7 +373,7 @@ function detectContextFast(conversationText: string): ConversationContext {
   // State determination
   let state = ConversationState.GATHERING_INFORMATION;
   if (legalIssueType) {
-    if (hasEmail || hasPhone) {
+    if (hasName && (hasEmail || hasPhone)) {
       state = ConversationState.READY_TO_CREATE_MATTER;
     } else {
       state = ConversationState.QUALIFYING_LEAD;
@@ -397,7 +398,7 @@ function detectContextFast(conversationText: string): ConversationContext {
     opposingParty: hasOpposingParty ? 'Opposing party mentioned' : null,
     isSensitiveMatter,
     isGeneralInquiry,
-    shouldCreateMatter: !!(legalIssueType && (hasEmail || hasPhone)),
+    shouldCreateMatter: !!(legalIssueType && hasName && (hasEmail || hasPhone)),
     state,
     // Lead qualification fields
     hasAskedUrgency: hasUrgency,
@@ -489,8 +490,16 @@ Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueTy
 Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document
 
 Rules:
-- Use create_matter when you have name + legal issue + contact info${requiresLocation ? ' + location' : ''}
+- CRITICAL: Use create_matter ONLY when you have ACTUAL values for: name + legal issue + contact info${requiresLocation ? ' + location' : ''}
+- If ANY field would use a placeholder like "Client Name", "Client Location", STOP and use show_contact_form instead
+- Use show_contact_form when user agrees to create matter but is missing name, email, phone, or location
 - Use show_contact_form ONLY after qualifying the lead with questions about urgency, timeline, and seriousness
+
+DECISION TREE:
+1. Do you have the user's actual name (not "Client Name")? If NO → use show_contact_form
+2. Do you have the user's actual email and phone? If NO → use show_contact_form  
+3. Do you have the user's actual location${requiresLocation ? ' (not "Client Location")' : ''}? If NO → use show_contact_form
+4. Only if you have ALL actual values → use create_matter
 - Always start by briefly reflecting the user’s latest concern so they know you understood (e.g., "I’m sorry you were fired").
 - Be concise and skip pleasantries; respond to the user's latest question directly
 - Let middleware-driven UI (case drafts, checklists, PDFs) speak for itself—mention them briefly rather than describing their contents
@@ -515,6 +524,12 @@ PARAMETERS: {}
 TOOL_CALL: create_matter
 PARAMETERS: {"name": "John Doe", "matter_type": "Family Law", "description": "Divorce and child custody case", "email": "john@example.com", "phone": "555-123-4567"${requiresLocation ? ', "location": "Raleigh, NC"' : ''}}
 
+NEVER DO THIS - These are WRONG examples:
+TOOL_CALL: create_matter
+PARAMETERS: {"name": "Client Name", "matter_type": "Family Law", "description": "Divorce case", "email": "user@example.com", "phone": "555-123-4567"}
+TOOL_CALL: create_matter
+PARAMETERS: {"name": "John Doe", "matter_type": "Family Law", "description": "Divorce case", "email": "user@example.com", "phone": "555-123-4567", "location": "Client Location"}
+
 // Note: build_case_draft, show_document_checklist, and skip_to_lawyer are now handled by middleware
 
 Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.`;
@@ -537,7 +552,7 @@ function getAvailableToolsForState(state: ConversationState, context: Conversati
       return [showContactForm];
     case ConversationState.READY_TO_CREATE_MATTER:
     case ConversationState.CREATING_MATTER:
-      return [createMatter];
+      return [createMatter, showContactForm];
     case ConversationState.COMPLETED:
       return allTools;
     default:
@@ -640,36 +655,61 @@ async function handleToolCall(
 ): Promise<void> {
   const { name: toolName, arguments: parameters = {} } = toolCall;
   
+  // PRE-FLIGHT CHECK: Detect placeholder values in create_matter calls
+  if (toolName === 'create_matter') {
+    const { name, email, phone, location } = parameters;
+    
+    const placeholders = ['client name', 'client location', 'user name', 'user location', 
+                          'client email', 'user email', 'client phone', 'user phone'];
+    
+    const hasPlaceholder = [name, email, phone, location].some(val => 
+      typeof val === 'string' && placeholders.some(p => val.toLowerCase().includes(p))
+    );
+    
+    if (hasPlaceholder) {
+      Logger.warn('Detected placeholder values in create_matter call, redirecting to contact form', {
+        parameters,
+        correlationId,
+        sessionId,
+        teamId
+      });
+      
+      // Override the tool call - force contact form instead
+      toolCall.name = 'show_contact_form';
+      toolCall.arguments = {};
+    }
+  }
+  
   await emitSSEEvent(controller, {
     type: 'tool_call',
-    name: toolName,
-    parameters
+    name: toolCall.name,
+    parameters: toolCall.arguments
   });
 
-  const handler = TOOL_HANDLERS[toolName as keyof typeof TOOL_HANDLERS];
+  const handler = TOOL_HANDLERS[toolCall.name as keyof typeof TOOL_HANDLERS];
   if (!handler) {
-    Logger.warn(`Unknown tool: ${toolName}`);
-    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_FAILED, toolName, parameters, undefined, new Error(`Unknown tool: ${toolName}`));
-    await emitError(controller, `Unknown tool: ${toolName}`, correlationId);
+    Logger.warn(`Unknown tool: ${toolCall.name}`);
+    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_FAILED, toolCall.name, toolCall.arguments, undefined, new Error(`Unknown tool: ${toolCall.name}`));
+    await emitError(controller, `Unknown tool: ${toolCall.name}`, correlationId);
     return;
   }
 
-  LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_START, toolName, parameters);
+  LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_START, toolCall.name, toolCall.arguments);
 
   try {
-    const toolResult = await handler(parameters, env, teamConfig, correlationId, sessionId, teamId);
+    const toolResult = await handler(toolCall.arguments, env, teamConfig, correlationId, sessionId, teamId);
     
-    ToolUsageMonitor.recordToolUsage(toolName, toolResult.success);
-    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_SUCCESS, toolName, parameters, toolResult);
+    ToolUsageMonitor.recordToolUsage(toolCall.name, toolResult.success);
+    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_SUCCESS, toolCall.name, toolCall.arguments, toolResult);
 
     await emitSSEEvent(controller, {
       type: 'tool_result',
-      name: toolName,
+      name: toolCall.name,
       result: toolResult
     });
 
     // Special handling for show_contact_form
-    if (toolName === 'show_contact_form' && toolResult.success) {
+    if (toolCall.name === 'show_contact_form' && toolResult.success) {
       const contactFormResponse = (toolResult.data && typeof toolResult.data === 'object')
         ? toolResult.data as ContactFormResponse
         : null;
@@ -696,11 +736,11 @@ async function handleToolCall(
 
     const finalResponse = extractToolResponse(toolResult as ErrorResult<Record<string, unknown>>);
 
-    if (!toolResult.success && toolName === 'create_matter') {
+    if (!toolResult.success && toolCall.name === 'create_matter') {
       await emitSSEEvent(controller, {
         type: 'tool_error',
         response: finalResponse,
-        toolName,
+        toolName: toolCall.name,
         allowRetry: true
       });
       return; // Don't close - allow retry
@@ -713,8 +753,8 @@ async function handleToolCall(
 
   } catch (error) {
     Logger.error('Tool execution failed:', error);
-    ToolUsageMonitor.recordToolUsage(toolName, false);
-    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_FAILED, toolName, parameters, undefined, error instanceof Error ? error : new Error(String(error)));
+    ToolUsageMonitor.recordToolUsage(toolCall.name, false);
+    LegalIntakeLogger.logToolCall(correlationId, sessionId, teamId, LegalIntakeOperation.TOOL_CALL_FAILED, toolCall.name, toolCall.arguments, undefined, error instanceof Error ? error : new Error(String(error)));
     await emitError(controller, 'Tool execution failed. Please try again.', correlationId);
   }
 }
@@ -952,6 +992,14 @@ export async function handleCreateMatter(
   // Check for placeholder values
   if (ValidationService.hasPlaceholderValues(phone, email)) {
     return createValidationError("I need your actual contact information to proceed. Could you please provide your real phone number and email address?");
+  }
+  
+  // Check for common placeholder patterns in name and location
+  const placeholderPatterns = /client|user|placeholder|example|test|xxx|n\/a|tbd/i;
+  
+  if (placeholderPatterns.test(name || '') || 
+      placeholderPatterns.test(location || '')) {
+    return createValidationError("I need your actual information to proceed. Could you please provide your real name and location?");
   }
   
   // Validate required fields
