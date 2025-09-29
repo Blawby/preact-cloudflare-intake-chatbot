@@ -50,6 +50,7 @@ CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
 # Environment flags
 NODE_ENV = "development"
 DEBUG = "false"
+VITE_DEBUG_OVERLAY = "false"
 
 # AI Model Configuration (used in worker/agents/legal-intake/index.ts)
 AI_MODEL = "llama-3.1-8b-instant"

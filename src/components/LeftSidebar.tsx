@@ -22,8 +22,8 @@ const LeftSidebar = ({ currentRoute, onOpenMenu, onGoToChats, teamConfig }: Left
   const { isDark, toggleTheme } = useTheme();
 
   return (
-    <div className="flex flex-col h-full w-full bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border">
-      <div className="flex flex-col h-full justify-between p-4">
+    <div className="flex flex-col h-full w-full p-2">
+      <div className="flex flex-col h-full bg-light-card-bg dark:bg-dark-card-bg rounded-lg justify-between p-4">
         {/* Top Section */}
         <div className="flex flex-col items-center gap-6">
           {/* Chats Section */}

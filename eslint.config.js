@@ -62,12 +62,7 @@ export default [
         navigator: 'readonly',
         location: 'readonly',
         history: 'readonly',
-        crypto: 'readonly',
-        HTMLTextAreaElement: 'readonly',
-        Event: 'readonly',
-        HTMLElement: 'readonly',
-        Element: 'readonly',
-        MouseEvent: 'readonly'
+        crypto: 'readonly'
       }
     },
     plugins: {
@@ -79,6 +74,7 @@ export default [
     rules: {
       // TypeScript rules
       ...typescript.configs.recommended.rules,
+      'no-undef': 'off', // Let TypeScript compiler handle DOM/ambient types
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn', // TODO: tighten to error once types are cleaned up
       '@typescript-eslint/no-non-null-assertion': 'warn', // TODO: consider stricter null safety later

@@ -47,6 +47,7 @@ export default {
           'input-bg': '#ffffff',
           hover: '#f5f5f5',
           accent: '#d4af37',
+          'card-bg': '#fafafa',
         },
         // Dark theme colors
         dark: {
@@ -58,6 +59,7 @@ export default {
           'input-bg': '#0a0f1a',
           hover: '#111827',
           accent: '#d4af37',
+          'card-bg': '#0f1419',
         },
       },
 

@@ -178,10 +178,7 @@ const AccordionTrigger: FunctionComponent<AccordionTriggerProps> = ({
         type="button"
       >
         {children}
-        <ChevronDownIcon className={cn(
-          "text-muted-foreground pointer-events-none size-4 shrink-0 transition-transform duration-200",
-          isOpen && "rotate-180"
-        )} />
+        <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0 transition-transform duration-200" />
       </button>
     </div>
   )

@@ -10,11 +10,9 @@ import TeamProfile from './TeamProfile';
 import { DebugOverlay } from './DebugOverlay';
 import { features } from '../config/features';
 import { ChatMessageUI } from '../../worker/types';
-import { useEffect, useState } from 'preact/hooks';
 import { useNavbarScroll } from '../hooks/useChatScroll';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
 import ActivityTimeline from './ActivityTimeline';
 
 // Simple messages object for localization
@@ -36,7 +34,7 @@ interface AppLayoutProps {
   };
   messages: ChatMessageUI[];
   onRequestConsultation?: () => void | Promise<void>;
-  children: any; // ChatContainer component
+  children: React.ReactNode; // ChatContainer component
 }
 
 const AppLayout: FunctionComponent<AppLayoutProps> = ({
@@ -51,14 +49,14 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   onRequestConsultation,
   children
 }) => {
-  if (teamNotFound) {
-    return <TeamNotFound teamId={teamId} onRetry={onRetryTeamConfig} />;
-  }
-
   const { isNavbarVisible } = useNavbarScroll({ 
     threshold: 50, 
     debounceMs: 0
   });
+
+  if (teamNotFound) {
+    return <TeamNotFound teamId={teamId} onRetry={onRetryTeamConfig} />;
+  }
 
   // Async-safe wrapper for consultation request
   const handleRequestConsultation = async () => {
@@ -67,24 +65,24 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     try {
       await onRequestConsultation();
     } catch (error) {
-      console.error('Error requesting consultation:', error);
       // Surface error to user - could be enhanced with a toast notification
-      // For now, just log to console
+      // For now, silently handle the error
+      console.error('Error requesting consultation:', error);
     }
   };
 
   return (
-    <div className="max-md:h-[100dvh] md:h-screen w-full flex">
+    <div className="max-md:h-[100dvh] md:h-screen w-full flex bg-white dark:bg-dark-bg">
       {/* Left Sidebar - Fixed width, hidden on mobile */}
       {features.enableLeftSidebar && (
-        <div className="w-20 bg-white dark:bg-dark-bg border-r border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
+        <div className="w-20 overflow-y-auto hidden lg:block">
           <LeftSidebar
             currentRoute={currentTab}
             onOpenMenu={() => onToggleMobileSidebar(true)}
             teamConfig={{
               name: teamConfig.name,
               profileImage: teamConfig.profileImage,
-              teamId: teamId
+              teamId
             }}
           />
         </div>
@@ -98,8 +96,8 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       </div>
 
       {/* Right Sidebar - Fixed width, hidden on mobile */}
-      <div className="w-80 bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border overflow-y-auto scrollbar-hide hidden lg:block">
-        <div className="p-6 text-gray-900 dark:text-white flex flex-col gap-6">
+      <div className="w-80 overflow-y-auto scrollbar-hide hidden lg:block p-2">
+        <div className="bg-light-card-bg dark:bg-dark-card-bg rounded-lg p-6 text-gray-900 dark:text-white flex flex-col gap-6 h-full">
           <TeamProfile
             name={teamConfig.name}
             profileImage={teamConfig.profileImage}
@@ -139,7 +137,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
         teamConfig={{
           name: teamConfig.name,
           profileImage: teamConfig.profileImage,
-          teamId: teamId,
+          teamId,
           description: teamConfig.description
         }}
         onOpenSidebar={() => onToggleMobileSidebar(true)}
@@ -155,15 +153,15 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
         teamConfig={{
           name: teamConfig.name,
           profileImage: teamConfig.profileImage,
-          teamId: teamId,
+          teamId,
           description: teamConfig.description
         }}
         messages={chatMessages}
         onRequestConsultation={onRequestConsultation}
       />
 
-      {/* Debug Overlay - Only in development */}
-      {import.meta.env.MODE === 'development' && (
+      {/* Debug Overlay - Only when explicitly enabled */}
+      {import.meta.env.VITE_DEBUG_OVERLAY === 'true' && (
         <DebugOverlay isVisible={true} />
       )}
     </div>

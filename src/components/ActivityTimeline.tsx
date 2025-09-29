@@ -81,7 +81,7 @@ const ActivityTimeline: FunctionComponent<ActivityTimelineProps> = ({ className 
                   <div key={item.id} className="relative flex items-start gap-3">
                     {/* Timeline line */}
                     {index < timelineItems.length - 1 && (
-                      <div className="absolute left-6 top-8 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
+                      <div className="absolute left-3 top-8 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
                     )}
                     
                     {/* Icon */}
