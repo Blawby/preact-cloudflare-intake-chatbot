@@ -18,26 +18,30 @@ export interface MatterData {
 export function analyzeMissingInfo(matterData: MatterData): string[] {
   const missingInfo: string[] = [];
   
+  // Normalize matter summary upfront to avoid repeated operations and null/undefined issues
+  const summary = (matterData.matterSummary || '').trim();
+  const summaryLower = summary.toLowerCase();
+  
   // Check if matter summary is empty or very basic
-  if (!matterData.matterSummary || matterData.matterSummary.trim().length < 50) {
+  if (summary.length < 50) {
     missingInfo.push('Detailed matter description');
   }
   
-  // Check for common missing fields based on service type
-  const summaryLower = matterData.matterSummary.toLowerCase();
-  
   // Check for timeline information
-  if (!summaryLower.includes('when') && !summaryLower.includes('date') && !summaryLower.includes('timeline')) {
+  const timelinePattern = /\b(?:when|date|timeline|time|schedule|deadline|occurred|happened|event|incident|period|duration|timing)\b/i;
+  if (!timelinePattern.test(summary)) {
     missingInfo.push('Timeline of events');
   }
   
   // Check for location information
-  if (!summaryLower.includes('where') && !summaryLower.includes('location') && !summaryLower.includes('state')) {
+  const locationPattern = /\b(?:where|location|state|venue|address|city|county|place|site|area|region|jurisdiction|court|building|office|home|workplace)\b/i;
+  if (!locationPattern.test(summary)) {
     missingInfo.push('Location/venue information');
   }
   
   // Check for evidence/documentation
-  if (!summaryLower.includes('document') && !summaryLower.includes('evidence') && !summaryLower.includes('proof')) {
+  const documentPattern = /\b(?:document|evidence|proof|attachment|invoice|report|record|file|paperwork|contract|agreement|receipt|statement|correspondence|email|letter|photo|image|video|audio|recording)\b/i;
+  if (!documentPattern.test(summary)) {
     missingInfo.push('Supporting documents or evidence');
   }
   

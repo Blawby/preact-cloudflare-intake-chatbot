@@ -209,6 +209,9 @@ export function App() {
 				}}
 				messages={messages}
 				onSendMessage={sendMessage}
+				onUploadDocument={async (files: File[], _metadata?: { documentType?: string; matterId?: string }) => {
+					return await handleFileSelect(files);
+				}}
 			>
 				<div className="relative h-full">
 					<ChatContainer
@@ -229,11 +232,13 @@ export function App() {
 						removePreviewFile={removePreviewFile}
 						clearPreviewFiles={clearPreviewFiles}
 						handleCameraCapture={handleCameraCapture}
-						handleFileSelect={handleFileSelect}
+						handleFileSelect={async (files: File[]) => {
+							await handleFileSelect(files);
+						}}
 							handleMediaCapture={handleMediaCaptureWrapper}
 							isRecording={isRecording}
 							setIsRecording={setIsRecording}
-							clearInput={clearInputTrigger > 0}
+							clearInput={clearInputTrigger}
 							isReadyToUpload={isReadyToUpload}
 							isSessionReady={isSessionReady}
 						/>

@@ -93,10 +93,13 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
     fileType: file.type
   });
 
-  // Store file in R2 bucket (convert File to ArrayBuffer for R2 compatibility)
-  const fileBuffer = await file.arrayBuffer();
-  await env.FILES_BUCKET.put(storageKey, fileBuffer, {
+  // Store file in R2 bucket using a stream to avoid buffering the entire file in memory
+  const body = typeof (file as any).stream === 'function'
+    ? (file as any).stream()
+    : await file.arrayBuffer();
+  await env.FILES_BUCKET.put(storageKey, body as ReadableStream | ArrayBuffer, {
     httpMetadata: {
+      // …existing metadata…
       contentType: file.type,
       cacheControl: 'public, max-age=31536000'
     },
@@ -179,71 +182,34 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
   // Generate public URL (in production, this would be a CDN URL)
   const url = `/api/files/${fileId}`;
 
-  // Create activity event for file upload (non-blocking)
-  const createFileActivityEvent = async () => {
-    try {
-      const { ActivityService } = await import('../services/ActivityService.js');
-      const activityService = new ActivityService(env);
-      
-      // Determine file category based on MIME type
-      const getFileCategory = (mimeType: string, filename: string): string => {
-        const extension = filename.split('.').pop()?.toLowerCase() || '';
-        
-        if (mimeType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(extension)) {
-          return 'image_added';
-        }
-        if (mimeType.startsWith('video/') || ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv'].includes(extension)) {
-          return 'video_added';
-        }
-        if (mimeType.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(extension)) {
-          return 'audio_added';
-        }
-        if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('spreadsheet') ||
-            ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf'].includes(extension)) {
-          return 'document_added';
-        }
-        return 'file_added';
-      };
-
-      const eventType = getFileCategory(file.type, file.name);
-      const eventTitle = eventType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      
-      // Use Promise.race with timeout to bound latency
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('File activity event creation timeout')), 5000)
-      );
-      
-      const activityPromise = activityService.createEvent({
-        type: 'session_event',
-        eventType,
-        title: eventTitle,
-        description: `${eventTitle}: ${file.name}`,
-        eventDate: new Date().toISOString(),
-        actorType: 'user',
-        actorId: sessionId, // Using sessionId as actorId for now
-        metadata: {
-          sessionId,
-          teamId,
-          fileId,
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
-          storageKey
-        }
-      }, teamId);
-      
-      await Promise.race([activityPromise, timeoutPromise]);
-      console.log('Activity event created for file upload:', { fileId, eventType });
-    } catch (error) {
-      console.warn('Failed to create activity event for file upload:', error);
-      // Errors are swallowed - don't throw back to caller
-    }
-  };
+  // Use Promise.race with timeout to bound latency
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('File activity event creation timeout')), 5000)
+  );
   
-  // Dispatch asynchronously (fire-and-forget)
-  createFileActivityEvent().catch(error => {
-    console.warn('File activity event creation failed in fire-and-forget mode:', error);
+  // Attach a catch handler to avoid unhandled rejections if we time out
+  const activityPromise = activityService.createEvent({
+    type: 'session_event',
+    eventType,
+    title: eventTitle,
+    description: `${eventTitle}: ${file.name}`,
+    eventDate: new Date().toISOString(),
+    actorType: 'user',
+    actorId: sessionId, // Using sessionId as actorId for now
+    metadata: {
+      sessionId,
+      teamId,
+      fileId,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      storageKey
+    }
+  }, teamId).catch(err => {
+    console.warn('Activity event createEvent rejected:', err);
   });
+
+  await Promise.race([activityPromise, timeoutPromise]);
 
   console.log('File upload completed:', { fileId, url, storageKey });
 
@@ -437,10 +403,28 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
 
       console.log('File found in R2, returning response');
 
-              // Return file with appropriate headers
-        const headers = new Headers();
-      headers.set('Content-Type', fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream');
-      headers.set('Content-Disposition', `inline; filename="${fileRecord?.original_name || fileId}"`);
+      // Guard against nullable fileObject.body
+      if (!fileObject.body) {
+        console.error('File object body is null or undefined');
+        throw HttpErrors.internalServerError('File content unavailable');
+      }
+
+      // Return file with appropriate headers
+      const headers = new Headers();
+      const contentType = fileRecord?.mime_type || fileObject.httpMetadata?.contentType || 'application/octet-stream';
+      headers.set('Content-Type', contentType);
+      
+      // Handle Content-Disposition based on mime type
+      const filename = fileRecord?.original_name || fileId;
+      const sanitizedFilename = filename.replace(/["\r\n]/g, ''); // Strip quotes and newlines
+      
+      if (contentType === 'image/svg+xml') {
+        // Force attachment for SVG files to prevent XSS
+        headers.set('Content-Disposition', `attachment; filename="${sanitizedFilename}"`);
+      } else {
+        headers.set('Content-Disposition', `inline; filename="${sanitizedFilename}"`);
+      }
+      
       if (fileRecord?.file_size) {
         headers.set('Content-Length', fileRecord.file_size.toString());
       }
@@ -463,7 +447,8 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         headers.set(key, value);
       });
 
-      return new Response(fileObject.body as ReadableStream, {
+      // Use non-null assertion after explicit null check
+      return new Response(fileObject.body!, {
         status: 200,
         headers
       });

@@ -134,9 +134,15 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
   const since = url.searchParams.get('since') || undefined;
   const until = url.searchParams.get('until') || undefined;
   const type = url.searchParams.get('type')?.split(',').filter(Boolean) || undefined;
-  const actorType = url.searchParams.get('actorType') as 'user' | 'lawyer' | 'system' || undefined;
+  const actorTypeParam = url.searchParams.get('actorType');
+  const actorType = actorTypeParam ? 
+    (['user', 'lawyer', 'system'].includes(actorTypeParam) ? actorTypeParam as 'user' | 'lawyer' | 'system' : null) : 
+    undefined;
 
   // Validate parameters
+  if (actorType === null) {
+    throw HttpErrors.badRequest('Invalid actorType');
+  }
   if (!Number.isInteger(limit) || !Number.isFinite(limit) || limit < 1 || limit > 50) {
     throw HttpErrors.badRequest('Limit must be an integer between 1 and 50');
   }
@@ -260,14 +266,29 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
 
   // Create the event
   const activityService = new ActivityService(env);
+  
+  // Determine actor information based on provided metadata
+  let actorType: 'user' | 'lawyer' | 'system';
+  let actorId: string | undefined;
+  
+  if (body.metadata?.actorId) {
+    // Real actor provided - use it and set appropriate type
+    actorId = body.metadata.actorId as string;
+    actorType = (body.metadata?.actorType as 'user' | 'lawyer' | 'system') || 'user';
+  } else {
+    // No real actor provided - treat as system event
+    actorType = 'system';
+    actorId = undefined;
+  }
+  
   const eventId = await activityService.createEvent({
     type: body.type,
     eventType: body.eventType,
     title: body.title,
     description: body.description || '',
     eventDate: body.eventDate,
-    actorType: (body.metadata?.actorType as 'user' | 'lawyer' | 'system') || 'system',
-    actorId: (body.metadata?.actorId as string) || sessionResolution.session.id,
+    actorType,
+    actorId,
     metadata: {
       ...body.metadata,
       teamId: resolvedTeamId,

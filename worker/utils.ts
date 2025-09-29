@@ -56,9 +56,10 @@ export async function createMatterRecord(
         const activityService = new ActivityService(env);
         
         // Use Promise.race with timeout to bound latency
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Activity event creation timeout')), 5000)
-        );
+        let timer: NodeJS.Timeout;
+        const timeoutPromise = new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Activity event creation timeout')), 5000);
+        });
         
         const activityPromise = activityService.createEvent({
           type: 'matter_event',
@@ -80,7 +81,11 @@ export async function createMatterRecord(
           }
         }, teamId);
         
-        await Promise.race([activityPromise, timeoutPromise]);
+        try {
+          await Promise.race([activityPromise, timeoutPromise]);
+        } finally {
+          clearTimeout(timer);
+        }
         console.log('Activity event created for matter creation:', { matterId, matterNumber });
       } catch (error) {
         console.warn('Failed to create activity event for matter creation:', error);

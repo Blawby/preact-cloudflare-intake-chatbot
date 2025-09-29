@@ -62,12 +62,13 @@ const LeftSidebar = ({ currentRoute, onOpenMenu, onGoToChats, onGoToMatter, matt
               size="lg"
               icon={<DocumentIcon className="w-6 h-6" />}
               title="Matter"
+              aria-label={`Matter${matterStatus ? `, ${matterStatus}` : ''}`}
               onClick={onGoToMatter || (() => {})}
               aria-current={currentRoute === 'matter' ? 'page' : undefined}
             />
             {/* Badge indicator */}
             {matterStatus && matterStatus !== 'empty' && (
-              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${getBadgeColor(matterStatus)} border-2 border-white dark:border-dark-bg`} />
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${getBadgeColor(matterStatus)} border-2 border-white dark:border-dark-bg`} aria-hidden="true" />
             )}
           </div>
         </div>

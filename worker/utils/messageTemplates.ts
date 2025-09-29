@@ -3,6 +3,25 @@
  * Provides standardized messaging across all legal intake flows
  */
 
+/**
+ * Escape markdown special characters
+ */
+function escapeMD(text: string): string {
+  return text.replace(/[\\`*_{}[\]()#+\-.!]/g, '\\$&');
+}
+
+/**
+ * Format USD currency with proper locale formatting
+ */
+function formatUSD(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(amount);
+}
+
 export interface MatterSummaryData {
   name: string;
   email: string;
@@ -25,7 +44,7 @@ export interface MatterSummaryData {
 export function generateMatterSummaryMessage(data: MatterSummaryData): string {
   const { name, email, phone, location, opposingParty, matterType, description, urgency } = data;
   
-  let message = `Perfect! I have all the information I need. Here's a summary of your matter:\n\n`;
+  let message = `Here's a summary of your matter:\n\n`;
   
   // Client Information Section
   message += `**Client Information:**\n`;
@@ -52,10 +71,25 @@ export function generateMatterSummaryMessage(data: MatterSummaryData): string {
 export function generatePaymentRequiredMessage(data: MatterSummaryData): string {
   const { consultationFee, paymentLink } = data;
   
-  let message = `Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.\n\n`;
+  // Guard against missing or invalid consultation fee
+  const fee = consultationFee && consultationFee > 0 ? consultationFee : 0;
+  
+  // Handle zero-fee case
+  if (fee === 0) {
+    return `No consultation fee is required for your matter. A lawyer will contact you within 24 hours to discuss your case.`;
+  }
+  
+  let message = `Before we can proceed with your consultation, there's a consultation fee of ${formatUSD(fee)}.\n\n`;
   
   message += `**Next Steps:**\n`;
-  message += `1. Please complete the payment using the embedded payment form below\n`;
+  
+  // Include payment link if available
+  if (paymentLink) {
+    message += `1. Please complete the payment using this secure payment link: ${escapeMD(paymentLink)}\n`;
+  } else {
+    message += `1. Please complete the payment using the embedded payment form below\n`;
+  }
+  
   message += `2. Once payment is confirmed, a lawyer will contact you within 24 hours\n\n`;
   
   message += `Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
@@ -110,7 +144,7 @@ export function generateCompleteMatterMessage(data: MatterSummaryData): string {
   let message = generateMatterSummaryMessage(data);
   
   // Add payment section if required
-  if (data.requiresPayment && data.consultationFee && data.consultationFee > 0) {
+  if (data.requiresPayment) {
     message += generatePaymentRequiredMessage(data);
   } else {
     message += generateNoPaymentMessage();

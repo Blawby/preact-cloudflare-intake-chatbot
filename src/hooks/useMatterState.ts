@@ -164,7 +164,9 @@ function analyzeMissingInfo(matterData: Omit<MatterData, 'status'>): string[] {
   }
   
   // Check for common missing fields based on service type
-  const summaryLower = matterData.matterSummary.toLowerCase();
+  const summaryLower = matterData.matterSummary && matterData.matterSummary.trim().length > 0 
+    ? matterData.matterSummary.toLowerCase() 
+    : '';
   
   // Check for timeline information
   if (!summaryLower.includes('when') && !summaryLower.includes('date') && !summaryLower.includes('timeline')) {

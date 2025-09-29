@@ -1,15 +1,14 @@
 import { FunctionComponent } from 'preact';
-import { Button } from './ui/Button';
+import { useRef } from 'preact/hooks';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
 import { 
   DocumentIcon, 
   CheckCircleIcon, 
   ExclamationTriangleIcon,
-  CreditCardIcon,
-  ArrowTopRightOnSquareIcon,
-  ChatBubbleOvalLeftIcon
+  CreditCardIcon
 } from '@heroicons/react/24/outline';
 import { MatterData, MatterStatus, getDefaultDocumentSuggestions } from '../hooks/useMatterState';
+import { FileAttachment } from '../../worker/types';
 
 interface MatterTabProps {
   matter: MatterData | null;
@@ -19,6 +18,7 @@ interface MatterTabProps {
   onPayNow?: () => void;
   onViewPDF?: () => void;
   onShareMatter?: () => void;
+  onUploadDocument?: (files: File[], metadata?: { documentType?: string; matterId?: string }) => Promise<FileAttachment[]>;
 }
 
 const MatterTab: FunctionComponent<MatterTabProps> = ({
@@ -28,27 +28,50 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
   onViewInChat,
   onPayNow,
   onViewPDF,
-  onShareMatter
+  onShareMatter,
+  onUploadDocument
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle file upload
+  const handleFileUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const files = target.files;
+    if (files && files.length > 0 && onUploadDocument) {
+      try {
+        const fileArray = Array.from(files);
+        const metadata = {
+          matterId: matter?.matterNumber,
+          documentType: 'matter-document'
+        };
+        await onUploadDocument(fileArray, metadata);
+        // Reset the input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } catch (error) {
+        console.error('File upload failed:', error);
+      }
+    }
+  };
+
+  // Trigger file input
+  const triggerFileUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   // Empty state - no matter exists yet
   if (status === 'empty') {
     return (
-      <div className="flex flex-col items-center justify-center p-6 text-center">
-        <DocumentIcon className="w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-          No Matter Yet
-        </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Start a chat to create your matter
-        </p>
-        <Button
-          variant="primary"
-          size="sm"
-          icon={<ChatBubbleOvalLeftIcon className="w-4 h-4" />}
-          onClick={onStartChat}
-        >
+      <div>
+        <DocumentIcon />
+        <h3>No Matter Yet</h3>
+        <p>Start a chat to create your matter</p>
+        <button onClick={onStartChat}>
           Start Chat
-        </Button>
+        </button>
       </div>
     );
   }
@@ -59,194 +82,138 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
 
   // Get document suggestions (use existing or default)
   const documentSuggestions = matter.documentChecklist?.documents || 
-    getDefaultDocumentSuggestions(matter.service);
+    getDefaultDocumentSuggestions(matter.service) || [];
 
   // Analyze missing information
   const missingInfo = analyzeMissingInfo(matter);
 
   return (
-    <div className="flex flex-col h-full p-4 space-y-4">
+    <div>
       {/* Matter Header */}
-      <div className="bg-white dark:bg-dark-card-bg rounded-lg p-4 border border-gray-200 dark:border-dark-border">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {matter.matterNumber || 'Matter'}
-          </h3>
-          <div className={`w-3 h-3 rounded-full ${
-            status === 'ready' ? 'bg-green-500' :
-            status === 'incomplete' ? 'bg-orange-500' :
-            'bg-gray-400'
-          }`} />
+      <div>
+        <div>
+          <h3>{matter.matterNumber || 'Matter'}</h3>
+          <div>{status}</div>
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-          {matter.service}
-        </p>
+        <p>{matter.service}</p>
         {matter.matterSummary && (
-          <p className="text-xs text-gray-500 dark:text-gray-500 line-clamp-3">
-            {matter.matterSummary.substring(0, 100)}...
-          </p>
+          <p>{matter.matterSummary.substring(0, 100)}...</p>
         )}
       </div>
 
       {/* Missing Information Section */}
       {missingInfo.length > 0 && (
-        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-          <div className="flex items-center mb-3">
-            <ExclamationTriangleIcon className="w-5 h-5 text-orange-500 mr-2" />
-            <h4 className="font-medium text-orange-900 dark:text-orange-100">
-              Missing Information
-            </h4>
+        <div>
+          <div>
+            <ExclamationTriangleIcon />
+            <h4>Missing Information</h4>
           </div>
-          <ul className="space-y-1">
+          <ul>
             {missingInfo.slice(0, 3).map((info, index) => (
-              <li key={index} className="text-sm text-orange-800 dark:text-orange-200">
-                • {info}
-              </li>
+              <li key={index}>• {info}</li>
             ))}
             {missingInfo.length > 3 && (
-              <li className="text-sm text-orange-600 dark:text-orange-300">
-                • +{missingInfo.length - 3} more items
-              </li>
+              <li>• +{missingInfo.length - 3} more items</li>
             )}
           </ul>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="mt-3 w-full"
-            onClick={onViewInChat}
-          >
+          <button onClick={onViewInChat}>
             Continue in Chat
-          </Button>
+          </button>
         </div>
       )}
 
       {/* Document Suggestions */}
-      <div className="bg-white dark:bg-dark-card-bg rounded-lg p-4 border border-gray-200 dark:border-dark-border">
-        <div className="flex items-center mb-3">
-          <DocumentIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 mr-2" />
-          <h4 className="font-medium text-gray-900 dark:text-white">
-            Suggested Documents
-          </h4>
+      <div>
+        <div>
+          <DocumentIcon />
+          <h4>Suggested Documents</h4>
         </div>
-        <div className="space-y-2">
+        <div>
           {documentSuggestions.slice(0, 3).map((doc) => (
-            <div key={doc.id} className="flex items-center justify-between">
-              <div className="flex items-center">
+            <div key={doc.id}>
+              <div>
                 {doc.status === 'uploaded' ? (
-                  <CheckCircleIcon className="w-4 h-4 text-green-500 mr-2" />
+                  <CheckCircleIcon />
                 ) : (
-                  <DocumentIcon className="w-4 h-4 text-gray-400 mr-2" />
+                  <DocumentIcon />
                 )}
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {doc.name}
-                  </p>
+                  <p>{doc.name}</p>
                   {doc.required && (
-                    <span className="text-xs text-red-500">Required</span>
+                    <span>Required</span>
                   )}
                 </div>
               </div>
               {doc.status === 'missing' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Upload
-                </Button>
+                <button onClick={triggerFileUpload}>Upload</button>
               )}
             </div>
           ))}
           {documentSuggestions.length > 3 && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              +{documentSuggestions.length - 3} more documents
-            </p>
+            <p>+{documentSuggestions.length - 3} more documents</p>
           )}
         </div>
       </div>
 
       {/* Payment Section */}
       {matter.hasPayment && matter.paymentEmbed && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <div className="flex items-center mb-3">
-            <CreditCardIcon className="w-5 h-5 text-blue-500 mr-2" />
-            <h4 className="font-medium text-blue-900 dark:text-blue-100">
-              Payment Required
-            </h4>
+        <div>
+          <div>
+            <CreditCardIcon />
+            <h4>Payment Required</h4>
           </div>
-          <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+          <p>
             {matter.paymentEmbed.description || 'Consultation fee'}
-            {matter.paymentEmbed.amount && (
-              <span className="font-semibold"> - ${matter.paymentEmbed.amount}</span>
+            {matter.paymentEmbed.amount !== null && matter.paymentEmbed.amount !== undefined && (
+              <span> - {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(matter.paymentEmbed.amount)}</span>
             )}
           </p>
-          <div className="space-y-2">
-            <Button
-              variant="primary"
-              size="sm"
-              className="w-full"
-              onClick={onPayNow}
-            >
+          <div>
+            <button onClick={onPayNow}>
               Pay Now
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full"
-              icon={<ArrowTopRightOnSquareIcon className="w-4 h-4" />}
-              onClick={onViewInChat}
-            >
+            </button>
+            <button onClick={onViewInChat}>
               View in Chat
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {/* Ready State Actions */}
       {status === 'ready' && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <div className="flex items-center mb-3">
-            <CheckCircleIcon className="w-5 h-5 text-green-500 mr-2" />
-            <h4 className="font-medium text-green-900 dark:text-green-100">
-              Matter Complete
-            </h4>
+        <div>
+          <div>
+            <CheckCircleIcon />
+            <h4>Matter Complete</h4>
           </div>
-          <p className="text-sm text-green-800 dark:text-green-200 mb-3">
-            All required information has been provided
-          </p>
-          <div className="space-y-2">
-            <Button
-              variant="primary"
-              size="sm"
-              className="w-full"
-              onClick={onViewPDF}
-            >
+          <p>All required information has been provided</p>
+          <div>
+            <button onClick={onViewPDF}>
               View PDF
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-full"
-              onClick={onShareMatter}
-            >
+            </button>
+            <button onClick={onShareMatter}>
               Share Matter
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {/* View in Chat Link */}
-      <div className="pt-2 border-t border-gray-200 dark:border-dark-border">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full text-gray-600 dark:text-gray-400"
-          icon={<ChatBubbleOvalLeftIcon className="w-4 h-4" />}
-          onClick={onViewInChat}
-        >
+      <div>
+        <button onClick={onViewInChat}>
           View in Chat
-        </Button>
+        </button>
       </div>
+
+      {/* Hidden file input for document uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp"
+        onChange={handleFileUpload}
+        style={{ display: 'none' }}
+      />
     </div>
   );
 };

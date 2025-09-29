@@ -9,13 +9,13 @@ import PrivacySupportSidebar from './PrivacySupportSidebar';
 import TeamProfile from './TeamProfile';
 import { DebugOverlay } from './DebugOverlay';
 import { features } from '../config/features';
-import { ChatMessageUI } from '../../worker/types';
+import { ChatMessageUI, FileAttachment } from '../../worker/types';
 import { useNavbarScroll } from '../hooks/useChatScroll';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
 import ActivityTimeline from './ActivityTimeline';
 import MatterTab from './MatterTab';
-import { useMatterState, MatterData } from '../hooks/useMatterState';
+import { useMatterState } from '../hooks/useMatterState';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
 
 // Simple messages object for localization
@@ -39,6 +39,7 @@ interface AppLayoutProps {
   messages: ChatMessageUI[];
   onRequestConsultation?: () => void | Promise<void>;
   onSendMessage?: (message: string) => void;
+  onUploadDocument?: (files: File[], metadata?: { documentType?: string; matterId?: string }) => Promise<FileAttachment[]>;
   children: React.ReactNode; // ChatContainer component
 }
 
@@ -54,6 +55,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   messages: chatMessages,
   onRequestConsultation,
   onSendMessage,
+  onUploadDocument,
   children
 }) => {
   // Matter state management
@@ -144,6 +146,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
                 onPayNow={() => {/* TODO: Implement payment flow */}}
                 onViewPDF={() => {/* TODO: Implement PDF viewing */}}
                 onShareMatter={() => {/* TODO: Implement matter sharing */}}
+                onUploadDocument={onUploadDocument}
               />
             </div>
           )}
@@ -223,80 +226,5 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   );
 };
 
-/**
- * Analyze matter content to identify missing information
- * Reused from MatterTab component logic
- */
-function analyzeMissingInfo(matter: MatterData): string[] {
-  const missingInfo: string[] = [];
-  
-  // Check if matter summary is empty or very basic
-  if (!matter.matterSummary || matter.matterSummary.trim().length < 50) {
-    missingInfo.push('Detailed matter description');
-  }
-  
-  // Check for common missing fields based on service type
-  const summaryLower = matter.matterSummary.toLowerCase();
-  
-  // Check for timeline information
-  if (!summaryLower.includes('when') && !summaryLower.includes('date') && !summaryLower.includes('timeline')) {
-    missingInfo.push('Timeline of events');
-  }
-  
-  // Check for location information
-  if (!summaryLower.includes('where') && !summaryLower.includes('location') && !summaryLower.includes('state')) {
-    missingInfo.push('Location/venue information');
-  }
-  
-  // Check for evidence/documentation
-  if (!summaryLower.includes('document') && !summaryLower.includes('evidence') && !summaryLower.includes('proof')) {
-    missingInfo.push('Supporting documents or evidence');
-  }
-  
-  // Service-specific checks
-  if (matter.service.toLowerCase().includes('family')) {
-    if (!summaryLower.includes('child') && !summaryLower.includes('children') && !summaryLower.includes('custody')) {
-      missingInfo.push('Information about children (if applicable)');
-    }
-    if (!summaryLower.includes('marriage') && !summaryLower.includes('divorce') && !summaryLower.includes('relationship')) {
-      missingInfo.push('Relationship/marriage details');
-    }
-  }
-  
-  if (matter.service.toLowerCase().includes('employment')) {
-    if (!summaryLower.includes('employer') && !summaryLower.includes('company') && !summaryLower.includes('work')) {
-      missingInfo.push('Employer/company information');
-    }
-    if (!summaryLower.includes('termination') && !summaryLower.includes('fired') && !summaryLower.includes('laid off')) {
-      missingInfo.push('Employment status details');
-    }
-  }
-  
-  if (matter.service.toLowerCase().includes('business')) {
-    if (!summaryLower.includes('contract') && !summaryLower.includes('agreement')) {
-      missingInfo.push('Contract or agreement details');
-    }
-    if (!summaryLower.includes('damage') && !summaryLower.includes('loss') && !summaryLower.includes('financial')) {
-      missingInfo.push('Financial impact or damages');
-    }
-  }
-  
-  // Check answers for completeness
-  if (matter.answers) {
-    const answerValues = Object.values(matter.answers);
-    const hasSubstantialAnswers = answerValues.some(answer => {
-      if (typeof answer === 'string') {
-        return answer.length > 20;
-      }
-      return false;
-    });
-    
-    if (!hasSubstantialAnswers) {
-      missingInfo.push('Detailed responses to questions');
-    }
-  }
-  
-  return missingInfo;
-}
 
 export default AppLayout; 
