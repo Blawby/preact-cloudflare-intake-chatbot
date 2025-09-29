@@ -10,7 +10,7 @@ export interface ActivityEvent {
   eventDate: string;
   actorType?: 'user' | 'lawyer' | 'system';
   actorId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -53,8 +53,7 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
     type,
     actorType,
     autoRefresh = false,
-    refreshInterval = 30000, // 30 seconds
-    enablePagination = true
+    refreshInterval = 30000 // 30 seconds
   } = options;
 
   const [events, setEvents] = useState<ActivityEvent[]>([]);
@@ -66,7 +65,7 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
   const [lastModified, setLastModified] = useState<string | undefined>();
   
   const nextCursorRef = useRef<string | undefined>();
-  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
+  const refreshTimeoutRef = useRef<ReturnType<typeof setInterval>>();
 
   const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams();
@@ -123,7 +122,7 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
 
       // Handle rate limiting
       if (response.status === 429) {
-        const errorData = await response.json();
+        const errorData = await response.json() as { retryAfter?: number; error?: string };
         const retryAfter = errorData.retryAfter || 60;
         setError(`Rate limit exceeded. Please try again in ${retryAfter} seconds.`);
         setLoading(false);
@@ -131,11 +130,11 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as { success: boolean; error?: string; data: { items: ActivityEvent[]; hasMore: boolean; total?: number; nextCursor?: string } };
       
       if (!data.success) {
         throw new Error(data.error || 'Failed to fetch activity');
@@ -165,7 +164,11 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch activity';
       setError(errorMessage);
-      console.error('Activity fetch error:', err);
+      // Log error for debugging in development
+      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+        // eslint-disable-next-line no-console
+        console.error('Activity fetch error:', err);
+      }
     } finally {
       setLoading(false);
     }

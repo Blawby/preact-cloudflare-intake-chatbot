@@ -18,7 +18,8 @@ export async function createMatterRecord(
   sessionId: string,
   service: string,
   description: string,
-  urgency: string = 'normal'
+  urgency: string = 'normal',
+  ctx?: ExecutionContext
 ): Promise<string> {
   try {
     // const matterId = crypto.randomUUID(); // REMOVE THIS LINE
@@ -48,35 +49,54 @@ export async function createMatterRecord(
       JSON.stringify({ sessionId, source: 'ai-intake' })
     ).run();
     
-    // Create activity event for matter creation
-    try {
-      const { ActivityService } = await import('./services/ActivityService');
-      const activityService = new ActivityService(env);
-      
-      await activityService.createEvent({
-        type: 'matter_event',
-        eventType: 'matter_created',
-        title: 'Matter Created',
-        description: `New ${service} matter created: ${matterNumber}`,
-        eventDate: new Date().toISOString(),
-        actorType: 'system',
-        actorId: sessionId, // Using sessionId as actorId for now
-        metadata: {
-          matterId,
-          teamId,
-          sessionId,
-          service,
-          description,
-          urgency,
-          matterNumber,
-          source: 'ai-intake'
-        }
-      }, teamId);
-      
-      console.log('Activity event created for matter creation:', { matterId, matterNumber });
-    } catch (error) {
-      console.warn('Failed to create activity event for matter creation:', error);
-      // Don't fail matter creation if activity event creation fails
+    // Create activity event for matter creation (non-blocking)
+    const createActivityEvent = async () => {
+      try {
+        const { ActivityService } = await import('./services/ActivityService');
+        const activityService = new ActivityService(env);
+        
+        // Use Promise.race with timeout to bound latency
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Activity event creation timeout')), 5000)
+        );
+        
+        const activityPromise = activityService.createEvent({
+          type: 'matter_event',
+          eventType: 'matter_created',
+          title: 'Matter Created',
+          description: `New ${service} matter created: ${matterNumber}`,
+          eventDate: new Date().toISOString(),
+          actorType: 'system',
+          actorId: sessionId, // Using sessionId as actorId for now
+          metadata: {
+            matterId,
+            teamId,
+            sessionId,
+            service,
+            description,
+            urgency,
+            matterNumber,
+            source: 'ai-intake'
+          }
+        }, teamId);
+        
+        await Promise.race([activityPromise, timeoutPromise]);
+        console.log('Activity event created for matter creation:', { matterId, matterNumber });
+      } catch (error) {
+        console.warn('Failed to create activity event for matter creation:', error);
+        // Errors are swallowed - don't throw back to caller
+      }
+    };
+    
+    // Dispatch asynchronously (fire-and-forget)
+    if (ctx) {
+      // Use ctx.waitUntil if execution context is available
+      ctx.waitUntil(createActivityEvent());
+    } else {
+      // Fallback to fire-and-forget without awaiting
+      createActivityEvent().catch(error => {
+        console.warn('Activity event creation failed in fire-and-forget mode:', error);
+      });
     }
     
     return matterId;

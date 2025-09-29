@@ -1,9 +1,21 @@
-import { ActivityService, type ActivityEvent, type CreateActivityRequest } from '../services/ActivityService';
+import { ActivityService, type ActivityEvent } from '../services/ActivityService';
 import { SessionService } from '../services/SessionService';
 import { rateLimit, getClientId } from '../middleware/rateLimit';
 import { HttpErrors } from '../errorHandler';
 import { parseJsonBody } from '../utils';
 import type { Env } from '../types';
+
+interface CreateActivityRequest {
+  type: 'matter_event' | 'session_event';
+  eventType: string;
+  title: string;
+  description?: string;
+  eventDate: string;
+  matterId?: string;
+  sessionId?: string;
+  metadata?: Record<string, unknown>;
+  idempotencyKey?: string;
+}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -125,8 +137,8 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
   const actorType = url.searchParams.get('actorType') as 'user' | 'lawyer' | 'system' || undefined;
 
   // Validate parameters
-  if (limit < 1 || limit > 50) {
-    throw HttpErrors.badRequest('Limit must be between 1 and 50');
+  if (!Number.isInteger(limit) || !Number.isFinite(limit) || limit < 1 || limit > 50) {
+    throw HttpErrors.badRequest('Limit must be an integer between 1 and 50');
   }
 
   // Query activity
@@ -205,7 +217,7 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
 
   // Extract team ID from request (could be in body or query params)
   const url = new URL(request.url);
-  const teamId = body.metadata?.teamId || url.searchParams.get('teamId');
+  const teamId = (body.metadata?.teamId as string) || url.searchParams.get('teamId');
   
   if (!teamId) {
     throw HttpErrors.badRequest('teamId is required');
@@ -254,8 +266,8 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
     title: body.title,
     description: body.description || '',
     eventDate: body.eventDate,
-    actorType: body.metadata?.actorType || 'system',
-    actorId: body.metadata?.actorId || sessionResolution.session.id,
+    actorType: (body.metadata?.actorType as 'user' | 'lawyer' | 'system') || 'system',
+    actorId: (body.metadata?.actorId as string) || sessionResolution.session.id,
     metadata: {
       ...body.metadata,
       teamId: resolvedTeamId,
@@ -282,9 +294,13 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
 }
 
 // Helper functions
-function generateETag(data: any): string {
+function generateETag(data: unknown): string {
   const content = JSON.stringify(data);
-  return `"${Buffer.from(content).toString('base64').slice(0, 16)}"`;
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(content);
+  const binaryString = String.fromCharCode(...bytes);
+  const base64 = btoa(binaryString);
+  return `"${base64.slice(0, 16)}"`;
 }
 
 async function checkIdempotency(env: Env, key: string, teamId: string): Promise<ActivityEvent | null> {
@@ -319,7 +335,16 @@ async function getEventById(env: Env, eventId: string, type: 'matter_event' | 's
           created_by_lawyer_id, metadata, created_at
         FROM matter_events WHERE id = ?
       `);
-      const row = await stmt.bind(eventId).first() as any;
+      const row = await stmt.bind(eventId).first() as {
+        id: string;
+        event_type: string;
+        title: string;
+        description: string | null;
+        event_date: string;
+        created_by_lawyer_id: string | null;
+        metadata: string | null;
+        created_at: string;
+      } | undefined;
       
       if (row) {
         return {
@@ -342,7 +367,14 @@ async function getEventById(env: Env, eventId: string, type: 'matter_event' | 's
           id, event_type, actor_type, actor_id, payload, created_at
         FROM session_audit_events WHERE id = ?
       `);
-      const row = await stmt.bind(eventId).first() as any;
+      const row = await stmt.bind(eventId).first() as {
+        id: string;
+        event_type: string;
+        actor_type: string;
+        actor_id: string | null;
+        payload: string | null;
+        created_at: string;
+      } | undefined;
       
       if (row) {
         return {

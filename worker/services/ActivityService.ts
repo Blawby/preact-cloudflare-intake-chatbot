@@ -155,7 +155,7 @@ export class ActivityService {
           description,
           event_date as event_date,
           created_by_lawyer_id as actor_id,
-          'lawyer' as actor_type,
+          CASE WHEN created_by_lawyer_id IS NOT NULL THEN 'lawyer' ELSE 'system' END as actor_type,
           metadata,
           created_at
         FROM matter_events 
@@ -164,7 +164,7 @@ export class ActivityService {
           AND (? IS NULL OR event_date >= ?)
           AND (? IS NULL OR event_date <= ?)
           AND (? IS NULL OR event_type IN (SELECT value FROM json_each(?)))
-          AND (? IS NULL OR 'lawyer' = ?)
+          AND (? IS NULL OR (CASE WHEN created_by_lawyer_id IS NOT NULL THEN 'lawyer' ELSE 'system' END) = ?)
 
         UNION ALL
 
@@ -348,7 +348,8 @@ export class ActivityService {
   private decodeCursor(cursor: string, currentFilters: Record<string, unknown>): Record<string, unknown> {
     try {
       // Decode base64url
-      const padded = cursor + '='.repeat((4 - cursor.length % 4) % 4)
+      const padding = '='.repeat((4 - cursor.length % 4) % 4);
+      const padded = (cursor + padding)
         .replace(/-/g, '+')
         .replace(/_/g, '/');
       const decoded = JSON.parse(Buffer.from(padded, 'base64').toString());

@@ -93,8 +93,9 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
     fileType: file.type
   });
 
-  // Store file in R2 bucket
-  await env.FILES_BUCKET.put(storageKey, file, {
+  // Store file in R2 bucket (convert File to ArrayBuffer for R2 compatibility)
+  const fileBuffer = await file.arrayBuffer();
+  await env.FILES_BUCKET.put(storageKey, fileBuffer, {
     httpMetadata: {
       contentType: file.type,
       cacheControl: 'public, max-age=31536000'
@@ -178,58 +179,71 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
   // Generate public URL (in production, this would be a CDN URL)
   const url = `/api/files/${fileId}`;
 
-  // Create activity event for file upload
-  try {
-    const { ActivityService } = await import('../services/ActivityService');
-    const activityService = new ActivityService(env);
-    
-    // Determine file category based on MIME type
-    const getFileCategory = (mimeType: string, filename: string): string => {
-      const extension = filename.split('.').pop()?.toLowerCase() || '';
+  // Create activity event for file upload (non-blocking)
+  const createFileActivityEvent = async () => {
+    try {
+      const { ActivityService } = await import('../services/ActivityService.js');
+      const activityService = new ActivityService(env);
       
-      if (mimeType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(extension)) {
-        return 'image_added';
-      }
-      if (mimeType.startsWith('video/') || ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv'].includes(extension)) {
-        return 'video_added';
-      }
-      if (mimeType.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(extension)) {
-        return 'audio_added';
-      }
-      if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('spreadsheet') ||
-          ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf'].includes(extension)) {
-        return 'document_added';
-      }
-      return 'file_added';
-    };
+      // Determine file category based on MIME type
+      const getFileCategory = (mimeType: string, filename: string): string => {
+        const extension = filename.split('.').pop()?.toLowerCase() || '';
+        
+        if (mimeType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(extension)) {
+          return 'image_added';
+        }
+        if (mimeType.startsWith('video/') || ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv'].includes(extension)) {
+          return 'video_added';
+        }
+        if (mimeType.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(extension)) {
+          return 'audio_added';
+        }
+        if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('spreadsheet') ||
+            ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf'].includes(extension)) {
+          return 'document_added';
+        }
+        return 'file_added';
+      };
 
-    const eventType = getFileCategory(file.type, file.name);
-    const eventTitle = eventType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    
-    await activityService.createEvent({
-      type: 'session_event',
-      eventType,
-      title: eventTitle,
-      description: `${eventTitle}: ${file.name}`,
-      eventDate: new Date().toISOString(),
-      actorType: 'user',
-      actorId: sessionId, // Using sessionId as actorId for now
-      metadata: {
-        sessionId,
-        teamId,
-        fileId,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        storageKey
-      }
-    }, teamId);
-    
-    console.log('Activity event created for file upload:', { fileId, eventType });
-  } catch (error) {
-    console.warn('Failed to create activity event for file upload:', error);
-    // Don't fail the upload if activity event creation fails
-  }
+      const eventType = getFileCategory(file.type, file.name);
+      const eventTitle = eventType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      
+      // Use Promise.race with timeout to bound latency
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('File activity event creation timeout')), 5000)
+      );
+      
+      const activityPromise = activityService.createEvent({
+        type: 'session_event',
+        eventType,
+        title: eventTitle,
+        description: `${eventTitle}: ${file.name}`,
+        eventDate: new Date().toISOString(),
+        actorType: 'user',
+        actorId: sessionId, // Using sessionId as actorId for now
+        metadata: {
+          sessionId,
+          teamId,
+          fileId,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          storageKey
+        }
+      }, teamId);
+      
+      await Promise.race([activityPromise, timeoutPromise]);
+      console.log('Activity event created for file upload:', { fileId, eventType });
+    } catch (error) {
+      console.warn('Failed to create activity event for file upload:', error);
+      // Errors are swallowed - don't throw back to caller
+    }
+  };
+  
+  // Dispatch asynchronously (fire-and-forget)
+  createFileActivityEvent().catch(error => {
+    console.warn('File activity event creation failed in fire-and-forget mode:', error);
+  });
 
   console.log('File upload completed:', { fileId, url, storageKey });
 
@@ -254,7 +268,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       // Validate input
       const validationResult = fileUploadValidationSchema.safeParse({ file, teamId, sessionId });
       if (!validationResult.success) {
-        throw HttpErrors.badRequest('Invalid upload data', validationResult.error.errors);
+        throw HttpErrors.badRequest('Invalid upload data', validationResult.error.issues);
       }
 
       // Validate file
@@ -449,7 +463,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         headers.set(key, value);
       });
 
-      return new Response(fileObject.body, {
+      return new Response(fileObject.body as ReadableStream, {
         status: 200,
         headers
       });
