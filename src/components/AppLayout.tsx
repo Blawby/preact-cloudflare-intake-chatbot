@@ -85,6 +85,26 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       previousActiveElement.current = null;
     }
   }, [isMobileSidebarOpen]);
+
+  // Handle Escape key to close mobile sidebar from anywhere
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onToggleMobileSidebar(false);
+      }
+    };
+
+    // Add document-level listener for Escape key
+    document.addEventListener('keydown', handleEscape);
+
+    // Cleanup listener when sidebar closes or component unmounts
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isMobileSidebarOpen, onToggleMobileSidebar]);
   
   // Tab switching handlers
   const handleGoToChats = () => {
