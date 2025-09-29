@@ -19,7 +19,7 @@ import './index.css';
 export function App() {
 	// Core state
 	const [clearInputTrigger, setClearInputTrigger] = useState(0);
-	const [currentTab, setCurrentTab] = useState<'chats'>('chats');
+	const [currentTab, setCurrentTab] = useState<'chats' | 'matter'>('chats');
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
 
@@ -199,6 +199,7 @@ export function App() {
 				teamId={teamId}
 				onRetryTeamConfig={handleRetryTeamConfig}
 				currentTab={currentTab}
+				onTabChange={setCurrentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
 				teamConfig={{
@@ -207,6 +208,7 @@ export function App() {
 					description: teamConfig.description
 				}}
 				messages={messages}
+				onSendMessage={sendMessage}
 			>
 				<div className="relative h-full">
 					<ChatContainer

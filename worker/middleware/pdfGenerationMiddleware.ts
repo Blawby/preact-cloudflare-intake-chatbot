@@ -2,7 +2,6 @@ import type { ConversationContext } from './conversationContextManager.js';
 import type { TeamConfig } from '../services/TeamService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
-import { ConversationContextManager } from './conversationContextManager.js';
 import { PDFGenerationService } from '../services/PDFGenerationService.js';
 
 /**
@@ -103,27 +102,9 @@ Would you like me to help you build a case draft first?`;
           lastUpdated: Date.now()
         };
 
-        const response = `Perfect! I've generated a professional PDF case summary for your ${context.caseDraft.matter_type} case.
+        const response = `PDF Generated Successfully
 
-**PDF Details:**
-• **Filename:** ${filename}
-• **Size:** ${Math.round(pdfResult.pdfBuffer.byteLength / 1024)} KB
-• **Generated:** ${new Date().toLocaleDateString()}
-
-**What's included in your PDF:**
-• Case overview and matter type
-• Key facts and timeline
-• Parties involved
-• Available documents and evidence
-• Jurisdiction and urgency information
-• Professional formatting and legal disclaimers
-
-**Next Steps:**
-• Download the PDF to share with attorneys
-• Keep a copy for your records
-• The PDF is ready for attorney consultations
-
-Would you like me to help you with anything else regarding your case?`;
+Your case summary is ready for download. You can view and download your PDF in the Matter tab.`;
 
         return {
           context: updatedContext,

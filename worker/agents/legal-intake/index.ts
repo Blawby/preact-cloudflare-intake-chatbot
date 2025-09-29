@@ -1090,67 +1090,41 @@ export async function handleCreateMatter(
     }
   });
   
-  // Build summary message
+  // Build summary message using new templates
   const requiresPayment = teamConfig?.config?.requiresPayment || false;
   const consultationFee = teamConfig?.config?.consultationFee || 0;
   
-  let summaryMessage = `Perfect! I have all the information I need. Here's a summary of your matter:
-
-**Client Information:**
-- Name: ${name}
-- Contact: ${phone || 'Not provided'}${email ? `, ${email}` : ''}${location ? `, ${location}` : ''}`;
-
-  if (opposing_party) {
-    summaryMessage += `
-- Opposing Party: ${opposing_party}`;
-  }
-
-  summaryMessage += `
-
-**Matter Details:**
-- Type: ${matter_type}
-- Description: ${description}
-- Urgency: ${finalUrgency}`;
-
-  if (requiresPayment && consultationFee > 0) {
-    if (invoiceUrl) {
-      summaryMessage += `
-
-Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
-
-**Next Steps:**
-1. Please complete the payment using the embedded payment form below
-2. Once payment is confirmed, a lawyer will contact you within 24 hours
-
-Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
-    } else {
-      summaryMessage += `
-
-Before we can proceed with your consultation, there's a consultation fee of $${consultationFee}.
-
-**Next Steps:**
-1. Please complete the payment using this link: ${teamConfig?.config?.paymentLink || 'Payment link will be sent shortly'}
-2. Once payment is confirmed, a lawyer will contact you within 24 hours
-
-Please complete the payment to secure your consultation. If you have any questions about the payment process, please let me know.`;
-    }
-  } else {
-    summaryMessage += `
-
-I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.`;
-  }
-
-  if (orchestrationResult.pdf) {
-    summaryMessage += `
-
-I've generated a case summary PDF (${orchestrationResult.pdf.filename}) you can download or share when you're ready.`;
-  }
-
-  if (orchestrationResult.notifications?.matterCreatedSent) {
-    summaryMessage += `
-
-Your full submission has already been sent to our legal team for review${requiresPayment && consultationFee > 0 ? ', and we alerted them that payment is pending.' : '.'}`;
-  }
+  // Use the new message templates for consistent messaging
+  const { generateCompleteMatterMessage } = await import('../../utils/messageTemplates');
+  const { analyzeMissingInfo } = await import('../../../src/utils/matterAnalysis');
+  
+  // Analyze the matter to identify missing information
+  const matterForAnalysis = {
+    service: matter_type,
+    matterSummary: description,
+    urgency: finalUrgency,
+    jurisdiction: location
+  };
+  
+  const missingInfo = analyzeMissingInfo(matterForAnalysis);
+  
+  const matterData = {
+    name,
+    email: email || 'Not provided',
+    phone: phone || 'Not provided',
+    location: location || 'Not provided',
+    opposingParty: opposing_party,
+    matterType: matter_type,
+    description,
+    urgency: finalUrgency,
+    requiresPayment: requiresPayment && consultationFee > 0,
+    consultationFee,
+    paymentLink: invoiceUrl || teamConfig?.config?.paymentLink,
+    pdfFilename: orchestrationResult.pdf?.filename,
+    missingInfo
+  };
+  
+  const summaryMessage = generateCompleteMatterMessage(matterData);
   
   const result = createSuccessResponse(summaryMessage, {
     matter_type,
