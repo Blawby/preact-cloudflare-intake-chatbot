@@ -14,6 +14,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { useNavbarScroll } from '../hooks/useChatScroll';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordian';
+import ActivityTimeline from './ActivityTimeline';
 
 // Simple messages object for localization
 const messages = {
@@ -96,7 +98,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       </div>
 
       {/* Right Sidebar - Fixed width, hidden on mobile */}
-      <div className="w-80 bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border overflow-y-auto hidden lg:block">
+      <div className="w-80 bg-white dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border overflow-y-auto scrollbar-hide hidden lg:block">
         <div className="p-6 text-gray-900 dark:text-white flex flex-col gap-6">
           <TeamProfile
             name={teamConfig.name}
@@ -109,7 +111,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
 
           {/* Request Consultation Button - Primary Action */}
           {onRequestConsultation && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 pt-2">
               <Button
                 onClick={handleRequestConsultation}
                 variant="primary"
@@ -121,10 +123,11 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
             </div>
           )}
 
+          {/* Activity Timeline Section */}
+          <ActivityTimeline />
+
           {/* Media Section */}
-          <div className="border-t border-gray-200 dark:border-dark-border pt-4">
-            <MediaSidebar messages={chatMessages} />
-          </div>
+          <MediaSidebar messages={chatMessages} />
 
           {/* Privacy & Support Section */}
           <PrivacySupportSidebar />

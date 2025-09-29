@@ -32,3 +32,32 @@
     }
   }
 }
+
+@layer utilities {
+
+  /* Simple accordion styles */
+  [data-state="open"] [data-slot="accordion-trigger"] svg {
+    transform: rotate(180deg);
+  }
+
+  [data-state="closed"] [data-slot="accordion-content"] {
+    display: none;
+  }
+
+  [data-state="open"] [data-slot="accordion-content"] {
+    display: block;
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+    /* Safari and Chrome */
+  }
+}

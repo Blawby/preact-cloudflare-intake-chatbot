@@ -63,7 +63,11 @@ export default [
         location: 'readonly',
         history: 'readonly',
         crypto: 'readonly',
-        HTMLTextAreaElement: 'readonly'
+        HTMLTextAreaElement: 'readonly',
+        Event: 'readonly',
+        HTMLElement: 'readonly',
+        Element: 'readonly',
+        MouseEvent: 'readonly'
       }
     },
     plugins: {

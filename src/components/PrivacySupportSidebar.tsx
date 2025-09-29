@@ -3,6 +3,7 @@ import {
   QuestionMarkCircleIcon,
   ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordian';
 
 interface PrivacySupportSidebarProps {
   className?: string;
@@ -11,11 +12,10 @@ interface PrivacySupportSidebarProps {
 const PrivacySupportSidebar = ({ className }: PrivacySupportSidebarProps) => {
 
   return (
-    <div className={`flex flex-col gap-6 ${className || ''}`}>
-      {/* Privacy & Support Section */}
-      <div className="flex flex-col gap-3">
-        <h4 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-900 dark:text-white">Privacy & Support</h4>
-        <div className="flex flex-col gap-2">
+    <Accordion type="single" collapsible className={className}>
+      <AccordionItem value="privacy-support-section">
+        <AccordionTrigger>Privacy & Support</AccordionTrigger>
+        <AccordionContent>
           <div className="flex flex-col gap-2">
             <a 
               href="https://blawby.com/privacy" 
@@ -38,9 +38,9 @@ const PrivacySupportSidebar = ({ className }: PrivacySupportSidebarProps) => {
               <ArrowTopRightOnSquareIcon className="w-3 h-3" />
             </a>
           </div>
-        </div>
-      </div>
-    </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 };
 

@@ -53,7 +53,7 @@ const MobileSidebar = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
           {/* Team Profile */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pt-2">
             <TeamProfile
               name={teamConfig.name}
               profileImage={teamConfig.profileImage}
@@ -65,7 +65,7 @@ const MobileSidebar = ({
 
           {/* Request Consultation Button - Primary Action */}
           {onRequestConsultation && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 pt-2">
               <Button
                 onClick={onRequestConsultation}
                 variant="primary"
@@ -78,12 +78,12 @@ const MobileSidebar = ({
           )}
 
           {/* Media Section */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pt-2">
             <MediaSidebar messages={messages} />
           </div>
 
           {/* Privacy & Support Section */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pt-2">
             <PrivacySupportSidebar />
           </div>
         </div>
