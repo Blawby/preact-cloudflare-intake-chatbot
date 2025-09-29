@@ -310,11 +310,10 @@ scenario_tool_call_display_bug() {
     if echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "Lawyer request properly handled (contact form)"
     elif echo "$resp" | grep -q '"type":"tool_result"' && \
-         echo "$resp" | grep -qi '"matter_created"\|"case_summary_pdf"\|"create_matter"'; then
+         echo "$resp" | grep -qiE '"matter_created|case_summary_pdf|create_matter"'; then
         print_result true "Lawyer request properly handled (matter created)"
     else
         print_result false "Lawyer request not handled properly"
-    fi
     fi
 }
 

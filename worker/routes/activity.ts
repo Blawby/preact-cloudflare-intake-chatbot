@@ -1,7 +1,7 @@
 import { ActivityService, type ActivityEvent } from '../services/ActivityService';
 import { SessionService } from '../services/SessionService';
 import { rateLimit, getClientId } from '../middleware/rateLimit';
-import { HttpErrors } from '../errorHandler';
+import { HttpErrors, handleError } from '../errorHandler';
 import { parseJsonBody } from '../utils';
 import type { Env } from '../types';
 
@@ -63,8 +63,7 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
       throw HttpErrors.methodNotAllowed('Only GET and POST methods are allowed');
     }
   } catch (error) {
-    console.error('Activity API error:', error);
-    
+    // Handle special cases that need custom responses
     if (error instanceof Error && error.message.includes('Invalid cursor')) {
       return new Response(JSON.stringify({
         success: false,
@@ -87,14 +86,8 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
       });
     }
     
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Internal server error',
-      errorCode: 'INTERNAL_ERROR'
-    }), {
-      status: 500,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-    });
+    // Use centralized error handling for all other errors
+    return handleError(error);
   }
 }
 
@@ -164,12 +157,12 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
     });
   } catch (error) {
     console.error('Activity query error:', error);
-    // Return empty result for now to avoid breaking the UI
-    result = {
-      items: [],
-      hasMore: false,
-      total: 0
-    };
+    // Propagate the error instead of swallowing it
+    if (error instanceof Error) {
+      throw HttpErrors.internalServerError(`Activity query failed: ${error.message}`, error);
+    } else {
+      throw HttpErrors.internalServerError('Activity query failed', error);
+    }
   }
 
   // Generate ETag for caching
@@ -214,7 +207,15 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
 
 async function handleCreateActivity(request: Request, env: Env): Promise<Response> {
   // Parse request body
-  const body = await parseJsonBody(request) as CreateActivityRequest;
+  let body: CreateActivityRequest;
+  try {
+    body = await parseJsonBody(request) as CreateActivityRequest;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Invalid JSON')) {
+      throw HttpErrors.badRequest('Invalid JSON body');
+    }
+    throw error; // Re-throw any other unexpected errors unchanged
+  }
   
   // Validate required fields
   if (!body.type || !body.eventType || !body.title || !body.eventDate) {

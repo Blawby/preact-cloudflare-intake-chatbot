@@ -7,7 +7,8 @@ import {
   ExclamationTriangleIcon,
   CreditCardIcon
 } from '@heroicons/react/24/outline';
-import { MatterData, MatterStatus, getDefaultDocumentSuggestions } from '../hooks/useMatterState';
+import { MatterData, MatterStatus } from '../types/matter';
+import { getDefaultDocumentSuggestions } from '../hooks/useMatterState';
 import { FileAttachment } from '../../worker/types';
 
 interface MatterTabProps {
@@ -18,7 +19,7 @@ interface MatterTabProps {
   onPayNow?: () => void;
   onViewPDF?: () => void;
   onShareMatter?: () => void;
-  onUploadDocument?: (files: File[], metadata?: { documentType?: string; matterId?: string }) => Promise<FileAttachment[]>;
+  onUploadDocument?: (files: File[], metadata?: { documentType?: string; matterId?: string; documentId?: string }) => Promise<FileAttachment[]>;
 }
 
 const MatterTab: FunctionComponent<MatterTabProps> = ({
@@ -32,6 +33,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
   onUploadDocument
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingUploadDocId = useRef<string | null>(null);
 
   // Handle file upload
   const handleFileUpload = async (event: Event) => {
@@ -42,21 +44,29 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
         const fileArray = Array.from(files);
         const metadata = {
           matterId: matter?.matterNumber,
-          documentType: 'matter-document'
+          documentType: pendingUploadDocId.current || 'matter-document',
+          documentId: pendingUploadDocId.current
         };
         await onUploadDocument(fileArray, metadata);
-        // Reset the input
+        // Reset the input and clear pending document ID
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+        pendingUploadDocId.current = null;
       } catch (error) {
         console.error('File upload failed:', error);
+        // Clear pending document ID even on error
+        pendingUploadDocId.current = null;
       }
     }
   };
 
   // Trigger file input
-  const triggerFileUpload = () => {
+  const triggerFileUpload = (documentId?: string) => {
+    // Set the pending document ID before opening the file picker
+    if (documentId) {
+      pendingUploadDocId.current = documentId;
+    }
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -145,7 +155,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
                 </div>
               </div>
               {doc.status === 'missing' && (
-                <button onClick={triggerFileUpload}>Upload</button>
+                <button onClick={() => triggerFileUpload(doc.id)}>Upload</button>
               )}
             </div>
           ))}

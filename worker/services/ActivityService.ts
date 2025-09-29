@@ -250,7 +250,7 @@ export class ActivityService {
             AND (? IS NULL OR event_date >= ?)
             AND (? IS NULL OR event_date <= ?)
             AND (? IS NULL OR event_type IN (SELECT value FROM json_each(?)))
-            AND (? IS NULL OR 'lawyer' = ?)
+            AND (? IS NULL OR (CASE WHEN created_by_lawyer_id IS NOT NULL THEN 'lawyer' ELSE 'system' END) = ?)
 
           UNION ALL
 

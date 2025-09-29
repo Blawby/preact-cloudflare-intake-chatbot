@@ -3,13 +3,7 @@
  * Provides consistent analysis of matter completeness and missing information
  */
 
-export interface MatterData {
-  service: string;
-  matterSummary: string;
-  urgency?: string;
-  jurisdiction?: string;
-  [key: string]: any;
-}
+import { MatterData } from '../types/matter';
 
 /**
  * Analyze matter content to identify missing information
@@ -100,13 +94,13 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
     }
   }
   
-  // Check for urgency if not specified
-  if (!matterData.urgency || matterData.urgency === 'unknown') {
+  // Check for urgency if not specified (optional property)
+  if (!(matterData as any).urgency || (matterData as any).urgency === 'unknown') {
     missingInfo.push('Matter urgency level');
   }
   
-  // Check for jurisdiction if not specified
-  if (!matterData.jurisdiction) {
+  // Check for jurisdiction if not specified (optional property)
+  if (!(matterData as any).jurisdiction) {
     missingInfo.push('Jurisdiction information');
   }
   

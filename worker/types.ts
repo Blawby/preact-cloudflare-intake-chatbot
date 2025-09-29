@@ -238,6 +238,16 @@ export interface UIMessageExtras {
   matterCreation?: MatterCreationData;
   welcomeMessage?: WelcomeMessageData;
   matterCanvas?: MatterCanvasData;
+  documentChecklist?: {
+    matterType: string;
+    documents: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      required: boolean;
+      status: 'missing' | 'uploaded' | 'pending';
+    }>;
+  };
   paymentEmbed?: PaymentEmbedData;
   generatedPDF?: {
     filename: string;

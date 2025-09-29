@@ -1,34 +1,7 @@
 import { useState, useEffect, useMemo } from 'preact/hooks';
 import { ChatMessageUI } from '../../worker/types';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
-
-export type MatterStatus = 'empty' | 'incomplete' | 'ready';
-
-export interface MatterData {
-  matterId?: string;
-  matterNumber?: string;
-  service: string;
-  matterSummary: string;
-  answers?: Record<string, string>;
-  status: MatterStatus;
-  hasPayment?: boolean;
-  paymentEmbed?: {
-    paymentUrl: string;
-    amount?: number;
-    description?: string;
-    paymentId?: string;
-  };
-  documentChecklist?: {
-    matterType: string;
-    documents: Array<{
-      id: string;
-      name: string;
-      description?: string;
-      required: boolean;
-      status: 'missing' | 'uploaded' | 'pending';
-    }>;
-  };
-}
+import { MatterData, MatterStatus } from '../types/matter';
 
 export interface MatterState {
   matter: MatterData | null;
@@ -151,83 +124,6 @@ export function useMatterState(messages: ChatMessageUI[]): MatterState {
   };
 }
 
-/**
- * Analyze matter content to identify missing information
- * Reused from MatterCanvas component logic
- */
-function analyzeMissingInfo(matterData: Omit<MatterData, 'status'>): string[] {
-  const missingInfo: string[] = [];
-  
-  // Check if matter summary is empty or very basic
-  if (!matterData.matterSummary || matterData.matterSummary.trim().length < 50) {
-    missingInfo.push('Detailed matter description');
-  }
-  
-  // Check for common missing fields based on service type
-  const summaryLower = matterData.matterSummary && matterData.matterSummary.trim().length > 0 
-    ? matterData.matterSummary.toLowerCase() 
-    : '';
-  
-  // Check for timeline information
-  if (!summaryLower.includes('when') && !summaryLower.includes('date') && !summaryLower.includes('timeline')) {
-    missingInfo.push('Timeline of events');
-  }
-  
-  // Check for location information
-  if (!summaryLower.includes('where') && !summaryLower.includes('location') && !summaryLower.includes('state')) {
-    missingInfo.push('Location/venue information');
-  }
-  
-  // Check for evidence/documentation
-  if (!summaryLower.includes('document') && !summaryLower.includes('evidence') && !summaryLower.includes('proof')) {
-    missingInfo.push('Supporting documents or evidence');
-  }
-  
-  // Service-specific checks
-  if (matterData.service.toLowerCase().includes('family')) {
-    if (!summaryLower.includes('child') && !summaryLower.includes('children') && !summaryLower.includes('custody')) {
-      missingInfo.push('Information about children (if applicable)');
-    }
-    if (!summaryLower.includes('marriage') && !summaryLower.includes('divorce') && !summaryLower.includes('relationship')) {
-      missingInfo.push('Relationship/marriage details');
-    }
-  }
-  
-  if (matterData.service.toLowerCase().includes('employment')) {
-    if (!summaryLower.includes('employer') && !summaryLower.includes('company') && !summaryLower.includes('work')) {
-      missingInfo.push('Employer/company information');
-    }
-    if (!summaryLower.includes('termination') && !summaryLower.includes('fired') && !summaryLower.includes('laid off')) {
-      missingInfo.push('Employment status details');
-    }
-  }
-  
-  if (matterData.service.toLowerCase().includes('business')) {
-    if (!summaryLower.includes('contract') && !summaryLower.includes('agreement')) {
-      missingInfo.push('Contract or agreement details');
-    }
-    if (!summaryLower.includes('damage') && !summaryLower.includes('loss') && !summaryLower.includes('financial')) {
-      missingInfo.push('Financial impact or damages');
-    }
-  }
-  
-  // Check answers for completeness
-  if (matterData.answers) {
-    const answerValues = Object.values(matterData.answers);
-    const hasSubstantialAnswers = answerValues.some(answer => {
-      if (typeof answer === 'string') {
-        return answer.length > 20;
-      }
-      return false;
-    });
-    
-    if (!hasSubstantialAnswers) {
-      missingInfo.push('Detailed responses to questions');
-    }
-  }
-  
-  return missingInfo;
-}
 
 /**
  * Get default document suggestions based on matter type
