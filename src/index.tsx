@@ -1,6 +1,5 @@
 import { hydrate, prerender as ssr } from 'preact-iso';
 import { useState, useEffect, useCallback } from 'preact/hooks';
-import { ErrorBoundary } from './components/ErrorBoundary';
 import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
 import AppLayout from './components/AppLayout';
@@ -25,20 +24,26 @@ export function App() {
 
 	// Use custom hooks
 	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
-		onError: (error) => console.error('Team config error:', error)
+		onError: (error) => {
+			// Handle team config error
+			// eslint-disable-next-line no-console
+			console.error('Team config error:', error);
+		}
 	});
 
 	const {
 		sessionId,
-		isInitializing: isSessionInitializing,
-		error: sessionError,
-		refreshSession
+		error: sessionError
 	} = useChatSession(teamId);
 
-	const { messages, sendMessage, handleContactFormSubmit, addMessage, cancelStreaming } = useMessageHandling({
+	const { messages, sendMessage, handleContactFormSubmit, addMessage } = useMessageHandling({
 		teamId,
 		sessionId,
-		onError: (error) => console.error('Message handling error:', error)
+		onError: (error) => {
+			// Handle message handling error
+			// eslint-disable-next-line no-console
+			console.error('Message handling error:', error);
+		}
 	});
 
 	const {
@@ -47,27 +52,29 @@ export function App() {
 		setIsDragging,
 		handleCameraCapture,
 		handleFileSelect,
-		handleMediaCapture,
 		removePreviewFile,
 		clearPreviewFiles,
 		isReadyToUpload
 	} = useFileUpload({
 		teamId,
 		sessionId,
-		onError: (error) => console.error('File upload error:', error)
+		onError: (error) => {
+			// Handle file upload error
+			// eslint-disable-next-line no-console
+			console.error('File upload error:', error);
+		}
 	});
 
 	useEffect(() => {
 		if (sessionError) {
+			// Handle session initialization error
+			// eslint-disable-next-line no-console
 			console.error('Session initialization error:', sessionError);
 		}
 	}, [sessionError]);
 
 	const isSessionReady = Boolean(sessionId);
 
-	const handleRetrySession = useCallback(() => {
-		refreshSession().catch((error) => console.error('Session retry failed:', error));
-	}, [refreshSession]);
 
 	// Add intro message when team config is loaded and no messages exist
 	useEffect(() => {
@@ -151,7 +158,9 @@ export function App() {
 	}, []);
 
 	// Handle feedback submission
-	const handleFeedbackSubmit = useCallback((feedback: any) => {
+	const handleFeedbackSubmit = useCallback((feedback: Record<string, unknown>) => {
+		// Handle feedback submission
+		// eslint-disable-next-line no-console
 		console.log('Feedback submitted:', feedback);
 		// Could show a toast notification here
 	}, []);
@@ -174,6 +183,8 @@ export function App() {
 			sendMessage(`I've recorded a ${type} message.`, uploadedFiles);
 			
 		} catch (error) {
+			// Handle media upload error
+			// eslint-disable-next-line no-console
 			console.error('Failed to upload captured media:', error);
 			// Show error message to user
 			sendMessage("I'm sorry, I couldn't upload the recorded media. Please try again.", []);

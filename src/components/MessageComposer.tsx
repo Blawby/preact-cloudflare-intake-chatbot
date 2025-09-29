@@ -65,7 +65,7 @@ const MessageComposer = ({
 
     return (
     <form 
-      className="pl-4 pr-4 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-0 z-[1000] backdrop-blur-md" 
+      className="pl-4 pr-4 pb-2 bg-white dark:bg-dark-bg h-auto flex flex-col w-full sticky bottom-0 z-[1000] backdrop-blur-md" 
       aria-label="Message composition"
       onSubmit={(e) => {
         e.preventDefault();
@@ -163,7 +163,7 @@ const MessageComposer = ({
         </div>
       </div>
 
-      <div className="text-xs text-gray-600 dark:text-gray-400 text-center py-1 opacity-80 mt-1">
+      <div className="text-xs text-gray-600 dark:text-gray-400 text-center py-1 opacity-80">
         {isSessionReady === false
           ? 'Setting up a secure session...'
           : 'Blawby can make mistakes. Check for important information.'}

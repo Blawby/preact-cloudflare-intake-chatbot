@@ -98,14 +98,6 @@ const ActivityTimeline: FunctionComponent<ActivityTimelineProps> = ({
           </AccordionTrigger>
           <AccordionContent>
             <div className="flex flex-col gap-3 pt-2">
-              {/* Loading state */}
-              {loading && events.length === 0 && (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading activity...</span>
-                </div>
-              )}
-
               {/* Error state */}
               {error && (
                 <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
@@ -160,7 +152,7 @@ const ActivityTimeline: FunctionComponent<ActivityTimelineProps> = ({
               })}
 
               {/* Empty state */}
-              {!loading && !error && events.length === 0 && (
+              {!error && events.length === 0 && (
                 <div className="text-center py-6 text-gray-500 dark:text-gray-400">
                   <ClockIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No activity yet</p>
@@ -169,21 +161,13 @@ const ActivityTimeline: FunctionComponent<ActivityTimelineProps> = ({
               )}
 
               {/* Load more button */}
-              {hasMore && !loading && (
+              {hasMore && (
                 <button
                   onClick={loadMore}
                   className="mt-3 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
                 >
                   Load more events
                 </button>
-              )}
-
-              {/* Loading more indicator */}
-              {loading && events.length > 0 && (
-                <div className="flex items-center justify-center py-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                  <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">Loading more...</span>
-                </div>
               )}
             </div>
           </AccordionContent>

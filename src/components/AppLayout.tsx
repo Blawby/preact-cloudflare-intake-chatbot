@@ -2,7 +2,6 @@ import { FunctionComponent } from 'preact';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TeamNotFound } from './TeamNotFound';
 import LeftSidebar from './LeftSidebar';
-import MobileSidebar from './MobileSidebar';
 import MobileTopNav from './MobileTopNav';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
@@ -115,22 +114,61 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
 
   return (
     <div className="max-md:h-[100dvh] md:h-screen w-full flex bg-white dark:bg-dark-bg">
-      {/* Left Sidebar - Fixed width, hidden on mobile */}
+      {/* Left Sidebar - Desktop: always visible, Mobile: slide-out */}
       {features.enableLeftSidebar && (
-        <div className="w-20 overflow-y-auto hidden lg:block">
-          <LeftSidebar
-            currentRoute={currentTab}
-            onOpenMenu={() => onToggleMobileSidebar(true)}
-            onGoToChats={handleGoToChats}
-            onGoToMatter={handleGoToMatter}
-            matterStatus={matterStatus}
-            teamConfig={{
-              name: teamConfig.name,
-              profileImage: teamConfig.profileImage,
-              teamId
-            }}
-          />
-        </div>
+        <>
+          {/* Desktop Sidebar */}
+          <div className="overflow-y-auto hidden lg:block">
+            <LeftSidebar
+              currentRoute={currentTab}
+              onGoToChats={handleGoToChats}
+              onGoToMatter={handleGoToMatter}
+              matterStatus={matterStatus}
+              teamConfig={{
+                name: teamConfig.name,
+                profileImage: teamConfig.profileImage,
+                teamId
+              }}
+            />
+          </div>
+          
+          {/* Mobile Sidebar - Slide out from left */}
+          <div className={`fixed inset-0 z-[2000] lg:hidden transition-transform duration-300 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            {/* Overlay */}
+            <button 
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm w-full h-full focus:outline-none focus:ring-2 focus:ring-accent-500"
+              onClick={() => onToggleMobileSidebar(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onToggleMobileSidebar(false);
+                }
+              }}
+              aria-label="Close mobile sidebar"
+              type="button"
+            />
+            {/* Sidebar */}
+            <div className="relative w-64 h-full bg-light-card-bg dark:bg-dark-card-bg">
+              <LeftSidebar
+                currentRoute={currentTab}
+                onGoToChats={() => {
+                  handleGoToChats();
+                  onToggleMobileSidebar(false);
+                }}
+                onGoToMatter={() => {
+                  handleGoToMatter();
+                  onToggleMobileSidebar(false);
+                }}
+                matterStatus={matterStatus}
+                teamConfig={{
+                  name: teamConfig.name,
+                  profileImage: teamConfig.profileImage,
+                  teamId
+                }}
+              />
+            </div>
+          </div>
+        </>
       )}
 
       {/* Main Content Area - Flex grow, full width on mobile */}
@@ -200,22 +238,6 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
         }}
         onOpenSidebar={() => onToggleMobileSidebar(true)}
         isVisible={isNavbarVisible}
-      />
-
-      {/* Mobile Bottom Navigation - Removed to fix scrolling issues */}
-
-      {/* Mobile Sidebar */}
-      <MobileSidebar
-        isOpen={isMobileSidebarOpen}
-        onClose={() => onToggleMobileSidebar(false)}
-        teamConfig={{
-          name: teamConfig.name,
-          profileImage: teamConfig.profileImage,
-          teamId,
-          description: teamConfig.description
-        }}
-        messages={chatMessages}
-        onRequestConsultation={onRequestConsultation}
       />
 
       {/* Debug Overlay - Only when explicitly enabled */}

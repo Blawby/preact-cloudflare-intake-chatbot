@@ -59,7 +59,7 @@ export default {
           'input-bg': '#0a0f1a',
           hover: '#111827',
           accent: '#d4af37',
-          'card-bg': '#0f1419',
+          'card-bg': '#111827',
         },
       },
 
