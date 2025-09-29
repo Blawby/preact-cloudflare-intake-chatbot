@@ -1,4 +1,5 @@
-import { FunctionComponent, useRef, useEffect } from 'preact';
+import { FunctionComponent } from 'preact';
+import { useRef, useEffect } from 'preact/hooks';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TeamNotFound } from './TeamNotFound';
 import LeftSidebar from './LeftSidebar';
