@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'preact/hooks';
 import { ChatMessageUI } from '../../worker/types';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
 import { MatterData, MatterStatus } from '../types/matter';
+import { SUMMARY_MIN_LENGTH } from '../utils/constants';
 
 export interface MatterState {
   matter: MatterData | null;
@@ -76,7 +77,7 @@ export function useMatterState(messages: ChatMessageUI[]): MatterState {
 
     // Check if matter has basic required information
     const hasBasicInfo = matterData.matterSummary && 
-                        matterData.matterSummary.trim().length > 50 &&
+                        matterData.matterSummary.trim().length >= SUMMARY_MIN_LENGTH &&
                         matterData.service;
 
     if (!hasBasicInfo) {

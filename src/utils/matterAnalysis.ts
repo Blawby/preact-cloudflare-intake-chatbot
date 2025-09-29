@@ -4,6 +4,7 @@
  */
 
 import { MatterData } from '../types/matter';
+import { SUMMARY_MIN_LENGTH } from './constants';
 
 /**
  * Analyze matter content to identify missing information
@@ -17,7 +18,7 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
   const summaryLower = summary.toLowerCase();
   
   // Check if matter summary is empty or very basic
-  if (summary.length < 50) {
+  if (summary.length < SUMMARY_MIN_LENGTH) {
     missingInfo.push('Detailed matter description');
   }
   

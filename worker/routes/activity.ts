@@ -221,6 +221,14 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
   if (!body.type || !body.eventType || !body.title || !body.eventDate) {
     throw HttpErrors.badRequest('Missing required fields: type, eventType, title, eventDate');
   }
+  
+  // Type-specific validation
+  if (body.type === 'matter_event' && !body.matterId) {
+    throw HttpErrors.badRequest('matterId is required when type is matter_event');
+  }
+  if (body.type === 'session_event' && !body.sessionId) {
+    throw HttpErrors.badRequest('sessionId is required when type is session_event');
+  }
 
   // Extract team ID from request (could be in body or query params)
   const url = new URL(request.url);
@@ -293,8 +301,8 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
     metadata: {
       ...body.metadata,
       teamId: resolvedTeamId,
-      matterId: body.matterId,
-      sessionId: body.sessionId
+      ...(body.matterId ? { matterId: body.matterId } : {}),
+      ...(body.sessionId ? { sessionId: body.sessionId } : {})
     }
   }, resolvedTeamId);
 
