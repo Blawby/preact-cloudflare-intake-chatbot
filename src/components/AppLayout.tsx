@@ -14,7 +14,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { useNavbarScroll } from '../hooks/useChatScroll';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordian';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
 import ActivityTimeline from './ActivityTimeline';
 
 // Simple messages object for localization

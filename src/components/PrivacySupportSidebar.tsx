@@ -3,7 +3,7 @@ import {
   QuestionMarkCircleIcon,
   ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordian';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
 
 interface PrivacySupportSidebarProps {
   className?: string;

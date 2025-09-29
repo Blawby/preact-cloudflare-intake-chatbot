@@ -19,6 +19,9 @@
 			"react-dom": [
 				"./node_modules/preact/compat/"
 			],
+			"react/jsx-runtime": [
+				"./node_modules/preact/jsx-runtime/"
+			],
 			"worker_threads": [
 				"./tests/stubs/worker_threads.ts"
 			],

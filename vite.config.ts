@@ -206,6 +206,7 @@ export default defineConfig({
 		alias: {
 			'react': 'preact/compat',
 			'react-dom': 'preact/compat',
+			'react/jsx-runtime': 'preact/jsx-runtime',
 			'worker_threads': resolve(__dirname, 'tests/stubs/worker_threads.ts'),
 			'node:worker_threads': resolve(__dirname, 'tests/stubs/worker_threads.ts')
 		}

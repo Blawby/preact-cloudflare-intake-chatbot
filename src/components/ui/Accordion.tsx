@@ -14,9 +14,12 @@ interface AccordionContextType {
   currentValue: string | string[]
   toggleItem: (value: string) => void
   isItemOpen: (value: string) => boolean
+  getItemValue: () => string | null
+  setItemValue: (value: string | null) => void
 }
 
 const AccordionContext = createContext<AccordionContextType | null>(null)
+const AccordionItemContext = createContext<{ value: string } | null>(null)
 
 interface AccordionProps {
   type?: 'single' | 'multiple'
@@ -85,12 +88,16 @@ const Accordion: FunctionComponent<AccordionProps> = ({
     return currentValue === itemValue
   }
 
+  const [currentItemValue, setCurrentItemValue] = useState<string | null>(null)
+
   const contextValue: AccordionContextType = {
     type,
     collapsible,
     currentValue,
     toggleItem,
-    isItemOpen
+    isItemOpen,
+    getItemValue: () => currentItemValue,
+    setItemValue: setCurrentItemValue
   }
 
   return (
@@ -119,14 +126,16 @@ const AccordionItem: FunctionComponent<AccordionItemProps> = ({
   const isOpen = context.isItemOpen(value)
 
   return (
-    <div
-      data-slot="accordion-item"
-      data-value={value}
-      data-state={isOpen ? 'open' : 'closed'}
-      className={cn("", className)}
-    >
-      {children}
-    </div>
+    <AccordionItemContext.Provider value={{ value }}>
+      <div
+        data-slot="accordion-item"
+        data-value={value}
+        data-state={isOpen ? 'open' : 'closed'}
+        className={cn("", className)}
+      >
+        {children}
+      </div>
+    </AccordionItemContext.Provider>
   )
 }
 
@@ -135,25 +144,32 @@ const AccordionTrigger: FunctionComponent<AccordionTriggerProps> = ({
   className = ''
 }) => {
   const context = useContext(AccordionContext)
+  const itemContext = useContext(AccordionItemContext)
   
   if (!context) {
     throw new Error('AccordionTrigger must be used within an Accordion')
   }
+  
+  if (!itemContext) {
+    throw new Error('AccordionTrigger must be used within an AccordionItem')
+  }
 
-  const handleClick = (event: Event) => {
-    const target = event.target as HTMLElement
-    const item = target.closest('[data-slot="accordion-item"]')
-    const itemValue = item?.getAttribute('data-value')
-    
-    if (itemValue) {
-      context.toggleItem(itemValue)
-    }
+  const { value } = itemContext
+  const isOpen = context.isItemOpen(value)
+  const triggerId = `accordion-trigger-${value}`
+  const contentId = `accordion-content-${value}`
+
+  const handleClick = () => {
+    context.toggleItem(value)
   }
 
   return (
     <div className="flex">
       <button
+        id={triggerId}
         data-slot="accordion-trigger"
+        aria-expanded={isOpen}
+        aria-controls={contentId}
         className={cn(
           "focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 items-center justify-between gap-4 px-4 py-3 text-left text-sm font-medium transition-all outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 rounded-lg",
           className
@@ -162,7 +178,10 @@ const AccordionTrigger: FunctionComponent<AccordionTriggerProps> = ({
         type="button"
       >
         {children}
-        <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0 transition-transform duration-200" />
+        <ChevronDownIcon className={cn(
+          "text-muted-foreground pointer-events-none size-4 shrink-0 transition-transform duration-200",
+          isOpen && "rotate-180"
+        )} />
       </button>
     </div>
   )
@@ -173,16 +192,30 @@ const AccordionContent: FunctionComponent<AccordionContentProps> = ({
   className = ''
 }) => {
   const context = useContext(AccordionContext)
+  const itemContext = useContext(AccordionItemContext)
   
   if (!context) {
     throw new Error('AccordionContent must be used within an Accordion')
   }
+  
+  if (!itemContext) {
+    throw new Error('AccordionContent must be used within an AccordionItem')
+  }
+
+  const { value } = itemContext
+  const isOpen = context.isItemOpen(value)
+  const contentId = `accordion-content-${value}`
+  const triggerId = `accordion-trigger-${value}`
 
   return (
     <div
+      id={contentId}
       data-slot="accordion-content"
+      role="region"
+      aria-labelledby={triggerId}
       className={cn(
-        "text-sm",
+        "text-sm overflow-hidden transition-all duration-200",
+        isOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0",
         className
       )}
     >

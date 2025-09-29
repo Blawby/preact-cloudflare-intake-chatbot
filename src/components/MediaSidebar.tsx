@@ -17,7 +17,7 @@ import {
   type AggregatedMedia 
 } from '../utils/mediaAggregation';
 import { Button } from './ui/Button';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordian';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
 import Modal from './Modal';
 import MediaContent from './MediaContent';
 
@@ -107,8 +107,16 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                         return (
                           <div 
                             key={media.id} 
-                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover cursor-pointer transition-colors duration-200"
+                            role="button"
+                            tabIndex={0}
+                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
                             onClick={() => handleMediaClick(media)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleMediaClick(media);
+                              }
+                            }}
                           >
                             {media.category === 'image' ? (
                               <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
