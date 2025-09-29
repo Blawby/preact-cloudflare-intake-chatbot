@@ -35,7 +35,7 @@ interface ChatContainerProps {
   isSessionReady?: boolean;
 
   // Input control prop
-  clearInput?: boolean;
+  clearInput?: number;
 }
 
 const ChatContainer: FunctionComponent<ChatContainerProps> = ({
@@ -95,9 +95,9 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
     }
   }, []);
 
-  // Clear input when clearInput prop is true
+  // Clear input when clearInput prop changes (numeric change counter)
   useEffect(() => {
-    if (clearInput) {
+    if (clearInput && clearInput > 0) {
       setInputValue('');
       if (textareaRef.current) {
         textareaRef.current.value = '';

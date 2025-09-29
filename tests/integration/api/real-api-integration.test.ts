@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
+import { WORKER_URL } from '../../setup-real-api';
 
-// Real API integration tests - these test the actual deployed worker
-const WORKER_URL = 'https://blawby-ai-chatbot.paulchrisluke.workers.dev';
+// Real API integration tests - these test the local development worker
 
 // Helper function to make HTTP requests with proper error handling
 async function makeRequest(url: string, options: RequestInit = {}) {

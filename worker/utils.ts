@@ -1,4 +1,5 @@
 import type { Env } from './types';
+import { Logger } from './utils/logger';
 
 export async function parseJsonBody(request: Request) {
   try {
@@ -18,7 +19,8 @@ export async function createMatterRecord(
   sessionId: string,
   service: string,
   description: string,
-  urgency: string = 'normal'
+  urgency: string = 'normal',
+  ctx?: ExecutionContext
 ): Promise<string> {
   try {
     // const matterId = crypto.randomUUID(); // REMOVE THIS LINE
@@ -47,9 +49,60 @@ export async function createMatterRecord(
       matterNumber,
       JSON.stringify({ sessionId, source: 'ai-intake' })
     ).run();
+    
+    // Create activity event for matter creation (non-blocking)
+    const createActivityEvent = async () => {
+      try {
+        const { ActivityService } = await import('./services/ActivityService');
+        const activityService = new ActivityService(env);
+        
+        await activityService.createEvent({
+          type: 'matter_event',
+          eventType: 'matter_created',
+          title: 'Matter Created',
+          description: `New ${service} matter created: ${matterNumber}`,
+          eventDate: new Date().toISOString(),
+          actorType: 'system',
+          actorId: undefined, // Don't populate created_by_lawyer_id with sessionId
+          metadata: {
+            matterId,
+            teamId,
+            sessionId,
+            service,
+            description,
+            urgency,
+            matterNumber,
+            source: 'ai-intake'
+          }
+        }, teamId);
+        
+        Logger.info('Activity event created for matter creation:', { matterId, matterNumber });
+      } catch (error) {
+        Logger.warn('Failed to create activity event for matter creation:', error);
+        // Errors are swallowed - don't throw back to caller
+      }
+    };
+    
+    // Dispatch asynchronously (fire-and-forget)
+    if (ctx) {
+      // Use ctx.waitUntil if execution context is available
+      ctx.waitUntil(createActivityEvent());
+    } else {
+      // Fallback to fire-and-forget with bounded timeout
+      const timeoutId = setTimeout(() => {
+        Logger.warn('Activity event creation timed out in fire-and-forget mode');
+      }, 5000);
+      
+      createActivityEvent()
+        .finally(() => clearTimeout(timeoutId))
+        .catch(error => {
+          Logger.warn('Activity event creation failed in fire-and-forget mode:', error);
+        });
+    }
+    
     return matterId;
   } catch (error) {
-    console.warn('Failed to create matter record:', error);
+    Logger.warn('Failed to create matter record:', error);
     throw error;
   }
 }

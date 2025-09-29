@@ -20,7 +20,6 @@ import MatterCanvas from './MatterCanvas';
 import MediaContent from './MediaContent';
 import Modal from './Modal';
 import PaymentEmbed from './PaymentEmbed';
-import PDFGeneration from './PDFGeneration';
 
 
 
@@ -85,13 +84,6 @@ interface MessageProps {
 			availability?: string;
 		}>;
 		total: number;
-	};
-	generatedPDF?: {
-		filename: string;
-		size: number;
-		generatedAt: string;
-		matterType: string;
-		storageKey?: string;
 	};
 	teamConfig?: {
 		name: string;
@@ -227,7 +219,6 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	contactForm,
 	documentChecklist,
 	lawyerSearchResults,
-	generatedPDF,
 	teamConfig: _teamConfig,
 	onOpenSidebar: _onOpenSidebar,
 	onContactFormSubmit,
@@ -395,110 +386,6 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					/>
 				)}
 
-				{/* Display PDF generation */}
-				{generatedPDF && (
-					<PDFGeneration
-						pdf={generatedPDF}
-						onDownload={async () => {
-							try {
-								// Show loading state
-								showInfo('Downloading PDF', 'Preparing your case summary for download...');
-								
-								const downloadPayload: Record<string, unknown> = {
-									filename: generatedPDF.filename,
-									matterType: generatedPDF.matterType,
-									generatedAt: generatedPDF.generatedAt
-								};
-
-								if (_sessionId) {
-									downloadPayload.sessionId = _sessionId;
-								}
-
-								if (_teamId) {
-									downloadPayload.teamId = _teamId;
-								}
-
-								if (generatedPDF.storageKey) {
-									downloadPayload.storageKey = generatedPDF.storageKey;
-								}
-
-								// Request PDF from backend
-								const response = await globalThis.fetch('/api/pdf/download', {
-									method: 'POST',
-									headers: {
-										'Content-Type': 'application/json',
-									},
-									body: JSON.stringify(downloadPayload)
-								});
-
-								if (!response.ok) {
-									throw new Error(`Failed to download PDF: ${response.statusText}`);
-								}
-
-								// Get the PDF blob
-								const pdfBlob = await response.blob();
-								
-								// Create download link
-								const url = globalThis.URL.createObjectURL(pdfBlob);
-								const a = globalThis.document.createElement('a');
-								a.href = url;
-								a.download = generatedPDF.filename;
-								globalThis.document.body.appendChild(a);
-								a.click();
-								globalThis.document.body.removeChild(a);
-								globalThis.URL.revokeObjectURL(url);
-								
-								showSuccess('PDF Downloaded', 'Your case summary has been downloaded successfully.');
-							} catch (_error) {
-								showError('Download Failed', 'Unable to download PDF. Please try again or contact support.');
-							}
-						}}
-						onRegenerate={async () => {
-							showInfo('Regenerating PDF', 'Requesting a new PDF generation...');
-							
-							try {
-								// Direct API call to regenerate PDF
-								const regeneratePayload: Record<string, unknown> = {
-									filename: generatedPDF.filename,
-									matterType: generatedPDF.matterType,
-									generatedAt: generatedPDF.generatedAt
-								};
-
-								if (_sessionId) {
-									regeneratePayload.sessionId = _sessionId;
-								}
-
-								if (_teamId) {
-									regeneratePayload.teamId = _teamId;
-								}
-
-								if (generatedPDF.storageKey) {
-									regeneratePayload.storageKey = generatedPDF.storageKey;
-								}
-
-								const response = await globalThis.fetch('/api/pdf/regenerate', {
-									method: 'POST',
-									headers: { 
-										'Content-Type': 'application/json' 
-									},
-									body: JSON.stringify(regeneratePayload)
-								});
-
-								if (!response.ok) {
-									throw new Error(`Failed to regenerate PDF: ${response.statusText}`);
-								}
-
-								const _result = await response.json();
-								showSuccess('PDF Regenerated', 'Your case summary has been regenerated successfully.');
-								
-								// Optionally trigger a re-render or update the PDF data
-								// This could be handled by the parent component
-							} catch (_error) {
-								showError('Regeneration Failed', 'Unable to regenerate PDF. Please try again or contact support.');
-							}
-						}}
-					/>
-				)}
 				
 				{/* Agent handles all matter creation and welcome messages - no components needed */}
 				

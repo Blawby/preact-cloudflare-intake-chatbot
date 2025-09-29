@@ -5,7 +5,7 @@ import { promisify } from 'util';
 import { setTimeout } from 'timers/promises';
 
 // Configuration for real API testing
-const WORKER_URL = 'http://localhost:8787';
+const WORKER_URL = process.env.WORKER_URL ?? 'http://localhost:8787';
 const WORKER_PORT = 8787;
 
 // Global variables for managing wrangler dev process

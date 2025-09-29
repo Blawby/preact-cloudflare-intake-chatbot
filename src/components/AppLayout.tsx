@@ -9,11 +9,14 @@ import PrivacySupportSidebar from './PrivacySupportSidebar';
 import TeamProfile from './TeamProfile';
 import { DebugOverlay } from './DebugOverlay';
 import { features } from '../config/features';
-import { ChatMessageUI } from '../../worker/types';
+import { ChatMessageUI, FileAttachment } from '../../worker/types';
 import { useNavbarScroll } from '../hooks/useChatScroll';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { Button } from './ui/Button';
 import ActivityTimeline from './ActivityTimeline';
+import MatterTab from './MatterTab';
+import { useMatterState } from '../hooks/useMatterState';
+import { analyzeMissingInfo } from '../utils/matterAnalysis';
 
 // Simple messages object for localization
 const messages = {
@@ -24,7 +27,8 @@ interface AppLayoutProps {
   teamNotFound: boolean;
   teamId: string;
   onRetryTeamConfig: () => void;
-  currentTab: 'chats';
+  currentTab: 'chats' | 'matter';
+  onTabChange: (tab: 'chats' | 'matter') => void;
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: (open: boolean) => void;
   teamConfig: {
@@ -34,6 +38,8 @@ interface AppLayoutProps {
   };
   messages: ChatMessageUI[];
   onRequestConsultation?: () => void | Promise<void>;
+  onSendMessage?: (message: string) => void;
+  onUploadDocument?: (files: File[], metadata?: { documentType?: string; matterId?: string }) => Promise<FileAttachment[]>;
   children: React.ReactNode; // ChatContainer component
 }
 
@@ -42,13 +48,49 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   teamId,
   onRetryTeamConfig,
   currentTab,
+  onTabChange,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
   teamConfig,
   messages: chatMessages,
   onRequestConsultation,
+  onSendMessage,
+  onUploadDocument,
   children
 }) => {
+  // Matter state management
+  const { matter, status: matterStatus } = useMatterState(chatMessages);
+  
+  // Tab switching handlers
+  const handleGoToChats = () => {
+    onTabChange('chats');
+  };
+
+  // Enhanced handler for continuing in chat with context
+  const handleContinueInChat = () => {
+    // Switch to chat tab first
+    onTabChange('chats');
+    
+    // If we have missing information and can send a message, provide context
+    if (matter && matterStatus === 'incomplete' && onSendMessage) {
+      // Analyze what's missing to provide helpful context
+      const missingInfo = analyzeMissingInfo(matter);
+      
+      if (missingInfo.length > 0) {
+        // Create a contextual message to help the agent guide the user
+        const contextMessage = `I need help completing my ${matter.service} matter. I'm missing some information: ${missingInfo.slice(0, 3).join(', ')}${missingInfo.length > 3 ? `, and ${missingInfo.length - 3} more items` : ''}. Can you help me provide the missing details?`;
+        
+        // Send the message after a short delay to ensure the chat tab is loaded
+        setTimeout(() => {
+          onSendMessage(contextMessage);
+        }, 100);
+      }
+    }
+  };
+  
+  const handleGoToMatter = () => {
+    onTabChange('matter');
+  };
   const { isNavbarVisible } = useNavbarScroll({ 
     threshold: 50, 
     debounceMs: 0
@@ -64,10 +106,10 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     
     try {
       await onRequestConsultation();
-    } catch (error) {
+    } catch (_error) {
       // Surface error to user - could be enhanced with a toast notification
       // For now, silently handle the error
-      console.error('Error requesting consultation:', error);
+      // console.error('Error requesting consultation:', _error);
     }
   };
 
@@ -79,6 +121,9 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           <LeftSidebar
             currentRoute={currentTab}
             onOpenMenu={() => onToggleMobileSidebar(true)}
+            onGoToChats={handleGoToChats}
+            onGoToMatter={handleGoToMatter}
+            matterStatus={matterStatus}
             teamConfig={{
               name: teamConfig.name,
               profileImage: teamConfig.profileImage,
@@ -91,7 +136,20 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       {/* Main Content Area - Flex grow, full width on mobile */}
       <div className="flex-1 bg-white dark:bg-dark-bg overflow-y-auto">
         <ErrorBoundary>
-          {children}
+          {currentTab === 'chats' ? children : (
+            <div className="h-full">
+              <MatterTab
+                matter={matter}
+                status={matterStatus}
+                onStartChat={handleGoToChats}
+                onViewInChat={handleContinueInChat}
+                onPayNow={() => {/* TODO: Implement payment flow */}}
+                onViewPDF={() => {/* TODO: Implement PDF viewing */}}
+                onShareMatter={() => {/* TODO: Implement matter sharing */}}
+                onUploadDocument={onUploadDocument}
+              />
+            </div>
+          )}
         </ErrorBoundary>
       </div>
 
@@ -122,7 +180,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           )}
 
           {/* Activity Timeline Section */}
-          <ActivityTimeline />
+          <ActivityTimeline teamId={teamId} />
 
           {/* Media Section */}
           <MediaSidebar messages={chatMessages} />
@@ -167,5 +225,6 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     </div>
   );
 };
+
 
 export default AppLayout; 

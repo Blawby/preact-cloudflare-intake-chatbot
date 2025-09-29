@@ -361,5 +361,10 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
     }
   }
 
+  // Handle unknown payment endpoints
+  if (path.startsWith('/api/payment/')) {
+    throw HttpErrors.notFound('Payment endpoint not found');
+  }
+  
   throw HttpErrors.notFound('Payment endpoint not found');
 } 

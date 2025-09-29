@@ -1,5 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { analyzeMissingInfo } from '../utils/matterAnalysis';
 
 interface MatterCanvasProps {
   matterId?: string;
@@ -23,81 +24,6 @@ const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
   answers
 }) => {
 
-  // Analyze matter content to identify missing information
-  const analyzeMissingInfo = () => {
-    const missingInfo: string[] = [];
-    
-    // Check if matter summary is empty or very basic
-    if (!matterSummary || matterSummary.trim().length < 50) {
-      missingInfo.push('Detailed matter description');
-    }
-    
-    // Check for common missing fields based on service type
-    const summaryLower = matterSummary.toLowerCase();
-    
-    // Check for timeline information
-    if (!summaryLower.includes('when') && !summaryLower.includes('date') && !summaryLower.includes('timeline')) {
-      missingInfo.push('Timeline of events');
-    }
-    
-    // Check for location information
-    if (!summaryLower.includes('where') && !summaryLower.includes('location') && !summaryLower.includes('state')) {
-      missingInfo.push('Location/venue information');
-    }
-    
-    // Check for evidence/documentation
-    if (!summaryLower.includes('document') && !summaryLower.includes('evidence') && !summaryLower.includes('proof')) {
-      missingInfo.push('Supporting documents or evidence');
-    }
-    
-    // Service-specific checks
-    if (service.toLowerCase().includes('family')) {
-      if (!summaryLower.includes('child') && !summaryLower.includes('children') && !summaryLower.includes('custody')) {
-        missingInfo.push('Information about children (if applicable)');
-      }
-      if (!summaryLower.includes('marriage') && !summaryLower.includes('divorce') && !summaryLower.includes('relationship')) {
-        missingInfo.push('Relationship/marriage details');
-      }
-    }
-    
-    if (service.toLowerCase().includes('employment')) {
-      if (!summaryLower.includes('employer') && !summaryLower.includes('company') && !summaryLower.includes('work')) {
-        missingInfo.push('Employer/company information');
-      }
-      if (!summaryLower.includes('termination') && !summaryLower.includes('fired') && !summaryLower.includes('laid off')) {
-        missingInfo.push('Employment status details');
-      }
-    }
-    
-    if (service.toLowerCase().includes('business')) {
-      if (!summaryLower.includes('contract') && !summaryLower.includes('agreement')) {
-        missingInfo.push('Contract or agreement details');
-      }
-      if (!summaryLower.includes('damage') && !summaryLower.includes('loss') && !summaryLower.includes('financial')) {
-        missingInfo.push('Financial impact or damages');
-      }
-    }
-    
-    // Check answers for completeness
-    if (answers) {
-      const answerValues = Object.values(answers);
-      const hasSubstantialAnswers = answerValues.some(answer => {
-        if (typeof answer === 'string') {
-          return answer.length > 20;
-        }
-        if (typeof answer === 'object' && answer.answer) {
-          return answer.answer.length > 20;
-        }
-        return false;
-      });
-      
-      if (!hasSubstantialAnswers) {
-        missingInfo.push('Detailed responses to questions');
-      }
-    }
-    
-    return missingInfo;
-  };
 
   // Generate markdown content for the matter - CLIENT-FACING ONLY
   const generateMarkdown = () => {
