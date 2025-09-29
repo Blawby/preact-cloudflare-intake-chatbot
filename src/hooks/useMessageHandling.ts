@@ -287,6 +287,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
 
                   const paymentEmbed = data.result?.data?.payment_embed;
                   const caseSummaryPdf = data.result?.data?.case_summary_pdf;
+                  const matterData = data.result?.data;
 
                   const updates: Partial<ChatMessageUI & { isUser: false }> = {
                     content: currentContent,
@@ -320,6 +321,34 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                         storageKey: typeof storageKey === 'string' ? storageKey : undefined
                       };
                     }
+                  }
+
+                  // Create matterCanvas from matter creation data
+                  if (matterData && matterData.matter_type && matterData.description) {
+                    const matterSummary = `**Client Information:**
+- Name: ${matterData.name || 'Not provided'}
+- Contact: ${matterData.phone || 'Not provided'}${matterData.email ? `, ${matterData.email}` : ''}${matterData.location ? `, ${matterData.location}` : ''}
+${matterData.opposing_party ? `- Opposing Party: ${matterData.opposing_party}` : ''}
+
+**Matter Details:**
+- Type: ${matterData.matter_type}
+- Description: ${matterData.description}
+- Urgency: ${matterData.urgency || 'unknown'}`;
+
+                    updates.matterCanvas = {
+                      matterId: `${matterData.matter_type.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+                      matterNumber: `CASE-${Date.now()}`,
+                      service: matterData.matter_type,
+                      matterSummary,
+                      answers: {
+                        name: matterData.name || '',
+                        email: matterData.email || '',
+                        phone: matterData.phone || '',
+                        location: matterData.location || '',
+                        opposingParty: matterData.opposing_party || '',
+                        urgency: matterData.urgency || 'unknown'
+                      }
+                    };
                   }
 
                   updateAIMessage(placeholderId, updates);

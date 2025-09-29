@@ -182,7 +182,7 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
 
   return (
     <div 
-      className="fixed top-4 right-4 bg-black bg-opacity-80 text-white p-4 rounded-lg text-xs font-mono max-w-sm z-50" 
+      className="fixed top-4 left-4 bg-black bg-opacity-80 text-white p-4 rounded-lg text-xs font-mono max-w-sm z-50" 
       data-testid="debug-overlay"
       role="region"
       aria-label="Debug information overlay"
