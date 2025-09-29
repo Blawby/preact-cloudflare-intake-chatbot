@@ -684,6 +684,9 @@ SELECT COUNT(*) as total FROM combined_events;
 ```typescript
 import { createHmac } from 'crypto';
 
+// Note: This code should be within a function that has access to env parameter
+// e.g., inside handleActivity(request: Request, env: Env) function
+
 // Cursor contains only minimal seek keys: {lastEventDate, lastCreatedAt, limit}
 const cursorData = {
   lastEventDate: "2024-01-15T09:15:00Z",
@@ -692,7 +695,10 @@ const cursorData = {
 };
 
 // Create HMAC signature
-const secret = process.env.CURSOR_SECRET; // Server-side secret
+const secret = env.CURSOR_SECRET; // Worker environment binding
+if (!secret) {
+  throw new Error('CURSOR_SECRET environment binding is required for cursor signing');
+}
 const payload = JSON.stringify(cursorData);
 const signature = createHmac('sha256', secret).update(payload).digest('hex');
 
@@ -707,7 +713,7 @@ const cursor = Buffer.from(JSON.stringify(signedData))
   .replace(/=/g, '');
 
 // Decode and verify cursor
-function decodeCursor(cursor: string, currentFilters: any) {
+function decodeCursor(cursor: string, currentFilters: any, env: Env) {
   try {
     // Decode base64url
     const padded = cursor + '='.repeat((4 - cursor.length % 4) % 4)
@@ -716,6 +722,10 @@ function decodeCursor(cursor: string, currentFilters: any) {
     const decoded = JSON.parse(Buffer.from(padded, 'base64').toString());
     
     // Verify HMAC signature
+    const secret = env.CURSOR_SECRET;
+    if (!secret) {
+      throw new Error('CURSOR_SECRET environment binding is required for cursor verification');
+    }
     const expectedSignature = createHmac('sha256', secret)
       .update(decoded.payload)
       .digest('hex');
