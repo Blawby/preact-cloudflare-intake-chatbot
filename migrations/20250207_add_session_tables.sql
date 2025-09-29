@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_active DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  closed_at DATETIME
+  closed_at DATETIME,
+  FOREIGN KEY (team_id) REFERENCES teams(id),
+  UNIQUE(id, team_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_team_state ON chat_sessions(team_id, state);
@@ -27,7 +29,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   metadata TEXT,
   token_count INTEGER,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+  FOREIGN KEY(session_id, team_id) REFERENCES chat_sessions(id, team_id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at);
