@@ -88,9 +88,7 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
               'Content-Length': pdfResult.pdfBuffer.byteLength.toString(),
               'Cache-Control': 'no-cache, no-store, must-revalidate',
               'Pragma': 'no-cache',
-              'Expires': '0',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Expose-Headers': 'Content-Disposition, Content-Length'
+              'Expires': '0'
             }
           });
         } else {

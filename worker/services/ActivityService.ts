@@ -199,10 +199,10 @@ export class ActivityService {
     // Prepare parameters
     const typeFilter = type ? JSON.stringify(type) : null;
     const params = [
-      // Matter events filters
-      matterId, matterId, teamId, since, since, until, until, typeFilter, typeFilter, actorType, actorType,
-      // Session events filters  
-      sessionId, sessionId, teamId, since, since, until, until, typeFilter, typeFilter, actorType, actorType,
+      // Matter events filters - convert undefined to null for D1 compatibility
+      matterId ?? null, matterId ?? null, teamId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
+      // Session events filters - convert undefined to null for D1 compatibility
+      sessionId ?? null, sessionId ?? null, teamId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
       // Cursor pagination - ensure null instead of undefined
       cursorData?.lastEventDate || null, cursorData?.lastEventDate || null, cursorData?.lastEventDate || null, 
       cursorData?.lastCreatedAt || null, cursorData?.lastCreatedAt || null, cursorData?.lastId || null,
@@ -267,8 +267,8 @@ export class ActivityService {
       
       const countStmt = this.env.DB.prepare(countQuery);
       const countResult = await countStmt.bind(
-        matterId, matterId, teamId, since, since, until, until, typeFilter, typeFilter, actorType, actorType,
-        sessionId, sessionId, teamId, since, since, until, until, typeFilter, typeFilter, actorType, actorType
+        matterId ?? null, matterId ?? null, teamId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
+        sessionId ?? null, sessionId ?? null, teamId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null
       ).first() as Record<string, unknown> | null;
       
       total = Number(countResult?.total) || 0;

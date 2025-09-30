@@ -1,10 +1,6 @@
 import type { Env } from '../types.js';
-import { CORS_HEADERS } from '../errorHandler.js';
 
 export async function handleDebug(request: Request, env: Env): Promise<Response> {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: CORS_HEADERS });
-  }
 
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/debug', '');
@@ -19,8 +15,7 @@ export async function handleDebug(request: Request, env: Env): Promise<Response>
     }
 
     return new Response('Endpoint not found', { 
-      status: 404, 
-      headers: CORS_HEADERS 
+      status: 404 
     });
 
   } catch (error) {
@@ -32,7 +27,7 @@ export async function handleDebug(request: Request, env: Env): Promise<Response>
         }), 
         { 
           status: 500, 
-          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+          headers: { 'Content-Type': 'application/json' } 
         }
       );
   }
@@ -80,7 +75,6 @@ async function getDebugInfo(env: Env): Promise<Response> {
   return new Response(JSON.stringify(info, null, 2), {
     headers: {
       'Content-Type': 'application/json',
-      ...CORS_HEADERS
     }
   });
 }
@@ -97,7 +91,6 @@ async function getTeamsInfo(env: Env): Promise<Response> {
     }, null, 2), {
       headers: {
         'Content-Type': 'application/json',
-        ...CORS_HEADERS
       }
     });
   } catch (error) {
@@ -108,7 +101,6 @@ async function getTeamsInfo(env: Env): Promise<Response> {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
-        ...CORS_HEADERS
       }
     });
   }

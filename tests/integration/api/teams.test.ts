@@ -111,7 +111,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
         }
       });
       
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(204); // OPTIONS requests should return 204 No Content
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
       expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET');
     });

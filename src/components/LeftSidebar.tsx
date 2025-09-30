@@ -9,6 +9,7 @@ import { Button } from './ui/Button';
 import { useTheme } from '../hooks/useTheme';
 import { useState } from 'preact/hooks';
 import { MatterStatus } from '../types/matter';
+import UserProfile from './UserProfile';
 
 interface LeftSidebarProps {
   currentRoute: string;
@@ -163,6 +164,9 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
           </button>
         </div>
       </div>
+
+      {/* User Profile Section */}
+      <UserProfile isCollapsed={shouldShowCollapsed} />
     </div>
     </div>
   );

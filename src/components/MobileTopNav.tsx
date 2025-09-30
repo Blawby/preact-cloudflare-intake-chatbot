@@ -2,6 +2,7 @@ import { Bars3Icon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/Button';
 import { useTheme } from '../hooks/useTheme';
+import MobileUserProfile from './MobileUserProfile';
 
 interface MobileTopNavProps {
   teamConfig: {
@@ -48,8 +49,9 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
               />
             </div>
 
-            {/* Right Section - Theme Toggle */}
+            {/* Right Section - User Profile & Theme Toggle */}
             <div className="flex items-center gap-2">
+              <MobileUserProfile />
               <Button
                 variant="ghost"
                 size="lg"

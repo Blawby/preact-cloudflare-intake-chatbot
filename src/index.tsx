@@ -1,8 +1,9 @@
-import { hydrate, prerender as ssr } from 'preact-iso';
+import { hydrate, prerender as ssr, Router, Route, useLocation } from 'preact-iso';
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
 import AppLayout from './components/AppLayout';
+import AuthPage from './components/AuthPage';
 import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
 import { useMessageHandling } from './hooks/useMessageHandling';
@@ -15,7 +16,8 @@ import './index.css';
 
 
 
-export function App() {
+// Main application component (non-auth pages)
+function MainApp() {
 	// Core state
 	const [clearInputTrigger, setClearInputTrigger] = useState(0);
 	const [currentTab, setCurrentTab] = useState<'chats' | 'matter'>('chats');
@@ -197,12 +199,9 @@ export function App() {
 
 	// Handle navigation to chats - removed since bottom nav is disabled
 
+	// Render the main app
 	return (
-		<ToastProvider>
-			<SEOHead 
-				teamConfig={teamConfig}
-				currentUrl={typeof window !== 'undefined' ? window.location.href : undefined}
-			/>
+		<>
 			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
 			
 			<AppLayout
@@ -255,6 +254,44 @@ export function App() {
 						/>
 				</div>
 			</AppLayout>
+		</>
+	);
+}
+
+// Auth page component
+function AuthPageWrapper() {
+	return <AuthPage />;
+}
+
+// Main App component with routing
+export function App() {
+	// Use custom hooks for team config (needed for SEO)
+	const { teamConfig } = useTeamConfig({
+		onError: (error) => {
+			// Handle team config error
+			// eslint-disable-next-line no-console
+			console.error('Team config error:', error);
+		}
+	});
+
+	// Get reactive location for client-side navigation
+	const location = useLocation();
+	
+	// Create reactive currentUrl that updates on navigation
+	const currentUrl = typeof window !== 'undefined' 
+		? `${window.location.origin}${location.pathname}${location.search}${location.hash}`
+		: undefined;
+
+	return (
+		<ToastProvider>
+			<SEOHead 
+				teamConfig={teamConfig}
+				currentUrl={currentUrl}
+			/>
+			<Router>
+				<Route path="/auth" component={AuthPageWrapper} />
+				<Route default component={MainApp} />
+			</Router>
 		</ToastProvider>
 	);
 }

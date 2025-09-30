@@ -29,6 +29,11 @@ export interface Env {
   DEBUG?: string;
   ENV_TEST?: string;
   IS_PRODUCTION?: string;
+  
+  // Authentication Configuration
+  BETTER_AUTH_URL?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 }
 
 // HTTP Error class for centralized error handling
@@ -165,7 +170,6 @@ export interface Feedback {
 export interface ValidatedRequest<T = unknown> {
   data: T;
   env: Env;
-  corsHeaders: Record<string, string>;
 }
 
 // UI-specific types that extend base types
