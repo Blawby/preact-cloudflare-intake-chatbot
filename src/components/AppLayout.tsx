@@ -67,16 +67,21 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   
   // Handle focus management when mobile sidebar opens/closes
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    
     if (isMobileSidebarOpen) {
       // Store the currently focused element
       previousActiveElement.current = document.activeElement as HTMLElement;
       
       // Focus the first interactive element in the sidebar after a brief delay
       // to ensure the sidebar is fully rendered
-      setTimeout(() => {
-        const firstButton = mobileSidebarRef.current?.querySelector('button');
-        if (firstButton) {
-          firstButton.focus();
+      timeoutId = setTimeout(() => {
+        // Verify the sidebar and element still exist before focusing
+        if (mobileSidebarRef.current && isMobileSidebarOpen) {
+          const firstButton = mobileSidebarRef.current.querySelector('button');
+          if (firstButton) {
+            firstButton.focus();
+          }
         }
       }, 100);
     } else if (previousActiveElement.current) {
@@ -84,6 +89,13 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       previousActiveElement.current.focus();
       previousActiveElement.current = null;
     }
+    
+    // Cleanup function to clear timeout
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [isMobileSidebarOpen]);
 
   // Handle Escape key to close mobile sidebar from anywhere
