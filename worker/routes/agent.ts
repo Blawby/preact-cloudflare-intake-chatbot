@@ -37,52 +37,17 @@ interface RouteBody {
  * Uses context-aware middleware instead of hard security filters
  */
 export async function handleAgentStreamV2(request: Request, env: Env): Promise<Response> {
-  // Handle CORS preflight requests
-  if (request.method === 'OPTIONS') {
-    // Handle OPTIONS with proper CORS for cookies
-    const origin = request.headers.get('Origin');
-    const optionsHeaders: Record<string, string> = {
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400'
-    };
-
-    if (origin) {
-      optionsHeaders['Access-Control-Allow-Origin'] = origin;
-      optionsHeaders['Access-Control-Allow-Credentials'] = 'true';
-      optionsHeaders['Vary'] = 'Origin';
-    } else {
-      optionsHeaders['Access-Control-Allow-Origin'] = '*';
-    }
-
-    return new Response(null, {
-      status: 204,
-      headers: optionsHeaders
-    });
-  }
 
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
 
-  // Set SSE headers for streaming with proper CORS for cookies
-  const origin = request.headers.get('Origin');
+  // Set SSE headers for streaming
   const headers = new Headers({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Connection': 'keep-alive'
   });
-
-  // Set proper CORS headers for cross-origin requests with cookies
-  if (origin) {
-    headers.set('Access-Control-Allow-Origin', origin);
-    headers.set('Access-Control-Allow-Credentials', 'true');
-    headers.set('Vary', 'Origin');
-  } else {
-    headers.set('Access-Control-Allow-Origin', '*');
-  }
 
   try {
     const rawBody = await parseJsonBody(request);

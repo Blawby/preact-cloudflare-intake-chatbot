@@ -114,5 +114,3 @@ export async function createMatterRecord(
 // Agent handles matter updates - no manual updates needed
 
 // Agent handles matter ID retrieval - no manual retrieval needed
-
-// CORS headers moved to errorHandler.ts for consistency 

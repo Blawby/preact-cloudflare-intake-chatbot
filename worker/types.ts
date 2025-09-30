@@ -165,7 +165,6 @@ export interface Feedback {
 export interface ValidatedRequest<T = unknown> {
   data: T;
   env: Env;
-  corsHeaders: Record<string, string>;
 }
 
 // UI-specific types that extend base types

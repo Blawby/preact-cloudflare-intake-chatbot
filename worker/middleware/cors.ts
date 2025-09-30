@@ -45,34 +45,39 @@ function createCorsHeaders(request: Request, options: Required<CorsOptions>): Re
   const origin = request.headers.get('Origin');
   const headers: Record<string, string> = {};
 
-  // Handle origin
+  // Handle origin validation - SECURITY CRITICAL
   if (options.allowedOrigins === '*') {
+    // Allow all origins (development only)
     headers['Access-Control-Allow-Origin'] = '*';
   } else if (Array.isArray(options.allowedOrigins)) {
+    // Validate against allowlist - only set header if origin matches
     if (origin && options.allowedOrigins.includes(origin)) {
       headers['Access-Control-Allow-Origin'] = origin;
-    } else {
-      headers['Access-Control-Allow-Origin'] = options.allowedOrigins[0] || '*';
     }
+    // If origin doesn't match, don't set Access-Control-Allow-Origin header
+    // This will cause the browser to block the request
   } else if (typeof options.allowedOrigins === 'string') {
+    // Validate against single allowed origin
     if (origin === options.allowedOrigins || options.allowedOrigins === '*') {
       headers['Access-Control-Allow-Origin'] = options.allowedOrigins;
-    } else {
-      headers['Access-Control-Allow-Origin'] = options.allowedOrigins;
     }
+    // If origin doesn't match, don't set Access-Control-Allow-Origin header
+    // This will cause the browser to block the request
   }
 
-  // Add other CORS headers
-  headers['Access-Control-Allow-Methods'] = options.allowedMethods.join(', ');
-  headers['Access-Control-Allow-Headers'] = options.allowedHeaders.join(', ');
-  headers['Access-Control-Max-Age'] = options.maxAge.toString();
+  // Only add other CORS headers if origin is allowed
+  if (headers['Access-Control-Allow-Origin']) {
+    headers['Access-Control-Allow-Methods'] = options.allowedMethods.join(', ');
+    headers['Access-Control-Allow-Headers'] = options.allowedHeaders.join(', ');
+    headers['Access-Control-Max-Age'] = options.maxAge.toString();
 
-  if (options.allowCredentials) {
-    headers['Access-Control-Allow-Credentials'] = 'true';
-  }
+    if (options.allowCredentials) {
+      headers['Access-Control-Allow-Credentials'] = 'true';
+    }
 
-  if (options.exposeHeaders.length > 0) {
-    headers['Access-Control-Expose-Headers'] = options.exposeHeaders.join(', ');
+    if (options.exposeHeaders.length > 0) {
+      headers['Access-Control-Expose-Headers'] = options.exposeHeaders.join(', ');
+    }
   }
 
   return headers;
@@ -118,13 +123,14 @@ export function withCORS(
       newHeaders.set(key, value);
     }
 
+    // Add Vary: Origin header when Access-Control-Allow-Origin is set and not '*'
+    if (corsHeaders['Access-Control-Allow-Origin'] && corsHeaders['Access-Control-Allow-Origin'] !== '*') {
+      newHeaders.append('Vary', 'Origin');
+    }
+
     // Add security headers
     for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-      if (key.toLowerCase() === 'vary') {
-        newHeaders.append('Vary', value);
-      } else {
-        newHeaders.set(key, value);
-      }
+      newHeaders.set(key, value);
     }
 
     return new Response(response.body, {
@@ -152,7 +158,8 @@ export function createProductionCorsOptions(allowedDomains: string[]): CorsOptio
 
 /**
  * Development CORS configuration that allows all origins
- * Use this for development environments
+ * ⚠️  SECURITY WARNING: Only use this in development environments!
+ * This allows requests from ANY origin, which is a security risk in production.
  */
 export function createDevelopmentCorsOptions(): CorsOptions {
   return {

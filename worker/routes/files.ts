@@ -311,13 +311,6 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         responseHeaders.append('Set-Cookie', sessionResolution.cookie);
       }
 
-      // Add CORS headers for cross-origin requests with cookies
-      const origin = request.headers.get('Origin');
-      if (origin) {
-        responseHeaders.set('Access-Control-Allow-Origin', origin);
-        responseHeaders.set('Access-Control-Allow-Credentials', 'true');
-        responseHeaders.set('Vary', 'Origin');
-      }
 
 
       return new Response(JSON.stringify(responseBody), {
@@ -445,14 +438,6 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       // Propagate cache control from stored object if present
       if (fileObject.httpMetadata?.cacheControl) {
         headers.set('Cache-Control', fileObject.httpMetadata.cacheControl);
-      }
-      
-      // Add CORS headers for cross-origin requests with cookies
-      const origin = request.headers.get('Origin');
-      if (origin) {
-        headers.set('Access-Control-Allow-Origin', origin);
-        headers.set('Access-Control-Allow-Credentials', 'true');
-        headers.set('Vary', 'Origin');
       }
 
       // Use non-null assertion after explicit null check

@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 CREATE TABLE IF NOT EXISTS verifications (
   id TEXT PRIMARY KEY,
   identifier TEXT NOT NULL,
-  value TEXT NOT NULL,
+  value TEXT NOT NULL UNIQUE,
   expires_at INTEGER NOT NULL,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
@@ -424,7 +424,8 @@ CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider ON accounts(provider_id, account_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider_user ON accounts(provider_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
-CREATE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value);
+CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires_at);
 
 -- Create a view for secure user authentication data
 -- This view can be used by the application to safely access user auth data
