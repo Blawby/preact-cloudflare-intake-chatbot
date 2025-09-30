@@ -36,7 +36,13 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
     if (!showProfile) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      // Exclude clicks on the profile-toggle button itself
+      const button = document.getElementById('user-profile-button');
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        !button?.contains(event.target as Node)
+      ) {
         setShowProfile(false);
       }
     };

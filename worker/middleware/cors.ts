@@ -25,7 +25,7 @@ const DEFAULT_CORS_OPTIONS: Required<CorsOptions> = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   allowCredentials: false,
   maxAge: 86400, // 24 hours
-  exposeHeaders: []
+  exposeHeaders: ['Content-Disposition', 'Content-Length']
 };
 
 // Security headers following Cloudflare best practices
@@ -41,7 +41,7 @@ export const SECURITY_HEADERS = {
 /**
  * Creates CORS headers based on the request and configuration
  */
-function createCorsHeaders(request: Request, options: Required<CorsOptions>): Record<string, string> {
+function createCorsHeaders(request: Request, options: Required<CorsOptions>, isSSEResponse: boolean = false): Record<string, string> {
   const origin = request.headers.get('Origin');
   const headers: Record<string, string> = {};
 
@@ -67,9 +67,12 @@ function createCorsHeaders(request: Request, options: Required<CorsOptions>): Re
 
   // Only add other CORS headers if origin is allowed
   if (headers['Access-Control-Allow-Origin']) {
-    headers['Access-Control-Allow-Methods'] = options.allowedMethods.join(', ');
-    headers['Access-Control-Allow-Headers'] = options.allowedHeaders.join(', ');
-    headers['Access-Control-Max-Age'] = options.maxAge.toString();
+    // For SSE responses, only add basic CORS headers, not preflight headers
+    if (!isSSEResponse) {
+      headers['Access-Control-Allow-Methods'] = options.allowedMethods.join(', ');
+      headers['Access-Control-Allow-Headers'] = options.allowedHeaders.join(', ');
+      headers['Access-Control-Max-Age'] = options.maxAge.toString();
+    }
 
     if (options.allowCredentials) {
       headers['Access-Control-Allow-Credentials'] = 'true';
@@ -114,8 +117,12 @@ export function withCORS(
       return response;
     }
 
+    // Detect SSE responses by checking Content-Type
+    const contentType = response.headers.get('Content-Type');
+    const isSSEResponse = contentType === 'text/event-stream';
+
     // Add CORS headers to the response
-    const corsHeaders = createCorsHeaders(request, corsOptions);
+    const corsHeaders = createCorsHeaders(request, corsOptions, isSSEResponse);
     const newHeaders = new Headers(response.headers);
 
     // Add CORS headers
@@ -152,7 +159,7 @@ export function createProductionCorsOptions(allowedDomains: string[]): CorsOptio
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     allowCredentials: false,
     maxAge: 86400,
-    exposeHeaders: []
+    exposeHeaders: ['Content-Disposition', 'Content-Length']
   };
 }
 
@@ -168,7 +175,7 @@ export function createDevelopmentCorsOptions(): CorsOptions {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     allowCredentials: false,
     maxAge: 86400,
-    exposeHeaders: []
+    exposeHeaders: ['Content-Disposition', 'Content-Length']
   };
 }
 

@@ -200,8 +200,83 @@ describe('CORS Middleware Security Tests', () => {
     });
   });
 
+  describe('SSE Response Handling', () => {
+    it('should exclude preflight headers from SSE responses', async () => {
+      const corsOptions = createDevelopmentCorsOptions();
+      
+      // Create a mock SSE response
+      const mockResponse = new Response('data: {"type":"connected"}\n\n', { 
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        }
+      });
+      
+      const mockHandler = async () => mockResponse;
+      const corsHandler = withCORS(mockHandler, corsOptions);
+
+      const request = new Request('https://api.example.com/agent/stream', {
+        method: 'POST',
+        headers: {
+          'Origin': 'https://example.com',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const response = await corsHandler(request, mockEnv, mockCtx);
+      
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('text/event-stream');
+      
+      // SSE responses should have basic CORS headers
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      // Access-Control-Allow-Credentials is only set when allowCredentials is true
+      expect(response.headers.get('Access-Control-Allow-Credentials')).toBeNull();
+      
+      // SSE responses should NOT have preflight headers
+      expect(response.headers.get('Access-Control-Allow-Methods')).toBeNull();
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBeNull();
+      expect(response.headers.get('Access-Control-Max-Age')).toBeNull();
+    });
+
+    it('should include preflight headers for non-SSE responses', async () => {
+      const corsOptions = createDevelopmentCorsOptions();
+      
+      // Create a mock regular JSON response
+      const mockResponse = new Response('{"message": "OK"}', { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const mockHandler = async () => mockResponse;
+      const corsHandler = withCORS(mockHandler, corsOptions);
+
+      const request = new Request('https://api.example.com/api/test', {
+        method: 'GET',
+        headers: {
+          'Origin': 'https://example.com'
+        }
+      });
+
+      const response = await corsHandler(request, mockEnv, mockCtx);
+      
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('application/json');
+      
+      // Regular responses should have all CORS headers including preflight headers
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      expect(response.headers.get('Access-Control-Allow-Methods')).toBeTruthy();
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBeTruthy();
+      expect(response.headers.get('Access-Control-Max-Age')).toBeTruthy();
+    });
+  });
+
   describe('WebSocket Upgrade Handling', () => {
-    it('should not modify WebSocket upgrade responses', async () => {
+    it('should preserve WebSocket headers while adding CORS headers for non-101 responses', async () => {
       const corsOptions = createDevelopmentCorsOptions();
       
       // Create a mock response that simulates WebSocket upgrade
