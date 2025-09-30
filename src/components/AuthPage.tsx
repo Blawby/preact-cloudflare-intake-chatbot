@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { UserIcon, LockClosedIcon, EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import authClient from '../lib/authClient';
+import { authClient } from '../lib/authClient';
 
 interface AuthPageProps {
   mode?: 'signin' | 'signup';

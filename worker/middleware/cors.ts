@@ -89,11 +89,11 @@ function createCorsHeaders(request: Request, options: Required<CorsOptions>): Re
  */
 export function withCORS(
   handler: (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response> | Response,
-  options: CorsOptions = {}
+  options: CorsOptions | ((env: Env) => CorsOptions) = {}
 ) {
-  const corsOptions = { ...DEFAULT_CORS_OPTIONS, ...options };
-
   return async (request: Request, env: Env, ctx: ExecutionContext): Promise<Response> => {
+    const resolvedOptions = typeof options === 'function' ? options(env) : options;
+    const corsOptions = { ...DEFAULT_CORS_OPTIONS, ...resolvedOptions };
     // Handle preflight requests
     if (request.method === 'OPTIONS') {
       const corsHeaders = createCorsHeaders(request, corsOptions);

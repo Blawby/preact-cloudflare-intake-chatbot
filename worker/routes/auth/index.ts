@@ -4,7 +4,7 @@ import type { Env } from "../../types";
 export async function handleAuth(request: Request, env: Env): Promise<Response> {
   try {
     const auth = await initAuth(env);
-    return auth.handler(request);
+    return await auth.handler(request);
   } catch (error) {
     console.error("Auth handler error:", error);
     return new Response(

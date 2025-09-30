@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { UserIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
-import authClient from '../lib/authClient';
+import { authClient } from '../lib/authClient';
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
 
@@ -23,11 +23,38 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
-  const { navigateToAuth } = useNavigation();
+  const [signingOut, setSigningOut] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { navigateToAuth, navigateToHome } = useNavigation();
 
   useEffect(() => {
     checkAuthStatus();
   }, []);
+
+  // Handle click outside and Escape key for dropdown
+  useEffect(() => {
+    if (!showProfile) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProfile(false);
+      }
+    };
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowProfile(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscapeKey);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [showProfile]);
 
   const checkAuthStatus = async () => {
     try {
@@ -47,12 +74,17 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
   };
 
   const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
     try {
       await authClient.signOut();
       setUser(null);
       setShowProfile(false);
+      navigateToHome(); // Navigate after sign-out
     } catch (error) {
       console.error('Failed to sign out:', error);
+    } finally {
+      setSigningOut(false);
     }
   };
 
@@ -93,6 +125,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
     <div className={`${isCollapsed ? 'py-2' : 'p-4'} border-t border-gray-200 dark:border-dark-border`}>
       <div className="relative">
         <button
+          id="user-profile-button"
           onClick={() => setShowProfile(!showProfile)}
           className={`flex items-center w-full rounded-lg text-left transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover ${
             isCollapsed 
@@ -100,6 +133,9 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
               : 'gap-3 px-3 py-2'
           }`}
           title={isCollapsed ? user.name : undefined}
+          aria-expanded={showProfile}
+          aria-haspopup="menu"
+          aria-label={isCollapsed ? user.name : `User profile for ${user.name}`}
         >
           <div className="w-8 h-8 rounded-full bg-accent-500 flex items-center justify-center flex-shrink-0">
             {(() => {
@@ -125,7 +161,12 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
 
         {/* Profile Dropdown */}
         {showProfile && !isCollapsed && (
-          <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-dark-card-bg border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-50">
+          <div 
+            ref={dropdownRef}
+            className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-dark-card-bg border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-50"
+            role="menu"
+            aria-labelledby="user-profile-button"
+          >
             <div className="p-4 border-b border-gray-200 dark:border-dark-border">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-accent-500 flex items-center justify-center">
@@ -159,6 +200,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
                   // You can implement settings functionality here
                 }}
                 className="flex items-center w-full gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+                role="menuitem"
               >
                 <Cog6ToothIcon className="w-4 h-4" />
                 Settings
@@ -166,10 +208,16 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
               
               <button
                 onClick={handleSignOut}
-                className="flex items-center w-full gap-3 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                disabled={signingOut}
+                className="flex items-center w-full gap-3 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                role="menuitem"
               >
-                <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                Sign Out
+                {signingOut ? (
+                  <div className="w-4 h-4 border-2 border-red-600 dark:border-red-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                )}
+                {signingOut ? 'Signing Out...' : 'Sign Out'}
               </button>
             </div>
           </div>

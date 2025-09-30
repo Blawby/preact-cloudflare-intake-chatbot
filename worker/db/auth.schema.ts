@@ -56,7 +56,6 @@ export const accounts = sqliteTable("accounts", {
     mode: "timestamp",
   }),
   scope: text("scope"),
-  password: text("password"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .default(sql`(current_timestamp)`)
     .notNull(),
@@ -66,6 +65,24 @@ export const accounts = sqliteTable("accounts", {
     .notNull(),
 }, (table) => ({
   userProviderUnique: unique().on(table.userId, table.providerId),
+  providerAccountUnique: unique().on(table.providerId, table.accountId),
+}));
+
+export const passwords = sqliteTable("passwords", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  hashedPassword: text("hashed_password").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .default(sql`(current_timestamp)`)
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .default(sql`(current_timestamp)`)
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+}, (table) => ({
+  userUnique: unique().on(table.userId),
 }));
 
 export const verifications = sqliteTable("verifications", {

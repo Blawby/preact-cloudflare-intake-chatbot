@@ -14,7 +14,9 @@ export function isValidImageUrl(url: string): boolean {
   }
 
   try {
-    const parsed = new URL(url, window.location.origin);
+    // Guard against SSR by checking if window is available
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const parsed = new URL(url, base);
     // Only allow http and https protocols
     return ['http:', 'https:'].includes(parsed.protocol);
   } catch {

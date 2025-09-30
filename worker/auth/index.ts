@@ -5,7 +5,15 @@ import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "../types";
 
 // Import the generated auth schema
-import { users, sessions, accounts, verifications } from "../db/auth.schema";
+import { users, sessions, accounts, passwords, verifications } from "../db/auth.schema";
+
+// Single source of truth for trusted origins
+export const trustedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://blawby-ai-chatbot.paulchrisluke.workers.dev",
+  "https://ai.blawby.com",
+] as const;
 
 export async function createAuth(env: Env) {
   // Validate required environment variables
@@ -15,7 +23,7 @@ export async function createAuth(env: Env) {
   
   // Initialize Drizzle with D1 database
   const db = drizzle(env.DB, {
-    schema: { users, sessions, accounts, verifications }
+    schema: { users, sessions, accounts, passwords, verifications }
   });
 
   return betterAuth({
@@ -72,20 +80,10 @@ export async function createAuth(env: Env) {
       max: 10, // 10 requests per window
     },
     // Security settings
-    trustedOrigins: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "https://blawby-ai-chatbot.paulchrisluke.workers.dev",
-      "https://ai.blawby.com",
-    ],
+    trustedOrigins,
     // CORS settings
     cors: {
-      origin: [
-        "http://localhost:3000",
-        "http://localhost:5173", 
-        "https://blawby-ai-chatbot.paulchrisluke.workers.dev",
-        "https://ai.blawby.com",
-      ],
+      origin: [...trustedOrigins],
       credentials: true,
     },
   });
