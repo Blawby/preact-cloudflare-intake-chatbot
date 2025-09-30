@@ -93,7 +93,7 @@ async function handleRequestInternal(request: Request, env: Env, ctx: ExecutionC
     } else if (path.startsWith('/api/debug')) {
       response = await handleDebug(request, env);
     } else if (path.startsWith('/api/auth')) {
-      response = await handleAuth(request, env);
+      response = await handleAuth(request, env, ctx);
     } else if (path === '/api/health') {
       response = await handleHealth(request, env);
     } else if (path === '/') {

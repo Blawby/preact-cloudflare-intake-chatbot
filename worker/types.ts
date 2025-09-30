@@ -29,6 +29,11 @@ export interface Env {
   DEBUG?: string;
   ENV_TEST?: string;
   IS_PRODUCTION?: string;
+  
+  // Authentication Configuration
+  BETTER_AUTH_URL?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 }
 
 // HTTP Error class for centralized error handling

@@ -15,10 +15,16 @@ export const trustedOrigins = [
   "https://ai.blawby.com",
 ] as const;
 
-export async function createAuth(env: Env) {
+export function createAuth(env: Env) {
   // Validate required environment variables
   if (!env.DB) {
     throw new Error("Database (env.DB) is required for authentication");
+  }
+  
+  // Validate BETTER_AUTH_URL for non-development environments
+  const isDevelopment = env.NODE_ENV === 'development' || env.NODE_ENV === 'dev';
+  if (!isDevelopment && !env.BETTER_AUTH_URL) {
+    throw new Error("BETTER_AUTH_URL is required for non-development environments. Set it to your production domain (e.g., 'https://ai.blawby.com')");
   }
   
   // Initialize Drizzle with D1 database
@@ -28,6 +34,7 @@ export async function createAuth(env: Env) {
 
   return betterAuth({
     // Better Auth configuration
+    basePath: "/api/auth",
     database: drizzleAdapter(db, {
       provider: "sqlite",
       usePlural: true,
@@ -91,6 +98,7 @@ export async function createAuth(env: Env) {
 
 // Export for CLI schema generation (without Cloudflare context)
 export const auth = betterAuth({
+  basePath: "/api/auth",
   database: drizzleAdapter({} as any, {
     provider: "sqlite",
     usePlural: true,
@@ -117,5 +125,4 @@ export const auth = betterAuth({
   },
 });
 
-// Export the createAuth function for runtime usage
-export { createAuth as initAuth };
+// createAuth is already exported above
