@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
 import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
 import AppLayout from './components/AppLayout';
+import AuthPage from './components/AuthPage';
 import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
 import { useMessageHandling } from './hooks/useMessageHandling';
@@ -21,6 +22,26 @@ export function App() {
 	const [currentTab, setCurrentTab] = useState<'chats' | 'matter'>('chats');
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
+	
+	// Simple routing based on current path
+	const [currentPath, setCurrentPath] = useState(
+		typeof window !== 'undefined' ? window.location.pathname : '/'
+	);
+	
+	// Listen for URL changes
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		
+		const handlePopState = () => {
+			setCurrentPath(window.location.pathname);
+		};
+		
+		window.addEventListener('popstate', handlePopState);
+		return () => window.removeEventListener('popstate', handlePopState);
+	}, []);
+	
+	// Check if we're on the auth page
+	const isAuthPage = currentPath === '/auth';
 
 	// Use custom hooks
 	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
@@ -197,6 +218,20 @@ export function App() {
 
 	// Handle navigation to chats - removed since bottom nav is disabled
 
+	// If we're on the auth page, render just the auth page
+	if (isAuthPage) {
+		return (
+			<ToastProvider>
+				<SEOHead 
+					teamConfig={teamConfig}
+					currentUrl={typeof window !== 'undefined' ? window.location.href : undefined}
+				/>
+				<AuthPage />
+			</ToastProvider>
+		);
+	}
+
+	// Otherwise render the main app
 	return (
 		<ToastProvider>
 			<SEOHead 

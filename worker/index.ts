@@ -15,6 +15,7 @@ import {
   handlePDF,
   handleDebug
 } from './routes';
+import { handleAuth } from './routes/auth';
 import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
@@ -97,6 +98,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       response = await handlePDF(request, env);
     } else if (path.startsWith('/api/debug')) {
       response = await handleDebug(request, env);
+    } else if (path.startsWith('/api/auth')) {
+      response = await handleAuth(request, env);
     } else if (path === '/api/health') {
       response = await handleHealth(request, env);
     } else if (path === '/') {
