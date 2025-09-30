@@ -338,4 +338,108 @@ CREATE INDEX IF NOT EXISTS idx_session_audit_events_session ON session_audit_eve
 INSERT INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES 
 ('lawyer-1', 'test-team', 'Sarah Johnson', 'sarah@testlawfirm.com', '555-0101', '["Family Law", "Divorce", "Child Custody"]', 'attorney', 35000, 'CA123456', 'CA'),
 ('lawyer-2', 'test-team', 'Michael Chen', 'michael@testlawfirm.com', '555-0102', '["Employment Law", "Workplace Discrimination"]', 'attorney', 40000, 'CA789012', 'CA'),
-('paralegal-1', 'test-team', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL); 
+('paralegal-1', 'test-team', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL);
+
+-- ========================================
+-- BETTER AUTH TABLES (SECURE SCHEMA)
+-- ========================================
+
+-- Users table for Better Auth
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  email_verified INTEGER DEFAULT 0 NOT NULL,
+  image TEXT,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  team_id TEXT,
+  role TEXT,
+  phone TEXT
+);
+
+-- Sessions table for Better Auth
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Passwords table for local authentication (SECURE)
+-- This separates password-based auth from OAuth, following security best practices
+CREATE TABLE IF NOT EXISTS passwords (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  hashed_password TEXT NOT NULL, -- Store bcrypt/scrypt hashes, never plain text
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  -- Ensure one password per user
+  UNIQUE(user_id)
+);
+
+-- Accounts table for OAuth providers (SECURE)
+-- OAuth provider data only, tokens should be encrypted at application level
+CREATE TABLE IF NOT EXISTS accounts (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  provider_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  -- OAuth tokens (should be encrypted at application level)
+  access_token TEXT, -- Note: Should be encrypted before storage
+  refresh_token TEXT, -- Note: Should be encrypted before storage
+  id_token TEXT, -- Note: Should be encrypted before storage
+  access_token_expires_at INTEGER,
+  refresh_token_expires_at INTEGER,
+  scope TEXT,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  -- Critical: Prevent duplicate provider accounts
+  UNIQUE(provider_id, account_id),
+  -- Also ensure one account per provider per user
+  UNIQUE(provider_id, user_id)
+);
+
+-- Verifications table for email verification, password reset, etc.
+CREATE TABLE IF NOT EXISTS verifications (
+  id TEXT PRIMARY KEY,
+  identifier TEXT NOT NULL,
+  value TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+
+-- Create indexes for Better Auth tables
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(email, email_verified);
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_passwords_user_id ON passwords(user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_provider ON accounts(provider_id, account_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_provider_user ON accounts(provider_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
+CREATE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value);
+
+-- Create a view for secure user authentication data
+-- This view can be used by the application to safely access user auth data
+CREATE VIEW IF NOT EXISTS user_auth_summary AS
+SELECT 
+  u.id,
+  u.email,
+  u.email_verified,
+  u.name,
+  u.created_at,
+  -- Count OAuth providers
+  COUNT(DISTINCT a.provider_id) as oauth_provider_count,
+  -- Check if user has local password
+  CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END as has_local_password
+FROM users u
+LEFT JOIN accounts a ON u.id = a.user_id
+LEFT JOIN passwords p ON u.id = p.user_id
+GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at, p.id; 

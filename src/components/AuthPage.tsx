@@ -65,11 +65,14 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
           setError(result.error.message);
         } else {
           setMessage('Signed in successfully!');
-          // Redirect to home page after successful sign in
+          // Call onSuccess callback and wait for it to complete before redirecting
+          if (onSuccess) {
+            await onSuccess();
+          }
+          // Redirect to home page after successful sign in and callback completion
           setTimeout(() => {
             window.location.href = '/';
           }, 1000);
-          onSuccess?.();
         }
       }
     } catch (err) {
@@ -88,7 +91,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
       // For social sign-in, we need to redirect to the OAuth provider
       const result = await authClient.signIn.social({
         provider: 'google',
-        callbackURL: window.location.origin + '/',
+        callbackURL: `${window.location.origin}/`,
       });
 
       if (result.error) {

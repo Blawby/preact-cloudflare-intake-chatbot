@@ -1,4 +1,4 @@
-import { hydrate, prerender as ssr } from 'preact-iso';
+import { hydrate, prerender as ssr, Router, Route } from 'preact-iso';
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
@@ -16,32 +16,13 @@ import './index.css';
 
 
 
-export function App() {
+// Main application component (non-auth pages)
+function MainApp() {
 	// Core state
 	const [clearInputTrigger, setClearInputTrigger] = useState(0);
 	const [currentTab, setCurrentTab] = useState<'chats' | 'matter'>('chats');
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
-	
-	// Simple routing based on current path
-	const [currentPath, setCurrentPath] = useState(
-		typeof window !== 'undefined' ? window.location.pathname : '/'
-	);
-	
-	// Listen for URL changes
-	useEffect(() => {
-		if (typeof window === 'undefined') return;
-		
-		const handlePopState = () => {
-			setCurrentPath(window.location.pathname);
-		};
-		
-		window.addEventListener('popstate', handlePopState);
-		return () => window.removeEventListener('popstate', handlePopState);
-	}, []);
-	
-	// Check if we're on the auth page
-	const isAuthPage = currentPath === '/auth';
 
 	// Use custom hooks
 	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
@@ -218,26 +199,9 @@ export function App() {
 
 	// Handle navigation to chats - removed since bottom nav is disabled
 
-	// If we're on the auth page, render just the auth page
-	if (isAuthPage) {
-		return (
-			<ToastProvider>
-				<SEOHead 
-					teamConfig={teamConfig}
-					currentUrl={typeof window !== 'undefined' ? window.location.href : undefined}
-				/>
-				<AuthPage />
-			</ToastProvider>
-		);
-	}
-
-	// Otherwise render the main app
+	// Render the main app
 	return (
-		<ToastProvider>
-			<SEOHead 
-				teamConfig={teamConfig}
-				currentUrl={typeof window !== 'undefined' ? window.location.href : undefined}
-			/>
+		<>
 			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
 			
 			<AppLayout
@@ -290,6 +254,36 @@ export function App() {
 						/>
 				</div>
 			</AppLayout>
+		</>
+	);
+}
+
+// Auth page component
+function AuthPageWrapper() {
+	return <AuthPage />;
+}
+
+// Main App component with routing
+export function App() {
+	// Use custom hooks for team config (needed for SEO)
+	const { teamConfig } = useTeamConfig({
+		onError: (error) => {
+			// Handle team config error
+			// eslint-disable-next-line no-console
+			console.error('Team config error:', error);
+		}
+	});
+
+	return (
+		<ToastProvider>
+			<SEOHead 
+				teamConfig={teamConfig}
+				currentUrl={typeof window !== 'undefined' ? window.location.href : undefined}
+			/>
+			<Router>
+				<Route path="/auth" component={AuthPageWrapper} />
+				<Route default component={MainApp} />
+			</Router>
 		</ToastProvider>
 	);
 }

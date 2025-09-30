@@ -7,9 +7,14 @@ import type { Env } from "../types";
 // Import the generated auth schema
 import { users, sessions, accounts, verifications } from "../db/auth.schema";
 
-export async function createAuth(env?: Env) {
+export async function createAuth(env: Env) {
+  // Validate required environment variables
+  if (!env.DB) {
+    throw new Error("Database (env.DB) is required for authentication");
+  }
+  
   // Initialize Drizzle with D1 database
-  const db = drizzle(env?.DB!, {
+  const db = drizzle(env.DB, {
     schema: { users, sessions, accounts, verifications }
   });
 
@@ -26,9 +31,19 @@ export async function createAuth(env?: Env) {
     },
     socialProviders: {
       google: {
-        clientId: env?.GOOGLE_CLIENT_ID!,
-        clientSecret: env?.GOOGLE_CLIENT_SECRET!,
-        redirectURI: `${env?.BETTER_AUTH_URL || 'http://localhost:8787'}/api/auth/callback/google`,
+        clientId: (() => {
+          if (!env.GOOGLE_CLIENT_ID) {
+            throw new Error("GOOGLE_CLIENT_ID is required for Google OAuth");
+          }
+          return env.GOOGLE_CLIENT_ID;
+        })(),
+        clientSecret: (() => {
+          if (!env.GOOGLE_CLIENT_SECRET) {
+            throw new Error("GOOGLE_CLIENT_SECRET is required for Google OAuth");
+          }
+          return env.GOOGLE_CLIENT_SECRET;
+        })(),
+        redirectURI: `${env.BETTER_AUTH_URL || 'http://localhost:8787'}/api/auth/callback/google`,
       },
     },
     session: {

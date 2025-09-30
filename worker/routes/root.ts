@@ -1,6 +1,5 @@
 import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
-import { CORS_HEADERS } from '../errorHandler';
 
 export async function handleRoot(request: Request, env: Env): Promise<Response> {
   return new Response(`
@@ -26,6 +25,6 @@ export async function handleRoot(request: Request, env: Env): Promise<Response> 
     <p>✅ API operational</p>
 </body>
 </html>`, {
-    headers: { ...CORS_HEADERS, 'Content-Type': 'text/html' }
+    headers: { 'Content-Type': 'text/html' }
   });
 } 

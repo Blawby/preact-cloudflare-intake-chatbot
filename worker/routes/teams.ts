@@ -1,12 +1,7 @@
-import { TeamService, Team, TeamConfig } from '../services/TeamService.js';
-import { ValidatedRequest } from '../types.js';
-import { HttpError } from '../types.js';
-import { CORS_HEADERS } from '../errorHandler.js';
+import { TeamService, TeamConfig } from '../services/TeamService.js';
+import { Env } from '../types.js';
 
-export async function handleTeams(request: Request, env: any): Promise<Response> {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: CORS_HEADERS });
-  }
+export async function handleTeams(request: Request, env: Env): Promise<Response> {
 
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/teams', '');
@@ -32,7 +27,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
               }), 
               { 
                 status: 404, 
-                headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+                headers: { 'Content-Type': 'application/json' } 
               }
             );
         }
@@ -118,7 +113,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
 
     return new Response('Method not allowed', { 
       status: 405, 
-      headers: CORS_HEADERS 
+      headers: {} 
     });
 
   } catch (error) {
@@ -130,7 +125,7 @@ export async function handleTeams(request: Request, env: any): Promise<Response>
       }), 
       { 
         status: 500, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -145,7 +140,7 @@ async function listTeams(teamService: TeamService): Promise<Response> {
       data: teams 
     }), 
     { 
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -161,7 +156,7 @@ async function getTeam(teamService: TeamService, teamId: string): Promise<Respon
         }), 
         { 
           status: 404, 
-          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+          headers: { 'Content-Type': 'application/json' } 
         }
       );
   }
@@ -185,7 +180,7 @@ async function getTeam(teamService: TeamService, teamId: string): Promise<Respon
       data: sanitizedTeam 
     }), 
     { 
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -200,7 +195,7 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
     };
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
-      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      status: 400, headers: { 'Content-Type': 'application/json' }
     });
   }
   
@@ -213,7 +208,7 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
       }), 
       { 
         status: 400, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -228,7 +223,7 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
       }), 
       { 
         status: 409, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -246,7 +241,7 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
     }), 
     { 
       status: 201,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -257,7 +252,7 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
     body = await request.json();
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
-      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      status: 400, headers: { 'Content-Type': 'application/json' }
     });
   }
   
@@ -271,7 +266,7 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
       }), 
       { 
         status: 404, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -282,7 +277,7 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
       data: updatedTeam 
     }), 
     { 
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -298,7 +293,7 @@ async function deleteTeam(teamService: TeamService, teamId: string): Promise<Res
       }), 
       { 
         status: 404, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -309,7 +304,7 @@ async function deleteTeam(teamService: TeamService, teamId: string): Promise<Res
       message: 'Team deleted successfully' 
     }), 
     { 
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -323,7 +318,7 @@ async function listTeamTokens(teamService: TeamService, teamId: string): Promise
       data: tokens 
     }), 
     { 
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -338,7 +333,7 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
     };
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
-      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      status: 400, headers: { 'Content-Type': 'application/json' }
     });
   }
   
@@ -351,7 +346,7 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
       }), 
       { 
         status: 400, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -365,7 +360,7 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
       }), 
       { 
         status: 400, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -379,7 +374,7 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
       }), 
       { 
         status: 400, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -402,7 +397,7 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
     }), 
     { 
       status: 201,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -424,7 +419,7 @@ async function revokeTeamToken(
       }),
       {
         status: 404,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
   }
@@ -439,7 +434,7 @@ async function revokeTeamToken(
       }),
       {
         status: 404,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
   }
@@ -454,7 +449,7 @@ async function revokeTeamToken(
       data: { success: true, message }
     }),
     {
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     }
   );
 }
@@ -471,7 +466,7 @@ async function validateTeamToken(
     };
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
-      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      status: 400, headers: { 'Content-Type': 'application/json' }
     });
   }
   
@@ -483,7 +478,7 @@ async function validateTeamToken(
       }), 
       { 
         status: 400, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -496,7 +491,7 @@ async function validateTeamToken(
       data: { valid: isValid } 
     }), 
     { 
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -513,7 +508,7 @@ async function validateApiKey(
     };
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
-      status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      status: 400, headers: { 'Content-Type': 'application/json' }
     });
   }
   
@@ -525,7 +520,7 @@ async function validateApiKey(
       }), 
       { 
         status: 400, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -538,7 +533,7 @@ async function validateApiKey(
       data: { valid: isValid } 
     }), 
     { 
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }
@@ -557,7 +552,7 @@ async function generateApiKeyHash(
       }), 
       { 
         status: 400, 
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
@@ -568,7 +563,7 @@ async function generateApiKeyHash(
       data: { success: true } 
     }), 
     { 
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      headers: { 'Content-Type': 'application/json' } 
     }
   );
 }

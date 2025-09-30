@@ -1,6 +1,6 @@
 import type { Env } from '../types.js';
 import { parseJsonBody } from '../utils.js';
-import { HttpErrors, CORS_HEADERS } from '../errorHandler.js';
+import { HttpErrors } from '../errorHandler.js';
 import { runPipeline } from '../middleware/pipeline.js';
 import { ConversationContextManager } from '../middleware/conversationContextManager.js';
 import { contentPolicyFilter } from '../middleware/contentPolicyFilter.js';
@@ -52,7 +52,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       optionsHeaders['Access-Control-Allow-Credentials'] = 'true';
       optionsHeaders['Vary'] = 'Origin';
     } else {
-      optionsHeaders['Access-Control-Allow-Origin'] = CORS_HEADERS['Access-Control-Allow-Origin'] || '*';
+      optionsHeaders['Access-Control-Allow-Origin'] = '*';
     }
 
     return new Response(null, {
@@ -71,8 +71,8 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
-    'Access-Control-Allow-Methods': CORS_HEADERS['Access-Control-Allow-Methods'] || 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': CORS_HEADERS['Access-Control-Allow-Headers'] || 'Content-Type'
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
   });
 
   // Set proper CORS headers for cross-origin requests with cookies
@@ -81,7 +81,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     headers.set('Access-Control-Allow-Credentials', 'true');
     headers.set('Vary', 'Origin');
   } else {
-    headers.set('Access-Control-Allow-Origin', CORS_HEADERS['Access-Control-Allow-Origin'] || '*');
+    headers.set('Access-Control-Allow-Origin', '*');
   }
 
   try {

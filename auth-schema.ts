@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, unique } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -29,7 +29,6 @@ export const sessions = sqliteTable("sessions", {
     .default(sql`(current_timestamp)`)
     .notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
-    .default(sql`(current_timestamp)`)
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   ipAddress: text("ip_address"),
@@ -61,12 +60,9 @@ export const accounts = sqliteTable("accounts", {
     .default(sql`(current_timestamp)`)
     .notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
-    .default(sql`(current_timestamp)`)
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-}, (table) => ({
-  userProviderUnique: unique().on(table.userId, table.providerId),
-}));
+});
 
 export const verifications = sqliteTable("verifications", {
   id: text("id").primaryKey(),

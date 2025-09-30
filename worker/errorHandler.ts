@@ -1,40 +1,6 @@
 import { HttpError, ApiResponse } from './types';
 import { ZodError } from 'zod';
 
-// Security headers following Cloudflare best practices
-export const SECURITY_HEADERS = {
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'X-XSS-Protection': '1; mode=block',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
-};
-
-// Enhanced CORS headers
-export const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-  'Access-Control-Max-Age': '86400',
-  'Access-Control-Allow-Credentials': 'false'
-};
-
-// Helper function to get CORS headers with proper origin handling
-export function getCorsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get('Origin');
-  
-  // If credentials are needed, echo the origin instead of using '*'
-  // For now, we're setting credentials to false globally as per the review
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    'Access-Control-Max-Age': '86400',
-    'Access-Control-Allow-Credentials': 'false'
-  };
-}
-
 // Structured logging for better observability
 export function logError(error: unknown, context: Record<string, any> = {}) {
   const errorData = {
@@ -83,15 +49,11 @@ export function handleError(error: unknown): Response {
     ...(details && { details })
   };
 
-  const headers = {
-    ...CORS_HEADERS,
-    ...SECURITY_HEADERS,
-    'Content-Type': 'application/json'
-  };
-
   return new Response(JSON.stringify(response), {
     status,
-    headers
+    headers: {
+      'Content-Type': 'application/json'
+    }
   });
 }
 
@@ -115,42 +77,34 @@ export const HttpErrors = {
   serviceUnavailable: (message: string = 'Service unavailable', details?: any) => createHttpError(503, message, details)
 };
 
-// Success response helper with security headers
+// Success response helper
 export function createSuccessResponse<T>(data: T): Response {
   const response: ApiResponse<T> = {
     success: true,
     data
   };
 
-  const headers = {
-    ...CORS_HEADERS,
-    ...SECURITY_HEADERS,
-    'Content-Type': 'application/json'
-  };
-
   return new Response(JSON.stringify(response), {
     status: 200,
-    headers
+    headers: {
+      'Content-Type': 'application/json'
+    }
   });
 }
 
 // Rate limiting helper (basic implementation)
-export function createRateLimitResponse(corsHeaders: Record<string, string>): Response {
+export function createRateLimitResponse(): Response {
   const response: ApiResponse = {
     success: false,
     error: 'Too many requests',
     errorCode: 'RATE_LIMIT_EXCEEDED'
   };
 
-  const headers = {
-    ...corsHeaders,
-    ...SECURITY_HEADERS,
-    'Content-Type': 'application/json',
-    'Retry-After': '60'
-  };
-
   return new Response(JSON.stringify(response), {
     status: 429,
-    headers
+    headers: {
+      'Content-Type': 'application/json',
+      'Retry-After': '60'
+    }
   });
 } 

@@ -16,9 +16,10 @@ import {
   handleDebug
 } from './routes';
 import { handleAuth } from './routes/auth';
-import { CORS_HEADERS, SECURITY_HEADERS, createRateLimitResponse } from './errorHandler';
+import { createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
+import { withCORS, getCorsConfig } from './middleware/cors';
 
 // Basic request validation
 function validateRequest(request: Request): boolean {
@@ -45,16 +46,9 @@ function validateRequest(request: Request): boolean {
   return true;
 }
 
-export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleRequestInternal(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
-
-  // Handle preflight requests
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { 
-      headers: { ...CORS_HEADERS, ...SECURITY_HEADERS } 
-    });
-  }
 
   // Basic request validation
   if (!validateRequest(request)) {
@@ -64,7 +58,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       errorCode: 'INVALID_REQUEST'
     }), {
       status: 400,
-      headers: { ...CORS_HEADERS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 
@@ -109,55 +103,15 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       throw HttpErrors.notFound('Endpoint not found');
     }
 
-    // Don't reconstruct 101 Switching Protocols responses as it breaks WebSocket upgrades
-    if (response.status === 101) {
-      return response;
-    }
-
-    // Add CORS and security headers to all other responses centrally
-    const headers = new Headers(response.headers);
-    for (const [key, value] of Object.entries(CORS_HEADERS)) {
-      if (key.toLowerCase() === 'vary') {
-        headers.append('Vary', value);
-      } else {
-        headers.set(key, value);
-      }
-    }
-    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-      if (key.toLowerCase() === 'vary') {
-        headers.append('Vary', value);
-      } else {
-        headers.set(key, value);
-      }
-    }
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers
-    });
+    return response;
 
   } catch (error) {
-    const errResp = handleError(error);
-    if (errResp.status === 101) {
-      return errResp;
-    }
-    const headers = new Headers(errResp.headers);
-    for (const [key, value] of Object.entries(CORS_HEADERS)) {
-      if (key.toLowerCase() === 'vary') headers.append('Vary', value);
-      else headers.set(key, value);
-    }
-    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-      if (key.toLowerCase() === 'vary') headers.append('Vary', value);
-      else headers.set(key, value);
-    }
-    return new Response(errResp.body, {
-      status: errResp.status,
-      statusText: errResp.statusText,
-      headers
-    });
+    return handleError(error);
   }
 }
+
+// Main request handler with CORS middleware
+export const handleRequest = withCORS(handleRequestInternal, getCorsConfig);
 
 export default { fetch: handleRequest };
 

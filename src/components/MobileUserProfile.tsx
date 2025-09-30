@@ -2,6 +2,8 @@ import { useState, useEffect } from 'preact/hooks';
 import { UserIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import authClient from '../lib/authClient';
+import { useNavigation } from '../utils/navigation';
+import { sanitizeUserImageUrl } from '../utils/urlValidation';
 
 interface User {
   id: string;
@@ -13,18 +15,11 @@ interface User {
   phone?: string | null;
 }
 
-interface MobileUserProfileProps {
-  teamConfig: {
-    name: string;
-    profileImage: string | null;
-    teamId: string;
-  };
-}
-
-const MobileUserProfile = ({ teamConfig }: MobileUserProfileProps) => {
+const MobileUserProfile = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
+  const { navigateToAuth } = useNavigation();
 
   useEffect(() => {
     checkAuthStatus();
@@ -34,7 +29,11 @@ const MobileUserProfile = ({ teamConfig }: MobileUserProfileProps) => {
     try {
       const result = await authClient.getSession();
       if (result.data?.user) {
-        setUser(result.data.user);
+        // Ensure email is present for the User interface
+        const userData = result.data.user;
+        if (userData.email) {
+          setUser(userData as User);
+        }
       }
     } catch (error) {
       console.error('Failed to get user session:', error);
@@ -54,8 +53,8 @@ const MobileUserProfile = ({ teamConfig }: MobileUserProfileProps) => {
   };
 
   const handleSignIn = () => {
-    // Redirect to auth page
-    window.location.href = '/auth?mode=signin';
+    // Navigate to auth page
+    navigateToAuth('signin');
   };
 
   if (loading) {
@@ -83,17 +82,20 @@ const MobileUserProfile = ({ teamConfig }: MobileUserProfileProps) => {
         className="w-10 h-10 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent-500"
         title={user.name}
       >
-        {user.image ? (
-          <img 
-            src={user.image} 
-            alt={user.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-accent-500 flex items-center justify-center">
-            <UserIcon className="w-5 h-5 text-white" />
-          </div>
-        )}
+        {(() => {
+          const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
+          return sanitizedImageUrl ? (
+            <img 
+              src={sanitizedImageUrl} 
+              alt={user.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-accent-500 flex items-center justify-center">
+              <UserIcon className="w-5 h-5 text-white" />
+            </div>
+          );
+        })()}
       </button>
 
       {/* Profile Dropdown */}
@@ -109,15 +111,18 @@ const MobileUserProfile = ({ teamConfig }: MobileUserProfileProps) => {
             <div className="p-4 border-b border-gray-200 dark:border-dark-border">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-accent-500 flex items-center justify-center">
-                  {user.image ? (
-                    <img 
-                      src={user.image} 
-                      alt={user.name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <UserIcon className="w-6 h-6 text-white" />
-                  )}
+                  {(() => {
+                    const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
+                    return sanitizedImageUrl ? (
+                      <img 
+                        src={sanitizedImageUrl} 
+                        alt={user.name}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <UserIcon className="w-6 h-6 text-white" />
+                    );
+                  })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.name}</p>

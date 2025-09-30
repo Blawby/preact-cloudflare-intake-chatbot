@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'preact/hooks';
 import { UserIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import authClient from '../lib/authClient';
+import { sanitizeUserImageUrl } from '../utils/urlValidation';
+import { useNavigation } from '../utils/navigation';
 
 interface User {
   id: string;
@@ -17,10 +19,11 @@ interface UserProfileProps {
   isMobile?: boolean;
 }
 
-const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps) => {
+const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserProfileProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
+  const { navigateToAuth } = useNavigation();
 
   useEffect(() => {
     checkAuthStatus();
@@ -30,7 +33,11 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
     try {
       const result = await authClient.getSession();
       if (result.data?.user) {
-        setUser(result.data.user);
+        // Ensure email is present for the User interface
+        const userData = result.data.user;
+        if (userData.email) {
+          setUser(userData as User);
+        }
       }
     } catch (error) {
       console.error('Failed to get user session:', error);
@@ -50,8 +57,8 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
   };
 
   const handleSignIn = () => {
-    // Redirect to auth page
-    window.location.href = '/auth?mode=signin';
+    // Navigate to auth page
+    navigateToAuth('signin');
   };
 
   if (loading) {
@@ -95,15 +102,18 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
           title={isCollapsed ? user.name : undefined}
         >
           <div className="w-8 h-8 rounded-full bg-accent-500 flex items-center justify-center flex-shrink-0">
-            {user.image ? (
-              <img 
-                src={user.image} 
-                alt={user.name}
-                className="w-full h-full rounded-full object-cover"
-              />
-            ) : (
-              <UserIcon className="w-5 h-5 text-white" />
-            )}
+            {(() => {
+              const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
+              return sanitizedImageUrl ? (
+                <img 
+                  src={sanitizedImageUrl} 
+                  alt={user.name}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <UserIcon className="w-5 h-5 text-white" />
+              );
+            })()}
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
@@ -119,15 +129,18 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
             <div className="p-4 border-b border-gray-200 dark:border-dark-border">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-accent-500 flex items-center justify-center">
-                  {user.image ? (
-                    <img 
-                      src={user.image} 
-                      alt={user.name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <UserIcon className="w-6 h-6 text-white" />
-                  )}
+                  {(() => {
+                    const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
+                    return sanitizedImageUrl ? (
+                      <img 
+                        src={sanitizedImageUrl} 
+                        alt={user.name}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <UserIcon className="w-6 h-6 text-white" />
+                    );
+                  })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.name}</p>

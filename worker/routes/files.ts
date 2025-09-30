@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { HttpErrors, handleError, SECURITY_HEADERS } from '../errorHandler';
+import { HttpErrors, handleError } from '../errorHandler';
 import { z } from 'zod';
 import { SessionService } from '../services/SessionService.js';
 import { ActivityService } from '../services/ActivityService';
@@ -319,10 +319,6 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         responseHeaders.set('Vary', 'Origin');
       }
 
-      // Add security headers
-      Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-        responseHeaders.set(key, value);
-      });
 
       return new Response(JSON.stringify(responseBody), {
         status: 200,
@@ -458,11 +454,6 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         headers.set('Access-Control-Allow-Credentials', 'true');
         headers.set('Vary', 'Origin');
       }
-      
-      // Add security headers
-      Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-        headers.set(key, value);
-      });
 
       // Use non-null assertion after explicit null check
       return new Response(fileObject.body as BodyInit, {

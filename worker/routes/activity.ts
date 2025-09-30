@@ -17,21 +17,8 @@ interface CreateActivityRequest {
   idempotencyKey?: string;
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Idempotency-Key',
-  'Access-Control-Max-Age': '86400'
-};
 
 export async function handleActivity(request: Request, env: Env): Promise<Response> {
-  // Handle CORS preflight requests
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: CORS_HEADERS
-    });
-  }
 
   // Rate limiting
   const clientId = getClientId(request);
@@ -44,7 +31,6 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
     }), {
       status: 429,
       headers: {
-        ...CORS_HEADERS,
         'Content-Type': 'application/json',
         'Retry-After': '60',
         'X-RateLimit-Limit': '50',
@@ -71,7 +57,7 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
         code: 'INVALID_CURSOR'
       }), {
         status: 400,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        headers: {  'Content-Type': 'application/json' }
       });
     }
     
@@ -82,7 +68,7 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
         errorCode: 'UNAUTHORIZED'
       }), {
         status: 401,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        headers: {  'Content-Type': 'application/json' }
       });
     }
     
@@ -174,7 +160,6 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
     return new Response(null, {
       status: 304,
       headers: {
-        ...CORS_HEADERS,
         'ETag': etag,
         'Cache-Control': 'private, max-age=60, must-revalidate',
         'Vary': 'Cookie'
@@ -184,7 +169,6 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
 
   // Set response headers
   const headers = {
-    ...CORS_HEADERS,
     'Content-Type': 'application/json',
     'ETag': etag,
     'Cache-Control': 'private, max-age=60, must-revalidate',
@@ -268,7 +252,7 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
         data: existingEvent
       }), {
         status: 200, // Return existing event
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        headers: {  'Content-Type': 'application/json' }
       });
     }
   }
@@ -319,7 +303,7 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
     data: createdEvent
   }), {
     status: 201,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    headers: {  'Content-Type': 'application/json' }
   });
 }
 
