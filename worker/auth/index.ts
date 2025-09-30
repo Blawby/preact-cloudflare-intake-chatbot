@@ -13,7 +13,7 @@ export const trustedOrigins = [
   "http://localhost:5173",
   "https://blawby-ai-chatbot.paulchrisluke.workers.dev",
   "https://ai.blawby.com",
-] as const;
+];
 
 export function createAuth(env: Env) {
   // Validate required environment variables
@@ -38,7 +38,7 @@ export function createAuth(env: Env) {
     database: drizzleAdapter(db, {
       provider: "sqlite",
       usePlural: true,
-      debugLogs: true,
+      debugLogs: env.NODE_ENV !== 'production',
     }),
     emailAndPassword: {
       enabled: true,
