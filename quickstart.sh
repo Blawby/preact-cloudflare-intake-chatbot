@@ -174,7 +174,15 @@ fi
 echo "👥 Setting up default teams..."
 
 # Teams are now managed via database and API
-echo "✅ Teams already configured in database"
+# Insert a demo team if none exist for quick start
+EXISTING_TEAMS=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM teams;" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
+if [ "$EXISTING_TEAMS" -eq 0 ]; then
+    echo "Adding demo team for quick start..."
+    wrangler d1 execute blawby-ai-chatbot --local --command "INSERT INTO teams (id, name, slug, config, created_at, updated_at) VALUES ('demo-team-1', 'Demo Law Firm', 'demo-firm', '{\"aiModel\": \"llama\", \"requiresPayment\": false, \"availableServices\": [\"Family Law\", \"Business Law\", \"General Consultation\"]}', datetime('now'), datetime('now'));" 2>/dev/null || echo "Could not insert demo team"
+    echo "✅ Demo team added"
+else
+    echo "✅ Teams already configured in database"
+fi
 
 # Verify setup
 echo "🔍 Verifying setup..."
