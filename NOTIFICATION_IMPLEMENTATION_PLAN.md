@@ -618,6 +618,659 @@ if (teamConfig.testMode) {
 - Easy to toggle for different environments
 - Maintains production functionality
 
+## Architecture Decisions & Considerations
+
+### Queue Strategy: Single vs Multiple Queues
+
+**Decision: Use separate queues for isolation and reliability**
+
+**Rationale:**
+- **Isolation**: Email failures won't block push notifications
+- **Different retry strategies**: Email can retry longer, push notifications need faster failure
+- **Monitoring**: Easier to track delivery rates per channel
+- **Scaling**: Can scale consumers independently
+
+**Implementation:**
+```typescript
+// Three dedicated queues with different retry policies
+NOTIFICATION_QUEUE: {
+  retry: { maxRetries: 3, backoffMs: [1000, 5000, 15000] }
+}
+LIVE_NOTIFICATION_QUEUE: {
+  retry: { maxRetries: 1, backoffMs: [500] } // Fast failure for real-time
+}
+PUSH_NOTIFICATION_QUEUE: {
+  retry: { maxRetries: 2, backoffMs: [2000, 10000] }
+}
+```
+
+### Offline User Strategy
+
+**Decision: Hybrid approach with KV + DB persistence**
+
+**For Live Notifications (SSE):**
+- **Online users**: Direct SSE delivery
+- **Offline users**: Store in KV with TTL (24 hours)
+- **Reconnect**: Replay missed notifications from KV
+- **Cleanup**: KV auto-expires, no manual cleanup needed
+
+**For Email/Push:**
+- **Always persisted**: Queue ensures delivery when user comes online
+- **No special offline handling**: Standard queue retry logic
+
+**Implementation:**
+```typescript
+// Live notification with offline fallback
+async sendLiveNotification(notification: LiveNotification) {
+  const onlineUsers = await this.getOnlineUsers(notification.teamId);
+  
+  // Send to online users via SSE
+  for (const user of onlineUsers) {
+    await this.sendSSE(user.id, notification);
+  }
+  
+  // Store for offline users in KV
+  const offlineUsers = await this.getOfflineUsers(notification.teamId);
+  for (const user of offlineUsers) {
+    await this.env.CHAT_SESSIONS.put(
+      `live_notification:${user.id}:${Date.now()}`,
+      JSON.stringify(notification),
+      { expirationTtl: 86400 } // 24 hours
+    );
+  }
+}
+```
+
+### Push Subscription Management
+
+**Decision: Proactive cleanup with delivery-time validation**
+
+**Strategy:**
+- **Delivery-time validation**: Check subscription validity on each send
+- **Cleanup on failure**: Remove invalid subscriptions when delivery fails
+- **Periodic cleanup**: Weekly job to remove expired subscriptions
+- **User-initiated cleanup**: Remove on logout/device change
+
+**Implementation:**
+```typescript
+async sendPushNotification(subscription: PushSubscription, payload: any) {
+  try {
+    await this.webPushClient.sendNotification(subscription, payload);
+  } catch (error) {
+    if (error.statusCode === 410) { // Gone - subscription expired
+      await this.removePushSubscription(subscription.endpoint);
+    }
+    throw error;
+  }
+}
+```
+
+### Notification Preference Granularity
+
+**Decision: Multi-level granularity (user + team + global)**
+
+**Schema Design:**
+```sql
+-- User-level preferences (highest priority)
+CREATE TABLE notification_preferences (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  team_id TEXT NOT NULL,
+  notification_type TEXT NOT NULL, -- 'matter_update', 'payment_received', etc.
+  channel TEXT NOT NULL, -- 'email', 'push', 'live'
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, team_id, notification_type, channel)
+);
+
+-- Team-level preferences (fallback)
+CREATE TABLE team_notification_settings (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  notification_type TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(team_id, notification_type, channel)
+);
+
+-- Global defaults (lowest priority)
+-- Stored in application config
+```
+
+**Preference Resolution Logic:**
+```typescript
+async getNotificationPreference(userId: string, teamId: string, type: string, channel: string): Promise<boolean> {
+  // 1. Check user preference
+  const userPref = await this.getUserPreference(userId, teamId, type, channel);
+  if (userPref !== null) return userPref;
+  
+  // 2. Check team preference
+  const teamPref = await this.getTeamPreference(teamId, type, channel);
+  if (teamPref !== null) return teamPref;
+  
+  // 3. Return global default
+  return this.getGlobalDefault(type, channel);
+}
+```
+
+### Security & Sensitive Data Handling
+
+**Decision: Minimal data in push notifications, IDs only**
+
+**Push Notification Payload Strategy:**
+```typescript
+// ❌ Never include sensitive data
+{
+  title: "New Matter Update",
+  body: "Client John Smith's divorce case has new documents", // SENSITIVE!
+  data: { matterId: "123", documentId: "456" }
+}
+
+// ✅ Use generic messages with IDs
+{
+  title: "New Matter Update",
+  body: "You have a new update on one of your matters",
+  data: { 
+    matterId: "123", 
+    action: "document_added",
+    notificationId: "notif_789"
+  }
+}
+```
+
+**Email Strategy:**
+- **Transactional emails**: Can include more detail (user is authenticated)
+- **Marketing emails**: Generic content only
+- **Sensitive matters**: Always use generic language
+
+### Read/Unread Tracking & Persistence
+
+**Decision: Persistent across devices with clear read state**
+
+**Schema:**
+```sql
+CREATE TABLE notification_logs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  team_id TEXT NOT NULL,
+  notification_type TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT,
+  data JSON,
+  read_at DATETIME NULL, -- NULL = unread
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX(user_id, read_at), -- For unread count queries
+  INDEX(user_id, created_at) -- For notification history
+);
+```
+
+**Read State Management:**
+```typescript
+// Mark as read
+async markNotificationRead(notificationId: string, userId: string) {
+  await this.db.prepare(`
+    UPDATE notification_logs 
+    SET read_at = CURRENT_TIMESTAMP 
+    WHERE id = ? AND user_id = ?
+  `).bind(notificationId, userId).run();
+}
+
+// Get unread count
+async getUnreadCount(userId: string): Promise<number> {
+  const result = await this.db.prepare(`
+    SELECT COUNT(*) as count 
+    FROM notification_logs 
+    WHERE user_id = ? AND read_at IS NULL
+  `).bind(userId).first();
+  
+  return result?.count || 0;
+}
+```
+
+### Notification Grouping & Batching
+
+**Decision: Smart batching with user preference**
+
+**Batching Strategy:**
+```typescript
+interface NotificationBatch {
+  userId: string;
+  teamId: string;
+  notifications: Notification[];
+  batchKey: string; // e.g., "matter_123", "team_updates"
+  maxBatchSize: number;
+  batchWindowMs: number;
+}
+
+// Batch similar notifications
+async batchNotifications(notifications: Notification[]): Promise<NotificationBatch[]> {
+  const batches = new Map<string, Notification[]>();
+  
+  for (const notification of notifications) {
+    const batchKey = `${notification.userId}_${notification.teamId}_${notification.type}`;
+    if (!batches.has(batchKey)) {
+      batches.set(batchKey, []);
+    }
+    batches.get(batchKey)!.push(notification);
+  }
+  
+  return Array.from(batches.entries()).map(([key, notifs]) => ({
+    userId: notifs[0].userId,
+    teamId: notifs[0].teamId,
+    notifications: notifs,
+    batchKey: key,
+    maxBatchSize: 5,
+    batchWindowMs: 30000 // 30 seconds
+  }));
+}
+```
+
+### Testing & Dry Run Mode
+
+**Decision: Add dry run mode for CI/CD**
+
+**Implementation:**
+```typescript
+// Add to wrangler.toml
+DRY_RUN_MODE = false
+
+// In notification service
+async sendNotification(notification: Notification) {
+  if (this.env.DRY_RUN_MODE === 'true') {
+    console.log('🧪 DRY RUN - would send notification:', {
+      type: notification.type,
+      channel: notification.channel,
+      userId: notification.userId,
+      payload: notification.payload
+    });
+    return { success: true, dryRun: true };
+  }
+  
+  // Actual sending logic
+  return await this.actualSend(notification);
+}
+```
+
+### Deduplication Strategy
+
+**Decision: Content-based deduplication with time window**
+
+**Deduplication Key:**
+```typescript
+function generateDeduplicationKey(notification: Notification): string {
+  const { userId, teamId, type, matterId, contentHash } = notification;
+  return `${userId}_${teamId}_${type}_${matterId}_${contentHash}`;
+}
+
+// Check for duplicates within time window
+async checkForDuplicates(key: string, windowMs: number = 300000): Promise<boolean> {
+  const recent = await this.env.CHAT_SESSIONS.get(`dup:${key}`);
+  if (recent) {
+    const timestamp = parseInt(recent);
+    if (Date.now() - timestamp < windowMs) {
+      return true; // Duplicate found
+    }
+  }
+  
+  // Store this notification
+  await this.env.CHAT_SESSIONS.put(
+    `dup:${key}`, 
+    Date.now().toString(), 
+    { expirationTtl: Math.ceil(windowMs / 1000) }
+  );
+  
+  return false; // Not a duplicate
+}
+```
+
+## Better Auth Integration
+
+### Prerequisites
+- Better Auth organizations/teams must be configured before implementing notifications
+- User identity and team membership must be established
+- Role-based permissions system must be in place
+
+### Core Integration Points
+
+#### 1. User Identity & Notification Targeting
+
+**Better Auth as Source of Truth:**
+```typescript
+// All notification targeting uses Better Auth IDs
+interface NotificationTarget {
+  userId: string;        // Better Auth user.id
+  teamId: string;        // Better Auth organization/team.id
+  email: string;         // Better Auth verified email
+  roles: string[];       // Better Auth user roles
+}
+
+// Notification service validates against Better Auth
+class NotificationService {
+  async validateNotificationTarget(userId: string, teamId: string): Promise<boolean> {
+    const user = await this.betterAuth.getUser(userId);
+    const teamMembership = await this.betterAuth.getTeamMembership(userId, teamId);
+    
+    return user && teamMembership && user.verified;
+  }
+}
+```
+
+#### 2. Permission-Based Notification Filtering
+
+**Role-Based Notification Rules:**
+```typescript
+// Define notification permissions by role
+const NOTIFICATION_PERMISSIONS = {
+  'team:admin': ['system_alert', 'team_update', 'matter_update', 'payment_received'],
+  'team:member': ['matter_update', 'payment_received'],
+  'team:viewer': ['matter_update'],
+  'client': ['matter_update', 'payment_received']
+};
+
+// Check permissions before enqueueing
+async enqueueNotification(notification: Notification) {
+  const user = await this.betterAuth.getUser(notification.userId);
+  const userRoles = await this.betterAuth.getUserRoles(notification.userId, notification.teamId);
+  
+  // Check if user has permission for this notification type
+  const hasPermission = userRoles.some(role => 
+    NOTIFICATION_PERMISSIONS[role]?.includes(notification.type)
+  );
+  
+  if (!hasPermission) {
+    console.log(`User ${notification.userId} lacks permission for ${notification.type}`);
+    return;
+  }
+  
+  // Proceed with notification
+  await this.queueNotification(notification);
+}
+```
+
+#### 3. Database Schema with Better Auth Integration
+
+**Updated Schema with Better Auth References:**
+```sql
+-- Notification preferences tied to Better Auth users
+CREATE TABLE notification_preferences (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,           -- Better Auth user.id
+  team_id TEXT NOT NULL,           -- Better Auth organization.id
+  notification_type TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES better_auth_users(id) ON DELETE CASCADE,
+  FOREIGN KEY (team_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
+  UNIQUE(user_id, team_id, notification_type, channel)
+);
+
+-- Push subscriptions tied to Better Auth users
+CREATE TABLE push_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,           -- Better Auth user.id
+  team_id TEXT NOT NULL,           -- Better Auth organization.id
+  endpoint TEXT NOT NULL,
+  p256dh_key TEXT NOT NULL,
+  auth_key TEXT NOT NULL,
+  user_agent TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES better_auth_users(id) ON DELETE CASCADE,
+  FOREIGN KEY (team_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
+  UNIQUE(user_id, endpoint)
+);
+
+-- Notification logs with Better Auth references
+CREATE TABLE notification_logs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,           -- Better Auth user.id
+  team_id TEXT NOT NULL,           -- Better Auth organization.id
+  notification_type TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT,
+  data JSON,
+  read_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES better_auth_users(id) ON DELETE CASCADE,
+  FOREIGN KEY (team_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
+  INDEX(user_id, read_at),
+  INDEX(user_id, created_at)
+);
+
+-- Team-level notification settings
+CREATE TABLE team_notification_settings (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,           -- Better Auth organization.id
+  notification_type TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
+  UNIQUE(team_id, notification_type, channel)
+);
+```
+
+#### 4. Session-Aware Live Notifications
+
+**SSE with Better Auth Session Validation:**
+```typescript
+// Live notification endpoint with Better Auth validation
+export async function handleLiveNotifications(request: Request, env: Env) {
+  const session = await betterAuth.getSession(request);
+  if (!session?.user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  const userId = session.user.id;
+  const teamId = session.user.teamId; // From Better Auth context
+  
+  // Create SSE connection scoped to authenticated user
+  const stream = new ReadableStream({
+    start(controller) {
+      // Subscribe to user-specific notification stream
+      const subscription = notificationStream.subscribe(userId, teamId, (notification) => {
+        controller.enqueue(`data: ${JSON.stringify(notification)}\n\n`);
+      });
+      
+      // Cleanup on disconnect
+      request.signal?.addEventListener('abort', () => {
+        subscription.unsubscribe();
+        controller.close();
+      });
+    }
+  });
+  
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    }
+  });
+}
+```
+
+#### 5. Push Subscription Management with Better Auth
+
+**Secure Push Subscription Registration:**
+```typescript
+// Push subscription endpoint with Better Auth validation
+export async function handlePushSubscription(request: Request, env: Env) {
+  const session = await betterAuth.getSession(request);
+  if (!session?.user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  const { subscription, teamId } = await request.json();
+  
+  // Verify user has access to the team
+  const hasAccess = await betterAuth.userHasTeamAccess(session.user.id, teamId);
+  if (!hasAccess) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  
+  // Store subscription with Better Auth user ID
+  await env.DB.prepare(`
+    INSERT OR REPLACE INTO push_subscriptions 
+    (id, user_id, team_id, endpoint, p256dh_key, auth_key, user_agent)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    crypto.randomUUID(),
+    session.user.id,        // Better Auth user ID
+    teamId,                 // Better Auth team ID
+    subscription.endpoint,
+    subscription.keys.p256dh,
+    subscription.keys.auth,
+    request.headers.get('User-Agent')
+  ).run();
+  
+  return new Response(JSON.stringify({ success: true }));
+}
+```
+
+#### 6. Notification Preferences with Better Auth Context
+
+**User-Scoped Preference Management:**
+```typescript
+// Get user's notification preferences with Better Auth context
+export async function getUserNotificationPreferences(request: Request, env: Env) {
+  const session = await betterAuth.getSession(request);
+  if (!session?.user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  const { teamId } = await request.json();
+  
+  // Verify user has access to the team
+  const hasAccess = await betterAuth.userHasTeamAccess(session.user.id, teamId);
+  if (!hasAccess) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  
+  // Get user's preferences for this team
+  const preferences = await env.DB.prepare(`
+    SELECT notification_type, channel, enabled
+    FROM notification_preferences
+    WHERE user_id = ? AND team_id = ?
+  `).bind(session.user.id, teamId).all();
+  
+  return new Response(JSON.stringify({ preferences }));
+}
+
+// Update user's notification preferences
+export async function updateNotificationPreferences(request: Request, env: Env) {
+  const session = await betterAuth.getSession(request);
+  if (!session?.user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  const { teamId, preferences } = await request.json();
+  
+  // Verify user has access to the team
+  const hasAccess = await betterAuth.userHasTeamAccess(session.user.id, teamId);
+  if (!hasAccess) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  
+  // Update preferences (user can only update their own)
+  for (const pref of preferences) {
+    await env.DB.prepare(`
+      INSERT OR REPLACE INTO notification_preferences
+      (id, user_id, team_id, notification_type, channel, enabled)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      crypto.randomUUID(),
+      session.user.id,        // Better Auth user ID
+      teamId,                 // Better Auth team ID
+      pref.notification_type,
+      pref.channel,
+      pref.enabled
+    ).run();
+  }
+  
+  return new Response(JSON.stringify({ success: true }));
+}
+```
+
+#### 7. Admin Override Capabilities
+
+**Team Admin Notification Management:**
+```typescript
+// Team admin can manage team-wide notification settings
+export async function updateTeamNotificationSettings(request: Request, env: Env) {
+  const session = await betterAuth.getSession(request);
+  if (!session?.user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  const { teamId, settings } = await request.json();
+  
+  // Check if user is team admin
+  const isAdmin = await betterAuth.userHasRole(session.user.id, teamId, 'team:admin');
+  if (!isAdmin) {
+    return new Response('Forbidden - Admin role required', { status: 403 });
+  }
+  
+  // Update team-wide settings
+  for (const setting of settings) {
+    await env.DB.prepare(`
+      INSERT OR REPLACE INTO team_notification_settings
+      (id, team_id, notification_type, channel, enabled)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(
+      crypto.randomUUID(),
+      teamId,
+      setting.notification_type,
+      setting.channel,
+      setting.enabled
+    ).run();
+  }
+  
+  return new Response(JSON.stringify({ success: true }));
+}
+```
+
+### Implementation Order with Better Auth
+
+1. **Setup Better Auth Organizations** (Prerequisite)
+   - Configure teams/organizations
+   - Set up role-based permissions
+   - Establish user-team relationships
+
+2. **Update Database Schema**
+   - Add Better Auth foreign key constraints
+   - Ensure proper cascade deletes
+   - Add indexes for Better Auth queries
+
+3. **Implement Authentication Middleware**
+   - Session validation for all notification endpoints
+   - Permission checks before notification operations
+   - Team access verification
+
+4. **Build Notification Services**
+   - Integrate Better Auth user/team resolution
+   - Implement role-based notification filtering
+   - Add permission validation to queue consumers
+
+5. **Create Frontend Components**
+   - Use Better Auth session for user context
+   - Implement team-scoped preference management
+   - Add admin override capabilities
+
+### Security Benefits
+
+- **Identity Verification**: All notifications tied to verified Better Auth users
+- **Permission Enforcement**: Role-based access control for notification types
+- **Team Isolation**: Users can only access notifications for their teams
+- **Session Security**: Live notifications scoped to authenticated sessions
+- **Admin Controls**: Team admins can manage notification policies
+- **Data Integrity**: Foreign key constraints prevent orphaned notifications
+
 ## Testing Strategy
 
 ### Unit Tests
