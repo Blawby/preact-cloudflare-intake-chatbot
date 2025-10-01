@@ -26,7 +26,7 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
   const [loading, setLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { navigateToAuth, navigateToHome, navigate } = useNavigation();
+  const { navigateToAuth } = useNavigation();
 
   useEffect(() => {
     checkAuthStatus();
@@ -81,8 +81,8 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
           setUser(userData as User);
         }
       }
-    } catch (error) {
-      console.error('Failed to get user session:', error);
+    } catch (_error) {
+      // Failed to get user session
     } finally {
       setLoading(false);
     }
@@ -192,8 +192,9 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
                   duration: 0.3, 
                   ease: [0.32, 0.72, 0, 1] // Custom easing for smooth slide
                 }}
-                role="menu"
-                aria-labelledby="user-profile-button"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="settings-dialog-title"
               >
                 <SettingsPage 
                   isMobile={isMobile}

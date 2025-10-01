@@ -26,11 +26,11 @@ function isValidBetterAuthUser(user: unknown): user is BetterAuthUser {
     typeof (user as Record<string, unknown>).id === 'string' &&
     typeof (user as Record<string, unknown>).name === 'string' &&
     typeof (user as Record<string, unknown>).email === 'string' &&
-    ((user as Record<string, unknown>).createdAt === undefined || 
-     (user as Record<string, unknown>).createdAt instanceof Date || 
+    (user as Record<string, unknown>).createdAt !== undefined &&
+    ((user as Record<string, unknown>).createdAt instanceof Date || 
      typeof (user as Record<string, unknown>).createdAt === 'string') &&
-    ((user as Record<string, unknown>).updatedAt === undefined || 
-     (user as Record<string, unknown>).updatedAt instanceof Date || 
+    (user as Record<string, unknown>).updatedAt !== undefined &&
+    ((user as Record<string, unknown>).updatedAt instanceof Date || 
      typeof (user as Record<string, unknown>).updatedAt === 'string')
   );
 }

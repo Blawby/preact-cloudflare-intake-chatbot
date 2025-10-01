@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
-import { motion } from 'framer-motion';
+import { } from 'preact/hooks';
 import { SettingsSection } from './SettingsSection';
 import { SettingsItem } from './SettingsItem';
 import { 
@@ -14,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useNavigation } from '../../utils/navigation';
 import { authClient } from '../../lib/authClient';
+import { useToastContext } from '../../contexts/ToastContext';
 
 // Utility function for className merging (following codebase pattern)
 function cn(...classes: (string | undefined | null | false)[]): string {
@@ -31,18 +31,9 @@ export const SettingsPage = ({
   onClose,
   className = ''
 }: SettingsPageProps) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [signingOut, setSigningOut] = useState(false);
   const { navigate, navigateToHome } = useNavigation();
+  const { showSuccess, showError } = useToastContext();
 
-  useEffect(() => {
-    // Simulate loading user data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -61,37 +52,25 @@ export const SettingsPage = ({
   };
 
   const handleSignOut = async () => {
-    if (signingOut) return;
-    setSigningOut(true);
     try {
       await authClient.signOut();
+      showSuccess('Signed out successfully', 'You have been signed out of your account');
       // Close settings panel if open
       if (onClose) {
         onClose();
       }
       navigateToHome(); // Navigate after sign-out
     } catch (_error) {
-      // Error handling could be improved with toast notifications
-    } finally {
-      setSigningOut(false);
+      // Sign out failed
+      showError('Sign out failed', 'There was an error signing you out. Please try again.');
+      // Still perform local cleanup and navigation even if sign-out fails
+      if (onClose) {
+        onClose();
+      }
+      navigateToHome();
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className={cn('flex items-center justify-center p-8', className)}>
-        <motion.div
-          className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full"
-          animate={{ rotate: 360 }}
-          transition={{
-            duration: 1,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className={cn('h-full flex flex-col', className)}>
@@ -107,7 +86,7 @@ export const SettingsPage = ({
           </button>
         )}
         <div className="flex-1">
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h1 id="settings-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Settings
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">

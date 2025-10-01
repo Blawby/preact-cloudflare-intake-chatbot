@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useCallback } from 'preact/hooks';
 import { SettingsSection } from '../SettingsSection';
 import { SettingsItem } from '../SettingsItem';
 import { Button } from '../../ui/Button';
@@ -49,8 +49,7 @@ export const AccountPage = ({
   const { profile, loading, error, updateProfile, uploadAvatar, deleteAvatar } = useUserProfile();
   const { navigate } = useNavigation();
 
-  // Initialize form data when profile loads
-  useEffect(() => {
+  const resetFormData = useCallback(() => {
     if (profile) {
       setFormData({
         name: profile.name || '',
@@ -66,6 +65,11 @@ export const AccountPage = ({
       });
     }
   }, [profile]);
+
+  // Initialize form data when profile loads
+  useEffect(() => {
+    resetFormData();
+  }, [profile, resetFormData]);
 
   const handleSave = async () => {
     if (!profile) return;
@@ -83,20 +87,7 @@ export const AccountPage = ({
   };
 
   const handleCancel = () => {
-    if (profile) {
-      setFormData({
-        name: profile.name || '',
-        bio: profile.bio || '',
-        phone: profile.phone || '',
-        secondaryPhone: profile.secondaryPhone || '',
-        addressStreet: profile.addressStreet || '',
-        addressCity: profile.addressCity || '',
-        addressState: profile.addressState || '',
-        addressZip: profile.addressZip || '',
-        addressCountry: profile.addressCountry || '',
-        preferredContactMethod: (profile.preferredContactMethod as 'email' | 'phone' | 'sms') || 'email'
-      });
-    }
+    resetFormData();
     setIsEditing(false);
   };
 
