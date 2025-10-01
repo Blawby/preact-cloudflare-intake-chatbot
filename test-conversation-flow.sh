@@ -416,7 +416,7 @@ scenario_placeholder_prevention() {
     
     # ToolExecutor.hasPlaceholders() should detect missing info
     # Should redirect to contact_form instead of create_matter with placeholders
-    if echo "$resp" | grep -q '"type":"contact_form"' && \
+    if echo "$resp" | grep -q '"type":"matter"' && \
        ! check_no_placeholders "$resp"; then
         print_result false "CRITICAL: Placeholder values used in matter creation"
     elif echo "$resp" | grep -q '"type":"contact_form"'; then

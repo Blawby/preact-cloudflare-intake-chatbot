@@ -1,5 +1,5 @@
 import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../types.js';
-import { TeamService } from '../../services/TeamService.js';
+import { TeamService, type Team, type TeamVoiceConfig } from '../../services/TeamService.js';
 import { ConversationContextManager } from '../../middleware/conversationContextManager.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
@@ -440,6 +440,62 @@ function extractTeamConfig(rawConfig: unknown): TeamConfig {
   };
 }
 
+/**
+ * Converts a TeamConfig to a Team object with proper type safety.
+ * Maps and validates all required Team fields including id, slug, name, config with typed voice and jurisdiction, createdAt, updatedAt.
+ */
+function convertTeamConfigToTeam(teamConfig: TeamConfig, teamId?: string): Team {
+  const now = new Date().toISOString();
+  
+  // Extract the actual config object from the TeamConfig structure
+  const actualConfig = teamConfig.config as Record<string, unknown> || {};
+  
+  return {
+    id: teamConfig.id || teamId || '',
+    slug: teamId || '',
+    name: teamConfig.name || 'Unknown Team',
+    config: {
+      aiModel: (actualConfig.aiModel as string) || 'gpt-4',
+      consultationFee: (actualConfig.consultationFee as number) || 0,
+      requiresPayment: (actualConfig.requiresPayment as boolean) || false,
+      ownerEmail: (actualConfig.ownerEmail as string) || '',
+      availableServices: (actualConfig.availableServices as string[]) || [],
+      serviceQuestions: (actualConfig.serviceQuestions as Record<string, string[]>) || {},
+      domain: (actualConfig.domain as string) || '',
+      description: (actualConfig.description as string) || '',
+      paymentLink: actualConfig.paymentLink as string | undefined,
+      brandColor: (actualConfig.brandColor as string) || '#334e68',
+      accentColor: (actualConfig.accentColor as string) || '#5a67d8',
+      introMessage: (actualConfig.introMessage as string) || '',
+      profileImage: actualConfig.profileImage as string | undefined,
+      voice: {
+        enabled: (actualConfig.voice as TeamVoiceConfig)?.enabled || false,
+        provider: (actualConfig.voice as TeamVoiceConfig)?.provider || 'cloudflare',
+        voiceId: (actualConfig.voice as TeamVoiceConfig)?.voiceId || null,
+        displayName: (actualConfig.voice as TeamVoiceConfig)?.displayName || null,
+        previewUrl: (actualConfig.voice as TeamVoiceConfig)?.previewUrl || null
+      },
+      jurisdiction: (teamConfig.jurisdiction && typeof teamConfig.jurisdiction === 'object' && 'type' in teamConfig.jurisdiction) 
+        ? teamConfig.jurisdiction as { type: 'national' | 'state'; description: string; supportedStates: string[]; supportedCountries: string[]; primaryState?: string }
+        : {
+            type: 'national' as const,
+            description: 'National jurisdiction',
+            supportedStates: [],
+            supportedCountries: ['US']
+          },
+      blawbyApi: actualConfig.blawbyApi as {
+        enabled: boolean;
+        apiKey?: string | null;
+        apiKeyHash?: string;
+        teamUlid?: string;
+        apiUrl?: string;
+      } | undefined
+    },
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
 // ============================================================================
 // TEAM CONFIG CACHE
 // ============================================================================
@@ -756,15 +812,43 @@ class ToolCallDetector {
 
   private static parseJsonFormat(response: string): ToolCall | null {
     try {
-      const jsonMatch = response.match(/\{[^}]*"name"[^}]*"arguments"[^}]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.name && typeof parsed.name === 'string') {
-          return {
-            name: parsed.name,
-            arguments: parsed.arguments || {}
-          };
+      // Find the first opening brace
+      const firstBraceIndex = response.indexOf('{');
+      if (firstBraceIndex === -1) {
+        return null;
+      }
+
+      // Use brace-balancing to find the complete JSON object
+      let braceCount = 0;
+      let endIndex = -1;
+      
+      for (let i = firstBraceIndex; i < response.length; i++) {
+        const char = response[i];
+        if (char === '{') {
+          braceCount++;
+        } else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            endIndex = i;
+            break;
+          }
         }
+      }
+
+      // If we didn't find a matching closing brace, return null
+      if (endIndex === -1) {
+        return null;
+      }
+
+      // Extract the JSON substring and parse it
+      const jsonString = response.substring(firstBraceIndex, endIndex + 1);
+      const parsed = JSON.parse(jsonString);
+      
+      if (parsed.name && typeof parsed.name === 'string') {
+        return {
+          name: parsed.name,
+          arguments: parsed.arguments || {}
+        };
       }
     } catch {
       // Not valid JSON
@@ -1125,29 +1209,7 @@ async function handleCreateMatter(
   );
 
   // Convert TeamConfig to Team format for ContactIntakeOrchestrator
-  const teamForOrchestrator = teamConfig ? {
-    id: teamConfig.id || teamId || '',
-    slug: teamId || '',
-    name: teamConfig.name || 'Unknown Team',
-    config: {
-      ...teamConfig,
-      voice: {
-        enabled: false,
-        provider: 'cloudflare' as const,
-        voiceId: null,
-        displayName: null,
-        previewUrl: null
-      },
-      jurisdiction: teamConfig.jurisdiction || {
-        type: 'national' as const,
-        description: 'National jurisdiction',
-        supportedStates: [],
-        supportedCountries: ['US']
-      }
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  } as any : null;
+  const teamForOrchestrator = teamConfig ? convertTeamConfigToTeam(teamConfig, teamId) : null;
 
   const orchestrationResult = await ContactIntakeOrchestrator.finalizeSubmission({
     env,
