@@ -1,26 +1,25 @@
 import { ComponentChildren } from 'preact';
-import type { JSX } from 'preact';
-import { Button } from '../ui/Button';
-import { ChevronRightIcon } from '@heroicons/react/24/outline';
 
 // Utility function for className merging (following codebase pattern)
 function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
-export type SettingsItemType = 'display' | 'navigation' | 'toggle' | 'input' | 'action';
+export type SettingsItemType = 'display' | 'navigation' | 'toggle' | 'input' | 'action' | 'external';
 
 export interface SettingsItemProps {
   icon?: ComponentChildren;
   label: string;
   description?: string;
   type: SettingsItemType;
-  value?: any;
-  onChange?: (value: any) => void;
+  value?: string | boolean | number;
+  onChange?: (value: string | boolean | number) => void;
   onClick?: () => void;
+  href?: string;
   placeholder?: string;
   variant?: 'default' | 'danger';
   disabled?: boolean;
+  isLoading?: boolean;
   className?: string;
   children?: ComponentChildren;
 }
@@ -33,9 +32,11 @@ export const SettingsItem = ({
   value,
   onChange,
   onClick,
+  href,
   placeholder,
   variant = 'default',
   disabled = false,
+  isLoading = false,
   className = '',
   children
 }: SettingsItemProps) => {
@@ -44,15 +45,21 @@ export const SettingsItem = ({
   const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
   
   const variantClasses = {
-    default: 'text-gray-700 dark:text-gray-300',
-    danger: 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+    default: {
+      enabled: 'text-gray-700 dark:text-gray-300',
+      disabled: 'text-gray-700 dark:text-gray-300'
+    },
+    danger: {
+      enabled: 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20',
+      disabled: 'text-red-600 dark:text-red-400'
+    }
   };
 
   const classes = cn(
     baseClasses,
-    hoverClasses,
+    !disabled && hoverClasses,
     disabledClasses,
-    variantClasses[variant],
+    variantClasses[variant][disabled ? 'disabled' : 'enabled'],
     className
   );
 
@@ -85,7 +92,9 @@ export const SettingsItem = ({
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</div>
               )}
             </div>
-            <ChevronRightIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+            <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </>
         );
 
@@ -115,7 +124,7 @@ export const SettingsItem = ({
                 onChange?.(!value);
               }}
               disabled={disabled}
-              aria-pressed={value}
+              aria-pressed={Boolean(value)}
               aria-label={`Toggle ${label}`}
             >
               <span
@@ -143,7 +152,7 @@ export const SettingsItem = ({
               )}
               <input
                 type="text"
-                value={value || ''}
+                value={String(value || '')}
                 onChange={(e) => onChange?.((e.target as HTMLInputElement).value)}
                 placeholder={placeholder}
                 disabled={disabled}
@@ -156,7 +165,11 @@ export const SettingsItem = ({
       case 'action':
         return (
           <>
-            {icon && (
+            {isLoading ? (
+              <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : icon && (
               <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0">
                 {icon}
               </div>
@@ -167,6 +180,26 @@ export const SettingsItem = ({
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</div>
               )}
             </div>
+          </>
+        );
+
+      case 'external':
+        return (
+          <>
+            {icon && (
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0">
+                {icon}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{label}</div>
+              {description && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</div>
+              )}
+            </div>
+            <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
           </>
         );
 
@@ -183,11 +216,24 @@ export const SettingsItem = ({
     );
   }
 
+  if (type === 'external' && href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={classes}
+      >
+        {renderContent()}
+      </a>
+    );
+  }
+
   return (
     <button
       className={classes}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || isLoading}
       type="button"
     >
       {renderContent()}

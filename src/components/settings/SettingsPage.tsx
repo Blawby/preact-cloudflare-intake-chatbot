@@ -1,18 +1,19 @@
-import { ComponentChildren, useState, useEffect } from 'preact/hooks';
-import type { JSX } from 'preact';
+import { useState, useEffect } from 'preact/hooks';
+import { motion } from 'framer-motion';
 import { SettingsSection } from './SettingsSection';
 import { SettingsItem } from './SettingsItem';
 import { 
   UserIcon, 
-  BellIcon, 
   ShieldCheckIcon, 
-  UsersIcon, 
   Cog6ToothIcon,
   DocumentTextIcon,
   QuestionMarkCircleIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  ArrowRightOnRectangleIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useNavigation } from '../../utils/navigation';
+import { authClient } from '../../lib/authClient';
 
 // Utility function for className merging (following codebase pattern)
 function cn(...classes: (string | undefined | null | false)[]): string {
@@ -31,7 +32,8 @@ export const SettingsPage = ({
   className = ''
 }: SettingsPageProps) => {
   const [isLoading, setIsLoading] = useState(true);
-  const { navigate } = useNavigation();
+  const [signingOut, setSigningOut] = useState(false);
+  const { navigate, navigateToHome } = useNavigation();
 
   useEffect(() => {
     // Simulate loading user data
@@ -43,13 +45,7 @@ export const SettingsPage = ({
   }, []);
 
   const handleNavigation = (path: string) => {
-    if (isMobile) {
-      navigate(path);
-    } else {
-      // For desktop, we might want to handle this differently
-      // For now, just navigate
-      navigate(path);
-    }
+    navigate(path);
     // Close settings panel on desktop after navigation
     if (!isMobile && onClose) {
       onClose();
@@ -64,10 +60,35 @@ export const SettingsPage = ({
     }
   };
 
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await authClient.signOut();
+      // Close settings panel if open
+      if (onClose) {
+        onClose();
+      }
+      navigateToHome(); // Navigate after sign-out
+    } catch (_error) {
+      // Error handling could be improved with toast notifications
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center p-8', className)}>
-        <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+        <motion.div
+          className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{
+            duration: 1,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
       </div>
     );
   }
@@ -93,6 +114,14 @@ export const SettingsPage = ({
             Manage your account and preferences
           </p>
         </div>
+        {/* Close Button */}
+        <button
+          onClick={handleBack}
+          className="p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          aria-label="Close settings"
+        >
+          <XMarkIcon className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Content */}
@@ -109,13 +138,6 @@ export const SettingsPage = ({
             type="navigation"
             onClick={() => handleNavigation('/settings/account')}
           />
-          <SettingsItem
-            icon={<UsersIcon />}
-            label="Team"
-            description="Manage your team settings and members"
-            type="navigation"
-            onClick={() => handleNavigation('/settings/team')}
-          />
         </SettingsSection>
 
         {/* Preferences Section */}
@@ -129,13 +151,6 @@ export const SettingsPage = ({
             description="Theme, language, and display settings"
             type="navigation"
             onClick={() => handleNavigation('/settings/preferences')}
-          />
-          <SettingsItem
-            icon={<BellIcon />}
-            label="Notifications"
-            description="Email, push, and SMS notification preferences"
-            type="navigation"
-            onClick={() => handleNavigation('/settings/notifications')}
           />
         </SettingsSection>
 
@@ -160,17 +175,32 @@ export const SettingsPage = ({
         >
           <SettingsItem
             icon={<DocumentTextIcon />}
-            label="Legal"
-            description="Terms of service, privacy policy, and data management"
-            type="navigation"
-            onClick={() => handleNavigation('/settings/legal')}
+            label="Privacy Policy"
+            description="View our privacy policy and data practices"
+            type="external"
+            href="https://blawby.com/privacy"
           />
           <SettingsItem
             icon={<QuestionMarkCircleIcon />}
-            label="Support"
-            description="Help center, FAQ, and contact support"
-            type="navigation"
-            onClick={() => handleNavigation('/settings/support')}
+            label="Help & Support"
+            description="Get help and contact our support team"
+            type="external"
+            href="https://blawby.com/help"
+          />
+        </SettingsSection>
+
+        {/* Account Actions Section */}
+        <SettingsSection
+          title="Account Actions"
+          description="Manage your account session"
+        >
+          <SettingsItem
+            icon={<ArrowRightOnRectangleIcon />}
+            label="Sign Out"
+            description="Sign out of your account"
+            type="action"
+            onClick={handleSignOut}
+            variant="danger"
           />
         </SettingsSection>
       </div>

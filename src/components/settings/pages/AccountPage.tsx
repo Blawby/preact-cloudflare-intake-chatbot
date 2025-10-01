@@ -74,9 +74,9 @@ export const AccountPage = ({
     try {
       await updateProfile(formData);
       setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to update profile:', error);
+    } catch (_error) {
       // Error handling could be improved with toast notifications
+      // For now, we rely on the error state from the hook
     } finally {
       setIsSaving(false);
     }
@@ -108,16 +108,18 @@ export const AccountPage = ({
     try {
       await uploadAvatar(file);
       setShowAvatarUpload(false);
-    } catch (error) {
-      console.error('Failed to upload avatar:', error);
+    } catch (_error) {
+      // Error handling could be improved with toast notifications
+      // For now, we rely on the error state from the hook
     }
   };
 
   const handleDeleteAvatar = async () => {
     try {
       await deleteAvatar();
-    } catch (error) {
-      console.error('Failed to delete avatar:', error);
+    } catch (_error) {
+      // Error handling could be improved with toast notifications
+      // For now, we rely on the error state from the hook
     }
   };
 
@@ -291,7 +293,7 @@ export const AccountPage = ({
             label="Name"
             type="input"
             value={formData.name}
-            onChange={(value) => setFormData(prev => ({ ...prev, name: value }))}
+            onChange={(value) => setFormData(prev => ({ ...prev, name: String(value) }))}
             placeholder="Enter your full name"
             disabled={!isEditing}
           />
@@ -303,15 +305,17 @@ export const AccountPage = ({
             description="Email address (read-only)"
           />
           <div className="p-4">
-            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+            <label htmlFor="bio" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
               Bio
             </label>
             <textarea
+              id="bio"
               value={formData.bio}
               onChange={(e) => setFormData(prev => ({ ...prev, bio: (e.target as HTMLTextAreaElement).value }))}
               placeholder="Tell us about yourself..."
               disabled={!isEditing}
               rows={3}
+              maxLength={500}
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -330,7 +334,7 @@ export const AccountPage = ({
             label="Primary Phone"
             type="input"
             value={formData.phone}
-            onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+            onChange={(value) => setFormData(prev => ({ ...prev, phone: String(value) }))}
             placeholder="+1 (555) 123-4567"
             disabled={!isEditing}
           />
@@ -339,32 +343,34 @@ export const AccountPage = ({
             label="Secondary Phone"
             type="input"
             value={formData.secondaryPhone}
-            onChange={(value) => setFormData(prev => ({ ...prev, secondaryPhone: value }))}
+            onChange={(value) => setFormData(prev => ({ ...prev, secondaryPhone: String(value) }))}
             placeholder="+1 (555) 987-6543"
             disabled={!isEditing}
           />
           <div className="p-4">
-            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-              Preferred Contact Method
-            </label>
-            <div className="space-y-2">
-              {(['email', 'phone', 'sms'] as const).map((method) => (
-                <label key={method} className="flex items-center">
-                  <input
-                    type="radio"
-                    name="preferredContactMethod"
-                    value={method}
-                    checked={formData.preferredContactMethod === method}
-                    onChange={(e) => setFormData(prev => ({ ...prev, preferredContactMethod: (e.target as HTMLInputElement).value as 'email' | 'phone' | 'sms' }))}
-                    disabled={!isEditing}
-                    className="mr-2 text-accent-500 focus:ring-accent-500 disabled:opacity-50"
-                  />
-                  <span className="text-sm text-gray-900 dark:text-gray-100 capitalize">
-                    {method}
-                  </span>
-                </label>
-              ))}
-            </div>
+            <fieldset>
+              <legend className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Preferred Contact Method
+              </legend>
+              <div className="space-y-2">
+                {(['email', 'phone', 'sms'] as const).map((method) => (
+                  <label key={method} className="flex items-center">
+                    <input
+                      type="radio"
+                      name="preferredContactMethod"
+                      value={method}
+                      checked={formData.preferredContactMethod === method}
+                      onChange={(e) => setFormData(prev => ({ ...prev, preferredContactMethod: (e.target as HTMLInputElement).value as 'email' | 'phone' | 'sms' }))}
+                      disabled={!isEditing}
+                      className="mr-2 text-accent-500 focus:ring-accent-500 disabled:opacity-50"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-gray-100 capitalize">
+                      {method}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           </div>
         </SettingsSection>
 
@@ -378,16 +384,17 @@ export const AccountPage = ({
             label="Street Address"
             type="input"
             value={formData.addressStreet}
-            onChange={(value) => setFormData(prev => ({ ...prev, addressStreet: value }))}
+            onChange={(value) => setFormData(prev => ({ ...prev, addressStreet: String(value) }))}
             placeholder="123 Main Street"
             disabled={!isEditing}
           />
           <div className="grid grid-cols-2 gap-4 p-4">
             <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              <label htmlFor="addressCity" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 City
               </label>
               <input
+                id="addressCity"
                 type="text"
                 value={formData.addressCity}
                 onChange={(e) => setFormData(prev => ({ ...prev, addressCity: (e.target as HTMLInputElement).value }))}
@@ -397,10 +404,11 @@ export const AccountPage = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              <label htmlFor="addressState" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 State
               </label>
               <input
+                id="addressState"
                 type="text"
                 value={formData.addressState}
                 onChange={(e) => setFormData(prev => ({ ...prev, addressState: (e.target as HTMLInputElement).value }))}
@@ -412,10 +420,11 @@ export const AccountPage = ({
           </div>
           <div className="grid grid-cols-2 gap-4 p-4 pt-0">
             <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              <label htmlFor="addressZip" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 ZIP Code
               </label>
               <input
+                id="addressZip"
                 type="text"
                 value={formData.addressZip}
                 onChange={(e) => setFormData(prev => ({ ...prev, addressZip: (e.target as HTMLInputElement).value }))}
@@ -425,10 +434,11 @@ export const AccountPage = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              <label htmlFor="addressCountry" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Country
               </label>
               <input
+                id="addressCountry"
                 type="text"
                 value={formData.addressCountry}
                 onChange={(e) => setFormData(prev => ({ ...prev, addressCountry: (e.target as HTMLInputElement).value }))}

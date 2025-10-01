@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'preact/hooks';
+import { useCallback } from 'preact/hooks';
 import { useNavigation } from '../../../utils/navigation';
+import { useLocation } from 'preact-iso';
 
 export interface UseSettingsNavigationReturn {
   currentPath: string;
@@ -15,11 +16,13 @@ export interface UseSettingsNavigationReturn {
 }
 
 export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
-  const [currentPath, setCurrentPath] = useState('/settings');
+  const location = useLocation();
   const { navigate } = useNavigation();
+  
+  // Derive currentPath from the actual router state
+  const currentPath = location.path;
 
   const navigateToSettings = useCallback((path: string = '/settings') => {
-    setCurrentPath(path);
     navigate(path);
   }, [navigate]);
 
@@ -52,13 +55,25 @@ export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
   }, [navigateToSettings]);
 
   const goBack = useCallback(() => {
-    // Simple back navigation - could be enhanced with history tracking
-    if (currentPath === '/settings') {
-      navigate('/');
-    } else {
-      navigate('/settings');
+    // Try to use browser history back navigation first
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
     }
-  }, [currentPath, navigate]);
+    
+    // Fallback: compute parent path when history is insufficient
+    const currentPath = location.path;
+    const pathSegments = currentPath.split('/').filter(Boolean);
+    
+    // Remove the last path segment to get parent path
+    if (pathSegments.length > 1) {
+      const parentPath = `/${pathSegments.slice(0, -1).join('/')}`;
+      navigate(parentPath);
+    } else {
+      // If we're at root level, navigate to home
+      navigate('/');
+    }
+  }, [location.path, navigate]);
 
   return {
     currentPath,

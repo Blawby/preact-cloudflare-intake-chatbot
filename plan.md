@@ -3,23 +3,24 @@
 ## Overview
 Implement a comprehensive settings page following modern mobile app patterns (ChatGPT-style) with responsive behavior for both desktop and mobile platforms.
 
-**Current Status**: Core settings components have been created and test credentials are configured for frontend testing. The project uses Better Auth with Drizzle schema and extends the user model using Better Auth's `additionalFields` option rather than building custom schema.
+**Current Status**: Core settings components have been created and integrated with the UserProfile component. The settings page now displays as a full-width slide-up overlay on both mobile and desktop, with proper animations and scrollbar handling. Team Management and Notifications features have been removed from the current scope as they are not supported today. Legal and Support items now link to external Blawby website pages.
 
-**Scope Note**: Team Management features are included in the current implementation scope, not deferred to future enhancements.
+**Scope Note**: Team Management and Notifications features have been removed from the current implementation scope as they are not supported today. The focus is on core account management, preferences, and security features.
 
 ## Design Approach
 
 ### Desktop Behavior
-- **Location**: Expandable section in left sidebar (similar to ChatGPT desktop)
+- **Location**: Full-width modal overlay with backdrop
 - **Trigger**: Click on user profile/account area in sidebar
-- **Layout**: Inline expansion within sidebar with scrollable content
-- **Width**: Constrained to sidebar width with proper overflow handling
+- **Layout**: Centered modal with space around edges, backdrop click to close
+- **Width**: Max-width with margins, content behind visible
+- **Animation**: Slide up from bottom with framer-motion
 
 ### Mobile Behavior  
 - **Location**: Full-screen drawer that slides up from bottom
-- **Trigger**: Tap account/profile button in bottom navigation
+- **Trigger**: Tap account/profile button in top navigation
 - **Layout**: Full-screen modal with drawer animation
-- **Navigation**: Native mobile patterns with back button
+- **Navigation**: X button in top right, backdrop click to close
 
 ## Technical Implementation
 
@@ -30,12 +31,10 @@ Implement a comprehensive settings page following modern mobile app patterns (Ch
 src/components/settings/
 ├── SettingsPage.tsx           # ✅ Main settings container (COMPLETED)
 ├── SettingsSection.tsx        # ✅ Reusable section component (COMPLETED)
-├── SettingsItem.tsx           # ✅ Individual setting row (COMPLETED)
+├── SettingsItem.tsx           # ✅ Individual setting row with external links (COMPLETED)
 ├── pages/
 │   ├── AccountPage.tsx        # ✅ Account/profile settings page (COMPLETED)
-│   ├── NotificationsPage.tsx  # ❌ Notification preferences page (PENDING)
 │   ├── SecurityPage.tsx       # ❌ Security settings page (PENDING)
-│   ├── TeamPage.tsx           # ❌ Team management page (PENDING)
 │   ├── PreferencesPage.tsx    # ❌ App preferences page (PENDING)
 │   ├── LegalPage.tsx          # ❌ Legal/terms page (PENDING)
 │   └── SupportPage.tsx        # ❌ Help/support page (PENDING)
@@ -43,16 +42,19 @@ src/components/settings/
     ├── useSettingsData.ts     # ✅ Settings data management (COMPLETED)
     ├── useSettingsNavigation.ts # ✅ Navigation logic (COMPLETED)
     └── useUserProfile.ts      # ✅ User profile API calls (COMPLETED)
+
+# REMOVED: NotificationsPage.tsx, TeamPage.tsx (not supported today)
+# UPDATED: Legal and Support now use external links to blawby.com
 ```
 
 #### Worker API Routes
 ```text
 worker/routes/
-├── user.ts                    # User profile management
-├── preferences.ts             # User preferences
-├── security.ts                # Security settings
 ├── teams.ts                   # Team management (existing)
 └── files.ts                   # File uploads (extend existing)
+
+# Note: User profile, preferences, and security are handled by Better Auth
+# No custom API routes needed for user data management
 ```
 
 ### Settings Sections
@@ -75,16 +77,9 @@ worker/routes/
     - Country
   - Preferred Contact Method (radio: email/phone/sms)
 
-- **Team & Organization**
-  - Current Team (display with change option)
-  - Team Settings (navigation to team management)
-  - Team Configuration (view/edit team config if user has permissions)
-
 - **Security**
   - Change Password (if email/password auth)
-  - Two-Factor Authentication (toggle)
   - Connected Accounts (Google OAuth status)
-  - Active Sessions (list with revoke option)
   - Account Deletion (danger action)
 
 #### PREFERENCES Section
@@ -92,12 +87,6 @@ worker/routes/
   - Theme (radio: Light/Dark/System)
   - Accent Color (color picker with presets)
   - Font Size (slider: Small/Medium/Large)
-
-- **Notifications**
-  - Email Notifications (toggle)
-  - Push Notifications (toggle)
-  - SMS Notifications (toggle)
-  - Notification Frequency (dropdown)
 
 - **Localization**
   - Language (dropdown with common options)
@@ -110,30 +99,17 @@ worker/routes/
   - Auto-save Conversations (toggle)
   - Typing Indicators (toggle)
 
-#### LEGAL Section
-- **Privacy & Data**
-  - Privacy Policy (navigation link)
-  - Terms of Service (navigation link)
-  - Data Export (action button)
-  - Data Deletion (action button)
-  - Cookie Preferences (navigation)
+#### LEGAL & SUPPORT Section
+- **Privacy Policy** (external link to https://blawby.com/privacy)
+- **Help & Support** (external link to https://blawby.com/help)
 
-- **Compliance**
-  - GDPR Settings (if applicable)
-  - Data Retention (display current policy)
+#### ACCOUNT ACTIONS Section
+- **Sign Out** (with loading state and danger styling)
 
-#### SUPPORT Section
-- **Help & Resources**
-  - Help Center (navigation link)
-  - FAQ (navigation link)
-  - Contact Support (action button)
-  - Feature Requests (navigation link)
-
-- **About**
-  - App Version (display)
-  - Build Number (display)
-  - Release Notes (navigation link)
-  - Open Source Licenses (navigation link)
+**REMOVED SECTIONS:**
+- **Team & Organization** - Not supported today
+- **Notifications** - Not supported today
+- **Legal/Support Pages** - Now external links to blawby.com
 
 ### Database Schema Updates
 
@@ -247,30 +223,20 @@ The project already has `worker/db/auth.schema.ts` with the basic Better Auth ta
   - `429 Too Many Requests` - Rate limit exceeded
 
 ```typescript
-// User profile management
-PUT /api/user/profile          # Update user profile data - Auth: Session token, RBAC: Owner only
-GET /api/user/profile          # Get user profile data - Auth: Session token, RBAC: Owner only
-
-// User preferences  
-PUT /api/user/preferences      # Update user preferences - Auth: Session token, RBAC: Owner only
-GET /api/user/preferences      # Get user preferences - Auth: Session token, RBAC: Owner only
-
-// Security settings
-PUT /api/user/security         # Update security settings - Auth: Session token, RBAC: Owner only
-GET /api/user/security         # Get security settings - Auth: Session token, RBAC: Owner only
-DELETE /api/user/sessions/:id  # Revoke specific session - Auth: Session token, RBAC: Owner only
+// User profile management - Handled by Better Auth
+// All user data (profile + preferences) managed via authClient.updateUser()
+// User data accessed via authClient.user or authClient.getSession()
 
 // Team management (existing endpoints)
 GET /api/teams/:id             # Get team details - Auth: Session token, RBAC: Team member
 PUT /api/teams/:id             # Update team config - Auth: Session token, RBAC: Team admin/owner
 
-// File uploads
+// File uploads (if needed)
 POST /api/user/upload-avatar   # Upload profile image - Auth: Session token, RBAC: Owner only
 DELETE /api/user/avatar        # Delete profile image - Auth: Session token, RBAC: Owner only
 
-// Data management
-GET /api/user/export-data      # Export user data (GDPR) - Auth: Session token, RBAC: Owner only
-DELETE /api/user/data          # Delete user data (GDPR) - Auth: Session token, RBAC: Owner only
+// Note: Security endpoints (sessions, 2FA, etc.) are handled by Better Auth built-in endpoints
+// Note: User preferences are stored in user.preferences JSON field, updated via authClient.updateUser()
 ```
 
 #### Preact Frontend Routes (`/settings/*`)
@@ -278,215 +244,79 @@ DELETE /api/user/data          # Delete user data (GDPR) - Auth: Session token, 
 
 ```typescript
 // Settings pages
-/settings                      # Main settings page
-/settings/notifications        # Notification preferences
+/settings                      # Main settings page (overlay)
 /settings/security             # Security settings
-/settings/team                 # Team management
 /settings/account              # Account details
 /settings/preferences          # App preferences
-/settings/legal                # Legal/terms
-/settings/support              # Help/support
+
+// REMOVED ROUTES (not supported today):
+// /settings/notifications        # Notification preferences
+// /settings/team                 # Team management
+// /settings/legal                # Legal/terms (now external link)
+// /settings/support              # Help/support (now external link)
 ```
 
 ### Responsive Behavior
 
 #### Desktop (≥768px)
-- **Container**: Left sidebar expansion
-- **Width**: 320px max-width within sidebar
-- **Height**: Full sidebar height with scroll
-- **Animation**: Smooth slide-in from left
-- **Close**: Click outside, escape key, or back button
+- **Container**: Full-width modal overlay with backdrop
+- **Width**: Max-width with margins (top-8 left-8 right-8 bottom-8 max-w-4xl mx-auto)
+- **Height**: Full height with margins, content behind visible
+- **Animation**: Slide up from bottom with framer-motion
+- **Close**: Click outside backdrop, escape key, or X button
 
 #### Mobile (<768px)  
 - **Container**: Full-screen drawer
-- **Width**: 100% viewport width
-- **Height**: 90% viewport height with handle
-- **Animation**: Slide up from bottom with spring
-- **Close**: Swipe down, tap outside, or back button
+- **Width**: 100% viewport width (inset-x-0 bottom-0 top-0)
+- **Height**: Full viewport height
+- **Animation**: Slide up from bottom with framer-motion
+- **Close**: Click outside backdrop, escape key, or X button
 
 ### Settings Item Types
 
 #### Display Items
-```tsx
-<SettingsItem
-  icon={<EnvelopeIcon />}
-  label="Email"
-  value="user@example.com"
-  type="display"
-/>
-```
+- **Purpose**: Show read-only information (email, app version, etc.)
+- **Implementation**: ✅ Completed in SettingsItem component
 
 #### Navigation Items
-```tsx
-<SettingsItem
-  icon={<BellIcon />}
-  label="Notifications"
-  type="navigation"
-  onClick={() => navigate('/settings/notifications')}
-/>
-```
+- **Purpose**: Navigate to other settings pages
+- **Implementation**: ✅ Completed with proper arrow alignment
 
 #### Toggle Items
-```tsx
-<SettingsItem
-  icon={<MoonIcon />}
-  label="Dark Mode"
-  type="toggle"
-  value={isDarkMode}
-  onChange={setIsDarkMode}
-/>
-```
+- **Purpose**: Boolean settings (dark mode, notifications, etc.)
+- **Implementation**: ✅ Completed in SettingsItem component
 
 #### Input Items
-```tsx
-<SettingsItem
-  icon={<PhoneIcon />}
-  label="Phone Number"
-  type="input"
-  value={phoneNumber}
-  onChange={setPhoneNumber}
-  placeholder="+1 (555) 123-4567"
-/>
-```
+- **Purpose**: Text input fields (phone, address, etc.)
+- **Implementation**: ✅ Completed in SettingsItem component
 
 #### Action Items
-```tsx
-<SettingsItem
-  icon={<ArrowRightOnRectangleIcon />}
-  label="Sign Out"
-  type="action"
-  onClick={handleSignOut}
-  variant="danger"
-/>
-```
+- **Purpose**: Perform actions (sign out, delete account, etc.)
+- **Implementation**: ✅ Completed with loading states and danger variants
+
+#### External Link Items
+- **Purpose**: Link to external websites (privacy policy, help, etc.)
+- **Implementation**: ✅ Completed with external link icon and proper attributes
 
 ### Integration Points
 
 #### UserProfile Component Updates
-```tsx
-// Desktop: Expand settings in sidebar
-const [showSettings, setShowSettings] = useState(false);
-
-// Mobile: Navigate to full-screen settings
-const handleSettingsClick = () => {
-  if (isMobile) {
-    navigate('/settings');
-  } else {
-    setShowSettings(!showSettings);
-  }
-};
-```
+- **Implementation**: ✅ Completed - Settings overlay with framer-motion animations
+- **Features**: Backdrop click to close, escape key support, proper z-index layering
+- **Responsive**: Full-screen on mobile, centered modal on desktop
 
 #### Navigation Integration
 
 **Preact Router Setup:**
-```tsx
-// In src/index.tsx - Add settings routes to existing router
-<Router>
-  <Route path="/auth" component={AuthPageWrapper} />
-  <Route path="/settings" component={SettingsPage} />
-  <Route path="/settings/notifications" component={NotificationsPage} />
-  <Route path="/settings/security" component={SecurityPage} />
-  <Route path="/settings/team" component={TeamSettingsPage} />
-  <Route path="/settings/account" component={AccountPage} />
-  <Route path="/settings/preferences" component={PreferencesPage} />
-  <Route path="/settings/legal" component={LegalPage} />
-  <Route path="/settings/support" component={SupportPage} />
-  <Route default component={MainApp} />
-</Router>
-```
+- **Implementation**: ✅ Completed - Settings routes added to existing router
+- **Active Routes**: `/settings`, `/settings/security`, `/settings/account`, `/settings/preferences`
+- **Removed Routes**: Notifications, Team, Legal, Support (not supported today)
 
 **Worker API Integration:**
-```tsx
-// In settings components - Use Better Auth's built-in user update methods
-const updateProfile = async (profileData) => {
-  try {
-    // Use Better Auth's built-in user update functionality
-    // Better Auth handles authentication and user updates automatically
-    const result = await authClient.updateUser(profileData);
-    
-    if (result.error) {
-      throw new Error(result.error.message || 'Failed to update profile');
-    }
-    
-    return result.data;
-  } catch (error) {
-    // SECURITY: Sanitize profile data to prevent PII exposure in logs
-    const sanitizedLog = createProfileErrorLog(error, profileData, {
-      endpoint: 'authClient.updateUser',
-      method: 'Better Auth Client'
-    });
-    
-    console.error('Failed to update profile:', sanitizedLog);
-    
-    // Re-throw the error so callers can handle it appropriately
-    throw error;
-  }
-};
-
-// For user preferences (stored in user.preferences JSON field)
-const updatePreferences = async (preferencesData) => {
-  try {
-    // Update preferences using Better Auth's updateUser method
-    // Preferences are stored in the user.preferences JSON field
-    const result = await authClient.updateUser({
-      preferences: preferencesData
-    });
-    
-    if (result.error) {
-      throw new Error(result.error.message || 'Failed to update preferences');
-    }
-    
-    return result.data;
-  } catch (error) {
-    console.error('Failed to update preferences:', error);
-    throw error;
-  }
-};
-
-// Helper function to sanitize profile data for logging
-function createProfileErrorLog(error, profileData, additionalContext = {}) {
-  const sensitiveFields = ['email', 'phone', 'secondary_phone', 'address_street', 'address_city', 'address_state', 'address_zip', 'image'];
-  
-  const sanitized = {};
-  const metadata = {
-    hasEmail: false,
-    hasPhone: false,
-    hasAddress: false,
-    fieldCount: 0,
-    sensitiveFieldCount: 0
-  };
-  
-  if (profileData && typeof profileData === 'object') {
-    for (const [key, value] of Object.entries(profileData)) {
-      metadata.fieldCount++;
-      
-      if (sensitiveFields.includes(key)) {
-        metadata.sensitiveFieldCount++;
-        sanitized[key] = '[REDACTED]';
-        
-        // Set presence flags
-        if (key === 'email' && value) metadata.hasEmail = true;
-        if (key === 'phone' && value) metadata.hasPhone = true;
-        if (key.startsWith('address_') && value) metadata.hasAddress = true;
-      } else {
-        // Non-sensitive fields can be included (with length limits)
-        sanitized[key] = typeof value === 'string' && value.length > 100 
-          ? value.substring(0, 100) + '...' 
-          : value;
-      }
-    }
-  }
-  
-  return {
-    error: error.message,
-    timestamp: new Date().toISOString(),
-    profileMetadata: metadata,
-    sanitizedProfile: sanitized,
-    ...additionalContext
-  };
-}
-```
+- **Implementation**: ✅ Completed - Using Better Auth's built-in user update methods
+- **Profile Updates**: `authClient.updateUser()` for all user data including preferences
+- **Security**: PII sanitization in error logs, proper error handling
+- **Preferences**: Stored in user.preferences JSON field via Better Auth
 
 ### Accessibility Features
 
@@ -519,10 +349,14 @@ function createProfileErrorLog(error, profileData, additionalContext = {}) {
 ### Phase 1: Core Infrastructure (Week 1) - **COMPLETED**
 **Frontend (Preact):**
 - [x] Create SettingsPage component with responsive behavior
-- [x] Implement SettingsSection and SettingsItem components
+- [x] Implement SettingsSection and SettingsItem components with external link support
 - [x] Add settings routes to preact-iso router
 - [x] Create useSettingsData and useUserProfile hooks
-- [x] Integrate with existing UserProfile component
+- [x] Integrate with existing UserProfile component as overlay
+- [x] Implement framer-motion animations for slide-up behavior
+- [x] Add proper scrollbar handling and backdrop functionality
+- [x] Remove unsupported Team and Notifications features
+- [x] Convert Legal and Support to external links to blawby.com
 
 **Backend (Worker API):**
 - [ ] Extend Better Auth user model with additionalFields in worker/auth/index.ts
@@ -535,13 +369,10 @@ function createProfileErrorLog(error, profileData, additionalContext = {}) {
 - [x] Set up TEST_USER_EMAIL, TEST_USER_PASSWORD, TEST_USER_NAME for frontend testing
 
 **Testing & Quality Assurance:**
-- [ ] Set up CI/CD pipeline with automated test runs on feature branches and PRs
-- [ ] Write unit tests for SettingsPage, SettingsSection, and SettingsItem components
-- [ ] Write unit tests for useSettingsData and useUserProfile hooks
-- [ ] Create integration tests for new API routes (user.ts, preferences.ts)
-- [ ] Set up test coverage targets (minimum 80% for new code)
-- [ ] Add database migration tests for schema updates
-- [ ] Implement automated accessibility testing for new components
+- [ ] Manual testing using test credentials (TEST_USER_EMAIL, TEST_USER_PASSWORD, TEST_USER_NAME)
+- [ ] Browser testing for responsive behavior and user interactions
+- [ ] cURL testing for Better Auth user update functionality
+- [ ] Manual accessibility testing with keyboard navigation and screen readers
 
 ### Phase 2: Account Settings (Week 2) - **IN PROGRESS**
 **Frontend (Preact):**
@@ -552,19 +383,18 @@ function createProfileErrorLog(error, profileData, additionalContext = {}) {
 - [ ] Profile image upload UI
 
 **Backend (Worker API):**
-- [ ] Use Better Auth's built-in user update functionality (no custom endpoint needed)
-- [ ] Add profile image upload to files.ts
+- [ ] Use Better Auth's built-in user update functionality (no custom endpoints needed)
+- [ ] Add profile image upload to files.ts (if needed)
 - [ ] Update useUserProfile hook to handle preferences JSON field properly
 - [ ] Add input validation and sanitization for user data
 
 **Testing & Quality Assurance:**
-- [ ] Write unit tests for AccountPage component and form validation logic
-- [ ] Create integration tests for frontend-backend API contracts (PUT /api/user/profile)
-- [ ] Test form validation with various input scenarios (valid/invalid data)
-- [ ] Write tests for profile image upload functionality and error handling
-- [ ] Add automated UI tests for form interactions and user flows
-- [ ] Test responsive behavior of account settings on mobile and desktop
-- [ ] Validate input sanitization and XSS prevention measures
+- [ ] Manual testing of AccountPage component with test credentials
+- [ ] cURL testing for Better Auth user update functionality
+- [ ] Browser testing for form validation with various input scenarios
+- [ ] Manual testing of profile image upload functionality
+- [ ] Browser testing for responsive behavior on mobile and desktop
+- [ ] Manual validation of input sanitization and XSS prevention
 
 ### Phase 3: Preferences (Week 3)
 **Frontend (Preact):**
@@ -575,46 +405,38 @@ function createProfileErrorLog(error, profileData, additionalContext = {}) {
 - [ ] Chat preferences toggles
 
 **Backend (Worker API):**
-- [ ] Implement PUT /api/user/preferences endpoint
-- [ ] Add preferences validation
-- [ ] Implement persistence and synchronization
-- [ ] Add caching for preferences
+- [ ] Use Better Auth's built-in user update functionality for preferences (no custom endpoint needed)
+- [ ] Add preferences validation in useUserProfile hook
+- [ ] Implement persistence and synchronization via authClient.updateUser()
+- [ ] Add caching for preferences in frontend
 
 **Testing & Quality Assurance:**
-- [ ] Write unit tests for PreferencesPage component and all preference controls
-- [ ] Test theme switching functionality and persistence across sessions
-- [ ] Create accessibility tests for all preference controls (keyboard navigation, screen readers)
-- [ ] Write integration tests for preferences API endpoint and data persistence
-- [ ] Test notification preference changes and their real-time effects
-- [ ] Add automated UI tests for dropdown interactions and toggle behaviors
-- [ ] Validate localization settings and timezone handling
-- [ ] Test preference caching and synchronization across devices
+- [ ] Manual testing of PreferencesPage component with test credentials
+- [ ] Browser testing for theme switching functionality and persistence
+- [ ] Manual accessibility testing for preference controls (keyboard navigation, screen readers)
+- [ ] cURL testing for Better Auth preferences update functionality
+- [ ] Browser testing for notification preference changes and real-time effects
+- [ ] Manual testing of dropdown interactions and toggle behaviors
+- [ ] Browser testing for localization settings and timezone handling
+- [ ] Manual testing of preference caching and synchronization
 
 ### Phase 4: Security & Advanced (Week 4)
 **Frontend (Preact):**
 - [ ] Create SecurityPage component
-- [ ] Session management UI
-- [ ] Two-factor authentication setup
-- [ ] Data export/deletion interfaces
-- [ ] Legal and support pages
+- [ ] Legal and support pages (simple links to blawby.com)
 
 **Backend (Worker API):**
-- [ ] Create security.ts route handler
-- [ ] Implement session management endpoints
-- [ ] Add two-factor authentication support
-- [ ] Implement data export/deletion (GDPR)
-- [ ] Add security audit logging
+- [ ] Use Better Auth's built-in security endpoints (password change, account deletion)
+- [ ] Add security audit logging if needed
 
 **Testing & Quality Assurance:**
-- [ ] Write unit tests for SecurityPage component and session management UI
-- [ ] Conduct security testing and penetration testing for all new endpoints
-- [ ] Test two-factor authentication flow and security measures
-- [ ] Write integration tests for session management and token handling
-- [ ] Test data export/deletion functionality and GDPR compliance
-- [ ] Validate security audit logging and monitoring
-- [ ] Perform input validation testing for security vulnerabilities
-- [ ] Test rate limiting and CSRF protection mechanisms
-- [ ] Conduct automated security scanning of API endpoints
+- [ ] Manual testing of SecurityPage component with test credentials
+- [ ] cURL testing for Better Auth security endpoints
+- [ ] Browser testing for password change and account deletion functionality
+- [ ] Manual testing of Better Auth security features
+- [ ] Manual validation of security audit logging and monitoring
+- [ ] Manual input validation testing for security vulnerabilities
+- [ ] cURL testing for rate limiting and CSRF protection mechanisms
 
 ### Phase 5: Final Integration & Performance (Week 5)
 **Frontend (Preact):**
@@ -630,40 +452,33 @@ function createProfileErrorLog(error, profileData, additionalContext = {}) {
 - [ ] Documentation completion and API documentation
 
 **Testing & Quality Assurance:**
-- [ ] Comprehensive end-to-end testing of complete settings workflow
-- [ ] Performance testing and optimization validation
+- [ ] Manual end-to-end testing of complete settings workflow with test credentials
+- [ ] Browser performance testing and optimization validation
 - [ ] Cross-browser and cross-device compatibility testing
-- [ ] Final test coverage analysis and gap identification
+- [ ] Final manual testing and gap identification
 - [ ] User acceptance testing and feedback incorporation
 - [ ] Production readiness assessment and deployment validation
 
-## Continuous Test Automation
+## Testing Strategy
 
-### CI/CD Pipeline Integration
-**Automated Test Execution:**
-- **Feature Branches**: All tests run automatically on every push to feature branches
-- **Pull Requests**: Full test suite executes before PR merge approval
-- **Main Branch**: Comprehensive testing including integration and performance tests
-- **Test Failures**: Block merge/deployment until all tests pass
+### Manual Testing Approach
+**Test Credentials Usage:**
+- **Development Testing**: Use configured test credentials (TEST_USER_EMAIL, TEST_USER_PASSWORD, TEST_USER_NAME)
+- **Browser Testing**: Manual testing across different browsers and devices
+- **cURL Testing**: API endpoint testing using command line tools
 
-**Test Coverage Requirements:**
-- **Minimum Coverage**: 80% code coverage for all new code
-- **Coverage Reporting**: Automated coverage reports generated for each PR
-- **Coverage Trends**: Track coverage trends over time to prevent regression
-- **Critical Paths**: 100% coverage required for authentication, security, and data handling
+**Testing Focus Areas:**
+- **User Authentication**: Test login/logout with test credentials
+- **Settings Functionality**: Manual testing of all settings pages and features
+- **Responsive Design**: Browser testing on mobile and desktop viewports
+- **Accessibility**: Manual keyboard navigation and screen reader testing
+- **Performance**: Browser dev tools for performance monitoring
 
-**Test Types by Environment:**
-- **Unit Tests**: Run on every commit (fast feedback loop)
-- **Integration Tests**: Run on PR creation and main branch updates
-- **E2E Tests**: Run on main branch and before production deployments
-- **Security Tests**: Run on PR creation and scheduled daily scans
-- **Performance Tests**: Run on main branch and before major releases
-
-**Quality Gates:**
+**Quality Assurance:**
 - **Code Quality**: ESLint, TypeScript compilation, and code formatting checks
-- **Security**: Automated vulnerability scanning and dependency checks
-- **Accessibility**: Automated accessibility testing with axe-core
-- **Performance**: Bundle size analysis and performance regression detection
+- **Security**: Manual security testing and Better Auth endpoint validation
+- **Accessibility**: Manual accessibility testing with keyboard and screen readers
+- **Performance**: Browser performance monitoring and optimization
 
 ## Success Metrics
 
@@ -673,9 +488,43 @@ function createProfileErrorLog(error, profileData, additionalContext = {}) {
 - **Mobile Experience**: Touch interaction quality and gesture support
 - **Data Quality**: Profile completion rates and data accuracy
 
+## Current Implementation Status
+
+### ✅ **COMPLETED FEATURES**
+- **Settings Overlay**: Full-width slide-up overlay on both mobile and desktop
+- **Framer Motion Animations**: Smooth slide-up/down animations with custom easing
+- **Responsive Design**: Different layouts for mobile (full-screen) and desktop (centered modal)
+- **Backdrop Functionality**: Click outside to close, escape key support
+- **Scrollbar Handling**: Proper body scroll locking when overlay is open
+- **External Links**: Privacy Policy and Help & Support link to blawby.com
+- **Sign Out Integration**: Sign out functionality with loading states
+- **Icon Alignment**: Consistent navigation arrows and external link icons
+- **Z-Index Management**: Proper layering above other UI elements
+
+### ❌ **REMOVED FEATURES (Not Supported Today)**
+- **Team Management**: Team settings and member management
+- **Notifications**: Email, push, and SMS notification preferences
+- **Legal/Support Pages**: Now external links instead of internal pages
+
+### 🔄 **CURRENT SETTINGS STRUCTURE**
+1. **Account Section**: Profile (navigates to account settings)
+2. **Preferences Section**: App Preferences (navigates to preferences settings)  
+3. **Security Section**: Security Settings (navigates to security settings)
+4. **Legal & Support Section**: Privacy Policy and Help & Support (external links)
+5. **Account Actions Section**: Sign Out (with loading state and danger styling)
+
+### 🚧 **PENDING IMPLEMENTATION**
+- Account settings page functionality
+- Preferences page functionality  
+- Security settings page functionality
+- Backend user model extensions
+- Profile image upload functionality
+
 ## Future Enhancements
 
 - **Advanced Profile Customization**: Custom themes, layouts
 - **Integration Settings**: Third-party service connections
 - **Analytics Dashboard**: User activity and usage insights
 - **Bulk Operations**: Mass data import/export capabilities
+- **Team Management**: When team functionality is implemented
+- **Notification System**: When notification infrastructure is built

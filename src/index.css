@@ -11,6 +11,21 @@
     @apply min-h-screen m-0;
   }
 
+  /* Hide scrollbars when modal is open */
+  body.modal-open .overflow-y-auto,
+  body.modal-open .overflow-auto {
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+  }
+
+  body.modal-open .overflow-y-auto::-webkit-scrollbar,
+  body.modal-open .overflow-auto::-webkit-scrollbar {
+    display: none;
+    /* Safari and Chrome */
+  }
+
   /* Mobile viewport handling */
   @media (max-width: 768px) {
     .h-screen {

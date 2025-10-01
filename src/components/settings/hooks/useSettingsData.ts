@@ -16,6 +16,12 @@ export interface UserPreferences {
   typingIndicators: boolean;
 }
 
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 export interface UseSettingsDataReturn {
   preferences: UserPreferences | null;
   loading: boolean;
@@ -46,16 +52,15 @@ export const useSettingsData = (): UseSettingsDataReturn => {
         throw new Error(`Failed to fetch preferences: ${response.status} ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<UserPreferences>;
       if (!result.success) {
         throw new Error(result.error || 'Failed to fetch preferences');
       }
 
-      setPreferences(result.data);
+      setPreferences(result.data || null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch preferences';
       setError(errorMessage);
-      console.error('Error fetching user preferences:', err);
     } finally {
       setLoading(false);
     }
@@ -63,6 +68,7 @@ export const useSettingsData = (): UseSettingsDataReturn => {
 
   const updatePreferences = useCallback(async (data: Partial<UserPreferences>) => {
     try {
+      setLoading(true);
       setError(null);
 
       const response = await fetch('/api/user/preferences', {
@@ -78,17 +84,18 @@ export const useSettingsData = (): UseSettingsDataReturn => {
         throw new Error(`Failed to update preferences: ${response.status} ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<UserPreferences>;
       if (!result.success) {
         throw new Error(result.error || 'Failed to update preferences');
       }
 
-      setPreferences(result.data);
+      setPreferences(result.data || null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update preferences';
       setError(errorMessage);
-      console.error('Error updating user preferences:', err);
       throw err; // Re-throw so the caller can handle it
+    } finally {
+      setLoading(false);
     }
   }, []);
 

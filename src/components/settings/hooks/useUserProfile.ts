@@ -1,5 +1,95 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { authClient } from '../../../lib/authClient';
+
+// Better Auth session user type (what we get from authClient.getSession())
+interface BetterAuthUser {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  teamId?: string | null;
+  role?: string | null;
+  phone?: string | null;
+}
+
+// Type guard to validate Better Auth user has required fields
+function isValidBetterAuthUser(user: unknown): user is BetterAuthUser {
+  return (
+    user !== null &&
+    typeof user === 'object' &&
+    'id' in user &&
+    'name' in user &&
+    'email' in user &&
+    typeof (user as Record<string, unknown>).id === 'string' &&
+    typeof (user as Record<string, unknown>).name === 'string' &&
+    typeof (user as Record<string, unknown>).email === 'string' &&
+    ((user as Record<string, unknown>).createdAt === undefined || 
+     (user as Record<string, unknown>).createdAt instanceof Date || 
+     typeof (user as Record<string, unknown>).createdAt === 'string') &&
+    ((user as Record<string, unknown>).updatedAt === undefined || 
+     (user as Record<string, unknown>).updatedAt instanceof Date || 
+     typeof (user as Record<string, unknown>).updatedAt === 'string')
+  );
+}
+
+// Safe mapper function to convert Better Auth user to UserProfile
+function mapBetterAuthUserToProfile(authUser: BetterAuthUser): UserProfile {
+  // Convert timestamps to ISO strings if they're Date objects
+  const createdAt = authUser.createdAt instanceof Date 
+    ? authUser.createdAt.toISOString() 
+    : authUser.createdAt || new Date().toISOString();
+  
+  const updatedAt = authUser.updatedAt instanceof Date 
+    ? authUser.updatedAt.toISOString() 
+    : authUser.updatedAt || new Date().toISOString();
+
+  return {
+    // Required fields from Better Auth
+    id: authUser.id,
+    name: authUser.name,
+    email: authUser.email,
+    createdAt,
+    updatedAt,
+    
+    // Optional fields from Better Auth
+    image: authUser.image || null,
+    teamId: authUser.teamId || null,
+    role: authUser.role || null,
+    phone: authUser.phone || null,
+    
+    // Profile Information - defaults for fields not in Better Auth
+    bio: null,
+    addressStreet: null,
+    addressCity: null,
+    addressState: null,
+    addressZip: null,
+    addressCountry: null,
+    secondaryPhone: null,
+    preferredContactMethod: null,
+    
+    // App Preferences - sensible defaults
+    theme: 'system',
+    accentColor: 'blue',
+    fontSize: 'medium',
+    language: 'en',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    dateFormat: 'MM/DD/YYYY',
+    timeFormat: '12h',
+    
+    // Notification Preferences - sensible defaults
+    emailNotifications: true,
+    pushNotifications: true,
+    smsNotifications: false,
+    notificationFrequency: 'immediate',
+    
+    // Chat Preferences - sensible defaults
+    autoSaveConversations: true,
+    typingIndicators: true,
+  };
+}
 
 export interface UserProfile {
   id: string;
@@ -81,6 +171,7 @@ export const useUserProfile = (): UseUserProfileReturn => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentAvatarObjectUrl = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -93,12 +184,16 @@ export const useUserProfile = (): UseUserProfileReturn => {
         throw new Error('Not authenticated');
       }
 
-      // Use the user data directly from Better Auth session
-      setProfile(session.data.user as UserProfile);
+      // Validate and safely map the Better Auth user to UserProfile
+      if (!isValidBetterAuthUser(session.data.user)) {
+        throw new Error('Invalid user data received from authentication service');
+      }
+
+      const mappedProfile = mapBetterAuthUserToProfile(session.data.user);
+      setProfile(mappedProfile);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile';
       setError(errorMessage);
-      console.error('Error fetching user profile:', err);
     } finally {
       setLoading(false);
     }
@@ -111,31 +206,39 @@ export const useUserProfile = (): UseUserProfileReturn => {
       // For now, just update the local state
       // TODO: Implement proper profile updates using Better Auth's built-in endpoints
       setProfile(prev => prev ? { ...prev, ...data } : null);
-      
-      // TODO: Add actual API call to update profile in database
-      console.log('Profile update requested:', data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';
       setError(errorMessage);
-      console.error('Error updating user profile:', err);
       throw err; // Re-throw so the caller can handle it
     }
   }, []);
 
   const uploadAvatar = useCallback(async (file: File) => {
+    let newAvatarUrl: string | null = null;
+    
     try {
       setError(null);
 
+      // Revoke the previous object URL if it exists
+      if (currentAvatarObjectUrl.current) {
+        URL.revokeObjectURL(currentAvatarObjectUrl.current);
+        currentAvatarObjectUrl.current = null;
+      }
+
       // For now, just create a local URL for the avatar
       // TODO: Implement proper avatar upload using Better Auth's built-in endpoints
-      const avatarUrl = URL.createObjectURL(file);
-      setProfile(prev => prev ? { ...prev, image: avatarUrl } : null);
-      
-      console.log('Avatar upload requested:', file.name);
+      newAvatarUrl = URL.createObjectURL(file);
+      currentAvatarObjectUrl.current = newAvatarUrl;
+      setProfile(prev => prev ? { ...prev, image: newAvatarUrl } : null);
     } catch (err) {
+      // Revoke the object URL if it was created but an error occurred
+      if (newAvatarUrl) {
+        URL.revokeObjectURL(newAvatarUrl);
+        currentAvatarObjectUrl.current = null;
+      }
+      
       const errorMessage = err instanceof Error ? err.message : 'Failed to upload avatar';
       setError(errorMessage);
-      console.error('Error uploading avatar:', err);
       throw err; // Re-throw so the caller can handle it
     }
   }, []);
@@ -144,18 +247,26 @@ export const useUserProfile = (): UseUserProfileReturn => {
     try {
       setError(null);
 
+      // Revoke the current object URL if it exists
+      if (currentAvatarObjectUrl.current) {
+        URL.revokeObjectURL(currentAvatarObjectUrl.current);
+        currentAvatarObjectUrl.current = null;
+      }
+
+      // Check if the current profile image is an object URL and revoke it
+      if (profile?.image && (profile.image.startsWith('blob:') || profile.image.startsWith('data:'))) {
+        URL.revokeObjectURL(profile.image);
+      }
+
       // For now, just remove the avatar from local state
       // TODO: Implement proper avatar deletion using Better Auth's built-in endpoints
       setProfile(prev => prev ? { ...prev, image: null } : null);
-      
-      console.log('Avatar deletion requested');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete avatar';
       setError(errorMessage);
-      console.error('Error deleting avatar:', err);
       throw err; // Re-throw so the caller can handle it
     }
-  }, []);
+  }, [profile?.image]);
 
   const refetch = useCallback(async () => {
     await fetchProfile();
@@ -164,6 +275,16 @@ export const useUserProfile = (): UseUserProfileReturn => {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Cleanup object URL on component unmount
+  useEffect(() => {
+    return () => {
+      if (currentAvatarObjectUrl.current) {
+        URL.revokeObjectURL(currentAvatarObjectUrl.current);
+        currentAvatarObjectUrl.current = null;
+      }
+    };
+  }, []);
 
   return {
     profile,
