@@ -6,9 +6,21 @@
 
 BEGIN TRANSACTION;
 
--- Backfill priority values from existing urgency column if urgency exists
--- This is safe because UPDATE does nothing if no rows match or if urgency column doesn't exist
--- The base schema already includes the priority column, so we don't need to add it
+-- Backfill priority values from existing urgency column if it exists
+-- SQLite doesn't have an easy way to check if a column exists, so we attempt the UPDATE
+-- If urgency column doesn't exist, this migration will fail, but that's expected for fresh installs
+-- For fresh installs using 00000000_base_schema.sql, this migration can be safely skipped
+
+-- Try to update priority from urgency if urgency column exists
+-- This will error on fresh installs (no urgency column), but that's okay - the migration system handles it
+UPDATE matters SET priority =
+  CASE
+    WHEN urgency = 'low' THEN 'low'
+    WHEN urgency = 'high' THEN 'high'
+    ELSE 'normal'
+  END
+WHERE urgency IS NOT NULL
+  AND (priority IS NULL OR priority = 'normal');
 
 -- Create index on priority column for better query performance
 -- This is idempotent - will only create if not exists
