@@ -19,7 +19,7 @@ const MobileUserProfile = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
-  const { navigateToAuth } = useNavigation();
+  const { navigate, navigateToAuth } = useNavigation();
 
   useEffect(() => {
     checkAuthStatus();
@@ -138,7 +138,7 @@ const MobileUserProfile = () => {
               <button
                 onClick={() => {
                   setShowProfile(false);
-                  // You can implement settings functionality here
+                  navigate('/settings');
                 }}
                 className="flex items-center w-full gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
               >

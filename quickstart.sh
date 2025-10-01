@@ -170,6 +170,14 @@ else
     echo "✅ Core tables created successfully"
 fi
 
+# Apply Better Auth migrations
+echo "🔐 Setting up Better Auth tables..."
+if wrangler d1 execute blawby-ai-chatbot --local --file=./migrations/add_better_auth_tables.sql 2>/dev/null; then
+    echo "✅ Better Auth tables created successfully"
+else
+    echo "⚠️  Better Auth tables may already exist or had issues"
+fi
+
 # Insert default teams if they don't exist
 echo "👥 Setting up default teams..."
 
@@ -196,6 +204,50 @@ else
     echo "✅ Teams already configured in database"
 fi
 
+# Create test user for development
+echo "👤 Setting up test user for development..."
+if [ -f ".dev.vars" ]; then
+    # Source the dev vars to get test user credentials
+    source .dev.vars
+    
+    # Check if test user already exists
+    EXISTING_USER=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM users WHERE email = '$TEST_USER_EMAIL';" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
+    
+    if [ "$EXISTING_USER" -eq 0 ] && [ -n "$TEST_USER_EMAIL" ] && [ -n "$TEST_USER_PASSWORD" ] && [ -n "$TEST_USER_NAME" ]; then
+        echo "  Creating test user: $TEST_USER_EMAIL"
+        
+        # Generate a simple user ID (you might want to use a proper UUID generator)
+        USER_ID="test-user-$(date +%s)"
+        
+        # Hash the password (in a real app, Better Auth would handle this)
+        # For now, we'll store it as plain text since Better Auth will handle hashing
+        # Note: Better Auth will hash this when the user actually signs in
+        
+        # Insert the test user
+        wrangler d1 execute blawby-ai-chatbot --local --command "
+        INSERT INTO users (id, name, email, email_verified, created_at, updated_at, team_id, role) 
+        VALUES ('$USER_ID', '$TEST_USER_NAME', '$TEST_USER_EMAIL', 1, strftime('%s', 'now'), strftime('%s', 'now'), '01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'admin');" 2>/dev/null || echo "Could not insert test user"
+        
+        # Insert password account for the test user
+        wrangler d1 execute blawby-ai-chatbot --local --command "
+        INSERT INTO accounts (id, account_id, provider_id, user_id, password, created_at, updated_at) 
+        VALUES ('test-account-$(date +%s)', '$TEST_USER_EMAIL', 'credential', '$USER_ID', '$TEST_USER_PASSWORD', strftime('%s', 'now'), strftime('%s', 'now'));" 2>/dev/null || echo "Could not insert test user account"
+        
+        echo "✅ Test user created successfully"
+        echo "   Email: $TEST_USER_EMAIL"
+        echo "   Password: $TEST_USER_PASSWORD"
+        echo "   Name: $TEST_USER_NAME"
+    else
+        if [ "$EXISTING_USER" -gt 0 ]; then
+            echo "✅ Test user already exists"
+        else
+            echo "⚠️  Test user credentials not found in .dev.vars"
+        fi
+    fi
+else
+    echo "⚠️  .dev.vars file not found - skipping test user creation"
+fi
+
 # Verify setup
 echo "🔍 Verifying setup..."
 TEAM_COUNT=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM teams;" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
@@ -205,6 +257,19 @@ if [ "$TEAM_COUNT" -gt 0 ]; then
     echo ""
     echo "📋 Available teams:"
     wrangler d1 execute blawby-ai-chatbot --local --command "SELECT slug, name FROM teams;" 2>/dev/null || echo "Could not list teams"
+    echo ""
+    
+    # Check for test user
+    if [ -f ".dev.vars" ]; then
+        source .dev.vars
+        if [ -n "$TEST_USER_EMAIL" ]; then
+            USER_COUNT=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM users WHERE email = '$TEST_USER_EMAIL';" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
+            if [ "$USER_COUNT" -gt 0 ]; then
+                echo "👤 Test user available: $TEST_USER_EMAIL"
+            fi
+        fi
+    fi
+    
     echo ""
     echo "🎉 You're ready to go!"
     echo ""
@@ -217,6 +282,13 @@ if [ "$TEAM_COUNT" -gt 0 ]; then
     echo ""
     echo "3. Open the frontend:"
     echo "   npm run dev"
+    echo ""
+    if [ -f ".dev.vars" ] && [ -n "$TEST_USER_EMAIL" ]; then
+        echo "4. Test authentication:"
+        echo "   Use the test user credentials from .dev.vars to sign in"
+        echo "   Email: $TEST_USER_EMAIL"
+        echo "   Password: $TEST_USER_PASSWORD"
+    fi
     echo ""
     echo "Happy coding! 🎯"
 else

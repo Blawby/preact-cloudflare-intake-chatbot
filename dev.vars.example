@@ -16,6 +16,13 @@ BETTER_AUTH_URL=http://localhost:8787
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 
+# Test User Configuration (Development Only)
+# These credentials are used for testing authenticated pages in development
+# NOTE: These are fake credentials for testing only - do not use real credentials
+TEST_USER_EMAIL=dev-test-user@fake-test-domain.invalid
+TEST_USER_PASSWORD=dev-test-password-123-fake
+TEST_USER_NAME=Dev Test User
+
 # Debug Configuration
 VITE_DEBUG_OVERLAY=false
 

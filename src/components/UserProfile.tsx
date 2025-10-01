@@ -25,7 +25,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
   const [showProfile, setShowProfile] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { navigateToAuth, navigateToHome } = useNavigation();
+  const { navigateToAuth, navigateToHome, navigate } = useNavigation();
 
   useEffect(() => {
     checkAuthStatus();
@@ -203,7 +203,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
               <button
                 onClick={() => {
                   setShowProfile(false);
-                  // You can implement settings functionality here
+                  navigate('/settings');
                 }}
                 className="flex items-center w-full gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
                 role="menuitem"
@@ -229,6 +229,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
           </div>
         )}
       </div>
+
     </div>
   );
 };

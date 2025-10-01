@@ -3,6 +3,8 @@
 ## Overview
 Implement a comprehensive settings page following modern mobile app patterns (ChatGPT-style) with responsive behavior for both desktop and mobile platforms.
 
+**Current Status**: Core settings components have been created and test credentials are configured for frontend testing. The project uses Better Auth with Drizzle schema and extends the user model using Better Auth's `additionalFields` option rather than building custom schema.
+
 **Scope Note**: Team Management features are included in the current implementation scope, not deferred to future enhancements.
 
 ## Design Approach
@@ -23,24 +25,24 @@ Implement a comprehensive settings page following modern mobile app patterns (Ch
 
 ### Component Structure
 
-#### Frontend Components (Preact)
+#### Frontend Components (Preact) - **COMPLETED**
 ```text
 src/components/settings/
-├── SettingsPage.tsx           # Main settings container
-├── SettingsSection.tsx        # Reusable section component  
-├── SettingsItem.tsx           # Individual setting row
+├── SettingsPage.tsx           # ✅ Main settings container (COMPLETED)
+├── SettingsSection.tsx        # ✅ Reusable section component (COMPLETED)
+├── SettingsItem.tsx           # ✅ Individual setting row (COMPLETED)
 ├── pages/
-│   ├── AccountPage.tsx        # Account/profile settings page
-│   ├── NotificationsPage.tsx  # Notification preferences page
-│   ├── SecurityPage.tsx       # Security settings page
-│   ├── TeamPage.tsx           # Team management page
-│   ├── PreferencesPage.tsx    # App preferences page
-│   ├── LegalPage.tsx          # Legal/terms page
-│   └── SupportPage.tsx        # Help/support page
+│   ├── AccountPage.tsx        # ✅ Account/profile settings page (COMPLETED)
+│   ├── NotificationsPage.tsx  # ❌ Notification preferences page (PENDING)
+│   ├── SecurityPage.tsx       # ❌ Security settings page (PENDING)
+│   ├── TeamPage.tsx           # ❌ Team management page (PENDING)
+│   ├── PreferencesPage.tsx    # ❌ App preferences page (PENDING)
+│   ├── LegalPage.tsx          # ❌ Legal/terms page (PENDING)
+│   └── SupportPage.tsx        # ❌ Help/support page (PENDING)
 └── hooks/
-    ├── useSettingsData.ts     # Settings data management
-    ├── useSettingsNavigation.ts # Navigation logic
-    └── useUserProfile.ts      # User profile API calls
+    ├── useSettingsData.ts     # ✅ Settings data management (COMPLETED)
+    ├── useSettingsNavigation.ts # ✅ Navigation logic (COMPLETED)
+    └── useUserProfile.ts      # ✅ User profile API calls (COMPLETED)
 ```
 
 #### Worker API Routes
@@ -135,55 +137,101 @@ worker/routes/
 
 ### Database Schema Updates
 
-```sql
--- Add new user profile fields
-ALTER TABLE users ADD COLUMN bio TEXT;
-ALTER TABLE users ADD COLUMN address_street TEXT;
-ALTER TABLE users ADD COLUMN address_city TEXT;
-ALTER TABLE users ADD COLUMN address_state TEXT;
-ALTER TABLE users ADD COLUMN address_zip TEXT;
-ALTER TABLE users ADD COLUMN address_country TEXT;
-ALTER TABLE users ADD COLUMN secondary_phone TEXT;
-ALTER TABLE users ADD COLUMN preferred_contact_method TEXT;
+**Current Status**: The project uses Better Auth with Drizzle schema and extends the user model using Better Auth's `additionalFields` option. The existing `users` table already includes `teamId`, `role`, and `phone` fields via `additionalFields`. We need to extend this further for settings.
 
--- Add user preferences table
-CREATE TABLE user_preferences (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  theme TEXT DEFAULT 'system',
-  accent_color TEXT DEFAULT 'default',
-  font_size TEXT DEFAULT 'medium',
-  language TEXT DEFAULT 'en',
-  timezone TEXT DEFAULT 'UTC',
-  date_format TEXT DEFAULT 'MM/DD/YYYY',
-  time_format TEXT DEFAULT '12-hour',
-  email_notifications BOOLEAN DEFAULT true,
-  push_notifications BOOLEAN DEFAULT true,
-  sms_notifications BOOLEAN DEFAULT false,
-  notification_frequency TEXT DEFAULT 'immediate',
-  auto_save_conversations BOOLEAN DEFAULT true,
-  typing_indicators BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id)
-);
+**Better Auth Recommended Approach:**
+Following Better Auth's best practices, we'll use `additionalFields` for user profile data and a JSON field for preferences:
 
--- Add index on user_id for performance
-CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
-
--- IMPORTANT: updated_at column handling
--- The updated_at column above only sets a default value on INSERT, not on UPDATE.
--- Since this project uses Cloudflare D1 (SQLite), we'll use a database trigger.
-
--- Create trigger to auto-update updated_at on row changes
-CREATE TRIGGER update_user_preferences_updated_at 
-  AFTER UPDATE ON user_preferences
-  FOR EACH ROW
-  WHEN NEW.updated_at = OLD.updated_at
-  BEGIN
-    UPDATE user_preferences SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-  END;
+```typescript
+// In worker/auth/index.ts - extend user model with additionalFields
+user: {
+  additionalFields: {
+    // Existing fields
+    teamId: {
+      type: "string",
+      required: false,
+    },
+    role: {
+      type: "string", 
+      required: false,
+      defaultValue: "user",
+      input: false, // Prevent users from setting this directly
+    },
+    phone: {
+      type: "string",
+      required: false,
+    },
+    // Profile fields
+    bio: {
+      type: "string",
+      required: false,
+    },
+    addressStreet: {
+      type: "string",
+      required: false,
+    },
+    addressCity: {
+      type: "string",
+      required: false,
+    },
+    addressState: {
+      type: "string",
+      required: false,
+    },
+    addressZip: {
+      type: "string",
+      required: false,
+    },
+    addressCountry: {
+      type: "string",
+      required: false,
+    },
+    secondaryPhone: {
+      type: "string",
+      required: false,
+    },
+    preferredContactMethod: {
+      type: "string",
+      required: false,
+    },
+    // App preferences as JSON field (Better Auth recommended approach)
+    preferences: {
+      type: "json",
+      required: false,
+      defaultValue: {
+        theme: "system",
+        accentColor: "default",
+        fontSize: "medium",
+        language: "en",
+        timezone: "UTC",
+        dateFormat: "MM/DD/YYYY",
+        timeFormat: "12-hour",
+        emailNotifications: true,
+        pushNotifications: true,
+        smsNotifications: false,
+        notificationFrequency: "immediate",
+        autoSaveConversations: true,
+        typingIndicators: true,
+      },
+    },
+  },
+},
 ```
+
+**Benefits of This Approach:**
+- **Simplified Schema**: All user data in one table, no separate preferences table needed
+- **Type Safety**: Better Auth handles type inference automatically
+- **Built-in Updates**: Use `authClient.updateUser()` for all user data including preferences
+- **JSON Flexibility**: Preferences can be easily extended without schema changes
+- **Better Auth Integration**: Follows their recommended patterns for user extensions
+
+**Manual Schema Management:**
+Since this project uses manual schema management (not CLI), we'll manually update the existing `worker/db/auth.schema.ts` file to include the new user fields. The current schema already includes the basic Better Auth tables, and we'll extend the `users` table with the new `additionalFields`.
+
+**Current Schema Structure:**
+The project already has `worker/db/auth.schema.ts` with the basic Better Auth tables (users, sessions, accounts, passwords, verifications). We need to manually add the new fields to the existing `users` table definition.
+
+**Note**: This approach uses Better Auth's built-in user extension capabilities with Drizzle ORM, following the [Better Auth user configuration documentation](https://www.better-auth.com/docs/reference/options#user) and the [better-auth-cloudflare manual setup documentation](https://github.com/zpg6/better-auth-cloudflare).
 
 ### API Architecture
 
@@ -350,37 +398,48 @@ const handleSettingsClick = () => {
 
 **Worker API Integration:**
 ```tsx
-// In settings components - Call worker API endpoints
+// In settings components - Use Better Auth's built-in user update methods
 const updateProfile = async (profileData) => {
   try {
-    // SECURITY: Use httpOnly cookies instead of localStorage to prevent XSS token theft
-    // Server should set session cookies with httpOnly flag
-    const response = await fetch('/api/user/profile', {
-      method: 'PUT',
-      credentials: 'include', // Include httpOnly cookies automatically
-      headers: { 
-        'Content-Type': 'application/json'
-        // No manual Authorization header needed - browser handles httpOnly cookies
-      },
-      body: JSON.stringify(profileData)
-    });
-
-    // Check if response is successful before parsing JSON
-    if (!response.ok) {
-      throw new Error(`Profile update failed: ${response.status} ${response.statusText}`);
+    // Use Better Auth's built-in user update functionality
+    // Better Auth handles authentication and user updates automatically
+    const result = await authClient.updateUser(profileData);
+    
+    if (result.error) {
+      throw new Error(result.error.message || 'Failed to update profile');
     }
-
-    return await response.json();
+    
+    return result.data;
   } catch (error) {
     // SECURITY: Sanitize profile data to prevent PII exposure in logs
     const sanitizedLog = createProfileErrorLog(error, profileData, {
-      endpoint: '/api/user/profile',
-      method: 'PUT'
+      endpoint: 'authClient.updateUser',
+      method: 'Better Auth Client'
     });
     
     console.error('Failed to update profile:', sanitizedLog);
     
     // Re-throw the error so callers can handle it appropriately
+    throw error;
+  }
+};
+
+// For user preferences (stored in user.preferences JSON field)
+const updatePreferences = async (preferencesData) => {
+  try {
+    // Update preferences using Better Auth's updateUser method
+    // Preferences are stored in the user.preferences JSON field
+    const result = await authClient.updateUser({
+      preferences: preferencesData
+    });
+    
+    if (result.error) {
+      throw new Error(result.error.message || 'Failed to update preferences');
+    }
+    
+    return result.data;
+  } catch (error) {
+    console.error('Failed to update preferences:', error);
     throw error;
   }
 };
@@ -457,19 +516,23 @@ function createProfileErrorLog(error, profileData, additionalContext = {}) {
 
 ## Implementation Phases
 
-### Phase 1: Core Infrastructure (Week 1)
+### Phase 1: Core Infrastructure (Week 1) - **COMPLETED**
 **Frontend (Preact):**
-- [ ] Create SettingsPage component with responsive behavior
-- [ ] Implement SettingsSection and SettingsItem components
-- [ ] Add settings routes to preact-iso router
-- [ ] Create useSettingsData and useUserProfile hooks
-- [ ] Integrate with existing UserProfile component
+- [x] Create SettingsPage component with responsive behavior
+- [x] Implement SettingsSection and SettingsItem components
+- [x] Add settings routes to preact-iso router
+- [x] Create useSettingsData and useUserProfile hooks
+- [x] Integrate with existing UserProfile component
 
 **Backend (Worker API):**
-- [ ] Add database schema updates
-- [ ] Create user.ts route handler for profile management
-- [ ] Create preferences.ts route handler
-- [ ] Add authentication middleware for user routes
+- [ ] Extend Better Auth user model with additionalFields in worker/auth/index.ts
+- [ ] Add preferences JSON field to user model (Better Auth recommended approach)
+- [ ] Manually update worker/db/auth.schema.ts to include new user fields
+- [ ] Update useUserProfile hook to use Better Auth's updateUser method for all data
+
+**Test Credentials (Development):**
+- [x] Configure test user credentials in dev.vars.example
+- [x] Set up TEST_USER_EMAIL, TEST_USER_PASSWORD, TEST_USER_NAME for frontend testing
 
 **Testing & Quality Assurance:**
 - [ ] Set up CI/CD pipeline with automated test runs on feature branches and PRs
@@ -480,19 +543,19 @@ function createProfileErrorLog(error, profileData, additionalContext = {}) {
 - [ ] Add database migration tests for schema updates
 - [ ] Implement automated accessibility testing for new components
 
-### Phase 2: Account Settings (Week 2)
+### Phase 2: Account Settings (Week 2) - **IN PROGRESS**
 **Frontend (Preact):**
-- [ ] Create AccountPage component
+- [x] Create AccountPage component
 - [ ] Profile information editing form
 - [ ] Contact information form with validation
 - [ ] Address form component
 - [ ] Profile image upload UI
 
 **Backend (Worker API):**
-- [ ] Implement PUT /api/user/profile endpoint
+- [ ] Use Better Auth's built-in user update functionality (no custom endpoint needed)
 - [ ] Add profile image upload to files.ts
-- [ ] Add input validation and sanitization
-- [ ] Implement error handling and responses
+- [ ] Update useUserProfile hook to handle preferences JSON field properly
+- [ ] Add input validation and sanitization for user data
 
 **Testing & Quality Assurance:**
 - [ ] Write unit tests for AccountPage component and form validation logic

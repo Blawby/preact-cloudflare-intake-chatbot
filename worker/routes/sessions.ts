@@ -4,7 +4,7 @@ import type { Env } from '../types.js';
 import { SessionService } from '../services/SessionService.js';
 import { sessionRequestBodySchema } from '../schemas/validation.js';
 
-function normalizeTeamId(teamId?: string | null): string {
+async function normalizeTeamId(env: Env, teamId?: string | null): Promise<string> {
   if (!teamId) {
     throw HttpErrors.badRequest('teamId is required');
   }
@@ -12,6 +12,24 @@ function normalizeTeamId(teamId?: string | null): string {
   if (!trimmed) {
     throw HttpErrors.badRequest('teamId cannot be empty');
   }
+
+  // Try to find team by ID (ULID) first, then by slug
+  let teamRow = await env.DB.prepare(
+    'SELECT id FROM teams WHERE id = ?'
+  ).bind(trimmed).first();
+  
+  if (!teamRow) {
+    teamRow = await env.DB.prepare(
+      'SELECT id FROM teams WHERE slug = ?'
+    ).bind(trimmed).first();
+  }
+  
+  if (teamRow) {
+    return teamRow.id as string;
+  }
+  
+  // If no team found, return the original trimmed value
+  // This will cause a foreign key constraint error, but that's better than silent failure
   return trimmed;
 }
 
@@ -50,7 +68,7 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     }
     
     const body = validationResult.data;
-    const teamId = normalizeTeamId(body.teamId);
+    const teamId = await normalizeTeamId(env, body.teamId);
 
     const resolution = await SessionService.resolveSession(env, {
       request,
@@ -98,9 +116,10 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     }
 
     if (!session) {
+      const fallbackTeamId = await normalizeTeamId(env, url.searchParams.get('teamId') ?? 'public');
       const fallback = {
         sessionId,
-        teamId: normalizeTeamId(url.searchParams.get('teamId') ?? 'public'),
+        teamId: fallbackTeamId,
         state: 'active' as const,
         statusReason: 'ephemeral_fallback',
         retentionHorizonDays: 180,
@@ -115,7 +134,7 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
 
     const teamIdParam = url.searchParams.get('teamId');
     if (teamIdParam) {
-      const requestedTeam = normalizeTeamId(teamIdParam);
+      const requestedTeam = await normalizeTeamId(env, teamIdParam);
       if (requestedTeam !== session.teamId) {
         throw HttpErrors.notFound('Session not found for requested team');
       }
