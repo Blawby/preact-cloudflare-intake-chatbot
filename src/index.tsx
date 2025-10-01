@@ -1,4 +1,4 @@
-import { hydrate, prerender as ssr, Router, Route, useLocation } from 'preact-iso';
+import { hydrate, prerender as ssr, Router, Route, useLocation, LocationProvider } from 'preact-iso';
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
@@ -279,20 +279,22 @@ export function App() {
 	
 	// Create reactive currentUrl that updates on navigation
 	const currentUrl = typeof window !== 'undefined' 
-		? `${window.location.origin}${location.pathname}${location.search}${location.hash}`
+		? `${window.location.origin}${location.url}`
 		: undefined;
 
 	return (
-		<ToastProvider>
-			<SEOHead 
-				teamConfig={teamConfig}
-				currentUrl={currentUrl}
-			/>
-			<Router>
-				<Route path="/auth" component={AuthPageWrapper} />
-				<Route default component={MainApp} />
-			</Router>
-		</ToastProvider>
+		<LocationProvider>
+			<ToastProvider>
+				<SEOHead 
+					teamConfig={teamConfig}
+					currentUrl={currentUrl}
+				/>
+				<Router>
+					<Route path="/auth" component={AuthPageWrapper} />
+					<Route default component={MainApp} />
+				</Router>
+			</ToastProvider>
+		</LocationProvider>
 	);
 }
 
