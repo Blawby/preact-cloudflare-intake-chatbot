@@ -81,23 +81,19 @@ export class TeamService {
   }
 
   /**
-   * Safely decodes team config from database, handling both JSON and Base64-encoded JSON
-   * This supports the safer Base64 encoding approach used in insert-team.sh script
+   * Safely decodes team config from database as plain JSON
+   * The insert-team.sh script now stores plain JSON text instead of Base64-encoded JSON
    */
   private decodeTeamConfig(configString: string): any {
     try {
-      // First try to parse as regular JSON (for existing records)
       return JSON.parse(configString);
     } catch (jsonError) {
-      try {
-        // If JSON parsing fails, try Base64 decoding first
-        const decoded = atob(configString);
-        return JSON.parse(decoded);
-      } catch (base64Error) {
-        console.error('Failed to decode team config:', { configString: configString.substring(0, 100) + '...', jsonError, base64Error });
-        // Return a safe default config if both methods fail
-        return { aiModel: 'llama', requiresPayment: false };
-      }
+      console.error('Failed to parse team config as JSON:', { 
+        configString: configString.substring(0, 100) + '...', 
+        error: jsonError 
+      });
+      // Return a safe default config if JSON parsing fails
+      return { aiModel: 'llama', requiresPayment: false };
     }
   }
 

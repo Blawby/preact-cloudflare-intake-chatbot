@@ -114,6 +114,24 @@ export async function extractPdfText(buf: ArrayBuffer) {
     if (cleanRatio > 0.8 && cleanText.length > 50) {
       console.log('Using cleaned text instead of garbled text');
       result.fullText = cleanText;
+      
+      // Update pages to stay consistent with cleaned fullText
+      // Split using the same delimiter consumers expect
+      const pageDelimiter = "\n\n---\n\n";
+      if (cleanText.includes(pageDelimiter)) {
+        result.pages = cleanText.split(pageDelimiter);
+      } else {
+        // If delimiter not present, treat as single page
+        result.pages = [cleanText];
+      }
+      
+      // Update page count metadata
+      result.pageCount = result.pages.length;
+      
+      console.log('Updated pages after cleaning:', {
+        pageCount: result.pageCount,
+        pagesLength: result.pages.length
+      });
     } else {
       console.log('Cleaned text still too garbled, will throw error for fallback');
       throw new Error('PDF text extraction produced garbled content, using fallback strategy');

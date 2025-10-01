@@ -51,22 +51,19 @@ if ! echo "$TEAM_CONFIG" | jq empty >/dev/null 2>&1; then
     exit 1
 fi
 
-# Insert team using Base64 encoding for complex JSON to avoid SQL injection
+# Insert team using proper SQL escaping for safety
 # This approach safely handles complex JSON with backslashes, newlines, and control characters
-TEAM_CONFIG_B64=$(echo -n "$TEAM_CONFIG" | base64)
-
-# Create a temporary SQL file with parameterized approach
-# We'll use a more robust method that handles the Base64-encoded config
+# without Base64 encoding - consumers expect plain JSON text
 TEMP_SQL_FILE=$(mktemp)
 cat > "$TEMP_SQL_FILE" <<EOF
--- Insert team with Base64-encoded config for safety
--- The config will be decoded by the application layer when needed
+-- Insert team with plain JSON config for direct consumption
+-- Using proper SQL escaping to safely handle complex JSON
 INSERT INTO teams (id, slug, name, config, created_at, updated_at) 
 VALUES (
   '$(printf '%s' "$TEAM_ID" | sed "s/'/''/g")',
   '$(printf '%s' "$TEAM_SLUG" | sed "s/'/''/g")', 
   '$(printf '%s' "$TEAM_NAME" | sed "s/'/''/g")',
-  '$(printf '%s' "$TEAM_CONFIG_B64" | sed "s/'/''/g")',
+  '$(printf '%s' "$TEAM_CONFIG" | sed "s/'/''/g")',
   datetime('now'),
   datetime('now')
 );
