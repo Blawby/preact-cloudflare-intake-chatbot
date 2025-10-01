@@ -421,6 +421,8 @@ scenario_placeholder_prevention() {
         print_result false "CRITICAL: Placeholder values used in matter creation"
     elif echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "System prevented placeholder values, showed contact form"
+    elif echo "$resp" | grep -q '"type":"matter"'; then
+        print_result false "Matter created without placeholders (should have shown contact form)"
     else
         print_result false "System didn't handle missing contact info properly"
     fi
