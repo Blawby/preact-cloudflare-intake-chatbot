@@ -1,12 +1,12 @@
 import { FunctionComponent } from 'preact';
 import { useRef } from 'preact/hooks';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
-import { 
-  DocumentIcon, 
-  CheckCircleIcon, 
-  ExclamationTriangleIcon,
-  CreditCardIcon
-} from '@heroicons/react/24/outline';
+import {
+  File,
+  CheckCircle,
+  AlertTriangle,
+  CreditCard
+} from 'lucide-preact';
 import { MatterData, MatterStatus } from '../types/matter';
 import { getDefaultDocumentSuggestions } from '../hooks/useMatterState';
 import { FileAttachment } from '../../worker/types';
@@ -76,7 +76,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
   if (status === 'empty') {
     return (
       <div>
-        <DocumentIcon />
+        <File />
         <h3>No Matter Yet</h3>
         <p>Start a chat to create your matter</p>
         <button onClick={onStartChat}>
@@ -115,7 +115,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
       {missingInfo.length > 0 && (
         <div>
           <div>
-            <ExclamationTriangleIcon />
+            <AlertTriangle />
             <h4>Missing Information</h4>
           </div>
           <ul>
@@ -135,7 +135,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
       {/* Document Suggestions */}
       <div>
         <div>
-          <DocumentIcon />
+          <File />
           <h4>Suggested Documents</h4>
         </div>
         <div>
@@ -143,9 +143,9 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
             <div key={doc.id}>
               <div>
                 {doc.status === 'uploaded' ? (
-                  <CheckCircleIcon />
+                  <CheckCircle />
                 ) : (
-                  <DocumentIcon />
+                  <File />
                 )}
                 <div>
                   <p>{doc.name}</p>
@@ -169,7 +169,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
       {matter.hasPayment && matter.paymentEmbed && (
         <div>
           <div>
-            <CreditCardIcon />
+            <CreditCard />
             <h4>Payment Required</h4>
           </div>
           <p>
@@ -193,7 +193,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
       {status === 'ready' && (
         <div>
           <div>
-            <CheckCircleIcon />
+            <CheckCircle />
             <h4>Matter Complete</h4>
           </div>
           <p>All required information has been provided</p>

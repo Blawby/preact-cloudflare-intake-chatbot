@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
-import { UserIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { User, LogOut, Settings } from 'lucide-preact';
 import { motion, AnimatePresence } from 'framer-motion';
 import authClient from '../lib/authClient';
 import { useNavigation } from '../utils/navigation';
@@ -70,7 +70,7 @@ const MobileUserProfile = () => {
         className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         title="Sign In"
       >
-        <UserIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+        <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
       </button>
     );
   }
@@ -92,7 +92,7 @@ const MobileUserProfile = () => {
             />
           ) : (
             <div className="w-full h-full bg-accent-500 flex items-center justify-center">
-              <UserIcon className="w-5 h-5 text-white" />
+              <User className="w-5 h-5 text-white" />
             </div>
           );
         })()}
@@ -120,7 +120,7 @@ const MobileUserProfile = () => {
                         className="w-full h-full rounded-full object-cover"
                       />
                     ) : (
-                      <UserIcon className="w-6 h-6 text-white" />
+                      <User className="w-6 h-6 text-white" />
                     );
                   })()}
                 </div>
@@ -142,7 +142,7 @@ const MobileUserProfile = () => {
                 }}
                 className="flex items-center w-full gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
               >
-                <Cog6ToothIcon className="w-4 h-4" />
+                <Settings className="w-4 h-4" />
                 Settings
               </button>
               
@@ -150,7 +150,7 @@ const MobileUserProfile = () => {
                 onClick={handleSignOut}
                 className="flex items-center w-full gap-3 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
               >
-                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                <LogOut className="w-4 h-4" />
                 Sign Out
               </button>
             </div>

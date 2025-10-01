@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { UserIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { User, LogOut, Settings } from 'lucide-preact';
 import { authClient } from '../lib/authClient';
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
@@ -120,7 +120,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
           }`}
           title={isCollapsed ? 'Sign In' : undefined}
         >
-          <UserIcon className="w-5 h-5 flex-shrink-0" />
+          <User className="w-5 h-5 flex-shrink-0" />
           {!isCollapsed && <span className="text-sm font-medium">Sign In</span>}
         </button>
       </div>
@@ -153,7 +153,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
                   className="w-full h-full rounded-full object-cover"
                 />
               ) : (
-                <UserIcon className="w-5 h-5 text-white" />
+                <User className="w-5 h-5 text-white" />
               );
             })()}
           </div>
@@ -185,7 +185,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
                         className="w-full h-full rounded-full object-cover"
                       />
                     ) : (
-                      <UserIcon className="w-6 h-6 text-white" />
+                      <User className="w-6 h-6 text-white" />
                     );
                   })()}
                 </div>
@@ -208,7 +208,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
                 className="flex items-center w-full gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
                 role="menuitem"
               >
-                <Cog6ToothIcon className="w-4 h-4" />
+                <Settings className="w-4 h-4" />
                 Settings
               </button>
               
@@ -221,7 +221,7 @@ const UserProfile = ({ isCollapsed = false, isMobile: _isMobile = false }: UserP
                 {signingOut ? (
                   <div className="w-4 h-4 border-2 border-red-600 dark:border-red-400 border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                  <LogOut className="w-4 h-4" />
                 )}
                 {signingOut ? 'Signing Out...' : 'Sign Out'}
               </button>

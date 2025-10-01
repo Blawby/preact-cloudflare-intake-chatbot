@@ -3,13 +3,13 @@ import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
 import Modal from './Modal';
 import {
-  PhoneIcon,
-  EnvelopeIcon,
-  GlobeAltIcon,
-  XMarkIcon,
-  ClipboardDocumentIcon,
-  CheckIcon
-} from '@heroicons/react/24/outline';
+  Phone,
+  Mail,
+  Globe,
+  X,
+  ClipboardList,
+  Check
+} from 'lucide-preact';
 import { useTheme } from '../hooks/useTheme';
 import type { LawyerProfile } from '../../worker/services/LawyerSearchService';
 
@@ -102,7 +102,7 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
             aria-label="Close contact options modal"
             type="button"
           >
-            <XMarkIcon className="w-5 h-5 text-gray-500" aria-hidden="true" />
+            <X className="w-5 h-5 text-gray-500" aria-hidden="true" />
           </button>
         </div>
 
@@ -111,7 +111,7 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
             <div className={`p-3 rounded-lg border ${isDark ? 'bg-dark-bg border-dark-border' : 'bg-gray-50 border-gray-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <PhoneIcon className="w-5 h-5 text-green-500 mr-3" />
+                  <Phone className="w-5 h-5 text-green-500 mr-3" />
                   <div>
                     <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       Phone
@@ -129,9 +129,9 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
                     className="p-1"
                   >
                     {copiedField === 'phone' ? (
-                      <CheckIcon className="w-4 h-4 text-green-500" />
+                      <Check className="w-4 h-4 text-green-500" />
                     ) : (
-                      <ClipboardDocumentIcon className="w-4 h-4" />
+                      <ClipboardList className="w-4 h-4" />
                     )}
                   </Button>
                   <Button
@@ -150,7 +150,7 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
             <div className={`p-3 rounded-lg border ${isDark ? 'bg-dark-bg border-dark-border' : 'bg-gray-50 border-gray-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <EnvelopeIcon className="w-5 h-5 text-blue-500 mr-3" />
+                  <Mail className="w-5 h-5 text-blue-500 mr-3" />
                   <div>
                     <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       Email
@@ -168,9 +168,9 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
                     className="p-1"
                   >
                     {copiedField === 'email' ? (
-                      <CheckIcon className="w-4 h-4 text-green-500" />
+                      <Check className="w-4 h-4 text-green-500" />
                     ) : (
-                      <ClipboardDocumentIcon className="w-4 h-4" />
+                      <ClipboardList className="w-4 h-4" />
                     )}
                   </Button>
                   <Button
@@ -189,7 +189,7 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
             <div className={`p-3 rounded-lg border ${isDark ? 'bg-dark-bg border-dark-border' : 'bg-gray-50 border-gray-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <GlobeAltIcon className="w-5 h-5 text-purple-500 mr-3" />
+                  <Globe className="w-5 h-5 text-purple-500 mr-3" />
                   <div>
                     <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       Website
@@ -207,9 +207,9 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
                     className="p-1"
                   >
                     {copiedField === 'website' ? (
-                      <CheckIcon className="w-4 h-4 text-green-500" />
+                      <Check className="w-4 h-4 text-green-500" />
                     ) : (
-                      <ClipboardDocumentIcon className="w-4 h-4" />
+                      <ClipboardList className="w-4 h-4" />
                     )}
                   </Button>
                   <Button

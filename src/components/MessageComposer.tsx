@@ -3,7 +3,7 @@ import { useLayoutEffect } from 'preact/hooks';
 import { Button } from './ui/Button';
 import FileMenu from './FileMenu';
 import MediaControls from './MediaControls';
-import { ArrowUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowUp, X } from 'lucide-preact';
 import { features } from '../config/features';
 import { FileAttachment } from '../../worker/types';
 
@@ -108,7 +108,7 @@ const MessageComposer = ({
                   aria-label={`Remove ${file.name}`}
                   className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
                 >
-                  <XMarkIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  <X className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
                 </Button>
               </div>
             ))}
@@ -156,7 +156,7 @@ const MessageComposer = ({
                   ? 'Send message (disabled)'
                   : 'Send message')}
               className="w-8 h-8 p-0 rounded-full"
-              icon={<ArrowUpIcon className="w-3.5 h-3.5" aria-hidden="true" />}
+              icon={<ArrowUp className="w-3.5 h-3.5" aria-hidden="true" />}
               data-testid="message-send-button"
             />
           </div>

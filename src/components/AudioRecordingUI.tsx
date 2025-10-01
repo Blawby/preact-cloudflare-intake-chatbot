@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useEffect, useState, useRef } from 'preact/hooks';
-import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { X, Check } from 'lucide-preact';
 import { Button } from './ui/Button';
 
 interface AudioRecordingUIProps {
@@ -312,7 +312,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
                 title="Cancel recording"
                 className="flex items-center justify-center w-8 h-8 p-1.5 border-none rounded-full bg-none cursor-pointer transition-all duration-200 text-light-text dark:text-dark-text bg-light-hover dark:bg-dark-hover animate-zoom-in"
             >
-                <XMarkIcon className="w-5 h-5" aria-hidden="true" />
+                <X className="w-5 h-5" aria-hidden="true" />
             </Button>
             <div className="flex-1 flex items-center gap-4 h-8 animate-zoom-in bg-transparent" aria-live="polite">
                 <canvas ref={canvasRef} width="300" height="40" aria-hidden="true" className="flex-1 h-8 rounded block image-rendering-crisp-edges image-rendering-webkit-optimize-contrast bg-transparent" />
@@ -332,7 +332,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
                 ref={confirmBtnRef}
                 className="flex items-center justify-center w-8 h-8 p-1.5 border-none rounded-full bg-none cursor-pointer transition-all duration-200 text-light-bg dark:text-dark-bg bg-light-text dark:bg-dark-text animate-zoom-in hover:scale-105"
             >
-                <CheckIcon className="w-5 h-5" aria-hidden="true" />
+                <Check className="w-5 h-5" aria-hidden="true" />
             </Button>
         </div>
     );

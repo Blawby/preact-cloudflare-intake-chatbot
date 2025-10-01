@@ -1,5 +1,5 @@
 import { FunctionComponent, useState, useEffect, useRef } from 'preact/compat';
-import { ArrowTopRightOnSquareIcon, CreditCardIcon } from '@heroicons/react/24/outline';
+import { ExternalLink, CreditCard } from 'lucide-preact';
 import { Button } from './ui/Button';
 import Modal from './Modal';
 import PaymentContent from './PaymentContent';
@@ -54,17 +54,17 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
               onClick={handlePaymentClick}
               className="bg-accent-500 text-gray-900 hover:bg-accent-600"
             >
-              <CreditCardIcon className="w-5 h-5 mr-2" />
+              <CreditCard className="w-5 h-5 mr-2" />
               Pay ${amount || '0'}
             </Button>
-            
+
             <Button
               variant="secondary"
               size="lg"
               onClick={handleExternalLink}
               className="flex-1 sm:flex-none"
             >
-              <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
+              <ExternalLink className="w-4 h-4 mr-2" />
               Open in Browser
             </Button>
           </>
@@ -76,7 +76,7 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
             onClick={handleExternalLink}
             className="bg-accent-500 text-gray-900 hover:bg-accent-600 w-full sm:w-auto"
           >
-            <CreditCardIcon className="w-5 h-5 mr-2" />
+            <CreditCard className="w-5 h-5 mr-2" />
             Pay ${amount || '0'}
           </Button>
         )}

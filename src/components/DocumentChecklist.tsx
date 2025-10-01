@@ -1,13 +1,13 @@
 import { FunctionComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
-import { 
-  DocumentIcon, 
-  CheckCircleIcon, 
-  ExclamationTriangleIcon,
-  CloudArrowUpIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+import {
+  File,
+  CheckCircle,
+  AlertTriangle,
+  CloudUpload,
+  X
+} from 'lucide-preact';
 
 interface DocumentItem {
   id: string;
@@ -67,13 +67,13 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
   const getStatusIcon = (status: DocumentItem['status'], required: boolean) => {
     switch (status) {
       case 'uploaded':
-        return <CheckCircleIcon className="w-5 h-5 text-green-500" />;
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'pending':
-        return <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500" />;
+        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
       case 'missing':
-        return required ? 
-          <ExclamationTriangleIcon className="w-5 h-5 text-red-500" /> :
-          <DocumentIcon className="w-5 h-5 text-gray-400" />;
+        return required ?
+          <AlertTriangle className="w-5 h-5 text-red-500" /> :
+          <File className="w-5 h-5 text-gray-400" />;
     }
   };
 
@@ -168,7 +168,7 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
                       <Button
                         variant="secondary"
                         size="sm"
-                        icon={<CloudArrowUpIcon className="w-4 h-4" />}
+                        icon={<CloudUpload className="w-4 h-4" />}
                       >
                         Choose File
                       </Button>
@@ -182,14 +182,14 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
                 {/* Uploaded File Display */}
                 {doc.status === 'uploaded' && doc.file && (
                   <div className="flex items-center gap-2 mt-2">
-                    <DocumentIcon className="w-4 h-4 text-green-500" />
+                    <File className="w-4 h-4 text-green-500" />
                     <span className="text-sm text-gray-700 dark:text-gray-300">
                       {doc.file.name}
                     </span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={<XMarkIcon className="w-4 h-4" />}
+                      icon={<X className="w-4 h-4" />}
                       onClick={() => onDocumentRemove(doc.id)}
                       className="text-red-500 hover:text-red-700"
                     />

@@ -1,6 +1,6 @@
-import { 
-  ChatBubbleOvalLeftIcon
-} from '@heroicons/react/24/outline';
+import {
+  MessageCircle
+} from 'lucide-preact';
 
 interface BottomNavigationProps {
   activeTab: 'chats';
@@ -17,7 +17,7 @@ const BottomNavigation = ({ activeTab, onGoToChats }: BottomNavigationProps) => 
           onClick={onGoToChats}
           className="flex items-center justify-center rounded-lg bg-accent-500 text-gray-900 dark:text-white hover:bg-accent-600 transition-colors leading-none p-0"
         >
-          <ChatBubbleOvalLeftIcon className="w-6 h-6 block" />
+          <MessageCircle className="w-6 h-6 block" />
         </button>
       </div>
     </div>

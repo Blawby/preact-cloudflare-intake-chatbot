@@ -1,6 +1,6 @@
 import { FunctionComponent, ComponentChildren, createContext } from "preact"
 import { useState, useContext } from "preact/hooks"
-import { ChevronDownIcon } from "@heroicons/react/24/outline"
+import { ChevronDown } from "lucide-preact"
 
 // Utility function for className merging (following codebase pattern)
 function cn(...classes: (string | undefined | null | false)[]): string {
@@ -178,7 +178,7 @@ const AccordionTrigger: FunctionComponent<AccordionTriggerProps> = ({
         type="button"
       >
         {children}
-        <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0 transition-transform duration-200" />
+        <ChevronDown className="text-muted-foreground pointer-events-none size-4 shrink-0 transition-transform duration-200" />
       </button>
     </div>
   )

@@ -1,7 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import AudioRecordingUI from './AudioRecordingUI';
-import { MicrophoneIcon } from '@heroicons/react/24/outline';
+import { Mic } from 'lucide-preact';
 import { features } from '../config/features';
 import { Button } from './ui/Button';
 
@@ -161,7 +161,7 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 				disabled={permissionDenied}
 				className="w-8 h-8 p-0 rounded-full"
 			>
-				<MicrophoneIcon className="w-4 h-4" aria-hidden="true" />
+				<Mic className="w-4 h-4" aria-hidden="true" />
 			</Button>
 			{permissionDenied && (
 				<div className="sr-only" role="alert">

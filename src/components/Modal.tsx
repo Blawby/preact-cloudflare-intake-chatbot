@@ -1,7 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useEffect, useState } from 'preact/hooks';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { X } from 'lucide-preact';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ModalProps {
@@ -122,7 +122,7 @@ const Modal: FunctionComponent<ModalProps> = ({
                                         className="p-1 rounded-md transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover"
                                         aria-label="Close modal"
                                     >
-                                        <XMarkIcon className="w-6 h-6" />
+                                        <X className="w-6 h-6" />
                                     </button>
                                 )}
                             </div>
@@ -135,7 +135,7 @@ const Modal: FunctionComponent<ModalProps> = ({
                                 className="absolute top-4 right-4 w-10 h-10 border-none bg-black bg-opacity-50 text-white rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 hover:bg-black hover:bg-opacity-70 hover:scale-110 z-10"
                                 aria-label="Close modal"
                             >
-                                <XMarkIcon className="w-6 h-6" />
+                                <X className="w-6 h-6" />
                             </button>
                         )}
                         

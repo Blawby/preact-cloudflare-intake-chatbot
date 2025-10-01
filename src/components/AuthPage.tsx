@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
-import { UserIcon, LockClosedIcon, EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { User, Lock, Mail, ArrowLeft } from 'lucide-preact';
 import { authClient } from '../lib/authClient';
 
 interface AuthPageProps {
@@ -127,13 +127,13 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
             onClick={handleBackToHome}
             className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
-            <ArrowLeftIcon className="h-4 w-4 mr-1" />
+            <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Home
           </button>
         </div>
-        
+
         <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-accent-500">
-          <UserIcon className="h-6 w-6 text-white" />
+          <User className="h-6 w-6 text-white" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
           {isSignUp ? 'Create your account' : 'Sign in to your account'}
@@ -191,7 +191,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
                       className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-accent-500 focus:border-accent-500 focus:z-10 sm:text-sm"
                       placeholder="Enter your full name"
                     />
-                    <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                   </div>
                 </div>
               )}
@@ -212,7 +212,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
                     className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-accent-500 focus:border-accent-500 focus:z-10 sm:text-sm"
                     placeholder="Enter your email"
                   />
-                  <EnvelopeIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
 
@@ -232,7 +232,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
                     className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-accent-500 focus:border-accent-500 focus:z-10 sm:text-sm"
                     placeholder="Enter your password"
                   />
-                  <LockClosedIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
 
@@ -253,7 +253,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
                       className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-accent-500 focus:border-accent-500 focus:z-10 sm:text-sm"
                       placeholder="Confirm your password"
                     />
-                    <LockClosedIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                   </div>
                 </div>
               )}
