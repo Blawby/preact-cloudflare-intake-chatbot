@@ -24,7 +24,7 @@ Implement a comprehensive settings page following modern mobile app patterns (Ch
 ### Component Structure
 
 #### Frontend Components (Preact)
-```
+```text
 src/components/settings/
 ├── SettingsPage.tsx           # Main settings container
 ├── SettingsSection.tsx        # Reusable section component  
@@ -44,11 +44,12 @@ src/components/settings/
 ```
 
 #### Worker API Routes
-```
+```text
 worker/routes/
 ├── user.ts                    # User profile management
 ├── preferences.ts             # User preferences
 ├── security.ts                # Security settings
+├── teams.ts                   # Team management (existing)
 └── files.ts                   # File uploads (extend existing)
 ```
 
@@ -74,8 +75,8 @@ worker/routes/
 
 - **Team & Organization**
   - Current Team (display with change option)
-  - Role (display with change option)
   - Team Settings (navigation to team management)
+  - Team Configuration (view/edit team config if user has permissions)
 
 - **Security**
   - Change Password (if email/password auth)
@@ -210,6 +211,10 @@ GET /api/user/preferences      # Get user preferences - Auth: Session token, RBA
 PUT /api/user/security         # Update security settings - Auth: Session token, RBAC: Owner only
 GET /api/user/security         # Get security settings - Auth: Session token, RBAC: Owner only
 DELETE /api/user/sessions/:id  # Revoke specific session - Auth: Session token, RBAC: Owner only
+
+// Team management (existing endpoints)
+GET /api/teams/:id             # Get team details - Auth: Session token, RBAC: Team member
+PUT /api/teams/:id             # Update team config - Auth: Session token, RBAC: Team admin/owner
 
 // File uploads
 POST /api/user/upload-avatar   # Upload profile image - Auth: Session token, RBAC: Owner only

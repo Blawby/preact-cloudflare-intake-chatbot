@@ -42,6 +42,15 @@
     "accentColor": "#10b981",
     "introMessage": "Welcome to North Carolina Legal Services! I am here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you connect with our experienced attorneys. How can I assist you today?",
     "profileImage": "https://app.blawby.com/storage/team-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg",
+    "jurisdiction": {
+      "type": "state",
+      "description": "North Carolina",
+      "supportedStates": ["NC"],
+      "supportedCountries": ["US"],
+      "allowOutOfJurisdiction": true,
+      "requireLocation": true,
+      "outOfJurisdictionMessage": "We primarily serve clients in North Carolina. While we can provide general guidance, we recommend consulting with a local attorney in your state for state-specific legal matters."
+    },
     "voice": {
       "enabled": false,
       "provider": "cloudflare",

@@ -284,14 +284,13 @@ export interface CloudflareLocation {
   readonly timezone?: string;
 }
 
-
 interface ExtractedContactInfo {
   name: string | null;
   email: string | null;
   phone: string | null;
 }
 
-interface ToolCall {
+export interface ToolCall {
   name: string;
   arguments?: Record<string, unknown>;
 }
@@ -1283,8 +1282,16 @@ async function handleAnalyzeDocument(
   Logger.debug('File ID:', ToolCallParser.sanitizeParameters(file_id as string));
   Logger.debug('Analysis Type:', ToolCallParser.sanitizeParameters(analysis_type as string));
 
+  // Validate required parameters
+  if (!file_id || typeof file_id !== 'string') {
+    Logger.error('Missing or invalid file_id parameter', { file_id, parameters });
+    return createValidationError(
+      "I'm sorry, I couldn't identify the file to analyze. Please try uploading the file again."
+    );
+  }
+
   const customQuestion = getAnalysisQuestion(analysis_type as string, specific_question as string);
-  const fileAnalysis = await analyzeFile(env, file_id as string, customQuestion);
+  const fileAnalysis = await analyzeFile(env, file_id, customQuestion);
 
   if (!fileAnalysis || fileAnalysis.confidence === 0.0) {
     return createValidationError(
@@ -1538,6 +1545,15 @@ const TOOL_HANDLERS = {
 } as const;
 
 // ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Determines the analysis type based on file attachment
+ */
+// determineAnalysisType function moved to fileAnalysisMiddleware.ts
+
+// ============================================================================
 // MAIN AGENT ORCHESTRATOR
 // ============================================================================
 
@@ -1683,7 +1699,7 @@ export async function runLegalIntakeAgentStream(
     );
 
     const aiResult = await withAIRetry(
-      () => env.AI.run(AI_MODEL_CONFIG.model as '@cf/meta/llama-3.1-8b-instruct', {
+      () => env.AI.run(AI_MODEL_CONFIG.model as any, {
         messages: [
           { role: 'system', content: systemPrompt },
           ...buildPromptMessages(messages)
@@ -1711,6 +1727,9 @@ export async function runLegalIntakeAgentStream(
 
     // Handle AI response
     const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
+
+    // File analysis is now handled by the fileAnalysisMiddleware in the pipeline
+    // No need to handle attachments here anymore
 
     if (hasToolCalls(aiResult)) {
       await executor.execute(aiResult.tool_calls[0]);

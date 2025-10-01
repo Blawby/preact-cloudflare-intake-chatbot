@@ -80,6 +80,46 @@ export async function extractPdfText(buf: ArrayBuffer) {
   console.log('Final extracted text length:', result.fullText.length);
   console.log('Final text preview:', result.fullText.substring(0, 200));
 
+  // Check text quality and clean if needed
+  const printableChars = result.fullText.replace(/[^\x20-\x7E\n\r\t]/g, '').length;
+  const totalChars = result.fullText.length;
+  const printableRatio = totalChars > 0 ? printableChars / totalChars : 0;
+  
+  console.log('Text quality check:', {
+    totalChars,
+    printableChars,
+    printableRatio,
+    isGarbled: printableRatio < 0.7
+  });
+
+  // If text is mostly garbled, try to clean it up
+  if (printableRatio < 0.7 && totalChars > 100) {
+    console.log('PDF text appears to be garbled, attempting to clean it up');
+    
+    // Try to extract only the cleanest parts
+    const cleanText = result.fullText
+      .replace(/[^\x20-\x7E\n\r\t]/g, ' ') // Replace non-printable with spaces
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+    
+    const cleanRatio = cleanText.length > 0 ? cleanText.replace(/[^\x20-\x7E]/g, '').length / cleanText.length : 0;
+    
+    console.log('Cleaned text quality:', {
+      originalLength: result.fullText.length,
+      cleanedLength: cleanText.length,
+      cleanRatio,
+      isClean: cleanRatio > 0.8
+    });
+    
+    if (cleanRatio > 0.8 && cleanText.length > 50) {
+      console.log('Using cleaned text instead of garbled text');
+      result.fullText = cleanText;
+    } else {
+      console.log('Cleaned text still too garbled, will throw error for fallback');
+      throw new Error('PDF text extraction produced garbled content, using fallback strategy');
+    }
+  }
+
   // Extract key information for legal intake
   const keyInfo = extractKeyLegalInfo(result.fullText);
   console.log('Key legal info extracted:', keyInfo);
