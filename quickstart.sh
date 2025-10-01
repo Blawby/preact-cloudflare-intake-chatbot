@@ -8,6 +8,21 @@ set -e
 echo "🚀 Blawby AI Chatbot - Quick Start"
 echo "=================================="
 
+# Check for required dependencies
+echo "🔍 Checking dependencies..."
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "❌ Error: jq is required but not installed." >&2
+    echo "   Please install jq to continue:" >&2
+    echo "   • macOS: brew install jq" >&2
+    echo "   • Ubuntu/Debian: sudo apt-get install jq" >&2
+    echo "   • CentOS/RHEL: sudo yum install jq" >&2
+    echo "   • Or visit: https://stedolan.github.io/jq/download/" >&2
+    exit 1
+fi
+
+echo "✅ Dependencies verified"
+
 # Setup environment file if it doesn't exist
 if [ ! -f ".dev.vars" ]; then
     echo "📝 Setting up environment file..."
@@ -47,6 +62,25 @@ else
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );" 2>/dev/null || echo "Teams table already exists"
+    
+    # Lawyers table
+    wrangler d1 execute blawby-ai-chatbot --local --command "
+    CREATE TABLE IF NOT EXISTS lawyers (
+      id TEXT PRIMARY KEY,
+      team_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT,
+      specialties JSON,
+      status TEXT DEFAULT 'active',
+      role TEXT DEFAULT 'attorney',
+      hourly_rate INTEGER,
+      bar_number TEXT,
+      license_state TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (team_id) REFERENCES teams(id)
+    );" 2>/dev/null || echo "Lawyers table already exists"
     
     # Matters table
     wrangler d1 execute blawby-ai-chatbot --local --command "
@@ -102,25 +136,6 @@ else
       FOREIGN KEY (created_by_lawyer_id) REFERENCES lawyers(id)
     );" 2>/dev/null || echo "Matter events table already exists"
     
-    # Lawyers table
-    wrangler d1 execute blawby-ai-chatbot --local --command "
-    CREATE TABLE IF NOT EXISTS lawyers (
-      id TEXT PRIMARY KEY,
-      team_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      phone TEXT,
-      specialties JSON,
-      status TEXT DEFAULT 'active',
-      role TEXT DEFAULT 'attorney',
-      hourly_rate INTEGER,
-      bar_number TEXT,
-      license_state TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (team_id) REFERENCES teams(id)
-    );" 2>/dev/null || echo "Lawyers table already exists"
-    
     # Chat sessions table
     wrangler d1 execute blawby-ai-chatbot --local --command "
     CREATE TABLE IF NOT EXISTS chat_sessions (
@@ -158,14 +173,17 @@ fi
 # Insert default teams if they don't exist
 echo "👥 Setting up default teams..."
 
-# Insert teams one by one to avoid JSON escaping issues
-wrangler d1 execute blawby-ai-chatbot --local --command "INSERT OR IGNORE INTO teams (id, slug, name, config) VALUES ('01K0TNGNKVCFT7V78Y4QF0PKH5', 'test-team', 'Test Law Firm', '{\"aiModel\": \"llama\", \"requiresPayment\": false}');" 2>/dev/null || echo "Test team already exists"
+# Insert teams from JSON configuration files for better maintainability
+echo "Inserting teams from configuration files..."
 
-# North Carolina Legal Services with complete configuration
-wrangler d1 execute blawby-ai-chatbot --local --command "INSERT OR IGNORE INTO teams (id, slug, name, config) VALUES ('01K0TNGNKNJEP8EPKHXAQV4S0R', 'north-carolina-legal-services', 'North Carolina Legal Services', '{\"aiModel\": \"llama\", \"consultationFee\": 75, \"requiresPayment\": true, \"ownerEmail\": \"paulchrisluke@gmail.com\", \"availableServices\": [\"Family Law\", \"Small Business and Nonprofits\", \"Employment Law\", \"Tenant Rights Law\", \"Probate and Estate Planning\", \"Special Education and IEP Advocacy\"], \"serviceQuestions\": {\"Family Law\": [\"Thanks for reaching out. I know family situations can be really difficult. Can you tell me what type of family issue you are going through? (For example, divorce, custody, child support...)\"], \"Small Business and Nonprofits\": [\"What type of business entity are you operating or planning to start?\"], \"Employment Law\": [\"I am sorry you are dealing with workplace issues - that can be really stressful. Can you tell me what has been happening at work? (For example, discrimination, harassment, wage problems...)\"], \"Tenant Rights Law\": [\"What specific tenant rights issue are you facing? (eviction, repairs, security deposit, etc.)\"], \"Probate and Estate Planning\": [\"Are you dealing with probate of an estate or planning your own estate?\"], \"Special Education and IEP Advocacy\": [\"What grade level is your child in and what type of school do they attend?\"]}, \"domain\": \"northcarolinalegalservices.blawby.com\", \"description\": \"Affordable, comprehensive legal services for North Carolina. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.\", \"paymentLink\": \"https://app.blawby.com/northcarolinalegalservices/pay?amount=7500\", \"brandColor\": \"#059669\", \"accentColor\": \"#10b981\", \"introMessage\": \"Welcome to North Carolina Legal Services! I am here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you connect with our experienced attorneys. How can I assist you today?\", \"profileImage\": \"https://app.blawby.com/storage/team-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg\", \"voice\": {\"enabled\": false, \"provider\": \"cloudflare\", \"voiceId\": null, \"displayName\": null, \"previewUrl\": null}}');" 2>/dev/null || echo "NC Legal Services team already exists"
+# Test team
+./scripts/insert-team.sh scripts/team-configs/test-team.json
 
-# Blawby AI with complete configuration
-wrangler d1 execute blawby-ai-chatbot --local --command "INSERT OR IGNORE INTO teams (id, slug, name, config) VALUES ('01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'blawby-ai', 'Blawby AI', '{\"aiModel\": \"llama\", \"consultationFee\": 0, \"requiresPayment\": false, \"ownerEmail\": \"paulchrisluke@gmail.com\", \"availableServices\": [\"Family Law\", \"Business Law\", \"Contract Review\", \"Intellectual Property\", \"Employment Law\", \"Personal Injury\", \"Criminal Law\", \"Civil Law\", \"General Consultation\"], \"serviceQuestions\": {\"Family Law\": [\"I understand this is a difficult time. Can you tell me what type of family situation you are dealing with?\", \"What are the main issues you are facing?\", \"Have you taken any steps to address this situation?\", \"What would a good outcome look like for you?\"], \"Business Law\": [\"What type of business entity are you operating or planning to start?\", \"What specific legal issue are you facing with your business?\", \"Are you dealing with contracts, employment issues, or regulatory compliance?\", \"What is the size and scope of your business operations?\"], \"Contract Review\": [\"What type of contract do you need reviewed?\", \"What is the value or importance of this contract?\", \"Are there any specific concerns or red flags you have noticed?\", \"What is the timeline for this contract?\"], \"Intellectual Property\": [\"What type of intellectual property are you dealing with?\", \"Are you looking to protect, license, or enforce IP rights?\", \"What is the nature of your IP (patent, trademark, copyright, trade secret)?\", \"What is the commercial value or importance of this IP?\"], \"Employment Law\": [\"What specific employment issue are you facing?\", \"Are you an employer or employee in this situation?\", \"Have you taken any steps to address this issue?\", \"What is the timeline or urgency of your situation?\"], \"Personal Injury\": [\"Can you tell me about the incident that caused your injury?\", \"What type of injuries did you sustain?\", \"Have you received medical treatment?\", \"What is the current status of your recovery?\"], \"Criminal Law\": [\"What type of legal situation are you facing?\", \"Are you currently facing charges or under investigation?\", \"Have you been arrested or contacted by law enforcement?\", \"Do you have an attorney representing you?\"], \"Civil Law\": [\"What type of civil legal issue are you dealing with?\", \"Are you involved in a lawsuit or considering legal action?\", \"What is the nature of the dispute?\", \"What outcome are you hoping to achieve?\"], \"General Consultation\": [\"Thanks for reaching out! I would love to help. Can you tell me what legal situation you are dealing with?\", \"Have you been able to take any steps to address this yet?\", \"What would a good outcome look like for you?\", \"Do you have any documents or information that might be relevant?\"]}, \"domain\": \"ai.blawby.com\", \"description\": \"AI-powered legal assistance for businesses and individuals\", \"paymentLink\": null, \"brandColor\": \"#2563eb\", \"accentColor\": \"#3b82f6\", \"introMessage\": \"Hello! I am Blawby AI, your intelligent legal assistant. I can help you with family law, business law, contract review, intellectual property, employment law, personal injury, criminal law, civil law, and general legal consultation. How can I assist you today?\", \"profileImage\": null, \"voice\": {\"enabled\": false, \"provider\": \"cloudflare\", \"voiceId\": null, \"displayName\": null, \"previewUrl\": null}, \"blawbyApi\": {\"enabled\": false, \"apiUrl\": \"https://staging.blawby.com\"}}');" 2>/dev/null || echo "Blawby AI team already exists"
+# North Carolina Legal Services
+./scripts/insert-team.sh scripts/team-configs/north-carolina-legal-services.json
+
+# Blawby AI
+./scripts/insert-team.sh scripts/team-configs/blawby-ai.json
 
 # Verify setup
 echo "🔍 Verifying setup..."
