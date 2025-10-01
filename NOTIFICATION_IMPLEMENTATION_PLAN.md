@@ -450,24 +450,23 @@ export interface Env {
 
 **`worker/index.ts` queue consumer registration:**
 
-The worker's main entry point must be updated to register queue consumer handlers for the new notification queues. This involves:
-
-1. **Import notification handlers**: Add imports for the notification consumer functions
-2. **Update queue registration**: Modify the exported default object to include queue-to-handler mappings
+The worker's main entry point must be updated to implement centralized queue routing for all notification queues. This approach replaces separate named queue exports with a single centralized default export that routes based on `batch.queue`.
 
 **Required changes to `worker/index.ts`:**
 
+1. **Import all consumer handlers** (around line 23):
 ```typescript
-// Add imports for notification consumers (around line 23)
 import docProcessor from './consumers/doc-processor';
 import notificationProcessor from './consumers/notification-processor';
 import liveNotificationProcessor from './consumers/live-notification-processor';
 import pushNotificationProcessor from './consumers/push-notification-processor';
+```
 
-// Update the default export (around lines 117-120)
+2. **Replace the default export** (around lines 117-120) with centralized queue routing:
+```typescript
 export default { 
   fetch: handleRequest,
-  queue: (batch: MessageBatch, env: Env, ctx: ExecutionContext) => {
+  queue: async (batch: MessageBatch, env: Env, ctx: ExecutionContext) => {
     // Route to appropriate consumer based on queue name
     switch (batch.queue) {
       case 'notification-events':
@@ -486,20 +485,66 @@ export default {
 };
 ```
 
-**Alternative approach using queue-specific exports:**
-```typescript
-export default { 
-  fetch: handleRequest,
-  queue: docProcessor
-};
+**Key Implementation Details:**
 
-// Add separate queue consumer exports
-export const notificationQueue = notificationProcessor;
-export const liveNotificationQueue = liveNotificationProcessor;
-export const pushNotificationQueue = pushNotificationProcessor;
+- **Async queue handler**: The queue function is marked as `async` to properly handle asynchronous consumer operations
+- **ExecutionContext usage**: Each consumer receives the `ctx` parameter for background work management using `ctx.waitUntil()`
+- **Error handling**: Clear error logging and throwing for unknown queues
+- **Centralized routing**: Single point of control for all queue processing
+
+**Queue Consumer Interface:**
+Each consumer handler must follow this interface:
+```typescript
+export default {
+  async queue(batch: MessageBatch<EventType>, env: Env, ctx: ExecutionContext) {
+    for (const msg of batch.messages) {
+      try {
+        // Process message
+        // Use ctx.waitUntil() for any background work
+      } catch (error) {
+        console.error('Queue processing error:', error);
+        // Handle retry logic or dead letter queue
+      }
+    }
+  }
+}
 ```
 
-The first approach (single queue handler with routing) is recommended as it provides better error handling and centralized queue management.
+**Wrangler.toml Queue Bindings:**
+All four queues must be bound in the `[queues]` section:
+```toml
+# Queue producers
+[[queues.producers]]
+queue = "doc-events"
+binding = "DOC_EVENTS"
+
+[[queues.producers]]
+queue = "notification-events"
+binding = "NOTIFICATION_QUEUE"
+
+[[queues.producers]]
+queue = "live-notification-events"
+binding = "LIVE_NOTIFICATION_QUEUE"
+
+[[queues.producers]]
+queue = "push-notification-events"
+binding = "PUSH_NOTIFICATION_QUEUE"
+
+# Queue consumers - all routes to centralized handler
+[[queues.consumers]]
+queue = "doc-events"
+
+[[queues.consumers]]
+queue = "notification-events"
+
+[[queues.consumers]]
+queue = "live-notification-events"
+
+[[queues.consumers]]
+queue = "push-notification-events"
+```
+
+This centralized approach provides better error handling, centralized queue management, and ensures all queues are properly bound and routed through the single queue handler.
 
 ## Environment Variables
 
@@ -544,9 +589,16 @@ ENABLE_PUSH_NOTIFICATIONS=true
 export class NotificationService {
   constructor(private env: Env) {}
 
+  // Robust boolean parsing helper
+  private parseEnvBoolean(value: string | undefined, defaultValue: boolean = false): boolean {
+    if (value === undefined) return defaultValue;
+    return value.toLowerCase() === 'true';
+  }
+
   async sendEmail(notification: EmailNotification): Promise<void> {
-    // Check if email notifications are enabled
-    if (this.env.ENABLE_EMAIL_NOTIFICATIONS === 'false') {
+    // Check if email notifications are enabled with robust parsing
+    const isEmailEnabled = this.parseEnvBoolean(this.env.ENABLE_EMAIL_NOTIFICATIONS, false);
+    if (!isEmailEnabled) {
       console.log('📧 Email notifications disabled - would send email:', {
         to: notification.to,
         subject: notification.subject,
@@ -898,10 +950,37 @@ async sendNotification(notification: Notification) {
 
 **Decision: Content-based deduplication with time window**
 
+**Content Hash Generation:**
+```typescript
+import { createHash } from 'crypto';
+
+function generateContentHash(notification: Notification): string {
+  // Include fields that define notification uniqueness
+  // Exclude timestamps, IDs, and other non-semantic fields
+  const content = JSON.stringify({
+    type: notification.type,
+    title: notification.title,
+    body: notification.body,
+    matterId: notification.matterId,
+    // Include relevant data fields, but exclude timestamps/IDs
+    relevantData: notification.data ? {
+      // Only include fields that affect semantic equivalence
+      matterStatus: notification.data.matterStatus,
+      clientName: notification.data.clientName,
+      amount: notification.data.amount,
+      // Exclude: timestamps, notification IDs, user IDs
+    } : null
+  });
+  
+  return createHash('sha256').update(content).digest('hex').slice(0, 16);
+}
+```
+
 **Deduplication Key:**
 ```typescript
 function generateDeduplicationKey(notification: Notification): string {
-  const { userId, teamId, type, matterId, contentHash } = notification;
+  const { userId, teamId, type, matterId } = notification;
+  const contentHash = generateContentHash(notification);
   return `${userId}_${teamId}_${type}_${matterId}_${contentHash}`;
 }
 
@@ -927,6 +1006,47 @@ async checkForDuplicates(key: string, windowMs: number = 300000): Promise<boolea
 ```
 
 ## Better Auth Integration
+
+### Better Auth Plugin API Usage
+
+**Important**: The notification system uses Better Auth's organization plugin API methods. The following non-existent methods have been replaced with proper plugin API calls:
+
+**Replaced Methods:**
+- ❌ `betterAuth.userHasTeamAccess(userId, teamId)` 
+- ❌ `betterAuth.userHasRole(userId, teamId, role)`
+- ❌ `session.user.teamId` (not provided by getSession)
+
+**Correct Plugin API Usage:**
+- ✅ `betterAuth.listMembers(teamId)` - Get all team members
+- ✅ `betterAuth.getActiveMemberRole(userId, teamId)` - Get user's role in team
+- ✅ Retrieve organization IDs via plugin methods instead of session.user.teamId
+
+**Team Access Verification Pattern:**
+```typescript
+// Verify user has access to the team using organization plugin
+const memberships = await betterAuth.listMembers(teamId);
+const hasAccess = memberships.some(member => member.userId === session.user.id);
+if (!hasAccess) {
+  return new Response('Forbidden', { status: 403 });
+}
+```
+
+**Role Checking Pattern:**
+```typescript
+// Check if user is team admin using organization plugin
+const memberRole = await betterAuth.getActiveMemberRole(session.user.id, teamId);
+const isAdmin = memberRole === 'admin' || memberRole === 'owner';
+if (!isAdmin) {
+  return new Response('Forbidden - Admin role required', { status: 403 });
+}
+```
+
+**Getting User's Organizations:**
+```typescript
+// Get user's organizations (replaces session.user.teamId)
+const userOrgs = await betterAuth.listUserOrganizations(session.user.id);
+const teamIds = userOrgs.map(org => org.organizationId);
+```
 
 ### Prerequisites
 - Better Auth organizations/teams must be configured before implementing notifications
@@ -1108,8 +1228,9 @@ export async function handlePushSubscription(request: Request, env: Env) {
   
   const { subscription, teamId } = await request.json();
   
-  // Verify user has access to the team
-  const hasAccess = await betterAuth.userHasTeamAccess(session.user.id, teamId);
+  // Verify user has access to the team using organization plugin
+  const memberships = await betterAuth.listMembers(teamId);
+  const hasAccess = memberships.some(member => member.userId === session.user.id);
   if (!hasAccess) {
     return new Response('Forbidden', { status: 403 });
   }
@@ -1146,8 +1267,9 @@ export async function getUserNotificationPreferences(request: Request, env: Env)
   
   const { teamId } = await request.json();
   
-  // Verify user has access to the team
-  const hasAccess = await betterAuth.userHasTeamAccess(session.user.id, teamId);
+  // Verify user has access to the team using organization plugin
+  const memberships = await betterAuth.listMembers(teamId);
+  const hasAccess = memberships.some(member => member.userId === session.user.id);
   if (!hasAccess) {
     return new Response('Forbidden', { status: 403 });
   }
@@ -1171,8 +1293,9 @@ export async function updateNotificationPreferences(request: Request, env: Env) 
   
   const { teamId, preferences } = await request.json();
   
-  // Verify user has access to the team
-  const hasAccess = await betterAuth.userHasTeamAccess(session.user.id, teamId);
+  // Verify user has access to the team using organization plugin
+  const memberships = await betterAuth.listMembers(teamId);
+  const hasAccess = memberships.some(member => member.userId === session.user.id);
   if (!hasAccess) {
     return new Response('Forbidden', { status: 403 });
   }
@@ -1210,8 +1333,9 @@ export async function updateTeamNotificationSettings(request: Request, env: Env)
   
   const { teamId, settings } = await request.json();
   
-  // Check if user is team admin
-  const isAdmin = await betterAuth.userHasRole(session.user.id, teamId, 'team:admin');
+  // Check if user is team admin using organization plugin
+  const memberRole = await betterAuth.getActiveMemberRole(session.user.id, teamId);
+  const isAdmin = memberRole === 'admin' || memberRole === 'owner';
   if (!isAdmin) {
     return new Response('Forbidden - Admin role required', { status: 403 });
   }
