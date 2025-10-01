@@ -1,0 +1,9 @@
+{
+  "id": "01K0TNGNKVCFT7V78Y4QF0PKH5",
+  "slug": "test-team",
+  "name": "Test Law Firm",
+  "config": {
+    "aiModel": "llama",
+    "requiresPayment": false
+  }
+}
