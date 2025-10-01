@@ -1,4 +1,5 @@
 import { ComponentChildren } from 'preact';
+import { ChevronRightIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 // Utility function for className merging (following codebase pattern)
 function cn(...classes: (string | undefined | null | false)[]): string {
@@ -40,7 +41,7 @@ export const SettingsItem = ({
   className = '',
   children
 }: SettingsItemProps) => {
-  const baseClasses = 'flex items-center gap-3 px-4 py-3 text-left transition-colors';
+  const baseClasses = 'flex items-center gap-3 px-4 py-3 text-left transition-colors w-full block';
   const hoverClasses = 'hover:bg-gray-50 dark:hover:bg-dark-hover';
   const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
   
@@ -82,7 +83,7 @@ export const SettingsItem = ({
         return (
           <>
             {icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center">
                 {icon}
               </div>
             )}
@@ -92,9 +93,9 @@ export const SettingsItem = ({
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</div>
               )}
             </div>
-            <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <div className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center ml-auto">
+              <ChevronRightIcon className="w-4 h-4" />
+            </div>
           </>
         );
 
@@ -102,7 +103,7 @@ export const SettingsItem = ({
         return (
           <>
             {icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center">
                 {icon}
               </div>
             )}
@@ -141,7 +142,7 @@ export const SettingsItem = ({
         return (
           <>
             {icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center">
                 {icon}
               </div>
             )}
@@ -187,7 +188,7 @@ export const SettingsItem = ({
         return (
           <>
             {icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center">
                 {icon}
               </div>
             )}
@@ -197,9 +198,9 @@ export const SettingsItem = ({
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</div>
               )}
             </div>
-            <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
+            <div className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center ml-auto">
+              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+            </div>
           </>
         );
 

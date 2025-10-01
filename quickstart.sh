@@ -30,27 +30,50 @@ check_test_user() {
         source .dev.vars
         
         # Check if test user already exists
-        EXISTING_USER=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM users WHERE email = '$TEST_USER_EMAIL';" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
+        # Escape single quotes in email to prevent SQL injection
+        ESCAPED_EMAIL=$(echo "$TEST_USER_EMAIL" | sed "s/'/''/g")
+        EXISTING_USER=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM users WHERE email = '$ESCAPED_EMAIL';" --json | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
         
         if [ "$EXISTING_USER" -eq 0 ] && [ -n "$TEST_USER_EMAIL" ] && [ -n "$TEST_USER_PASSWORD" ] && [ -n "$TEST_USER_NAME" ]; then
             echo "  Creating test user: $TEST_USER_EMAIL"
             
-            # Generate a simple user ID (you might want to use a proper UUID generator)
-            USER_ID="test-user-$(date +%s)"
+            # Generate user and account IDs using single timestamp to prevent collisions
+            TIMESTAMP=$(date +%s)
+            USER_ID="test-user-$TIMESTAMP"
+            ACCOUNT_ID="test-account-$TIMESTAMP"
             
-            # Hash the password (in a real app, Better Auth would handle this)
-            # For now, we'll store it as plain text since Better Auth will handle hashing
-            # Note: Better Auth will hash this when the user actually signs in
+            # Escape variables to prevent SQL injection
+            ESCAPED_NAME=$(echo "$TEST_USER_NAME" | sed "s/'/''/g")
+            ESCAPED_EMAIL=$(echo "$TEST_USER_EMAIL" | sed "s/'/''/g")
+            ESCAPED_PASSWORD=$(echo "$TEST_USER_PASSWORD" | sed "s/'/''/g")
             
-            # Insert the test user
-            wrangler d1 execute blawby-ai-chatbot --local --command "
+            # Hash the password using a simple approach (Better Auth will re-hash on first login)
+            # Using a basic hash for development - in production, Better Auth handles this
+            HASHED_PASSWORD=$(echo -n "$TEST_USER_PASSWORD" | openssl dgst -sha256 -binary | base64)
+            
+            # Insert the test user with proper error handling
+            echo "  Inserting test user into database..."
+            USER_INSERT_RESULT=$(wrangler d1 execute blawby-ai-chatbot --local --command "
             INSERT INTO users (id, name, email, email_verified, created_at, updated_at, team_id, role) 
-            VALUES ('$USER_ID', '$TEST_USER_NAME', '$TEST_USER_EMAIL', 1, strftime('%s', 'now'), strftime('%s', 'now'), '01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'admin');" 2>/dev/null || echo "Could not insert test user"
+            VALUES ('$USER_ID', '$ESCAPED_NAME', '$ESCAPED_EMAIL', 1, strftime('%s', 'now'), strftime('%s', 'now'), '01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'admin');" 2>&1)
             
-            # Insert password account for the test user
-            wrangler d1 execute blawby-ai-chatbot --local --command "
+            if [ $? -ne 0 ]; then
+                echo "❌ Failed to insert test user:"
+                echo "$USER_INSERT_RESULT"
+                exit 1
+            fi
+            
+            # Insert password account for the test user with proper error handling
+            echo "  Inserting test user account into database..."
+            ACCOUNT_INSERT_RESULT=$(wrangler d1 execute blawby-ai-chatbot --local --command "
             INSERT INTO accounts (id, account_id, provider_id, user_id, password, created_at, updated_at) 
-            VALUES ('test-account-$(date +%s)', '$TEST_USER_EMAIL', 'credential', '$USER_ID', '$TEST_USER_PASSWORD', strftime('%s', 'now'), strftime('%s', 'now'));" 2>/dev/null || echo "Could not insert test user account"
+            VALUES ('$ACCOUNT_ID', '$ESCAPED_EMAIL', 'credential', '$USER_ID', '$HASHED_PASSWORD', strftime('%s', 'now'), strftime('%s', 'now'));" 2>&1)
+            
+            if [ $? -ne 0 ]; then
+                echo "❌ Failed to insert test user account:"
+                echo "$ACCOUNT_INSERT_RESULT"
+                exit 1
+            fi
             
             echo "✅ Test user created successfully"
             echo "   Email: $TEST_USER_EMAIL"

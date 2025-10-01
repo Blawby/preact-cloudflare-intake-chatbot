@@ -448,15 +448,175 @@ export interface Env {
 }
 ```
 
+**`worker/index.ts` queue consumer registration:**
+
+The worker's main entry point must be updated to register queue consumer handlers for the new notification queues. This involves:
+
+1. **Import notification handlers**: Add imports for the notification consumer functions
+2. **Update queue registration**: Modify the exported default object to include queue-to-handler mappings
+
+**Required changes to `worker/index.ts`:**
+
+```typescript
+// Add imports for notification consumers (around line 23)
+import docProcessor from './consumers/doc-processor';
+import notificationProcessor from './consumers/notification-processor';
+import liveNotificationProcessor from './consumers/live-notification-processor';
+import pushNotificationProcessor from './consumers/push-notification-processor';
+
+// Update the default export (around lines 117-120)
+export default { 
+  fetch: handleRequest,
+  queue: (batch: MessageBatch, env: Env, ctx: ExecutionContext) => {
+    // Route to appropriate consumer based on queue name
+    switch (batch.queue) {
+      case 'notification-events':
+        return notificationProcessor(batch, env, ctx);
+      case 'live-notification-events':
+        return liveNotificationProcessor(batch, env, ctx);
+      case 'push-notification-events':
+        return pushNotificationProcessor(batch, env, ctx);
+      case 'doc-events':
+        return docProcessor(batch, env, ctx);
+      default:
+        console.error('Unknown queue:', batch.queue);
+        throw new Error(`No handler for queue: ${batch.queue}`);
+    }
+  }
+};
+```
+
+**Alternative approach using queue-specific exports:**
+```typescript
+export default { 
+  fetch: handleRequest,
+  queue: docProcessor
+};
+
+// Add separate queue consumer exports
+export const notificationQueue = notificationProcessor;
+export const liveNotificationQueue = liveNotificationProcessor;
+export const pushNotificationQueue = pushNotificationProcessor;
+```
+
+The first approach (single queue handler with routing) is recommended as it provides better error handling and centralized queue management.
+
 ## Environment Variables
 
 ### Existing (wrangler.toml)
 - `RESEND_API_KEY` - Email service
 
 ### New to Add
-- `VAPID_PUBLIC_KEY` - Push notification public key
-- `VAPID_PRIVATE_KEY` - Push notification private key
-- `NOTIFICATION_WEBHOOK_SECRET` - Webhook validation
+- `VAPID_PUBLIC_KEY` - Push notification public key (sensitive - use dev vars)
+- `VAPID_PRIVATE_KEY` - Push notification private key (sensitive - use dev vars)
+- `NOTIFICATION_WEBHOOK_SECRET` - Webhook validation (sensitive - use dev vars)
+
+### Configuration in wrangler.toml (non-sensitive)
+- `ENABLE_EMAIL_NOTIFICATIONS` - Toggle email sending (default: false for dev, true for prod)
+- `ENABLE_PUSH_NOTIFICATIONS` - Toggle push notifications (default: false for dev, true for prod)
+
+## Email Toggle for Testing
+
+### Problem
+During development and testing, notification systems can generate excessive emails, causing:
+- Spam to test accounts
+- Hitting email service rate limits
+- Cluttering inboxes with test data
+- Potential costs from email service usage
+
+### Solution: Environment-Based Email Toggles
+
+**Environment Variables:**
+```bash
+# Development (default)
+ENABLE_EMAIL_NOTIFICATIONS=false
+ENABLE_PUSH_NOTIFICATIONS=false
+
+# Production
+ENABLE_EMAIL_NOTIFICATIONS=true
+ENABLE_PUSH_NOTIFICATIONS=true
+```
+
+**Implementation in Notification Services:**
+
+```typescript
+// worker/services/notificationService.ts
+export class NotificationService {
+  constructor(private env: Env) {}
+
+  async sendEmail(notification: EmailNotification): Promise<void> {
+    // Check if email notifications are enabled
+    if (this.env.ENABLE_EMAIL_NOTIFICATIONS === 'false') {
+      console.log('📧 Email notifications disabled - would send email:', {
+        to: notification.to,
+        subject: notification.subject,
+        template: notification.template
+      });
+      return;
+    }
+
+    // Actual email sending logic
+    await this.resendClient.emails.send(notification);
+  }
+
+  async sendPushNotification(notification: PushNotification): Promise<void> {
+    // Check if push notifications are enabled
+    if (this.env.ENABLE_PUSH_NOTIFICATIONS === 'false') {
+      console.log('🔔 Push notifications disabled - would send push notification:', {
+        userId: notification.userId,
+        title: notification.title,
+        body: notification.body
+      });
+      return;
+    }
+
+    // Actual push notification logic
+    await this.webPushClient.sendNotification(notification);
+  }
+}
+```
+
+**Configuration in wrangler.toml:**
+
+```toml
+# Default configuration (development)
+ENABLE_EMAIL_NOTIFICATIONS = false
+ENABLE_PUSH_NOTIFICATIONS = false
+
+# Production environment
+[env.production]
+ENABLE_EMAIL_NOTIFICATIONS = true
+ENABLE_PUSH_NOTIFICATIONS = true
+```
+
+**Sensitive variables in dev.vars (local development):**
+```bash
+# dev.vars file (not committed to git)
+VAPID_PUBLIC_KEY=your_vapid_public_key_here
+VAPID_PRIVATE_KEY=your_vapid_private_key_here
+NOTIFICATION_WEBHOOK_SECRET=your_webhook_secret_here
+```
+
+**Alternative: Team-Level Testing Mode**
+
+For more granular control, implement team-level testing flags:
+
+```typescript
+// Check if team is in test mode
+const teamConfig = await this.getTeamConfig(teamId);
+if (teamConfig.testMode) {
+  console.log('🧪 Team in test mode - logging notification instead of sending');
+  return;
+}
+```
+
+**Benefits:**
+- Prevents email spam during development
+- Allows testing notification logic without side effects
+- Provides clear logging of what would be sent
+- Simple two-flag system (no redundant test mode)
+- Easy to toggle for different environments
+- Maintains production functionality
 
 ## Testing Strategy
 
