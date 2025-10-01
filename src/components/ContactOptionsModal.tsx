@@ -7,7 +7,7 @@ import {
   Mail,
   Globe,
   X,
-  ClipboardList,
+  Copy,
   Check
 } from 'lucide-preact';
 import { useTheme } from '../hooks/useTheme';
@@ -131,7 +131,7 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
                     {copiedField === 'phone' ? (
                       <Check className="w-4 h-4 text-green-500" />
                     ) : (
-                      <ClipboardList className="w-4 h-4" />
+                      <Copy className="w-4 h-4" />
                     )}
                   </Button>
                   <Button
@@ -170,7 +170,7 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
                     {copiedField === 'email' ? (
                       <Check className="w-4 h-4 text-green-500" />
                     ) : (
-                      <ClipboardList className="w-4 h-4" />
+                      <Copy className="w-4 h-4" />
                     )}
                   </Button>
                   <Button
@@ -209,7 +209,7 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
                     {copiedField === 'website' ? (
                       <Check className="w-4 h-4 text-green-500" />
                     ) : (
-                      <ClipboardList className="w-4 h-4" />
+                      <Copy className="w-4 h-4" />
                     )}
                   </Button>
                   <Button

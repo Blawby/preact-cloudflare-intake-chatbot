@@ -7,6 +7,7 @@ import {
   Building,
   MapPin,
   Star,
+  StarHalf,
   Phone,
   Mail,
   Globe,
@@ -83,7 +84,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
 
     if (hasHalfStar) {
       stars.push(
-        <Star key="half" className="w-4 h-4 text-yellow-400 fill-current opacity-50" />
+        <StarHalf key="half" className="w-4 h-4 text-yellow-400 fill-current" />
       );
     }
 
