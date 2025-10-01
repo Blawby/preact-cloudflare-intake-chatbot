@@ -28,6 +28,7 @@ build
 *.njsproj
 *.sln
 *.sw?
+.claude
 
 # Testing
 coverage
