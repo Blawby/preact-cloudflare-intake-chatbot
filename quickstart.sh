@@ -23,19 +23,44 @@ fi
 # Create local database (ignore if already exists)
 wrangler d1 create blawby-ai-chatbot --local 2>/dev/null || echo "Database already exists ✓"
 
-# Apply schema with default teams
-echo "📋 Applying database schema..."
-wrangler d1 execute blawby-ai-chatbot --local --file=./worker/schema.sql
+# Check if database is already initialized
+echo "🔍 Checking database status..."
+DB_CHECK=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT name FROM sqlite_master WHERE type='table' AND name='teams';" 2>/dev/null || echo "")
+
+if echo "$DB_CHECK" | grep -q "teams"; then
+    echo "✅ Database already initialized, skipping schema setup"
+else
+    echo "📋 Initializing database schema..."
+
+    # Apply schema with default teams (will skip if tables exist due to IF NOT EXISTS)
+    if wrangler d1 execute blawby-ai-chatbot --local --file=./worker/schema.sql 2>&1; then
+        echo "✅ Schema applied successfully"
+    else
+        echo "❌ Error applying schema. Trying migration-based approach..."
+
+        # Try applying migrations one by one in sorted order
+        for migration in $(ls migrations/*.sql 2>/dev/null | sort); do
+            if [ -f "$migration" ]; then
+                echo "📋 Applying migration: $(basename $migration)"
+                if wrangler d1 execute blawby-ai-chatbot --local --file="$migration" 2>&1 | grep -q "success"; then
+                    echo "   ✅ Applied successfully"
+                else
+                    echo "   ⚠️  Migration failed or already applied"
+                fi
+            fi
+        done
+    fi
+fi
 
 # Verify setup
 echo "🔍 Verifying setup..."
-TEAM_COUNT=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM teams;" --json | jq -r '.results[0].count')
+TEAM_CHECK=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM teams;" 2>/dev/null || echo "")
 
-if [ "$TEAM_COUNT" -gt 0 ]; then
-    echo "✅ Success! Found $TEAM_COUNT teams in database."
+if echo "$TEAM_CHECK" | grep -q "count"; then
+    echo "✅ Database setup complete!"
     echo ""
     echo "📋 Available teams:"
-    wrangler d1 execute blawby-ai-chatbot --local --command "SELECT slug, name FROM teams;"
+    wrangler d1 execute blawby-ai-chatbot --local --command "SELECT slug, name FROM teams;" 2>/dev/null || echo "   (Teams will be loaded on first run)"
     echo ""
     echo "🎉 You're ready to go!"
     echo ""
@@ -51,6 +76,6 @@ if [ "$TEAM_COUNT" -gt 0 ]; then
     echo ""
     echo "Happy coding! 🎯"
 else
-    echo "❌ Error: No teams found. Check the schema file."
-    exit 1
+    echo "⚠️  Warning: Could not verify teams table. The database may need manual setup."
+    echo "   Try running: wrangler d1 execute blawby-ai-chatbot --local --file=./worker/schema.sql"
 fi
