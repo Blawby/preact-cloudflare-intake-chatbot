@@ -470,13 +470,13 @@ export default {
     // Route to appropriate consumer based on queue name
     switch (batch.queue) {
       case 'notification-events':
-        return notificationProcessor(batch, env, ctx);
+        return notificationProcessor.queue(batch, env, ctx);
       case 'live-notification-events':
-        return liveNotificationProcessor(batch, env, ctx);
+        return liveNotificationProcessor.queue(batch, env, ctx);
       case 'push-notification-events':
-        return pushNotificationProcessor(batch, env, ctx);
+        return pushNotificationProcessor.queue(batch, env, ctx);
       case 'doc-events':
-        return docProcessor(batch, env, ctx);
+        return docProcessor.queue(batch, env, ctx);
       default:
         console.error('Unknown queue:', batch.queue);
         throw new Error(`No handler for queue: ${batch.queue}`);

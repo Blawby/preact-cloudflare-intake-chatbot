@@ -115,9 +115,32 @@ export const organizationInvitations = sqliteTable("organization_invitations", {
     .$onUpdate(() => new Date())
     .notNull(),
 });
+
+export const userProfiles = sqliteTable("user_profiles", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  phone: text("phone"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .default(sql`(current_timestamp)`)
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .default(sql`(current_timestamp)`)
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => ({
+  // Ensure one profile per user
+  userUnique: unique().on(table.userId),
+}));
 ```
 
 ### 2. Migration File (`migrations/add_organization_tables.sql`)
+
+⚠️ **CRITICAL SAFETY WARNING**: This migration preserves existing data by migrating it to new tables before dropping columns. The migration is split into two phases:
+1. **Data Migration Phase**: Creates new tables and migrates existing data
+2. **Cleanup Phase**: Drops old columns (run separately after verification)
+
 ```sql
 PRAGMA foreign_keys = ON;
 BEGIN TRANSACTION;
@@ -163,14 +186,90 @@ CREATE INDEX IF NOT EXISTS idx_organization_members_organization_id ON organizat
 CREATE INDEX IF NOT EXISTS idx_organization_invitations_email ON organization_invitations(email);
 CREATE INDEX IF NOT EXISTS idx_organization_invitations_status ON organization_invitations(status);
 
--- CRITICAL: Remove old team-related columns from users table
--- These now belong in organization_members or domain-specific tables
+-- STEP 1: Migrate existing team data to organizations
+-- First, create a default organization for each existing team_id
+INSERT INTO organizations (id, name, slug, created_at, updated_at)
+SELECT 
+  'org_' || team_id as id,
+  COALESCE(team_name, 'Team ' || team_id) as name,
+  'team-' || team_id as slug,
+  MIN(created_at) as created_at,
+  MAX(updated_at) as updated_at
+FROM users 
+WHERE team_id IS NOT NULL
+GROUP BY team_id, team_name;
+
+-- STEP 2: Migrate user roles to organization_members
+INSERT INTO organization_members (id, organization_id, user_id, role, created_at, updated_at)
+SELECT 
+  'member_' || user_id || '_' || team_id as id,
+  'org_' || team_id as organization_id,
+  user_id,
+  COALESCE(role, 'member') as role, -- Default to 'member' if role is NULL
+  created_at,
+  updated_at
+FROM users 
+WHERE team_id IS NOT NULL;
+
+-- STEP 3: Create a user_profiles table to preserve phone numbers
+-- (since phone is not part of organization structure)
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  phone TEXT,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  UNIQUE(user_id)
+);
+
+-- Migrate phone numbers to user_profiles
+INSERT INTO user_profiles (id, user_id, phone, created_at, updated_at)
+SELECT 
+  'profile_' || user_id as id,
+  user_id,
+  phone,
+  created_at,
+  updated_at
+FROM users 
+WHERE phone IS NOT NULL;
+
+-- STEP 4: Verify data migration before dropping columns
+-- This is a safety check - if this fails, the transaction will rollback
+SELECT 
+  COUNT(*) as users_with_teams,
+  (SELECT COUNT(*) FROM organization_members) as migrated_members,
+  (SELECT COUNT(*) FROM user_profiles WHERE phone IS NOT NULL) as migrated_phones
+FROM users 
+WHERE team_id IS NOT NULL;
+
+-- Only proceed with column drops if migration was successful
+-- (This will be verified by the count checks above)
+
+COMMIT;
+```
+
+### 3. Cleanup Migration File (`migrations/cleanup_old_team_columns.sql`)
+```sql
+-- This migration should ONLY be run AFTER confirming the data migration was successful
+-- Run this as a separate migration after verifying all data was properly migrated
+
+PRAGMA foreign_keys = ON;
+BEGIN TRANSACTION;
+
+-- Final verification before dropping columns
+-- These queries should return 0 or the migration should be aborted
+SELECT COUNT(*) as remaining_team_users FROM users WHERE team_id IS NOT NULL;
+SELECT COUNT(*) as remaining_role_users FROM users WHERE role IS NOT NULL;
+SELECT COUNT(*) as remaining_phone_users FROM users WHERE phone IS NOT NULL;
+
+-- Only drop columns if verification passes
+-- (In practice, you'd add conditional logic or manual verification here)
+
+-- Remove old team-related columns from users table
+-- These now belong in organization_members or user_profiles tables
 ALTER TABLE users DROP COLUMN IF EXISTS team_id;
 ALTER TABLE users DROP COLUMN IF EXISTS role;
 ALTER TABLE users DROP COLUMN IF EXISTS phone;
-
--- Migrate existing team data to organizations (if needed)
--- This would be customized based on your current team structure
 
 COMMIT;
 ```
@@ -189,7 +288,7 @@ import type { Env } from "../types";
 // Import the generated auth schema (existing)
 import { users, sessions, accounts, passwords, verifications } from "../db/auth.schema";
 // Import organization schema (new)
-import { organizations, organizationMembers, organizationInvitations } from "../db/organization.schema";
+import { organizations, organizationMembers, organizationInvitations, userProfiles } from "../db/organization.schema";
 
 export function createAuth(env: Env) {
   // Validate required environment variables
@@ -201,7 +300,7 @@ export function createAuth(env: Env) {
   const db = drizzle(env.DB, {
     schema: { 
       users, sessions, accounts, passwords, verifications,
-      organizations, organizationMembers, organizationInvitations
+      organizations, organizationMembers, organizationInvitations, userProfiles
     }
   });
 
@@ -281,8 +380,11 @@ export const authClient = createAuthClient({
 #### 1.1 Database Schema Migration
 - [ ] Create `worker/db/organization.schema.ts` with Drizzle schema definitions
 - [ ] Create SQL migration file in `migrations/` directory (following your existing pattern)
-- [ ] Remove `teamId`, `role`, `phone` from existing users table (migrate to organization_members)
-- [ ] Run migrations and verify schema
+- [ ] **CRITICAL**: Run data migration to preserve existing team_id, role, and phone data
+- [ ] Create organizations from existing teams and migrate user roles to organization_members
+- [ ] Create user_profiles table and migrate phone numbers
+- [ ] Verify data migration with count checks before proceeding
+- [ ] **ONLY AFTER VERIFICATION**: Run cleanup migration to drop old columns
 - [ ] Skip lawyer_profiles and client_profiles for now
 
 #### 1.2 Better Auth Configuration
@@ -484,11 +586,15 @@ slug TEXT NOT NULL UNIQUE
 ## 🚀 Deployment & Migration
 
 ### Database Migration Strategy
-1. Create new organization tables alongside existing schema
-2. Migrate existing team data to organization structure
-3. Update user records with organization context
-4. Remove old team management code
-5. Verify data integrity and functionality
+1. **Create new organization tables** alongside existing schema
+2. **Migrate existing team data** to organization structure:
+   - Create organizations from existing team_id values
+   - Migrate user roles to organization_members table
+   - Migrate phone numbers to user_profiles table
+3. **Verify data migration** with count checks and validation queries
+4. **ONLY AFTER VERIFICATION**: Remove old team management columns
+5. **Test organization functionality** with migrated data
+6. **Remove old team management code** after confirming new system works
 
 ### Environment Configuration
 - Update environment variables for organization features
