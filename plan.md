@@ -353,17 +353,14 @@ const handleSettingsClick = () => {
 // In settings components - Call worker API endpoints
 const updateProfile = async (profileData) => {
   try {
-    // Get auth token from localStorage (or context/cookie as appropriate)
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
-
+    // SECURITY: Use httpOnly cookies instead of localStorage to prevent XSS token theft
+    // Server should set session cookies with httpOnly flag
     const response = await fetch('/api/user/profile', {
       method: 'PUT',
+      credentials: 'include', // Include httpOnly cookies automatically
       headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
+        // No manual Authorization header needed - browser handles httpOnly cookies
       },
       body: JSON.stringify(profileData)
     });
@@ -375,17 +372,61 @@ const updateProfile = async (profileData) => {
 
     return await response.json();
   } catch (error) {
-    // Log the error with context for debugging
-    console.error('Failed to update profile:', {
-      error: error.message,
-      profileData: profileData,
-      timestamp: new Date().toISOString()
+    // SECURITY: Sanitize profile data to prevent PII exposure in logs
+    const sanitizedLog = createProfileErrorLog(error, profileData, {
+      endpoint: '/api/user/profile',
+      method: 'PUT'
     });
+    
+    console.error('Failed to update profile:', sanitizedLog);
     
     // Re-throw the error so callers can handle it appropriately
     throw error;
   }
 };
+
+// Helper function to sanitize profile data for logging
+function createProfileErrorLog(error, profileData, additionalContext = {}) {
+  const sensitiveFields = ['email', 'phone', 'secondary_phone', 'address_street', 'address_city', 'address_state', 'address_zip', 'image'];
+  
+  const sanitized = {};
+  const metadata = {
+    hasEmail: false,
+    hasPhone: false,
+    hasAddress: false,
+    fieldCount: 0,
+    sensitiveFieldCount: 0
+  };
+  
+  if (profileData && typeof profileData === 'object') {
+    for (const [key, value] of Object.entries(profileData)) {
+      metadata.fieldCount++;
+      
+      if (sensitiveFields.includes(key)) {
+        metadata.sensitiveFieldCount++;
+        sanitized[key] = '[REDACTED]';
+        
+        // Set presence flags
+        if (key === 'email' && value) metadata.hasEmail = true;
+        if (key === 'phone' && value) metadata.hasPhone = true;
+        if (key.startsWith('address_') && value) metadata.hasAddress = true;
+      } else {
+        // Non-sensitive fields can be included (with length limits)
+        sanitized[key] = typeof value === 'string' && value.length > 100 
+          ? value.substring(0, 100) + '...' 
+          : value;
+      }
+    }
+  }
+  
+  return {
+    error: error.message,
+    timestamp: new Date().toISOString(),
+    profileMetadata: metadata,
+    sanitizedProfile: sanitized,
+    ...additionalContext
+  };
+}
 ```
 
 ### Accessibility Features

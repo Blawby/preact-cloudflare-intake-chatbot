@@ -45,6 +45,8 @@ CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
 # CLOUDFLARE_API_TOKEN should be set via: wrangler secret put CLOUDFLARE_API_TOKEN
 # CLOUDFLARE_ACCOUNT_ID should be set via: wrangler secret put CLOUDFLARE_ACCOUNT_ID
 
+# PDF analysis will be implemented in a future PR
+
 # Environment flags
 NODE_ENV = "development"
 DEBUG = "false"

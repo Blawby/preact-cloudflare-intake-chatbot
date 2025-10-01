@@ -5,6 +5,18 @@ import type { Env, AgentMessage } from '../types.js';
 import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
 import { Logger } from '../utils/logger.js';
 
+/**
+ * Timeout helper to prevent operations from hanging indefinitely
+ */
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('Operation timed out')), ms)
+    )
+  ]);
+};
+
 type AttachmentData = {
   name: string;
   size: number;
@@ -52,8 +64,8 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       const attachments = context.currentAttachments;
       const analysisResults = [];
 
-    // Process each attachment
-    for (const attachment of attachments) {
+      // Process each attachment
+      for (const attachment of attachments) {
       try {
         // Extract file ID from attachment URL
         const fileId = extractFileIdFromUrl(attachment.url);
@@ -76,8 +88,11 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         // Get appropriate analysis question
         const analysisQuestion = getAnalysisQuestion(analysisType);
         
-        // Perform file analysis
-        const analysis = await analyzeFile(env, fileId, analysisQuestion);
+        // Perform file analysis with timeout protection (30 seconds)
+        const analysis = await withTimeout(
+          analyzeFile(env, fileId, analysisQuestion),
+          30000
+        );
         
         if (analysis && analysis.confidence > 0) {
           analysisResults.push({
@@ -213,10 +228,6 @@ function determineAnalysisType(attachment: AttachmentData): string {
  * Generate response based on analysis results
  */
 function generateAnalysisResponse(analysisResults: AnalysisResult[]): string {
-  if (analysisResults.length === 0) {
-    return "I wasn't able to analyze the uploaded files. Please try uploading them again or contact support if the issue persists.";
-  }
-
   let response = "I've analyzed your uploaded document(s) and here's what I found:\n\n";
 
   for (const result of analysisResults) {

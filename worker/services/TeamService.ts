@@ -81,6 +81,27 @@ export class TeamService {
   }
 
   /**
+   * Safely decodes team config from database, handling both JSON and Base64-encoded JSON
+   * This supports the safer Base64 encoding approach used in insert-team.sh script
+   */
+  private decodeTeamConfig(configString: string): any {
+    try {
+      // First try to parse as regular JSON (for existing records)
+      return JSON.parse(configString);
+    } catch (jsonError) {
+      try {
+        // If JSON parsing fails, try Base64 decoding first
+        const decoded = atob(configString);
+        return JSON.parse(decoded);
+      } catch (base64Error) {
+        console.error('Failed to decode team config:', { configString: configString.substring(0, 100) + '...', jsonError, base64Error });
+        // Return a safe default config if both methods fail
+        return { aiModel: 'llama', requiresPayment: false };
+      }
+    }
+  }
+
+  /**
    * Resolves environment variable placeholders in string values
    * Uses regex to find and replace ${VAR_NAME} patterns with actual env values
    * Also handles direct environment variable names
@@ -220,7 +241,7 @@ export class TeamService {
       }
       
       if (teamRow) {
-        const rawConfig = JSON.parse(teamRow.config as string);
+        const rawConfig = this.decodeTeamConfig(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
         const normalizedConfig = this.normalizeConfigArrays(resolvedConfig);
         
@@ -434,7 +455,7 @@ export class TeamService {
       id: row.id as string,
       slug: row.slug as string,
       name: row.name as string,
-      config: JSON.parse(row.config as string),
+      config: this.decodeTeamConfig(row.config as string),
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string
     }));

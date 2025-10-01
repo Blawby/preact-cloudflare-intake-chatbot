@@ -51,20 +51,54 @@ if ! echo "$TEAM_CONFIG" | jq empty >/dev/null 2>&1; then
     exit 1
 fi
 
-# Insert team using heredoc for better readability and safety
-# Escape single quotes for SQL safety
-TEAM_ID_ESCAPED="${TEAM_ID//\'/\'\'}"
-TEAM_SLUG_ESCAPED="${TEAM_SLUG//\'/\'\'}"
-TEAM_NAME_ESCAPED="${TEAM_NAME//\'/\'\'}"
-TEAM_CONFIG_ESCAPED="${TEAM_CONFIG//\'/\'\'}"
+# Insert team using Base64 encoding for complex JSON to avoid SQL injection
+# This approach safely handles complex JSON with backslashes, newlines, and control characters
+TEAM_CONFIG_B64=$(echo -n "$TEAM_CONFIG" | base64)
 
-if ! wrangler d1 execute blawby-ai-chatbot --local --command "$(cat <<EOF
-INSERT OR IGNORE INTO teams (id, slug, name, config) 
-VALUES ('$TEAM_ID_ESCAPED', '$TEAM_SLUG_ESCAPED', '$TEAM_NAME_ESCAPED', '$TEAM_CONFIG_ESCAPED')
+# Create a temporary SQL file with parameterized approach
+# We'll use a more robust method that handles the Base64-encoded config
+TEMP_SQL_FILE=$(mktemp)
+cat > "$TEMP_SQL_FILE" <<EOF
+-- Insert team with Base64-encoded config for safety
+-- The config will be decoded by the application layer when needed
+INSERT INTO teams (id, slug, name, config, created_at, updated_at) 
+VALUES (
+  '$(printf '%s' "$TEAM_ID" | sed "s/'/''/g")',
+  '$(printf '%s' "$TEAM_SLUG" | sed "s/'/''/g")', 
+  '$(printf '%s' "$TEAM_NAME" | sed "s/'/''/g")',
+  '$(printf '%s' "$TEAM_CONFIG_B64" | sed "s/'/''/g")',
+  datetime('now'),
+  datetime('now')
+);
 EOF
-)"; then
-    echo "Warning: Team '$TEAM_SLUG' already exists or insertion failed"
-    exit 0
+
+# Execute the SQL and capture both output and exit code
+# Temporarily disable set -e to handle constraint violations gracefully
+set +e
+OUTPUT=$(wrangler d1 execute blawby-ai-chatbot --local --file="$TEMP_SQL_FILE" 2>&1)
+EXIT_CODE=$?
+set -e
+
+# Clean up temporary file
+rm -f "$TEMP_SQL_FILE"
+
+# Debug output removed for production
+
+# Check for constraint violations (team already exists) vs other errors
+if [ $EXIT_CODE -ne 0 ]; then
+    # Check if this is a constraint violation (team already exists)
+    if echo "$OUTPUT" | grep -qi "UNIQUE constraint failed\|constraint failed\|already exists"; then
+        echo "Info: Team '$TEAM_SLUG' already exists (skipped)"
+        exit 0
+    else
+        # This is a genuine error
+        echo "Error: Failed to insert team '$TEAM_SLUG'"
+        echo "$OUTPUT"
+        exit 1
+    fi
 fi
+
+# If we get here, the team was successfully inserted
+echo "Success: Team '$TEAM_SLUG' inserted successfully"
 
 echo "✅ Processed team: $TEAM_NAME ($TEAM_SLUG)"

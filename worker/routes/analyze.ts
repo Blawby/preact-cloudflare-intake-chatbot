@@ -1,7 +1,6 @@
 import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
-// Removed custom PDF text extraction - using Cloudflare AI directly
 import { withAIRetry } from '../utils/retry.js';
 
 interface AnalysisResult {
@@ -232,63 +231,27 @@ export async function analyzeWithCloudflareAI(
 }`;
         aiOptions = { prompt: prompt };
       }
-    } else if (file.type === 'application/pdf') {
-      // For PDFs, try to use Cloudflare AI models directly
-      modelName = '@cf/meta/llama-3.1-8b-instruct';
-      console.log('Attempting direct PDF analysis with Cloudflare AI');
-      
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        console.log('PDF file size:', arrayBuffer.byteLength);
-        console.log('PDF file type:', file.type);
-        console.log('PDF file name:', file.name);
-        
-        // Try to send the PDF directly to the AI model
-        
-        prompt = `${question}\n\nPlease analyze this PDF document and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
-
-{
-  "summary": "Brief summary of the document",
-  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
-  "entities": {
-    "people": ["Person names found"],
-    "orgs": ["Organization names found"],
-    "dates": ["Dates found"]
-  },
-  "action_items": ["Action 1", "Action 2"],
-  "confidence": 0.85
-}`;
-        
-        // Try different approaches for PDF analysis
-        aiOptions = { 
-          prompt: prompt,
-          // Some models might accept file data directly
-          // Let's see what Cloudflare AI can do with PDFs
-        };
-        
-      } catch (pdfError) {
-        console.warn('Failed to process PDF with Cloudflare AI:', pdfError);
-        
-        return {
-          summary: "I wasn't able to analyze this PDF document with the current AI model. PDF analysis may not be supported.",
-          key_facts: [
-            "PDF analysis not supported by current AI model",
-            "Document could not be processed"
-          ],
-          entities: {
-            people: [],
-            orgs: [],
-            dates: []
-          },
-          action_items: [
-            "Try uploading a text-based document instead",
-            "Convert PDF to text format if possible",
-            "Contact support for PDF analysis assistance"
-          ],
-          confidence: 0.1,
-          error: "PDF analysis not supported by current AI model"
-        };
-      }
+  } else if (file.type === 'application/pdf') {
+    // PDF analysis not implemented in this PR
+    return {
+      summary: "PDF analysis is not yet available. Please upload text files or images for analysis.",
+      key_facts: [
+        "PDF analysis feature is coming soon",
+        "Currently supports text files and images"
+      ],
+      entities: {
+        people: [],
+        orgs: [],
+        dates: []
+      },
+      action_items: [
+        "Try uploading a text file (.txt) instead",
+        "Upload individual page images for analysis",
+        "PDF analysis will be available in a future update"
+      ],
+      confidence: 0.0,
+      error: "PDF analysis not implemented"
+    };
     } else {
       // For text files, use text model
       modelName = '@cf/meta/llama-3.1-8b-instruct';
