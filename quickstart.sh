@@ -173,17 +173,8 @@ fi
 # Insert default teams if they don't exist
 echo "👥 Setting up default teams..."
 
-# Insert teams from JSON configuration files for better maintainability
-echo "Inserting teams from configuration files..."
-
-# Test team
-./scripts/insert-team.sh scripts/team-configs/test-team.json
-
-# North Carolina Legal Services
-./scripts/insert-team.sh scripts/team-configs/north-carolina-legal-services.json
-
-# Blawby AI
-./scripts/insert-team.sh scripts/team-configs/blawby-ai.json
+# Teams are now managed via database and API
+echo "✅ Teams already configured in database"
 
 # Verify setup
 echo "🔍 Verifying setup..."

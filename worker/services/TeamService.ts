@@ -82,7 +82,7 @@ export class TeamService {
 
   /**
    * Safely decodes team config from database as plain JSON
-   * The insert-team.sh script now stores plain JSON text instead of Base64-encoded JSON
+   * Team configs are stored as plain JSON text in the database
    */
   private decodeTeamConfig(configString: string): any {
     try {
