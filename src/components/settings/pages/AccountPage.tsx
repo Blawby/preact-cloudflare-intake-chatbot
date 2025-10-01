@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useNavigation } from '../../../utils/navigation';
+import { useToastContext } from '../../../contexts/ToastContext';
 
 // Utility function for className merging (following codebase pattern)
 function cn(...classes: (string | undefined | null | false)[]): string {
@@ -48,6 +49,7 @@ export const AccountPage = ({
 
   const { profile, loading, error, updateProfile, uploadAvatar, deleteAvatar } = useUserProfile();
   const { navigate } = useNavigation();
+  const { showError } = useToastContext();
 
   const resetFormData = useCallback(() => {
     if (profile) {
@@ -95,6 +97,19 @@ export const AccountPage = ({
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (!file) return;
+
+    // Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      showError(
+        'File too large',
+        'Avatar images must be smaller than 5MB. Please choose a smaller file.',
+        5000
+      );
+      // Reset the file input
+      target.value = '';
+      return;
+    }
 
     try {
       await uploadAvatar(file);

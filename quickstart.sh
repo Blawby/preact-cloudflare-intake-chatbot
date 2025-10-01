@@ -23,6 +23,64 @@ fi
 
 echo "✅ Dependencies verified"
 
+# Function to check and create test user
+check_test_user() {
+    if [ -f ".dev.vars" ]; then
+        # Source the dev vars to get test user credentials
+        source .dev.vars
+        
+        # Check if test user already exists
+        EXISTING_USER=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM users WHERE email = '$TEST_USER_EMAIL';" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
+        
+        if [ "$EXISTING_USER" -eq 0 ] && [ -n "$TEST_USER_EMAIL" ] && [ -n "$TEST_USER_PASSWORD" ] && [ -n "$TEST_USER_NAME" ]; then
+            echo "  Creating test user: $TEST_USER_EMAIL"
+            
+            # Generate a simple user ID (you might want to use a proper UUID generator)
+            USER_ID="test-user-$(date +%s)"
+            
+            # Hash the password (in a real app, Better Auth would handle this)
+            # For now, we'll store it as plain text since Better Auth will handle hashing
+            # Note: Better Auth will hash this when the user actually signs in
+            
+            # Insert the test user
+            wrangler d1 execute blawby-ai-chatbot --local --command "
+            INSERT INTO users (id, name, email, email_verified, created_at, updated_at, team_id, role) 
+            VALUES ('$USER_ID', '$TEST_USER_NAME', '$TEST_USER_EMAIL', 1, strftime('%s', 'now'), strftime('%s', 'now'), '01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'admin');" 2>/dev/null || echo "Could not insert test user"
+            
+            # Insert password account for the test user
+            wrangler d1 execute blawby-ai-chatbot --local --command "
+            INSERT INTO accounts (id, account_id, provider_id, user_id, password, created_at, updated_at) 
+            VALUES ('test-account-$(date +%s)', '$TEST_USER_EMAIL', 'credential', '$USER_ID', '$TEST_USER_PASSWORD', strftime('%s', 'now'), strftime('%s', 'now'));" 2>/dev/null || echo "Could not insert test user account"
+            
+            echo "✅ Test user created successfully"
+            echo "   Email: $TEST_USER_EMAIL"
+            echo "   Password: $TEST_USER_PASSWORD"
+            echo "   Name: $TEST_USER_NAME"
+        else
+            if [ "$EXISTING_USER" -gt 0 ]; then
+                echo "✅ Test user already exists"
+            else
+                echo "⚠️  Test user credentials not found in .dev.vars"
+            fi
+        fi
+    else
+        echo "⚠️  .dev.vars file not found - skipping test user creation"
+    fi
+}
+
+# Function to verify test user exists (for verification section)
+verify_test_user() {
+    if [ -f ".dev.vars" ]; then
+        source .dev.vars
+        if [ -n "$TEST_USER_EMAIL" ]; then
+            USER_COUNT=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM users WHERE email = '$TEST_USER_EMAIL';" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
+            if [ "$USER_COUNT" -gt 0 ]; then
+                echo "👤 Test user available: $TEST_USER_EMAIL"
+            fi
+        fi
+    fi
+}
+
 # Setup environment file if it doesn't exist
 if [ ! -f ".dev.vars" ]; then
     echo "📝 Setting up environment file..."
@@ -206,47 +264,7 @@ fi
 
 # Create test user for development
 echo "👤 Setting up test user for development..."
-if [ -f ".dev.vars" ]; then
-    # Source the dev vars to get test user credentials
-    source .dev.vars
-    
-    # Check if test user already exists
-    EXISTING_USER=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM users WHERE email = '$TEST_USER_EMAIL';" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
-    
-    if [ "$EXISTING_USER" -eq 0 ] && [ -n "$TEST_USER_EMAIL" ] && [ -n "$TEST_USER_PASSWORD" ] && [ -n "$TEST_USER_NAME" ]; then
-        echo "  Creating test user: $TEST_USER_EMAIL"
-        
-        # Generate a simple user ID (you might want to use a proper UUID generator)
-        USER_ID="test-user-$(date +%s)"
-        
-        # Hash the password (in a real app, Better Auth would handle this)
-        # For now, we'll store it as plain text since Better Auth will handle hashing
-        # Note: Better Auth will hash this when the user actually signs in
-        
-        # Insert the test user
-        wrangler d1 execute blawby-ai-chatbot --local --command "
-        INSERT INTO users (id, name, email, email_verified, created_at, updated_at, team_id, role) 
-        VALUES ('$USER_ID', '$TEST_USER_NAME', '$TEST_USER_EMAIL', 1, strftime('%s', 'now'), strftime('%s', 'now'), '01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'admin');" 2>/dev/null || echo "Could not insert test user"
-        
-        # Insert password account for the test user
-        wrangler d1 execute blawby-ai-chatbot --local --command "
-        INSERT INTO accounts (id, account_id, provider_id, user_id, password, created_at, updated_at) 
-        VALUES ('test-account-$(date +%s)', '$TEST_USER_EMAIL', 'credential', '$USER_ID', '$TEST_USER_PASSWORD', strftime('%s', 'now'), strftime('%s', 'now'));" 2>/dev/null || echo "Could not insert test user account"
-        
-        echo "✅ Test user created successfully"
-        echo "   Email: $TEST_USER_EMAIL"
-        echo "   Password: $TEST_USER_PASSWORD"
-        echo "   Name: $TEST_USER_NAME"
-    else
-        if [ "$EXISTING_USER" -gt 0 ]; then
-            echo "✅ Test user already exists"
-        else
-            echo "⚠️  Test user credentials not found in .dev.vars"
-        fi
-    fi
-else
-    echo "⚠️  .dev.vars file not found - skipping test user creation"
-fi
+check_test_user
 
 # Verify setup
 echo "🔍 Verifying setup..."
@@ -260,15 +278,7 @@ if [ "$TEAM_COUNT" -gt 0 ]; then
     echo ""
     
     # Check for test user
-    if [ -f ".dev.vars" ]; then
-        source .dev.vars
-        if [ -n "$TEST_USER_EMAIL" ]; then
-            USER_COUNT=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM users WHERE email = '$TEST_USER_EMAIL';" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
-            if [ "$USER_COUNT" -gt 0 ]; then
-                echo "👤 Test user available: $TEST_USER_EMAIL"
-            fi
-        fi
-    fi
+    verify_test_user
     
     echo ""
     echo "🎉 You're ready to go!"

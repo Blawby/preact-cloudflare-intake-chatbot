@@ -34,7 +34,9 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
 
   // Handle Escape key, body scroll, and click outside for overlay
   useEffect(() => {
-    if (!showProfile) return;
+    // Only apply scroll lock and event listeners when modal is actually visible
+    const isModalVisible = showProfile && (!isCollapsed || isMobile);
+    if (!isModalVisible) return;
 
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -69,7 +71,7 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
       document.documentElement.style.overflow = '';
       document.body.classList.remove('modal-open');
     };
-  }, [showProfile, isMobile]);
+  }, [showProfile, isMobile, isCollapsed]);
 
   const checkAuthStatus = async () => {
     try {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
+import type { ApiResponse } from '../../../../worker/types';
 
 export interface UserPreferences {
   theme: string;
@@ -16,11 +17,6 @@ export interface UserPreferences {
   typingIndicators: boolean;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
 
 export interface UseSettingsDataReturn {
   preferences: UserPreferences | null;
