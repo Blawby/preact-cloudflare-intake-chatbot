@@ -215,9 +215,9 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
               const matterCanvasEvent = `data: ${JSON.stringify({
                 type: 'matter_canvas',
                 data: {
-                  matterId: pipelineResult.context.caseDraft.matter_type.toLowerCase().replace(/\s+/g, '-'),
+                  matterId: pipelineResult.context.caseDraft.matter_type?.toLowerCase().replace(/\s+/g, '-') || 'general-case',
                   matterNumber: `CASE-${Date.now()}`,
-                  service: pipelineResult.context.caseDraft.matter_type,
+                  service: pipelineResult.context.caseDraft.matter_type || 'General Consultation',
                   matterSummary: pipelineResult.context.caseDraft.key_facts?.join(' ') || 'Case information organized',
                   answers: {}
                 }

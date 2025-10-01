@@ -33,7 +33,11 @@ const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
   };
 
   const markdownContent = generateMarkdown();
-  const missingInfo = analyzeMissingInfo();
+  const missingInfo = analyzeMissingInfo({
+    service,
+    matterSummary,
+    status: 'ready' as const
+  });
 
   return (
     <div class="matter-canvas">
