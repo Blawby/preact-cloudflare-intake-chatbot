@@ -3,6 +3,8 @@
 ## Overview
 Implement a comprehensive settings page following modern mobile app patterns (ChatGPT-style) with responsive behavior for both desktop and mobile platforms.
 
+**Scope Note**: Team Management features are included in the current implementation scope, not deferred to future enhancements.
+
 ## Design Approach
 
 ### Desktop Behavior
@@ -161,8 +163,25 @@ CREATE TABLE user_preferences (
   auto_save_conversations BOOLEAN DEFAULT true,
   typing_indicators BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id)
 );
+
+-- Add index on user_id for performance
+CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
+
+-- IMPORTANT: updated_at column handling
+-- The updated_at column above only sets a default value on INSERT, not on UPDATE.
+-- Since this project uses Cloudflare D1 (SQLite), we'll use a database trigger.
+
+-- Create trigger to auto-update updated_at on row changes
+CREATE TRIGGER update_user_preferences_updated_at 
+  AFTER UPDATE ON user_preferences
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+  BEGIN
+    UPDATE user_preferences SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+  END;
 ```
 
 ### API Architecture
@@ -170,27 +189,35 @@ CREATE TABLE user_preferences (
 #### Worker API Endpoints (`/api/*`)
 **Data Operations - Handled by Cloudflare Worker:**
 
+**Authentication & Authorization:**
+- **Token Format**: Bearer token in Authorization header (`Authorization: Bearer <session_token>`)
+- **Token Renewal**: Session tokens auto-renew on activity, expire after 30 days of inactivity
+- **Error Responses**: 
+  - `401 Unauthorized` - Invalid/missing token
+  - `403 Forbidden` - Valid token but insufficient permissions
+  - `429 Too Many Requests` - Rate limit exceeded
+
 ```typescript
 // User profile management
-PUT /api/user/profile          # Update user profile data
-GET /api/user/profile          # Get user profile data
+PUT /api/user/profile          # Update user profile data - Auth: Session token, RBAC: Owner only
+GET /api/user/profile          # Get user profile data - Auth: Session token, RBAC: Owner only
 
 // User preferences  
-PUT /api/user/preferences      # Update user preferences
-GET /api/user/preferences      # Get user preferences
+PUT /api/user/preferences      # Update user preferences - Auth: Session token, RBAC: Owner only
+GET /api/user/preferences      # Get user preferences - Auth: Session token, RBAC: Owner only
 
 // Security settings
-PUT /api/user/security         # Update security settings
-GET /api/user/security         # Get security settings
-DELETE /api/user/sessions/:id  # Revoke specific session
+PUT /api/user/security         # Update security settings - Auth: Session token, RBAC: Owner only
+GET /api/user/security         # Get security settings - Auth: Session token, RBAC: Owner only
+DELETE /api/user/sessions/:id  # Revoke specific session - Auth: Session token, RBAC: Owner only
 
 // File uploads
-POST /api/user/upload-avatar   # Upload profile image
-DELETE /api/user/avatar        # Delete profile image
+POST /api/user/upload-avatar   # Upload profile image - Auth: Session token, RBAC: Owner only
+DELETE /api/user/avatar        # Delete profile image - Auth: Session token, RBAC: Owner only
 
 // Data management
-GET /api/user/export-data      # Export user data (GDPR)
-DELETE /api/user/data          # Delete user data (GDPR)
+GET /api/user/export-data      # Export user data (GDPR) - Auth: Session token, RBAC: Owner only
+DELETE /api/user/data          # Delete user data (GDPR) - Auth: Session token, RBAC: Owner only
 ```
 
 #### Preact Frontend Routes (`/settings/*`)
@@ -320,12 +347,39 @@ const handleSettingsClick = () => {
 ```tsx
 // In settings components - Call worker API endpoints
 const updateProfile = async (profileData) => {
-  const response = await fetch('/api/user/profile', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(profileData)
-  });
-  return response.json();
+  try {
+    // Get auth token from localStorage (or context/cookie as appropriate)
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch('/api/user/profile', {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(profileData)
+    });
+
+    // Check if response is successful before parsing JSON
+    if (!response.ok) {
+      throw new Error(`Profile update failed: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    // Log the error with context for debugging
+    console.error('Failed to update profile:', {
+      error: error.message,
+      profileData: profileData,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Re-throw the error so callers can handle it appropriately
+    throw error;
+  }
 };
 ```
 
@@ -347,6 +401,8 @@ const updateProfile = async (profileData) => {
 
 ### Security Considerations
 
+- **XSS Prevention**: Output encoding/escaping, input sanitization, use frameworks that auto-escape, Content Security Policy (e.g., `default-src 'self'; script-src 'self' 'unsafe-inline'`)
+- **SQL Injection Prevention**: Use parameterized queries/prepared statements or ORM, avoid string concatenation for SQL, validate/limit DB-bound inputs
 - **Input Validation**: Validate all user inputs on both client and server
 - **PII Protection**: Sanitize logs and error messages
 - **Rate Limiting**: Implement rate limiting for profile updates
@@ -369,6 +425,15 @@ const updateProfile = async (profileData) => {
 - [ ] Create preferences.ts route handler
 - [ ] Add authentication middleware for user routes
 
+**Testing & Quality Assurance:**
+- [ ] Set up CI/CD pipeline with automated test runs on feature branches and PRs
+- [ ] Write unit tests for SettingsPage, SettingsSection, and SettingsItem components
+- [ ] Write unit tests for useSettingsData and useUserProfile hooks
+- [ ] Create integration tests for new API routes (user.ts, preferences.ts)
+- [ ] Set up test coverage targets (minimum 80% for new code)
+- [ ] Add database migration tests for schema updates
+- [ ] Implement automated accessibility testing for new components
+
 ### Phase 2: Account Settings (Week 2)
 **Frontend (Preact):**
 - [ ] Create AccountPage component
@@ -383,6 +448,15 @@ const updateProfile = async (profileData) => {
 - [ ] Add input validation and sanitization
 - [ ] Implement error handling and responses
 
+**Testing & Quality Assurance:**
+- [ ] Write unit tests for AccountPage component and form validation logic
+- [ ] Create integration tests for frontend-backend API contracts (PUT /api/user/profile)
+- [ ] Test form validation with various input scenarios (valid/invalid data)
+- [ ] Write tests for profile image upload functionality and error handling
+- [ ] Add automated UI tests for form interactions and user flows
+- [ ] Test responsive behavior of account settings on mobile and desktop
+- [ ] Validate input sanitization and XSS prevention measures
+
 ### Phase 3: Preferences (Week 3)
 **Frontend (Preact):**
 - [ ] Create PreferencesPage component
@@ -396,6 +470,16 @@ const updateProfile = async (profileData) => {
 - [ ] Add preferences validation
 - [ ] Implement persistence and synchronization
 - [ ] Add caching for preferences
+
+**Testing & Quality Assurance:**
+- [ ] Write unit tests for PreferencesPage component and all preference controls
+- [ ] Test theme switching functionality and persistence across sessions
+- [ ] Create accessibility tests for all preference controls (keyboard navigation, screen readers)
+- [ ] Write integration tests for preferences API endpoint and data persistence
+- [ ] Test notification preference changes and their real-time effects
+- [ ] Add automated UI tests for dropdown interactions and toggle behaviors
+- [ ] Validate localization settings and timezone handling
+- [ ] Test preference caching and synchronization across devices
 
 ### Phase 4: Security & Advanced (Week 4)
 **Frontend (Preact):**
@@ -412,18 +496,65 @@ const updateProfile = async (profileData) => {
 - [ ] Implement data export/deletion (GDPR)
 - [ ] Add security audit logging
 
-### Phase 5: Polish & Testing (Week 5)
+**Testing & Quality Assurance:**
+- [ ] Write unit tests for SecurityPage component and session management UI
+- [ ] Conduct security testing and penetration testing for all new endpoints
+- [ ] Test two-factor authentication flow and security measures
+- [ ] Write integration tests for session management and token handling
+- [ ] Test data export/deletion functionality and GDPR compliance
+- [ ] Validate security audit logging and monitoring
+- [ ] Perform input validation testing for security vulnerabilities
+- [ ] Test rate limiting and CSRF protection mechanisms
+- [ ] Conduct automated security scanning of API endpoints
+
+### Phase 5: Final Integration & Performance (Week 5)
 **Frontend (Preact):**
-- [ ] Accessibility improvements
-- [ ] Mobile UX polish and testing
-- [ ] Error handling refinement
-- [ ] Performance optimization
+- [ ] Accessibility improvements and final accessibility audit
+- [ ] Mobile UX polish and cross-device testing
+- [ ] Error handling refinement and user experience optimization
+- [ ] Performance optimization and bundle size analysis
 
 **Backend (Worker API):**
-- [ ] Comprehensive API testing
-- [ ] Security testing and validation
-- [ ] Performance optimization
-- [ ] Documentation and error handling
+- [ ] End-to-end integration testing across all settings features
+- [ ] Performance optimization and load testing
+- [ ] Final security validation and penetration testing
+- [ ] Documentation completion and API documentation
+
+**Testing & Quality Assurance:**
+- [ ] Comprehensive end-to-end testing of complete settings workflow
+- [ ] Performance testing and optimization validation
+- [ ] Cross-browser and cross-device compatibility testing
+- [ ] Final test coverage analysis and gap identification
+- [ ] User acceptance testing and feedback incorporation
+- [ ] Production readiness assessment and deployment validation
+
+## Continuous Test Automation
+
+### CI/CD Pipeline Integration
+**Automated Test Execution:**
+- **Feature Branches**: All tests run automatically on every push to feature branches
+- **Pull Requests**: Full test suite executes before PR merge approval
+- **Main Branch**: Comprehensive testing including integration and performance tests
+- **Test Failures**: Block merge/deployment until all tests pass
+
+**Test Coverage Requirements:**
+- **Minimum Coverage**: 80% code coverage for all new code
+- **Coverage Reporting**: Automated coverage reports generated for each PR
+- **Coverage Trends**: Track coverage trends over time to prevent regression
+- **Critical Paths**: 100% coverage required for authentication, security, and data handling
+
+**Test Types by Environment:**
+- **Unit Tests**: Run on every commit (fast feedback loop)
+- **Integration Tests**: Run on PR creation and main branch updates
+- **E2E Tests**: Run on main branch and before production deployments
+- **Security Tests**: Run on PR creation and scheduled daily scans
+- **Performance Tests**: Run on main branch and before major releases
+
+**Quality Gates:**
+- **Code Quality**: ESLint, TypeScript compilation, and code formatting checks
+- **Security**: Automated vulnerability scanning and dependency checks
+- **Accessibility**: Automated accessibility testing with axe-core
+- **Performance**: Bundle size analysis and performance regression detection
 
 ## Success Metrics
 
@@ -436,7 +567,6 @@ const updateProfile = async (profileData) => {
 ## Future Enhancements
 
 - **Advanced Profile Customization**: Custom themes, layouts
-- **Team Management**: Team-specific settings and permissions
 - **Integration Settings**: Third-party service connections
 - **Analytics Dashboard**: User activity and usage insights
 - **Bulk Operations**: Mass data import/export capabilities

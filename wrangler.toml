@@ -75,9 +75,9 @@ bucket_name = "blawby-ai-files"
 queue = "doc-events"
 binding = "DOC_EVENTS"
 
-# Queue consumers (disabled for now - consumers not implemented)
-# [[queues.consumers]]
-# queue = "doc-events"
+# Queue consumers
+[[queues.consumers]]
+queue = "doc-events"
 
 # Durable Objects migrations removed - no longer using Durable Objects
 

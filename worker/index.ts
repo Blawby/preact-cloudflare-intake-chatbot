@@ -20,6 +20,7 @@ import { createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
 import { withCORS, getCorsConfig } from './middleware/cors';
+import docProcessor from './consumers/doc-processor';
 
 // Basic request validation
 function validateRequest(request: Request): boolean {
@@ -113,6 +114,9 @@ async function handleRequestInternal(request: Request, env: Env, ctx: ExecutionC
 // Main request handler with CORS middleware
 export const handleRequest = withCORS(handleRequestInternal, getCorsConfig);
 
-export default { fetch: handleRequest };
+export default { 
+  fetch: handleRequest,
+  queue: docProcessor
+};
 
 // Export Durable Object classes (none currently)
