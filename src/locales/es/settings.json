@@ -50,6 +50,17 @@
     "loadingError": "No se pudieron cargar los datos de la cuenta",
     "retry": "Reintentar",
     "plan": {
+      "currentPlanLabel": "Plan actual: {{tier}}",
+      "tiers": {
+        "free": "Gratuito",
+        "plus": "Plus",
+        "business": "Empresarial"
+      },
+      "descriptions": {
+        "free": "Características básicas con uso limitado",
+        "plus": "Características mejoradas con límites más altos",
+        "business": "Todas las características con uso ilimitado"
+      },
       "sections": {
         "free": "Obtén ChatGPT Plus",
         "plus": "Obtén ChatGPT Business",
@@ -93,6 +104,10 @@
       "githubToast": {
         "title": "GitHub",
         "body": "Redirigiendo para conectar con GitHub..."
+      },
+      "verifiedToast": {
+        "title": "Dominio verificado",
+        "body": "¡El dominio {{domain}} se verificó correctamente!"
       },
       "domainPlaceholder": "ejemplo.com"
     },

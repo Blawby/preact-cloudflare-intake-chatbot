@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { Button } from '../../ui/Button';
 import { SettingsDropdown } from '../components/SettingsDropdown';
 import Modal from '../../Modal';
@@ -40,6 +40,9 @@ export const AccountPage = ({
   const [domainError, setDomainError] = useState<string | null>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  
+  // Ref to store verification timeout ID for cleanup
+  const verificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Extract data loading logic to eliminate duplication
   const loadAccountData = async () => {
@@ -68,6 +71,15 @@ export const AccountPage = ({
     loadAccountData();
   }, []);
 
+  // Cleanup verification timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (verificationTimeoutRef.current !== null) {
+        clearTimeout(verificationTimeoutRef.current);
+      }
+    };
+  }, []);
+
 
   // Listen for auth state changes to update tier
   useEffect(() => {
@@ -87,9 +99,6 @@ export const AccountPage = ({
   const upgradeButtonText = currentTier && upgradePath.length > 0
     ? t('settings:account.plan.upgradeButton', { plan: upgradePath[0].name })
     : t('settings:account.plan.currentButton');
-  const sectionTitle = currentTier
-    ? t(`settings:account.plan.sections.${currentTier}`)
-    : t('settings:account.plan.sections.default');
   const currentPlanFeatures = currentTier ? mockPricingDataService.getFeaturesForTier(currentTier) : [];
   const emailFallback = t('settings:account.email.addressFallback');
   const emailAddress = emailSettings?.email || emailFallback;
@@ -259,23 +268,40 @@ export const AccountPage = ({
       t('settings:account.links.addDomainToast.body', { domain: normalized })
     );
     
-    // Simulate domain verification process
-    setTimeout(() => {
-      const verifyLinks = mockUserDataService.getUserLinks();
-      const updatedVerifyLinks = {
-        ...verifyLinks,
-        customDomains: verifyLinks.customDomains?.map(domain => 
-          domain.domain === normalized 
-            ? { ...domain, verified: true, verifiedAt: new Date().toISOString() }
-            : domain
-        ) || []
-      };
-      mockUserDataService.setUserLinks(updatedVerifyLinks);
-      setLinks(updatedVerifyLinks);
-      showSuccess(
-        'Domain Verified',
-        `Domain ${normalized} has been successfully verified!`
-      );
+    // Simulate domain verification process with cancellable timeout
+    // Clear any existing verification timeout to prevent race conditions
+    if (verificationTimeoutRef.current !== null) {
+      clearTimeout(verificationTimeoutRef.current);
+    }
+    
+    verificationTimeoutRef.current = setTimeout(() => {
+      // Use functional state update to avoid overwriting concurrent changes
+      setLinks(currentLinks => {
+        if (!currentLinks) return currentLinks;
+        
+        const updatedVerifyLinks = {
+          ...currentLinks,
+          customDomains: currentLinks.customDomains?.map(domain => 
+            domain.domain === normalized 
+              ? { ...domain, verified: true, verifiedAt: new Date().toISOString() }
+              : domain
+          ) || []
+        };
+        
+        // Update the mock service with the latest state
+        mockUserDataService.setUserLinks(updatedVerifyLinks);
+        
+        // Show success toast with translated strings
+        showSuccess(
+          t('settings:account.links.verifiedToast.title'),
+          t('settings:account.links.verifiedToast.body', { domain: normalized })
+        );
+        
+        return updatedVerifyLinks;
+      });
+      
+      // Clear the timeout reference
+      verificationTimeoutRef.current = null;
     }, 3000); // Simulate 3-second verification process
   };
 
@@ -362,13 +388,14 @@ export const AccountPage = ({
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {currentTier ? `Current Plan: ${currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}` : 'Current Plan'}
+                {currentTier 
+                  ? t('settings:account.plan.currentPlanLabel', { tier: t(`settings:account.plan.tiers.${currentTier}`) })
+                  : t('settings:account.plan.currentPlanLabel', { tier: '' })
+                }
               </h3>
               {currentTier && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {currentTier === 'free' && 'Basic features with limited usage'}
-                  {currentTier === 'plus' && 'Enhanced features with higher limits'}
-                  {currentTier === 'business' && 'Full features with unlimited usage'}
+                  {t(`settings:account.plan.descriptions.${currentTier}`)}
                 </p>
               )}
             </div>

@@ -49,9 +49,23 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
                     onItemClick(item.id);
                   }
                 }}
+                onTouchStart={(e) => {
+                  const touch = e.touches[0];
+                  e.currentTarget.dataset.touchStartX = String(touch.clientX);
+                  e.currentTarget.dataset.touchStartY = String(touch.clientY);
+                }}
                 onTouchEnd={(e) => {
-                  // Prevent double-tap zoom on mobile
-                  e.preventDefault();
+                  const touch = e.changedTouches[0];
+                  const startX = Number(e.currentTarget.dataset.touchStartX || 0);
+                  const startY = Number(e.currentTarget.dataset.touchStartY || 0);
+                  const deltaX = Math.abs(touch.clientX - startX);
+                  const deltaY = Math.abs(touch.clientY - startY);
+                  
+                  // Only prevent default for taps (not scrolls)
+                  if (deltaX < 10 && deltaY < 10) {
+                    e.preventDefault();
+                  }
+                  
                   if (isAction && item.onClick) {
                     item.onClick();
                   } else {
