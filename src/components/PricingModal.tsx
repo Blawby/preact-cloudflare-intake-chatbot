@@ -6,7 +6,7 @@ import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { SettingsDropdown } from './settings/components/SettingsDropdown';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
-import { mockUserDataService } from '../utils/mockUserData';
+import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -226,24 +226,18 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   // Load user's current country preference
   useEffect(() => {
     const preferences = mockUserDataService.getPreferences();
-    setSelectedCountry(preferences.language === 'vi' ? 'vn' : 'us'); // Map language to country
+    setSelectedCountry(preferences.country || 'us');
   }, []);
 
   const handleCountryChange = (country: string) => {
     setSelectedCountry(country);
-    // Update user preferences (map country to language)
-    const languageMap: { [key: string]: string } = {
-      'vn': 'vi',
-      'us': 'en',
-      'gb': 'en',
-      'es': 'es',
-      'fr': 'fr',
-      'de': 'de',
-      'cn': 'zh',
-      'jp': 'ja'
-    };
-    const language = languageMap[country] || 'en';
-    mockUserDataService.setPreferences({ language: language as 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja' });
+    // Get the appropriate language for the selected country
+    const language = getLanguageForCountry(country);
+    // Update user preferences with both country and language
+    mockUserDataService.setPreferences({ 
+      country,
+      language 
+    });
   };
 
   // Get pricing plans from mock data service

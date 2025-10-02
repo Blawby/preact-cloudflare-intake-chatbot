@@ -2,7 +2,217 @@
 // This provides consistent mock data for development until the real API is ready
 
 export type SubscriptionTier = 'free' | 'plus' | 'business';
-export type Language = 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
+export type Language = 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'pt' | 'it' | 'ru' | 'nl' | 'pl' | 'ar' | 'ko' | 'sv' | 'no' | 'fi' | 'tr' | 'pt-BR';
+
+// Comprehensive country-to-language mapping
+export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
+  // English-speaking countries
+  'us': 'en',
+  'gb': 'en',
+  'au': 'en',
+  'ca': 'en',
+  'nz': 'en',
+  'ie': 'en',
+  'za': 'en',
+  'sg': 'en',
+  'hk': 'en',
+  'in': 'en',
+  'ph': 'en',
+  'my': 'en',
+  'ng': 'en',
+  'ke': 'en',
+  'gh': 'en',
+  'tz': 'en',
+  'ug': 'en',
+  'zw': 'en',
+  'zm': 'en',
+  'bw': 'en',
+  'ls': 'en',
+  'sz': 'en',
+  'mw': 'en',
+  'mt': 'en',
+  'cy': 'en',
+  'jm': 'en',
+  'bb': 'en',
+  'tt': 'en',
+  'bs': 'en',
+  'bz': 'en',
+  'gy': 'en',
+  'ag': 'en',
+  'kn': 'en',
+  'lc': 'en',
+  'vc': 'en',
+  'gd': 'en',
+  'dm': 'en',
+  'sl': 'en',
+  'lr': 'en',
+  'gm': 'en',
+  'sc': 'en',
+  'mu': 'en',
+  'na': 'en',
+  
+  // Vietnamese
+  'vn': 'vi',
+  
+  // Spanish-speaking countries
+  'es': 'es',
+  'mx': 'es',
+  'ar': 'es',
+  'co': 'es',
+  'pe': 'es',
+  've': 'es',
+  'cl': 'es',
+  'ec': 'es',
+  'gt': 'es',
+  'cu': 'es',
+  'bo': 'es',
+  'do': 'es',
+  'hn': 'es',
+  'py': 'es',
+  'sv': 'es',
+  'ni': 'es',
+  'cr': 'es',
+  'pa': 'es',
+  'uy': 'es',
+  'pr': 'es',
+  'gq': 'es',
+  'ad': 'es',
+  
+  // French-speaking countries
+  'fr': 'fr',
+  'be': 'fr', // Wallonia
+  'lu': 'fr',
+  'mc': 'fr',
+  'sn': 'fr',
+  'ci': 'fr',
+  'ml': 'fr',
+  'bf': 'fr',
+  'ne': 'fr',
+  'td': 'fr',
+  'mg': 'fr',
+  'cm': 'fr',
+  'cd': 'fr',
+  'cg': 'fr',
+  'cf': 'fr',
+  'ga': 'fr',
+  'dj': 'fr',
+  'km': 'fr',
+  'vu': 'fr',
+  'nc': 'fr',
+  'pf': 'fr',
+  'wf': 'fr',
+  'yt': 'fr',
+  're': 'fr',
+  'gp': 'fr',
+  'mq': 'fr',
+  'gf': 'fr',
+  'pm': 'fr',
+  'bl': 'fr',
+  'mf': 'fr',
+  'ht': 'fr',
+  
+  // German-speaking countries
+  'de': 'de',
+  'at': 'de',
+  'ch': 'de', // German-speaking regions
+  'li': 'de',
+  
+  // Chinese-speaking countries/regions
+  'cn': 'zh',
+  'tw': 'zh',
+  'mo': 'zh',
+  
+  // Japanese
+  'jp': 'ja',
+  
+  // Portuguese-speaking countries
+  'pt': 'pt',
+  'br': 'pt-BR',
+  'ao': 'pt',
+  'mz': 'pt',
+  'gw': 'pt',
+  'cv': 'pt',
+  'st': 'pt',
+  'tl': 'pt',
+  
+  // Italian
+  'it': 'it',
+  'sm': 'it',
+  'va': 'it',
+  
+  // Russian
+  'ru': 'ru',
+  'by': 'ru',
+  'kz': 'ru',
+  'kg': 'ru',
+  'tj': 'ru',
+  'uz': 'ru',
+  'tm': 'ru',
+  'md': 'ru',
+  'ua': 'ru',
+  'am': 'ru',
+  'az': 'ru',
+  'ge': 'ru',
+  'mn': 'ru',
+  
+  // Dutch
+  'nl': 'nl',
+  'sr': 'nl',
+  'aw': 'nl',
+  'cw': 'nl',
+  'sx': 'nl',
+  'bq': 'nl',
+  
+  // Polish
+  'pl': 'pl',
+  
+  // Arabic-speaking countries
+  'sa': 'ar',
+  'ae': 'ar',
+  'eg': 'ar',
+  'iq': 'ar',
+  'jo': 'ar',
+  'lb': 'ar',
+  'sy': 'ar',
+  'ye': 'ar',
+  'om': 'ar',
+  'kw': 'ar',
+  'qa': 'ar',
+  'bh': 'ar',
+  'ly': 'ar',
+  'tn': 'ar',
+  'dz': 'ar',
+  'ma': 'ar',
+  'sd': 'ar',
+  'so': 'ar',
+  'mr': 'ar',
+  'ps': 'ar',
+  
+  // Korean
+  'kr': 'ko',
+  'kp': 'ko',
+  
+  // Swedish
+  'se': 'sv',
+  
+  // Norwegian
+  'no': 'no',
+  
+  // Finnish
+  'fi': 'fi',
+  
+  // Turkish
+  'tr': 'tr',
+};
+
+/**
+ * Get the appropriate language for a given country code
+ * @param country - ISO 3166-1 alpha-2 country code
+ * @returns Language code, defaults to 'en' if country not found
+ */
+export function getLanguageForCountry(country: string): Language {
+  return COUNTRY_TO_LANGUAGE_MAP[country.toLowerCase()] || 'en';
+}
 
 export interface MockUserProfile {
   id: string;
@@ -27,8 +237,9 @@ export interface MockUserPreferences {
   theme: 'light' | 'dark' | 'system';
   accentColor: 'default' | 'blue' | 'green' | 'purple' | 'red';
   fontSize: 'small' | 'medium' | 'large';
-  language: 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
-  spokenLanguage: 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
+  language: 'auto-detect' | Language;
+  spokenLanguage: 'auto-detect' | Language;
+  country: string;
   timezone: string;
   dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
   timeFormat: '12-hour' | '24-hour';
@@ -111,6 +322,7 @@ const DEFAULT_PREFERENCES: MockUserPreferences = {
   fontSize: 'medium',
   language: 'vi',
   spokenLanguage: 'vi',
+  country: 'vn',
   timezone: 'America/New_York',
   dateFormat: 'MM/DD/YYYY',
   timeFormat: '12-hour',
@@ -363,6 +575,33 @@ class MockUserDataService {
     localStorage.removeItem(STORAGE_KEYS.LINKS);
     localStorage.removeItem(STORAGE_KEYS.EMAIL);
     localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
+  }
+
+  deleteAccount(): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Clear all user data
+        this.resetToDefaults();
+        
+        // Also clear any other user-related data
+        localStorage.removeItem('mockUser');
+        localStorage.removeItem('conversations');
+        localStorage.removeItem('chatHistory');
+        localStorage.removeItem('uploadedFiles');
+        
+        // Clear any other app-specific data that might exist
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('user_') || key.startsWith('chat_') || key.startsWith('conversation_'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        resolve();
+      }, 500); // Simulate API delay
+    });
   }
 
   // Links Methods

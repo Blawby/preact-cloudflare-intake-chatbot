@@ -7,6 +7,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { useToastContext } from '../../../contexts/ToastContext';
+import { useNavigation } from '../../../utils/navigation';
 import { mockUserDataService, MockUserLinks, MockEmailSettings, type SubscriptionTier } from '../../../utils/mockUserData';
 import { mockPricingDataService } from '../../../utils/mockPricingData';
 
@@ -23,6 +24,7 @@ export const AccountPage = ({
   className = ''
 }: AccountPageProps) => {
   const { showSuccess, showError } = useToastContext();
+  const { navigate } = useNavigation();
   const [links, setLinks] = useState<MockUserLinks | null>(null);
   const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,28 +37,31 @@ export const AccountPage = ({
   const [showDomainModal, setShowDomainModal] = useState(false);
   const [domainInput, setDomainInput] = useState('');
   const [domainError, setDomainError] = useState<string | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Extract data loading logic to eliminate duplication
+  const loadAccountData = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      const linksData = mockUserDataService.getUserLinks();
+      const emailData = mockUserDataService.getEmailSettings();
+      
+      setLinks(linksData);
+      setEmailSettings(emailData);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load account data:', error);
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Load mock data
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setError(null);
-        setLoading(true);
-        const linksData = mockUserDataService.getUserLinks();
-        const emailData = mockUserDataService.getEmailSettings();
-        
-        setLinks(linksData);
-        setEmailSettings(emailData);
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to load account data:', error);
-        setError(error instanceof Error ? error.message : String(error));
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadData();
+    loadAccountData();
   }, []);
 
   const handleUpgrade = () => {
@@ -83,16 +88,50 @@ export const AccountPage = ({
 
   const handleDeleteAccount = () => {
     setShowDeleteConfirm(true);
+    setDeleteConfirmInput('');
+    setDeleteError(null);
   };
 
-  const handleConfirmDelete = () => {
-    setShowDeleteConfirm(false);
-    showSuccess('Account deletion', 'Account deletion process initiated. Check your email for confirmation.');
-    // Here you would initiate the account deletion process
+  const handleConfirmDelete = async () => {
+    const userEmail = emailSettings?.email || 'chris@whynot.earth';
+    
+    if (deleteConfirmInput.trim() !== userEmail) {
+      setDeleteError('Please type your email address exactly as shown to confirm deletion.');
+      return;
+    }
+
+    try {
+      // Use the proper delete account method
+      await mockUserDataService.deleteAccount();
+      
+      setShowDeleteConfirm(false);
+      setDeleteConfirmInput('');
+      setDeleteError(null);
+      
+      showSuccess('Account deleted', 'Your account has been permanently deleted.');
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+      
+      // Close the settings modal first
+      if (_onClose) {
+        _onClose();
+      }
+      
+      // Navigate to root page after a short delay
+      setTimeout(() => {
+        navigate('/');
+      }, 1000);
+    } catch (error) {
+      setDeleteError('Failed to delete account. Please try again.');
+      showError('Account deletion failed', 'There was an error deleting your account. Please try again.');
+    }
   };
 
   const handleCancelDelete = () => {
     setShowDeleteConfirm(false);
+    setDeleteConfirmInput('');
+    setDeleteError(null);
   };
 
   // Domain validation function
@@ -209,25 +248,7 @@ export const AccountPage = ({
           <Button
             variant="primary"
             size="sm"
-            onClick={() => {
-              const loadData = async () => {
-                try {
-                  setError(null);
-                  setLoading(true);
-                  const linksData = mockUserDataService.getUserLinks();
-                  const emailData = mockUserDataService.getEmailSettings();
-                  setLinks(linksData);
-                  setEmailSettings(emailData);
-                } catch (error) {
-                  // eslint-disable-next-line no-console
-                  console.error('Failed to load account data:', error);
-                  setError(error instanceof Error ? error.message : String(error));
-                } finally {
-                  setLoading(false);
-                }
-              };
-              loadData();
-            }}
+            onClick={loadAccountData}
           >
             Retry
           </Button>
@@ -282,27 +303,6 @@ export const AccountPage = ({
                   </span>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 dark:border-dark-border" />
-
-          {/* Delete account Section */}
-          <div className="flex items-center justify-between py-3">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Delete account
-              </h3>
-            </div>
-            <div className="ml-4">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleDeleteAccount}
-                className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500"
-              >
-                Delete
-              </Button>
             </div>
           </div>
 
@@ -398,6 +398,27 @@ export const AccountPage = ({
               </label>
             </div>
           </div>
+
+          <div className="border-t border-gray-200 dark:border-dark-border" />
+
+          {/* Delete account Section */}
+          <div className="flex items-center justify-between py-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Delete account
+              </h3>
+            </div>
+            <div className="ml-4">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleDeleteAccount}
+                className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -408,23 +429,78 @@ export const AccountPage = ({
         title="Delete Account"
         showCloseButton={true}
         type="modal"
+        disableBackdropClick={true}
       >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Are you sure you want to delete your account?
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                This action cannot be undone. All your data, conversations, and settings will be permanently deleted.
-              </p>
+        <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
+          {/* Confirmation Content */}
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Are you sure you want to delete your account?
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  This action cannot be undone. All your data, conversations, and settings will be permanently deleted.
+                </p>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4" onClick={(e) => e.stopPropagation()}>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    <strong>This will permanently delete:</strong>
+                  </p>
+                  <ul className="text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1">
+                    <li>• All your conversations and chat history</li>
+                    <li>• Your account settings and preferences</li>
+                    <li>• Any uploaded files and documents</li>
+                    <li>• Your subscription and billing information</li>
+                  </ul>
+                </div>
+                
+                {/* Confirmation Input */}
+                <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                  <label htmlFor="delete-confirm" className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                    To confirm, type your email address: <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{emailSettings?.email || 'chris@whynot.earth'}</span>
+                  </label>
+                  <input
+                    id="delete-confirm"
+                    type="text"
+                    value={deleteConfirmInput}
+                    onChange={(e) => {
+                      setDeleteConfirmInput(e.currentTarget.value);
+                      setDeleteError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleConfirmDelete();
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onFocus={(e) => {
+                      e.stopPropagation();
+                    }}
+                    placeholder="Type your email address here"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                      deleteError ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''
+                    }`}
+                  />
+                  {deleteError && (
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {deleteError}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
           
-          <div className="flex gap-3 justify-end pt-4">
+          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
             <Button
               variant="secondary"
               size="sm"
@@ -437,7 +513,8 @@ export const AccountPage = ({
               variant="primary"
               size="sm"
               onClick={handleConfirmDelete}
-              className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500 min-w-[80px]"
+              disabled={deleteConfirmInput.trim() !== (emailSettings?.email || 'chris@whynot.earth')}
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500 min-w-[80px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Delete Account
             </Button>

@@ -1,23 +1,24 @@
+import { useNavigation } from '../../../utils/navigation';
+
 export interface HelpPageProps {
-  onClose?: () => void;
   className?: string;
 }
 
-export const HelpPage = ({ onClose, className = '' }: HelpPageProps) => {
+export const HelpPage = ({ className = '' }: HelpPageProps) => {
+  const { navigate } = useNavigation();
+
   const handleExternalLink = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleReportBug = () => {
-    // Internal navigation to bug report page
-    // For now, we'll just show an alert - this can be replaced with actual navigation
-    alert('Bug report functionality will be implemented');
+    // Navigate to bug report page
+    navigate('/report-bug');
   };
 
   const handleKeyboardShortcuts = () => {
-    // Internal navigation to keyboard shortcuts page
-    // For now, we'll just show an alert - this can be replaced with actual navigation
-    alert('Keyboard shortcuts functionality will be implemented');
+    // Navigate to keyboard shortcuts page
+    navigate('/keyboard-shortcuts');
   };
 
   return (
@@ -42,9 +43,10 @@ export const HelpPage = ({ onClose, className = '' }: HelpPageProps) => {
               <button
                 onClick={() => handleExternalLink('https://help.blawby.com')}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                aria-label="Visit Blawby help — opens in a new tab"
               >
                 <span>Visit</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </button>
@@ -65,9 +67,10 @@ export const HelpPage = ({ onClose, className = '' }: HelpPageProps) => {
               <button
                 onClick={() => handleExternalLink('https://blawby.com/release-notes')}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                aria-label="View release notes — opens in a new tab"
               >
                 <span>View</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </button>
@@ -88,9 +91,10 @@ export const HelpPage = ({ onClose, className = '' }: HelpPageProps) => {
               <button
                 onClick={() => handleExternalLink('https://blawby.com/terms')}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                aria-label="Read terms and policies — opens in a new tab"
               >
                 <span>Read</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </button>
@@ -131,9 +135,10 @@ export const HelpPage = ({ onClose, className = '' }: HelpPageProps) => {
               <button
                 onClick={() => handleExternalLink('https://blawby.com/download')}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                aria-label="Download Blawby apps — opens in a new tab"
               >
                 <span>Download</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </button>

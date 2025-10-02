@@ -101,7 +101,7 @@ export const SettingsPage = ({
       case 'security':
         return <SecurityPage isMobile={isMobile} onClose={onClose} className="h-full" />;
       case 'help':
-        return <HelpPage onClose={onClose} className="h-full" />;
+        return <HelpPage className="h-full" />;
       case 'mfa-enrollment':
         return <MFAEnrollmentPage className="h-full" />;
       default:

@@ -12,6 +12,7 @@ interface ModalProps {
     type?: 'modal' | 'drawer' | 'fullscreen';
     showCloseButton?: boolean;
     mobileBehavior?: 'modal' | 'drawer';
+    disableBackdropClick?: boolean;
 }
 
 const Modal: FunctionComponent<ModalProps> = ({ 
@@ -21,7 +22,8 @@ const Modal: FunctionComponent<ModalProps> = ({
     title, 
     type = 'modal',
     showCloseButton = true,
-    mobileBehavior = 'drawer'
+    mobileBehavior = 'drawer',
+    disableBackdropClick = false
 }) => {
     // Add state to track if we're in browser environment
     const [isBrowser, setIsBrowser] = useState(false);
@@ -71,7 +73,7 @@ const Modal: FunctionComponent<ModalProps> = ({
             {isOpen && (
                 <motion.div 
                     className={`fixed inset-0 ${shouldUseDrawer ? '' : 'flex items-center justify-center p-4'}`}
-                    style={{ zIndex: 1002 }}
+                    style={{ zIndex: 2000 }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -80,7 +82,7 @@ const Modal: FunctionComponent<ModalProps> = ({
                     {/* Backdrop */}
                     <div 
                         className="absolute inset-0 bg-black bg-opacity-50"
-                        onClick={onClose}
+                        onClick={disableBackdropClick ? undefined : onClose}
                     />
                     
                     {/* Content */}

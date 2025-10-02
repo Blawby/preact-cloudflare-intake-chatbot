@@ -54,16 +54,24 @@ export const SettingsDropdownWithToggles = ({
 
   // Keyboard navigation
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    const totalItems = toggles.length > 0 ? toggles.length : options.length;
+    
     if (!isOpen) {
-      if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         setIsOpen(true);
         setFocusedIndex(0);
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setIsOpen(true);
+        setFocusedIndex(0);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setIsOpen(true);
+        setFocusedIndex(totalItems - 1);
       }
       return;
     }
-
-    const totalItems = toggles.length > 0 ? toggles.length : options.length;
 
     switch (event.key) {
       case 'ArrowDown':
@@ -170,6 +178,7 @@ export const SettingsDropdownWithToggles = ({
           <div 
             id={listboxId}
             role="listbox"
+            aria-activedescendant={_focusedOptionId}
             className={cn(
               "absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50",
               toggles.length > 0 ? "w-48" : "w-64"

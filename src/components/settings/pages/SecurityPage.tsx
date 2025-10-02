@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { SettingsToggle } from '../components/SettingsToggle';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
@@ -29,10 +29,17 @@ export const SecurityPage = ({
     newPassword: '',
     confirmPassword: ''
   });
+  const isLoadingRef = useRef(false);
 
   // Load settings from mock data service
   const loadSettings = async () => {
+    // Guard against concurrent calls
+    if (isLoadingRef.current) {
+      return;
+    }
+    
     try {
+      isLoadingRef.current = true;
       setLoading(true);
       const securitySettings = mockUserDataService.getSecuritySettings();
       setSettings(securitySettings);
@@ -40,6 +47,7 @@ export const SecurityPage = ({
         // Failed to load security settings
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   };
 
