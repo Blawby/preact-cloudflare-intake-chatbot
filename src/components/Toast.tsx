@@ -52,14 +52,14 @@ const ToastComponent: FunctionComponent<ToastProps> = ({ toast, onRemove }) => {
   const getBackgroundColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-green-50 border-green-200';
+        return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
       case 'error':
-        return 'bg-red-50 border-red-200';
+        return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
       case 'info':
       default:
-        return 'bg-blue-50 border-blue-200';
+        return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
     }
   };
 
@@ -76,11 +76,11 @@ const ToastComponent: FunctionComponent<ToastProps> = ({ toast, onRemove }) => {
           {getIcon()}
         </div>
         <div className="ml-3 flex-1">
-          <h3 className="text-sm font-medium text-gray-900">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {toast.title}
           </h3>
           {toast.message && (
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
               {toast.message}
             </p>
           )}
@@ -88,7 +88,7 @@ const ToastComponent: FunctionComponent<ToastProps> = ({ toast, onRemove }) => {
         <div className="ml-4 flex-shrink-0">
           <button
             onClick={handleRemove}
-            className="inline-flex text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-md"
+            className="inline-flex text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 rounded-md"
           >
             <XMarkIcon className="h-4 w-4" />
           </button>

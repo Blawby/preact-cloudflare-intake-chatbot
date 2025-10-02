@@ -4,6 +4,8 @@ import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
 import { mockUserDataService, MockSecuritySettings } from '../../../utils/mockUserData';
+import Modal from '../../Modal';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 export interface SecurityPageProps {
   isMobile?: boolean;
@@ -12,8 +14,8 @@ export interface SecurityPageProps {
 }
 
 export const SecurityPage = ({
-  isMobile = false,
-  onClose,
+  isMobile: _isMobile = false,
+  onClose: _onClose,
   className = ''
 }: SecurityPageProps) => {
   const { showSuccess, showError } = useToastContext();
@@ -21,6 +23,7 @@ export const SecurityPage = ({
   const [settings, setSettings] = useState<MockSecuritySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showDisableMFAConfirm, setShowDisableMFAConfirm] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -28,30 +31,45 @@ export const SecurityPage = ({
   });
 
   // Load settings from mock data service
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      const securitySettings = mockUserDataService.getSecuritySettings();
+      setSettings(securitySettings);
+      } catch (_error) {
+        // Failed to load security settings
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        setLoading(true);
-        const securitySettings = mockUserDataService.getSecuritySettings();
-        setSettings(securitySettings);
-      } catch (error) {
-        console.error('Failed to load security settings:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     loadSettings();
+  }, []);
+
+  // Refresh settings when component regains focus (e.g., returning from MFA enrollment)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadSettings();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const handleToggleChange = (key: string, value: boolean) => {
     if (!settings) return;
     
-    if (key === 'twoFactorEnabled' && value) {
-      // Navigate to MFA enrollment page when enabling MFA
-      console.log('Attempting to navigate to MFA enrollment...');
-      navigate('/settings/mfa-enrollment');
+    if (key === 'twoFactorEnabled') {
+      if (value) {
+        // Enable MFA: Navigate to enrollment page without updating state
+        navigate('/settings/mfa-enrollment');
+      } else {
+        // Disable MFA: Show confirmation dialog
+        setShowDisableMFAConfirm(true);
+      }
     } else {
+      // Handle other toggles normally
       const updatedSettings = { ...settings, [key]: value };
       setSettings(updatedSettings);
       
@@ -59,6 +77,22 @@ export const SecurityPage = ({
       mockUserDataService.setSecuritySettings(updatedSettings);
       showSuccess('Settings saved', 'Your security settings have been updated');
     }
+  };
+
+  const handleConfirmDisableMFA = () => {
+    if (!settings) return;
+    
+    const updatedSettings = { ...settings, twoFactorEnabled: false };
+    setSettings(updatedSettings);
+    
+    // Save to mock data service
+    mockUserDataService.setSecuritySettings(updatedSettings);
+    showSuccess('MFA disabled', 'Multi-factor authentication has been disabled');
+    setShowDisableMFAConfirm(false);
+  };
+
+  const handleCancelDisableMFA = () => {
+    setShowDisableMFAConfirm(false);
   };
 
   const handlePasswordChange = (field: string, value: string) => {
@@ -163,17 +197,18 @@ export const SecurityPage = ({
             </div>
             
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Change your account password or reset it if you've forgotten it.
+              Change your account password or reset it if you&apos;ve forgotten it.
             </p>
 
             {/* Password Change Form */}
             {isChangingPassword && (
               <div className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  <label htmlFor="current-password" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                     Current Password
                   </label>
                   <input
+                    id="current-password"
                     type="password"
                     value={passwordForm.currentPassword}
                     onChange={(e) => handlePasswordChange('currentPassword', e.currentTarget.value)}
@@ -183,10 +218,11 @@ export const SecurityPage = ({
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  <label htmlFor="new-password" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                     New Password
                   </label>
                   <input
+                    id="new-password"
                     type="password"
                     value={passwordForm.newPassword}
                     onChange={(e) => handlePasswordChange('newPassword', e.currentTarget.value)}
@@ -196,10 +232,11 @@ export const SecurityPage = ({
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                     Confirm New Password
                   </label>
                   <input
+                    id="confirm-password"
                     type="password"
                     value={passwordForm.confirmPassword}
                     onChange={(e) => handlePasswordChange('confirmPassword', e.currentTarget.value)}
@@ -311,6 +348,50 @@ export const SecurityPage = ({
           </div>
         </div>
       </div>
+
+      {/* MFA Disable Confirmation Modal */}
+      <Modal
+        isOpen={showDisableMFAConfirm}
+        onClose={handleCancelDisableMFA}
+        title="Disable Multi-Factor Authentication"
+        showCloseButton={true}
+        type="modal"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <ExclamationTriangleIcon className="w-6 h-6 text-orange-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Are you sure you want to disable MFA?
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Disabling multi-factor authentication will make your account less secure. You will no longer be required to provide a second authentication factor when signing in.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex gap-3 justify-end pt-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleCancelDisableMFA}
+              className="min-w-[80px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmDisableMFA}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700 focus:ring-orange-500 min-w-[80px]"
+            >
+              Disable MFA
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

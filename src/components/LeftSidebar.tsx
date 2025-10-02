@@ -1,12 +1,9 @@
 import {
   ChatBubbleOvalLeftEllipsisIcon,
   DocumentIcon,
-  Bars3Icon,
-  SunIcon,
-  MoonIcon
+  Bars3Icon
 } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
-import { useTheme } from '../hooks/useTheme';
 import { useState } from 'preact/hooks';
 import { MatterStatus } from '../types/matter';
 import UserProfile from './UserProfile';
@@ -24,7 +21,6 @@ interface LeftSidebarProps {
 }
 
 const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, teamConfig }: LeftSidebarProps) => {
-  const { isDark, toggleTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   // On mobile, always show expanded (no collapse functionality)
@@ -147,21 +143,6 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
             )}
           </div>
 
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className={`flex items-center w-full rounded-lg text-left transition-colors text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-dark-hover ${
-              shouldShowCollapsed 
-                ? 'justify-center py-2' 
-                : 'gap-3 px-3 py-2'
-            }`}
-            title={shouldShowCollapsed ? (isDark ? 'Switch to light mode' : 'Switch to dark mode') : undefined}
-            aria-pressed={isDark}
-            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDark ? <SunIcon className="w-5 h-5 flex-shrink-0" /> : <MoonIcon className="w-5 h-5 flex-shrink-0" />}
-            {!shouldShowCollapsed && <span className="text-sm font-medium">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
-          </button>
         </div>
       </div>
 

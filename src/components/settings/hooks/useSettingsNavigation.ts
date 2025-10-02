@@ -6,9 +6,9 @@ export interface UseSettingsNavigationReturn {
   currentPath: string;
   navigateToSettings: (path?: string) => void;
   navigateToAccount: () => void;
-  navigateToPreferences: () => void;
   navigateToNotifications: () => void;
   navigateToSecurity: () => void;
+  navigateToHelp: () => void;
   navigateToTeam: () => void;
   navigateToLegal: () => void;
   navigateToSupport: () => void;
@@ -30,9 +30,6 @@ export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
     navigateToSettings('/settings/account');
   }, [navigateToSettings]);
 
-  const navigateToPreferences = useCallback(() => {
-    navigateToSettings('/settings/preferences');
-  }, [navigateToSettings]);
 
   const navigateToNotifications = useCallback(() => {
     navigateToSettings('/settings/notifications');
@@ -40,6 +37,10 @@ export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
 
   const navigateToSecurity = useCallback(() => {
     navigateToSettings('/settings/security');
+  }, [navigateToSettings]);
+
+  const navigateToHelp = useCallback(() => {
+    navigateToSettings('/settings/help');
   }, [navigateToSettings]);
 
   const navigateToTeam = useCallback(() => {
@@ -79,9 +80,9 @@ export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
     currentPath,
     navigateToSettings,
     navigateToAccount,
-    navigateToPreferences,
     navigateToNotifications,
     navigateToSecurity,
+    navigateToHelp,
     navigateToTeam,
     navigateToLegal,
     navigateToSupport,

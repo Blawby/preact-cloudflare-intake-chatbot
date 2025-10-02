@@ -14,10 +14,6 @@ import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
 // Settings components
 import { SettingsLayout } from './components/settings/SettingsLayout';
-import { SettingsPage } from './components/settings/SettingsPage';
-import { AccountPage } from './components/settings/pages/AccountPage';
-import { PreferencesPage } from './components/settings/pages/PreferencesPage';
-import { SecurityPage } from './components/settings/pages/SecurityPage';
 import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
 import './index.css';
@@ -345,14 +341,29 @@ function MainApp() {
 					// Update user's subscription tier
 					const mockUser = localStorage.getItem('mockUser');
 					if (mockUser) {
-						const userData = JSON.parse(mockUser);
-						userData.subscriptionTier = tier;
-						localStorage.setItem('mockUser', JSON.stringify(userData));
-						
-						// Dispatch event to notify other components
-						window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
+						try {
+							const userData = JSON.parse(mockUser);
+							userData.subscriptionTier = tier;
+							localStorage.setItem('mockUser', JSON.stringify(userData));
+							
+							// Dispatch event to notify other components
+							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
+						} catch (_error) {
+							// eslint-disable-next-line no-console
+							console.error('Failed to parse mockUser data:', _error);
+							// Create a fresh user object with the new subscription tier
+							const freshUserData = {
+								subscriptionTier: tier,
+								// Add other default user properties as needed
+							};
+							localStorage.setItem('mockUser', JSON.stringify(freshUserData));
+							
+							// Dispatch event with the fresh user data
+							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: freshUserData }));
+						}
 					}
 					
+					// Always ensure these cleanup operations run
 					setShowPricingModal(false);
 					window.location.hash = '';
 				}}

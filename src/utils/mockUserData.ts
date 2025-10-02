@@ -80,25 +80,30 @@ export interface MockNotificationSettings {
   };
 }
 
-// Default mock user data
-const DEFAULT_MOCK_USER: MockUserProfile = {
-  id: 'mock-user-123',
-  name: 'Steve Chris',
-  email: 'steve@example.com',
-  image: null, // Will show initials instead
-  bio: 'This is a demo user for testing the settings interface.',
-  phone: '+1 (555) 123-4567',
-  secondaryPhone: null,
-  addressStreet: '123 Main Street',
-  addressCity: 'Raleigh',
-  addressState: 'NC',
-  addressZip: '27601',
-  addressCountry: 'US',
-  preferredContactMethod: 'email',
-  subscriptionTier: 'free',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: new Date().toISOString()
-};
+// Default mock user data function - generates fresh timestamp each time
+export function getDefaultMockUser(): MockUserProfile {
+  return {
+    id: 'mock-user-123',
+    name: 'Steve Chris',
+    email: 'steve@example.com',
+    image: null, // Will show initials instead
+    bio: 'This is a demo user for testing the settings interface.',
+    phone: '+1 (555) 123-4567',
+    secondaryPhone: null,
+    addressStreet: '123 Main Street',
+    addressCity: 'Raleigh',
+    addressState: 'NC',
+    addressZip: '27601',
+    addressCountry: 'US',
+    preferredContactMethod: 'email',
+    subscriptionTier: 'free',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: new Date().toISOString()
+  };
+}
+
+// Backward compatibility - keep the constant for any external usage
+const _DEFAULT_MOCK_USER: MockUserProfile = getDefaultMockUser();
 
 const DEFAULT_PREFERENCES: MockUserPreferences = {
   theme: 'system',
@@ -181,8 +186,9 @@ class MockUserDataService {
     }
     
     // Return default and store it
-    this.setUserProfile(DEFAULT_MOCK_USER);
-    return DEFAULT_MOCK_USER;
+    const defaultUser = getDefaultMockUser();
+    this.setUserProfile(defaultUser);
+    return defaultUser;
   }
 
   setUserProfile(profile: Partial<MockUserProfile>): MockUserProfile {
@@ -192,11 +198,11 @@ class MockUserDataService {
       if (stored) {
         current = JSON.parse(stored);
       } else {
-        current = DEFAULT_MOCK_USER;
+        current = getDefaultMockUser();
       }
     } catch (_error) {
       // Failed to parse stored user profile
-      current = DEFAULT_MOCK_USER;
+      current = getDefaultMockUser();
     }
     
     const updated = {
@@ -283,26 +289,36 @@ class MockUserDataService {
 
   // Avatar Methods
   uploadAvatar(file: File): Promise<string> {
-    return new Promise((resolve) => {
-      // Simulate file upload
-      setTimeout(() => {
-        const objectUrl = URL.createObjectURL(file);
-        
-        // Update user profile with new avatar
-        this.setUserProfile({ image: objectUrl });
-        
-        resolve(objectUrl);
-      }, 1000);
+    return new Promise((resolve, reject) => {
+      // Convert file to persistent data URL using FileReader
+      const reader = new FileReader();
+      
+      reader.onload = () => {
+        // Simulate file upload delay
+        setTimeout(() => {
+          const dataUrl = reader.result as string;
+          
+          // Update user profile with new avatar (data URL persists across reloads)
+          this.setUserProfile({ image: dataUrl });
+          
+          resolve(dataUrl);
+        }, 1000);
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file as data URL'));
+      };
+      
+      // Read file as data URL (base64 encoded)
+      reader.readAsDataURL(file);
     });
   }
 
   deleteAvatar(): Promise<void> {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const current = this.getUserProfile();
-        if (current.image && current.image.startsWith('blob:')) {
-          URL.revokeObjectURL(current.image);
-        }
+        // Note: No need to revoke data URLs (they're just strings), 
+        // unlike blob URLs which need URL.revokeObjectURL()
         this.setUserProfile({ image: null });
         resolve();
       }, 500);
@@ -344,6 +360,9 @@ class MockUserDataService {
     localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
     localStorage.removeItem(STORAGE_KEYS.PREFERENCES);
     localStorage.removeItem(STORAGE_KEYS.SECURITY);
+    localStorage.removeItem(STORAGE_KEYS.LINKS);
+    localStorage.removeItem(STORAGE_KEYS.EMAIL);
+    localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
   }
 
   // Links Methods
@@ -490,15 +509,12 @@ if (typeof window !== 'undefined') {
   // Helper function to easily test different subscription tiers
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).setSubscriptionTier = (tier: SubscriptionTier) => {
-    const mockUser = localStorage.getItem('mockUser');
-    if (mockUser) {
-      const userData = JSON.parse(mockUser);
-      userData.subscriptionTier = tier;
-      localStorage.setItem('mockUser', JSON.stringify(userData));
-      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
+    try {
+      const updatedProfile = mockUserDataService.setSubscriptionTier(tier);
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: updatedProfile }));
       // eslint-disable-next-line no-console
       console.log(`Subscription tier changed to: ${tier}`);
-    } else {
+    } catch (_error) {
       // eslint-disable-next-line no-console
       console.log('No user logged in. Please sign in first.');
     }

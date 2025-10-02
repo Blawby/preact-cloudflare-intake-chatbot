@@ -1,10 +1,23 @@
 import { FunctionComponent } from 'preact';
 import { cn } from '../../utils/cn';
 
+// Type for icon components that works with heroicons
+// This type ensures that icons accept common SVG props while maintaining compatibility
+// The intersection with any allows for React/Preact compatibility
+type IconComponent = preact.ComponentType<{
+  className?: string;
+  'aria-hidden'?: boolean;
+  strokeWidth?: number;
+  width?: number;
+  height?: number;
+  fill?: string;
+  stroke?: string;
+}> & any;
+
 export interface SidebarNavigationItem {
   id: string;
   label: string;
-  icon: preact.ComponentType<any>;
+  icon: IconComponent;
   isAction?: boolean;
   onClick?: () => void;
   variant?: 'default' | 'danger';
@@ -24,7 +37,7 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
   className = ''
 }) => {
   return (
-    <nav className={cn('flex-1 py-2 px-3', className)}>
+    <nav className={cn('flex-1 py-2 px-3', className)} aria-label="Sidebar navigation" role="list">
       {items.map((item) => {
         const IconComponent = item.icon;
         const isActive = activeItem === item.id;
@@ -34,6 +47,9 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
         return (
           <button
             key={item.id}
+            type="button"
+            role="listitem"
+            aria-current={isActive ? 'page' : undefined}
             onClick={() => {
               if (isAction && item.onClick) {
                 item.onClick();

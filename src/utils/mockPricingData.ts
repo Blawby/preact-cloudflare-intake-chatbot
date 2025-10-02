@@ -334,8 +334,9 @@ class MockPricingDataService {
     if (!plan) return undefined;
 
     const monthly = plan.priceAmount;
-    const annual = monthly * 12;
-    const savings = Math.round((monthly * 12 - annual) * 0.8); // 20% discount for annual
+    const fullYear = monthly * 12;
+    const savings = Math.round(fullYear * 0.20); // 20% discount for annual
+    const annual = fullYear - savings;
 
     return { monthly, annual, savings };
   }

@@ -1,19 +1,13 @@
 import { useState, useEffect } from 'preact/hooks';
-import { SettingsDropdown } from '../components/SettingsDropdown';
 import { SettingsDropdownWithToggles } from '../components/SettingsDropdownWithToggles';
-import { SettingsToggle } from '../components/SettingsToggle';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { mockUserDataService, MockNotificationSettings } from '../../../utils/mockUserData';
 
 export interface NotificationsPageProps {
-  isMobile?: boolean;
-  onClose?: () => void;
   className?: string;
 }
 
 export const NotificationsPage = ({
-  isMobile = false,
-  onClose,
   className = ''
 }: NotificationsPageProps) => {
   const { showSuccess } = useToastContext();
@@ -28,6 +22,7 @@ export const NotificationsPage = ({
         const notificationSettings = mockUserDataService.getNotificationSettings();
         setSettings(notificationSettings);
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Failed to load notification settings:', error);
       } finally {
         setLoading(false);
@@ -85,7 +80,7 @@ export const NotificationsPage = ({
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-0">
           {/* Responses Section */}
-          <div className="flex items-center justify-between py-3">
+          <div className="flex items-center justify-between py-2">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Responses
@@ -100,6 +95,7 @@ export const NotificationsPage = ({
                 value="responses"
                 options={[]}
                 onChange={() => {}}
+                className="py-1"
                 toggles={[
                   {
                     id: 'push',
@@ -115,17 +111,20 @@ export const NotificationsPage = ({
           <div className="border-t border-gray-200 dark:border-dark-border" />
 
           {/* Tasks Section */}
-          <div className="flex items-center justify-between py-3">
+          <div className="flex items-center justify-between py-2">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Tasks
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Get notified when tasks you've created have updates.
+                Get notified when tasks you&apos;ve created have updates.
               </p>
-              <p className="text-xs text-blue-500 dark:text-blue-400 underline cursor-pointer mt-1">
+              <button 
+                onClick={() => {/* TODO: Implement task management navigation */}}
+                className="text-xs mt-1 text-left"
+              >
                 Manage tasks
-              </p>
+              </button>
             </div>
             <div className="ml-4">
               <SettingsDropdownWithToggles
@@ -133,6 +132,7 @@ export const NotificationsPage = ({
                 value="tasks"
                 options={[]}
                 onChange={() => {}}
+                className="py-1"
                 toggles={[
                   {
                     id: 'push',
@@ -154,7 +154,7 @@ export const NotificationsPage = ({
           <div className="border-t border-gray-200 dark:border-dark-border" />
 
           {/* Messaging Section */}
-          <div className="flex items-center justify-between py-3">
+          <div className="flex items-center justify-between py-2">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Messaging
@@ -169,6 +169,7 @@ export const NotificationsPage = ({
                 value="messaging"
                 options={[]}
                 onChange={() => {}}
+                className="py-1"
                 toggles={[
                   {
                     id: 'push',

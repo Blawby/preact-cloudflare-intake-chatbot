@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'preact/hooks';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'preact/hooks';
 import { ChevronDownIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 
@@ -24,13 +24,20 @@ export const SettingsDropdown = ({
   direction = 'down'
 }: SettingsDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  
+  // Generate stable unique IDs for accessibility
+  const dropdownId = useMemo(() => `settings-dropdown-${Math.random().toString(36).substr(2, 9)}`, []);
+  const listboxId = `${dropdownId}-listbox`;
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setFocusedIndex(-1);
       }
     };
 
@@ -38,7 +45,59 @@ export const SettingsDropdown = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Keyboard navigation
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (!isOpen) {
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        setIsOpen(true);
+        setFocusedIndex(0);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setFocusedIndex(prev => (prev + 1) % options.length);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setFocusedIndex(prev => prev <= 0 ? options.length - 1 : prev - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < options.length) {
+          onChange(options[focusedIndex].value);
+          setIsOpen(false);
+          setFocusedIndex(-1);
+          buttonRef.current?.focus();
+        }
+        break;
+      case 'Escape':
+        event.preventDefault();
+        setIsOpen(false);
+        setFocusedIndex(-1);
+        buttonRef.current?.focus();
+        break;
+      case 'Tab':
+        setIsOpen(false);
+        setFocusedIndex(-1);
+        break;
+    }
+  }, [isOpen, focusedIndex, options, onChange]);
+
+  // Handle keyboard events
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, focusedIndex, options, handleKeyDown]);
+
   const selectedOption = options.find(opt => opt.value === value);
+  const _focusedOptionId = focusedIndex >= 0 ? `${dropdownId}-option-${options[focusedIndex]?.value}` : undefined;
 
   return (
     <div className={cn('py-3', className)}>
@@ -51,8 +110,13 @@ export const SettingsDropdown = ({
         
         <div className="relative" ref={dropdownRef}>
           <button
+            ref={buttonRef}
             onClick={() => setIsOpen(!isOpen)}
             disabled={disabled}
+            aria-haspopup="listbox"
+            aria-expanded={isOpen}
+            aria-controls={listboxId}
+            aria-disabled={disabled}
             className={cn(
               'flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md',
               'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500',
@@ -68,22 +132,33 @@ export const SettingsDropdown = ({
 
           {/* Dropdown Menu */}
           {isOpen && (
-            <div className={cn(
-              "absolute right-0 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50",
-              direction === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
-            )}>
+            <div 
+              id={listboxId}
+              role="listbox"
+              className={cn(
+                "absolute right-0 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50",
+                direction === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+              )}
+            >
               <div className="py-1">
-                {options.map((option) => (
+                {options.map((option, index) => (
                   <button
                     key={option.value}
+                    id={`${dropdownId}-option-${option.value}`}
+                    role="option"
+                    aria-selected={value === option.value}
+                    tabIndex={-1}
                     onClick={() => {
                       onChange(option.value);
                       setIsOpen(false);
+                      setFocusedIndex(-1);
                     }}
                     className={cn(
                       'w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100',
                       'hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between',
-                      value === option.value && 'bg-accent-50 dark:bg-accent-900/20 text-accent-600 dark:text-accent-400'
+                      'focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700',
+                      value === option.value && 'bg-accent-50 dark:bg-accent-900/20 text-accent-600 dark:text-accent-400',
+                      focusedIndex === index && 'bg-gray-100 dark:bg-gray-700'
                     )}
                   >
                     <span>{option.label}</span>

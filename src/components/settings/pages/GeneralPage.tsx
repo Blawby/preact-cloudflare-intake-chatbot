@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
-import { SettingsSection } from '../components/SettingsSection';
 import { SettingsDropdown } from '../components/SettingsDropdown';
-import { SettingsToggle } from '../components/SettingsToggle';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { mockUserDataService } from '../../../utils/mockUserData';
 
@@ -12,37 +10,40 @@ export interface GeneralPageProps {
 }
 
 export const GeneralPage = ({
-  isMobile = false,
-  onClose,
+  isMobile: _isMobile = false,
+  onClose: _onClose,
   className = ''
 }: GeneralPageProps) => {
   const { showSuccess } = useToastContext();
   const [settings, setSettings] = useState({
     theme: 'system' as 'light' | 'dark' | 'system',
     accentColor: 'default' as 'default' | 'blue' | 'green' | 'purple' | 'red',
-    language: 'auto-detect' as 'auto-detect' | 'en' | 'es' | 'fr' | 'de',
-    spokenLanguage: 'auto-detect' as 'auto-detect' | 'en' | 'es' | 'fr' | 'de',
-    showAdditionalModels: false
+    language: 'auto-detect' as 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja',
+    spokenLanguage: 'auto-detect' as 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja'
   });
 
   // Load settings from mock data service
   useEffect(() => {
     const preferences = mockUserDataService.getPreferences();
+    
+    // Defensive checks with sensible fallbacks
     setSettings({
-      theme: preferences.theme,
-      accentColor: preferences.accentColor,
-      language: preferences.language,
-      spokenLanguage: preferences.spokenLanguage,
-      showAdditionalModels: preferences.showAdditionalModels || false
+      theme: preferences?.theme || 'system',
+      accentColor: preferences?.accentColor || 'default',
+      language: preferences?.language || 'auto-detect',
+      spokenLanguage: preferences?.spokenLanguage || 'auto-detect'
     });
   }, []);
 
   const handleSettingChange = (key: string, value: string | boolean) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-    
-    // Save to mock data service
-    const updatedPreferences = { ...settings, [key]: value };
-    mockUserDataService.setPreferences(updatedPreferences);
+    setSettings(prev => {
+      const newSettings = { ...prev, [key]: value };
+      
+      // Save to mock data service with fresh state
+      mockUserDataService.setPreferences(newSettings);
+      
+      return newSettings;
+    });
     
     // Apply theme immediately if changed
     if (key === 'theme') {
@@ -114,9 +115,12 @@ export const GeneralPage = ({
             options={[
               { value: 'auto-detect', label: 'Auto-detect' },
               { value: 'en', label: 'English' },
+              { value: 'vi', label: 'Tiếng Việt' },
               { value: 'es', label: 'Español' },
               { value: 'fr', label: 'Français' },
-              { value: 'de', label: 'Deutsch' }
+              { value: 'de', label: 'Deutsch' },
+              { value: 'zh', label: '中文' },
+              { value: 'ja', label: '日本語' }
             ]}
             onChange={(value) => handleSettingChange('language', value)}
           />
@@ -129,9 +133,12 @@ export const GeneralPage = ({
             options={[
               { value: 'auto-detect', label: 'Auto-detect' },
               { value: 'en', label: 'English' },
+              { value: 'vi', label: 'Tiếng Việt' },
               { value: 'es', label: 'Español' },
               { value: 'fr', label: 'Français' },
-              { value: 'de', label: 'Deutsch' }
+              { value: 'de', label: 'Deutsch' },
+              { value: 'zh', label: '中文' },
+              { value: 'ja', label: '日本語' }
             ]}
             onChange={(value) => handleSettingChange('spokenLanguage', value)}
             description="For best results, select the language you mainly speak. If it's not listed, it may still be supported via auto-detection."

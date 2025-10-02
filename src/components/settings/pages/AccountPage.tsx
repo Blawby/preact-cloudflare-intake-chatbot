@@ -1,26 +1,15 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { Button } from '../../ui/Button';
 import { SettingsDropdown } from '../components/SettingsDropdown';
+import Modal from '../../Modal';
 import { 
-  SparklesIcon,
-  ChatBubbleLeftRightIcon,
-  PhotoIcon,
-  CpuChipIcon,
-  Cog6ToothIcon,
-  UserGroupIcon,
-  FilmIcon,
-  TrashIcon,
-  GlobeAltIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import { useNavigation } from '../../../utils/navigation';
 import { useToastContext } from '../../../contexts/ToastContext';
-import { mockUserDataService, MockUserProfile, MockUserLinks, MockEmailSettings } from '../../../utils/mockUserData';
+import { mockUserDataService, MockUserLinks, MockEmailSettings, type SubscriptionTier } from '../../../utils/mockUserData';
+import { mockPricingDataService } from '../../../utils/mockPricingData';
 
-// Utility function for className merging (following codebase pattern)
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ');
-}
 
 export interface AccountPageProps {
   isMobile?: boolean;
@@ -29,27 +18,39 @@ export interface AccountPageProps {
 }
 
 export const AccountPage = ({
-  isMobile = false,
-  onClose,
+  isMobile: _isMobile = false,
+  onClose: _onClose,
   className = ''
 }: AccountPageProps) => {
-  const { navigate } = useNavigation();
   const { showSuccess, showError } = useToastContext();
   const [links, setLinks] = useState<MockUserLinks | null>(null);
   const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // For demo purposes - change this to test different tiers: 'free', 'plus', 'business'
+  const currentTier: SubscriptionTier = 'free';
+  const currentPlanFeatures = mockPricingDataService.getFeaturesForTier(currentTier);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDomainModal, setShowDomainModal] = useState(false);
+  const [domainInput, setDomainInput] = useState('');
+  const [domainError, setDomainError] = useState<string | null>(null);
 
   // Load mock data
   useEffect(() => {
     const loadData = async () => {
       try {
+        setError(null);
         setLoading(true);
         const linksData = mockUserDataService.getUserLinks();
         const emailData = mockUserDataService.getEmailSettings();
+        
         setLinks(linksData);
         setEmailSettings(emailData);
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Failed to load account data:', error);
+        setError(error instanceof Error ? error.message : String(error));
       } finally {
         setLoading(false);
       }
@@ -59,15 +60,104 @@ export const AccountPage = ({
   }, []);
 
   const handleUpgrade = () => {
-    showSuccess('Upgrade', 'Redirecting to upgrade page...');
+    if (!currentTier) {
+      showSuccess('Upgrade', 'Redirecting to upgrade page...');
+      return;
+    }
+    const upgradePath = mockPricingDataService.getUpgradePath(currentTier);
+    if (upgradePath.length > 0) {
+      const nextTier = upgradePath[0];
+      showSuccess('Upgrade', `Redirecting to upgrade to ${nextTier.name}...`);
+    } else {
+      showSuccess('Account', 'You are already on the highest tier!');
+    }
     // Here you would redirect to the upgrade page
   };
 
+  // Simple computed values for demo
+  const upgradePath = mockPricingDataService.getUpgradePath(currentTier);
+  const upgradeButtonText = upgradePath.length > 0 ? `Upgrade to ${upgradePath[0].name}` : 'Current Plan';
+  const sectionTitle = currentTier === 'free' ? 'Get ChatGPT Plus' : 
+                       currentTier === 'plus' ? 'Get ChatGPT Business' : 
+                       'Current Plan';
+
   const handleDeleteAccount = () => {
-    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      showSuccess('Account deletion', 'Account deletion process initiated. Check your email for confirmation.');
-      // Here you would initiate the account deletion process
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setShowDeleteConfirm(false);
+    showSuccess('Account deletion', 'Account deletion process initiated. Check your email for confirmation.');
+    // Here you would initiate the account deletion process
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+  };
+
+  // Domain validation function
+  const validateDomain = (domain: string): string | null => {
+    const trimmed = domain.trim();
+    
+    if (!trimmed) {
+      return 'Domain cannot be empty';
     }
+    
+    if (trimmed !== domain) {
+      return 'Domain cannot have leading or trailing spaces';
+    }
+    
+    // Basic domain format validation regex
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!domainRegex.test(trimmed)) {
+      return 'Please enter a valid domain format (e.g., example.com)';
+    }
+    
+    // Check for duplicates
+    const existingDomains = links?.customDomains?.map(d => d.domain) || [];
+    if (existingDomains.includes(trimmed)) {
+      return 'This domain has already been added';
+    }
+    
+    return null;
+  };
+
+  const handleOpenDomainModal = () => {
+    setShowDomainModal(true);
+    setDomainInput('');
+    setDomainError(null);
+  };
+
+  const handleCloseDomainModal = () => {
+    setShowDomainModal(false);
+    setDomainInput('');
+    setDomainError(null);
+  };
+
+  const handleDomainSubmit = () => {
+    const error = validateDomain(domainInput);
+    if (error) {
+      setDomainError(error);
+      showError('Invalid Domain', error);
+      return;
+    }
+
+    const trimmedDomain = domainInput.trim();
+    const updatedLinks = mockUserDataService.setUserLinks({
+      selectedDomain: trimmedDomain,
+      customDomains: [
+        ...(links?.customDomains || []),
+        {
+          domain: trimmedDomain,
+          verified: false,
+          verifiedAt: null
+        }
+      ]
+    });
+    
+    setLinks(updatedLinks);
+    handleCloseDomainModal();
+    showSuccess('Domain added', `Domain ${trimmedDomain} has been added and is pending verification.`);
   };
 
   const handleAddLinkedIn = () => {
@@ -81,22 +171,7 @@ export const AccountPage = ({
   const handleDomainChange = (domain: string) => {
     if (domain === 'verify-new') {
       // Handle "Verify new domain" option
-      const newDomain = prompt('Enter the domain you want to verify:');
-      if (newDomain) {
-        const updatedLinks = mockUserDataService.setUserLinks({
-          selectedDomain: newDomain,
-          customDomains: [
-            ...(links?.customDomains || []),
-            {
-              domain: newDomain,
-              verified: false,
-              verifiedAt: null
-            }
-          ]
-        });
-        setLinks(updatedLinks);
-        showSuccess('Domain added', `Domain ${newDomain} has been added and is pending verification.`);
-      }
+      handleOpenDomainModal();
     } else {
       const updatedLinks = mockUserDataService.setUserLinks({ selectedDomain: domain });
       setLinks(updatedLinks);
@@ -110,21 +185,53 @@ export const AccountPage = ({
     setEmailSettings(updatedEmailSettings);
   };
 
-  const features = [
-    { icon: <SparklesIcon className="w-4 h-4" />, text: "GPT-5 with advanced reasoning" },
-    { icon: <ChatBubbleLeftRightIcon className="w-4 h-4" />, text: "Expanded messaging and uploads" },
-    { icon: <PhotoIcon className="w-4 h-4" />, text: "Expanded and faster image creation" },
-    { icon: <CpuChipIcon className="w-4 h-4" />, text: "Expanded memory and context" },
-    { icon: <Cog6ToothIcon className="w-4 h-4" />, text: "Expanded deep research and agent mode" },
-    { icon: <UserGroupIcon className="w-4 h-4" />, text: "Projects, tasks, custom GPTs" },
-    { icon: <FilmIcon className="w-4 h-4" />, text: "Sora video generation" },
-    { icon: <CpuChipIcon className="w-4 h-4" />, text: "Codex agent" }
-  ];
+  // Features are now loaded dynamically from the pricing service
 
   if (loading) {
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
         <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`h-full flex items-center justify-center ${className}`}>
+        <div className="text-center">
+          <div className="text-red-600 dark:text-red-400 mb-4">
+            <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <p className="text-sm font-medium">Failed to load account data</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{error}</p>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              const loadData = async () => {
+                try {
+                  setError(null);
+                  setLoading(true);
+                  const linksData = mockUserDataService.getUserLinks();
+                  const emailData = mockUserDataService.getEmailSettings();
+                  setLinks(linksData);
+                  setEmailSettings(emailData);
+                } catch (error) {
+                  // eslint-disable-next-line no-console
+                  console.error('Failed to load account data:', error);
+                  setError(error instanceof Error ? error.message : String(error));
+                } finally {
+                  setLoading(false);
+                }
+              };
+              loadData();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }
@@ -146,7 +253,7 @@ export const AccountPage = ({
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Get ChatGPT Plus
+                {sectionTitle}
               </h3>
             </div>
             <div className="ml-4">
@@ -155,31 +262,26 @@ export const AccountPage = ({
                 size="sm"
                 onClick={handleUpgrade}
               >
-                Upgrade
+                {upgradeButtonText}
               </Button>
             </div>
           </div>
 
           <div className="border-t border-gray-200 dark:border-dark-border" />
 
-          {/* Get everything in Free, and more Section */}
+          {/* Plan Features Section */}
           <div className="py-3">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                Get everything in Free, and more.
-              </h3>
-              <div className="space-y-2">
-                {features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <div className="text-gray-500 dark:text-gray-400">
-                      {feature.icon}
-                    </div>
-                    <span className="text-sm text-gray-900 dark:text-gray-100">
-                      {feature.text}
-                    </span>
+            <div className="space-y-2">
+              {currentPlanFeatures.map((feature, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <div className="text-gray-500 dark:text-gray-400">
+                    <feature.icon className="w-4 h-4" />
                   </div>
-                ))}
-              </div>
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    {feature.text}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -298,6 +400,109 @@ export const AccountPage = ({
           </div>
         </div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={handleCancelDelete}
+        title="Delete Account"
+        showCloseButton={true}
+        type="modal"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Are you sure you want to delete your account?
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                This action cannot be undone. All your data, conversations, and settings will be permanently deleted.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex gap-3 justify-end pt-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleCancelDelete}
+              className="min-w-[80px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500 min-w-[80px]"
+            >
+              Delete Account
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Domain Input Modal */}
+      <Modal
+        isOpen={showDomainModal}
+        onClose={handleCloseDomainModal}
+        title="Add New Domain"
+        showCloseButton={true}
+        type="modal"
+      >
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="domain-input" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              Domain
+            </label>
+            <input
+              id="domain-input"
+              type="text"
+              value={domainInput}
+              onChange={(e) => {
+                setDomainInput(e.currentTarget.value);
+                setDomainError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleDomainSubmit();
+                }
+              }}
+              placeholder="example.com"
+              className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 ${
+                domainError ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''
+              }`}
+            />
+            {domainError && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {domainError}
+              </p>
+            )}
+          </div>
+          
+          <div className="flex gap-3 justify-end pt-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleCloseDomainModal}
+              className="min-w-[80px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleDomainSubmit}
+              className="min-w-[80px]"
+            >
+              Add Domain
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

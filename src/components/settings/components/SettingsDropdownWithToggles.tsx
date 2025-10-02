@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'preact/hooks';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'preact/hooks';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
-import { SettingsToggle } from './SettingsToggle';
 import { cn } from '../../../utils/cn';
 
 export interface ToggleOption {
@@ -32,19 +31,87 @@ export const SettingsDropdownWithToggles = ({
   toggles = []
 }: SettingsDropdownWithTogglesProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  
+  // Generate stable unique IDs for accessibility
+  const dropdownId = useMemo(() => `settings-dropdown-toggles-${Math.random().toString(36).substr(2, 9)}`, []);
+  const listboxId = `${dropdownId}-listbox`;
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setFocusedIndex(-1);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (!isOpen) {
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        setIsOpen(true);
+        setFocusedIndex(0);
+      }
+      return;
+    }
+
+    const totalItems = toggles.length > 0 ? toggles.length : options.length;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setFocusedIndex(prev => (prev + 1) % totalItems);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setFocusedIndex(prev => prev <= 0 ? totalItems - 1 : prev - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < totalItems) {
+          if (toggles.length > 0) {
+            // Toggle the focused toggle
+            const toggle = toggles[focusedIndex];
+            toggle.onChange(!toggle.value);
+          } else {
+            // Select the focused option
+            const option = options[focusedIndex];
+            onChange(option.value);
+            setIsOpen(false);
+            setFocusedIndex(-1);
+            buttonRef.current?.focus();
+          }
+        }
+        break;
+      case 'Escape':
+        event.preventDefault();
+        setIsOpen(false);
+        setFocusedIndex(-1);
+        buttonRef.current?.focus();
+        break;
+      case 'Tab':
+        setIsOpen(false);
+        setFocusedIndex(-1);
+        break;
+    }
+  }, [isOpen, focusedIndex, toggles, options, onChange]);
+
+  // Handle keyboard events
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, focusedIndex, toggles, options, handleKeyDown]);
 
   // Get display value based on active toggles
   const getDisplayValue = () => {
@@ -56,6 +123,10 @@ export const SettingsDropdownWithToggles = ({
     if (activeToggles.length === 0) return 'None';
     return activeToggles.map(t => t.label).join(', ');
   };
+
+  const _focusedOptionId = focusedIndex >= 0 ? 
+    (toggles.length > 0 ? `${dropdownId}-toggle-${toggles[focusedIndex]?.id}` : `${dropdownId}-option-${options[focusedIndex]?.value}`) 
+    : undefined;
 
   return (
     <div className={cn('flex items-center justify-between py-3 relative', className)}>
@@ -74,8 +145,13 @@ export const SettingsDropdownWithToggles = ({
       
       <div className="relative" ref={dropdownRef}>
         <button
+          ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
           disabled={disabled}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-controls={listboxId}
+          aria-disabled={disabled}
           className={cn(
             'flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md',
             'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500',
@@ -91,15 +167,32 @@ export const SettingsDropdownWithToggles = ({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+          <div 
+            id={listboxId}
+            role="listbox"
+            className={cn(
+              "absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50",
+              toggles.length > 0 ? "w-48" : "w-64"
+            )}
+          >
             {toggles.length > 0 ? (
-              <div className="p-3 space-y-3">
-                {toggles.map((toggle) => (
-                  <div key={toggle.id} className="flex items-center justify-between">
+              <div className="p-2 space-y-2">
+                {toggles.map((toggle, index) => (
+                  <div 
+                    key={toggle.id} 
+                    id={`${dropdownId}-toggle-${toggle.id}`}
+                    role="option"
+                    aria-selected={toggle.value}
+                    className={cn(
+                      'flex items-center justify-between p-1.5 rounded-md',
+                      focusedIndex === index && 'bg-gray-100 dark:bg-gray-700'
+                    )}
+                  >
                     <span className="text-sm text-gray-900 dark:text-gray-100">
                       {toggle.label}
                     </span>
                     <button
+                      tabIndex={-1}
                       className={cn(
                         'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
                         toggle.value 
@@ -120,17 +213,23 @@ export const SettingsDropdownWithToggles = ({
               </div>
             ) : (
               <div className="py-1">
-                {options.map((option) => (
+                {options.map((option, index) => (
                   <button
                     key={option.value}
+                    id={`${dropdownId}-option-${option.value}`}
+                    role="option"
+                    aria-selected={value === option.value}
+                    tabIndex={-1}
                     onClick={() => {
                       onChange(option.value);
                       setIsOpen(false);
+                      setFocusedIndex(-1);
                     }}
                     className={cn(
                       'w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100',
-                      'hover:bg-gray-50 dark:hover:bg-gray-700',
-                      value === option.value && 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700',
+                      value === option.value && 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+                      focusedIndex === index && 'bg-gray-100 dark:bg-gray-700'
                     )}
                   >
                     {option.label}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SettingsPage } from './SettingsPage';
 
@@ -16,6 +16,13 @@ export const SettingsLayout = ({
   const [showSettings, setShowSettings] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const handleClose = useCallback(() => {
+    setShowSettings(false);
+    if (onClose) {
+      onClose();
+    }
+  }, [onClose]);
+
   // Handle Escape key, body scroll, and click outside for overlay
   useEffect(() => {
     const isModalVisible = showSettings;
@@ -28,8 +35,7 @@ export const SettingsLayout = ({
     };
 
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (target.classList.contains('fixed') && target.classList.contains('inset-0')) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         handleClose();
       }
     };
@@ -51,14 +57,7 @@ export const SettingsLayout = ({
       document.documentElement.style.overflow = '';
       document.body.classList.remove('modal-open');
     };
-  }, [showSettings]);
-
-  const handleClose = () => {
-    setShowSettings(false);
-    if (onClose) {
-      onClose();
-    }
-  };
+  }, [showSettings, handleClose]);
 
   return (
     <AnimatePresence>
@@ -84,7 +83,7 @@ export const SettingsLayout = ({
               isMobile 
                 ? 'inset-x-0 bottom-0 top-0' // Full screen on mobile
                 : 'top-8 left-8 right-8 bottom-8 max-w-4xl mx-auto' // Centered modal on desktop
-            }`}
+            } ${className}`}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

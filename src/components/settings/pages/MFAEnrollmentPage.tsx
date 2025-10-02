@@ -1,7 +1,8 @@
-import { useState } from 'preact/hooks';
+import { useState, useMemo } from 'preact/hooks';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
+import { mockUserDataService } from '../../../utils/mockUserData';
 
 export interface MFAEnrollmentPageProps {
   className?: string;
@@ -16,8 +17,19 @@ export const MFAEnrollmentPage = ({
   const [isVerifying, setIsVerifying] = useState(false);
 
   // Mock QR code data - in real app, this would come from your backend
-  const qrCodeData = 'otpauth://totp/BlawbyAI:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=BlawbyAI';
   const manualCode = 'JBSWY3DPEHPK3PXP';
+
+  // Generate a stable QR pattern that doesn't change on re-renders
+  const qrPattern = useMemo(() => {
+    // Use a deterministic seed based on the manual code to ensure consistency
+    const seed = manualCode.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const pattern = Array.from({ length: 64 }, (_, i) => {
+      // Simple pseudo-random function using the seed and index
+      const x = (seed + i * 17) % 1000;
+      return x > 500;
+    });
+    return pattern;
+  }, [manualCode]);
 
   const handleVerification = async () => {
     if (!verificationCode.trim()) {
@@ -35,21 +47,45 @@ export const MFAEnrollmentPage = ({
       // Here you would verify the code with your backend
       // await authService.verifyMFACode(verificationCode);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Simulate API call with conditional rejection for testing
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          // Randomly reject ~30% of the time to test error flow
+          if (Math.random() < 0.3) {
+            reject(new Error('Invalid verification code. Please check your authenticator app and try again.'));
+          } else {
+            resolve(undefined);
+          }
+        }, 1000);
+      });
+      
+      // Update security settings to enable MFA
+      const currentSettings = mockUserDataService.getSecuritySettings();
+      const updatedSettings = { ...currentSettings, twoFactorEnabled: true };
+      mockUserDataService.setSecuritySettings(updatedSettings);
       
       showSuccess('MFA enabled', 'Multi-factor authentication has been successfully enabled');
       navigate('/settings/security');
-    } catch (error) {
+    } catch (_error) {
       showError('Verification failed', 'Invalid code. Please try again.');
     } finally {
       setIsVerifying(false);
     }
   };
 
-  const handleCopyManualCode = () => {
-    navigator.clipboard.writeText(manualCode);
-    showSuccess('Copied', 'Manual code copied to clipboard');
+  const handleCopyManualCode = async () => {
+    // Check if clipboard API is supported
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      showError('Clipboard not supported', 'Your browser does not support copying to clipboard. Please manually copy the code.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(manualCode);
+      showSuccess('Copied', 'Manual code copied to clipboard');
+    } catch (error) {
+      showError('Copy failed', `Failed to copy code to clipboard: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   return (
@@ -86,12 +122,12 @@ export const MFAEnrollmentPage = ({
               <div className="w-48 h-48 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
                 <div className="text-center">
                   <div className="w-32 h-32 bg-black dark:bg-white rounded grid grid-cols-8 gap-1 p-2">
-                    {/* Mock QR pattern */}
-                    {Array.from({ length: 64 }).map((_, i) => (
+                    {/* Mock QR pattern - stable pattern that doesn't flicker */}
+                    {qrPattern.map((isWhite, i) => (
                       <div
                         key={i}
                         className={`w-full h-full rounded-sm ${
-                          Math.random() > 0.5 ? 'bg-white dark:bg-black' : 'bg-black dark:bg-white'
+                          isWhite ? 'bg-white dark:bg-black' : 'bg-black dark:bg-white'
                         }`}
                       />
                     ))}
@@ -129,10 +165,11 @@ export const MFAEnrollmentPage = ({
           {/* Code Input */}
           <div className="space-y-4">
             <div className="text-left">
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              <label htmlFor="verification-code" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Enter your one-time code*
               </label>
               <input
+                id="verification-code"
                 type="text"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.currentTarget.value.replace(/\D/g, '').slice(0, 6))}
@@ -164,19 +201,19 @@ export const MFAEnrollmentPage = ({
           {/* Footer Links */}
           <div className="pt-8 border-t border-gray-200 dark:border-dark-border">
             <div className="flex justify-center space-x-4 text-sm">
-              <a
-                href="#"
+              <button
+                type="button"
                 className="text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300"
               >
                 Terms of Use
-              </a>
+              </button>
               <span className="text-gray-300 dark:text-gray-600">|</span>
-              <a
-                href="#"
+              <button
+                type="button"
                 className="text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300"
               >
                 Privacy Policy
-              </a>
+              </button>
             </div>
           </div>
         </div>

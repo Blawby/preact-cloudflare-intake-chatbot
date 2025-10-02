@@ -1,12 +1,10 @@
 import { useLocation } from 'preact-iso';
-import { SettingsSection } from './SettingsSection';
-import { SettingsItem } from './SettingsItem';
 import { GeneralPage } from './pages/GeneralPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { AccountPage } from './pages/AccountPage';
-import { PreferencesPage } from './pages/PreferencesPage';
 import { SecurityPage } from './pages/SecurityPage';
 import { MFAEnrollmentPage } from './pages/MFAEnrollmentPage';
+import { HelpPage } from './pages/HelpPage';
 import { SidebarNavigation, SidebarNavigationItem } from '../ui/SidebarNavigation';
 import { 
   UserIcon, 
@@ -14,15 +12,13 @@ import {
   Cog6ToothIcon,
   XMarkIcon,
   BellIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 import { useNavigation } from '../../utils/navigation';
 import { useToastContext } from '../../contexts/ToastContext';
 import { cn } from '../../utils/cn';
 import { mockUserDataService } from '../../utils/mockUserData';
-
-// Type for icon components
-type IconComponent = preact.ComponentType<{ className?: string }>;
 
 
 export interface SettingsPageProps {
@@ -82,13 +78,14 @@ export const SettingsPage = ({
 
 
   // Define navigation items with ChatGPT-like structure
+  // Note: Icons are now properly typed to accept SVG props like className, aria-hidden, strokeWidth, etc.
   const navigationItems: SidebarNavigationItem[] = [
-    { id: 'general', label: 'General', icon: Cog6ToothIcon as IconComponent },
-    { id: 'notifications', label: 'Notifications', icon: BellIcon as IconComponent },
-    { id: 'account', label: 'Account', icon: UserIcon as IconComponent },
-    { id: 'preferences', label: 'Preferences', icon: Cog6ToothIcon as IconComponent },
-    { id: 'security', label: 'Security', icon: ShieldCheckIcon as IconComponent },
-    { id: 'signout', label: 'Sign Out', icon: ArrowRightOnRectangleIcon as IconComponent, isAction: true, onClick: handleSignOut, variant: 'danger' }
+    { id: 'general', label: 'General', icon: Cog6ToothIcon },
+    { id: 'notifications', label: 'Notifications', icon: BellIcon },
+    { id: 'account', label: 'Account', icon: UserIcon },
+    { id: 'security', label: 'Security', icon: ShieldCheckIcon },
+    { id: 'help', label: 'Help', icon: QuestionMarkCircleIcon },
+    { id: 'signout', label: 'Sign Out', icon: ArrowRightOnRectangleIcon, isAction: true, onClick: handleSignOut, variant: 'danger' }
   ];
 
 
@@ -98,13 +95,13 @@ export const SettingsPage = ({
       case 'general':
         return <GeneralPage isMobile={isMobile} onClose={onClose} className="h-full" />;
       case 'notifications':
-        return <NotificationsPage isMobile={isMobile} onClose={onClose} className="h-full" />;
+        return <NotificationsPage className="h-full" />;
       case 'account':
         return <AccountPage isMobile={isMobile} onClose={onClose} className="h-full" />;
-      case 'preferences':
-        return <PreferencesPage isMobile={isMobile} onClose={onClose} className="h-full" />;
       case 'security':
         return <SecurityPage isMobile={isMobile} onClose={onClose} className="h-full" />;
+      case 'help':
+        return <HelpPage onClose={onClose} className="h-full" />;
       case 'mfa-enrollment':
         return <MFAEnrollmentPage className="h-full" />;
       default:
@@ -122,20 +119,20 @@ export const SettingsPage = ({
   }
 
   return (
-    <div className={cn('h-full flex relative', className)}>
-      {/* Close Button - Top Left Corner */}
-      <button
-        onClick={handleBack}
-        className="absolute top-4 left-7 z-10 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        aria-label="Close settings"
-      >
-        <XMarkIcon className="w-5 h-5" />
-      </button>
-
+    <div className={cn('h-full flex', className)}>
       {/* Left Navigation Panel */}
       <div className="w-64 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-dark-border flex flex-col">
+        {/* Close Button - Top of Sidebar */}
+        <button
+          onClick={handleBack}
+          className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+          aria-label="Close settings"
+        >
+          <XMarkIcon className="w-5 h-5 flex-shrink-0" />
+        </button>
+        
         {/* Navigation Items */}
-        <div className="pt-12">
+        <div>
           <SidebarNavigation
             items={navigationItems}
             activeItem={currentPage}
