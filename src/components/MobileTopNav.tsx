@@ -1,22 +1,14 @@
-import { Bars3Icon, SunIcon, MoonIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, SparklesIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/Button';
-import { useTheme } from '../hooks/useTheme';
-import UserProfile from './UserProfile';
 
 interface MobileTopNavProps {
-  teamConfig: {
-    name: string;
-    profileImage: string | null;
-    teamId: string;
-    description?: string;
-  };
   onOpenSidebar: () => void;
+  onPlusClick?: () => void;
   isVisible?: boolean;
 }
 
-const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTopNavProps) => {
-  const { isDark, toggleTheme } = useTheme();
+const MobileTopNav = ({ onOpenSidebar, onPlusClick, isVisible = true }: MobileTopNavProps) => {
 
   return (
     <AnimatePresence>
@@ -32,36 +24,28 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
             damping: 30
           }}
         >
-          <div className="flex items-center justify-between px-4">
-            {/* Left Section - Hamburger Bars3Icon + Team Profile */}
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3 px-4">
+            {/* Hamburger Menu Button */}
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={onOpenSidebar}
+              icon={<Bars3Icon className="w-5 h-5" aria-hidden="true" focusable="false" />}
+              aria-label="Open menu"
+            />
+            
+            {/* Get Plus Button */}
+            {onPlusClick && (
               <Button
-                variant="ghost"
+                variant="primary"
                 size="md"
-                onClick={onOpenSidebar}
-                icon={<Bars3Icon className="w-5 h-5" aria-hidden="true" focusable="false" />}
-                aria-label="Open menu"
-              />
-              <img 
-                src={teamConfig.profileImage || '/blawby-favicon-iframe.png'} 
-                alt={teamConfig.name}
-                className="w-10 h-10 rounded-lg object-cover shadow-sm"
-              />
-            </div>
-
-            {/* Right Section - User Profile & Theme Toggle */}
-            <div className="flex items-center gap-2">
-              <UserProfile isMobile={true} />
-              <Button
-                variant="ghost"
-                size="lg"
-                onClick={toggleTheme}
-                icon={isDark ? <SunIcon className="w-6 h-6" aria-hidden="true" /> : <MoonIcon className="w-6 h-6" aria-hidden="true" />}
-                aria-label="Toggle theme"
-                aria-pressed={isDark}
-                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              />
-            </div>
+                onClick={onPlusClick}
+                icon={<SparklesIcon className="w-4 h-4" />}
+                aria-label="Get Plus"
+              >
+                Get Plus
+              </Button>
+            )}
           </div>
         </motion.div>
       )}

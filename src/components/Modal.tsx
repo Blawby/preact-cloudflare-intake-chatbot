@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from 'framer-motion';
 import { THEME } from '../utils/constants';
+import { debounce } from '../utils/debounce';
 
 interface ModalProps {
     isOpen: boolean;
@@ -37,8 +38,15 @@ const Modal: FunctionComponent<ModalProps> = ({
             setIsMobile(window.innerWidth < 768);
         };
         checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
+        
+        // Create debounced resize handler for performance
+        const debouncedResizeHandler = debounce(checkMobile, 100);
+        window.addEventListener('resize', debouncedResizeHandler);
+        
+        return () => {
+            window.removeEventListener('resize', debouncedResizeHandler);
+            debouncedResizeHandler.cancel();
+        };
     }, []);
 
     useEffect(() => {

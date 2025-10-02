@@ -12,7 +12,7 @@ export interface GeneralPageProps {
 }
 
 export const GeneralPage = ({
-  isMobile: _isMobile = false,
+  isMobile = false,
   onClose: _onClose,
   className = ''
 }: GeneralPageProps) => {
@@ -118,6 +118,7 @@ export const GeneralPage = ({
     );
   };
 
+  // Use same layout for both mobile and desktop
   return (
     <div className={`h-full flex flex-col ${className}`}>
       {/* Header */}

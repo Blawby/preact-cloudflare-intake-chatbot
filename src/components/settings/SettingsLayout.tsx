@@ -16,13 +16,31 @@ export const SettingsLayout = ({
 }: SettingsLayoutProps) => {
   const [showSettings, setShowSettings] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClose = useCallback(() => {
     setShowSettings(false);
-    if (onClose) {
-      onClose();
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
+    // Delay the onClose callback to allow exit animation to complete
+    timeoutRef.current = setTimeout(() => {
+      if (onClose) {
+        onClose();
+      }
+      timeoutRef.current = null;
+    }, 250); // Match the animation duration
   }, [onClose]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle Escape key, body scroll, and click outside for overlay
   useEffect(() => {
@@ -91,8 +109,8 @@ export const SettingsLayout = ({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ 
-              duration: 0.3, 
-              ease: [0.32, 0.72, 0, 1] // Custom easing for smooth slide
+              duration: 0.25, 
+              ease: [0.25, 0.46, 0.45, 0.94] // iOS-like easing for smooth slide
             }}
             role="dialog"
             aria-modal="true"
