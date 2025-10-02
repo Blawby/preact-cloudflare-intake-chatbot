@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
+// No authentication required - authClient removed
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
 import { SettingsPage } from './settings/SettingsPage';

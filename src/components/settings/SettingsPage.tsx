@@ -12,6 +12,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useNavigation } from '../../utils/navigation';
+// No authentication required - authClient removed
 import { useToastContext } from '../../contexts/ToastContext';
 
 // Utility function for className merging (following codebase pattern)
