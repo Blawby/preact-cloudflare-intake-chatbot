@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef } from 'preact/hooks';
-import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { ExternalLink } from 'lucide-preact';
 import { Button } from './ui/Button';
 
 interface PaymentContentProps {
@@ -57,7 +57,7 @@ const PaymentContent: FunctionComponent<PaymentContentProps> = ({
                             size="lg"
                             onClick={handleExternalLink}
                         >
-                            <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
+                            <ExternalLink className="w-4 h-4 mr-2" />
                             Open Payment Page
                         </Button>
                     </div>

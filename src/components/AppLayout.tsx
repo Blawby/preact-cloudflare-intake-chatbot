@@ -11,7 +11,7 @@ import { DebugOverlay } from './DebugOverlay';
 import { features } from '../config/features';
 import { ChatMessageUI, FileAttachment } from '../../worker/types';
 import { useNavbarScroll } from '../hooks/useChatScroll';
-import { UserIcon } from '@heroicons/react/24/outline';
+import { User } from 'lucide-preact';
 import { Button } from './ui/Button';
 import ActivityTimeline from './ActivityTimeline';
 import MatterTab from './MatterTab';
@@ -270,7 +270,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
                 onClick={handleRequestConsultation}
                 variant="primary"
                 type="button"
-                icon={<UserIcon className="w-4 h-4" />}
+                icon={<User className="w-4 h-4" />}
               >
                 {messages.findLawyer}
               </Button>

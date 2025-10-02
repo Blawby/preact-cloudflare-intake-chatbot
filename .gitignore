@@ -28,6 +28,7 @@ build
 *.njsproj
 *.sln
 *.sw?
+.claude
 
 # Testing
 coverage
@@ -54,6 +55,10 @@ wrangler.toml
 # Temporary migration files (may contain sensitive data)
 migrations/*_temp.sql
 migrations/*_with_secrets.sql
+
+# Cloudflare configuration (contains sensitive IDs)
+wrangler.toml
+.wrangler/
 
 # Misc
 .cache

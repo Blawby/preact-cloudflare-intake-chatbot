@@ -1,5 +1,8 @@
 -- Blawby AI Chatbot Database Schema
 
+-- Enable foreign key constraints
+PRAGMA foreign_keys = ON;
+
 -- Teams table
 CREATE TABLE IF NOT EXISTS teams (
   id TEXT PRIMARY KEY, -- This will be the ULID
@@ -19,8 +22,7 @@ CREATE TABLE IF NOT EXISTS conversations (
   user_info JSON,
   status TEXT DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Messages table
@@ -31,12 +33,8 @@ CREATE TABLE IF NOT EXISTS messages (
   content TEXT NOT NULL,
   is_user BOOLEAN NOT NULL,
   metadata JSON,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (conversation_id) REFERENCES conversations(id),
-  FOREIGN KEY (matter_id) REFERENCES matters(id)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
-
 
 -- Contact form submissions table
 CREATE TABLE IF NOT EXISTS contact_forms (
@@ -50,9 +48,7 @@ CREATE TABLE IF NOT EXISTS contact_forms (
   assigned_lawyer TEXT,
   notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (conversation_id) REFERENCES conversations(id),
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Services table
@@ -61,15 +57,12 @@ CREATE TABLE IF NOT EXISTS services (
   team_id TEXT NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
-  requires_payment BOOLEAN DEFAULT FALSE,
+  payment_required BOOLEAN DEFAULT FALSE,
   payment_amount INTEGER,
   intake_form JSON,
   active BOOLEAN DEFAULT TRUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
-
 
 -- Lawyers table for team member management
 CREATE TABLE IF NOT EXISTS lawyers (
@@ -85,8 +78,7 @@ CREATE TABLE IF NOT EXISTS lawyers (
   bar_number TEXT,
   license_state TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Matters table to represent legal matters
@@ -100,7 +92,7 @@ CREATE TABLE IF NOT EXISTS matters (
   title TEXT NOT NULL,
   description TEXT,
   status TEXT DEFAULT 'lead', -- 'lead', 'open', 'in_progress', 'completed', 'archived'
-  priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('low','normal','high')), -- 'low', 'normal', 'high' - maps from urgency
+  priority TEXT NOT NULL DEFAULT 'normal', -- 'low', 'normal', 'high' - maps from urgency
   assigned_lawyer_id TEXT,
   lead_source TEXT, -- 'website', 'referral', 'advertising', etc.
   estimated_value INTEGER, -- in cents
@@ -116,9 +108,7 @@ CREATE TABLE IF NOT EXISTS matters (
   custom_fields JSON, -- Flexible metadata storage
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  closed_at DATETIME,
-  FOREIGN KEY (team_id) REFERENCES teams(id),
-  FOREIGN KEY (assigned_lawyer_id) REFERENCES lawyers(id)
+  closed_at DATETIME
 );
 
 -- Matter events table for matter activity logs
@@ -136,9 +126,7 @@ CREATE TABLE IF NOT EXISTS matter_events (
   tags JSON, -- Array of tags
   metadata JSON, -- Additional structured data
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (matter_id) REFERENCES matters(id),
-  FOREIGN KEY (created_by_lawyer_id) REFERENCES lawyers(id)
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Files table (replaces uploaded_files) - general-purpose file management
@@ -166,11 +154,7 @@ CREATE TABLE IF NOT EXISTS files (
   metadata JSON, -- Additional file metadata
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  deleted_at DATETIME,
-  FOREIGN KEY (team_id) REFERENCES teams(id),
-  FOREIGN KEY (matter_id) REFERENCES matters(id),
-  FOREIGN KEY (parent_file_id) REFERENCES files(id),
-  FOREIGN KEY (uploaded_by_lawyer_id) REFERENCES lawyers(id)
+  deleted_at DATETIME
 );
 
 -- AI Training Data Tables --
@@ -182,8 +166,7 @@ CREATE TABLE IF NOT EXISTS chat_logs (
   team_id TEXT,
   role TEXT NOT NULL, -- 'user' | 'assistant' | 'system'
   content TEXT NOT NULL,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Matter questions table for Q&A pairs from intake
@@ -194,9 +177,7 @@ CREATE TABLE IF NOT EXISTS matter_questions (
   question TEXT NOT NULL,
   answer TEXT NOT NULL,
   source TEXT DEFAULT 'ai-form', -- 'ai-form' | 'human-entry' | 'followup'
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id),
-  FOREIGN KEY (matter_id) REFERENCES matters(id)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- AI generated summaries table for markdown matter summaries
@@ -206,8 +187,7 @@ CREATE TABLE IF NOT EXISTS ai_generated_summaries (
   summary TEXT NOT NULL,
   model_used TEXT,
   prompt_snapshot TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (matter_id) REFERENCES matters(id)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- AI feedback table for user quality ratings and intent tags
@@ -219,19 +199,16 @@ CREATE TABLE IF NOT EXISTS ai_feedback (
   thumbs_up BOOLEAN,
   comments TEXT,
   intent TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
-
 
 -- Insert default teams with proper ULIDs
 -- Note: API keys and sensitive configuration should be set via the setup script, not in schema
 -- Run ./scripts/setup-blawby-api.sh to configure the blawby-ai team with API credentials
-INSERT OR IGNORE INTO teams (id, slug, name, config) VALUES 
+INSERT OR IGNORE INTO teams (id, slug, name, config) VALUES
 ('01K0TNGNKVCFT7V78Y4QF0PKH5', 'test-team', 'Test Law Firm', '{"aiModel": "llama", "requiresPayment": false}'),
-('01K0TNGNKNJEP8EPKHXAQV4S0R', 'north-carolina-legal-services', 'North Carolina Legal Services', '{"aiModel": "llama", "consultationFee": 75, "requiresPayment": true, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Small Business and Nonprofits", "Employment Law", "Tenant Rights Law", "Probate and Estate Planning", "Special Education and IEP Advocacy"], "serviceQuestions": {"Family Law": ["Thanks for reaching out. I know family situations can be really difficult. Can you tell me what type of family issue you're going through? (For example, divorce, custody, child support...)"], "Small Business and Nonprofits": ["What type of business entity are you operating or planning to start?"], "Employment Law": ["I'm sorry you're dealing with workplace issues - that can be really stressful. Can you tell me what's been happening at work? (For example, discrimination, harassment, wage problems...)"], "Tenant Rights Law": ["What specific tenant rights issue are you facing? (eviction, repairs, security deposit, etc.)"], "Probate and Estate Planning": ["Are you dealing with probate of an estate or planning your own estate?"], "Special Education and IEP Advocacy": ["What grade level is your child in and what type of school do they attend?"]}, "domain": "northcarolinalegalservices.blawby.com", "description": "Affordable, comprehensive legal services for North Carolina. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.", "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500", "brandColor": "#059669", "accentColor": "#10b981", "introMessage": "Welcome to North Carolina Legal Services! I'm here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you connect with our experienced attorneys. How can I assist you today?", "profileImage": "https://app.blawby.com/storage/team-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg", "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}}'),
-('01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'blawby-ai', 'Blawby AI', '{"aiModel": "llama", "consultationFee": 0, "requiresPayment": false, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Business Law", "Contract Review", "Intellectual Property", "Employment Law", "Personal Injury", "Criminal Law", "Civil Law", "General Consultation"], "serviceQuestions": {"Family Law": ["I understand this is a difficult time. Can you tell me what type of family situation you're dealing with?", "What are the main issues you're facing?", "Have you taken any steps to address this situation?", "What would a good outcome look like for you?"], "Business Law": ["What type of business entity are you operating or planning to start?", "What specific legal issue are you facing with your business?", "Are you dealing with contracts, employment issues, or regulatory compliance?", "What is the size and scope of your business operations?"], "Contract Review": ["What type of contract do you need reviewed?", "What is the value or importance of this contract?", "Are there any specific concerns or red flags you've noticed?", "What is the timeline for this contract?"], "Intellectual Property": ["What type of intellectual property are you dealing with?", "Are you looking to protect, license, or enforce IP rights?", "What is the nature of your IP (patent, trademark, copyright, trade secret)?", "What is the commercial value or importance of this IP?"], "Employment Law": ["What specific employment issue are you facing?", "Are you an employer or employee in this situation?", "Have you taken any steps to address this issue?", "What is the timeline or urgency of your situation?"], "Personal Injury": ["Can you tell me about the incident that caused your injury?", "What type of injuries did you sustain?", "Have you received medical treatment?", "What is the current status of your recovery?"], "Criminal Law": ["What type of legal situation are you facing?", "Are you currently facing charges or under investigation?", "Have you been arrested or contacted by law enforcement?", "Do you have an attorney representing you?"], "Civil Law": ["What type of civil legal issue are you dealing with?", "Are you involved in a lawsuit or considering legal action?", "What is the nature of the dispute?", "What outcome are you hoping to achieve?"], "General Consultation": ["Thanks for reaching out! I'd love to help. Can you tell me what legal situation you're dealing with?", "Have you been able to take any steps to address this yet?", "What would a good outcome look like for you?", "Do you have any documents or information that might be relevant?"]}, "domain": "ai.blawby.com", "description": "AI-powered legal assistance for businesses and individuals", "paymentLink": null, "brandColor": "#2563eb", "accentColor": "#3b82f6", "introMessage": "Hello! I'm Blawby AI, your intelligent legal assistant. I can help you with family law, business law, contract review, intellectual property, employment law, personal injury, criminal law, civil law, and general legal consultation. How can I assist you today?", "profileImage": null, "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}, "blawbyApi": {"enabled": false, "apiUrl": "https://staging.blawby.com"}}');
+('01K0TNGNKNJEP8EPKHXAQV4S0R', 'north-carolina-legal-services', 'North Carolina Legal Services', '{"aiModel": "llama", "consultationFee": 75, "requiresPayment": true, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Small Business and Nonprofits", "Employment Law", "Tenant Rights Law", "Probate and Estate Planning", "Special Education and IEP Advocacy"], "serviceQuestions": {"Family Law": ["Thanks for reaching out. I know family situations can be really difficult. Can you tell me what type of family issue you're going through? (For example, divorce, custody, child support...)"], "Small Business and Nonprofits": ["What type of business entity are you operating or planning to start?"], "Employment Law": ["I''m sorry you''re dealing with workplace issues - that can be really stressful. Can you tell me what''s been happening at work? (For example, discrimination, harassment, wage problems...)"], "Tenant Rights Law": ["What specific tenant rights issue are you facing? (eviction, repairs, security deposit, etc.)"], "Probate and Estate Planning": ["Are you dealing with probate of an estate or planning your own estate?"], "Special Education and IEP Advocacy": ["What grade level is your child in and what type of school do they attend?"]}, "domain": "northcarolinalegalservices.blawby.com", "description": "Affordable, comprehensive legal services for North Carolina. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.", "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500", "brandColor": "#059669", "accentColor": "#10b981", "introMessage": "Welcome to North Carolina Legal Services! I''m here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you connect with our experienced attorneys. How can I assist you today?", "profileImage": "https://app.blawby.com/storage/team-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg", "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}}'),
+('01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'blawby-ai', 'Blawby AI', '{"aiModel": "llama", "consultationFee": 0, "requiresPayment": false, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Business Law", "Contract Review", "Intellectual Property", "Employment Law", "Personal Injury", "Criminal Law", "Civil Law", "General Consultation"], "serviceQuestions": {"Family Law": ["I understand this is a difficult time. Can you tell me what type of family situation you''re dealing with?", "What are the main issues you''re facing?", "Have you taken any steps to address this situation?", "What would a good outcome look like for you?"], "Business Law": ["What type of business entity are you operating or planning to start?", "What specific legal issue are you facing with your business?", "Are you dealing with contracts, employment issues, or regulatory compliance?", "What is the size and scope of your business operations?"], "Contract Review": ["What type of contract do you need reviewed?", "What is the value or importance of this contract?", "Are there any specific concerns or red flags you''ve noticed?", "What is the timeline for this contract?"], "Intellectual Property": ["What type of intellectual property are you dealing with?", "Are you looking to protect, license, or enforce IP rights?", "What is the nature of your IP (patent, trademark, copyright, trade secret)?", "What is the commercial value or importance of this IP?"], "Employment Law": ["What specific employment issue are you facing?", "Are you an employer or employee in this situation?", "Have you taken any steps to address this issue?", "What is the timeline or urgency of your situation?"], "Personal Injury": ["Can you tell me about the incident that caused your injury?", "What type of injuries did you sustain?", "Have you received medical treatment?", "What is the current status of your recovery?"], "Criminal Law": ["What type of legal situation are you facing?", "Are you currently facing charges or under investigation?", "Have you been arrested or contacted by law enforcement?", "Do you have an attorney representing you?"], "Civil Law": ["What type of civil legal issue are you dealing with?", "Are you involved in a lawsuit or considering legal action?", "What is the nature of the dispute?", "What outcome are you hoping to achieve?"], "General Consultation": ["Thanks for reaching out! I''d love to help. Can you tell me what legal situation you''re dealing with?", "Have you been able to take any steps to address this yet?", "What would a good outcome look like for you?", "Do you have any documents or information that might be relevant?"]}, "domain": "ai.blawby.com", "description": "AI-powered legal assistance for businesses and individuals", "paymentLink": null, "brandColor": "#2563eb", "accentColor": "#3b82f6", "introMessage": "Hello! I''m Blawby AI, your intelligent legal assistant. I can help you with family law, business law, contract review, intellectual property, employment law, personal injury, criminal law, civil law, and general legal consultation. How can I assist you today?", "profileImage": null, "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}, "blawbyApi": {"enabled": false, "apiUrl": "https://staging.blawby.com"}}');
 
 -- Payment history table for tracking all payment transactions
 CREATE TABLE IF NOT EXISTS payment_history (
@@ -251,8 +228,7 @@ CREATE TABLE IF NOT EXISTS payment_history (
   metadata JSON, -- Additional payment data
   notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Team API tokens table for secure token storage
@@ -267,8 +243,7 @@ CREATE TABLE IF NOT EXISTS team_api_tokens (
   last_used_at DATETIME,
   expires_at DATETIME, -- Optional expiration date
   created_by TEXT, -- Who created this token
-  notes TEXT,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  notes TEXT
 );
 
 -- Chat sessions table for session management
@@ -284,7 +259,6 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_active DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   closed_at DATETIME,
-  FOREIGN KEY (team_id) REFERENCES teams(id),
   UNIQUE(id, team_id)
 );
 
@@ -301,8 +275,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   content TEXT NOT NULL,
   metadata TEXT,
   token_count INTEGER,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(session_id, team_id) REFERENCES chat_sessions(id, team_id) ON DELETE CASCADE
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at);
@@ -314,8 +287,7 @@ CREATE TABLE IF NOT EXISTS session_summaries (
   session_id TEXT NOT NULL,
   summary TEXT NOT NULL,
   token_count INTEGER,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_summaries_session ON session_summaries(session_id, created_at DESC);
@@ -328,14 +300,13 @@ CREATE TABLE IF NOT EXISTS session_audit_events (
   actor_type TEXT NOT NULL,
   actor_id TEXT,
   payload TEXT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_audit_events_session ON session_audit_events(session_id, created_at);
 
 -- Insert sample lawyers
-INSERT INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES 
+INSERT OR IGNORE INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES
 ('lawyer-1', 'test-team', 'Sarah Johnson', 'sarah@testlawfirm.com', '555-0101', '["Family Law", "Divorce", "Child Custody"]', 'attorney', 35000, 'CA123456', 'CA'),
 ('lawyer-2', 'test-team', 'Michael Chen', 'michael@testlawfirm.com', '555-0102', '["Employment Law", "Workplace Discrimination"]', 'attorney', 40000, 'CA789012', 'CA'),
 ('paralegal-1', 'test-team', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL);
@@ -367,14 +338,14 @@ CREATE TABLE IF NOT EXISTS sessions (
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   ip_address TEXT,
   user_agent TEXT,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+  user_id TEXT NOT NULL
 );
 
 -- Passwords table for local authentication (SECURE)
 -- This separates password-based auth from OAuth, following security best practices
 CREATE TABLE IF NOT EXISTS passwords (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   hashed_password TEXT NOT NULL, -- Store bcrypt/scrypt hashes, never plain text
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
@@ -388,7 +359,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   id TEXT PRIMARY KEY,
   account_id TEXT NOT NULL,
   provider_id TEXT NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   -- OAuth tokens (should be encrypted at application level)
   access_token TEXT, -- Note: Should be encrypted before storage
   refresh_token TEXT, -- Note: Should be encrypted before storage
@@ -430,7 +401,7 @@ CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires
 -- Create a view for secure user authentication data
 -- This view can be used by the application to safely access user auth data
 CREATE VIEW IF NOT EXISTS user_auth_summary AS
-SELECT 
+SELECT
   u.id,
   u.email,
   u.email_verified,
@@ -443,4 +414,4 @@ SELECT
 FROM users u
 LEFT JOIN accounts a ON u.id = a.user_id
 LEFT JOIN passwords p ON u.id = p.user_id
-GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at, p.id; 
+GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at, p.id;

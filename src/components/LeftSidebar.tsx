@@ -1,10 +1,10 @@
-import { 
-  ChatBubbleOvalLeftIcon, 
-  DocumentIcon,
-  Bars3Icon,
-  SunIcon,
-  MoonIcon
-} from '@heroicons/react/24/outline';
+import {
+  MessageSquare,
+  File,
+  Menu,
+  Sun,
+  Moon
+} from 'lucide-preact';
 import { Button } from './ui/Button';
 import { useTheme } from '../hooks/useTheme';
 import { useState } from 'preact/hooks';
@@ -72,7 +72,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsCollapsed(false)}
-                icon={<Bars3Icon className="w-4 h-4" />}
+                icon={<Menu className="w-4 h-4" />}
                 aria-label="Expand sidebar"
                 className="w-8 h-8 p-0"
               />
@@ -92,7 +92,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
               variant="ghost"
               size="sm"
               onClick={() => setIsCollapsed(true)}
-              icon={<Bars3Icon className="w-5 h-5" />}
+              icon={<Menu className="w-5 h-5" />}
               aria-label="Collapse sidebar"
             />
           </>
@@ -117,7 +117,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
             aria-current={currentRoute === 'chats' ? 'page' : undefined}
             title={shouldShowCollapsed ? 'Chats' : undefined}
           >
-            <ChatBubbleOvalLeftIcon className={`flex-shrink-0 ${shouldShowCollapsed ? 'w-5 h-5' : 'w-5 h-5'}`} />
+            <MessageSquare className={`flex-shrink-0 ${shouldShowCollapsed ? 'w-5 h-5' : 'w-5 h-5'}`} />
             {!shouldShowCollapsed && <span className="text-sm font-medium">Chats</span>}
           </button>
 
@@ -138,7 +138,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
               aria-label={`Matter${matterStatus ? `, ${matterStatus}` : ''}`}
               title={shouldShowCollapsed ? 'Matter' : undefined}
             >
-              <DocumentIcon className="w-5 h-5 flex-shrink-0" />
+              <File className="w-5 h-5 flex-shrink-0" />
               {!shouldShowCollapsed && <span className="text-sm font-medium">Matter</span>}
             </button>
             {/* Badge indicator */}
@@ -159,7 +159,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
             aria-pressed={isDark}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {isDark ? <SunIcon className="w-5 h-5 flex-shrink-0" /> : <MoonIcon className="w-5 h-5 flex-shrink-0" />}
+            {isDark ? <Sun className="w-5 h-5 flex-shrink-0" /> : <Moon className="w-5 h-5 flex-shrink-0" />}
             {!shouldShowCollapsed && <span className="text-sm font-medium">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
           </button>
         </div>

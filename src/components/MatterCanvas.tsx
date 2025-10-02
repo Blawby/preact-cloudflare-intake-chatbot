@@ -1,5 +1,5 @@
 import { FunctionalComponent } from 'preact';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { AlertTriangle } from 'lucide-preact';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
 
 interface MatterCanvasProps {
@@ -50,7 +50,7 @@ const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
         {missingInfo.length > 0 && (
           <div class="missing-info-section">
             <div class="missing-info-header">
-              <ExclamationTriangleIcon className="w-4 h-4" />
+              <AlertTriangle className="w-4 h-4" />
               <span>Missing Information</span>
             </div>
             <div class="missing-info-list">

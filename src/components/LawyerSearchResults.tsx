@@ -3,18 +3,19 @@ import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
 import ContactOptionsModal from './ContactOptionsModal';
 import {
-  UserIcon,
-  BuildingOfficeIcon,
-  MapPinIcon,
-  StarIcon,
-  PhoneIcon,
-  EnvelopeIcon,
-  GlobeAltIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  ChatBubbleLeftRightIcon,
-  EllipsisVerticalIcon
-} from '@heroicons/react/24/outline';
+  User,
+  Building,
+  MapPin,
+  Star,
+  StarHalf,
+  Phone,
+  Mail,
+  Globe,
+  Clock,
+  DollarSign,
+  MessageCircle,
+  MoreVertical
+} from 'lucide-preact';
 import { useTheme } from '../hooks/useTheme';
 
 interface LawyerProfile {
@@ -77,20 +78,20 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
 
     for (let i = 0; i < fullStars; i++) {
       stars.push(
-        <StarIcon key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+        <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
       );
     }
 
     if (hasHalfStar) {
       stars.push(
-        <StarIcon key="half" className="w-4 h-4 text-yellow-400 fill-current opacity-50" />
+        <StarHalf key="half" className="w-4 h-4 text-yellow-400 fill-current" />
       );
     }
 
     const emptyStars = 5 - Math.ceil(rating);
     for (let i = 0; i < emptyStars; i++) {
       stars.push(
-        <StarIcon key={`empty-${i}`} className="w-4 h-4 text-gray-300" />
+        <Star key={`empty-${i}`} className="w-4 h-4 text-gray-300" />
       );
     }
 
@@ -137,7 +138,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center space-x-3">
                 <div className={`p-2 rounded-full ${isDark ? 'bg-dark-card' : 'bg-white'}`}>
-                  <UserIcon className="w-6 h-6 text-blue-500" />
+                  <User className="w-6 h-6 text-blue-500" />
                 </div>
                 <div>
                   <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -145,7 +146,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
                   </h4>
                   {lawyer.firm && (
                     <div className="flex items-center text-sm text-gray-500">
-                      <BuildingOfficeIcon className="w-4 h-4 mr-1" />
+                      <Building className="w-4 h-4 mr-1" />
                       {lawyer.firm}
                     </div>
                   )}
@@ -164,27 +165,27 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <div className="flex items-center text-sm text-gray-600">
-                <MapPinIcon className="w-4 h-4 mr-2 text-gray-400" />
+                <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                 {lawyer.location}
               </div>
-              
+
               {lawyer.experience && (
                 <div className="flex items-center text-sm text-gray-600">
-                  <ClockIcon className="w-4 h-4 mr-2 text-gray-400" />
+                  <Clock className="w-4 h-4 mr-2 text-gray-400" />
                   {lawyer.experience} years experience
                 </div>
               )}
-              
+
               {lawyer.consultationFee && (
                 <div className="flex items-center text-sm text-gray-600">
-                  <CurrencyDollarIcon className="w-4 h-4 mr-2 text-gray-400" />
+                  <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
                   ${lawyer.consultationFee}/hour
                 </div>
               )}
-              
+
               {lawyer.languages && lawyer.languages.length > 0 && (
                 <div className="flex items-center text-sm text-gray-600">
-                  <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2 text-gray-400" />
+                  <MessageCircle className="w-4 h-4 mr-2 text-gray-400" />
                   {lawyer.languages.join(', ')}
                 </div>
               )}
@@ -226,7 +227,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                icon={<EllipsisVerticalIcon className="w-4 h-4" />}
+                icon={<MoreVertical className="w-4 h-4" />}
                 onClick={() => openContactModal(lawyer)}
               >
                 Contact Options

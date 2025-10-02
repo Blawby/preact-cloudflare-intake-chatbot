@@ -1,7 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState } from 'preact/hooks';
 import Modal from './Modal';
-import { CameraIcon } from '@heroicons/react/24/solid';
+import { Camera } from 'lucide-preact';
 import { Button } from './ui/Button';
 
 interface CameraModalProps {
@@ -155,7 +155,7 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
                         title="Take photo"
                         className="cursor-pointer flex items-center justify-center transition-all duration-200 w-20 h-20 rounded-full bg-white shadow-lg p-0 relative disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
                     >
-                        <CameraIcon className="w-16 h-16 text-gray-800" />
+                        <Camera className="w-16 h-16 text-gray-800" />
                     </Button>
                 </div>
             </div>

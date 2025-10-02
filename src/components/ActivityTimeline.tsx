@@ -1,19 +1,19 @@
 import { FunctionComponent } from 'preact';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
-import { 
-  ChatBubbleLeftRightIcon,
-  DocumentTextIcon,
-  UserIcon,
-  CreditCardIcon,
-  CheckCircleIcon,
-  UserPlusIcon,
-  ClockIcon,
-  PhotoIcon,
-  VideoCameraIcon,
-  MusicalNoteIcon,
-  DocumentIcon,
-  LinkIcon
-} from '@heroicons/react/24/outline';
+import {
+  MessageCircle,
+  FileText,
+  User,
+  CreditCard,
+  CheckCircle,
+  UserPlus,
+  Clock,
+  Image,
+  Video,
+  Music,
+  File,
+  Link
+} from 'lucide-preact';
 import { useActivity } from '../hooks/useActivity';
 
 interface ActivityTimelineProps {
@@ -29,28 +29,28 @@ interface ActivityTimelineProps {
 // Event type to icon mapping
 const EVENT_ICONS: Record<string, any> = {
   // Matter Events
-  matter_created: ClockIcon,
-  matter_status_changed: ChatBubbleLeftRightIcon,
-  lawyer_assigned: UserPlusIcon,
-  payment_completed: CreditCardIcon,
-  payment_failed: CreditCardIcon,
-  
+  matter_created: Clock,
+  matter_status_changed: MessageCircle,
+  lawyer_assigned: UserPlus,
+  payment_completed: CreditCard,
+  payment_failed: CreditCard,
+
   // Media Events
-  image_added: PhotoIcon,
-  video_added: VideoCameraIcon,
-  audio_added: MusicalNoteIcon,
-  document_added: DocumentTextIcon,
-  file_added: DocumentIcon,
-  link_shared: LinkIcon,
-  
+  image_added: Image,
+  video_added: Video,
+  audio_added: Music,
+  document_added: FileText,
+  file_added: File,
+  link_shared: Link,
+
   // Session Events
-  session_started: ClockIcon,
-  contact_info_provided: UserIcon,
-  intake_completed: CheckCircleIcon,
-  review_requested: ChatBubbleLeftRightIcon,
-  
+  session_started: Clock,
+  contact_info_provided: User,
+  intake_completed: CheckCircle,
+  review_requested: MessageCircle,
+
   // Default fallback
-  default: ClockIcon
+  default: Clock
 };
 
 // Format relative time
@@ -154,7 +154,7 @@ const ActivityTimeline: FunctionComponent<ActivityTimelineProps> = ({
               {/* Empty state */}
               {!error && events.length === 0 && (
                 <div className="text-center py-6 text-gray-500 dark:text-gray-400">
-                  <ClockIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No activity yet</p>
                   <p className="text-xs mt-1">Activity will appear here as you use the system</p>
                 </div>

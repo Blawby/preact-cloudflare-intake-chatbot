@@ -1,14 +1,14 @@
 import { useState } from 'preact/hooks';
-import { 
-  PhotoIcon, 
-  VideoCameraIcon, 
-  MusicalNoteIcon, 
-  DocumentIcon, 
-  DocumentTextIcon, 
-  TableCellsIcon,
-  EyeIcon,
-  ArrowDownTrayIcon
-} from '@heroicons/react/24/outline';
+import {
+  Image,
+  Video,
+  Music,
+  File,
+  FileText,
+  Table,
+  Eye,
+  Download
+} from 'lucide-preact';
 import { 
   aggregateMediaFromMessages, 
   formatFileSize, 
@@ -26,12 +26,12 @@ interface MediaSidebarProps {
 }
 
 const iconMap = {
-  PhotoIcon,
-  VideoCameraIcon,
-  MusicalNoteIcon,
-  DocumentIcon,
-  DocumentTextIcon,
-  TableCellsIcon
+  PhotoIcon: Image,
+  VideoCameraIcon: Video,
+  MusicalNoteIcon: Music,
+  DocumentIcon: File,
+  DocumentTextIcon: FileText,
+  TableCellsIcon: Table
 };
 
 const categoryLabels = {
@@ -77,7 +77,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
           <AccordionTrigger>Media, Files, and Links</AccordionTrigger>
           <AccordionContent>
             <div className="flex flex-col items-center justify-center text-center py-6">
-              <PhotoIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 mb-2" />
+              <Image className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 mb-2" />
               <p className="text-xs sm:text-sm lg:text-base font-medium mb-1 text-gray-900 dark:text-white">No files shared yet</p>
               <p className="text-xs sm:text-sm opacity-70 text-gray-500 dark:text-gray-400">Files you share in the conversation will appear here</p>
             </div>
@@ -102,7 +102,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                     </h5>
                     <div className="flex flex-col gap-2">
                       {group.files.map((media) => {
-                        const IconComponent = iconMap[getFileIconName(media.category, media.name) as keyof typeof iconMap] || DocumentIcon;
+                        const IconComponent = iconMap[getFileIconName(media.category, media.name) as keyof typeof iconMap] || File;
                         
                         return (
                           <div 
@@ -126,7 +126,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                                   className="w-full h-full object-cover"
                                 />
                                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
-                                  <EyeIcon className="text-white w-4 h-4" />
+                                  <Eye className="text-white w-4 h-4" />
                                 </div>
                               </div>
                             ) : (
@@ -148,7 +148,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                                   title="Download file"
                                   className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
                                 >
-                                  <ArrowDownTrayIcon className="w-3 h-3" />
+                                  <Download className="w-3 h-3" />
                                 </Button>
                               </div>
                             </div>
