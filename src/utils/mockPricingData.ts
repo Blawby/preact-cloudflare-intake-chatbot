@@ -59,19 +59,19 @@ export interface PricingComparison {
 
 // Feature definitions for comparison tables
 const FEATURE_DEFINITIONS = {
-  gptAccess: {
-    name: 'GPT Access',
-    description: 'Access to our AI models',
+  aiAccess: {
+    name: 'AI Access',
+    description: 'Access to our legal AI models',
     icon: BoltIcon,
     tiers: {
-      free: 'GPT-5 (Limited)',
-      plus: 'GPT-5 (Enhanced)',
-      business: 'GPT-5 (Unlimited)'
+      free: 'Blawby AI-1 (Limited)',
+      plus: 'Blawby AI-1 (Enhanced)',
+      business: 'Blawby AI-1 (Unlimited)'
     }
   },
-  fileUploads: {
-    name: 'File Uploads',
-    description: 'Upload and analyze documents',
+  documentAnalysis: {
+    name: 'Document Analysis',
+    description: 'Upload and analyze legal documents',
     icon: DocumentIcon,
     tiers: {
       free: 'Limited',
@@ -79,12 +79,12 @@ const FEATURE_DEFINITIONS = {
       business: 'Unlimited'
     }
   },
-  imageGeneration: {
-    name: 'Image Generation',
-    description: 'AI-powered image creation',
+  casePreparation: {
+    name: 'Case PDF Preparation',
+    description: 'AI-powered case document preparation',
     icon: PhotoIcon,
     tiers: {
-      free: 'Limited & Slower',
+      free: 'Limited',
       plus: 'Enhanced',
       business: 'Unlimited'
     }
@@ -99,9 +99,9 @@ const FEATURE_DEFINITIONS = {
       business: 'Unlimited'
     }
   },
-  deepResearch: {
-    name: 'Deep Research',
-    description: 'Advanced research capabilities',
+  lawyerSearch: {
+    name: 'Lawyer Search',
+    description: 'Find and connect with qualified lawyers',
     icon: MagnifyingGlassIcon,
     tiers: {
       free: 'Limited',
@@ -190,25 +190,25 @@ const PRICING_PLANS: PricingPlan[] = [
     priceAmount: 0,
     currency: 'USD',
     billingPeriod: 'month',
-    description: 'Intelligence for everyday tasks',
+    description: 'Legal AI assistance for everyday needs',
     features: [
-      { icon: BoltIcon, text: 'Access to GPT-5', description: 'Limited access to our AI model' },
-      { icon: DocumentIcon, text: 'Limited file uploads', description: 'Upload and analyze basic documents' },
-      { icon: PhotoIcon, text: 'Limited and slower image generation', description: 'Basic image creation capabilities' },
+      { icon: BoltIcon, text: 'Access to Blawby AI-1', description: 'Limited access to our legal AI model' },
+      { icon: DocumentIcon, text: 'Limited document analysis', description: 'Upload and analyze basic legal documents' },
+      { icon: PhotoIcon, text: 'Limited case PDF preparation', description: 'Basic case document preparation' },
       { icon: LinkIcon, text: 'Limited memory and context', description: 'Basic conversation memory' },
-      { icon: MagnifyingGlassIcon, text: 'Limited deep research', description: 'Basic research capabilities' }
+      { icon: MagnifyingGlassIcon, text: 'Limited lawyer search', description: 'Basic lawyer search capabilities' }
     ],
     buttonText: 'Your current plan',
     limitations: [
       'Limited to 20 messages per day',
-      'Basic file upload support',
+      'Basic document analysis support',
       'Standard response times',
       'No team collaboration features'
     ],
     benefits: [
-      'Perfect for personal use',
+      'Perfect for personal legal needs',
       'No credit card required',
-      'Full access to core features',
+      'Full access to core legal AI features',
       'Community support'
     ]
   },
@@ -219,16 +219,17 @@ const PRICING_PLANS: PricingPlan[] = [
     priceAmount: 20,
     currency: 'USD',
     billingPeriod: 'month',
-    description: 'Enhanced capabilities for power users',
+    description: 'Enhanced legal AI capabilities for professionals',
     features: [
       { icon: PlusIcon, text: 'Everything in Free, with higher limits', description: 'All free features with increased usage' },
-      { icon: CpuChipIcon, text: 'Enhanced access to our best model', description: 'Priority access to advanced AI models' },
-      { icon: VideoCameraIcon, text: 'Enhanced image generation', description: 'Faster and higher quality image creation' },
+      { icon: CpuChipIcon, text: 'Enhanced access to Blawby AI-1', description: 'Priority access to our legal AI model' },
+      { icon: VideoCameraIcon, text: 'Enhanced document analysis', description: 'Faster and more accurate legal document processing' },
       { icon: LinkIcon, text: 'Extended memory and context', description: 'Longer conversation memory' },
-      { icon: MagnifyingGlassIcon, text: 'Enhanced deep research', description: 'Advanced research capabilities' }
+      { icon: MagnifyingGlassIcon, text: 'Enhanced lawyer search', description: 'Advanced lawyer matching capabilities' }
     ],
     buttonText: 'Get Plus',
     popular: true,
+    isRecommended: true,
     limitations: [
       'Limited to 200 messages per day',
       'No team collaboration features',
@@ -236,14 +237,14 @@ const PRICING_PLANS: PricingPlan[] = [
     ],
     benefits: [
       '5x higher usage limits',
-      'Priority model access',
-      'Enhanced features',
+      'Priority AI model access',
+      'Enhanced legal features',
       'Email support'
     ]
   },
   {
     id: 'business',
-    name: 'Enterprise',
+    name: 'Business',
     price: '$25 USD / month',
     priceAmount: 25,
     currency: 'USD',
@@ -252,16 +253,16 @@ const PRICING_PLANS: PricingPlan[] = [
     features: [
       { icon: PlusIcon, text: 'Everything in Plus, with even higher limits', description: 'All Plus features with unlimited usage' },
       { icon: CpuChipIcon, text: 'Unlimited access to our best model for work', description: 'Unlimited access to advanced AI models' },
-      { icon: VideoCameraIcon, text: 'Videos, image gen, data, & code all in chat', description: 'Full multimedia support in conversations' },
+      { icon: VideoCameraIcon, text: 'Advanced document analysis & case preparation', description: 'Full legal document processing capabilities' },
       { icon: LockClosedIcon, text: 'Advanced security with SSO, MFA, & more', description: 'Enterprise-grade security features' },
       { icon: EyeSlashIcon, text: 'Privacy built in; data never used for training', description: 'Complete data privacy protection' },
-      { icon: UserGroupIcon, text: 'Tools for teams like shared projects & custom GPTs', description: 'Team collaboration and project management' },
-      { icon: ShareIcon, text: 'Integration with Sharepoint & other tools', description: 'Connect with your existing workflow' },
+      { icon: UserGroupIcon, text: 'Tools for teams like shared projects & workflows', description: 'Team collaboration and project management' },
+      { icon: ShareIcon, text: 'Integration with Quickbooks & other tools', description: 'Connect with your existing workflow' },
       { icon: CurrencyDollarIcon, text: 'Simplified billing and user management', description: 'Easy team and billing management' },
-      { icon: MicrophoneIcon, text: 'Meeting and voice transcription', description: 'Voice and meeting transcription' },
-      { icon: Cog6ToothIcon, text: 'Coding and deep research agents', description: 'Specialized AI agents for complex tasks' }
+      { icon: MicrophoneIcon, text: 'Voice transcription and analysis', description: 'Voice transcription and legal analysis' },
+      { icon: Cog6ToothIcon, text: 'Legal research and lawyer search agents', description: 'Specialized AI agents for legal research and lawyer matching' }
     ],
-    buttonText: 'Get Enterprise',
+    buttonText: 'Get Business',
     isRecommended: true,
     limitations: [
       'Requires 2+ users',

@@ -88,14 +88,6 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     navigateToAuth('signin');
   };
 
-  const _handleSignOut = () => {
-    // Remove mock user data and refresh
-    localStorage.removeItem('mockUser');
-    setUser(null);
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
-  };
 
   const handleUpgrade = () => {
     // Navigate to #pricing hash to open the modal

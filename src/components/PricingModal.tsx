@@ -1,11 +1,12 @@
 import { FunctionComponent } from 'preact';
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import Modal from './Modal';
 import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { SettingsDropdown } from './settings/components/SettingsDropdown';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
+import { mockUserDataService } from '../utils/mockUserData';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -22,29 +23,58 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   onUpgrade
 }) => {
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
-  const [selectedLanguage, setSelectedLanguage] = useState('Vietnam');
+  const [selectedLanguage, setSelectedLanguage] = useState('vi');
 
   const languageOptions = [
-    { value: 'Vietnam', label: 'Vietnam' },
-    { value: 'English', label: 'English' },
-    { value: 'Spanish', label: 'Spanish' },
-    { value: 'French', label: 'French' },
-    { value: 'German', label: 'German' },
-    { value: 'Chinese', label: 'Chinese' },
-    { value: 'Japanese', label: 'Japanese' }
+    { value: 'auto-detect', label: 'Auto-detect' },
+    { value: 'en', label: 'English' },
+    { value: 'vi', label: 'Vietnam' },
+    { value: 'es', label: 'Spanish' },
+    { value: 'fr', label: 'French' },
+    { value: 'de', label: 'German' },
+    { value: 'zh', label: 'Chinese' },
+    { value: 'ja', label: 'Japanese' }
   ];
+
+  // Load user's current language preference
+  useEffect(() => {
+    const preferences = mockUserDataService.getPreferences();
+    setSelectedLanguage(preferences.language);
+  }, []);
+
+  const handleLanguageChange = (language: string) => {
+    setSelectedLanguage(language);
+    // Update user preferences
+    mockUserDataService.setPreferences({ language: language as 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja' });
+  };
 
   // Get pricing plans from mock data service
   const allPlans = mockPricingDataService.getPricingPlans();
   
-  // For the main section, show only Free and Plus plans
-  const mainPlans: PricingPlan[] = allPlans
-    .filter(plan => plan.id !== 'business')
-    .map(plan => ({
-      ...plan,
-      isCurrent: plan.id === currentTier,
-      buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText
-    }));
+  // Show different plans based on selected tab
+  const mainPlans: PricingPlan[] = (() => {
+    if (selectedTab === 'personal') {
+      // Personal tab: show Free and Plus (Plus is recommended)
+      return allPlans
+        .filter(plan => plan.id !== 'business')
+        .map(plan => ({
+          ...plan,
+          isCurrent: plan.id === currentTier,
+          buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText,
+          isRecommended: plan.id === 'plus' // Plus is recommended for personal
+        }));
+    } else {
+      // Business tab: show Free and Business (Business is recommended)
+      return allPlans
+        .filter(plan => plan.id !== 'plus')
+        .map(plan => ({
+          ...plan,
+          isCurrent: plan.id === currentTier,
+          buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText,
+          isRecommended: plan.id === 'business' // Business is recommended for business
+        }));
+    }
+  })();
   
 
   const handleUpgrade = (tier: SubscriptionTier) => {
@@ -61,7 +91,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       type="fullscreen"
       showCloseButton={false}
     >
-      <div className="h-full bg-dark-bg text-white flex flex-col">
+      <div className="h-full bg-dark-bg text-white flex flex-col overflow-y-auto">
         {/* Header */}
         <div className="relative p-6 border-b border-dark-border">
           {/* Close Button */}
@@ -112,7 +142,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
             {mainPlans.map((plan) => (
               <div
                 key={plan.id}
-                className={`relative rounded-xl p-6 transition-all duration-200 ${
+                className={`relative rounded-xl p-6 transition-all duration-200 flex flex-col h-full ${
                   plan.isRecommended
                     ? 'bg-dark-card-bg border-2 border-accent-500'
                     : 'bg-dark-card-bg border border-dark-border'
@@ -153,7 +183,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                 </div>
 
                 {/* Features List */}
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1">
                   {plan.features.map((feature, index) => (
                     <div key={index} className="flex items-start gap-3">
                       <feature.icon className="w-5 h-5 mt-0.5 flex-shrink-0 text-gray-400" />
@@ -167,9 +197,9 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                   <div className="mt-6 pt-4 border-t border-dark-border">
                     <p className="text-xs text-gray-400">
                       Have an existing plan?{' '}
-                      <a href="#" className="underline hover:text-white">
-                        See billing help
-                      </a>
+                    <button className="underline hover:text-white">
+                      See billing help
+                    </button>
                     </p>
                   </div>
                 )}
@@ -181,9 +211,9 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                     </p>
                     <p className="text-xs text-gray-400">
                       Unlimited subject to abuse guardrails.{' '}
-                      <a href="#" className="underline hover:text-white">
-                        Learn more
-                      </a>
+                    <button className="underline hover:text-white">
+                      Learn more
+                    </button>
                     </p>
                   </div>
                 )}
@@ -198,23 +228,19 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
             <div className="text-center">
               <UserGroupIcon className="w-8 h-8 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-400 mb-2">Need more capabilities for your business?</p>
-              <a href="#" className="text-white underline hover:text-gray-300">
+              <button 
+                className="text-white underline hover:text-gray-300"
+                onClick={() => {
+                  // Redirect to enterprise page
+                  window.open('/enterprise', '_blank');
+                }}
+              >
                 See Blawby Enterprise
-              </a>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Language Toggle */}
-        <div className="absolute bottom-4 right-4">
-          <SettingsDropdown
-            label=""
-            value={selectedLanguage}
-            options={languageOptions}
-            onChange={setSelectedLanguage}
-            className="py-0"
-          />
-        </div>
       </div>
     </Modal>
   );

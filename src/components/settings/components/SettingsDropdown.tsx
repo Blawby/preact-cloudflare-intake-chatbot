@@ -10,6 +10,7 @@ export interface SettingsDropdownProps {
   description?: string;
   disabled?: boolean;
   className?: string;
+  direction?: 'up' | 'down';
 }
 
 export const SettingsDropdown = ({
@@ -19,7 +20,8 @@ export const SettingsDropdown = ({
   onChange,
   description,
   disabled = false,
-  className = ''
+  className = '',
+  direction = 'down'
 }: SettingsDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -66,7 +68,10 @@ export const SettingsDropdown = ({
 
           {/* Dropdown Menu */}
           {isOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+            <div className={cn(
+              "absolute right-0 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50",
+              direction === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+            )}>
               <div className="py-1">
                 {options.map((option) => (
                   <button

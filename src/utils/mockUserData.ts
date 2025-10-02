@@ -2,6 +2,7 @@
 // This provides consistent mock data for development until the real API is ready
 
 export type SubscriptionTier = 'free' | 'plus' | 'business';
+export type Language = 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
 
 export interface MockUserProfile {
   id: string;
@@ -26,8 +27,8 @@ export interface MockUserPreferences {
   theme: 'light' | 'dark' | 'system';
   accentColor: 'default' | 'blue' | 'green' | 'purple' | 'red';
   fontSize: 'small' | 'medium' | 'large';
-  language: 'auto-detect' | 'en' | 'es' | 'fr' | 'de';
-  spokenLanguage: 'auto-detect' | 'en' | 'es' | 'fr' | 'de';
+  language: 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
+  spokenLanguage: 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
   timezone: string;
   dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
   timeFormat: '12-hour' | '24-hour';
@@ -103,8 +104,8 @@ const DEFAULT_PREFERENCES: MockUserPreferences = {
   theme: 'system',
   accentColor: 'default',
   fontSize: 'medium',
-  language: 'auto-detect',
-  spokenLanguage: 'auto-detect',
+  language: 'vi',
+  spokenLanguage: 'vi',
   timezone: 'America/New_York',
   dateFormat: 'MM/DD/YYYY',
   timeFormat: '12-hour',

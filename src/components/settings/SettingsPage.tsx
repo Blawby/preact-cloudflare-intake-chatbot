@@ -19,6 +19,7 @@ import {
 import { useNavigation } from '../../utils/navigation';
 import { useToastContext } from '../../contexts/ToastContext';
 import { cn } from '../../utils/cn';
+import { mockUserDataService } from '../../utils/mockUserData';
 
 // Type for icon components
 type IconComponent = preact.ComponentType<{ className?: string }>;
@@ -62,8 +63,15 @@ export const SettingsPage = ({
   };
 
   const handleSignOut = async () => {
-    // Remove mock user data and refresh
+    // Use the mock data service to properly clear all data
+    mockUserDataService.resetToDefaults();
+    
+    // Also clear the legacy mockUser key for backward compatibility
     localStorage.removeItem('mockUser');
+    
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+    
     showSuccess('Signed out successfully', 'You have been signed out');
     if (onClose) {
       onClose();
