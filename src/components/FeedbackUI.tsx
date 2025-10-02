@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useCallback } from 'preact/hooks';
-import { HandThumbUpIcon, HandThumbDownIcon } from '@heroicons/react/24/outline';
+import { HandThumbUpIcon, HandThumbDownIcon, CheckIcon, StarIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { memo } from 'preact/compat';
 import { getFeedbackEndpoint } from '../config/api';
 
@@ -99,9 +99,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
     return (
       <div class="feedback-ui submitted">
         <div class="feedback-thanks">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 6L9 17l-5-5"/>
-          </svg>
+          <CheckIcon className="w-4 h-4" />
           Thank you for your feedback!
         </div>
       </div>
@@ -144,9 +142,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
               aria-label={`Rate ${star} out of 5 stars`}
               title={`Rate ${star} out of 5 stars`}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-              </svg>
+              <StarIcon className="w-3.5 h-3.5" />
             </button>
           ))}
         </div>
@@ -160,11 +156,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
             aria-label="Add detailed feedback"
             title="Add detailed feedback"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              <path d="M8 9h8"/>
-              <path d="M8 13h6"/>
-            </svg>
+            <ChatBubbleLeftRightIcon className="w-4 h-4" />
           </button>
         )}
       </div>
