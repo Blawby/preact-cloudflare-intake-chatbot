@@ -81,8 +81,8 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
 
 
   const handleSignIn = () => {
-    // No authentication required - this is now a no-op
-    console.log('Authentication not required for this application');
+    // No authentication required - open settings modal directly
+    setShowProfile(true);
   };
 
   if (loading) {
@@ -104,10 +104,10 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
               ? 'justify-center py-2' 
               : 'gap-3 px-3 py-2'
           }`}
-          title={isCollapsed ? 'Sign In' : undefined}
+          title={isCollapsed ? 'Settings' : undefined}
         >
           <UserIcon className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span className="text-sm font-medium">Sign In</span>}
+          {!isCollapsed && <span className="text-sm font-medium">Settings</span>}
         </button>
       </div>
     );
