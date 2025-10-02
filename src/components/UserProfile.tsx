@@ -30,6 +30,30 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
 
   useEffect(() => {
     checkAuthStatus();
+    
+    // Listen for storage changes (when user logs in/out in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'mockUser') {
+        checkAuthStatus();
+      }
+    };
+    
+    // Listen for custom auth state changes (same tab)
+    const handleAuthStateChange = (e: CustomEvent) => {
+      if (e.detail) {
+        setUser(e.detail);
+      } else {
+        checkAuthStatus();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
+    };
   }, []);
 
   // Handle Escape key, body scroll, and click outside for overlay
@@ -74,15 +98,36 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
   }, [showProfile, isMobile, isCollapsed]);
 
   const checkAuthStatus = async () => {
-    // No authentication required - always show as guest
-    setUser(null);
+    // Check if user is "logged in" (stored in localStorage for demo)
+    const mockUser = localStorage.getItem('mockUser');
+    if (mockUser) {
+      try {
+        const userData = JSON.parse(mockUser);
+        setUser(userData);
+      } catch (e) {
+        localStorage.removeItem('mockUser');
+        setUser(null);
+      }
+    } else {
+      setUser(null);
+    }
     setLoading(false);
   };
 
 
   const handleSignIn = () => {
-    // No authentication required - open settings modal directly
-    setShowProfile(true);
+    // Navigate to auth page (no actual auth required)
+    navigateToAuth('signin');
+  };
+
+  const handleSignOut = () => {
+    // Remove mock user data and refresh
+    localStorage.removeItem('mockUser');
+    setUser(null);
+    setShowProfile(false);
+    
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
   };
 
   if (loading) {
@@ -104,10 +149,10 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
               ? 'justify-center py-2' 
               : 'gap-3 px-3 py-2'
           }`}
-          title={isCollapsed ? 'Settings' : undefined}
+          title={isCollapsed ? 'Sign In' : undefined}
         >
           <UserIcon className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span className="text-sm font-medium">Settings</span>}
+          {!isCollapsed && <span className="text-sm font-medium">Sign In</span>}
         </button>
       </div>
     );

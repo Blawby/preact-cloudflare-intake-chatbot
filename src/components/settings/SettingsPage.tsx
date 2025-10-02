@@ -52,12 +52,14 @@ export const SettingsPage = ({
   };
 
   const handleSignOut = async () => {
-    // No authentication required - this is now a no-op
-    console.log('Authentication not required for this application');
-    showSuccess('No action needed', 'This application does not require authentication');
+    // Remove mock user data and refresh
+    localStorage.removeItem('mockUser');
+    showSuccess('Signed out successfully', 'You have been signed out');
     if (onClose) {
       onClose();
     }
+    // Refresh the page to update the UI
+    window.location.reload();
   };
 
 
