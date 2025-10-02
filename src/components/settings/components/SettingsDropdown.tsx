@@ -169,8 +169,15 @@ export const SettingsDropdown = ({
             </div>
           </div>
         )}
+
+        {description && (
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {description}
+          </p>
+        )}
       </div>
     );
+  }
   }
 
   // Desktop layout - original
