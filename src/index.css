@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  body {
+    @apply min-h-screen m-0;
+  }
+
+  /* Hide scrollbars when modal is open */
+  body.modal-open .overflow-y-auto,
+  body.modal-open .overflow-auto {
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+  }
+
+  body.modal-open .overflow-y-auto::-webkit-scrollbar,
+  body.modal-open .overflow-auto::-webkit-scrollbar {
+    display: none;
+    /* Safari and Chrome */
+  }
+
+  /* Mobile viewport handling */
+  @media (max-width: 768px) {
+    .h-screen {
+      height: 100vh;
+      /* Fallback */
+      height: 100dvh;
+      /* Dynamic viewport height for mobile */
+    }
+
+    /* Safe area handling for mobile devices with notches */
+    .pt-16 {
+      padding-top: 4rem;
+      /* Fallback */
+      padding-top: max(4rem, env(safe-area-inset-top, 0px));
+    }
+
+    .pt-safe {
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+  }
+}
+
+@layer utilities {
+
+  /* Simple accordion styles */
+  [data-state="open"] [data-slot="accordion-trigger"] svg {
+    transform: rotate(180deg);
+  }
+
+  [data-state="closed"] [data-slot="accordion-content"] {
+    display: none;
+  }
+
+  [data-state="open"] [data-slot="accordion-content"] {
+    display: block;
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+    /* Safari and Chrome */
+  }
+}

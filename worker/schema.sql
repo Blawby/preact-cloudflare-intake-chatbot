@@ -1,9 +1,10 @@
 -- Blawby AI Chatbot Database Schema
 
 -- Teams table
-CREATE TABLE teams (
-  id TEXT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS teams (
+  id TEXT PRIMARY KEY, -- This will be the ULID
   name TEXT NOT NULL,
+  slug TEXT UNIQUE, -- Human-readable identifier (e.g., "north-carolina-legal-services")
   domain TEXT,
   config JSON,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -11,7 +12,7 @@ CREATE TABLE teams (
 );
 
 -- Conversations table
-CREATE TABLE conversations (
+CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -23,7 +24,7 @@ CREATE TABLE conversations (
 );
 
 -- Messages table
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY,
   conversation_id TEXT NOT NULL,
   matter_id TEXT, -- Optional: link to specific matter for tighter integration
@@ -38,14 +39,14 @@ CREATE TABLE messages (
 
 
 -- Contact form submissions table
-CREATE TABLE contact_forms (
+CREATE TABLE IF NOT EXISTS contact_forms (
   id TEXT PRIMARY KEY,
   conversation_id TEXT,
   team_id TEXT NOT NULL,
   phone_number TEXT NOT NULL,
   email TEXT NOT NULL,
   matter_details TEXT NOT NULL,
-  status TEXT DEFAULT 'pending', -- 'pending', 'contacted', 'consultation_scheduled', 'closed'
+  status TEXT DEFAULT 'pending', -- 'pending', 'contacted', 'closed'
   assigned_lawyer TEXT,
   notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -55,7 +56,7 @@ CREATE TABLE contact_forms (
 );
 
 -- Services table
-CREATE TABLE services (
+CREATE TABLE IF NOT EXISTS services (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -68,30 +69,10 @@ CREATE TABLE services (
   FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
--- Appointments table
-CREATE TABLE appointments (
-  id TEXT PRIMARY KEY,
-  matter_id TEXT, -- Link to matter instead of just conversation
-  conversation_id TEXT, -- Optional: keep conversation link for context
-  team_id TEXT NOT NULL,
-  client_email TEXT NOT NULL,
-  client_phone TEXT,
-  preferred_date DATETIME NOT NULL,
-  preferred_time TEXT,
-  matter_type TEXT NOT NULL,
-  notes TEXT,
-  status TEXT DEFAULT 'pending', -- 'pending', 'confirmed', 'completed', 'cancelled'
-  payment_status TEXT DEFAULT 'pending', -- 'pending', 'paid', 'refunded'
-  payment_id TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (matter_id) REFERENCES matters(id),
-  FOREIGN KEY (conversation_id) REFERENCES conversations(id),
-  FOREIGN KEY (team_id) REFERENCES teams(id)
-);
+
 
 -- Lawyers table for team member management
-CREATE TABLE lawyers (
+CREATE TABLE IF NOT EXISTS lawyers (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -109,7 +90,7 @@ CREATE TABLE lawyers (
 );
 
 -- Matters table to represent legal matters
-CREATE TABLE matters (
+CREATE TABLE IF NOT EXISTS matters (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   client_name TEXT NOT NULL,
@@ -119,7 +100,7 @@ CREATE TABLE matters (
   title TEXT NOT NULL,
   description TEXT,
   status TEXT DEFAULT 'lead', -- 'lead', 'open', 'in_progress', 'completed', 'archived'
-  priority TEXT DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
+  priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('low','normal','high')), -- 'low', 'normal', 'high' - maps from urgency
   assigned_lawyer_id TEXT,
   lead_source TEXT, -- 'website', 'referral', 'advertising', etc.
   estimated_value INTEGER, -- in cents
@@ -141,7 +122,7 @@ CREATE TABLE matters (
 );
 
 -- Matter events table for matter activity logs
-CREATE TABLE matter_events (
+CREATE TABLE IF NOT EXISTS matter_events (
   id TEXT PRIMARY KEY,
   matter_id TEXT NOT NULL,
   event_type TEXT NOT NULL, -- 'note', 'call', 'email', 'meeting', 'filing', 'payment', 'status_change'
@@ -161,7 +142,7 @@ CREATE TABLE matter_events (
 );
 
 -- Files table (replaces uploaded_files) - general-purpose file management
-CREATE TABLE files (
+CREATE TABLE IF NOT EXISTS files (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
   matter_id TEXT, -- Optional: link to specific matter
@@ -195,7 +176,7 @@ CREATE TABLE files (
 -- AI Training Data Tables --
 
 -- Chat logs table for long-term storage of chat sessions
-CREATE TABLE chat_logs (
+CREATE TABLE IF NOT EXISTS chat_logs (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
   team_id TEXT,
@@ -206,7 +187,7 @@ CREATE TABLE chat_logs (
 );
 
 -- Matter questions table for Q&A pairs from intake
-CREATE TABLE matter_questions (
+CREATE TABLE IF NOT EXISTS matter_questions (
   id TEXT PRIMARY KEY,
   matter_id TEXT,
   team_id TEXT,
@@ -219,7 +200,7 @@ CREATE TABLE matter_questions (
 );
 
 -- AI generated summaries table for markdown matter summaries
-CREATE TABLE ai_generated_summaries (
+CREATE TABLE IF NOT EXISTS ai_generated_summaries (
   id TEXT PRIMARY KEY,
   matter_id TEXT,
   summary TEXT NOT NULL,
@@ -230,7 +211,7 @@ CREATE TABLE ai_generated_summaries (
 );
 
 -- AI feedback table for user quality ratings and intent tags
-CREATE TABLE ai_feedback (
+CREATE TABLE IF NOT EXISTS ai_feedback (
   id TEXT PRIMARY KEY,
   session_id TEXT,
   team_id TEXT,
@@ -242,32 +223,224 @@ CREATE TABLE ai_feedback (
   FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
--- Webhook logs table for tracking webhook deliveries
-CREATE TABLE webhook_logs (
+
+
+-- Insert default teams with proper ULIDs
+-- Note: API keys and sensitive configuration should be set via the setup script, not in schema
+-- Run ./scripts/setup-blawby-api.sh to configure the blawby-ai team with API credentials
+INSERT OR IGNORE INTO teams (id, slug, name, config) VALUES 
+('01K0TNGNKVCFT7V78Y4QF0PKH5', 'test-team', 'Test Law Firm', '{"aiModel": "llama", "requiresPayment": false}'),
+('01K0TNGNKNJEP8EPKHXAQV4S0R', 'north-carolina-legal-services', 'North Carolina Legal Services', '{"aiModel": "llama", "consultationFee": 75, "requiresPayment": true, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Small Business and Nonprofits", "Employment Law", "Tenant Rights Law", "Probate and Estate Planning", "Special Education and IEP Advocacy"], "serviceQuestions": {"Family Law": ["Thanks for reaching out. I know family situations can be really difficult. Can you tell me what type of family issue you're going through? (For example, divorce, custody, child support...)"], "Small Business and Nonprofits": ["What type of business entity are you operating or planning to start?"], "Employment Law": ["I'm sorry you're dealing with workplace issues - that can be really stressful. Can you tell me what's been happening at work? (For example, discrimination, harassment, wage problems...)"], "Tenant Rights Law": ["What specific tenant rights issue are you facing? (eviction, repairs, security deposit, etc.)"], "Probate and Estate Planning": ["Are you dealing with probate of an estate or planning your own estate?"], "Special Education and IEP Advocacy": ["What grade level is your child in and what type of school do they attend?"]}, "domain": "northcarolinalegalservices.blawby.com", "description": "Affordable, comprehensive legal services for North Carolina. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.", "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500", "brandColor": "#059669", "accentColor": "#10b981", "introMessage": "Welcome to North Carolina Legal Services! I'm here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you connect with our experienced attorneys. How can I assist you today?", "profileImage": "https://app.blawby.com/storage/team-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg", "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}}'),
+('01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'blawby-ai', 'Blawby AI', '{"aiModel": "llama", "consultationFee": 0, "requiresPayment": false, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Business Law", "Contract Review", "Intellectual Property", "Employment Law", "Personal Injury", "Criminal Law", "Civil Law", "General Consultation"], "serviceQuestions": {"Family Law": ["I understand this is a difficult time. Can you tell me what type of family situation you're dealing with?", "What are the main issues you're facing?", "Have you taken any steps to address this situation?", "What would a good outcome look like for you?"], "Business Law": ["What type of business entity are you operating or planning to start?", "What specific legal issue are you facing with your business?", "Are you dealing with contracts, employment issues, or regulatory compliance?", "What is the size and scope of your business operations?"], "Contract Review": ["What type of contract do you need reviewed?", "What is the value or importance of this contract?", "Are there any specific concerns or red flags you've noticed?", "What is the timeline for this contract?"], "Intellectual Property": ["What type of intellectual property are you dealing with?", "Are you looking to protect, license, or enforce IP rights?", "What is the nature of your IP (patent, trademark, copyright, trade secret)?", "What is the commercial value or importance of this IP?"], "Employment Law": ["What specific employment issue are you facing?", "Are you an employer or employee in this situation?", "Have you taken any steps to address this issue?", "What is the timeline or urgency of your situation?"], "Personal Injury": ["Can you tell me about the incident that caused your injury?", "What type of injuries did you sustain?", "Have you received medical treatment?", "What is the current status of your recovery?"], "Criminal Law": ["What type of legal situation are you facing?", "Are you currently facing charges or under investigation?", "Have you been arrested or contacted by law enforcement?", "Do you have an attorney representing you?"], "Civil Law": ["What type of civil legal issue are you dealing with?", "Are you involved in a lawsuit or considering legal action?", "What is the nature of the dispute?", "What outcome are you hoping to achieve?"], "General Consultation": ["Thanks for reaching out! I'd love to help. Can you tell me what legal situation you're dealing with?", "Have you been able to take any steps to address this yet?", "What would a good outcome look like for you?", "Do you have any documents or information that might be relevant?"]}, "domain": "ai.blawby.com", "description": "AI-powered legal assistance for businesses and individuals", "paymentLink": null, "brandColor": "#2563eb", "accentColor": "#3b82f6", "introMessage": "Hello! I'm Blawby AI, your intelligent legal assistant. I can help you with family law, business law, contract review, intellectual property, employment law, personal injury, criminal law, civil law, and general legal consultation. How can I assist you today?", "profileImage": null, "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}, "blawbyApi": {"enabled": false, "apiUrl": "https://staging.blawby.com"}}');
+
+-- Payment history table for tracking all payment transactions
+CREATE TABLE IF NOT EXISTS payment_history (
   id TEXT PRIMARY KEY,
+  payment_id TEXT UNIQUE NOT NULL,
   team_id TEXT NOT NULL,
-  webhook_type TEXT NOT NULL, -- 'matter_creation', 'matter_details', 'contact_form', 'appointment'
-  webhook_url TEXT NOT NULL,
-  payload JSON NOT NULL,
-  status TEXT NOT NULL, -- 'pending', 'success', 'failed', 'retry'
-  http_status INTEGER,
-  response_body TEXT,
-  error_message TEXT,
-  retry_count INTEGER DEFAULT 0,
-  max_retries INTEGER DEFAULT 3,
-  next_retry_at DATETIME,
+  customer_email TEXT NOT NULL,
+  customer_name TEXT,
+  customer_phone TEXT,
+  amount INTEGER NOT NULL, -- in cents
+  currency TEXT DEFAULT 'USD',
+  status TEXT NOT NULL, -- 'pending', 'completed', 'failed', 'cancelled', 'refunded'
+  event_type TEXT NOT NULL, -- 'payment.completed', 'payment.failed', 'payment.refunded', etc.
+  matter_type TEXT,
+  matter_description TEXT,
+  invoice_url TEXT,
+  metadata JSON, -- Additional payment data
+  notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  completed_at DATETIME,
   FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
--- Insert default team
-INSERT INTO teams (id, name, config) VALUES 
-('test-team', 'Test Law Firm', '{"aiModel": "llama", "requiresPayment": false}');
+-- Team API tokens table for secure token storage
+CREATE TABLE IF NOT EXISTS team_api_tokens (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  token_name TEXT NOT NULL, -- Human-readable name for the token
+  token_hash TEXT NOT NULL, -- SHA-256 hash of the actual token
+  permissions JSON, -- Array of permissions this token has
+  active BOOLEAN DEFAULT TRUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_used_at DATETIME,
+  expires_at DATETIME, -- Optional expiration date
+  created_by TEXT, -- Who created this token
+  notes TEXT,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+);
+
+-- Chat sessions table for session management
+CREATE TABLE IF NOT EXISTS chat_sessions (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  token_hash TEXT,
+  state TEXT NOT NULL DEFAULT 'active',
+  status_reason TEXT,
+  retention_horizon_days INTEGER NOT NULL DEFAULT 180,
+  is_hold INTEGER NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_active DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  closed_at DATETIME,
+  FOREIGN KEY (team_id) REFERENCES teams(id),
+  UNIQUE(id, team_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_team_state ON chat_sessions(team_id, state);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_last_active ON chat_sessions(last_active);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_token_hash_team ON chat_sessions(token_hash, team_id);
+
+-- Chat messages table for storing conversation messages
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  team_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  metadata TEXT,
+  token_count INTEGER,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(session_id, team_id) REFERENCES chat_sessions(id, team_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_team ON chat_messages(team_id);
+
+-- Session summaries table for AI-generated summaries
+CREATE TABLE IF NOT EXISTS session_summaries (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  token_count INTEGER,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_summaries_session ON session_summaries(session_id, created_at DESC);
+
+-- Session audit events table for activity tracking
+CREATE TABLE IF NOT EXISTS session_audit_events (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  actor_type TEXT NOT NULL,
+  actor_id TEXT,
+  payload TEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_audit_events_session ON session_audit_events(session_id, created_at);
 
 -- Insert sample lawyers
 INSERT INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES 
 ('lawyer-1', 'test-team', 'Sarah Johnson', 'sarah@testlawfirm.com', '555-0101', '["Family Law", "Divorce", "Child Custody"]', 'attorney', 35000, 'CA123456', 'CA'),
 ('lawyer-2', 'test-team', 'Michael Chen', 'michael@testlawfirm.com', '555-0102', '["Employment Law", "Workplace Discrimination"]', 'attorney', 40000, 'CA789012', 'CA'),
-('paralegal-1', 'test-team', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL); 
+('paralegal-1', 'test-team', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL);
+
+-- ========================================
+-- BETTER AUTH TABLES (SECURE SCHEMA)
+-- ========================================
+
+-- Users table for Better Auth
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  email_verified INTEGER DEFAULT 0 NOT NULL,
+  image TEXT,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  team_id TEXT,
+  role TEXT,
+  phone TEXT
+);
+
+-- Sessions table for Better Auth
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Passwords table for local authentication (SECURE)
+-- This separates password-based auth from OAuth, following security best practices
+CREATE TABLE IF NOT EXISTS passwords (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  hashed_password TEXT NOT NULL, -- Store bcrypt/scrypt hashes, never plain text
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  -- Ensure one password per user
+  UNIQUE(user_id)
+);
+
+-- Accounts table for OAuth providers (SECURE)
+-- OAuth provider data only, tokens should be encrypted at application level
+CREATE TABLE IF NOT EXISTS accounts (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  provider_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  -- OAuth tokens (should be encrypted at application level)
+  access_token TEXT, -- Note: Should be encrypted before storage
+  refresh_token TEXT, -- Note: Should be encrypted before storage
+  id_token TEXT, -- Note: Should be encrypted before storage
+  access_token_expires_at INTEGER,
+  refresh_token_expires_at INTEGER,
+  scope TEXT,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  -- Critical: Prevent duplicate provider accounts
+  UNIQUE(provider_id, account_id),
+  -- Also ensure one account per provider per user
+  UNIQUE(provider_id, user_id)
+);
+
+-- Verifications table for email verification, password reset, etc.
+CREATE TABLE IF NOT EXISTS verifications (
+  id TEXT PRIMARY KEY,
+  identifier TEXT NOT NULL,
+  value TEXT NOT NULL UNIQUE,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+
+-- Create indexes for Better Auth tables
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(email, email_verified);
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_passwords_user_id ON passwords(user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_provider ON accounts(provider_id, account_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_provider_user ON accounts(provider_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value);
+CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires_at);
+
+-- Create a view for secure user authentication data
+-- This view can be used by the application to safely access user auth data
+CREATE VIEW IF NOT EXISTS user_auth_summary AS
+SELECT 
+  u.id,
+  u.email,
+  u.email_verified,
+  u.name,
+  u.created_at,
+  -- Count OAuth providers
+  COUNT(DISTINCT a.provider_id) as oauth_provider_count,
+  -- Check if user has local password
+  CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END as has_local_password
+FROM users u
+LEFT JOIN accounts a ON u.id = a.user_id
+LEFT JOIN passwords p ON u.id = p.user_id
+GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at, p.id; 

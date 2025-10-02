@@ -1,22 +1,41 @@
 import { FunctionComponent } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useEffect, useState } from 'preact/hooks';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ModalProps {
     isOpen: boolean;
     onClose: () => void;
     children: preact.ComponentChildren;
     title?: string;
-    fullScreen?: boolean;
+    type?: 'modal' | 'drawer' | 'fullscreen';
+    showCloseButton?: boolean;
+    mobileBehavior?: 'modal' | 'drawer';
 }
 
-const Modal: FunctionComponent<ModalProps> = ({ isOpen, onClose, children, title, fullScreen = false }) => {
+const Modal: FunctionComponent<ModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    children, 
+    title, 
+    type = 'modal',
+    showCloseButton = true,
+    mobileBehavior = 'drawer'
+}) => {
     // Add state to track if we're in browser environment
     const [isBrowser, setIsBrowser] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
-    // Set browser state on mount
+    // Set browser state on mount and detect mobile
     useEffect(() => {
         setIsBrowser(true);
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
     useEffect(() => {
@@ -43,24 +62,91 @@ const Modal: FunctionComponent<ModalProps> = ({ isOpen, onClose, children, title
     // Return null during SSR or when closed
     if (!isOpen || !isBrowser) return null;
 
+    // Determine modal behavior based on type and mobile state
+    const shouldUseDrawer = type === 'drawer' || (mobileBehavior === 'drawer' && isMobile);
+    const shouldUseFullscreen = type === 'fullscreen';
+
     const modalContent = (
-        <div class={`modal-overlay ${fullScreen ? 'fullscreen' : ''}`} onClick={onClose}>
-            <div class={`modal-content ${fullScreen ? 'fullscreen' : ''}`} onClick={e => e.stopPropagation()}>
-                {(title || !fullScreen) && (
-                    <div class="modal-header">
-                        {title && <h2 class="modal-title">{title}</h2>}
-                        <button class="modal-close" onClick={onClose}>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                                <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                            </svg>
-                        </button>
-                    </div>
-                )}
-                <div class={`modal-body ${fullScreen ? 'fullscreen' : ''}`}>
-                    {children}
-                </div>
-            </div>
-        </div>
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div 
+                    className={`fixed inset-0 ${shouldUseDrawer ? '' : 'flex items-center justify-center p-4'}`}
+                    style={{ zIndex: 1002 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    key="modal"
+                >
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-black bg-opacity-50"
+                        onClick={onClose}
+                    />
+                    
+                    {/* Content */}
+                    <motion.div 
+                        className={`shadow-2xl overflow-hidden bg-white dark:bg-dark-bg text-gray-900 dark:text-white border border-gray-200 dark:border-dark-border ${
+                            shouldUseDrawer 
+                                ? 'fixed bottom-0 left-0 right-0 rounded-t-2xl max-h-[90vh]' 
+                                : shouldUseFullscreen
+                                ? 'fixed inset-0 w-full h-full'
+                                : 'relative rounded-xl max-w-4xl w-full max-h-[90vh]'
+                        }`}
+                        initial={shouldUseDrawer ? { y: "100%" } : { scale: 0.95 }}
+                        animate={shouldUseDrawer ? { y: 0 } : { scale: 1 }}
+                        exit={shouldUseDrawer ? { y: "100%" } : { scale: 0.95 }}
+                        transition={shouldUseDrawer ? { 
+                            type: "tween", 
+                            duration: 0.3, 
+                            ease: [0.25, 0.46, 0.45, 0.94] 
+                        } : { 
+                            type: "spring" 
+                        }}
+                        key={`content-${shouldUseDrawer}`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Handle for mobile drawer */}
+                        {shouldUseDrawer && (
+                            <div className="flex justify-center pt-4 pb-2">
+                                <div className="w-12 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                            </div>
+                        )}
+                        
+                        {/* Header */}
+                        {(title || showCloseButton) && !shouldUseFullscreen && (
+                            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg">
+                                {title && <h3 className="text-base sm:text-lg lg:text-xl font-semibold m-0 text-gray-900 dark:text-white">{title}</h3>}
+                                {showCloseButton && (
+                                    <button
+                                        onClick={onClose}
+                                        className="p-1 rounded-md transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover"
+                                        aria-label="Close modal"
+                                    >
+                                        <XMarkIcon className="w-6 h-6" />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Fullscreen close button */}
+                        {shouldUseFullscreen && showCloseButton && (
+                            <button
+                                onClick={onClose}
+                                className="absolute top-4 right-4 w-10 h-10 border-none bg-black bg-opacity-50 text-white rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 hover:bg-black hover:bg-opacity-70 hover:scale-110 z-10"
+                                aria-label="Close modal"
+                            >
+                                <XMarkIcon className="w-6 h-6" />
+                            </button>
+                        )}
+                        
+                        {/* Content */}
+                        <div className={`${shouldUseFullscreen ? 'h-full' : 'p-4'}`}>
+                            {children}
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 
     return createPortal(modalContent, document.body);

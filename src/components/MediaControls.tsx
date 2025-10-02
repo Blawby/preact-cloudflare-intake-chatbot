@@ -2,7 +2,8 @@ import { FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import AudioRecordingUI from './AudioRecordingUI';
 import { MicrophoneIcon } from '@heroicons/react/24/outline';
-import features from '../config/features';
+import { features } from '../config/features';
+import { Button } from './ui/Button';
 
 interface MediaControlsProps {
 	onMediaCapture: (blob: Blob, type: 'audio' | 'video') => void;
@@ -132,7 +133,7 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 
 	if (isRecording) {
 		return (
-			<div className="media-controls recording" role="region" aria-label="Audio recording controls">
+			<div className="flex items-center gap-2" role="region" aria-label="Audio recording controls">
 				<AudioRecordingUI
 					isRecording={isRecording}
 					onCancel={handleCancelRecording}
@@ -144,10 +145,10 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 	}
 
 	return (
-		<div className="media-controls" role="region" aria-label="Audio recording">
-			<button
-				type="button"
-				className="media-button"
+		<div className="flex items-center gap-2" role="region" aria-label="Audio recording">
+			<Button
+				variant="icon"
+				size="sm"
 				onClick={() => {
 					if (!isRecording) {
 						startRecording();
@@ -158,9 +159,10 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 				aria-label="Record audio message"
 				aria-pressed={isRecording}
 				disabled={permissionDenied}
+				className="w-8 h-8 p-0 rounded-full"
 			>
-				<MicrophoneIcon className="media-icon w-5 h-5" aria-hidden="true" />
-			</button>
+				<MicrophoneIcon className="w-4 h-4" aria-hidden="true" />
+			</Button>
 			{permissionDenied && (
 				<div className="sr-only" role="alert">
 					Microphone access denied. Please check your browser permissions.

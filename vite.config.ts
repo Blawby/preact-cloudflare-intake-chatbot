@@ -188,7 +188,7 @@ export default defineConfig({
 				// Manualchunks configuration for better code splitting
 				manualChunks: {
 					vendor: ['preact', 'preact/hooks', 'preact/jsx-runtime', 'preact/compat'],
-					ui: ['./src/components/LoadingIndicator.tsx', './src/components/ErrorBoundary.tsx', './src/components/SkeletonLoader.tsx']
+					ui: ['./src/components/ErrorBoundary.tsx']
 				}
 			},
 		},
@@ -202,15 +202,36 @@ export default defineConfig({
 	optimizeDeps: {
 		include: ['preact', 'preact/hooks', 'preact/compat', 'preact/jsx-runtime'],
 	},
+	resolve: {
+		alias: {
+			'react': 'preact/compat',
+			'react-dom': 'preact/compat',
+			'react/jsx-runtime': 'preact/jsx-runtime',
+			'worker_threads': resolve(__dirname, 'tests/stubs/worker_threads.ts'),
+			'node:worker_threads': resolve(__dirname, 'tests/stubs/worker_threads.ts')
+		}
+	},
 	server: {
 		// Enable compression in development server
 		compress: true,
-		// Proxy API calls to local backend
+		// Proxy API calls to local backend, but exclude file endpoints
 		proxy: {
 			'/api': {
 				target: 'http://localhost:8787',
 				changeOrigin: true,
-				secure: false
+				secure: false,
+				configure: (proxy, options) => {
+					proxy.on('error', (err, req, res) => {
+						console.log('proxy error', err);
+					});
+					proxy.on('proxyReq', (proxyReq, req, res) => {
+						console.log('Sending Request to the Target:', req.method, req.url);
+					});
+					proxy.on('proxyRes', (proxyRes, req, res) => {
+						console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+					});
+				},
+
 			}
 		}
 	}

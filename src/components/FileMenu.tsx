@@ -1,263 +1,257 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
-import {
-	PlusIcon,
-	PhotoIcon,
-	CameraIcon,
-	DocumentIcon
-} from '@heroicons/react/24/outline';
-import createLazyComponent from '../utils/LazyComponent';
-
-// Create lazy-loaded CameraModal
-const LazyCameraModal = createLazyComponent(
-    () => import('./CameraModal'),
-    'CameraModal'
-);
+import { PlusIcon, PhotoIcon, CameraIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Button } from './ui/Button';
+import CameraModal from './CameraModal';
 
 interface FileMenuProps {
-    onPhotoSelect: (files: File[]) => void;
-    onCameraCapture: (file: File) => void;
-    onFileSelect: (files: File[]) => void;
+  onFileSelect: (files: File[]) => void;
+  onCameraCapture: (file: File) => void;
+  isReadyToUpload?: boolean;
 }
 
 const FileMenu: FunctionComponent<FileMenuProps> = ({
-    onPhotoSelect,
-    onCameraCapture,
-    onFileSelect
+  onFileSelect,
+  onCameraCapture,
+  isReadyToUpload = true
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [isClosing, setIsClosing] = useState(false);
-    const [showCameraModal, setShowCameraModal] = useState(false);
-    const [isBrowser, setIsBrowser] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-    const photoInputRef = useRef<HTMLInputElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const firstMenuItemRef = useRef<HTMLButtonElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [isBrowser, setIsBrowser] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    useEffect(() => {
-        setIsBrowser(true);
-    }, []);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const firstMenuItemRef = useRef<HTMLButtonElement>(null);
+  const focusAnimationFrameRef = useRef<number | null>(null);
 
-    useEffect(() => {
-        if (!isBrowser) return;
-        
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                handleClose();
-            }
-        };
+  useEffect(() => setIsBrowser(true), []);
 
-        if (isOpen) {
-            document.addEventListener('click', handleClickOutside);
-            // Focus the first menu item when menu opens
-            setTimeout(() => {
-                firstMenuItemRef.current?.focus();
-            }, 10);
-        }
+  const handleClickOutside = (e: Event) => {
+    const target = e.target as Node;
+    if (menuRef.current && !menuRef.current.contains(target)) {
+      handleClose();
+    }
+  };
 
-        return () => {
-            document.removeEventListener('click', handleClickOutside);
-        };
-    }, [isOpen, isBrowser]);
+  const handleClose = () => {
+    if (isOpen && !isClosing) {
+      setIsClosing(true);
+      setTimeout(() => { setIsOpen(false); setIsClosing(false); }, 150);
+    }
+  };
 
-    // Handle keyboard navigation
-    useEffect(() => {
-        if (!isBrowser || !isOpen) return;
+  const handleFileClick = () => {
+    // Batch file input click and menu close operations
+    fileInputRef.current?.click();
+    handleClose();
+  };
 
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                handleClose();
-                triggerRef.current?.focus();
-            } else if (event.key === 'Tab' && !event.shiftKey) {
-                const menuItems = menuRef.current?.querySelectorAll('button.file-menu-item');
-                const lastItem = menuItems?.[menuItems.length - 1];
-                
-                if (document.activeElement === lastItem) {
-                    event.preventDefault();
-                    firstMenuItemRef.current?.focus();
-                }
-            } else if (event.key === 'Tab' && event.shiftKey) {
-                const menuItems = menuRef.current?.querySelectorAll('button.file-menu-item');
-                const firstItem = menuItems?.[0];
-                
-                if (document.activeElement === firstItem) {
-                    event.preventDefault();
-                    const lastItem = menuItems?.[menuItems.length - 1] as HTMLButtonElement;
-                    lastItem?.focus();
-                }
-            }
-        };
+  useEffect(() => {
+    if (!isBrowser) return;
 
-        document.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [isOpen, isBrowser]);
-
-    const handleClose = () => {
-        if (isOpen && !isClosing) {
-            setIsClosing(true);
-            setTimeout(() => {
-                setIsOpen(false);
-                setIsClosing(false);
-            }, 150); // Match animation duration
-        }
-    };
-
-    const handlePhotoClick = () => {
-        photoInputRef.current?.click();
-        handleClose();
-    };
-
-    const handleCameraClick = () => {
-        setShowCameraModal(true);
-        handleClose();
-    };
-
-    const handleCameraCapture = (file: File) => {
-        onCameraCapture(file);
-        setShowCameraModal(false);
-    };
-
-    const handleFileClick = () => {
-        fileInputRef.current?.click();
-        handleClose();
-    };
-
-    const filterDisallowedFiles = (files: File[]): File[] => {
-        return files.filter(file => {
-            	const fileExtension = file.name.split('.').pop()?.toLowerCase();
-            // Disallow ZIP files and executables
-            const disallowedExtensions = ['zip', 'exe', 'bat', 'cmd', 'msi', 'app'];
-            return !disallowedExtensions.includes(fileExtension || '');
+    if (isOpen) {
+      document.addEventListener('click', handleClickOutside);
+      
+      // Replace setTimeout with requestAnimationFrame for more reliable focus scheduling
+      focusAnimationFrameRef.current = requestAnimationFrame(() => {
+        // Use a second requestAnimationFrame for extra reliability on slow devices
+        focusAnimationFrameRef.current = requestAnimationFrame(() => {
+          firstMenuItemRef.current?.focus?.();
         });
+      });
+    }
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      // Clean up any scheduled animation frame if component unmounts
+      if (focusAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(focusAnimationFrameRef.current);
+        focusAnimationFrameRef.current = null;
+      }
     };
+  }, [isOpen, isBrowser]);
 
-    const handlePhotoChange = (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        const files = Array.from(target.files || []);
-        if (files.length > 0) {
-            onPhotoSelect(files);
+  // trap simple Tab focus within menu
+  useEffect(() => {
+    if (!isBrowser || !isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+        triggerRef.current?.focus();
+      } else if (e.key === 'Tab') {
+        const items = menuRef.current?.querySelectorAll('button.file-menu-item');
+        if (!items?.length) return;
+        const first = items[0] as HTMLButtonElement;
+        const last = items[items.length - 1] as HTMLButtonElement;
+
+        if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
         }
-        target.value = '';
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      }
     };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, isBrowser]);
 
-    const handleFileChange = (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        const allFiles = Array.from(target.files || []);
-        
-        // Filter out disallowed extensions like zip and exe
-        const safeFiles = filterDisallowedFiles(allFiles);
-        
-        // Further filter out images and videos which should use the photo option
-        const nonMediaFiles = safeFiles.filter(file => {
-            return !file.type.startsWith('image/') && !file.type.startsWith('video/');
-        });
-        
-        if (nonMediaFiles.length > 0) {
-            onFileSelect(nonMediaFiles);
-        }
-        
-        if (nonMediaFiles.length !== allFiles.length) {
-            // Alert user if files were removed
-            const removedCount = allFiles.length - nonMediaFiles.length;
-            if (removedCount > 0) {
-                if (safeFiles.length !== allFiles.length) {
-                    alert('Some files were not uploaded. ZIP and executable files are not allowed. Images and videos should use the "Attach photos" option.');
-                } else {
-                    alert('Images and videos should be uploaded using the "Attach photos" option.');
-                }
-            }
-        }
-        
-        target.value = '';
-    };
+  const filterDisallowedFiles = (files: File[]) => {
+    const disallowed = ['zip', 'exe', 'bat', 'cmd', 'msi', 'app'];
+    return files.filter(f => {
+      const lastDotIndex = f.name.lastIndexOf('.');
+      if (lastDotIndex === -1 || lastDotIndex === f.name.length - 1) return true;
+      const ext = f.name.slice(lastDotIndex + 1).toLowerCase();
+      return !disallowed.includes(ext);
+    });
+  };
 
-    return (
-        <div className="file-menu" ref={menuRef}>
-            <button
-                type="button"
-                className="file-menu-trigger"
-                onClick={() => setIsOpen(!isOpen)}
-                title="Add attachment"
-                aria-label="Open file attachment menu"
-                aria-haspopup="true"
-                aria-expanded={isOpen}
-                ref={triggerRef}
-            >
-                <PlusIcon className="file-menu-icon w-5 h-5" aria-hidden="true" />
-            </button>
-            
-            {(isOpen || isClosing) && (
-                <div 
-                    className={`file-menu-dropdown ${isClosing ? 'closing' : ''}`}
-                    role="menu"
-                    aria-labelledby="attachment-menu"
-                >
-                    <button 
-                        type="button" 
-                        className="file-menu-item" 
-                        onClick={handlePhotoClick}
-                        role="menuitem"
-                        ref={firstMenuItemRef}
-                    >
-                        <span>Attach photos</span>
-                        <PhotoIcon className="w-5 h-5" aria-hidden="true" />
-                    </button>
-                    
-                    <button 
-                        type="button" 
-                        className="file-menu-item" 
-                        onClick={handleCameraClick}
-                        role="menuitem"
-                    >
-                        <span>Take Photo</span>
-                        <CameraIcon className="w-5 h-5" aria-hidden="true" />
-                    </button>
-                    
-                    <button 
-                        type="button" 
-                        className="file-menu-item" 
-                        onClick={handleFileClick}
-                        role="menuitem"
-                    >
-                        <span>Attach files</span>
-                        <DocumentIcon className="w-5 h-5" aria-hidden="true" />
-                    </button>
-                </div>
-            )}
+  const openCamera = () => { 
+    setShowCameraModal(true); 
+    handleClose(); 
+  };
+  
+  const handleCapture = (file: File) => { 
+    onCameraCapture(file); 
+    setShowCameraModal(false); 
+  };
 
-            <input
-                type="file"
-                ref={photoInputRef}
-                className="file-input"
-                accept="image/*"
-                multiple
-                onChange={handlePhotoChange}
-                aria-hidden="true"
-                tabIndex={-1}
-            />
-            <input
-                type="file"
-                ref={fileInputRef}
-                className="file-input"
-                accept="application/pdf,text/plain,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,audio/*"
-                multiple
-                onChange={handleFileChange}
-                aria-hidden="true"
-                tabIndex={-1}
-            />
-            
-            {isBrowser && (
-                <LazyCameraModal
-                    isOpen={showCameraModal}
-                    onClose={() => setShowCameraModal(false)}
-                    onCapture={handleCameraCapture}
-                />
-            )}
+  const onFileChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    const all = Array.from(target.files || []);
+    const safe = filterDisallowedFiles(all);
+    
+    // Batch file selection and error handling
+    if (safe.length) onFileSelect(safe);
+    if (safe.length !== all.length) {
+      setErrorMessage('Some files were not uploaded. ZIP and executable files are not allowed.');
+      setTimeout(() => setErrorMessage(null), 5000);
+    }
+    target.value = '';
+  };
+
+  return (
+    <div className="relative" ref={menuRef}>
+      {/* CHATGPT-STYLE TRIGGER: 40px circular, matte, token colors */}
+      <Button
+        type="button"
+        variant="icon"
+        size="md"
+        ref={triggerRef}
+        disabled={!isReadyToUpload}
+        onClick={() => isReadyToUpload && setIsOpen(!isOpen)}
+        title={isReadyToUpload ? 'Add attachment' : 'File upload not ready yet'}
+        aria-label="Open file attachment menu"
+        id="attachment-menu-button"
+        aria-haspopup="menu"
+        aria-controls="attachment-menu"
+        aria-expanded={isOpen}
+        className="
+          w-8 h-8 rounded-full shadow
+          bg-light-message-bg-user border border-light-border text-light-text
+          hover:bg-light-hover
+          disabled:opacity-60 disabled:cursor-not-allowed
+          dark:bg-dark-message-bg-user dark:border-dark-border dark:text-dark-text
+          dark:hover:bg-dark-hover
+        "
+        icon={<PlusIcon className="w-4 h-4" aria-hidden="true" />}
+      />
+
+      {(isOpen || isClosing) && (
+        <div
+          id="attachment-menu"
+          role="menu"
+          aria-labelledby="attachment-menu-button"
+          className={`
+            absolute bottom-full left-0 mb-2 z-[2000] min-w-[220px]
+            rounded-lg border p-1 shadow-lg transition-all duration-200
+            bg-light-input-bg border-light-border
+            dark:bg-dark-input-bg dark:border-dark-border
+            ${isClosing ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}
+          `}
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            role="menuitem"
+            ref={firstMenuItemRef}
+            onClick={handleFileClick}
+            className="
+              file-menu-item w-full px-3 py-3 rounded flex items-center justify-between
+              text-light-text hover:bg-light-hover
+              dark:text-dark-text dark:hover:bg-dark-hover
+              text-xs sm:text-sm
+            "
+          >
+            <span>Add photos &amp; files</span>
+            <PhotoIcon className="w-5 h-5" aria-hidden="true" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            role="menuitem"
+            onClick={openCamera}
+            className="
+              file-menu-item w-full px-3 py-3 rounded flex items-center justify-between
+              text-light-text hover:bg-light-hover
+              dark:text-dark-text dark:hover:bg-dark-hover
+              border-t border-light-border dark:border-dark-border
+              text-xs sm:text-sm
+            "
+          >
+            <span>Take Photo</span>
+            <CameraIcon className="w-5 h-5" aria-hidden="true" />
+          </Button>
         </div>
-    );
+      )}
+
+      {/* Error notification (unchanged, tokenized) */}
+      {errorMessage && (
+        <div
+          role="alert" aria-live="polite"
+          className="absolute bottom-full left-0 mb-2 min-w-[250px] rounded-lg p-3 z-[2001] shadow-lg
+                     bg-red-50 border border-red-200 text-red-700
+                     dark:bg-red-900/20 dark:border-red-800 dark:text-red-300"
+        >
+          <div className="flex items-start gap-2">
+            <div className="flex-1 text-sm">{errorMessage}</div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 transition-colors"
+              aria-label="Dismiss error message"
+            >
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={onFileChange}
+        multiple
+        accept="image/*,video/*,audio/*,application/pdf,text/plain,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
+      {isBrowser && (
+        <CameraModal
+          isOpen={showCameraModal}
+          onClose={() => setShowCameraModal(false)}
+          onCapture={handleCapture}
+        />
+      )}
+    </div>
+  );
 };
 
-export default FileMenu; 
+export default FileMenu;

@@ -1,88 +1,24 @@
 import { FunctionComponent } from 'preact';
-import { useRef, useEffect, useState, useCallback } from 'preact/hooks';
+import { useRef, useEffect, useState, useCallback, useLayoutEffect, useMemo } from 'preact/hooks';
 import Message from './Message';
-import LoadingIndicator from './LoadingIndicator';
+import TeamProfile from './TeamProfile';
 import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
 import { ErrorBoundary } from './ErrorBoundary';
-
-interface FileAttachment {
-    name: string;
-    size: number;
-    type: string;
-    url: string;
-}
-
-// Add scheduling interface
-interface SchedulingData {
-    type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
-    selectedDate?: Date;
-    timeOfDay?: 'morning' | 'afternoon';
-    scheduledDateTime?: Date;
-}
-
-// Add matter creation interface
-interface MatterCreationData {
-    type: 'service-selection';
-    availableServices: string[];
-}
-
-interface ChatMessage {
-    content: string;
-    isUser: boolean;
-    files?: FileAttachment[];
-    scheduling?: SchedulingData;
-    matterCreation?: MatterCreationData;
-    matterCanvas?: {
-        service: string;
-        matterSummary: string;
-        qualityScore?: {
-            score: number;
-            badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
-            color: 'blue' | 'green' | 'yellow' | 'red';
-            inferredUrgency: string;
-            breakdown: {
-                followUpCompletion: number;
-                requiredFields: number;
-                evidence: number;
-                clarity: number;
-                urgency: number;
-                consistency: number;
-                aiConfidence: number;
-            };
-            suggestions: string[];
-        };
-        answers?: Record<string, string>;
-        isExpanded?: boolean;
-    };
-    qualityScore?: {
-        score: number;
-        breakdown: {
-            followUpCompletion: number;
-            requiredFields: number;
-            evidence: number;
-            clarity: number;
-            urgency: number;
-            consistency: number;
-            aiConfidence: number;
-        };
-        suggestions: string[];
-        readyForLawyer: boolean;
-        color: 'red' | 'yellow' | 'green' | 'blue';
-    };
-    isLoading?: boolean;
-    id?: string;
-}
+import { ChatMessageUI } from '../../worker/types';
+import { ContactData } from './ContactForm';
 
 interface VirtualMessageListProps {
-    messages: ChatMessage[];
-    onDateSelect?: (date: Date) => void;
-    onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
-    onTimeSlotSelect?: (timeSlot: Date) => void;
-    onRequestMoreDates?: () => void;
-    onServiceSelect?: (service: string) => void;
-    onUrgencySelect?: (urgency: string) => void;
-    position?: 'widget' | 'inline';
+    messages: ChatMessageUI[];
+    teamConfig?: {
+        name: string;
+        profileImage: string | null;
+        teamId: string;
+        description?: string | null;
+    };
+    onOpenSidebar?: () => void;
+    onContactFormSubmit?: (data: ContactData) => void;
+
     // Feedback props
     sessionId?: string;
     teamId?: string;
@@ -91,17 +27,13 @@ interface VirtualMessageListProps {
 
 const BATCH_SIZE = 20;
 const SCROLL_THRESHOLD = 100;
-const DEBOUNCE_DELAY = 150;
+const DEBOUNCE_DELAY = 50;
 
-const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({ 
-    messages, 
-    onDateSelect,
-    onTimeOfDaySelect,
-    onTimeSlotSelect,
-    onRequestMoreDates,
-    onServiceSelect,
-    onUrgencySelect,
-    position = 'widget',
+const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
+    messages,
+    teamConfig,
+    onOpenSidebar,
+    onContactFormSubmit,
     sessionId,
     teamId,
     onFeedbackSubmit
@@ -123,11 +55,24 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         const isBottom = checkIfScrolledToBottom(element);
         setIsScrolledToBottom(isBottom);
 
+        // Dispatch scroll event for navbar visibility
+        const currentScrollTop = element.scrollTop;
+        const lastScrollTop = (element as any).lastScrollTop || 0;
+        const scrollDelta = Math.abs(currentScrollTop - lastScrollTop);
+        
+        if (scrollDelta > 0) {
+            window.dispatchEvent(new CustomEvent('chat-scroll', {
+                detail: { scrollTop: currentScrollTop, scrollDelta }
+            }));
+        }
+        
+        (element as any).lastScrollTop = currentScrollTop;
+
         // Load more messages when scrolling up
         if (element.scrollTop < SCROLL_THRESHOLD && startIndex > 0) {
             const newStartIndex = Math.max(0, startIndex - BATCH_SIZE);
             setStartIndex(newStartIndex);
-            
+
             // Maintain scroll position when loading more messages
             requestAnimationFrame(() => {
                 if (listRef.current) {
@@ -148,64 +93,82 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     useEffect(() => {
         const list = listRef.current;
         if (list) {
-            list.addEventListener('scroll', debouncedHandleScroll);
+            list.addEventListener('scroll', debouncedHandleScroll, { passive: true });
         }
         return () => {
             if (list) {
                 list.removeEventListener('scroll', debouncedHandleScroll);
             }
+            // Cancel any pending debounced calls to prevent delayed state updates after unmount
+            debouncedHandleScroll.cancel();
         };
     }, [debouncedHandleScroll]);
 
+    // Compute last message's isUser property to ensure effects re-run when it changes
+    const lastIsUser = useMemo(() => {
+        return messages[messages.length - 1]?.isUser;
+    }, [messages]);
+
     useEffect(() => {
         // Update indices when new messages are added
-        if (isScrolledToBottom || messages[messages.length - 1]?.isUser) {
+        if (isScrolledToBottom || lastIsUser) {
             setEndIndex(messages.length);
             setStartIndex(Math.max(0, messages.length - BATCH_SIZE));
         }
-    }, [messages.length, isScrolledToBottom]);
+    }, [messages.length, isScrolledToBottom, lastIsUser]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         // Scroll to bottom when new messages are added and we're at the bottom
-        if (listRef.current && (isScrolledToBottom || messages[messages.length - 1]?.isUser)) {
-            listRef.current.scrollTop = listRef.current.scrollHeight;
+        // Also scroll when new messages are added (for button clicks, etc.)
+        if (listRef.current && (isScrolledToBottom || lastIsUser)) {
+            listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'auto' });
         }
-    }, [messages, endIndex, isScrolledToBottom]);
+    }, [messages, endIndex, isScrolledToBottom, lastIsUser]);
+
 
     const visibleMessages = messages.slice(startIndex, endIndex);
 
     return (
-        <div 
-            class="message-list" 
+        <div
+            className="flex-1 overflow-y-auto p-4 pt-16 lg:pt-4 pb-20 scroll-smooth w-full scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
             ref={listRef}
-            style={{
-                maxWidth: position === 'inline' ? 'none' : '768px',
-                margin: position === 'inline' ? '0' : '0 auto'
-            }}
         >
+            {/* Team Profile Header - Fixed at top of scrollable area */}
+            {teamConfig && (
+                <div className="flex flex-col items-center py-8 px-4 pb-6 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg mb-4">
+                    <TeamProfile
+                        name={teamConfig.name}
+                        profileImage={teamConfig.profileImage}
+                        teamId={teamId}
+                        description={teamConfig.description}
+                        variant="welcome"
+                        showVerified={true}
+                    />
+                </div>
+            )}
+
             {startIndex > 0 && (
-                <div class="load-more-trigger">
-                    <LoadingIndicator />
+                <div className="flex justify-center items-center py-4">
+                    <div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm lg:text-base">Loading more messages...</div>
                 </div>
             )}
             <ErrorBoundary>
                 {visibleMessages.map((message, index) => (
                     <Message
-                        key={startIndex + index}
+                        key={message.id}
                         content={message.content}
                         isUser={message.isUser}
                         files={message.files}
-                        scheduling={message.scheduling}
-                        matterCreation={message.matterCreation}
                         matterCanvas={message.matterCanvas}
-                        qualityScore={message.qualityScore}
-                        onDateSelect={onDateSelect}
-                        onTimeOfDaySelect={onTimeOfDaySelect}
-                        onTimeSlotSelect={onTimeSlotSelect}
-                        onRequestMoreDates={onRequestMoreDates}
-                        onServiceSelect={onServiceSelect}
-                        onUrgencySelect={onUrgencySelect}
+                        paymentEmbed={message.paymentEmbed}
+                        contactForm={message.contactForm}
+                        generatedPDF={message.generatedPDF}
+                        teamConfig={teamConfig}
+                        onOpenSidebar={onOpenSidebar}
+                        onContactFormSubmit={onContactFormSubmit}
                         isLoading={message.isLoading}
+                        aiState={message.aiState}
+                        toolMessage={message.toolMessage}
                         id={message.id}
                         sessionId={sessionId}
                         teamId={teamId}

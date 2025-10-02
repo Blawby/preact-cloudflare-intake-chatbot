@@ -1,135 +1,80 @@
-/**
- * Date and time utilities for scheduling functionality
- */
+export function formatDateForSelector(date: Date): string {
+  const day = date.getDate();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayName = dayNames[date.getDay()];
+  return `${day} ${dayName}`;
+}
 
-/**
- * Get formatted date for display in the date selector
- * @param date Date object
- * @returns Formatted date string like "Mon 14"
- */
-export const formatDateForSelector = (date: Date): string => {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    day: 'numeric'
-  }).format(date);
-};
-
-/**
- * Get full formatted date for messages
- * @param date Date object
- * @returns Formatted date string like "Monday, May 14th"
- */
-export const formatFullDate = (date: Date): string => {
-  return new Intl.DateTimeFormat('en-US', {
+export function formatFullDate(date: Date): string {
+  const options: Intl.DateTimeFormatOptions = {
     weekday: 'long',
+    year: 'numeric',
     month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  }).format(date);
-};
+    day: 'numeric'
+  };
+  return date.toLocaleDateString('en-US', options);
+}
 
-/**
- * Format time with timezone information
- * @param date Date object
- * @returns Formatted time string with timezone
- */
-export const formatTimeWithTimezone = (date: Date): string => {
-  const timeString = new Intl.DateTimeFormat('en-US', {
+export function formatTimeWithTimezone(date: Date): string {
+  // Convert to UTC/GMT time
+  const utcTimeString = date.toLocaleTimeString('en-US', {
     hour: 'numeric',
-    minute: 'numeric',
-    hour12: true
-  }).format(date);
-  
-  const timezoneString = new Intl.DateTimeFormat('en-US', {
-    timeZoneName: 'short'
-  }).format(date);
-  
-  return `${timeString} ${timezoneString}`;
-};
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'UTC'
+  });
+  return `${utcTimeString} GMT`;
+}
 
-/**
- * Get array of dates for the date selector grid
- * @param startDate Starting date (defaults to today)
- * @param days Number of days to include
- * @returns Array of Date objects
- */
-export const getDateGrid = (startDate: Date = new Date(), days: number = 9): Date[] => {
+export function getDateGrid(startDate: Date, count: number): Date[] {
   const dates: Date[] = [];
-  
-  // Clone the startDate to avoid modifying the original
-  const baseDate = new Date(startDate);
-  
-  for (let i = 0; i < days; i++) {
-    // Create a new date for each day to avoid reference issues
-    const newDate = new Date(baseDate);
-    newDate.setDate(baseDate.getDate() + i);
-    dates.push(newDate);
+  for (let i = 0; i < count; i++) {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + i);
+    dates.push(date);
   }
-  
   return dates;
-};
+}
 
-/**
- * Get time slots for a specific part of day
- * @param date Base date
- * @param partOfDay 'morning' | 'afternoon' 
- * @returns Array of Date objects representing time slots
- */
-export const getTimeSlots = (
-  date: Date, 
-  partOfDay: 'morning' | 'afternoon'
-): Date[] => {
+export function getTimeSlots(baseDate?: Date, period?: 'morning' | 'afternoon'): Date[] {
   const slots: Date[] = [];
-  const slotDate = new Date(date);
+  const date = baseDate || new Date();
   
-  // Set hours based on part of day
-  let startHour = 8;  // Default morning start
-  let endHour = 12;   // Default morning end
+  let startHour = 9;
+  let endHour = 17;
   
-  if (partOfDay === 'afternoon') {
+  if (period === 'morning') {
+    startHour = 8;
+    endHour = 12;
+  } else if (period === 'afternoon') {
     startHour = 12;
     endHour = 17;
   }
   
-  // Create slots in 30-minute increments
   for (let hour = startHour; hour < endHour; hour++) {
-    for (let minute of [0, 30]) {
-      slotDate.setHours(hour, minute, 0, 0);
-      slots.push(new Date(slotDate));
+    for (let minute = 0; minute < 60; minute += 30) {
+      const slot = new Date(date);
+      slot.setHours(hour, minute, 0, 0);
+      slots.push(slot);
     }
   }
   
   return slots;
-};
+}
 
-/**
- * Format time slot for display
- * @param date Date object
- * @returns Formatted time string like "8:30 AM"
- */
-export const formatTimeSlot = (date: Date): string => {
-  return new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  }).format(date);
-};
-
-/**
- * Get user's timezone
- * @returns Timezone string
- */
-export const getUserTimezone = (): string => {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-};
-
-/**
- * Get readable timezone name
- * @returns Formatted timezone string
- */
-export const getReadableTimezone = (): string => {
-  const date = new Date();
-  return new Intl.DateTimeFormat('en-US', {
-    timeZoneName: 'short'
-  }).format(date).split(' ').pop() || '';
-}; 
+export function formatTimeSlot(time: string | Date): string {
+  let hour: number, minute: number;
+  
+  if (typeof time === 'string') {
+    const [h, m] = time.split(':').map(Number);
+    hour = h;
+    minute = m;
+  } else {
+    hour = time.getHours();
+    minute = time.getMinutes();
+  }
+  
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+  return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+} 

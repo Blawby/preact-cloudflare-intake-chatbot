@@ -1,6 +1,6 @@
 name = "blawby-ai-chatbot"
 main = "worker/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
 [ai]
@@ -10,39 +10,93 @@ binding = "AI"
 binding = "llama"
 model = "@cf/meta/llama-3.1-8b-instruct"
 
+[[ai.models]]
+binding = "llava"
+model = "@cf/llava-hf/llava-1.5-7b-hf"
+
 # Fresh resources for AI chatbot
 [[kv_namespaces]]
 binding = "CHAT_SESSIONS"
 id = "9ca96bd55b2d4455bad3fe0cda914f14"  # BLAWBY_AI_CHAT_SESSIONS
 preview_id = "e7bbadb101d44a828fb3ef34528b3540"  # BLAWBY_AI_CHAT_SESSIONS_preview
-experimental_remote = true
 
 [[d1_databases]]
 binding = "DB"
 database_name = "blawby-ai-chatbot"
 database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf"  # blawby-ai-chatbot
-experimental_remote = true
 
 # Resend API key for email notifications (set via wrangler secret put RESEND_API_KEY)
 
-# R2 bucket for file storage (will enable once bucket is created)
-# [[r2_buckets]]
-# binding = "FILES_BUCKET"
-# bucket_name = "blawby-ai-files"
+# Blawby API Configuration
+[vars]
+BLAWBY_API_URL = "https://staging.blawby.com"
+BLAWBY_TEAM_ULID = "01jq70jnstyfzevc6423czh50e"
+# BLAWBY_API_TOKEN should be set via: wrangler secret put BLAWBY_API_TOKEN
+
+# Lawyer Search API Configuration
+LAWYER_SEARCH_API_URL = "https://search.blawby.com"
+# LAWYER_SEARCH_API_KEY should be set via: wrangler secret put LAWYER_SEARCH_API_KEY
+
+# PDF Generation Configuration
+# PDF generation is handled locally using pdf-lib - no external API needed
+
+# Cloudflare AI Configuration
+CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
+# CLOUDFLARE_API_TOKEN should be set via: wrangler secret put CLOUDFLARE_API_TOKEN
+# CLOUDFLARE_ACCOUNT_ID should be set via: wrangler secret put CLOUDFLARE_ACCOUNT_ID
+
+# PDF analysis will be implemented in a future PR
+
+# Environment flags
+NODE_ENV = "development"
+DEBUG = "false"
+VITE_DEBUG_OVERLAY = "false"
+
+# Authentication removed - frontend-only application
+
+# AI Model Configuration (used in worker/agents/legal-intake/index.ts)
+AI_MODEL = "llama-3.1-8b-instant"
+
+# Analysis Configuration (used in worker/routes/analyze.ts)
+ANALYSIS_TIMEOUT_MS = "60000"
+
+# Rate Limiting Configuration (referenced in README)
+RATE_LIMIT_REQUESTS_PER_MINUTE = "60"
+RATE_LIMIT_BURST_SIZE = "10"
+
+# R2 bucket for file storage
+[[r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "blawby-ai-files"
+
+# Queue producers for background processing
+[[queues.producers]]
+queue = "doc-events"
+binding = "DOC_EVENTS"
+
+# Queue consumers
+[[queues.consumers]]
+queue = "doc-events"
+
+# Durable Objects migrations removed - no longer using Durable Objects
 
 # Domain configuration for ai.blawby.com
 [env.production]
 name = "blawby-ai-chatbot"
-routes = [
-  { pattern = "ai.blawby.com/api/*", zone_name = "blawby.com" }
-]
 ai = { binding = "AI" }
 kv_namespaces = [
-  { binding = "CHAT_SESSIONS", id = "9ca96bd55b2d4455bad3fe0cda914f14", preview_id = "e7bbadb101d44a828fb3ef34528b3540", experimental_remote = true }
+  { binding = "CHAT_SESSIONS", id = "9ca96bd55b2d4455bad3fe0cda914f14", preview_id = "e7bbadb101d44a828fb3ef34528b3540" }
 ]
 d1_databases = [
-  { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf", experimental_remote = true }
+  { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf" }
 ]
-# r2_buckets = [
-#   { binding = "FILES_BUCKET", bucket_name = "blawby-ai-files" }
-# ] 
+# Production environment variables
+[env.production.vars]
+NODE_ENV = "production"
+# Updated to use modern nested producers syntax
+[[env.production.queues.producers]]
+queue = "doc-events"
+binding = "DOC_EVENTS"
+[[env.production.r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "blawby-ai-files" 

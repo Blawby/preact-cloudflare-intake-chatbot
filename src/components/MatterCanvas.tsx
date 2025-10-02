@@ -1,27 +1,29 @@
 import { FunctionalComponent } from 'preact';
-import { useState } from 'preact/hooks';
-import { DocumentTextIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { analyzeMissingInfo } from '../utils/matterAnalysis';
 
 interface MatterCanvasProps {
+  matterId?: string;
+  matterNumber?: string;
   service: string;
   matterSummary: string;
-  qualityScore: any;
+  
   answers: Record<string, string | { question: string; answer: string }>;
-  isExpanded?: boolean;
 }
 
 /**
- * Simple markdown-based matter canvas similar to ChatGPT's canvas
- * Just expandable markdown content integrated into chat flow
+ * Case Summary component - displays matter details with missing information analysis
+ * Shows markdown content with professional matter tracking
  */
 const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
+  matterId,
+  matterNumber,
   service,
   matterSummary,
-  qualityScore,
-  answers,
-  isExpanded = false
+  
+  answers
 }) => {
-  const [expanded, setExpanded] = useState(isExpanded);
+
 
   // Generate markdown content for the matter - CLIENT-FACING ONLY
   const generateMarkdown = () => {
@@ -31,32 +33,40 @@ const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
   };
 
   const markdownContent = generateMarkdown();
-  const previewContent = markdownContent.split('\n').slice(0, 6).join('\n') + '\n\n*[Click to expand full matter details]*';
+  const missingInfo = analyzeMissingInfo({
+    service,
+    matterSummary,
+    status: 'ready' as const
+  });
 
   return (
     <div class="matter-canvas">
-      <div class="matter-canvas-header">
-        <div class="matter-canvas-title">
-          <DocumentTextIcon className="w-4 h-4" />
-          Matter Canvas
-        </div>
-        <button 
-          class="matter-canvas-toggle" 
-          onClick={() => setExpanded(!expanded)}
-          aria-label={expanded ? 'Collapse matter details' : 'Expand matter details'}
-        >
-          {expanded ? (
-            <ChevronUpIcon className="w-4 h-4" />
-          ) : (
-            <ChevronDownIcon className="w-4 h-4" />
-          )}
-        </button>
-      </div>
-      
       <div class="matter-canvas-content">
         <pre class="matter-canvas-markdown">
-          {expanded ? markdownContent : previewContent}
+          {markdownContent}
         </pre>
+        
+        {/* Show missing information */}
+        {missingInfo.length > 0 && (
+          <div class="missing-info-section">
+            <div class="missing-info-header">
+              <ExclamationTriangleIcon className="w-4 h-4" />
+              <span>Missing Information</span>
+            </div>
+            <div class="missing-info-list">
+              <p>To strengthen your matter, consider providing:</p>
+              <ul>
+                {missingInfo.map((info, index) => (
+                  <li key={index}>{info}</li>
+                ))}
+              </ul>
+              <p class="missing-info-note">
+                You can provide this information by continuing our conversation. 
+                The more details you share, the better we can assist you.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

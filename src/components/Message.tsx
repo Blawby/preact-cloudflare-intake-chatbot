@@ -1,10 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
-import { marked } from 'marked';
-import LazyMedia from './LazyMedia';
-import MatterCanvas from './MatterCanvas';
-import FeedbackUI from './FeedbackUI';
-import createLazyComponent from '../utils/LazyComponent';
+import { useState, useEffect } from 'preact/hooks';
+import DOMPurify from 'dompurify';
 import {
 	DocumentIcon,
 	DocumentTextIcon,
@@ -12,93 +9,92 @@ import {
 	MusicalNoteIcon,
 	VideoCameraIcon
 } from '@heroicons/react/24/outline';
+import { FileAttachment } from '../../worker/types';
+import { useToastContext } from '../contexts/ToastContext';
+import { AIThinkingIndicator } from './AIThinkingIndicator';
+import { ContactForm, ContactData } from './ContactForm';
+import DocumentChecklist from './DocumentChecklist';
+import LawyerSearchResults from './LawyerSearchResults';
+import LazyMedia from './LazyMedia';
+import MatterCanvas from './MatterCanvas';
+import MediaContent from './MediaContent';
+import Modal from './Modal';
+import PaymentEmbed from './PaymentEmbed';
 
-// Lazy load scheduling components
-const LazyDateSelector = createLazyComponent(
-	() => import('./scheduling/DateSelector'),
-	'DateSelector'
-);
 
-const LazyTimeOfDaySelector = createLazyComponent(
-	() => import('./scheduling/TimeOfDaySelector'),
-	'TimeOfDaySelector'
-);
-
-const LazyTimeSlotSelector = createLazyComponent(
-	() => import('./scheduling/TimeSlotSelector'),
-	'TimeSlotSelector'
-);
-
-const LazyScheduleConfirmation = createLazyComponent(
-	() => import('./scheduling/ScheduleConfirmation'),
-	'ScheduleConfirmation'
-);
-
-// Set options for marked
-marked.setOptions({
-	breaks: true,
-	gfm: true
-});
-
-interface FileAttachment {
-	name: string;
-	size: number;
-	type: string;
-	url: string;
-}
-
-// Add scheduling-related data interface
-interface SchedulingData {
-	type: 'date-selection' | 'time-of-day-selection' | 'time-slot-selection' | 'confirmation';
-	selectedDate?: Date;
-	timeOfDay?: 'morning' | 'afternoon';
-	scheduledDateTime?: Date;
-}
-
-// Add matter creation-related data interface
-interface MatterCreationData {
-	type: 'service-selection' | 'urgency-selection' | 'ai-questions';
-	availableServices: string[];
-	question?: string;
-	totalQuestions?: number;
-	currentQuestionIndex?: number;
-}
 
 interface MessageProps {
 	content: string;
 	isUser: boolean;
 	files?: FileAttachment[];
-	scheduling?: SchedulingData;
-	matterCreation?: MatterCreationData;
 	matterCanvas?: {
+		matterId?: string;
+		matterNumber?: string;
 		service: string;
 		matterSummary: string;
-		qualityScore?: {
-			score: number;
-			badge: 'Excellent' | 'Good' | 'Fair' | 'Poor';
-			color: 'blue' | 'green' | 'yellow' | 'red';
-			inferredUrgency: string;
-			breakdown: {
-				followUpCompletion: number;
-				requiredFields: number;
-				evidence: number;
-				clarity: number;
-				urgency: number;
-				consistency: number;
-				aiConfidence: number;
-			};
-			suggestions: string[];
-		};
 		answers?: Record<string, string>;
 		isExpanded?: boolean;
 	};
-	onDateSelect?: (date: Date) => void;
-	onTimeOfDaySelect?: (timeOfDay: 'morning' | 'afternoon') => void;
-	onTimeSlotSelect?: (timeSlot: Date) => void;
-	onRequestMoreDates?: () => void;
-	onServiceSelect?: (service: string) => void;
-	onUrgencySelect?: (urgency: string) => void;
+	paymentEmbed?: {
+		paymentUrl: string;
+		amount?: number;
+		description?: string;
+		paymentId?: string;
+	};
+	contactForm?: {
+		fields: string[];
+		required: string[];
+		message?: string;
+		initialValues?: {
+			name?: string;
+			email?: string;
+			phone?: string;
+			location?: string;
+			opposingParty?: string;
+		};
+	};
+	documentChecklist?: {
+		matterType: string;
+		documents: Array<{
+			id: string;
+			name: string;
+			description?: string;
+			required: boolean;
+			status: 'missing' | 'uploaded' | 'pending';
+			file?: globalThis.File;
+		}>;
+	};
+	lawyerSearchResults?: {
+		matterType: string;
+		lawyers: Array<{
+			id: string;
+			name: string;
+			firm?: string;
+			location: string;
+			practiceAreas: string[];
+			rating?: number;
+			reviewCount?: number;
+			phone?: string;
+			email?: string;
+			website?: string;
+			bio?: string;
+			experience?: string;
+			languages?: string[];
+			consultationFee?: number;
+			availability?: string;
+		}>;
+		total: number;
+	};
+	teamConfig?: {
+		name: string;
+		profileImage: string | null;
+		teamId: string;
+	};
+	onOpenSidebar?: () => void;
+	onContactFormSubmit?: (data: ContactData) => void | Promise<void>;
 	isLoading?: boolean;
+	aiState?: 'thinking' | 'processing' | 'generating';
+	toolMessage?: string;
 	// Feedback props
 	id?: string;
 	sessionId?: string;
@@ -122,7 +118,7 @@ const getFileIcon = (file: FileAttachment) => {
 	// PDF icon
 	if (file.type === 'application/pdf' || ext === 'pdf') {
 		return (
-			<DocumentTextIcon className="message-file-icon" />
+			<DocumentTextIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
@@ -131,7 +127,7 @@ const getFileIcon = (file: FileAttachment) => {
 		file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
 		ext === 'doc' || ext === 'docx') {
 		return (
-			<DocumentIcon className="message-file-icon" />
+			<DocumentIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
@@ -140,154 +136,118 @@ const getFileIcon = (file: FileAttachment) => {
 		file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
 		ext === 'xls' || ext === 'xlsx' || ext === 'csv') {
 		return (
-			<TableCellsIcon className="message-file-icon" />
+			<TableCellsIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
 	// Audio file icon
 	if (file.type.startsWith('audio/')) {
 		return (
-			<MusicalNoteIcon className="message-file-icon" />
+			<MusicalNoteIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
 	// Video file icon
 	if (file.type.startsWith('video/')) {
 		return (
-			<VideoCameraIcon className="message-file-icon" />
+			<VideoCameraIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 	
 	// Default file icon
 	return (
-		<DocumentIcon className="message-file-icon" />
+		<DocumentIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 	);
 };
 
-const FilePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => {
+const FilePreview: FunctionComponent<{ file: FileAttachment; onFileClick: (file: FileAttachment) => void }> = ({ file, onFileClick }) => {
+	const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+		if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+			e.preventDefault();
+			onFileClick(file);
+		}
+	};
+
 	return (
-		<div class="message-file">
-			{getFileIcon(file)}
-			<div class="message-file-info">
-				<div class="message-file-name">
-					<a href={file.url} target="_blank" rel="noopener noreferrer">
-						{file.name}
-					</a>
+		<div 
+			className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer my-2 max-w-[300px]"
+			onClick={() => onFileClick(file)}
+			onKeyDown={handleKeyDown}
+			role="button"
+			tabIndex={0}
+			aria-label={`Open ${file.name}`}
+		>
+			<div className="w-8 h-8 rounded bg-gray-100 dark:bg-dark-hover flex items-center justify-center flex-shrink-0">
+				{getFileIcon(file)}
+			</div>
+			<div className="flex-1 min-w-0">
+				<div className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" title={file.name}>
+					{file.name.length > 25 ? `${file.name.substring(0, 25)}...` : file.name}
 				</div>
-				<div class="message-file-size">{formatFileSize(file.size)}</div>
+				<div className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(file.size)}</div>
 			</div>
 		</div>
 	);
 };
 
-const ImagePreview: FunctionComponent<{ file: FileAttachment }> = ({ file }) => {
+const ImagePreview: FunctionComponent<{ file: FileAttachment; onImageClick: (file: FileAttachment) => void }> = ({ file, onImageClick }) => {
 	return (
-		<div class="message-media-container">
+		<div className="message-media-container my-2">
 			<LazyMedia
 				src={file.url}
 				type={file.type}
 				alt={file.name}
-				className="message-media"
+				className="max-w-[300px] max-h-[300px] w-auto h-auto block cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700"
+				onClick={() => onImageClick(file)}
 			/>
 		</div>
 	);
 };
 
-// Service selection buttons component
-const ServiceSelectionButtons: FunctionComponent<{ 
-	services: string[]; 
-	onServiceSelect: (service: string) => void;
-}> = ({ services, onServiceSelect }) => {
-	// Format service names for display
-	const formatServiceName = (service: string) => {
-		return service
-			.split('-')
-							.map(word => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(' ');
-	};
+// Agent handles service selection - no component needed
 
-	return (
-		<div class="service-selection-container">
-			<div class="service-buttons">
-				{services.map((service, index) => (
-					<button
-						key={index}
-						class="time-slot-button"
-						onClick={() => onServiceSelect(service)}
-					>
-						{formatServiceName(service)}
-					</button>
-				))}
-				<button
-					class="time-slot-button"
-					onClick={() => onServiceSelect('General Inquiry')}
-				>
-					General Inquiry
-				</button>
-			</div>
-		</div>
-	);
-};
+// Agent handles urgency selection - no component needed
 
-// Urgency selection buttons component
-const UrgencySelectionButtons: FunctionComponent<{ 
-	onUrgencySelect: (urgency: string) => void;
-}> = ({ onUrgencySelect }) => {
-	const urgencyOptions = [
-		{
-			label: 'Very Urgent',
-			description: 'Immediate action needed'
-		},
-		{
-			label: 'Somewhat Urgent',
-			description: 'Within a few weeks'
-		},
-		{
-			label: 'Not Urgent',
-			description: 'Can wait a month or more'
-		}
-	];
-
-	return (
-		<div class="service-selection-container">
-			<div class="service-buttons">
-				{urgencyOptions.map((option, index) => (
-					<button
-						key={index}
-						class="time-slot-button"
-						onClick={() => onUrgencySelect(option.label)}
-					>
-						<div>
-							<div style="font-weight: 600; margin-bottom: 2px;">{option.label}</div>
-							<div style="font-size: 12px; color: var(--accent-color);">{option.description}</div>
-						</div>
-					</button>
-				))}
-			</div>
-		</div>
-	);
-};
+// Agent handles welcome messages - no component needed
 
 const Message: FunctionComponent<MessageProps> = memo(({ 
 	content, 
 	isUser, 
 	files = [], 
-	scheduling, 
-	matterCreation,
 	matterCanvas,
-	onDateSelect, 
-	onTimeOfDaySelect, 
-	onTimeSlotSelect, 
-	onRequestMoreDates,
-	onServiceSelect,
-	onUrgencySelect,
+	paymentEmbed,
+	contactForm,
+	documentChecklist,
+	lawyerSearchResults,
+	teamConfig: _teamConfig,
+	onOpenSidebar: _onOpenSidebar,
+	onContactFormSubmit,
 	isLoading,
-	id,
-	sessionId,
-	teamId,
-	showFeedback = true,
-	onFeedbackSubmit
+	aiState,
+	toolMessage,
+	id: _id,
+	sessionId: _sessionId,
+	teamId: _teamId,
+	showFeedback: _showFeedback = true,
+	onFeedbackSubmit: _onFeedbackSubmit
 }) => {
+	const [isClient, setIsClient] = useState(false);
+	const { showSuccess, showError, showInfo } = useToastContext();
+	const [ReactMarkdown, setReactMarkdown] = useState<any>(null);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [selectedMedia, setSelectedMedia] = useState<any>(null);
+
+	useEffect(() => {
+		setIsClient(true);
+		// Dynamically import ReactMarkdown only on the client side
+		import('react-markdown')
+			.then((module) => {
+				setReactMarkdown(() => module.default);
+			})
+			.catch((_error) => {
+				// Keep ReactMarkdown as null to use fallback rendering
+			});
+	}, []);
 	const imageFiles = files.filter(file => file.type.startsWith('image/'));
 	const audioFiles = files.filter(file => file.type.startsWith('audio/'));
 	const videoFiles = files.filter(file => file.type.startsWith('video/'));
@@ -303,124 +263,200 @@ const Message: FunctionComponent<MessageProps> = memo(({
 		file.type.startsWith('audio/')
 	);
 
+
+
 	return (
-		<div class={`message ${isUser ? 'message-user' : 'message-ai'} ${hasOnlyMedia ? 'media-only' : ''}`}>
-			<div class="message-content">
-				{/* Show loading indicator if this message is loading */}
-				{isLoading ? (
-					<div class="loading-indicator">
-						<span class="dot"></span>
-						<span class="dot"></span>
-						<span class="dot"></span>
-					</div>
-				) : (
-					/* Render message content first */
-					content && (
-						<div dangerouslySetInnerHTML={{ __html: marked(content) }} />
-					)
-				)}
-				
-				{/* Then display scheduling components */}
-				{scheduling && (
-					<div class="scheduling-container">
-						{scheduling.type === 'date-selection' && onDateSelect && onRequestMoreDates && (
-							<LazyDateSelector
-								onDateSelect={onDateSelect}
-								onRequestMoreDates={onRequestMoreDates}
-								startDate={scheduling.selectedDate}
-							/>
-						)}
-						
-						{scheduling.type === 'time-of-day-selection' && scheduling.selectedDate && onTimeOfDaySelect && (
-							<LazyTimeOfDaySelector
-								selectedDate={scheduling.selectedDate}
-								onTimeOfDaySelect={onTimeOfDaySelect}
-							/>
-						)}
-						
-						{scheduling.type === 'time-slot-selection' && scheduling.selectedDate && 
-						 scheduling.timeOfDay && onTimeSlotSelect && (
-							<LazyTimeSlotSelector
-								selectedDate={scheduling.selectedDate}
-								timeOfDay={scheduling.timeOfDay}
-								onTimeSlotSelect={onTimeSlotSelect}
-							/>
-						)}
-						
-						{scheduling.type === 'confirmation' && scheduling.scheduledDateTime && (
-							<LazyScheduleConfirmation
-								scheduledDateTime={scheduling.scheduledDateTime}
-							/>
+		<div className={`flex flex-col max-w-full my-4 px-3 py-2 rounded-xl break-words relative ${
+			isUser 
+				? 'ml-auto mr-0 bg-light-message-bg-user dark:bg-dark-message-bg-user text-light-text dark:text-dark-text w-fit' 
+				: 'mr-0 ml-0 w-full min-h-12 min-w-30'
+		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`} data-testid={isUser ? "user-message" : "ai-message"}>
+			{/* Agent handles welcome messages - no special logic needed */}
+			<div className="text-base leading-6 min-h-4">
+				{/* Show content if available and not loading */}
+				{content && !isLoading && (
+					<div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
+						{isClient && ReactMarkdown ? (
+							<ReactMarkdown>{content}</ReactMarkdown>
+						) : (
+							<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
 						)}
 					</div>
 				)}
 				
-				{/* Display matter canvas */}
-				{matterCanvas && (
-					<MatterCanvas
-						service={matterCanvas.service}
-						matterSummary={matterCanvas.matterSummary}
-						qualityScore={matterCanvas.qualityScore}
-						answers={matterCanvas.answers}
-						isExpanded={matterCanvas.isExpanded}
-					/>
-				)}
-				
-				{/* Display matter creation components */}
-				{matterCreation && matterCreation.type === 'service-selection' && onServiceSelect && (
-					<ServiceSelectionButtons
-						services={matterCreation.availableServices}
-						onServiceSelect={onServiceSelect}
-					/>
-				)}
-				{matterCreation && matterCreation.type === 'urgency-selection' && onUrgencySelect && (
-					<UrgencySelectionButtons
-						onUrgencySelect={onUrgencySelect}
+				{/* Show AI thinking indicator for all loading states */}
+				{isLoading && (
+					<AIThinkingIndicator 
+						variant={aiState || 'thinking'} 
+						content={content || undefined}
+						toolMessage={toolMessage}
 					/>
 				)}
 				
 
 				
+				{/* Display matter canvas */}
+				{matterCanvas && (
+					<MatterCanvas
+						matterId={matterCanvas.matterId}
+						matterNumber={matterCanvas.matterNumber}
+						service={matterCanvas.service}
+						matterSummary={matterCanvas.matterSummary}
+						answers={matterCanvas.answers || {}}
+					/>
+				)}
+				
+				{/* Display payment embed */}
+				{paymentEmbed && (
+					<PaymentEmbed
+							paymentUrl={paymentEmbed.paymentUrl}
+							amount={paymentEmbed.amount}
+							description={paymentEmbed.description}
+						onPaymentComplete={(paymentId) => {
+							// Handle payment completion
+							showSuccess('Payment received', `Payment ${paymentId} completed successfully.`);
+							
+							// TODO: Trigger scheduling flow separately if needed
+							// This could be handled by the parent component or a separate service
+							// showInfo('Scheduling', 'We will contact you shortly to schedule your consultation.');
+						}}
+					/>
+				)}
+				
+				{/* Display contact form */}
+				{contactForm && onContactFormSubmit && (
+					<ContactForm
+						fields={contactForm.fields}
+						required={contactForm.required}
+						message={contactForm.message}
+						initialValues={contactForm.initialValues}
+						onSubmit={onContactFormSubmit}
+					/>
+				)}
+				
+				{/* Display document checklist */}
+				{documentChecklist && (
+					<DocumentChecklist
+						matterType={documentChecklist.matterType}
+						documents={documentChecklist.documents}
+						onDocumentUpload={(documentId, file) => {
+							// Handle document upload
+							if (file) {
+								// In a real implementation, this would upload to a file service
+								showSuccess('Document Uploaded', `Document "${file.name}" uploaded successfully for ${documentId}`);
+							}
+						}}
+						onDocumentRemove={(documentId) => {
+							// Handle document removal
+							showInfo('Document Removed', `Document ${documentId} removed from checklist`);
+						}}
+						onComplete={() => {
+							// Handle checklist completion
+							showSuccess('Checklist Complete', 'Document checklist completed! You can now proceed with your case.');
+						}}
+						onSkip={() => {
+							// Handle checklist skip
+							showInfo('Checklist Skipped', 'Document checklist skipped. You can return to it later if needed.');
+						}}
+					/>
+				)}
+
+				{/* Display lawyer search results */}
+				{lawyerSearchResults && (
+					<LawyerSearchResults
+						matterType={lawyerSearchResults.matterType}
+						lawyers={lawyerSearchResults.lawyers}
+						total={lawyerSearchResults.total}
+						onContactLawyer={(lawyer) => {
+							// Open lawyer contact options
+							if (lawyer.phone) {
+								globalThis.open(`tel:${lawyer.phone}`, '_self');
+							} else if (lawyer.email) {
+								globalThis.open(`mailto:${lawyer.email}?subject=Legal Consultation Request`, '_self');
+							} else if (lawyer.website) {
+								globalThis.open(lawyer.website, '_blank');
+							} else {
+								showInfo('Contact Information', `Contact ${lawyer.name} at ${lawyer.firm || 'their firm'} for a consultation.`);
+							}
+						}}
+						onSearchAgain={() => {
+							// Trigger new lawyer search
+							showInfo('New Search', 'Please ask the AI to search for lawyers again with different criteria.');
+						}}
+					/>
+				)}
+
+				
+				{/* Agent handles all matter creation and welcome messages - no components needed */}
+				
 				{/* Display files */}
-				{imageFiles.map(file => (
-					<ImagePreview key={file.url} file={file} />
+				{imageFiles.map((file, index) => (
+					<ImagePreview 
+						key={file.url || index} 
+						file={file} 
+						onImageClick={(file) => {
+							setSelectedMedia({
+								id: file.url,
+								name: file.name,
+								size: file.size,
+								type: file.type,
+								url: file.url,
+								timestamp: new Date(),
+								messageIndex: 0,
+								category: 'image' as const
+							});
+							setIsModalOpen(true);
+						}}
+					/>
 				))}
 				
 				{otherFiles.map((file, index) => (
-					<FilePreview key={index} file={file} />
+					<FilePreview 
+						key={`other-${index}`} 
+						file={file} 
+						onFileClick={(file) => {
+							// For documents and other files, trigger download
+							const link = globalThis.document.createElement('a');
+							link.href = file.url;
+							link.download = file.name;
+							link.click();
+						}}
+					/>
 				))}
 				{audioFiles.map((file, index) => (
-					<div class="message-media-container">
+					<div key={`audio-${index}`} className="my-2 rounded-xl overflow-hidden max-w-75 w-full">
 						<LazyMedia
 							src={file.url}
 							type={file.type}
 							alt={file.name}
-							className="message-media"
+							className="w-full h-auto block cursor-pointer"
 						/>
 					</div>
 				))}
 				{videoFiles.map((file, index) => (
-					<div class="message-media-container">
+					<div key={`video-${index}`} className="my-2 rounded-xl overflow-hidden max-w-75 w-full">
 						<LazyMedia
 							src={file.url}
 							type={file.type}
 							alt={file.name}
-							className="message-media"
+							className="w-full h-auto block cursor-pointer"
 						/>
 					</div>
 				))}
-				{imageFiles.map((file, index) => (
-					<ImagePreview key={index} file={file} />
-				))}
 				
-				{/* Show feedback UI only on AI messages and when not loading */}
-				{!isUser && !isLoading && showFeedback && (
-					<FeedbackUI
-						messageId={id}
-						sessionId={sessionId}
-						teamId={teamId}
-						onFeedbackSubmit={onFeedbackSubmit}
-					/>
+				{/* Modal for viewing images */}
+				{isModalOpen && selectedMedia && (
+					<Modal
+						isOpen={isModalOpen}
+						onClose={() => {
+							setIsModalOpen(false);
+							setSelectedMedia(null);
+						}}
+						type="fullscreen"
+						showCloseButton={true}
+					>
+						<MediaContent media={selectedMedia} />
+					</Modal>
 				)}
 			</div>
 		</div>
