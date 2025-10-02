@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { Button } from '../../ui/Button';
 import { SettingsDropdown } from '../components/SettingsDropdown';
 import Modal from '../../Modal';
@@ -40,6 +40,9 @@ export const AccountPage = ({
   const [domainError, setDomainError] = useState<string | null>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  
+  // Ref to store verification timeout ID for cleanup
+  const verificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Extract data loading logic to eliminate duplication
   const loadAccountData = async () => {
@@ -49,6 +52,7 @@ export const AccountPage = ({
       const linksData = mockUserDataService.getUserLinks();
       const emailData = mockUserDataService.getEmailSettings();
       const profile = mockUserDataService.getUserProfile();
+      
       
       setLinks(linksData);
       setEmailSettings(emailData);
@@ -66,6 +70,16 @@ export const AccountPage = ({
   useEffect(() => {
     loadAccountData();
   }, []);
+
+  // Cleanup verification timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (verificationTimeoutRef.current !== null) {
+        clearTimeout(verificationTimeoutRef.current);
+      }
+    };
+  }, []);
+
 
   // Listen for auth state changes to update tier
   useEffect(() => {
@@ -85,9 +99,6 @@ export const AccountPage = ({
   const upgradeButtonText = currentTier && upgradePath.length > 0
     ? t('settings:account.plan.upgradeButton', { plan: upgradePath[0].name })
     : t('settings:account.plan.currentButton');
-  const sectionTitle = currentTier
-    ? t(`settings:account.plan.sections.${currentTier}`)
-    : t('settings:account.plan.sections.default');
   const currentPlanFeatures = currentTier ? mockPricingDataService.getFeaturesForTier(currentTier) : [];
   const emailFallback = t('settings:account.email.addressFallback');
   const emailAddress = emailSettings?.email || emailFallback;
@@ -111,6 +122,15 @@ export const AccountPage = ({
     }
     if (upgradePath.length > 0) {
       const nextTier = upgradePath[0];
+      
+      // Actually upgrade the user's tier in mock data
+      const profile = mockUserDataService.getUserProfile();
+      const updatedProfile = { ...profile, subscriptionTier: nextTier.id as SubscriptionTier };
+      mockUserDataService.setUserProfile(updatedProfile);
+      
+      // Update local state
+      setCurrentTier(nextTier.id as SubscriptionTier);
+      
       showSuccess(
         t('settings:account.plan.toasts.upgradeWithPlan.title'),
         t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
@@ -121,7 +141,6 @@ export const AccountPage = ({
         t('settings:account.plan.toasts.highest.body')
       );
     }
-    // Here you would redirect to the upgrade page
   };
 
   const handleDeleteAccount = () => {
@@ -248,6 +267,42 @@ export const AccountPage = ({
       t('settings:account.links.addDomainToast.title'),
       t('settings:account.links.addDomainToast.body', { domain: normalized })
     );
+    
+    // Simulate domain verification process with cancellable timeout
+    // Clear any existing verification timeout to prevent race conditions
+    if (verificationTimeoutRef.current !== null) {
+      clearTimeout(verificationTimeoutRef.current);
+    }
+    
+    verificationTimeoutRef.current = setTimeout(() => {
+      // Use functional state update to avoid overwriting concurrent changes
+      setLinks(currentLinks => {
+        if (!currentLinks) return currentLinks;
+        
+        const updatedVerifyLinks = {
+          ...currentLinks,
+          customDomains: currentLinks.customDomains?.map(domain => 
+            domain.domain === normalized 
+              ? { ...domain, verified: true, verifiedAt: new Date().toISOString() }
+              : domain
+          ) || []
+        };
+        
+        // Update the mock service with the latest state
+        mockUserDataService.setUserLinks(updatedVerifyLinks);
+        
+        // Show success toast with translated strings
+        showSuccess(
+          t('settings:account.links.verifiedToast.title'),
+          t('settings:account.links.verifiedToast.body', { domain: normalized })
+        );
+        
+        return updatedVerifyLinks;
+      });
+      
+      // Clear the timeout reference
+      verificationTimeoutRef.current = null;
+    }, 3000); // Simulate 3-second verification process
   };
 
   const handleAddLinkedIn = () => {
@@ -329,12 +384,20 @@ export const AccountPage = ({
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-0">
-          {/* Get ChatGPT Plus Section */}
+          {/* Current Plan Section */}
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {sectionTitle}
+                {currentTier 
+                  ? t('settings:account.plan.currentPlanLabel', { tier: t(`settings:account.plan.tiers.${currentTier}`) })
+                  : t('settings:account.plan.currentPlanLabel', { tier: '' })
+                }
               </h3>
+              {currentTier && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {t(`settings:account.plan.descriptions.${currentTier}`)}
+                </p>
+              )}
             </div>
             <div className="ml-4">
               <Button

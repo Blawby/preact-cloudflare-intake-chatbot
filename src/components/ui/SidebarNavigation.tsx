@@ -49,15 +49,38 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
                     onItemClick(item.id);
                   }
                 }}
+                onTouchStart={(e) => {
+                  const touch = e.touches[0];
+                  e.currentTarget.dataset.touchStartX = String(touch.clientX);
+                  e.currentTarget.dataset.touchStartY = String(touch.clientY);
+                }}
+                onTouchEnd={(e) => {
+                  const touch = e.changedTouches[0];
+                  const startX = Number(e.currentTarget.dataset.touchStartX || 0);
+                  const startY = Number(e.currentTarget.dataset.touchStartY || 0);
+                  const deltaX = Math.abs(touch.clientX - startX);
+                  const deltaY = Math.abs(touch.clientY - startY);
+                  
+                  // Only prevent default for taps (not scrolls)
+                  if (deltaX < 10 && deltaY < 10) {
+                    e.preventDefault();
+                  }
+                  
+                  if (isAction && item.onClick) {
+                    item.onClick();
+                  } else {
+                    onItemClick(item.id);
+                  }
+                }}
                 className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors rounded-lg',
+                  'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors rounded-lg touch-manipulation',
                   isAction
                     ? isDanger
-                      ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30'
+                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
                     : isActive
                       ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
                 )}
               >
                 <IconComponent className="w-5 h-5 flex-shrink-0" />

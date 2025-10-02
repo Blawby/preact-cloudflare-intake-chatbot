@@ -127,7 +127,11 @@ export const SettingsPage = ({
         {/* Close Button - Top of Sidebar */}
         <button
           onClick={handleBack}
-          className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            handleBack();
+          }}
+          className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 touch-manipulation"
           aria-label={t('settings:navigation.close')}
         >
           <XMarkIcon className="w-5 h-5 flex-shrink-0" />

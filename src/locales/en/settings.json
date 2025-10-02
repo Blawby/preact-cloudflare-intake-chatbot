@@ -50,6 +50,17 @@
     "loadingError": "Failed to load account data",
     "retry": "Retry",
     "plan": {
+      "currentPlanLabel": "Current Plan: {{tier}}",
+      "tiers": {
+        "free": "Free",
+        "plus": "Plus",
+        "business": "Business"
+      },
+      "descriptions": {
+        "free": "Basic features with limited usage",
+        "plus": "Enhanced features with higher limits",
+        "business": "Full features with unlimited usage"
+      },
       "sections": {
         "free": "Get ChatGPT Plus",
         "plus": "Get ChatGPT Business",
@@ -93,6 +104,10 @@
       "githubToast": {
         "title": "GitHub",
         "body": "Redirecting to GitHub connection..."
+      },
+      "verifiedToast": {
+        "title": "Domain Verified",
+        "body": "Domain {{domain}} has been successfully verified!"
       },
       "domainPlaceholder": "example.com"
     },
