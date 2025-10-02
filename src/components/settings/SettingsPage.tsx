@@ -105,7 +105,7 @@ export const SettingsPage = ({
       case 'mfa-enrollment':
         return <MFAEnrollmentPage className="h-full" />;
       default:
-        return <AccountPage isMobile={isMobile} onClose={onClose} className="h-full" />;
+        return <GeneralPage isMobile={isMobile} onClose={onClose} className="h-full" />;
     }
   };
 

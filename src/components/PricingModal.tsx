@@ -226,7 +226,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   // Load user's current country preference
   useEffect(() => {
     const preferences = mockUserDataService.getPreferences();
-    setSelectedCountry(preferences.country || 'us');
+    setSelectedCountry(preferences.country ?? 'us');
   }, []);
 
   const handleCountryChange = (country: string) => {

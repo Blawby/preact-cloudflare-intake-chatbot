@@ -3,6 +3,7 @@ import { createPortal } from 'preact/compat';
 import { useEffect, useState } from 'preact/hooks';
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from 'framer-motion';
+import { THEME } from '../utils/constants';
 
 interface ModalProps {
     isOpen: boolean;
@@ -73,7 +74,7 @@ const Modal: FunctionComponent<ModalProps> = ({
             {isOpen && (
                 <motion.div 
                     className={`fixed inset-0 ${shouldUseDrawer ? '' : 'flex items-center justify-center p-4'}`}
-                    style={{ zIndex: 2000 }}
+                    style={{ zIndex: THEME.zIndex.modal }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}

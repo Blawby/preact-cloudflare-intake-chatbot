@@ -17,6 +17,7 @@ import ActivityTimeline from './ActivityTimeline';
 import MatterTab from './MatterTab';
 import { useMatterState } from '../hooks/useMatterState';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
+import { THEME } from '../utils/constants';
 
 // Simple messages object for localization
 const messages = {
@@ -192,7 +193,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           
           {/* Mobile Sidebar - Conditionally rendered for accessibility */}
           {isMobileSidebarOpen && (
-            <div ref={mobileSidebarRef} className="fixed inset-0 z-[2000] lg:hidden">
+            <div ref={mobileSidebarRef} className="fixed inset-0 lg:hidden" style={{ zIndex: THEME.zIndex.fileMenu }}>
               {/* Overlay */}
               <button 
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm w-full h-full focus:outline-none focus:ring-2 focus:ring-accent-500"

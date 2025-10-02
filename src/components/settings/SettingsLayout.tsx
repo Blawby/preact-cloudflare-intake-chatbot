@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SettingsPage } from './SettingsPage';
+import { THEME } from '../../utils/constants';
 
 interface SettingsLayoutProps {
   isMobile?: boolean;
@@ -65,11 +66,12 @@ export const SettingsLayout = ({
         <>
           {/* Backdrop */}
           <motion.div
-            className={`fixed inset-0 z-[1500] backdrop-blur-sm ${
+            className={`fixed inset-0 backdrop-blur-sm ${
               isMobile 
                 ? 'bg-black bg-opacity-50' // Darker backdrop for mobile
                 : 'bg-black bg-opacity-20' // Lighter backdrop for desktop
             }`}
+            style={{ zIndex: THEME.zIndex.settings }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -79,11 +81,12 @@ export const SettingsLayout = ({
           {/* Settings Panel */}
           <motion.div
             ref={dropdownRef}
-            className={`fixed bg-white dark:bg-dark-bg z-[1600] overflow-hidden rounded-lg shadow-2xl ${
+            className={`fixed bg-white dark:bg-dark-bg overflow-hidden rounded-lg shadow-2xl ${
               isMobile 
                 ? 'inset-x-0 bottom-0 top-0' // Full screen on mobile
                 : 'top-8 left-8 right-8 bottom-8 max-w-4xl mx-auto' // Centered modal on desktop
             } ${className}`}
+            style={{ zIndex: THEME.zIndex.settingsContent }}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -95,11 +98,14 @@ export const SettingsLayout = ({
             aria-modal="true"
             aria-labelledby="settings-dialog-title"
           >
-            <SettingsPage 
-              isMobile={isMobile}
-              onClose={handleClose}
-              className="h-full"
-            />
+            <div className="h-full">
+              <h1 id="settings-dialog-title" className="sr-only">Settings</h1>
+              <SettingsPage 
+                isMobile={isMobile}
+                onClose={handleClose}
+                className="h-full"
+              />
+            </div>
           </motion.div>
         </>
       )}

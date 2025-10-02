@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { PlusIcon, PhotoIcon, CameraIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 import CameraModal from './CameraModal';
+import { THEME } from '../utils/constants';
 
 interface FileMenuProps {
   onFileSelect: (files: File[]) => void;
@@ -168,12 +169,13 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
           role="menu"
           aria-labelledby="attachment-menu-button"
           className={`
-            absolute bottom-full left-0 mb-2 z-[2000] min-w-[220px]
+            absolute bottom-full left-0 mb-2 min-w-[220px]
             rounded-lg border p-1 shadow-lg transition-all duration-200
             bg-light-input-bg border-light-border
             dark:bg-dark-input-bg dark:border-dark-border
             ${isClosing ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}
           `}
+          style={{ zIndex: THEME.zIndex.fileMenu }}
         >
           <Button
             type="button"
@@ -215,9 +217,10 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
       {errorMessage && (
         <div
           role="alert" aria-live="polite"
-          className="absolute bottom-full left-0 mb-2 min-w-[250px] rounded-lg p-3 z-[2001] shadow-lg
+          className="absolute bottom-full left-0 mb-2 min-w-[250px] rounded-lg p-3 shadow-lg
                      bg-red-50 border border-red-200 text-red-700
                      dark:bg-red-900/20 dark:border-red-800 dark:text-red-300"
+          style={{ zIndex: THEME.zIndex.fileMenu + 1 }}
         >
           <div className="flex items-start gap-2">
             <div className="flex-1 text-sm">{errorMessage}</div>

@@ -13,12 +13,21 @@
 
   /* Global link styles */
   a {
-    @apply no-underline font-bold text-accent-500 hover:text-accent-600 transition-colors duration-200;
+    @apply text-accent-500 hover:text-accent-600 transition-colors duration-200;
   }
 
   /* Dark mode link styles */
   .dark a {
     @apply text-accent-400 hover:text-accent-300;
+  }
+
+  /* Utility classes for specific link styles */
+  .link-plain {
+    @apply no-underline font-normal;
+  }
+
+  .link-btn {
+    @apply no-underline font-bold;
   }
 
   /* Hide scrollbars when modal is open */

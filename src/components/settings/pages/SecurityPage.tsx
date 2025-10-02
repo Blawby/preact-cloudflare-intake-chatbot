@@ -22,6 +22,7 @@ export const SecurityPage = ({
   const { navigate } = useNavigation();
   const [settings, setSettings] = useState<MockSecuritySettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showDisableMFAConfirm, setShowDisableMFAConfirm] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -41,10 +42,13 @@ export const SecurityPage = ({
     try {
       isLoadingRef.current = true;
       setLoading(true);
+      setError(null);
       const securitySettings = mockUserDataService.getSecuritySettings();
       setSettings(securitySettings);
-      } catch (_error) {
-        // Failed to load security settings
+    } catch (error) {
+      // Failed to load security settings
+      console.error('Failed to load security settings:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load security settings');
     } finally {
       setLoading(false);
       isLoadingRef.current = false;
@@ -152,6 +156,29 @@ export const SecurityPage = ({
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
         <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`h-full flex items-center justify-center ${className}`}>
+        <div className="text-center">
+          <div className="text-red-600 dark:text-red-400 mb-4">
+            <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <p className="text-sm font-medium">Failed to load security settings</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{error}</p>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={loadSettings}
+          >
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }

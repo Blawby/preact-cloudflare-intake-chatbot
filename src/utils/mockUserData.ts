@@ -386,12 +386,26 @@ const STORAGE_KEYS = {
 } as const;
 
 class MockUserDataService {
+  // Safe storage access helper
+  private getStorage(): Storage | null {
+    return typeof window !== 'undefined' && window.localStorage ? window.localStorage : null;
+  }
+
   // User Profile Methods
   getUserProfile(): MockUserProfile {
+    const storage = this.getStorage();
+    if (!storage) {
+      return getDefaultMockUser();
+    }
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+      const stored = storage.getItem(STORAGE_KEYS.USER_PROFILE);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default user
+        const defaultUser = getDefaultMockUser();
+        const hydrated = { ...defaultUser, ...parsed };
+        return hydrated;
       }
     } catch (_error) {
       // Failed to parse stored user profile
@@ -404,11 +418,19 @@ class MockUserDataService {
   }
 
   setUserProfile(profile: Partial<MockUserProfile>): MockUserProfile {
+    const storage = this.getStorage();
+    if (!storage) {
+      return getDefaultMockUser();
+    }
+
     let current: MockUserProfile;
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+      const stored = storage.getItem(STORAGE_KEYS.USER_PROFILE);
       if (stored) {
-        current = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default user
+        const defaultUser = getDefaultMockUser();
+        current = { ...defaultUser, ...parsed };
       } else {
         current = getDefaultMockUser();
       }
@@ -423,16 +445,23 @@ class MockUserDataService {
       updatedAt: new Date().toISOString()
     };
     
-    localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updated));
+    storage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updated));
     return updated;
   }
 
   // Preferences Methods
   getPreferences(): MockUserPreferences {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_PREFERENCES;
+    }
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
+      const stored = storage.getItem(STORAGE_KEYS.PREFERENCES);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default preferences
+        return { ...DEFAULT_PREFERENCES, ...parsed };
       }
     } catch (_error) {
       // Failed to parse stored preferences
@@ -444,11 +473,18 @@ class MockUserDataService {
   }
 
   setPreferences(preferences: Partial<MockUserPreferences>): MockUserPreferences {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_PREFERENCES;
+    }
+
     let current: MockUserPreferences;
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
+      const stored = storage.getItem(STORAGE_KEYS.PREFERENCES);
       if (stored) {
-        current = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default preferences
+        current = { ...DEFAULT_PREFERENCES, ...parsed };
       } else {
         current = DEFAULT_PREFERENCES;
       }
@@ -459,16 +495,23 @@ class MockUserDataService {
     
     const updated = { ...current, ...preferences };
     
-    localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(updated));
+    storage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(updated));
     return updated;
   }
 
   // Security Settings Methods
   getSecuritySettings(): MockSecuritySettings {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_SECURITY_SETTINGS;
+    }
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.SECURITY);
+      const stored = storage.getItem(STORAGE_KEYS.SECURITY);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default security settings
+        return { ...DEFAULT_SECURITY_SETTINGS, ...parsed };
       }
     } catch (_error) {
       // Failed to parse stored security settings
@@ -480,11 +523,18 @@ class MockUserDataService {
   }
 
   setSecuritySettings(settings: Partial<MockSecuritySettings>): MockSecuritySettings {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_SECURITY_SETTINGS;
+    }
+
     let current: MockSecuritySettings;
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.SECURITY);
+      const stored = storage.getItem(STORAGE_KEYS.SECURITY);
       if (stored) {
-        current = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default security settings
+        current = { ...DEFAULT_SECURITY_SETTINGS, ...parsed };
       } else {
         current = DEFAULT_SECURITY_SETTINGS;
       }
@@ -495,7 +545,7 @@ class MockUserDataService {
     
     const updated = { ...current, ...settings };
     
-    localStorage.setItem(STORAGE_KEYS.SECURITY, JSON.stringify(updated));
+    storage.setItem(STORAGE_KEYS.SECURITY, JSON.stringify(updated));
     return updated;
   }
 
@@ -569,35 +619,46 @@ class MockUserDataService {
 
   // Utility Methods
   resetToDefaults(): void {
-    localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-    localStorage.removeItem(STORAGE_KEYS.PREFERENCES);
-    localStorage.removeItem(STORAGE_KEYS.SECURITY);
-    localStorage.removeItem(STORAGE_KEYS.LINKS);
-    localStorage.removeItem(STORAGE_KEYS.EMAIL);
-    localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
+    const storage = this.getStorage();
+    if (!storage) {
+      return;
+    }
+
+    storage.removeItem(STORAGE_KEYS.USER_PROFILE);
+    storage.removeItem(STORAGE_KEYS.PREFERENCES);
+    storage.removeItem(STORAGE_KEYS.SECURITY);
+    storage.removeItem(STORAGE_KEYS.LINKS);
+    storage.removeItem(STORAGE_KEYS.EMAIL);
+    storage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
   }
 
   deleteAccount(): Promise<void> {
     return new Promise((resolve) => {
       setTimeout(() => {
+        const storage = this.getStorage();
+        if (!storage) {
+          resolve();
+          return;
+        }
+
         // Clear all user data
         this.resetToDefaults();
         
         // Also clear any other user-related data
-        localStorage.removeItem('mockUser');
-        localStorage.removeItem('conversations');
-        localStorage.removeItem('chatHistory');
-        localStorage.removeItem('uploadedFiles');
+        storage.removeItem('mockUser');
+        storage.removeItem('conversations');
+        storage.removeItem('chatHistory');
+        storage.removeItem('uploadedFiles');
         
         // Clear any other app-specific data that might exist
         const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
           if (key && (key.startsWith('user_') || key.startsWith('chat_') || key.startsWith('conversation_'))) {
             keysToRemove.push(key);
           }
         }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+        keysToRemove.forEach(key => storage.removeItem(key));
         
         resolve();
       }, 500); // Simulate API delay
@@ -606,10 +667,17 @@ class MockUserDataService {
 
   // Links Methods
   getUserLinks(): MockUserLinks {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_MOCK_LINKS;
+    }
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.LINKS);
+      const stored = storage.getItem(STORAGE_KEYS.LINKS);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default links
+        return { ...DEFAULT_MOCK_LINKS, ...parsed };
       }
     } catch (_error) {
       // Failed to parse stored links
@@ -621,11 +689,18 @@ class MockUserDataService {
   }
 
   setUserLinks(links: Partial<MockUserLinks>): MockUserLinks {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_MOCK_LINKS;
+    }
+
     let current: MockUserLinks;
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.LINKS);
+      const stored = storage.getItem(STORAGE_KEYS.LINKS);
       if (stored) {
-        current = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default links
+        current = { ...DEFAULT_MOCK_LINKS, ...parsed };
       } else {
         current = DEFAULT_MOCK_LINKS;
       }
@@ -638,16 +713,23 @@ class MockUserDataService {
       ...links
     };
     
-    localStorage.setItem(STORAGE_KEYS.LINKS, JSON.stringify(updated));
+    storage.setItem(STORAGE_KEYS.LINKS, JSON.stringify(updated));
     return updated;
   }
 
   // Email Settings Methods
   getEmailSettings(): MockEmailSettings {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_MOCK_EMAIL;
+    }
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.EMAIL);
+      const stored = storage.getItem(STORAGE_KEYS.EMAIL);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default email settings
+        return { ...DEFAULT_MOCK_EMAIL, ...parsed };
       }
     } catch (_error) {
       // Failed to parse stored email settings
@@ -659,11 +741,18 @@ class MockUserDataService {
   }
 
   setEmailSettings(emailSettings: Partial<MockEmailSettings>): MockEmailSettings {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_MOCK_EMAIL;
+    }
+
     let current: MockEmailSettings;
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.EMAIL);
+      const stored = storage.getItem(STORAGE_KEYS.EMAIL);
       if (stored) {
-        current = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default email settings
+        current = { ...DEFAULT_MOCK_EMAIL, ...parsed };
       } else {
         current = DEFAULT_MOCK_EMAIL;
       }
@@ -676,16 +765,23 @@ class MockUserDataService {
       ...emailSettings
     };
     
-    localStorage.setItem(STORAGE_KEYS.EMAIL, JSON.stringify(updated));
+    storage.setItem(STORAGE_KEYS.EMAIL, JSON.stringify(updated));
     return updated;
   }
 
   // Notification Settings Methods
   getNotificationSettings(): MockNotificationSettings {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_MOCK_NOTIFICATIONS;
+    }
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
+      const stored = storage.getItem(STORAGE_KEYS.NOTIFICATIONS);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default notification settings
+        return { ...DEFAULT_MOCK_NOTIFICATIONS, ...parsed };
       }
     } catch (_error) {
       // Failed to parse stored notification settings
@@ -697,11 +793,18 @@ class MockUserDataService {
   }
 
   setNotificationSettings(notificationSettings: Partial<MockNotificationSettings>): MockNotificationSettings {
+    const storage = this.getStorage();
+    if (!storage) {
+      return DEFAULT_MOCK_NOTIFICATIONS;
+    }
+
     let current: MockNotificationSettings;
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
+      const stored = storage.getItem(STORAGE_KEYS.NOTIFICATIONS);
       if (stored) {
-        current = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Hydrate missing fields from default notification settings
+        current = { ...DEFAULT_MOCK_NOTIFICATIONS, ...parsed };
       } else {
         current = DEFAULT_MOCK_NOTIFICATIONS;
       }
@@ -714,7 +817,7 @@ class MockUserDataService {
       ...notificationSettings
     };
     
-    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(updated));
+    storage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(updated));
     return updated;
   }
 

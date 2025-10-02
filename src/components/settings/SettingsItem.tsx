@@ -168,6 +168,15 @@ export const SettingsItem = ({
                     </option>
                   ))}
                 </select>
+              ) : inputType === 'textarea' ? (
+                <textarea
+                  value={String(value || '')}
+                  onChange={(e) => onChange?.((e.target as HTMLTextAreaElement).value)}
+                  placeholder={placeholder}
+                  disabled={disabled}
+                  rows={3}
+                  className="mt-2 w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent resize-vertical"
+                />
               ) : (
                 <input
                   type={inputType}

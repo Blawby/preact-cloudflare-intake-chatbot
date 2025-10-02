@@ -114,7 +114,8 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
         image: 'https://i.pravatar.cc/300?u=google-user',
         teamId: null,
         role: 'user',
-        phone: null
+        phone: null,
+        subscriptionTier: 'free' // Default to free tier
       };
       localStorage.setItem('mockUser', JSON.stringify(mockUser));
       

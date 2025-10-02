@@ -361,6 +361,22 @@ function MainApp() {
 							// Dispatch event with the fresh user data
 							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: freshUserData }));
 						}
+					} else {
+						// No existing user - create a fallback user record for first-time users
+						const fallbackUserData = {
+							id: `fallback-user-${Date.now()}`,
+							name: 'New User',
+							email: 'user@example.com',
+							image: null,
+							teamId: null,
+							role: 'user',
+							phone: null,
+							subscriptionTier: tier
+						};
+						localStorage.setItem('mockUser', JSON.stringify(fallbackUserData));
+						
+						// Dispatch event with the fallback user data
+						window.dispatchEvent(new CustomEvent('authStateChanged', { detail: fallbackUserData }));
 					}
 					
 					// Always ensure these cleanup operations run

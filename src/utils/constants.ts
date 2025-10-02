@@ -1,10 +1,16 @@
-/**
- * Shared constants used across the application
- * Centralizes magic numbers and configuration values to prevent drift
- */
+// Shared constants for the application
 
-/**
- * Minimum length for matter summary to be considered complete
- * Used in both frontend validation and backend analysis
- */
+export const Z_INDEX = {
+  layout: 1900,
+  fileMenu: 2000,
+  modal: 2100,
+  settings: 1500,
+  settingsContent: 1600
+} as const;
+
+export const THEME = {
+  zIndex: Z_INDEX
+} as const;
+
+// Matter analysis constants
 export const SUMMARY_MIN_LENGTH = 50;

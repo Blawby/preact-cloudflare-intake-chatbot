@@ -122,7 +122,7 @@ export const AccountPage = ({
       setTimeout(() => {
         navigate('/');
       }, 1000);
-    } catch (error) {
+    } catch (_error) {
       setDeleteError('Failed to delete account. Please try again.');
       showError('Account deletion failed', 'There was an error deleting your account. Please try again.');
     }
@@ -152,9 +152,9 @@ export const AccountPage = ({
       return 'Please enter a valid domain format (e.g., example.com)';
     }
     
-    // Check for duplicates
-    const existingDomains = links?.customDomains?.map(d => d.domain) || [];
-    if (existingDomains.includes(trimmed)) {
+    // Check for duplicates (case-insensitive)
+    const existingDomains = links?.customDomains?.map(d => d.domain.toLowerCase()) || [];
+    if (existingDomains.includes(trimmed.toLowerCase())) {
       return 'This domain has already been added';
     }
     
@@ -181,13 +181,13 @@ export const AccountPage = ({
       return;
     }
 
-    const trimmedDomain = domainInput.trim();
+    const normalized = domainInput.trim().toLowerCase();
     const updatedLinks = mockUserDataService.setUserLinks({
-      selectedDomain: trimmedDomain,
+      selectedDomain: normalized,
       customDomains: [
         ...(links?.customDomains || []),
         {
-          domain: trimmedDomain,
+          domain: normalized,
           verified: false,
           verifiedAt: null
         }
@@ -196,7 +196,7 @@ export const AccountPage = ({
     
     setLinks(updatedLinks);
     handleCloseDomainModal();
-    showSuccess('Domain added', `Domain ${trimmedDomain} has been added and is pending verification.`);
+    showSuccess('Domain added', `Domain ${normalized} has been added and is pending verification.`);
   };
 
   const handleAddLinkedIn = () => {
@@ -431,7 +431,12 @@ export const AccountPage = ({
         type="modal"
         disableBackdropClick={true}
       >
-        <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div 
+          className="space-y-4" 
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}
+          role="presentation"
+        >
           {/* Confirmation Content */}
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -445,7 +450,12 @@ export const AccountPage = ({
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   This action cannot be undone. All your data, conversations, and settings will be permanently deleted.
                 </p>
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4" onClick={(e) => e.stopPropagation()}>
+                <div 
+                  className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4" 
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}
+                  role="presentation"
+                >
                   <p className="text-sm text-gray-700 dark:text-gray-300">
                     <strong>This will permanently delete:</strong>
                   </p>
@@ -458,7 +468,12 @@ export const AccountPage = ({
                 </div>
                 
                 {/* Confirmation Input */}
-                <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                <div 
+                  className="space-y-2" 
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}
+                  role="presentation"
+                >
                   <label htmlFor="delete-confirm" className="block text-sm font-medium text-gray-900 dark:text-gray-100">
                     To confirm, type your email address: <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{emailSettings?.email || 'chris@whynot.earth'}</span>
                   </label>
@@ -500,7 +515,12 @@ export const AccountPage = ({
             </div>
           </div>
           
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="flex gap-3 justify-end pt-4 border-t border-gray-200 dark:border-gray-700" 
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}
+            role="presentation"
+          >
             <Button
               variant="secondary"
               size="sm"
