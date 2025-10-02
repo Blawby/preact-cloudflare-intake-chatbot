@@ -72,7 +72,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterS
 
   return (
     <div className="h-full">
-      <div className={`flex flex-col h-full bg-light-card-bg dark:bg-dark-card-bg transition-all duration-300 ${shouldShowCollapsed ? 'w-12' : 'w-58'}`}>
+      <div className={`flex flex-col h-full bg-light-card-bg dark:bg-dark-card-bg transition-all duration-300 ${shouldShowCollapsed ? 'w-12' : 'w-60'}`}>
       {/* Header Section - Logo and Hamburger Bars3Icon */}
       <div className={`flex items-center border-b border-gray-200 dark:border-dark-border px-3 py-2 ${shouldShowCollapsed ? 'justify-center' : 'justify-between'}`}>
         {shouldShowCollapsed ? (
