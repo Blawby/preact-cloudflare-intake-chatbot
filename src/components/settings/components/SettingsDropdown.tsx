@@ -11,6 +11,7 @@ export interface SettingsDropdownProps {
   disabled?: boolean;
   className?: string;
   direction?: 'up' | 'down';
+  mobile?: boolean;
 }
 
 export const SettingsDropdown = ({
@@ -21,7 +22,8 @@ export const SettingsDropdown = ({
   description,
   disabled = false,
   className = '',
-  direction = 'down'
+  direction = 'down',
+  mobile = false
 }: SettingsDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -99,6 +101,38 @@ export const SettingsDropdown = ({
   const selectedOption = options.find(opt => opt.value === value);
   const _focusedOptionId = focusedIndex >= 0 ? `${dropdownId}-option-${options[focusedIndex]?.value}` : undefined;
 
+  // Mobile layout - full width with arrow
+  if (mobile) {
+    return (
+      <div className={cn('px-4 py-3', className)}>
+        <button
+          ref={buttonRef}
+          onClick={() => setIsOpen(!isOpen)}
+          disabled={disabled}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-controls={listboxId}
+          aria-disabled={disabled}
+          className={cn(
+            'w-full flex items-center justify-between px-0 py-0 text-sm text-gray-900 dark:text-gray-100',
+            'hover:bg-transparent focus:outline-none',
+            disabled && 'opacity-50 cursor-not-allowed'
+          )}
+        >
+          <div className="flex flex-col items-start">
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{label}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{selectedOption?.label || value}</span>
+          </div>
+          <ChevronDownIcon className={cn(
+            'w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform',
+            isOpen && 'rotate-180'
+          )} />
+        </button>
+      </div>
+    );
+  }
+
+  // Desktop layout - original
   return (
     <div className={cn('py-3', className)}>
       <div className="flex items-center justify-between">

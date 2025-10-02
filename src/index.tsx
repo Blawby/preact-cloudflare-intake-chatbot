@@ -280,6 +280,7 @@ function MainApp() {
 				onTabChange={setCurrentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
+				isSettingsModalOpen={showSettingsModal}
 				teamConfig={{
 					name: teamConfig.name,
 					profileImage: teamConfig.profileImage,
@@ -326,9 +327,10 @@ function MainApp() {
 			{/* Settings Modal */}
 			{showSettingsModal && (
 				<SettingsLayout
-					isMobile={false}
+					isMobile={typeof window !== 'undefined' && window.innerWidth < 1024}
 					onClose={() => {
 						setShowSettingsModal(false);
+						setIsMobileSidebarOpen(false); // Close mobile sidebar when settings close
 						navigate('/');
 					}}
 					className="h-full"

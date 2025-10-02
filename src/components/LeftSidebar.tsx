@@ -1,7 +1,8 @@
 import {
   ChatBubbleOvalLeftEllipsisIcon,
   DocumentIcon,
-  Bars3Icon
+  Bars3Icon,
+  XMarkIcon
 } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 import { useState } from 'preact/hooks';
@@ -12,6 +13,7 @@ interface LeftSidebarProps {
   currentRoute: string;
   onGoToChats?: () => void;
   onGoToMatter?: () => void;
+  onClose?: () => void;
   matterStatus?: MatterStatus;
   teamConfig?: {
     name: string;
@@ -20,7 +22,7 @@ interface LeftSidebarProps {
   };
 }
 
-const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, teamConfig }: LeftSidebarProps) => {
+const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterStatus, teamConfig }: LeftSidebarProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   // On mobile, always show expanded (no collapse functionality)
@@ -41,10 +43,10 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
   };
 
   return (
-    <div className="p-2 h-full">
-      <div className={`flex flex-col h-full bg-light-card-bg dark:bg-dark-card-bg rounded-lg transition-all duration-300 ${shouldShowCollapsed ? 'w-12' : 'w-60'}`}>
+    <div className="h-full">
+      <div className={`flex flex-col h-full bg-light-card-bg dark:bg-dark-card-bg transition-all duration-300 ${shouldShowCollapsed ? 'w-12' : 'w-58'}`}>
       {/* Header Section - Logo and Hamburger Bars3Icon */}
-      <div className={`flex items-center border-b border-gray-200 dark:border-dark-border ${shouldShowCollapsed ? 'py-4' : 'p-4'} ${shouldShowCollapsed ? 'justify-center' : 'justify-between'}`}>
+      <div className={`flex items-center border-b border-gray-200 dark:border-dark-border px-3 py-2 ${shouldShowCollapsed ? 'justify-center' : 'justify-between'}`}>
         {shouldShowCollapsed ? (
           /* Collapsed state - Logo with hover hamburger menu */
           <div className="relative group w-full h-10 flex items-center justify-center">
@@ -75,7 +77,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
             </div>
           </div>
         ) : (
-          /* Expanded state - Logo and hamburger menu */
+          /* Expanded state - Logo and close/collapse button */
           <>
             {teamConfig?.profileImage && (
               <img 
@@ -84,19 +86,31 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
                 className="w-8 h-8 rounded-lg object-cover"
               />
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsCollapsed(true)}
-              icon={<Bars3Icon className="w-5 h-5" />}
-              aria-label="Collapse sidebar"
-            />
+            {onClose ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                icon={<XMarkIcon className="w-5 h-5" />}
+                aria-label="Close sidebar"
+                className="w-8 h-8 p-0"
+              />
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCollapsed(true)}
+                icon={<Bars3Icon className="w-5 h-5" />}
+                aria-label="Collapse sidebar"
+                className="w-8 h-8 p-0"
+              />
+            )}
           </>
         )}
       </div>
 
       {/* Navigation Section */}
-      <div className={`flex-1 ${shouldShowCollapsed ? 'py-4' : 'p-4'}`}>
+      <div className={`flex-1 p-2`}>
         <div className="flex flex-col gap-2">
           {/* Chats Navigation */}
           <button
@@ -104,7 +118,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
             className={`flex items-center w-full rounded-lg text-left transition-colors ${
               shouldShowCollapsed 
                 ? 'justify-center py-2' 
-                : 'gap-3 px-3 py-2'
+                : 'gap-2 px-2 py-2'
             } ${
               currentRoute === 'chats' 
                 ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' 
@@ -124,7 +138,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
               className={`flex items-center w-full rounded-lg text-left transition-colors ${
                 shouldShowCollapsed 
                   ? 'justify-center py-2' 
-                  : 'gap-3 px-3 py-2'
+                  : 'gap-2 px-2 py-2'
               } ${
                 currentRoute === 'matter' 
                   ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' 

@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useRef, useEffect } from 'preact/hooks';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TeamNotFound } from './TeamNotFound';
 import LeftSidebar from './LeftSidebar';
@@ -32,6 +33,7 @@ interface AppLayoutProps {
   onTabChange: (tab: 'chats' | 'matter') => void;
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: (open: boolean) => void;
+  isSettingsModalOpen?: boolean;
   teamConfig: {
     name: string;
     profileImage: string | null;
@@ -52,6 +54,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   onTabChange,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
+  isSettingsModalOpen = false,
   teamConfig,
   messages: chatMessages,
   onRequestConsultation,
@@ -61,6 +64,9 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
 }) => {
   // Matter state management
   const { matter, status: matterStatus } = useMatterState(chatMessages);
+  
+  // Mobile detection
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
   
   // Focus management for mobile sidebar
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -173,8 +179,8 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
 
   return (
     <div className="max-md:h-[100dvh] md:h-screen w-full flex bg-white dark:bg-dark-bg">
-      {/* Left Sidebar - Desktop: always visible, Mobile: slide-out */}
-      {features.enableLeftSidebar && (
+      {/* Left Sidebar - Desktop: always visible, Mobile: slide-out, Hidden when settings modal is open on mobile */}
+      {features.enableLeftSidebar && !(isMobile && isSettingsModalOpen) && (
         <>
           {/* Desktop Sidebar */}
           <div className="overflow-y-auto hidden lg:block">
@@ -192,43 +198,64 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           </div>
           
           {/* Mobile Sidebar - Conditionally rendered for accessibility */}
-          {isMobileSidebarOpen && (
-            <div ref={mobileSidebarRef} className="fixed inset-0 lg:hidden" style={{ zIndex: THEME.zIndex.fileMenu }}>
-              {/* Overlay */}
-              <button 
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm w-full h-full focus:outline-none focus:ring-2 focus:ring-accent-500"
-                onClick={() => onToggleMobileSidebar(false)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onToggleMobileSidebar(false);
-                  }
-                }}
-                aria-label="Close mobile sidebar"
-                type="button"
-              />
-              {/* Sidebar */}
-              <div className="relative w-64 h-full overflow-y-auto overscroll-contain bg-light-card-bg dark:bg-dark-card-bg">
-                <LeftSidebar
-                  currentRoute={currentTab}
-                  onGoToChats={() => {
-                    handleGoToChats();
-                    onToggleMobileSidebar(false);
+          <AnimatePresence>
+            {isMobileSidebarOpen && (
+              <motion.div 
+                ref={mobileSidebarRef} 
+                className="fixed inset-0 lg:hidden" 
+                style={{ zIndex: THEME.zIndex.fileMenu }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {/* Overlay */}
+                <button 
+                  className="absolute inset-0 bg-black/50 backdrop-blur-sm w-full h-full focus:outline-none focus:ring-2 focus:ring-accent-500"
+                  onClick={() => onToggleMobileSidebar(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onToggleMobileSidebar(false);
+                    }
                   }}
-                  onGoToMatter={() => {
-                    handleGoToMatter();
-                    onToggleMobileSidebar(false);
-                  }}
-                  matterStatus={matterStatus}
-                  teamConfig={{
-                    name: teamConfig.name,
-                    profileImage: teamConfig.profileImage,
-                    teamId
-                  }}
+                  aria-label="Close mobile sidebar"
+                  type="button"
                 />
-              </div>
-            </div>
-          )}
+                {/* Sidebar */}
+                <motion.div 
+                  className="relative w-64 h-full overflow-y-auto overscroll-contain bg-light-card-bg dark:bg-dark-card-bg"
+                  initial={{ x: -256 }}
+                  animate={{ x: 0 }}
+                  exit={{ x: -256 }}
+                  transition={{ 
+                    type: "spring", 
+                    stiffness: 300, 
+                    damping: 30 
+                  }}
+                >
+                  <LeftSidebar
+                    currentRoute={currentTab}
+                    onGoToChats={() => {
+                      handleGoToChats();
+                      onToggleMobileSidebar(false);
+                    }}
+                    onGoToMatter={() => {
+                      handleGoToMatter();
+                      onToggleMobileSidebar(false);
+                    }}
+                    onClose={() => onToggleMobileSidebar(false)}
+                    matterStatus={matterStatus}
+                    teamConfig={{
+                      name: teamConfig.name,
+                      profileImage: teamConfig.profileImage,
+                      teamId
+                    }}
+                  />
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
 
@@ -291,13 +318,10 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
 
 
       <MobileTopNav
-        teamConfig={{
-          name: teamConfig.name,
-          profileImage: teamConfig.profileImage,
-          teamId,
-          description: teamConfig.description
-        }}
         onOpenSidebar={() => onToggleMobileSidebar(true)}
+        onPlusClick={() => {
+          window.location.hash = '#pricing';
+        }}
         isVisible={isNavbarVisible}
       />
 

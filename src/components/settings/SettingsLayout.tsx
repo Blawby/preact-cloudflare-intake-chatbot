@@ -19,9 +19,12 @@ export const SettingsLayout = ({
 
   const handleClose = useCallback(() => {
     setShowSettings(false);
-    if (onClose) {
-      onClose();
-    }
+    // Delay the onClose callback to allow exit animation to complete
+    setTimeout(() => {
+      if (onClose) {
+        onClose();
+      }
+    }, 250); // Match the animation duration
   }, [onClose]);
 
   // Handle Escape key, body scroll, and click outside for overlay
@@ -91,8 +94,8 @@ export const SettingsLayout = ({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ 
-              duration: 0.3, 
-              ease: [0.32, 0.72, 0, 1] // Custom easing for smooth slide
+              duration: 0.25, 
+              ease: [0.25, 0.46, 0.45, 0.94] // iOS-like easing for smooth slide
             }}
             role="dialog"
             aria-modal="true"

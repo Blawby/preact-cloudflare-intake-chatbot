@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'preact/hooks';
-import { UserIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect, useRef } from 'preact/hooks';
+import { UserIcon, Cog6ToothIcon, SparklesIcon, QuestionMarkCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 // No authentication required - authClient removed
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService } from '../utils/mockPricingData';
+import { mockUserDataService } from '../utils/mockUserData';
 
 interface User {
   id: string;
@@ -25,10 +26,21 @@ interface UserProfileProps {
 const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { navigateToAuth, navigate } = useNavigation();
 
   useEffect(() => {
     checkAuthStatus();
+    
+    // Mobile detection
+    const checkMobile = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 1024);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
     
     // Listen for storage changes (when user logs in/out in another tab)
     const handleStorageChange = (e: StorageEvent) => {
@@ -46,7 +58,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
         };
         setUser(userWithTier);
       } else {
-        checkAuthStatus();
+        // User logged out, clear the user state
+        setUser(null);
       }
     };
     
@@ -54,14 +67,32 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
     
     return () => {
+      window.removeEventListener('resize', checkMobile);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
     };
   }, []);
 
+  // Handle dropdown close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
 
   const checkAuthStatus = async () => {
-    // Check if user is "logged in" (stored in localStorage for demo)
+    // Check if user is "logged in" - only consider signed in if mockUser exists in localStorage
     const mockUser = localStorage.getItem('mockUser');
     if (mockUser) {
       try {
@@ -77,6 +108,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
         setUser(null);
       }
     } else {
+      // No mockUser in localStorage means user is signed out
       setUser(null);
     }
     setLoading(false);
@@ -92,6 +124,46 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   const handleUpgrade = () => {
     // Navigate to #pricing hash to open the modal
     window.location.hash = '#pricing';
+  };
+
+  const handleProfileClick = () => {
+    if (isMobile) {
+      // On mobile, directly navigate to settings (skip dropdown)
+      navigate('/settings');
+    } else {
+      // On desktop, show dropdown
+      setShowDropdown(!showDropdown);
+    }
+  };
+
+  const handleSettingsClick = () => {
+    setShowDropdown(false);
+    navigate('/settings');
+  };
+
+  const handleUpgradeClick = () => {
+    setShowDropdown(false);
+    window.location.hash = '#pricing';
+  };
+
+  const handleHelpClick = () => {
+    setShowDropdown(false);
+    navigate('/settings/help');
+  };
+
+  const handleLogoutClick = () => {
+    setShowDropdown(false);
+    // Use the mock data service to properly clear all data
+    mockUserDataService.resetToDefaults();
+    
+    // Also clear the legacy mockUser key for backward compatibility
+    localStorage.removeItem('mockUser');
+    
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+    
+    // Refresh the page to update the UI
+    window.location.reload();
   };
 
 
@@ -119,7 +191,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   if (!user) {
     return (
-      <div className={`${isCollapsed ? 'py-2' : 'p-4'} border-t border-gray-200 dark:border-dark-border`}>
+      <div className={`p-2 border-t border-gray-200 dark:border-dark-border`}>
         <button
           onClick={handleSignIn}
           className={`flex items-center w-full rounded-lg text-left transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover ${
@@ -137,72 +209,180 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   }
 
   return (
-    <div className={`${isCollapsed ? 'py-2' : 'p-4'} border-t border-gray-200 dark:border-dark-border`}>
+    <div className={`p-2 border-t border-gray-200 dark:border-dark-border`}>
       {isCollapsed ? (
-        // Collapsed state - just show avatar
-        <button
-          onClick={() => navigate('/settings')}
-          className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mx-auto"
-          title={user.name}
-          aria-label={`User profile for ${user.name}`}
-        >
-          {(() => {
-            const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
-            return sanitizedImageUrl ? (
-              <img 
-                src={sanitizedImageUrl} 
-                alt={user.name}
-                className="w-full h-full rounded-full object-cover"
-              />
-            ) : (
-              <span className="text-white text-sm font-medium">
-                {getInitials(user.name)}
-              </span>
-            );
-          })()}
-        </button>
+        // Collapsed state - just show avatar with dropdown
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={handleProfileClick}
+            className="w-8 h-8 rounded-full bg-gray-600 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 mx-auto"
+            title={user.name}
+            aria-label={`User profile for ${user.name}`}
+          >
+            {(() => {
+              const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
+              return sanitizedImageUrl ? (
+                <img 
+                  src={sanitizedImageUrl} 
+                  alt={user.name}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <span className="text-white text-sm font-medium">
+                  {getInitials(user.name)}
+                </span>
+              );
+            })()}
+          </button>
+          
+          {/* Dropdown - only show on desktop */}
+          {showDropdown && !isMobile && (
+            <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+              {/* User Email */}
+              <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <UserIcon className="w-4 h-4" />
+                {user.email}
+              </div>
+              
+              {/* Upgrade Plan */}
+              {user.subscriptionTier === 'free' && (
+                <button
+                  onClick={handleUpgradeClick}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <SparklesIcon className="w-4 h-4" />
+                  Upgrade plan
+                </button>
+              )}
+              
+              {/* Settings */}
+              <button
+                onClick={handleSettingsClick}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              >
+                <Cog6ToothIcon className="w-4 h-4" />
+                Settings
+              </button>
+              
+              {/* Separator */}
+              <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+              
+              {/* Help */}
+              <button
+                onClick={handleHelpClick}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              >
+                <QuestionMarkCircleIcon className="w-4 h-4" />
+                Help
+              </button>
+              
+              {/* Log out */}
+              <button
+                onClick={handleLogoutClick}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              >
+                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
       ) : (
         // Expanded state - show full profile with tier and upgrade button
         <div className="space-y-3">
           {/* Profile Section */}
-          <button
-            onClick={() => navigate('/settings')}
-            className="flex items-center gap-3 w-full text-left hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg p-2 -m-2 transition-colors"
-            aria-label={`Open settings for ${user.name}`}
-          >
-            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-              {(() => {
-                const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
-                return sanitizedImageUrl ? (
-                  <img 
-                    src={sanitizedImageUrl} 
-                    alt={user.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="text-white text-sm font-medium">
-                    {getInitials(user.name)}
-                  </span>
-                );
-              })()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {getTierDisplayName(user.subscriptionTier || 'free')}
-              </p>
-            </div>
-          </button>
-
-          {/* Upgrade Button - only show for Free tier */}
-          {user.subscriptionTier === 'free' && (
+          <div className="relative flex items-center gap-3" ref={dropdownRef}>
             <button
-              onClick={handleUpgrade}
-              className="w-full px-3 py-2 text-xs font-medium text-gray-900 dark:text-gray-100 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              onClick={handleProfileClick}
+              className="flex items-center gap-3 flex-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors"
+              aria-label={`User profile for ${user.name}`}
             >
-              Upgrade
+              <div className="w-8 h-8 rounded-full bg-gray-600 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                {(() => {
+                  const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
+                  return sanitizedImageUrl ? (
+                    <img 
+                      src={sanitizedImageUrl} 
+                      alt={user.name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white text-sm font-medium">
+                      {getInitials(user.name)}
+                    </span>
+                  );
+                })()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300 truncate">
+                  {getTierDisplayName(user.subscriptionTier || 'free')}
+                </p>
+              </div>
             </button>
-          )}
+            
+            {/* Upgrade Button - inline with profile */}
+            {user.subscriptionTier === 'free' && (
+              <button
+                onClick={handleUpgrade}
+                className="px-3 py-1 text-xs font-medium text-gray-900 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
+              >
+                Upgrade
+              </button>
+            )}
+            
+            {/* Dropdown - only show on desktop */}
+            {showDropdown && !isMobile && (
+              <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+                {/* User Email */}
+                <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <UserIcon className="w-4 h-4" />
+                  {user.email}
+                </div>
+                
+                {/* Upgrade Plan */}
+                {user.subscriptionTier === 'free' && (
+                  <button
+                    onClick={handleUpgradeClick}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <SparklesIcon className="w-4 h-4" />
+                    Upgrade plan
+                  </button>
+                )}
+                
+                {/* Settings */}
+                <button
+                  onClick={handleSettingsClick}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <Cog6ToothIcon className="w-4 h-4" />
+                  Settings
+                </button>
+                
+                {/* Separator */}
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                
+                {/* Help */}
+                <button
+                  onClick={handleHelpClick}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <QuestionMarkCircleIcon className="w-4 h-4" />
+                  Help
+                </button>
+                
+                {/* Log out */}
+                <button
+                  onClick={handleLogoutClick}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
