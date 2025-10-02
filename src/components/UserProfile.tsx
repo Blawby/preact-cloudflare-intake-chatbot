@@ -6,6 +6,7 @@ import { useNavigation } from '../utils/navigation';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService } from '../utils/mockPricingData';
 import { mockUserDataService } from '../utils/mockUserData';
+import { debounce } from '../utils/debounce';
 
 interface User {
   id: string;
@@ -34,13 +35,16 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   useEffect(() => {
     checkAuthStatus();
     
-    // Mobile detection
+    // Mobile detection with debouncing
     const checkMobile = () => {
-      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 1024);
+      setIsMobile(window.innerWidth < 1024);
     };
     
     checkMobile();
-    window.addEventListener('resize', checkMobile);
+    
+    // Create debounced resize handler for performance
+    const debouncedResizeHandler = debounce(checkMobile, 100);
+    window.addEventListener('resize', debouncedResizeHandler);
     
     // Listen for storage changes (when user logs in/out in another tab)
     const handleStorageChange = (e: StorageEvent) => {
@@ -67,7 +71,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
     
     return () => {
-      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('resize', debouncedResizeHandler);
+      debouncedResizeHandler.cancel();
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
     };
@@ -180,6 +185,76 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       .slice(0, 2);
   };
 
+  const renderAvatar = () => {
+    const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
+    return sanitizedImageUrl ? (
+      <img 
+        src={sanitizedImageUrl} 
+        alt={user.name}
+        className="w-full h-full rounded-full object-cover"
+      />
+    ) : (
+      <span className="text-white text-sm font-medium">
+        {getInitials(user.name)}
+      </span>
+    );
+  };
+
+  const renderDropdown = () => {
+    if (!showDropdown || isMobile) return null;
+    
+    return (
+      <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+        {/* User Email */}
+        <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <UserIcon className="w-4 h-4" />
+          {user.email}
+        </div>
+        
+        {/* Upgrade Plan */}
+        {user.subscriptionTier === 'free' && (
+          <button
+            onClick={handleUpgradeClick}
+            className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+          >
+            <SparklesIcon className="w-4 h-4" />
+            Upgrade plan
+          </button>
+        )}
+        
+        {/* Settings */}
+        <button
+          onClick={handleSettingsClick}
+          className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+        >
+          <Cog6ToothIcon className="w-4 h-4" />
+          Settings
+        </button>
+        
+        {/* Separator */}
+        <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+        
+        {/* Help */}
+        <button
+          onClick={handleHelpClick}
+          className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+        >
+          <QuestionMarkCircleIcon className="w-4 h-4" />
+          Help
+        </button>
+        
+        {/* Log out */}
+        <button
+          onClick={handleLogoutClick}
+          className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+        >
+          <ArrowRightOnRectangleIcon className="w-4 h-4" />
+          Log out
+        </button>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className={`flex items-center ${isCollapsed ? 'justify-center py-2' : 'gap-3 px-3 py-2'}`}>
@@ -219,73 +294,11 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
             title={user.name}
             aria-label={`User profile for ${user.name}`}
           >
-            {(() => {
-              const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
-              return sanitizedImageUrl ? (
-                <img 
-                  src={sanitizedImageUrl} 
-                  alt={user.name}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-white text-sm font-medium">
-                  {getInitials(user.name)}
-                </span>
-              );
-            })()}
+            {renderAvatar()}
           </button>
           
           {/* Dropdown - only show on desktop */}
-          {showDropdown && !isMobile && (
-            <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-              {/* User Email */}
-              <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <UserIcon className="w-4 h-4" />
-                {user.email}
-              </div>
-              
-              {/* Upgrade Plan */}
-              {user.subscriptionTier === 'free' && (
-                <button
-                  onClick={handleUpgradeClick}
-                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                >
-                  <SparklesIcon className="w-4 h-4" />
-                  Upgrade plan
-                </button>
-              )}
-              
-              {/* Settings */}
-              <button
-                onClick={handleSettingsClick}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              >
-                <Cog6ToothIcon className="w-4 h-4" />
-                Settings
-              </button>
-              
-              {/* Separator */}
-              <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-              
-              {/* Help */}
-              <button
-                onClick={handleHelpClick}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              >
-                <QuestionMarkCircleIcon className="w-4 h-4" />
-                Help
-              </button>
-              
-              {/* Log out */}
-              <button
-                onClick={handleLogoutClick}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              >
-                <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                Log out
-              </button>
-            </div>
-          )}
+          {renderDropdown()}
         </div>
       ) : (
         // Expanded state - show full profile with tier and upgrade button
@@ -298,20 +311,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
               aria-label={`User profile for ${user.name}`}
             >
               <div className="w-8 h-8 rounded-full bg-gray-600 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
-                {(() => {
-                  const sanitizedImageUrl = sanitizeUserImageUrl(user.image);
-                  return sanitizedImageUrl ? (
-                    <img 
-                      src={sanitizedImageUrl} 
-                      alt={user.name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-white text-sm font-medium">
-                      {getInitials(user.name)}
-                    </span>
-                  );
-                })()}
+                {renderAvatar()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.name}</p>
@@ -332,56 +332,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
             )}
             
             {/* Dropdown - only show on desktop */}
-            {showDropdown && !isMobile && (
-              <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-                {/* User Email */}
-                <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <UserIcon className="w-4 h-4" />
-                  {user.email}
-                </div>
-                
-                {/* Upgrade Plan */}
-                {user.subscriptionTier === 'free' && (
-                  <button
-                    onClick={handleUpgradeClick}
-                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                  >
-                    <SparklesIcon className="w-4 h-4" />
-                    Upgrade plan
-                  </button>
-                )}
-                
-                {/* Settings */}
-                <button
-                  onClick={handleSettingsClick}
-                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                >
-                  <Cog6ToothIcon className="w-4 h-4" />
-                  Settings
-                </button>
-                
-                {/* Separator */}
-                <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                
-                {/* Help */}
-                <button
-                  onClick={handleHelpClick}
-                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                >
-                  <QuestionMarkCircleIcon className="w-4 h-4" />
-                  Help
-                </button>
-                
-                {/* Log out */}
-                <button
-                  onClick={handleLogoutClick}
-                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                >
-                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                  Log out
-                </button>
-              </div>
-            )}
+            {renderDropdown()}
           </div>
         </div>
       )}

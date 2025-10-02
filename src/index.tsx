@@ -1,5 +1,5 @@
 import { hydrate, prerender as ssr, Router, Route, useLocation, LocationProvider } from 'preact-iso';
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useLayoutEffect } from 'preact/hooks';
 import { Suspense } from 'preact/compat';
 import { I18nextProvider } from 'react-i18next';
 import ChatContainer from './components/ChatContainer';
@@ -18,6 +18,7 @@ import { ChatMessageUI } from '../worker/types';
 import { SettingsLayout } from './components/settings/SettingsLayout';
 import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
+import { debounce } from './utils/debounce';
 import './index.css';
 import { i18n, initI18n } from './i18n';
 
@@ -31,6 +32,9 @@ function MainApp() {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
 	const [showSettingsModal, setShowSettingsModal] = useState(false);
+	
+	// Mobile state - initialized as false to avoid SSR/client hydration mismatch
+	const [isMobile, setIsMobile] = useState(false);
 	
 	// Get current location to detect settings routes
 	const location = useLocation();
@@ -227,6 +231,31 @@ function MainApp() {
 		};
 	}, []);
 
+	// Mobile detection with resize handling
+	useLayoutEffect(() => {
+		// Function to check if mobile
+		const checkIsMobile = () => {
+			return window.innerWidth < 1024;
+		};
+
+		// Set initial mobile state
+		setIsMobile(checkIsMobile());
+
+		// Create debounced resize handler for performance
+		const debouncedResizeHandler = debounce(() => {
+			setIsMobile(checkIsMobile());
+		}, 100);
+
+		// Add resize listener
+		window.addEventListener('resize', debouncedResizeHandler);
+
+		// Cleanup function
+		return () => {
+			window.removeEventListener('resize', debouncedResizeHandler);
+			debouncedResizeHandler.cancel();
+		};
+	}, []);
+
 	// Handle feedback submission
 	const handleFeedbackSubmit = useCallback((feedback: Record<string, unknown>) => {
 		// Handle feedback submission
@@ -327,7 +356,7 @@ function MainApp() {
 			{/* Settings Modal */}
 			{showSettingsModal && (
 				<SettingsLayout
-					isMobile={typeof window !== 'undefined' && window.innerWidth < 1024}
+					isMobile={isMobile}
 					onClose={() => {
 						setShowSettingsModal(false);
 						setIsMobileSidebarOpen(false); // Close mobile sidebar when settings close

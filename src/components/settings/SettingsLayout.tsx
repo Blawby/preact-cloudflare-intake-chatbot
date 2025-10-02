@@ -16,16 +16,31 @@ export const SettingsLayout = ({
 }: SettingsLayoutProps) => {
   const [showSettings, setShowSettings] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClose = useCallback(() => {
     setShowSettings(false);
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
     // Delay the onClose callback to allow exit animation to complete
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       if (onClose) {
         onClose();
       }
+      timeoutRef.current = null;
     }, 250); // Match the animation duration
   }, [onClose]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle Escape key, body scroll, and click outside for overlay
   useEffect(() => {

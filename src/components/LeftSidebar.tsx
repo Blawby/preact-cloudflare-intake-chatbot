@@ -5,9 +5,10 @@ import {
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
-import { useState } from 'preact/hooks';
+import { useState, useLayoutEffect } from 'preact/hooks';
 import { MatterStatus } from '../types/matter';
 import UserProfile from './UserProfile';
+import { debounce } from '../utils/debounce';
 
 interface LeftSidebarProps {
   currentRoute: string;
@@ -25,8 +26,10 @@ interface LeftSidebarProps {
 const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterStatus, teamConfig }: LeftSidebarProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
+  // Mobile state - initialized as false to avoid SSR/client hydration mismatch
+  const [isMobile, setIsMobile] = useState(false);
+  
   // On mobile, always show expanded (no collapse functionality)
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
   const shouldShowCollapsed = isCollapsed && !isMobile;
 
   // Get badge color based on matter status
@@ -41,6 +44,31 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterS
         return 'bg-gray-400';
     }
   };
+
+  // Mobile detection with resize handling
+  useLayoutEffect(() => {
+    // Function to check if mobile
+    const checkIsMobile = () => {
+      return window.innerWidth < 1024;
+    };
+
+    // Set initial mobile state
+    setIsMobile(checkIsMobile());
+
+    // Create debounced resize handler for performance
+    const debouncedResizeHandler = debounce(() => {
+      setIsMobile(checkIsMobile());
+    }, 100);
+
+    // Add resize listener
+    window.addEventListener('resize', debouncedResizeHandler);
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener('resize', debouncedResizeHandler);
+      debouncedResizeHandler.cancel();
+    };
+  }, []);
 
   return (
     <div className="h-full">

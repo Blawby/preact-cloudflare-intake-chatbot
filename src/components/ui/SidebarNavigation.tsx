@@ -79,7 +79,9 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
                               ? isDanger
                                 ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30'
                                 : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
-                              : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
+                              : isActive
+                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+                                : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
                           )}
                         >
                           <div className="flex items-center gap-3">
@@ -133,7 +135,9 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
                               ? isDanger
                                 ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30'
                                 : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
-                              : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
+                              : isActive
+                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+                                : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
                           )}
                         >
                           <div className="flex items-center gap-3">
@@ -183,7 +187,9 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
                             ? isDanger
                               ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30'
                               : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
-                            : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
+                            : isActive
+                              ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+                              : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
                         )}
                       >
                         <div className="flex items-center gap-3">

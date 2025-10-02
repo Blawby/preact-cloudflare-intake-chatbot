@@ -173,7 +173,7 @@ export const SettingsPage = ({
                   <button
                     onClick={() => navigate('/settings')}
                     className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    aria-label="Back to settings"
+                    aria-label={t('settings:navigation.backToSettings')}
                   >
                     <ArrowLeftIcon className="w-5 h-5" />
                   </button>

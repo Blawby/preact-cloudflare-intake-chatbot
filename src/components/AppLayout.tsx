@@ -1,5 +1,5 @@
 import { FunctionComponent } from 'preact';
-import { useRef, useEffect } from 'preact/hooks';
+import { useRef, useEffect, useState, useLayoutEffect } from 'preact/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TeamNotFound } from './TeamNotFound';
@@ -19,6 +19,7 @@ import MatterTab from './MatterTab';
 import { useMatterState } from '../hooks/useMatterState';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
 import { THEME } from '../utils/constants';
+import { debounce } from '../utils/debounce';
 
 // Simple messages object for localization
 const messages = {
@@ -65,8 +66,8 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   // Matter state management
   const { matter, status: matterStatus } = useMatterState(chatMessages);
   
-  // Mobile detection
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+  // Mobile state - initialized as false to avoid SSR/client hydration mismatch
+  const [isMobile, setIsMobile] = useState(false);
   
   // Focus management for mobile sidebar
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -124,6 +125,31 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isMobileSidebarOpen, onToggleMobileSidebar]);
+
+  // Mobile detection with resize handling
+  useLayoutEffect(() => {
+    // Function to check if mobile
+    const checkIsMobile = () => {
+      return window.innerWidth < 1024;
+    };
+
+    // Set initial mobile state
+    setIsMobile(checkIsMobile());
+
+    // Create debounced resize handler for performance
+    const debouncedResizeHandler = debounce(() => {
+      setIsMobile(checkIsMobile());
+    }, 100);
+
+    // Add resize listener
+    window.addEventListener('resize', debouncedResizeHandler);
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener('resize', debouncedResizeHandler);
+      debouncedResizeHandler.cancel();
+    };
+  }, []);
   
   // Tab switching handlers
   const handleGoToChats = () => {

@@ -1,6 +1,7 @@
 {
   "navigation": {
     "close": "Close settings",
+    "backToSettings": "Back to settings",
     "items": {
       "general": "General",
       "notifications": "Notifications",

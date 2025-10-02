@@ -104,7 +104,7 @@ export const SettingsDropdown = ({
   // Mobile layout - full width with arrow
   if (mobile) {
     return (
-      <div className={cn('px-4 py-3', className)}>
+      <div className={cn('px-4 py-3 relative', className)} ref={dropdownRef}>
         <button
           ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
@@ -128,6 +128,47 @@ export const SettingsDropdown = ({
             isOpen && 'rotate-180'
           )} />
         </button>
+
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <div 
+            id={listboxId}
+            role="listbox"
+            className={cn(
+              "absolute left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50",
+              direction === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+            )}
+          >
+            <div className="py-1">
+              {options.map((option, index) => (
+                <button
+                  key={option.value}
+                  id={`${dropdownId}-option-${option.value}`}
+                  role="option"
+                  aria-selected={value === option.value}
+                  tabIndex={-1}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                    setFocusedIndex(-1);
+                  }}
+                  className={cn(
+                    'w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100',
+                    'hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between',
+                    'focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700',
+                    value === option.value && 'bg-accent-50 dark:bg-accent-900/20 text-accent-600 dark:text-accent-400',
+                    focusedIndex === index && 'bg-gray-100 dark:bg-gray-700'
+                  )}
+                >
+                  <span>{option.label}</span>
+                  {value === option.value && (
+                    <CheckIcon className="w-4 h-4 text-accent-600 dark:text-accent-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
