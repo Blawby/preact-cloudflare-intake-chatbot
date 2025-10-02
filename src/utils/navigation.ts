@@ -23,12 +23,13 @@ export function useNavigation() {
     },
 
     /**
-     * Navigate to the auth page
-     * @param mode - Optional auth mode (signin, signup, etc.)
+     * Navigate to auth page (no-op since auth is removed)
+     * @param mode - Optional auth mode (ignored)
      */
     navigateToAuth: (mode?: string) => {
-      const url = mode ? `/auth?mode=${mode}` : '/auth';
-      location.route(url);
+      console.log('Authentication not required for this application');
+      // Navigate to home instead
+      location.route('/');
     },
 
     /**

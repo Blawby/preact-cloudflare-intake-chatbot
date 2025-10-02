@@ -11,7 +11,6 @@ import {
   ArrowLeftIcon,
   CheckIcon
 } from '@heroicons/react/24/outline';
-import { useUserProfile } from '../hooks/useUserProfile';
 import { useNavigation } from '../../../utils/navigation';
 import { useToastContext } from '../../../contexts/ToastContext';
 
@@ -47,7 +46,13 @@ export const AccountPage = ({
     preferredContactMethod: 'email' as 'email' | 'phone' | 'sms'
   });
 
-  const { profile, loading, error, updateProfile, uploadAvatar, deleteAvatar } = useUserProfile();
+  // No authentication required - profile is always null
+  const profile = null;
+  const loading = false;
+  const error = null;
+  const updateProfile = async () => {};
+  const uploadAvatar = async () => {};
+  const deleteAvatar = async () => {};
   const { navigate } = useNavigation();
   const { showError } = useToastContext();
 

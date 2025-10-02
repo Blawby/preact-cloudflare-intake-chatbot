@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { authClient } from '../lib/authClient';
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
 import { SettingsPage } from './settings/SettingsPage';
@@ -74,26 +73,15 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
   }, [showProfile, isMobile, isCollapsed]);
 
   const checkAuthStatus = async () => {
-    try {
-      const result = await authClient.getSession();
-      if (result.data?.user) {
-        // Ensure email is present for the User interface
-        const userData = result.data.user;
-        if (userData.email) {
-          setUser(userData as User);
-        }
-      }
-    } catch (_error) {
-      // Failed to get user session
-    } finally {
-      setLoading(false);
-    }
+    // No authentication required - always show as guest
+    setUser(null);
+    setLoading(false);
   };
 
 
   const handleSignIn = () => {
-    // Navigate to auth page
-    navigateToAuth('signin');
+    // No authentication required - this is now a no-op
+    console.log('Authentication not required for this application');
   };
 
   if (loading) {

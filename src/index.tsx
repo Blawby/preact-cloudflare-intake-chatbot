@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
 import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
 import AppLayout from './components/AppLayout';
-import AuthPage from './components/AuthPage';
 import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
 import { useMessageHandling } from './hooks/useMessageHandling';
@@ -258,10 +257,6 @@ function MainApp() {
 	);
 }
 
-// Auth page component
-function AuthPageWrapper() {
-	return <AuthPage />;
-}
 
 // Main App component with routing
 export function App() {
@@ -290,7 +285,6 @@ export function App() {
 					currentUrl={currentUrl}
 				/>
 				<Router>
-					<Route path="/auth" component={AuthPageWrapper} />
 					<Route default component={MainApp} />
 				</Router>
 			</ToastProvider>

@@ -4,24 +4,7 @@
 # Environment Configuration
 NODE_ENV=development
 
-# Authentication Configuration
-# Base URL for OAuth redirects - required for production, optional for development
-# In development: set in .dev.vars (this file)
-# In production: set via wrangler secrets (see wrangler.toml for commands)
-BETTER_AUTH_URL=http://localhost:8787
-
-# Google OAuth Configuration (SENSITIVE)
-# In development: set in .dev.vars (this file)  
-# In production: set via wrangler secrets
-GOOGLE_CLIENT_ID=your_google_client_id_here
-GOOGLE_CLIENT_SECRET=your_google_client_secret_here
-
-# Test User Configuration (Development Only)
-# These credentials are used for testing authenticated pages in development
-# NOTE: These are fake credentials for testing only - do not use real credentials
-TEST_USER_EMAIL=dev-test-user@fake-test-domain.invalid
-TEST_USER_PASSWORD=dev-test-password-123-fake
-TEST_USER_NAME=Dev Test User
+# Authentication removed - frontend-only application
 
 # Debug Configuration
 VITE_DEBUG_OVERLAY=false
