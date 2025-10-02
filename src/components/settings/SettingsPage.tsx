@@ -12,9 +12,9 @@ import {
   UserIcon, 
   ShieldCheckIcon, 
   Cog6ToothIcon,
-  DocumentTextIcon,
   XMarkIcon,
-  BellIcon
+  BellIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { useNavigation } from '../../utils/navigation';
 import { useToastContext } from '../../contexts/ToastContext';
@@ -87,8 +87,7 @@ export const SettingsPage = ({
     { id: 'notifications', label: 'Notifications', icon: BellIcon as IconComponent },
     { id: 'account', label: 'Account', icon: UserIcon as IconComponent },
     { id: 'preferences', label: 'Preferences', icon: Cog6ToothIcon as IconComponent },
-    { id: 'security', label: 'Security', icon: ShieldCheckIcon as IconComponent },
-    { id: 'data', label: 'Data & Privacy', icon: DocumentTextIcon as IconComponent }
+    { id: 'security', label: 'Security', icon: ShieldCheckIcon as IconComponent }
   ];
 
 
@@ -107,92 +106,6 @@ export const SettingsPage = ({
         return <SecurityPage isMobile={isMobile} onClose={onClose} className="h-full" />;
       case 'mfa-enrollment':
         return <MFAEnrollmentPage className="h-full" />;
-      case 'data':
-        return (
-          <div className="h-full flex flex-col">
-            {/* Header */}
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 dark:border-dark-border">
-              <div className="flex-1">
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Data & Privacy
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Control your data and privacy settings
-                </p>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <SettingsSection
-                title="Data Export"
-                description="Download your data"
-              >
-                <SettingsItem
-                  label="Export Chat History"
-                  description="Download all your conversation data"
-                  type="action"
-                  onClick={() => showSuccess('Export started', 'Your chat history will be downloaded shortly')}
-                />
-                <SettingsItem
-                  label="Export Account Data"
-                  description="Download all your account information"
-                  type="action"
-                  onClick={() => showSuccess('Export started', 'Your account data will be downloaded shortly')}
-                />
-              </SettingsSection>
-
-              <SettingsSection
-                title="Privacy"
-                description="Control your privacy settings"
-              >
-                <SettingsItem
-                  label="Privacy Policy"
-                  description="View our privacy policy and data practices"
-                  type="external"
-                  href="https://blawby.com/privacy"
-                />
-                <SettingsItem
-                  label="Terms of Service"
-                  description="View our terms of service"
-                  type="external"
-                  href="https://blawby.com/terms"
-                />
-              </SettingsSection>
-
-              <SettingsSection
-                title="Support"
-                description="Get help and support"
-              >
-                <SettingsItem
-                  label="Help & Support"
-                  description="Get help and contact our support team"
-                  type="external"
-                  href="https://blawby.com/help"
-                />
-                <SettingsItem
-                  label="Contact Us"
-                  description="Reach out to our team"
-                  type="external"
-                  href="https://blawby.com/contact"
-                />
-              </SettingsSection>
-
-              <SettingsSection
-                title="Account Actions"
-                description="Manage your account session"
-              >
-                <SettingsItem
-                  label="Sign Out"
-                  description="Sign out of your account"
-                  type="action"
-                  onClick={handleSignOut}
-                  variant="danger"
-                />
-              </SettingsSection>
-            </div>
-          </div>
-        );
       default:
         return <AccountPage isMobile={isMobile} onClose={onClose} className="h-full" />;
     }

@@ -5,6 +5,9 @@ export interface SidebarNavigationItem {
   id: string;
   label: string;
   icon: preact.ComponentType<any>;
+  isAction?: boolean;
+  onClick?: () => void;
+  variant?: 'default' | 'danger';
 }
 
 export interface SidebarNavigationProps {
@@ -25,16 +28,28 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
       {items.map((item) => {
         const IconComponent = item.icon;
         const isActive = activeItem === item.id;
+        const isAction = item.isAction;
+        const isDanger = item.variant === 'danger';
         
         return (
           <button
             key={item.id}
-            onClick={() => onItemClick(item.id)}
+            onClick={() => {
+              if (isAction && item.onClick) {
+                item.onClick();
+              } else {
+                onItemClick(item.id);
+              }
+            }}
             className={cn(
               'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors rounded-lg',
-              isActive
-                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-                : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
+              isAction
+                ? isDanger
+                  ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                  : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
+                : isActive
+                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
             )}
           >
             <IconComponent className="w-5 h-5 flex-shrink-0" />
