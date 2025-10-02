@@ -23,6 +23,8 @@ export interface SettingsItemProps {
   isLoading?: boolean;
   className?: string;
   children?: ComponentChildren;
+  inputType?: 'text' | 'password' | 'email' | 'select' | 'textarea';
+  options?: Array<{ value: string; label: string }>;
 }
 
 export const SettingsItem = ({
@@ -39,9 +41,11 @@ export const SettingsItem = ({
   disabled = false,
   isLoading = false,
   className = '',
-  children
+  children,
+  inputType = 'text',
+  options = []
 }: SettingsItemProps) => {
-  const baseClasses = 'flex items-center gap-3 px-4 py-3 text-left transition-colors w-full block';
+  const baseClasses = 'flex items-start gap-3 px-4 py-3 text-left transition-colors w-full block';
   const hoverClasses = 'hover:bg-gray-50 dark:hover:bg-dark-hover';
   const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
   
@@ -83,7 +87,7 @@ export const SettingsItem = ({
         return (
           <>
             {icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-start justify-center pt-2">
                 {icon}
               </div>
             )}
@@ -103,7 +107,7 @@ export const SettingsItem = ({
         return (
           <>
             {icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-start justify-center pt-2">
                 {icon}
               </div>
             )}
@@ -142,7 +146,7 @@ export const SettingsItem = ({
         return (
           <>
             {icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-start justify-center pt-2">
                 {icon}
               </div>
             )}
@@ -151,14 +155,29 @@ export const SettingsItem = ({
               {description && (
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</div>
               )}
-              <input
-                type="text"
-                value={String(value || '')}
-                onChange={(e) => onChange?.((e.target as HTMLInputElement).value)}
-                placeholder={placeholder}
-                disabled={disabled}
-                className="mt-2 w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
-              />
+              {inputType === 'select' ? (
+                <select
+                  value={String(value || '')}
+                  onChange={(e) => onChange?.((e.target as HTMLSelectElement).value)}
+                  disabled={disabled}
+                  className="mt-2 w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+                >
+                  {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={inputType}
+                  value={String(value || '')}
+                  onChange={(e) => onChange?.((e.target as HTMLInputElement).value)}
+                  placeholder={placeholder}
+                  disabled={disabled}
+                  className="mt-2 w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+                />
+              )}
             </div>
           </>
         );
@@ -167,11 +186,11 @@ export const SettingsItem = ({
         return (
           <>
             {isLoading ? (
-              <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+              <div className="w-5 h-5 flex-shrink-0 flex items-start justify-center pt-2">
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
               </div>
             ) : icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-start justify-center pt-2">
                 {icon}
               </div>
             )}
@@ -188,7 +207,7 @@ export const SettingsItem = ({
         return (
           <>
             {icon && (
-              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-center justify-center">
+              <div className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 flex items-start justify-center pt-2">
                 {icon}
               </div>
             )}

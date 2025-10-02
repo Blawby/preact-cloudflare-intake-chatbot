@@ -111,8 +111,8 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
                 : 'gap-3 px-3 py-2'
             } ${
               currentRoute === 'chats' 
-                ? 'bg-accent-500 text-gray-900' 
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover'
+                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' 
+                : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-dark-hover'
             }`}
             aria-current={currentRoute === 'chats' ? 'page' : undefined}
             title={shouldShowCollapsed ? 'Chats' : undefined}
@@ -131,8 +131,8 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
                   : 'gap-3 px-3 py-2'
               } ${
                 currentRoute === 'matter' 
-                  ? 'bg-accent-500 text-gray-900' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover'
+                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' 
+                  : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-dark-hover'
               }`}
               aria-current={currentRoute === 'matter' ? 'page' : undefined}
               aria-label={`Matter${matterStatus ? `, ${matterStatus}` : ''}`}
@@ -150,7 +150,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, matterStatus, te
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className={`flex items-center w-full rounded-lg text-left transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover ${
+            className={`flex items-center w-full rounded-lg text-left transition-colors text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-dark-hover ${
               shouldShowCollapsed 
                 ? 'justify-center py-2' 
                 : 'gap-3 px-3 py-2'

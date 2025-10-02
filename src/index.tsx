@@ -12,6 +12,14 @@ import { useTeamConfig } from './hooks/useTeamConfig';
 import { useChatSession } from './hooks/useChatSession';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
+// Settings components
+import { SettingsLayout } from './components/settings/SettingsLayout';
+import { SettingsPage } from './components/settings/SettingsPage';
+import { AccountPage } from './components/settings/pages/AccountPage';
+import { PreferencesPage } from './components/settings/pages/PreferencesPage';
+import { SecurityPage } from './components/settings/pages/SecurityPage';
+import { useNavigation } from './utils/navigation';
+import PricingModal from './components/PricingModal';
 import './index.css';
 
 
@@ -23,6 +31,11 @@ function MainApp() {
 	const [currentTab, setCurrentTab] = useState<'chats' | 'matter'>('chats');
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
+	const [showSettingsModal, setShowSettingsModal] = useState(false);
+	
+	// Get current location to detect settings routes
+	const location = useLocation();
+	const { navigate } = useNavigation();
 
 	// Use custom hooks
 	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
@@ -74,6 +87,59 @@ function MainApp() {
 			console.error('Session initialization error:', sessionError);
 		}
 	}, [sessionError]);
+
+	// Handle settings modal based on URL
+	useEffect(() => {
+		const isSettingsRoute = location.path.startsWith('/settings');
+		setShowSettingsModal(isSettingsRoute);
+	}, [location.path]);
+
+	// Handle hash-based routing for pricing modal
+	const [showPricingModal, setShowPricingModal] = useState(false);
+	const [currentUserTier, setCurrentUserTier] = useState<'free' | 'plus' | 'business'>('free');
+	
+	useEffect(() => {
+		const handleHashChange = () => {
+			const hash = window.location.hash;
+			setShowPricingModal(hash === '#pricing');
+		};
+
+		// Check initial hash
+		handleHashChange();
+
+		// Listen for hash changes
+		window.addEventListener('hashchange', handleHashChange);
+		
+		return () => {
+			window.removeEventListener('hashchange', handleHashChange);
+		};
+	}, []);
+
+	// Listen for user tier changes
+	useEffect(() => {
+		const handleAuthStateChange = (e: CustomEvent) => {
+			if (e.detail && e.detail.subscriptionTier) {
+				setCurrentUserTier(e.detail.subscriptionTier);
+			}
+		};
+
+		// Check current user tier from localStorage
+		const mockUser = localStorage.getItem('mockUser');
+		if (mockUser) {
+			try {
+				const userData = JSON.parse(mockUser);
+				setCurrentUserTier(userData.subscriptionTier || 'free');
+			} catch (_error) {
+				// Ignore parsing errors
+			}
+		}
+
+		window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
+		
+		return () => {
+			window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
+		};
+	}, []);
 
 	const isSessionReady = Boolean(sessionId);
 
@@ -254,6 +320,43 @@ function MainApp() {
 						/>
 				</div>
 			</AppLayout>
+
+			{/* Settings Modal */}
+			{showSettingsModal && (
+				<SettingsLayout
+					isMobile={false}
+					onClose={() => {
+						setShowSettingsModal(false);
+						navigate('/');
+					}}
+					className="h-full"
+				/>
+			)}
+
+			{/* Pricing Modal */}
+			<PricingModal
+				isOpen={showPricingModal}
+				onClose={() => {
+					setShowPricingModal(false);
+					window.location.hash = '';
+				}}
+				currentTier={currentUserTier}
+				onUpgrade={(tier) => {
+					// Update user's subscription tier
+					const mockUser = localStorage.getItem('mockUser');
+					if (mockUser) {
+						const userData = JSON.parse(mockUser);
+						userData.subscriptionTier = tier;
+						localStorage.setItem('mockUser', JSON.stringify(userData));
+						
+						// Dispatch event to notify other components
+						window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
+					}
+					
+					setShowPricingModal(false);
+					window.location.hash = '';
+				}}
+			/>
 		</>
 	);
 }
@@ -287,6 +390,7 @@ export function App() {
 				/>
 				<Router>
 					<Route path="/auth" component={AuthPage} />
+					<Route path="/settings/*" component={MainApp} />
 					<Route default component={MainApp} />
 				</Router>
 			</ToastProvider>

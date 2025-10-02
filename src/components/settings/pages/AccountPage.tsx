@@ -1,19 +1,21 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
-import { SettingsSection } from '../SettingsSection';
-import { SettingsItem } from '../SettingsItem';
 import { Button } from '../../ui/Button';
+import { SettingsDropdown } from '../components/SettingsDropdown';
 import { 
-  UserIcon, 
-  EnvelopeIcon, 
-  PhoneIcon, 
-  MapPinIcon,
+  SparklesIcon,
+  ChatBubbleLeftRightIcon,
   PhotoIcon,
-  ArrowLeftIcon,
-  CheckIcon
+  CpuChipIcon,
+  Cog6ToothIcon,
+  UserGroupIcon,
+  FilmIcon,
+  TrashIcon,
+  GlobeAltIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
-import { useUserProfile } from '../hooks/useUserProfile';
 import { useNavigation } from '../../../utils/navigation';
 import { useToastContext } from '../../../contexts/ToastContext';
+import { mockUserDataService, MockUserProfile, MockUserLinks, MockEmailSettings } from '../../../utils/mockUserData';
 
 // Utility function for className merging (following codebase pattern)
 function cn(...classes: (string | undefined | null | false)[]): string {
@@ -31,430 +33,270 @@ export const AccountPage = ({
   onClose,
   className = ''
 }: AccountPageProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [showAvatarUpload, setShowAvatarUpload] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    bio: '',
-    phone: '',
-    secondaryPhone: '',
-    addressStreet: '',
-    addressCity: '',
-    addressState: '',
-    addressZip: '',
-    addressCountry: '',
-    preferredContactMethod: 'email' as 'email' | 'phone' | 'sms'
-  });
-
-  const { profile, loading, error, updateProfile, uploadAvatar, deleteAvatar } = useUserProfile();
   const { navigate } = useNavigation();
-  const { showError } = useToastContext();
+  const { showSuccess, showError } = useToastContext();
+  const [links, setLinks] = useState<MockUserLinks | null>(null);
+  const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const resetFormData = useCallback(() => {
-    if (profile) {
-      setFormData({
-        name: profile.name || '',
-        bio: profile.bio || '',
-        phone: profile.phone || '',
-        secondaryPhone: profile.secondaryPhone || '',
-        addressStreet: profile.addressStreet || '',
-        addressCity: profile.addressCity || '',
-        addressState: profile.addressState || '',
-        addressZip: profile.addressZip || '',
-        addressCountry: profile.addressCountry || '',
-        preferredContactMethod: (profile.preferredContactMethod as 'email' | 'phone' | 'sms') || 'email'
-      });
-    }
-  }, [profile]);
-
-  // Initialize form data when profile loads
+  // Load mock data
   useEffect(() => {
-    resetFormData();
-  }, [profile, resetFormData]);
-
-  const handleSave = async () => {
-    if (!profile) return;
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const linksData = mockUserDataService.getUserLinks();
+        const emailData = mockUserDataService.getEmailSettings();
+        setLinks(linksData);
+        setEmailSettings(emailData);
+      } catch (error) {
+        console.error('Failed to load account data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    setIsSaving(true);
-    try {
-      await updateProfile(formData);
-      setIsEditing(false);
-    } catch (_error) {
-      // Error handling could be improved with toast notifications
-      // For now, we rely on the error state from the hook
-    } finally {
-      setIsSaving(false);
+    loadData();
+  }, []);
+
+  const handleUpgrade = () => {
+    showSuccess('Upgrade', 'Redirecting to upgrade page...');
+    // Here you would redirect to the upgrade page
+  };
+
+  const handleDeleteAccount = () => {
+    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      showSuccess('Account deletion', 'Account deletion process initiated. Check your email for confirmation.');
+      // Here you would initiate the account deletion process
     }
   };
 
-  const handleCancel = () => {
-    resetFormData();
-    setIsEditing(false);
+  const handleAddLinkedIn = () => {
+    showSuccess('LinkedIn', 'Redirecting to LinkedIn connection...');
   };
 
-  const handleAvatarUpload = async (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) return;
-
-    // Check file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-    if (file.size > maxSize) {
-      showError(
-        'File too large',
-        'Avatar images must be smaller than 5MB. Please choose a smaller file.',
-        5000
-      );
-      // Reset the file input
-      target.value = '';
-      return;
-    }
-
-    try {
-      await uploadAvatar(file);
-      setShowAvatarUpload(false);
-    } catch (_error) {
-      // Error handling could be improved with toast notifications
-      // For now, we rely on the error state from the hook
-    }
+  const handleAddGitHub = () => {
+    showSuccess('GitHub', 'Redirecting to GitHub connection...');
   };
 
-  const handleDeleteAvatar = async () => {
-    try {
-      await deleteAvatar();
-    } catch (_error) {
-      // Error handling could be improved with toast notifications
-      // For now, we rely on the error state from the hook
-    }
-  };
-
-  const handleBack = () => {
-    if (onClose) {
-      onClose();
+  const handleDomainChange = (domain: string) => {
+    if (domain === 'verify-new') {
+      // Handle "Verify new domain" option
+      const newDomain = prompt('Enter the domain you want to verify:');
+      if (newDomain) {
+        const updatedLinks = mockUserDataService.setUserLinks({
+          selectedDomain: newDomain,
+          customDomains: [
+            ...(links?.customDomains || []),
+            {
+              domain: newDomain,
+              verified: false,
+              verifiedAt: null
+            }
+          ]
+        });
+        setLinks(updatedLinks);
+        showSuccess('Domain added', `Domain ${newDomain} has been added and is pending verification.`);
+      }
     } else {
-      navigate('/settings');
+      const updatedLinks = mockUserDataService.setUserLinks({ selectedDomain: domain });
+      setLinks(updatedLinks);
     }
   };
+
+  const handleFeedbackEmailsChange = (checked: boolean) => {
+    const updatedEmailSettings = mockUserDataService.setEmailSettings({ 
+      receiveFeedbackEmails: checked 
+    });
+    setEmailSettings(updatedEmailSettings);
+  };
+
+  const features = [
+    { icon: <SparklesIcon className="w-4 h-4" />, text: "GPT-5 with advanced reasoning" },
+    { icon: <ChatBubbleLeftRightIcon className="w-4 h-4" />, text: "Expanded messaging and uploads" },
+    { icon: <PhotoIcon className="w-4 h-4" />, text: "Expanded and faster image creation" },
+    { icon: <CpuChipIcon className="w-4 h-4" />, text: "Expanded memory and context" },
+    { icon: <Cog6ToothIcon className="w-4 h-4" />, text: "Expanded deep research and agent mode" },
+    { icon: <UserGroupIcon className="w-4 h-4" />, text: "Projects, tasks, custom GPTs" },
+    { icon: <FilmIcon className="w-4 h-4" />, text: "Sora video generation" },
+    { icon: <CpuChipIcon className="w-4 h-4" />, text: "Codex agent" }
+  ];
 
   if (loading) {
     return (
-      <div className={cn('flex items-center justify-center p-8', className)}>
+      <div className={`h-full flex items-center justify-center ${className}`}>
         <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className={cn('p-8 text-center', className)}>
-        <p className="text-red-600 dark:text-red-400">Error loading profile: {error}</p>
-        <Button onClick={handleBack} className="mt-4">
-          Go Back
-        </Button>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className={cn('p-8 text-center', className)}>
-        <p className="text-gray-600 dark:text-gray-400">Profile not found</p>
-        <Button onClick={handleBack} className="mt-4">
-          Go Back
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className={cn('h-full flex flex-col', className)}>
+    <div className={`h-full flex flex-col ${className}`}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-dark-border">
-        {isMobile && (
-          <button
-            onClick={handleBack}
-            className="p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            aria-label="Go back"
-          >
-            <ArrowLeftIcon className="w-5 h-5" />
-          </button>
-        )}
-        <div className="flex-1">
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Account Settings
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Manage your profile and personal information
-          </p>
-        </div>
-        {!isEditing ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setIsEditing(true)}
-          >
-            Edit
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCancel}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={isSaving}
-              icon={isSaving ? undefined : <CheckIcon />}
-            >
-              {isSaving ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        )}
+      <div className="px-6 py-4">
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Account
+        </h1>
+        <div className="border-t border-gray-200 dark:border-dark-border mt-4" />
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Profile Image Section */}
-        <SettingsSection
-          title="Profile Image"
-          description="Your profile picture"
-        >
-          <div className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-accent-500 flex items-center justify-center flex-shrink-0">
-                {profile.image ? (
-                  <img 
-                    src={profile.image} 
-                    alt={profile.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <UserIcon className="w-8 h-8 text-white" />
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Profile Picture
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Upload a new image or remove the current one
-                </p>
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={<PhotoIcon />}
-                    onClick={() => setShowAvatarUpload(!showAvatarUpload)}
-                  >
-                    {profile.image ? 'Change' : 'Upload'}
-                  </Button>
-                  {profile.image && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDeleteAvatar}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              </div>
+      <div className="flex-1 overflow-y-auto px-6">
+        <div className="space-y-0">
+          {/* Get ChatGPT Plus Section */}
+          <div className="flex items-center justify-between py-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Get ChatGPT Plus
+              </h3>
             </div>
-            
-            {showAvatarUpload && (
-              <div className="mt-4 p-4 border border-gray-200 dark:border-dark-border rounded-lg">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="w-full text-sm text-gray-500 dark:text-gray-400
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-lg file:border-0
-                    file:text-sm file:font-medium
-                    file:bg-accent-500 file:text-gray-900
-                    hover:file:bg-accent-600
-                    file:cursor-pointer cursor-pointer"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Supported formats: JPEG, PNG, WebP. Max size: 5MB.
-                </p>
-              </div>
-            )}
+            <div className="ml-4">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleUpgrade}
+              >
+                Upgrade
+              </Button>
+            </div>
           </div>
-        </SettingsSection>
 
-        {/* Profile Information Section */}
-        <SettingsSection
-          title="Profile Information"
-          description="Basic information about you"
-        >
-          <SettingsItem
-            icon={<UserIcon />}
-            label="Name"
-            type="input"
-            value={formData.name}
-            onChange={(value) => setFormData(prev => ({ ...prev, name: String(value) }))}
-            placeholder="Enter your full name"
-            disabled={!isEditing}
-          />
-          <SettingsItem
-            icon={<EnvelopeIcon />}
-            label="Email"
-            value={profile.email}
-            type="display"
-            description="Email address (read-only)"
-          />
-          <div className="p-4">
-            <label htmlFor="bio" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-              Bio
-            </label>
-            <textarea
-              id="bio"
-              value={formData.bio}
-              onChange={(e) => setFormData(prev => ({ ...prev, bio: (e.target as HTMLTextAreaElement).value }))}
-              placeholder="Tell us about yourself..."
-              disabled={!isEditing}
-              rows={3}
-              maxLength={500}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {formData.bio.length}/500 characters
-            </p>
-          </div>
-        </SettingsSection>
+          <div className="border-t border-gray-200 dark:border-dark-border" />
 
-        {/* Contact Information Section */}
-        <SettingsSection
-          title="Contact Information"
-          description="How people can reach you"
-        >
-          <SettingsItem
-            icon={<PhoneIcon />}
-            label="Primary Phone"
-            type="input"
-            value={formData.phone}
-            onChange={(value) => setFormData(prev => ({ ...prev, phone: String(value) }))}
-            placeholder="+1 (555) 123-4567"
-            disabled={!isEditing}
-          />
-          <SettingsItem
-            icon={<PhoneIcon />}
-            label="Secondary Phone"
-            type="input"
-            value={formData.secondaryPhone}
-            onChange={(value) => setFormData(prev => ({ ...prev, secondaryPhone: String(value) }))}
-            placeholder="+1 (555) 987-6543"
-            disabled={!isEditing}
-          />
-          <div className="p-4">
-            <fieldset>
-              <legend className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                Preferred Contact Method
-              </legend>
+          {/* Get everything in Free, and more Section */}
+          <div className="py-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                Get everything in Free, and more.
+              </h3>
               <div className="space-y-2">
-                {(['email', 'phone', 'sms'] as const).map((method) => (
-                  <label key={method} className="flex items-center">
-                    <input
-                      type="radio"
-                      name="preferredContactMethod"
-                      value={method}
-                      checked={formData.preferredContactMethod === method}
-                      onChange={(e) => setFormData(prev => ({ ...prev, preferredContactMethod: (e.target as HTMLInputElement).value as 'email' | 'phone' | 'sms' }))}
-                      disabled={!isEditing}
-                      className="mr-2 text-accent-500 focus:ring-accent-500 disabled:opacity-50"
-                    />
-                    <span className="text-sm text-gray-900 dark:text-gray-100 capitalize">
-                      {method}
+                {features.map((feature, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="text-gray-500 dark:text-gray-400">
+                      {feature.icon}
+                    </div>
+                    <span className="text-sm text-gray-900 dark:text-gray-100">
+                      {feature.text}
                     </span>
-                  </label>
+                  </div>
                 ))}
               </div>
-            </fieldset>
+            </div>
           </div>
-        </SettingsSection>
 
-        {/* Address Section */}
-        <SettingsSection
-          title="Address"
-          description="Your physical address"
-        >
-          <SettingsItem
-            icon={<MapPinIcon />}
-            label="Street Address"
-            type="input"
-            value={formData.addressStreet}
-            onChange={(value) => setFormData(prev => ({ ...prev, addressStreet: String(value) }))}
-            placeholder="123 Main Street"
-            disabled={!isEditing}
-          />
-          <div className="grid grid-cols-2 gap-4 p-4">
-            <div>
-              <label htmlFor="addressCity" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                City
-              </label>
-              <input
-                id="addressCity"
-                type="text"
-                value={formData.addressCity}
-                onChange={(e) => setFormData(prev => ({ ...prev, addressCity: (e.target as HTMLInputElement).value }))}
-                placeholder="City"
-                disabled={!isEditing}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-              />
+          <div className="border-t border-gray-200 dark:border-dark-border" />
+
+          {/* Delete account Section */}
+          <div className="flex items-center justify-between py-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Delete account
+              </h3>
             </div>
-            <div>
-              <label htmlFor="addressState" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                State
-              </label>
-              <input
-                id="addressState"
-                type="text"
-                value={formData.addressState}
-                onChange={(e) => setFormData(prev => ({ ...prev, addressState: (e.target as HTMLInputElement).value }))}
-                placeholder="State"
-                disabled={!isEditing}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-              />
+            <div className="ml-4">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleDeleteAccount}
+                className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500"
+              >
+                Delete
+              </Button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 p-4 pt-0">
-            <div>
-              <label htmlFor="addressZip" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                ZIP Code
-              </label>
-              <input
-                id="addressZip"
-                type="text"
-                value={formData.addressZip}
-                onChange={(e) => setFormData(prev => ({ ...prev, addressZip: (e.target as HTMLInputElement).value }))}
-                placeholder="12345"
-                disabled={!isEditing}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-              />
+
+          <div className="border-t border-gray-200 dark:border-dark-border" />
+
+          {/* Links Section */}
+          <div className="py-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Links
+            </h3>
+            
+            {/* Domain Selector */}
+            <SettingsDropdown
+              label="Select a domain"
+              value={links?.selectedDomain || 'Select a domain'}
+              options={[
+                { value: "Select a domain", label: "Select a domain" },
+                { value: "whynot.earth", label: "whynot.earth" },
+                { value: "example.com", label: "example.com" },
+                ...(links?.customDomains?.map(domain => ({
+                  value: domain.domain,
+                  label: domain.domain
+                })) || []),
+                { value: "verify-new", label: "+ Verify new domain" }
+              ]}
+              onChange={handleDomainChange}
+            />
+
+            {/* LinkedIn */}
+            <div className="flex items-center justify-between py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 bg-black rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">in</span>
+                </div>
+                <span className="text-sm text-gray-900 dark:text-gray-100">LinkedIn</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleAddLinkedIn}
+              >
+                Add
+              </Button>
             </div>
-            <div>
-              <label htmlFor="addressCountry" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                Country
-              </label>
-              <input
-                id="addressCountry"
-                type="text"
-                value={formData.addressCountry}
-                onChange={(e) => setFormData(prev => ({ ...prev, addressCountry: (e.target as HTMLInputElement).value }))}
-                placeholder="Country"
-                disabled={!isEditing}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-              />
+
+            {/* GitHub */}
+            <div className="flex items-center justify-between py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 text-gray-500 dark:text-gray-400 fill-current">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                </div>
+                <span className="text-sm text-gray-900 dark:text-gray-100">GitHub</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleAddGitHub}
+              >
+                Add
+              </Button>
             </div>
           </div>
-        </SettingsSection>
+
+          <div className="border-t border-gray-200 dark:border-dark-border" />
+
+          {/* Email Section */}
+          <div className="py-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Email
+            </h3>
+            
+            {/* Email Address */}
+            <div className="flex items-center gap-3 py-3">
+              <EnvelopeIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm text-gray-900 dark:text-gray-100">
+                {emailSettings?.email || 'chris@whynot.earth'}
+              </span>
+            </div>
+
+            {/* Feedback Emails Checkbox */}
+            <div className="flex items-center gap-3 py-3">
+              <input
+                type="checkbox"
+                id="feedback-emails"
+                checked={emailSettings?.receiveFeedbackEmails || false}
+                onChange={(e) => handleFeedbackEmailsChange(e.currentTarget.checked)}
+                className="w-4 h-4 text-accent-500 bg-transparent border-gray-300 dark:border-gray-600 rounded focus:ring-accent-500 focus:ring-2"
+              />
+              <label htmlFor="feedback-emails" className="text-sm text-gray-900 dark:text-gray-100 cursor-pointer">
+                Receive feedback emails
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
