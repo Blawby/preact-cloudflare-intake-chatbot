@@ -4,17 +4,7 @@
 # Environment Configuration
 NODE_ENV=development
 
-# Authentication Configuration
-# Base URL for OAuth redirects - required for production, optional for development
-# In development: set in .dev.vars (this file)
-# In production: set via wrangler secrets (see wrangler.toml for commands)
-BETTER_AUTH_URL=http://localhost:8787
-
-# Google OAuth Configuration (SENSITIVE)
-# In development: set in .dev.vars (this file)  
-# In production: set via wrangler secrets
-GOOGLE_CLIENT_ID=your_google_client_id_here
-GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+# Authentication removed - frontend-only application
 
 # Debug Configuration
 VITE_DEBUG_OVERLAY=false

@@ -85,7 +85,7 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
     throw HttpErrors.badRequest('teamId parameter is required');
   }
 
-  // Resolve session for authentication and tenant scoping
+  // Resolve session for tenant scoping (no auth required)
   let sessionResolution;
   try {
     sessionResolution = await SessionService.resolveSession(env, {
@@ -95,7 +95,7 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
     });
   } catch (error) {
     console.error('Session resolution error:', error);
-    throw HttpErrors.unauthorized('Authentication required');
+    throw HttpErrors.badRequest('Failed to resolve session');
   }
 
   const resolvedTeamId = sessionResolution.session.teamId;
@@ -222,7 +222,7 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
     throw HttpErrors.badRequest('teamId is required');
   }
 
-  // Resolve session for authentication and tenant scoping
+  // Resolve session for tenant scoping (no auth required)
   let sessionResolution;
   try {
     sessionResolution = await SessionService.resolveSession(env, {
@@ -232,7 +232,7 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
     });
   } catch (error) {
     console.error('Session resolution error:', error);
-    throw HttpErrors.unauthorized('Authentication required');
+    throw HttpErrors.badRequest('Failed to resolve session');
   }
 
   const resolvedTeamId = sessionResolution.session.teamId;

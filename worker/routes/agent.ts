@@ -11,6 +11,7 @@ import { caseDraftMiddleware } from '../middleware/caseDraftMiddleware.js';
 import { documentChecklistMiddleware } from '../middleware/documentChecklistMiddleware.js';
 import { skipToLawyerMiddleware } from '../middleware/skipToLawyerMiddleware.js';
 import { pdfGenerationMiddleware } from '../middleware/pdfGenerationMiddleware.js';
+import { fileAnalysisMiddleware } from '../middleware/fileAnalysisMiddleware.js';
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index.js';
 import { getCloudflareLocation } from '../utils/cloudflareLocationValidator.js';
 import { SessionService } from '../services/SessionService.js';
@@ -163,6 +164,11 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
 
     // Update context with the full conversation before running pipeline
     const updatedContext = ConversationContextManager.updateContext(context, messages);
+    
+    // Add current attachments to context for middleware processing
+    if (attachments && attachments.length > 0) {
+      updatedContext.currentAttachments = attachments;
+    }
 
     // Run through pipeline with full conversation history
     const pipelineResult = await runPipeline(
@@ -173,6 +179,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
         createLoggingMiddleware(),
         contentPolicyFilter,
         businessScopeValidator,
+        fileAnalysisMiddleware, // Handle file analysis early in pipeline
         skipToLawyerMiddleware, // Move skip middleware before jurisdiction validator
         jurisdictionValidator,
         caseDraftMiddleware,
@@ -215,9 +222,9 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
               const matterCanvasEvent = `data: ${JSON.stringify({
                 type: 'matter_canvas',
                 data: {
-                  matterId: pipelineResult.context.caseDraft.matter_type.toLowerCase().replace(/\s+/g, '-'),
+                  matterId: pipelineResult.context.caseDraft.matter_type?.toLowerCase().replace(/\s+/g, '-') || 'general-case',
                   matterNumber: `CASE-${Date.now()}`,
-                  service: pipelineResult.context.caseDraft.matter_type,
+                  service: pipelineResult.context.caseDraft.matter_type || 'General Consultation',
                   matterSummary: pipelineResult.context.caseDraft.key_facts?.join(' ') || 'Case information organized',
                   answers: {}
                 }

@@ -1,4 +1,4 @@
-import { Smile, BadgeCheck } from 'lucide-preact';
+import { FaceSmileIcon, CheckBadgeIcon } from '@heroicons/react/24/outline';
 
 interface TeamProfileProps {
 	name: string;
@@ -31,7 +31,7 @@ export default function TeamProfile({
 					/>
 				) : (
 					<div className={`flex items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-hover ${isWelcome ? 'w-16 h-16' : 'w-12 h-12'}`}>
-						<Smile className={isWelcome ? "w-12 h-12" : "w-8 h-8"} />
+						<FaceSmileIcon className={isWelcome ? "w-12 h-12" : "w-8 h-8"} />
 					</div>
 				)}
 			</div>
@@ -40,7 +40,7 @@ export default function TeamProfile({
 			<div className="flex items-center justify-center gap-2">
 				<h3 className="text-base sm:text-lg lg:text-xl font-semibold text-center m-0 text-gray-900 dark:text-white leading-tight">{name}</h3>
 				{showVerified && variant === 'welcome' && (
-					<BadgeCheck className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white flex-shrink-0" aria-label="Verified" title="Verified" />
+					<CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white flex-shrink-0" aria-label="Verified" title="Verified" />
 				)}
 			</div>
 

@@ -161,6 +161,34 @@ export default [
     }
   },
 
+  // Node.js scripts
+  {
+    files: ['scripts/**/*.{js,ts}'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly'
+      }
+    },
+    plugins: { '@typescript-eslint': typescript },
+    rules: {
+      ...typescript.configs.recommended.rules,
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'no-console': 'off', // console useful in scripts
+      'no-unused-vars': 'off'
+    }
+  },
+
   // Tests (Vitest / Jest style globals)
   {
     files: ['**/*.{test,spec}.{ts,tsx,js,jsx}', 'tests/**/*.{ts,tsx,js,jsx}'],

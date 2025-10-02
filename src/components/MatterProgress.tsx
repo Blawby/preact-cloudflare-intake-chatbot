@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { features } from '../config/features';
-import { X, XCircle, CheckCircle } from 'lucide-preact';
+import { XMarkIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface ChecklistItem {
   id: string;
@@ -120,7 +120,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
             className="text-white hover:text-blue-200 transition-colors"
             aria-label="Close"
           >
-            <X className="w-6 h-6" />
+            <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 
@@ -136,7 +136,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <div className="flex items-center">
-                <XCircle className="w-5 h-5 text-red-400 mr-2" />
+                <ExclamationTriangleIcon className="w-5 h-5 text-red-400 mr-2" />
                 <p className="text-red-700">{error}</p>
               </div>
               <button
@@ -229,7 +229,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
               {progressData.completed && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-center">
-                    <CheckCircle className="w-6 h-6 text-green-500 mr-2" />
+                    <CheckCircleIcon className="w-6 h-6 text-green-500 mr-2" />
                     <p className="text-green-800 font-semibold">Matter formation completed successfully!</p>
                   </div>
                 </div>

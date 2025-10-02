@@ -81,6 +81,23 @@ export class TeamService {
   }
 
   /**
+   * Safely decodes team config from database as plain JSON
+   * Team configs are stored as plain JSON text in the database
+   */
+  private decodeTeamConfig(configString: string): any {
+    try {
+      return JSON.parse(configString);
+    } catch (jsonError) {
+      console.error('Failed to parse team config as JSON:', { 
+        configString: configString.substring(0, 100) + '...', 
+        error: jsonError 
+      });
+      // Return a safe default config if JSON parsing fails
+      return { aiModel: 'llama', requiresPayment: false };
+    }
+  }
+
+  /**
    * Resolves environment variable placeholders in string values
    * Uses regex to find and replace ${VAR_NAME} patterns with actual env values
    * Also handles direct environment variable names
@@ -220,7 +237,7 @@ export class TeamService {
       }
       
       if (teamRow) {
-        const rawConfig = JSON.parse(teamRow.config as string);
+        const rawConfig = this.decodeTeamConfig(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
         const normalizedConfig = this.normalizeConfigArrays(resolvedConfig);
         
@@ -434,7 +451,7 @@ export class TeamService {
       id: row.id as string,
       slug: row.slug as string,
       name: row.name as string,
-      config: JSON.parse(row.config as string),
+      config: this.decodeTeamConfig(row.config as string),
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string
     }));

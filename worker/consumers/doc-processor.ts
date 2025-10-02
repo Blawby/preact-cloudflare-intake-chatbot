@@ -1,5 +1,5 @@
 import type { Ai, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
-import { extractPdfText } from '../lib/pdf.js';
+// Removed custom PDF text extraction - using Cloudflare AI directly
 import { withAIRetry } from '../utils/retry.js';
 
 export interface Env {
@@ -30,16 +30,17 @@ export default {
         
         const buf = await obj.arrayBuffer();
 
-        let analysis: any;
-        if (mime === "application/pdf") {
-          const { fullText } = await extractPdfText(buf);
-          analysis = await summarizeLegal(env, fullText);
-        } else if (mime.startsWith("image/")) {
-          analysis = await analyzeImage(env, new Uint8Array(buf));
-        } else {
-          const text = new TextDecoder().decode(buf);
-          analysis = await summarizeLegal(env, text);
-        }
+                let analysis: any;
+                if (mime === "application/pdf") {
+                  // Skip PDF processing for now - let the analyze endpoint handle it
+                  console.log('Skipping PDF processing in queue - will be handled by analyze endpoint');
+                  continue;
+                } else if (mime.startsWith("image/")) {
+                  analysis = await analyzeImage(env, new Uint8Array(buf));
+                } else {
+                  const text = new TextDecoder().decode(buf);
+                  analysis = await summarizeLegal(env, text);
+                }
 
         // Store analysis preview in KV for quick access
         await env.CHAT_SESSIONS.put(

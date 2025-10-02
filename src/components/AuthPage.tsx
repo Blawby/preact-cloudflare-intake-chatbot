@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
-import { User, Lock, Mail, ArrowLeft } from 'lucide-preact';
-import { authClient } from '../lib/authClient';
+import { UserIcon, LockClosedIcon, EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+// No authentication required - authClient removed
 
 interface AuthPageProps {
   mode?: 'signin' | 'signup';
@@ -42,38 +42,53 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
           return;
         }
 
-        const result = await authClient.signUp.email({
+        // No actual authentication - just simulate success
+        // Store mock user data in localStorage
+        const mockUser = {
+          id: 'mock-user-123',
+          name: formData.name || formData.email.split('@')[0] || 'Demo User',
           email: formData.email,
-          password: formData.password,
-          name: formData.name,
-        });
-
-        if (result.error) {
-          setError(result.error.message);
-        } else {
-          setMessage('Account created successfully! You can now sign in.');
-          setIsSignUp(false);
-          setFormData({ name: '', email: '', password: '', confirmPassword: '' });
-        }
+          image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
+          teamId: null,
+          role: 'user',
+          phone: null
+        };
+        localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        
+        // Dispatch custom event to notify UserProfile component
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
+        
+        setMessage('Account created successfully! You are now signed in.');
+        // Redirect to home page after successful sign up
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
       } else {
-        const result = await authClient.signIn.email({
+        // No actual authentication - just simulate success
+        // Store mock user data in localStorage
+        const mockUser = {
+          id: 'mock-user-123',
+          name: formData.email.split('@')[0] || 'Demo User',
           email: formData.email,
-          password: formData.password,
-        });
-
-        if (result.error) {
-          setError(result.error.message);
-        } else {
-          setMessage('Signed in successfully!');
-          // Call onSuccess callback and wait for it to complete before redirecting
-          if (onSuccess) {
-            await onSuccess();
-          }
-          // Redirect to home page after successful sign in and callback completion
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1000);
+          image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
+          teamId: null,
+          role: 'user',
+          phone: null
+        };
+        localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        
+        // Dispatch custom event to notify UserProfile component
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
+        
+        setMessage('Signed in successfully!');
+        // Call onSuccess callback and wait for it to complete before redirecting
+        if (onSuccess) {
+          await onSuccess();
         }
+        // Redirect to home page after successful sign in and callback completion
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -88,22 +103,26 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
     setMessage('');
 
     try {
-      // For social sign-in, we need to redirect to the OAuth provider
-      const result = await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: `${window.location.origin}/`,
-      });
-
-      if (result.error) {
-        setError(result.error.message);
-        setLoading(false);
-      } else if (result.data?.url) {
-        // Redirect to Google OAuth
-        window.location.href = result.data.url;
-      } else {
-        setError('Failed to initiate Google sign-in');
-        setLoading(false);
-      }
+      // No actual authentication - just simulate success
+      // Store mock user data in localStorage
+      const mockUser = {
+        id: 'mock-user-google-123',
+        name: 'Google User',
+        email: 'user@gmail.com',
+        image: 'https://i.pravatar.cc/300?u=google-user',
+        teamId: null,
+        role: 'user',
+        phone: null
+      };
+      localStorage.setItem('mockUser', JSON.stringify(mockUser));
+      
+      // Dispatch custom event to notify UserProfile component
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
+      
+      setMessage('Signed in with Google successfully!');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
@@ -127,13 +146,13 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
             onClick={handleBackToHome}
             className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
-            <ArrowLeft className="h-4 w-4 mr-1" />
+            <ArrowLeftIcon className="h-4 w-4 mr-1" />
             Back to Home
           </button>
         </div>
-
+        
         <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-accent-500">
-          <User className="h-6 w-6 text-white" />
+          <UserIcon className="h-6 w-6 text-white" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
           {isSignUp ? 'Create your account' : 'Sign in to your account'}
@@ -191,7 +210,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
                       className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-accent-500 focus:border-accent-500 focus:z-10 sm:text-sm"
                       placeholder="Enter your full name"
                     />
-                    <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                   </div>
                 </div>
               )}
@@ -212,7 +231,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
                     className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-accent-500 focus:border-accent-500 focus:z-10 sm:text-sm"
                     placeholder="Enter your email"
                   />
-                  <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <EnvelopeIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
 
@@ -232,7 +251,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
                     className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-accent-500 focus:border-accent-500 focus:z-10 sm:text-sm"
                     placeholder="Enter your password"
                   />
-                  <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <LockClosedIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
 
@@ -253,7 +272,7 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
                       className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-accent-500 focus:border-accent-500 focus:z-10 sm:text-sm"
                       placeholder="Confirm your password"
                     />
-                    <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <LockClosedIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                   </div>
                 </div>
               )}

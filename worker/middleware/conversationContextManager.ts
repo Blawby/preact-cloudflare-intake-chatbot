@@ -89,6 +89,13 @@ export interface ConversationContext {
     urgency: string;
     reason: string;
   };
+  // Current request attachments for file analysis
+  currentAttachments?: Array<{
+    name: string;
+    size: number;
+    type: string;
+    url: string;
+  }>;
 }
 
 export class ConversationContextManager {

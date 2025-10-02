@@ -1,5 +1,5 @@
 import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../types.js';
-import { TeamService, type Team, type TeamVoiceConfig } from '../../services/TeamService.js';
+import { TeamService, type Team } from '../../services/TeamService.js';
 import { ConversationContextManager } from '../../middleware/conversationContextManager.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
@@ -284,29 +284,13 @@ export interface CloudflareLocation {
   readonly timezone?: string;
 }
 
-interface TeamConfig {
-  id?: string;
-  name?: string;
-  config?: {
-    requiresPayment?: boolean;
-    consultationFee?: number;
-    paymentLink?: string;
-    jurisdiction?: {
-      requireLocation?: boolean;
-    };
-  };
-  jurisdiction?: {
-    requireLocation?: boolean;
-  };
-}
-
 interface ExtractedContactInfo {
   name: string | null;
   email: string | null;
   phone: string | null;
 }
 
-interface ToolCall {
+export interface ToolCall {
   name: string;
   arguments?: Record<string, unknown>;
 }
@@ -412,118 +396,36 @@ function hasPlaceholderValue(value: string | undefined | null): boolean {
   return PLACEHOLDER_PATTERNS.test(value);
 }
 
-function _isTeamConfig(obj: unknown): obj is TeamConfig {
-  return obj !== null && typeof obj === 'object' && ('name' in obj || 'id' in obj);
-}
-
-function extractTeamConfig(rawConfig: unknown): TeamConfig {
-  if (!rawConfig || typeof rawConfig !== 'object') {
-    return {};
-  }
-
-  const config = rawConfig as Record<string, unknown>;
-  
-  if ('config' in config && typeof config.config === 'object') {
-    return {
-      id: typeof config.id === 'string' ? config.id : undefined,
-      name: typeof config.name === 'string' ? config.name : undefined,
-      config: config.config,
-      jurisdiction: (config.config as Record<string, unknown>)?.jurisdiction
-    };
-  }
-
-  return {
-    id: typeof config.id === 'string' ? config.id : undefined,
-    name: typeof config.name === 'string' ? config.name : undefined,
-    config: typeof config.config === 'object' ? config.config : undefined,
-    jurisdiction: typeof config.jurisdiction === 'object' ? config.jurisdiction : undefined
-  };
-}
-
-/**
- * Converts a TeamConfig to a Team object with proper type safety.
- * Maps and validates all required Team fields including id, slug, name, config with typed voice and jurisdiction, createdAt, updatedAt.
- */
-function convertTeamConfigToTeam(teamConfig: TeamConfig, teamId?: string): Team {
-  const now = new Date().toISOString();
-  
-  // Extract the actual config object from the TeamConfig structure
-  const actualConfig = teamConfig.config as Record<string, unknown> || {};
-  
-  return {
-    id: teamConfig.id || teamId || '',
-    slug: teamId || '',
-    name: teamConfig.name || 'Unknown Team',
-    config: {
-      aiModel: (actualConfig.aiModel as string) || 'gpt-4',
-      consultationFee: (actualConfig.consultationFee as number) || 0,
-      requiresPayment: (actualConfig.requiresPayment as boolean) || false,
-      ownerEmail: (actualConfig.ownerEmail as string) || '',
-      availableServices: (actualConfig.availableServices as string[]) || [],
-      serviceQuestions: (actualConfig.serviceQuestions as Record<string, string[]>) || {},
-      domain: (actualConfig.domain as string) || '',
-      description: (actualConfig.description as string) || '',
-      paymentLink: actualConfig.paymentLink as string | undefined,
-      brandColor: (actualConfig.brandColor as string) || '#334e68',
-      accentColor: (actualConfig.accentColor as string) || '#5a67d8',
-      introMessage: (actualConfig.introMessage as string) || '',
-      profileImage: actualConfig.profileImage as string | undefined,
-      voice: {
-        enabled: (actualConfig.voice as TeamVoiceConfig)?.enabled || false,
-        provider: (actualConfig.voice as TeamVoiceConfig)?.provider || 'cloudflare',
-        voiceId: (actualConfig.voice as TeamVoiceConfig)?.voiceId || null,
-        displayName: (actualConfig.voice as TeamVoiceConfig)?.displayName || null,
-        previewUrl: (actualConfig.voice as TeamVoiceConfig)?.previewUrl || null
-      },
-      jurisdiction: (teamConfig.jurisdiction && typeof teamConfig.jurisdiction === 'object' && 'type' in teamConfig.jurisdiction) 
-        ? teamConfig.jurisdiction as { type: 'national' | 'state'; description: string; supportedStates: string[]; supportedCountries: string[]; primaryState?: string }
-        : {
-            type: 'national' as const,
-            description: 'National jurisdiction',
-            supportedStates: [],
-            supportedCountries: ['US']
-          },
-      blawbyApi: actualConfig.blawbyApi as {
-        enabled: boolean;
-        apiKey?: string | null;
-        apiKeyHash?: string;
-        teamUlid?: string;
-        apiUrl?: string;
-      } | undefined
-    },
-    createdAt: now,
-    updatedAt: now
-  };
-}
 
 // ============================================================================
 // TEAM CONFIG CACHE
 // ============================================================================
 
-class TeamConfigCache {
-  private cache = new Map<string, { config: TeamConfig; timestamp: number }>();
+class TeamCache {
+  private cache = new Map<string, { team: Team; timestamp: number }>();
 
-  async get(teamId: string, env: Env): Promise<TeamConfig | null> {
+  async get(teamId: string, env: Env): Promise<Team | null> {
     const cached = this.cache.get(teamId);
     if (cached && Date.now() - cached.timestamp < CACHE_CONFIG.TTL_MS) {
-      return cached.config;
+      return cached.team;
     }
 
     try {
       const teamService = new TeamService(env);
-      const rawConfig = await teamService.getTeam(teamId);
-      const config = extractTeamConfig(rawConfig);
+      const team = await teamService.getTeam(teamId);
       
-      this.cache.set(teamId, { config, timestamp: Date.now() });
-      
-      // Cleanup old entries
-      if (this.cache.size > CACHE_CONFIG.MAX_SIZE) {
-        const oldestKey = Array.from(this.cache.entries())
-          .sort((a, b) => a[1].timestamp - b[1].timestamp)[0][0];
-        this.cache.delete(oldestKey);
+      if (team) {
+        this.cache.set(teamId, { team, timestamp: Date.now() });
+        
+        // Cleanup old entries
+        if (this.cache.size > CACHE_CONFIG.MAX_SIZE) {
+          const oldestKey = Array.from(this.cache.entries())
+            .sort((a, b) => a[1].timestamp - b[1].timestamp)[0][0];
+          this.cache.delete(oldestKey);
+        }
       }
       
-      return config;
+      return team;
     } catch (error) {
       Logger.error('Failed to retrieve team configuration', { 
         teamId, 
@@ -534,7 +436,7 @@ class TeamConfigCache {
   }
 }
 
-const teamConfigCache = new TeamConfigCache();
+const teamCache = new TeamCache();
 
 // ============================================================================
 // CONTEXT DETECTION
@@ -693,11 +595,10 @@ class ContextDetector {
 // ============================================================================
 
 class PromptBuilder {
-  static build(context: ConversationContext, teamConfig: TeamConfig, teamId?: string | null): string {
-    const teamName = teamConfig?.name || 'our law firm';
+  static build(context: ConversationContext, team: Team | null, teamId?: string | null): string {
+    const teamName = team?.name || 'our law firm';
     const publicMode = isPublicMode(teamId);
-    const requiresLocation = teamConfig?.config?.jurisdiction?.requireLocation || 
-                            teamConfig?.jurisdiction?.requireLocation;
+    const requiresLocation = team?.config?.jurisdiction?.type === 'state';
     
     const locationRequirement = requiresLocation ? 
       `\nIMPORTANT: This team requires location information (city and state) before proceeding with contact forms or matter creation. Always ask for location first if not provided.` : '';
@@ -917,7 +818,7 @@ class SSEController {
 class ToolExecutor {
   constructor(
     private env: Env,
-    private teamConfig: TeamConfig | null,
+    private team: Team | null,
     private sse: SSEController,
     private correlationId: string,
     private sessionId?: string,
@@ -975,7 +876,7 @@ class ToolExecutor {
       const toolResult = await handler(
         toolCall.arguments,
         this.env,
-        this.teamConfig,
+        this.team,
         this.correlationId,
         this.sessionId,
         this.teamId
@@ -1051,8 +952,7 @@ class ToolExecutor {
       ? toolResult.data as ContactFormResponse
       : null;
 
-    const requiresLocation = this.teamConfig?.config?.jurisdiction?.requireLocation ||
-                            this.teamConfig?.jurisdiction?.requireLocation;
+    const requiresLocation = this.team?.config?.jurisdiction?.type === 'state';
     
     const requiredFields = ['name', 'email', 'phone'];
     if (requiresLocation) {
@@ -1105,7 +1005,7 @@ class ToolExecutor {
 async function handleCreateMatter(
   parameters: Record<string, unknown>,
   env: Env,
-  teamConfig: TeamConfig | null,
+  team: Team | null,
   correlationId?: string,
   sessionId?: string,
   teamId?: string
@@ -1194,7 +1094,7 @@ async function handleCreateMatter(
       urgency: finalUrgency,
       opposingParty: (opposing_party as string) || ''
     },
-    teamId: teamConfig?.id || env.BLAWBY_TEAM_ULID,
+    teamId: team?.id || env.BLAWBY_TEAM_ULID,
     sessionId: sessionId || 'session-' + Date.now()
   };
 
@@ -1205,15 +1105,12 @@ async function handleCreateMatter(
   const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(
     env, 
     paymentRequest, 
-    teamConfig
+    team
   );
-
-  // Convert TeamConfig to Team format for ContactIntakeOrchestrator
-  const teamForOrchestrator = teamConfig ? convertTeamConfigToTeam(teamConfig, teamId) : null;
 
   const orchestrationResult = await ContactIntakeOrchestrator.finalizeSubmission({
     env,
-    teamConfig: teamForOrchestrator,
+    teamConfig: team,
     sessionId,
     teamId,
     correlationId,
@@ -1229,8 +1126,8 @@ async function handleCreateMatter(
     }
   });
 
-  const requiresPayment = teamConfig?.config?.requiresPayment || false;
-  const consultationFee = teamConfig?.config?.consultationFee || 0;
+  const requiresPayment = team?.config?.requiresPayment || false;
+  const consultationFee = team?.config?.consultationFee || 0;
 
   const { generateCompleteMatterMessage } = await import('../../utils/messageTemplates');
   const { analyzeMissingInfo } = await import('../../../src/utils/matterAnalysis');
@@ -1256,7 +1153,7 @@ async function handleCreateMatter(
     urgency: finalUrgency,
     requiresPayment: requiresPayment && consultationFee > 0,
     consultationFee,
-    paymentLink: invoiceUrl || teamConfig?.config?.paymentLink,
+    paymentLink: invoiceUrl || team?.config?.paymentLink,
     pdfFilename: orchestrationResult.pdf?.filename,
     missingInfo
   };
@@ -1274,7 +1171,7 @@ async function handleCreateMatter(
     opposing_party: opposing_party as string,
     requires_payment: requiresPayment,
     consultation_fee: consultationFee,
-    payment_link: invoiceUrl || teamConfig?.config?.paymentLink,
+    payment_link: invoiceUrl || team?.config?.paymentLink,
     payment_embed: invoiceUrl ? {
       paymentUrl: invoiceUrl,
       amount: consultationFee,
@@ -1289,7 +1186,7 @@ async function handleCreateMatter(
 async function handleRequestLawyerReview(
   parameters: Record<string, unknown>,
   env: Env,
-  teamConfig: TeamConfig | null,
+  team: Team | null,
   correlationId?: string,
   sessionId?: string,
   teamId?: string
@@ -1351,7 +1248,7 @@ async function handleRequestLawyerReview(
 
   await notificationService.sendLawyerReviewNotification({
     type: 'lawyer_review',
-    teamConfig,
+    teamConfig: team,
     matterInfo: {
       type: matter_type as string,
       urgency: urgency as string,
@@ -1373,7 +1270,7 @@ async function handleRequestLawyerReview(
 async function handleAnalyzeDocument(
   parameters: Record<string, unknown>,
   env: Env,
-  _teamConfig: TeamConfig | null
+  _team: Team | null
 ): Promise<ToolResult> {
   const { file_id, analysis_type, specific_question } = parameters as {
     file_id?: string;
@@ -1385,8 +1282,16 @@ async function handleAnalyzeDocument(
   Logger.debug('File ID:', ToolCallParser.sanitizeParameters(file_id as string));
   Logger.debug('Analysis Type:', ToolCallParser.sanitizeParameters(analysis_type as string));
 
+  // Validate required parameters
+  if (!file_id || typeof file_id !== 'string') {
+    Logger.error('Missing or invalid file_id parameter', { file_id, parameters });
+    return createValidationError(
+      "I'm sorry, I couldn't identify the file to analyze. Please try uploading the file again."
+    );
+  }
+
   const customQuestion = getAnalysisQuestion(analysis_type as string, specific_question as string);
-  const fileAnalysis = await analyzeFile(env, file_id as string, customQuestion);
+  const fileAnalysis = await analyzeFile(env, file_id, customQuestion);
 
   if (!fileAnalysis || fileAnalysis.confidence === 0.0) {
     return createValidationError(
@@ -1464,11 +1369,11 @@ async function handleAnalyzeDocument(
 async function handleCreatePaymentInvoice(
   parameters: Record<string, unknown>,
   env: Env,
-  teamConfig?: TeamConfig | null
+  team?: Team | null
 ): Promise<ToolResult> {
   const sessionId = crypto.randomUUID();
 
-  if (!teamConfig?.id) {
+  if (!team?.id) {
     return {
       success: false,
       error: {
@@ -1503,7 +1408,7 @@ async function handleCreatePaymentInvoice(
         urgency: 'normal',
         opposingParty: ''
       },
-      teamId: teamConfig.id,
+      teamId: team.id,
       sessionId,
       invoiceId: invoice_id as string,
       currency: currency as string,
@@ -1551,7 +1456,7 @@ async function handleCreatePaymentInvoice(
 async function handleShowContactForm(
   parameters: unknown,
   env: Env,
-  teamConfig?: TeamConfig | null,
+  team?: Team | null,
   correlationId?: string,
   sessionId?: string,
   teamId?: string
@@ -1640,6 +1545,15 @@ const TOOL_HANDLERS = {
 } as const;
 
 // ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Determines the analysis type based on file attachment
+ */
+// determineAnalysisType function moved to fileAnalysisMiddleware.ts
+
+// ============================================================================
 // MAIN AGENT ORCHESTRATOR
 // ============================================================================
 
@@ -1704,7 +1618,7 @@ export async function runLegalIntakeAgentStream(
   try {
     await sse.emit({ type: 'connected' });
 
-    const teamConfig = teamId ? await teamConfigCache.get(teamId, env) : null;
+    const team = teamId ? await teamCache.get(teamId, env) : null;
 
     LegalIntakeLogger.logAgentStart(
       correlationId,
@@ -1713,7 +1627,7 @@ export async function runLegalIntakeAgentStream(
       messages.length,
       attachments.length > 0,
       attachments.length,
-      teamConfig ? { hasConfig: true } : { hasConfig: false }
+      team ? { hasConfig: true } : { hasConfig: false }
     );
 
     // Build conversation text
@@ -1760,7 +1674,7 @@ export async function runLegalIntakeAgentStream(
 
     // Get available tools and build prompt
     const availableTools = getAvailableTools(context.state, context);
-    const systemPrompt = PromptBuilder.build(context, teamConfig || {}, teamId);
+    const systemPrompt = PromptBuilder.build(context, team, teamId);
 
     Logger.info('Conversation State:', {
       correlationId,
@@ -1812,7 +1726,10 @@ export async function runLegalIntakeAgentStream(
     );
 
     // Handle AI response
-    const executor = new ToolExecutor(env, teamConfig, sse, correlationId, sessionId, teamId);
+    const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
+
+    // File analysis is now handled by the fileAnalysisMiddleware in the pipeline
+    // No need to handle attachments here anymore
 
     if (hasToolCalls(aiResult)) {
       await executor.execute(aiResult.tool_calls[0]);

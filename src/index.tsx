@@ -258,10 +258,6 @@ function MainApp() {
 	);
 }
 
-// Auth page component
-function AuthPageWrapper() {
-	return <AuthPage />;
-}
 
 // Main App component with routing
 export function App() {
@@ -290,7 +286,7 @@ export function App() {
 					currentUrl={currentUrl}
 				/>
 				<Router>
-					<Route path="/auth" component={AuthPageWrapper} />
+					<Route path="/auth" component={AuthPage} />
 					<Route default component={MainApp} />
 				</Router>
 			</ToastProvider>

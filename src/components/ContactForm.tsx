@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { Button } from './ui/Button';
 import { useTheme } from '../hooks/useTheme';
-import { XCircle } from 'lucide-preact';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 // Constants for allowed field names
 export const ALLOWED_FIELDS = ['name', 'email', 'phone', 'location', 'opposingParty'] as const;
@@ -313,7 +313,7 @@ export function ContactForm({
         <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md" data-testid="submission-error">
           <div class="flex">
             <div class="flex-shrink-0">
-              <XCircle className="h-5 w-5 text-red-400" />
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
             </div>
             <div class="ml-3">
               <p class="text-sm text-red-800 dark:text-red-200">{submissionError}</p>
