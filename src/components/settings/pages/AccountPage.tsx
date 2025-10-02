@@ -50,6 +50,7 @@ export const AccountPage = ({
       const emailData = mockUserDataService.getEmailSettings();
       const profile = mockUserDataService.getUserProfile();
       
+      
       setLinks(linksData);
       setEmailSettings(emailData);
       setCurrentTier(profile.subscriptionTier);
@@ -66,6 +67,7 @@ export const AccountPage = ({
   useEffect(() => {
     loadAccountData();
   }, []);
+
 
   // Listen for auth state changes to update tier
   useEffect(() => {
@@ -111,6 +113,15 @@ export const AccountPage = ({
     }
     if (upgradePath.length > 0) {
       const nextTier = upgradePath[0];
+      
+      // Actually upgrade the user's tier in mock data
+      const profile = mockUserDataService.getUserProfile();
+      const updatedProfile = { ...profile, subscriptionTier: nextTier.id as SubscriptionTier };
+      mockUserDataService.setUserProfile(updatedProfile);
+      
+      // Update local state
+      setCurrentTier(nextTier.id as SubscriptionTier);
+      
       showSuccess(
         t('settings:account.plan.toasts.upgradeWithPlan.title'),
         t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
@@ -121,7 +132,6 @@ export const AccountPage = ({
         t('settings:account.plan.toasts.highest.body')
       );
     }
-    // Here you would redirect to the upgrade page
   };
 
   const handleDeleteAccount = () => {
@@ -248,6 +258,25 @@ export const AccountPage = ({
       t('settings:account.links.addDomainToast.title'),
       t('settings:account.links.addDomainToast.body', { domain: normalized })
     );
+    
+    // Simulate domain verification process
+    setTimeout(() => {
+      const verifyLinks = mockUserDataService.getUserLinks();
+      const updatedVerifyLinks = {
+        ...verifyLinks,
+        customDomains: verifyLinks.customDomains?.map(domain => 
+          domain.domain === normalized 
+            ? { ...domain, verified: true, verifiedAt: new Date().toISOString() }
+            : domain
+        ) || []
+      };
+      mockUserDataService.setUserLinks(updatedVerifyLinks);
+      setLinks(updatedVerifyLinks);
+      showSuccess(
+        'Domain Verified',
+        `Domain ${normalized} has been successfully verified!`
+      );
+    }, 3000); // Simulate 3-second verification process
   };
 
   const handleAddLinkedIn = () => {
@@ -329,12 +358,19 @@ export const AccountPage = ({
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-0">
-          {/* Get ChatGPT Plus Section */}
+          {/* Current Plan Section */}
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {sectionTitle}
+                {currentTier ? `Current Plan: ${currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}` : 'Current Plan'}
               </h3>
+              {currentTier && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {currentTier === 'free' && 'Basic features with limited usage'}
+                  {currentTier === 'plus' && 'Enhanced features with higher limits'}
+                  {currentTier === 'business' && 'Full features with unlimited usage'}
+                </p>
+              )}
             </div>
             <div className="ml-4">
               <Button
