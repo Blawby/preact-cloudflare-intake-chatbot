@@ -116,6 +116,9 @@ function MainApp() {
 		const handleAuthStateChange = (e: CustomEvent) => {
 			if (e.detail && e.detail.subscriptionTier) {
 				setCurrentUserTier(e.detail.subscriptionTier);
+			} else {
+				// Fallback to 'free' when detail is missing or subscriptionTier is falsy
+				setCurrentUserTier('free');
 			}
 		};
 

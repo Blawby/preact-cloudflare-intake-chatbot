@@ -29,10 +29,7 @@ export const AccountPage = ({
   const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // For demo purposes - change this to test different tiers: 'free', 'plus', 'business'
-  const currentTier: SubscriptionTier = 'free';
-  const currentPlanFeatures = mockPricingDataService.getFeaturesForTier(currentTier);
+  const [currentTier, setCurrentTier] = useState<SubscriptionTier | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDomainModal, setShowDomainModal] = useState(false);
   const [domainInput, setDomainInput] = useState('');
@@ -47,9 +44,11 @@ export const AccountPage = ({
       setLoading(true);
       const linksData = mockUserDataService.getUserLinks();
       const emailData = mockUserDataService.getEmailSettings();
+      const profile = mockUserDataService.getUserProfile();
       
       setLinks(linksData);
       setEmailSettings(emailData);
+      setCurrentTier(profile.subscriptionTier);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to load account data:', error);
@@ -64,12 +63,32 @@ export const AccountPage = ({
     loadAccountData();
   }, []);
 
+  // Listen for auth state changes to update tier
+  useEffect(() => {
+    const handleAuthStateChange = () => {
+      loadAccountData();
+    };
+
+    window.addEventListener('authStateChanged', handleAuthStateChange);
+    
+    return () => {
+      window.removeEventListener('authStateChanged', handleAuthStateChange);
+    };
+  }, []);
+
+  // Simple computed values for demo - only compute when currentTier is available
+  const upgradePath = currentTier ? mockPricingDataService.getUpgradePath(currentTier) : [];
+  const upgradeButtonText = currentTier && upgradePath.length > 0 ? `Upgrade to ${upgradePath[0].name}` : 'Current Plan';
+  const sectionTitle = currentTier === 'free' ? 'Get ChatGPT Plus' : 
+                       currentTier === 'plus' ? 'Get ChatGPT Business' : 
+                       'Current Plan';
+  const currentPlanFeatures = currentTier ? mockPricingDataService.getFeaturesForTier(currentTier) : [];
+
   const handleUpgrade = () => {
     if (!currentTier) {
       showSuccess('Upgrade', 'Redirecting to upgrade page...');
       return;
     }
-    const upgradePath = mockPricingDataService.getUpgradePath(currentTier);
     if (upgradePath.length > 0) {
       const nextTier = upgradePath[0];
       showSuccess('Upgrade', `Redirecting to upgrade to ${nextTier.name}...`);
@@ -78,13 +97,6 @@ export const AccountPage = ({
     }
     // Here you would redirect to the upgrade page
   };
-
-  // Simple computed values for demo
-  const upgradePath = mockPricingDataService.getUpgradePath(currentTier);
-  const upgradeButtonText = upgradePath.length > 0 ? `Upgrade to ${upgradePath[0].name}` : 'Current Plan';
-  const sectionTitle = currentTier === 'free' ? 'Get ChatGPT Plus' : 
-                       currentTier === 'plus' ? 'Get ChatGPT Business' : 
-                       'Current Plan';
 
   const handleDeleteAccount = () => {
     setShowDeleteConfirm(true);
