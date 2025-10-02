@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { SettingsToggle } from '../components/SettingsToggle';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
@@ -6,6 +6,7 @@ import { useNavigation } from '../../../utils/navigation';
 import { mockUserDataService, MockSecuritySettings } from '../../../utils/mockUserData';
 import Modal from '../../Modal';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
 export interface SecurityPageProps {
   isMobile?: boolean;
@@ -20,6 +21,7 @@ export const SecurityPage = ({
 }: SecurityPageProps) => {
   const { showSuccess, showError } = useToastContext();
   const { navigate } = useNavigation();
+  const { t } = useTranslation(['settings', 'common']);
   const [settings, setSettings] = useState<MockSecuritySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export const SecurityPage = ({
   const isLoadingRef = useRef(false);
 
   // Load settings from mock data service
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     // Guard against concurrent calls
     if (isLoadingRef.current) {
       return;
@@ -47,17 +49,18 @@ export const SecurityPage = ({
       setSettings(securitySettings);
     } catch (error) {
       // Failed to load security settings
+      // eslint-disable-next-line no-console
       console.error('Failed to load security settings:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load security settings');
+      setError(error instanceof Error ? error.message : t('settings:security.loadError'));
     } finally {
       setLoading(false);
       isLoadingRef.current = false;
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [loadSettings]);
 
   // Refresh settings when component regains focus (e.g., returning from MFA enrollment)
   useEffect(() => {
@@ -67,7 +70,7 @@ export const SecurityPage = ({
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+  }, [loadSettings]);
 
   const handleToggleChange = (key: string, value: boolean) => {
     if (!settings) return;
@@ -87,7 +90,10 @@ export const SecurityPage = ({
       
       // Save to mock data service
       mockUserDataService.setSecuritySettings(updatedSettings);
-      showSuccess('Settings saved', 'Your security settings have been updated');
+      showSuccess(
+        t('common:notifications.settingsSavedTitle'),
+        t('settings:security.toasts.settingsUpdated')
+      );
     }
   };
 
@@ -99,7 +105,10 @@ export const SecurityPage = ({
     
     // Save to mock data service
     mockUserDataService.setSecuritySettings(updatedSettings);
-    showSuccess('MFA disabled', 'Multi-factor authentication has been disabled');
+    showSuccess(
+      t('settings:security.mfa.disable.toastTitle'),
+      t('settings:security.mfa.disable.toastBody')
+    );
     setShowDisableMFAConfirm(false);
   };
 
@@ -113,17 +122,26 @@ export const SecurityPage = ({
 
   const handleChangePassword = async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      showError('Missing fields', 'Please fill in all password fields');
+      showError(
+        t('settings:security.password.errors.missing.title'),
+        t('settings:security.password.errors.missing.body')
+      );
       return;
     }
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showError('Password mismatch', 'New password and confirmation do not match');
+      showError(
+        t('settings:security.password.errors.mismatch.title'),
+        t('settings:security.password.errors.mismatch.body')
+      );
       return;
     }
 
     if (passwordForm.newPassword.length < 8) {
-      showError('Weak password', 'Password must be at least 8 characters long');
+      showError(
+        t('settings:security.password.errors.weak.title'),
+        t('settings:security.password.errors.weak.body')
+      );
       return;
     }
 
@@ -131,24 +149,39 @@ export const SecurityPage = ({
       // Here you would call your API to change the password
       // await authService.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
       
-      showSuccess('Password changed', 'Your password has been updated successfully');
+      showSuccess(
+        t('settings:security.password.success.title'),
+        t('settings:security.password.success.body')
+      );
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setIsChangingPassword(false);
     } catch (error) {
-      showError('Failed to change password', error instanceof Error ? error.message : 'Please try again');
+      showError(
+        t('settings:security.password.errors.failed.title'),
+        error instanceof Error ? error.message : t('settings:security.password.errors.failed.body')
+      );
     }
   };
 
   const handleResetPassword = () => {
     // Here you would trigger a password reset email
-    showSuccess('Reset email sent', 'Check your email for password reset instructions');
+    showSuccess(
+      t('settings:security.password.reset.title'),
+      t('settings:security.password.reset.body')
+    );
   };
 
   const handleLogout = (type: 'current' | 'all') => {
     if (type === 'current') {
-      showSuccess('Logged out', 'You have been logged out of this device');
+      showSuccess(
+        t('settings:security.logout.current.toastTitle'),
+        t('settings:security.logout.current.toastBody')
+      );
     } else {
-      showSuccess('Logged out', 'You have been logged out of all devices');
+      showSuccess(
+        t('settings:security.logout.all.toastTitle'),
+        t('settings:security.logout.all.toastBody')
+      );
     }
   };
 
@@ -168,7 +201,7 @@ export const SecurityPage = ({
             <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
-            <p className="text-sm font-medium">Failed to load security settings</p>
+            <p className="text-sm font-medium">{t('settings:security.loadError')}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{error}</p>
           </div>
           <Button
@@ -176,7 +209,7 @@ export const SecurityPage = ({
             size="sm"
             onClick={loadSettings}
           >
-            Retry
+            {t('settings:account.retry')}
           </Button>
         </div>
       </div>
@@ -186,7 +219,7 @@ export const SecurityPage = ({
   if (!settings) {
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
-        <p className="text-gray-500 dark:text-gray-400">Failed to load security settings</p>
+        <p className="text-gray-500 dark:text-gray-400">{t('settings:security.fallback')}</p>
       </div>
     );
   }
@@ -196,7 +229,7 @@ export const SecurityPage = ({
       {/* Header */}
       <div className="px-6 py-4">
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Security
+          {t('settings:security.title')}
         </h1>
         <div className="border-t border-gray-200 dark:border-dark-border mt-4" />
       </div>
@@ -209,7 +242,7 @@ export const SecurityPage = ({
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Password
+                  {t('settings:security.password.sectionTitle')}
                 </h3>
               </div>
               <div className="ml-4 flex gap-2">
@@ -218,7 +251,7 @@ export const SecurityPage = ({
                   size="sm"
                   onClick={() => setIsChangingPassword(!isChangingPassword)}
                 >
-                  {isChangingPassword ? 'Cancel' : 'Change password'}
+                  {isChangingPassword ? t('settings:security.password.cancelButton') : t('settings:security.password.changeButton')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -226,13 +259,13 @@ export const SecurityPage = ({
                   onClick={handleResetPassword}
                   className="text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300"
                 >
-                  Reset password
+                  {t('settings:security.password.resetButton')}
                 </Button>
               </div>
             </div>
             
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Change your account password or reset it if you&apos;ve forgotten it.
+              {t('settings:security.password.description')}
             </p>
 
             {/* Password Change Form */}
@@ -240,7 +273,7 @@ export const SecurityPage = ({
               <div className="mt-4 space-y-4">
                 <div>
                   <label htmlFor="current-password" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                    Current Password
+                    {t('settings:security.password.fields.current.label')}
                   </label>
                   <input
                     id="current-password"
@@ -248,13 +281,13 @@ export const SecurityPage = ({
                     value={passwordForm.currentPassword}
                     onChange={(e) => handlePasswordChange('currentPassword', e.currentTarget.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
-                    placeholder="Enter current password"
+                    placeholder={t('settings:security.password.fields.current.placeholder')}
                   />
                 </div>
                 
                 <div>
                   <label htmlFor="new-password" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                    New Password
+                    {t('settings:security.password.fields.new.label')}
                   </label>
                   <input
                     id="new-password"
@@ -262,13 +295,13 @@ export const SecurityPage = ({
                     value={passwordForm.newPassword}
                     onChange={(e) => handlePasswordChange('newPassword', e.currentTarget.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
-                    placeholder="Enter new password"
+                    placeholder={t('settings:security.password.fields.new.placeholder')}
                   />
                 </div>
                 
                 <div>
                   <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                    Confirm New Password
+                    {t('settings:security.password.fields.confirm.label')}
                   </label>
                   <input
                     id="confirm-password"
@@ -276,7 +309,7 @@ export const SecurityPage = ({
                     value={passwordForm.confirmPassword}
                     onChange={(e) => handlePasswordChange('confirmPassword', e.currentTarget.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
-                    placeholder="Confirm new password"
+                    placeholder={t('settings:security.password.fields.confirm.placeholder')}
                   />
                 </div>
                 
@@ -289,14 +322,14 @@ export const SecurityPage = ({
                       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
                     }}
                   >
-                    Cancel
+                    {t('settings:security.password.cancelButton')}
                   </Button>
                   <Button
                     variant="primary"
                     size="sm"
                     onClick={handleChangePassword}
                   >
-                    Change Password
+                    {t('settings:security.password.submit')}
                   </Button>
                 </div>
               </div>
@@ -309,10 +342,10 @@ export const SecurityPage = ({
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Multi-factor authentication
+                {t('settings:security.mfa.title')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Require an extra security challenge when logging in. If you are unable to pass this challenge, you will have the option to recover your account via email.
+                {t('settings:security.mfa.description')}
               </p>
             </div>
             <div className="ml-4">
@@ -330,10 +363,10 @@ export const SecurityPage = ({
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Trusted Devices
+                {t('settings:security.trustedDevices.title')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                When you sign in on another device, it will be added here and can automatically receive device prompts for signing in.
+                {t('settings:security.trustedDevices.description')}
               </p>
             </div>
           </div>
@@ -344,7 +377,7 @@ export const SecurityPage = ({
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Log out of this device
+                {t('settings:security.logout.current.title')}
               </h3>
             </div>
             <div className="ml-4">
@@ -353,7 +386,7 @@ export const SecurityPage = ({
                 size="sm"
                 onClick={() => handleLogout('current')}
               >
-                Log out
+                {t('settings:security.logout.current.button')}
               </Button>
             </div>
           </div>
@@ -364,10 +397,10 @@ export const SecurityPage = ({
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Log out of all devices
+                {t('settings:security.logout.all.title')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Log out of all active sessions across all devices, including your current session. It may take up to 30 minutes for other devices to be logged out.
+                {t('settings:security.logout.all.description')}
               </p>
             </div>
             <div className="ml-4">
@@ -377,7 +410,7 @@ export const SecurityPage = ({
                 onClick={() => handleLogout('all')}
                 className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500"
               >
-                Log out all
+                {t('settings:security.logout.all.button')}
               </Button>
             </div>
           </div>
@@ -388,7 +421,7 @@ export const SecurityPage = ({
       <Modal
         isOpen={showDisableMFAConfirm}
         onClose={handleCancelDisableMFA}
-        title="Disable Multi-Factor Authentication"
+        title={t('settings:security.mfa.disable.modalTitle')}
         showCloseButton={true}
         type="modal"
       >
@@ -399,10 +432,10 @@ export const SecurityPage = ({
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Are you sure you want to disable MFA?
+                {t('settings:security.mfa.disable.heading')}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Disabling multi-factor authentication will make your account less secure. You will no longer be required to provide a second authentication factor when signing in.
+                {t('settings:security.mfa.disable.description')}
               </p>
             </div>
           </div>
@@ -414,7 +447,7 @@ export const SecurityPage = ({
               onClick={handleCancelDisableMFA}
               className="min-w-[80px]"
             >
-              Cancel
+              {t('settings:security.mfa.disable.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -422,7 +455,7 @@ export const SecurityPage = ({
               onClick={handleConfirmDisableMFA}
               className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700 focus:ring-orange-500 min-w-[80px]"
             >
-              Disable MFA
+              {t('settings:security.mfa.disable.confirm')}
             </Button>
           </div>
         </div>

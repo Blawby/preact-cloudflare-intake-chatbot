@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { SettingsDropdownWithToggles } from '../components/SettingsDropdownWithToggles';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { mockUserDataService, MockNotificationSettings } from '../../../utils/mockUserData';
+import { useTranslation } from 'react-i18next';
 
 export interface NotificationsPageProps {
   className?: string;
@@ -13,6 +14,7 @@ export const NotificationsPage = ({
   const { showSuccess } = useToastContext();
   const [settings, setSettings] = useState<MockNotificationSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation(['settings', 'common']);
 
   // Load settings from mock data service
   useEffect(() => {
@@ -47,7 +49,10 @@ export const NotificationsPage = ({
     
     // Save to mock data service
     mockUserDataService.setNotificationSettings(updatedSettings);
-    showSuccess('Settings saved', 'Your notification preferences have been updated');
+    showSuccess(
+      t('common:notifications.settingsSavedTitle'),
+      t('settings:notifications.toastBody')
+    );
   };
 
   if (loading) {
@@ -61,7 +66,7 @@ export const NotificationsPage = ({
   if (!settings) {
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
-        <p className="text-gray-500 dark:text-gray-400">Failed to load notification settings</p>
+        <p className="text-gray-500 dark:text-gray-400">{t('settings:notifications.loadError')}</p>
       </div>
     );
   }
@@ -71,7 +76,7 @@ export const NotificationsPage = ({
       {/* Header */}
       <div className="px-6 py-4">
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Notifications
+          {t('settings:notifications.title')}
         </h1>
         <div className="border-t border-gray-200 dark:border-dark-border mt-4" />
       </div>
@@ -83,10 +88,10 @@ export const NotificationsPage = ({
           <div className="flex items-center justify-between py-2">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Responses
+                {t('settings:notifications.sections.responses.title')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Get notified when ChatGPT responds to requests that take time, like research or image generation.
+                {t('settings:notifications.sections.responses.description')}
               </p>
             </div>
             <div className="ml-4">
@@ -99,7 +104,7 @@ export const NotificationsPage = ({
                 toggles={[
                   {
                     id: 'push',
-                    label: 'Push',
+                    label: t('settings:notifications.channels.push'),
                     value: settings.responses.push,
                     onChange: (value) => handleToggleChange('responses', 'push', value)
                   }
@@ -114,16 +119,16 @@ export const NotificationsPage = ({
           <div className="flex items-center justify-between py-2">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Tasks
+                {t('settings:notifications.sections.tasks.title')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Get notified when tasks you&apos;ve created have updates.
+                {t('settings:notifications.sections.tasks.description')}
               </p>
               <button 
                 onClick={() => {/* TODO: Implement task management navigation */}}
                 className="text-xs mt-1 text-left"
               >
-                Manage tasks
+                {t('settings:notifications.sections.tasks.manage')}
               </button>
             </div>
             <div className="ml-4">
@@ -136,13 +141,13 @@ export const NotificationsPage = ({
                 toggles={[
                   {
                     id: 'push',
-                    label: 'Push',
+                    label: t('settings:notifications.channels.push'),
                     value: settings.tasks.push,
                     onChange: (value) => handleToggleChange('tasks', 'push', value)
                   },
                   {
                     id: 'email',
-                    label: 'Email',
+                    label: t('settings:notifications.channels.email'),
                     value: settings.tasks.email,
                     onChange: (value) => handleToggleChange('tasks', 'email', value)
                   }
@@ -157,10 +162,10 @@ export const NotificationsPage = ({
           <div className="flex items-center justify-between py-2">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Messaging
+                {t('settings:notifications.sections.messaging.title')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Calpico
+                {t('settings:notifications.sections.messaging.description')}
               </p>
             </div>
             <div className="ml-4">
@@ -173,7 +178,7 @@ export const NotificationsPage = ({
                 toggles={[
                   {
                     id: 'push',
-                    label: 'Push',
+                    label: t('settings:notifications.channels.push'),
                     value: settings.messaging.push,
                     onChange: (value) => handleToggleChange('messaging', 'push', value)
                   }

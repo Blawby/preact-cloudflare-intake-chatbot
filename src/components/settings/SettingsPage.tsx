@@ -19,6 +19,7 @@ import { useNavigation } from '../../utils/navigation';
 import { useToastContext } from '../../contexts/ToastContext';
 import { cn } from '../../utils/cn';
 import { mockUserDataService } from '../../utils/mockUserData';
+import { useTranslation } from 'react-i18next';
 
 
 export interface SettingsPageProps {
@@ -35,6 +36,7 @@ export const SettingsPage = ({
   const { showSuccess } = useToastContext();
   const { navigate } = useNavigation();
   const location = useLocation();
+  const { t } = useTranslation(['settings', 'common']);
   
   // Get current page from URL path
   const getCurrentPage = () => {
@@ -68,7 +70,7 @@ export const SettingsPage = ({
     // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
     
-    showSuccess('Signed out successfully', 'You have been signed out');
+    showSuccess(t('settings:navigation.signOut.toastTitle'), t('settings:navigation.signOut.toastBody'));
     if (onClose) {
       onClose();
     }
@@ -80,12 +82,12 @@ export const SettingsPage = ({
   // Define navigation items with ChatGPT-like structure
   // Note: Icons are now properly typed to accept SVG props like className, aria-hidden, strokeWidth, etc.
   const navigationItems: SidebarNavigationItem[] = [
-    { id: 'general', label: 'General', icon: Cog6ToothIcon },
-    { id: 'notifications', label: 'Notifications', icon: BellIcon },
-    { id: 'account', label: 'Account', icon: UserIcon },
-    { id: 'security', label: 'Security', icon: ShieldCheckIcon },
-    { id: 'help', label: 'Help', icon: QuestionMarkCircleIcon },
-    { id: 'signout', label: 'Sign Out', icon: ArrowRightOnRectangleIcon, isAction: true, onClick: handleSignOut, variant: 'danger' }
+    { id: 'general', label: t('settings:navigation.items.general'), icon: Cog6ToothIcon },
+    { id: 'notifications', label: t('settings:navigation.items.notifications'), icon: BellIcon },
+    { id: 'account', label: t('settings:navigation.items.account'), icon: UserIcon },
+    { id: 'security', label: t('settings:navigation.items.security'), icon: ShieldCheckIcon },
+    { id: 'help', label: t('settings:navigation.items.help'), icon: QuestionMarkCircleIcon },
+    { id: 'signout', label: t('settings:navigation.items.signOut'), icon: ArrowRightOnRectangleIcon, isAction: true, onClick: handleSignOut, variant: 'danger' }
   ];
 
 
@@ -126,7 +128,7 @@ export const SettingsPage = ({
         <button
           onClick={handleBack}
           className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
-          aria-label="Close settings"
+          aria-label={t('settings:navigation.close')}
         >
           <XMarkIcon className="w-5 h-5 flex-shrink-0" />
         </button>

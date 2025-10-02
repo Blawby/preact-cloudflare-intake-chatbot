@@ -1,5 +1,7 @@
 import { hydrate, prerender as ssr, Router, Route, useLocation, LocationProvider } from 'preact-iso';
 import { useState, useEffect, useCallback } from 'preact/hooks';
+import { Suspense } from 'preact/compat';
+import { I18nextProvider } from 'react-i18next';
 import ChatContainer from './components/ChatContainer';
 import DragDropOverlay from './components/DragDropOverlay';
 import AppLayout from './components/AppLayout';
@@ -17,6 +19,7 @@ import { SettingsLayout } from './components/settings/SettingsLayout';
 import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
 import './index.css';
+import { i18n, initI18n } from './i18n';
 
 
 
@@ -428,19 +431,45 @@ export function App() {
 	);
 }
 
+const FallbackLoader = () => (
+	<div className="flex h-screen items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+		Loading…
+	</div>
+);
+
+function AppWithProviders() {
+	return (
+		<I18nextProvider i18n={i18n}>
+			<Suspense fallback={<FallbackLoader />}>
+				<App />
+			</Suspense>
+		</I18nextProvider>
+	);
+}
+
 if (typeof window !== 'undefined') {
 	// Initialize theme from localStorage with fallback to system preference
 	const savedTheme = localStorage.getItem('theme');
 	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 	const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-	
+
 	if (shouldBeDark) {
 		document.documentElement.classList.add('dark');
 	}
-	
-	hydrate(<App />, document.getElementById('app'));
+
+	initI18n()
+		.then(() => {
+			hydrate(<AppWithProviders />, document.getElementById('app'));
+		})
+		.catch((error) => {
+			// eslint-disable-next-line no-console
+			console.error('Failed to initialize i18n:', error);
+			hydrate(<AppWithProviders />, document.getElementById('app'));
+		});
 }
 
-export async function prerender(data) {
-	return await ssr(<App {...data} />);
+
+export async function prerender() {
+	await initI18n();
+	return await ssr(<AppWithProviders />);
 }

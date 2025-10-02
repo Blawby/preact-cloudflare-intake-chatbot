@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useMemo, useCallback } from 'preact/hooks';
+import { useTranslation } from 'react-i18next';
 import { SettingsDropdown } from '../components/SettingsDropdown';
 import { useToastContext } from '../../../contexts/ToastContext';
-import { mockUserDataService } from '../../../utils/mockUserData';
+import { mockUserDataService, type Language } from '../../../utils/mockUserData';
+import { DEFAULT_LOCALE, detectBestLocale, setLocale, SUPPORTED_LOCALES } from '../../../i18n';
 
 export interface GeneralPageProps {
   isMobile?: boolean;
@@ -15,25 +17,69 @@ export const GeneralPage = ({
   className = ''
 }: GeneralPageProps) => {
   const { showSuccess } = useToastContext();
+  const { t } = useTranslation(['settings', 'common']);
   const [settings, setSettings] = useState({
     theme: 'system' as 'light' | 'dark' | 'system',
     accentColor: 'default' as 'default' | 'blue' | 'green' | 'purple' | 'red',
-    language: 'auto-detect' as 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja',
-    spokenLanguage: 'auto-detect' as 'auto-detect' | 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja'
+    language: 'auto-detect' as 'auto-detect' | Language,
+    spokenLanguage: 'auto-detect' as 'auto-detect' | Language
   });
 
   // Load settings from mock data service
   useEffect(() => {
     const preferences = mockUserDataService.getPreferences();
     
+    // Helper function to validate language against supported options
+    const getValidLanguage = (lang: string | undefined): 'auto-detect' | Language => {
+      if (!lang || lang === 'auto-detect') return 'auto-detect';
+      // Check if it's a supported language in our options
+      const supportedLanguages = ['en', 'vi', 'es', 'fr', 'de', 'zh', 'ja'];
+      return supportedLanguages.includes(lang) ? lang as Language : 'auto-detect';
+    };
+    
     // Defensive checks with sensible fallbacks
     setSettings({
       theme: preferences?.theme || 'system',
       accentColor: preferences?.accentColor || 'default',
-      language: preferences?.language || 'auto-detect',
-      spokenLanguage: preferences?.spokenLanguage || 'auto-detect'
+      language: getValidLanguage(preferences?.language),
+      spokenLanguage: getValidLanguage(preferences?.spokenLanguage)
     });
+
+    const preferredLanguage = preferences?.language;
+    if (preferredLanguage && preferredLanguage !== 'auto-detect') {
+      void setLocale(preferredLanguage);
+    }
   }, []);
+  const languageOptions = useMemo(() => ([
+    { value: 'auto-detect', label: t('common:language.auto') },
+    { value: 'en', label: t('common:language.en') },
+    { value: 'vi', label: t('common:language.vi') },
+    { value: 'es', label: t('common:language.es') },
+    { value: 'fr', label: t('common:language.fr') },
+    { value: 'de', label: t('common:language.de') },
+    { value: 'zh', label: t('common:language.zh') },
+    { value: 'ja', label: t('common:language.ja') }
+  ]), [t]);
+
+  const handleLocaleChange = useCallback(async (value: string) => {
+    try {
+      if (value === 'auto-detect') {
+        const detected = detectBestLocale();
+        await setLocale(detected);
+      } else {
+        const isSupported = SUPPORTED_LOCALES.includes(value as typeof SUPPORTED_LOCALES[number]);
+        await setLocale(isSupported ? value : DEFAULT_LOCALE);
+      }
+
+      showSuccess(
+        t('settings:general.language.toastTitle'),
+        t('settings:general.language.toastBody')
+      );
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to apply locale change', error);
+    }
+  }, [showSuccess, t]);
 
   const handleSettingChange = (key: string, value: string | boolean) => {
     setSettings(prev => {
@@ -65,7 +111,15 @@ export const GeneralPage = ({
       }
     }
     
-    showSuccess('Settings saved', 'Your preferences have been updated');
+    if (key === 'language') {
+      void handleLocaleChange(value as string);
+      return;
+    }
+    
+    showSuccess(
+      t('common:notifications.settingsSavedTitle'),
+      t('common:notifications.settingsSavedBody')
+    );
   };
 
   return (
@@ -73,7 +127,7 @@ export const GeneralPage = ({
       {/* Header */}
       <div className="px-6 py-4">
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          General
+          {t('settings:general.title')}
         </h1>
         <div className="border-t border-gray-200 dark:border-dark-border mt-4" />
       </div>
@@ -82,12 +136,12 @@ export const GeneralPage = ({
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-0">
           <SettingsDropdown
-            label="Theme"
+            label={t('settings:general.theme.label')}
             value={settings.theme}
             options={[
-              { value: 'light', label: 'Light' },
-              { value: 'dark', label: 'Dark' },
-              { value: 'system', label: 'System' }
+              { value: 'light', label: t('settings:general.theme.options.light') },
+              { value: 'dark', label: t('settings:general.theme.options.dark') },
+              { value: 'system', label: t('settings:general.theme.options.system') }
             ]}
             onChange={(value) => handleSettingChange('theme', value)}
           />
@@ -95,14 +149,14 @@ export const GeneralPage = ({
           <div className="border-t border-gray-200 dark:border-dark-border" />
           
           <SettingsDropdown
-            label="Accent color"
+            label={t('settings:general.accent.label')}
             value={settings.accentColor}
             options={[
-              { value: 'default', label: 'Default' },
-              { value: 'blue', label: 'Blue' },
-              { value: 'green', label: 'Green' },
-              { value: 'purple', label: 'Purple' },
-              { value: 'red', label: 'Red' }
+              { value: 'default', label: t('settings:general.accent.options.default') },
+              { value: 'blue', label: t('settings:general.accent.options.blue') },
+              { value: 'green', label: t('settings:general.accent.options.green') },
+              { value: 'purple', label: t('settings:general.accent.options.purple') },
+              { value: 'red', label: t('settings:general.accent.options.red') }
             ]}
             onChange={(value) => handleSettingChange('accentColor', value)}
           />
@@ -110,38 +164,30 @@ export const GeneralPage = ({
           <div className="border-t border-gray-200 dark:border-dark-border" />
           
           <SettingsDropdown
-            label="Language"
+            label={t('settings:general.language.label')}
             value={settings.language}
-            options={[
-              { value: 'auto-detect', label: 'Auto-detect' },
-              { value: 'en', label: 'English' },
-              { value: 'vi', label: 'Tiếng Việt' },
-              { value: 'es', label: 'Español' },
-              { value: 'fr', label: 'Français' },
-              { value: 'de', label: 'Deutsch' },
-              { value: 'zh', label: '中文' },
-              { value: 'ja', label: '日本語' }
-            ]}
+            options={languageOptions}
             onChange={(value) => handleSettingChange('language', value)}
+            description={t('settings:general.language.description')}
           />
           
           <div className="border-t border-gray-200 dark:border-dark-border" />
           
           <SettingsDropdown
-            label="Spoken language"
+            label={t('settings:general.spokenLanguage.label')}
             value={settings.spokenLanguage}
             options={[
-              { value: 'auto-detect', label: 'Auto-detect' },
-              { value: 'en', label: 'English' },
-              { value: 'vi', label: 'Tiếng Việt' },
-              { value: 'es', label: 'Español' },
-              { value: 'fr', label: 'Français' },
-              { value: 'de', label: 'Deutsch' },
-              { value: 'zh', label: '中文' },
-              { value: 'ja', label: '日本語' }
+              { value: 'auto-detect', label: t('common:language.auto') },
+              { value: 'en', label: t('common:language.en') },
+              { value: 'vi', label: t('common:language.vi') },
+              { value: 'es', label: t('common:language.es') },
+              { value: 'fr', label: t('common:language.fr') },
+              { value: 'de', label: t('common:language.de') },
+              { value: 'zh', label: t('common:language.zh') },
+              { value: 'ja', label: t('common:language.ja') }
             ]}
             onChange={(value) => handleSettingChange('spokenLanguage', value)}
-            description="For best results, select the language you mainly speak. If it's not listed, it may still be supported via auto-detection."
+            description={t('settings:general.spokenLanguage.description')}
           />
         </div>
       </div>

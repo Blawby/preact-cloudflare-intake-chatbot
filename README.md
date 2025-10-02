@@ -76,6 +76,8 @@ npm run dev:full
 npm run test:conversation  # Core AI functionality tests
 npm test                   # All unit/integration tests
 npm run test:watch         # Watch mode
+npm run test:i18n          # Smoke test to confirm translations switch correctly
+npm run lint:i18n          # Validate locale files stay in sync
 ```
 
 ## 📁 **Project Structure**
@@ -102,6 +104,13 @@ Copy `.dev.vars.example` to `.dev.vars` and add your API keys:
 - `LAWYER_SEARCH_API_KEY` - Lawyer search API key
 - `CLOUDFLARE_API_TOKEN` - Cloudflare operations API key
 - `RESEND_API_KEY` - Email notifications API key
+
+### Internationalization
+
+- The app boots with English (`en`) and supports Spanish (`es`) out of the box. Locale assets live in `src/locales/<locale>/<namespace>.json`.
+- Use the Settings → General page to switch the UI language and to trigger auto-detection.
+- Contributors can follow the workflow in `docs/i18n.md` to add new strings or locales.
+- Run `npm run lint:i18n` before committing to make sure every locale contains the same keys as the English baseline.
 
 ### Team Management
 Teams are managed via REST API:

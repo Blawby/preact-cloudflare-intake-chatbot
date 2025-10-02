@@ -1,0 +1,19 @@
+{
+  "app": {
+    "loading": "Cargando…"
+  },
+  "notifications": {
+    "settingsSavedTitle": "Configuración guardada",
+    "settingsSavedBody": "Tus preferencias se actualizaron."
+  },
+  "language": {
+    "auto": "Detección automática",
+    "en": "Inglés",
+    "vi": "Tiếng Việt",
+    "es": "Español",
+    "fr": "Francés",
+    "de": "Alemán",
+    "zh": "中文",
+    "ja": "日本語"
+  }
+}

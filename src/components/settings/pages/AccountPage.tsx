@@ -10,6 +10,7 @@ import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
 import { mockUserDataService, MockUserLinks, MockEmailSettings, type SubscriptionTier } from '../../../utils/mockUserData';
 import { mockPricingDataService } from '../../../utils/mockPricingData';
+import { useTranslation } from 'react-i18next';
 
 
 export interface AccountPageProps {
@@ -18,6 +19,8 @@ export interface AccountPageProps {
   className?: string;
 }
 
+const DOMAIN_SELECT_VALUE = '__select__';
+
 export const AccountPage = ({
   isMobile: _isMobile = false,
   onClose: _onClose,
@@ -25,6 +28,7 @@ export const AccountPage = ({
 }: AccountPageProps) => {
   const { showSuccess, showError } = useToastContext();
   const { navigate } = useNavigation();
+  const { t } = useTranslation(['settings', 'common']);
   const [links, setLinks] = useState<MockUserLinks | null>(null);
   const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,22 +82,44 @@ export const AccountPage = ({
 
   // Simple computed values for demo - only compute when currentTier is available
   const upgradePath = currentTier ? mockPricingDataService.getUpgradePath(currentTier) : [];
-  const upgradeButtonText = currentTier && upgradePath.length > 0 ? `Upgrade to ${upgradePath[0].name}` : 'Current Plan';
-  const sectionTitle = currentTier === 'free' ? 'Get ChatGPT Plus' : 
-                       currentTier === 'plus' ? 'Get ChatGPT Business' : 
-                       'Current Plan';
+  const upgradeButtonText = currentTier && upgradePath.length > 0
+    ? t('settings:account.plan.upgradeButton', { plan: upgradePath[0].name })
+    : t('settings:account.plan.currentButton');
+  const sectionTitle = currentTier
+    ? t(`settings:account.plan.sections.${currentTier}`)
+    : t('settings:account.plan.sections.default');
   const currentPlanFeatures = currentTier ? mockPricingDataService.getFeaturesForTier(currentTier) : [];
+  const emailFallback = t('settings:account.email.addressFallback');
+  const emailAddress = emailSettings?.email || emailFallback;
+  const customDomainOptions = (links?.customDomains || []).map(domain => ({
+    value: domain.domain,
+    label: domain.domain
+  }));
+  const deleteListItems = t('settings:account.delete.listItems', { returnObjects: true }) as string[];
+  const confirmLabel = t('settings:account.delete.confirmLabel', { email: emailAddress });
+  const selectedDomain = links?.selectedDomain && links.selectedDomain !== 'Select a domain'
+    ? links.selectedDomain
+    : DOMAIN_SELECT_VALUE;
 
   const handleUpgrade = () => {
     if (!currentTier) {
-      showSuccess('Upgrade', 'Redirecting to upgrade page...');
+      showSuccess(
+        t('settings:account.plan.toasts.upgrade.title'),
+        t('settings:account.plan.toasts.upgrade.body')
+      );
       return;
     }
     if (upgradePath.length > 0) {
       const nextTier = upgradePath[0];
-      showSuccess('Upgrade', `Redirecting to upgrade to ${nextTier.name}...`);
+      showSuccess(
+        t('settings:account.plan.toasts.upgradeWithPlan.title'),
+        t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
+      );
     } else {
-      showSuccess('Account', 'You are already on the highest tier!');
+      showSuccess(
+        t('settings:account.plan.toasts.highest.title'),
+        t('settings:account.plan.toasts.highest.body')
+      );
     }
     // Here you would redirect to the upgrade page
   };
@@ -105,10 +131,12 @@ export const AccountPage = ({
   };
 
   const handleConfirmDelete = async () => {
-    const userEmail = emailSettings?.email || 'chris@whynot.earth';
-    
-    if (deleteConfirmInput.trim() !== userEmail) {
-      setDeleteError('Please type your email address exactly as shown to confirm deletion.');
+    const normalizedInput = deleteConfirmInput.trim();
+
+    if (normalizedInput !== emailAddress) {
+      const message = t('settings:account.delete.errorMismatch');
+      setDeleteError(message);
+      showError(t('settings:account.delete.toastFailedTitle'), message);
       return;
     }
 
@@ -120,7 +148,10 @@ export const AccountPage = ({
       setDeleteConfirmInput('');
       setDeleteError(null);
       
-      showSuccess('Account deleted', 'Your account has been permanently deleted.');
+      showSuccess(
+        t('settings:account.delete.toastSuccessTitle'),
+        t('settings:account.delete.toastSuccessBody')
+      );
       
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
@@ -135,8 +166,12 @@ export const AccountPage = ({
         navigate('/');
       }, 1000);
     } catch (_error) {
-      setDeleteError('Failed to delete account. Please try again.');
-      showError('Account deletion failed', 'There was an error deleting your account. Please try again.');
+      const message = t('settings:account.delete.errorFailed');
+      setDeleteError(message);
+      showError(
+        t('settings:account.delete.toastFailedTitle'),
+        t('settings:account.delete.toastFailedBody')
+      );
     }
   };
 
@@ -151,23 +186,23 @@ export const AccountPage = ({
     const trimmed = domain.trim();
     
     if (!trimmed) {
-      return 'Domain cannot be empty';
+      return 'settings:account.domainErrors.empty';
     }
     
     if (trimmed !== domain) {
-      return 'Domain cannot have leading or trailing spaces';
+      return 'settings:account.domainErrors.spaces';
     }
     
     // Basic domain format validation regex
     const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     if (!domainRegex.test(trimmed)) {
-      return 'Please enter a valid domain format (e.g., example.com)';
+      return 'settings:account.domainErrors.format';
     }
     
     // Check for duplicates (case-insensitive)
     const existingDomains = links?.customDomains?.map(d => d.domain.toLowerCase()) || [];
     if (existingDomains.includes(trimmed.toLowerCase())) {
-      return 'This domain has already been added';
+      return 'settings:account.domainErrors.duplicate';
     }
     
     return null;
@@ -186,10 +221,11 @@ export const AccountPage = ({
   };
 
   const handleDomainSubmit = () => {
-    const error = validateDomain(domainInput);
-    if (error) {
-      setDomainError(error);
-      showError('Invalid Domain', error);
+    const errorKey = validateDomain(domainInput);
+    if (errorKey) {
+      const message = t(errorKey);
+      setDomainError(message);
+      showError(t('settings:account.links.invalidDomainToast.title'), message);
       return;
     }
 
@@ -208,24 +244,35 @@ export const AccountPage = ({
     
     setLinks(updatedLinks);
     handleCloseDomainModal();
-    showSuccess('Domain added', `Domain ${normalized} has been added and is pending verification.`);
+    showSuccess(
+      t('settings:account.links.addDomainToast.title'),
+      t('settings:account.links.addDomainToast.body', { domain: normalized })
+    );
   };
 
   const handleAddLinkedIn = () => {
-    showSuccess('LinkedIn', 'Redirecting to LinkedIn connection...');
+    showSuccess(
+      t('settings:account.links.linkedinToast.title'),
+      t('settings:account.links.linkedinToast.body')
+    );
   };
 
   const handleAddGitHub = () => {
-    showSuccess('GitHub', 'Redirecting to GitHub connection...');
+    showSuccess(
+      t('settings:account.links.githubToast.title'),
+      t('settings:account.links.githubToast.body')
+    );
   };
 
   const handleDomainChange = (domain: string) => {
     if (domain === 'verify-new') {
       // Handle "Verify new domain" option
       handleOpenDomainModal();
-    } else {
+    } else if (domain !== DOMAIN_SELECT_VALUE) {
       const updatedLinks = mockUserDataService.setUserLinks({ selectedDomain: domain });
       setLinks(updatedLinks);
+    } else {
+      setLinks(prev => (prev ? { ...prev, selectedDomain: prev.selectedDomain ?? domain } : prev));
     }
   };
 
@@ -254,7 +301,7 @@ export const AccountPage = ({
             <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
-            <p className="text-sm font-medium">Failed to load account data</p>
+            <p className="text-sm font-medium">{t('settings:account.loadingError')}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{error}</p>
           </div>
           <Button
@@ -262,7 +309,7 @@ export const AccountPage = ({
             size="sm"
             onClick={loadAccountData}
           >
-            Retry
+            {t('settings:account.retry')}
           </Button>
         </div>
       </div>
@@ -274,7 +321,7 @@ export const AccountPage = ({
       {/* Header */}
       <div className="px-6 py-4">
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Account
+          {t('settings:account.title')}
         </h1>
         <div className="border-t border-gray-200 dark:border-dark-border mt-4" />
       </div>
@@ -323,22 +370,19 @@ export const AccountPage = ({
           {/* Links Section */}
           <div className="py-3">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Links
+              {t('settings:account.links.title')}
             </h3>
             
             {/* Domain Selector */}
             <SettingsDropdown
-              label="Select a domain"
-              value={links?.selectedDomain || 'Select a domain'}
+              label={t('settings:account.links.domainLabel')}
+              value={selectedDomain}
               options={[
-                { value: "Select a domain", label: "Select a domain" },
-                { value: "whynot.earth", label: "whynot.earth" },
-                { value: "example.com", label: "example.com" },
-                ...(links?.customDomains?.map(domain => ({
-                  value: domain.domain,
-                  label: domain.domain
-                })) || []),
-                { value: "verify-new", label: "+ Verify new domain" }
+                { value: DOMAIN_SELECT_VALUE, label: t('settings:account.links.selectOption') },
+                { value: 'whynot.earth', label: 'whynot.earth' },
+                { value: 'example.com', label: 'example.com' },
+                ...customDomainOptions,
+                { value: 'verify-new', label: `+ ${t('settings:account.links.verifyNew')}` }
               ]}
               onChange={handleDomainChange}
             />
@@ -356,7 +400,7 @@ export const AccountPage = ({
                 size="sm"
                 onClick={handleAddLinkedIn}
               >
-                Add
+                {t('settings:account.links.addButton')}
               </Button>
             </div>
 
@@ -375,7 +419,7 @@ export const AccountPage = ({
                 size="sm"
                 onClick={handleAddGitHub}
               >
-                Add
+                {t('settings:account.links.addButton')}
               </Button>
             </div>
           </div>
@@ -385,14 +429,14 @@ export const AccountPage = ({
           {/* Email Section */}
           <div className="py-3">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Email
+              {t('settings:account.email.title')}
             </h3>
             
             {/* Email Address */}
             <div className="flex items-center gap-3 py-3">
               <EnvelopeIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               <span className="text-sm text-gray-900 dark:text-gray-100">
-                {emailSettings?.email || 'chris@whynot.earth'}
+                {emailAddress}
               </span>
             </div>
 
@@ -406,7 +450,7 @@ export const AccountPage = ({
                 className="w-4 h-4 text-accent-500 bg-transparent border-gray-300 dark:border-gray-600 rounded focus:ring-accent-500 focus:ring-2"
               />
               <label htmlFor="feedback-emails" className="text-sm text-gray-900 dark:text-gray-100 cursor-pointer">
-                Receive feedback emails
+                {t('settings:account.email.receiveFeedback')}
               </label>
             </div>
           </div>
@@ -417,7 +461,7 @@ export const AccountPage = ({
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Delete account
+                {t('settings:account.delete.sectionTitle')}
               </h3>
             </div>
             <div className="ml-4">
@@ -427,7 +471,7 @@ export const AccountPage = ({
                 onClick={handleDeleteAccount}
                 className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500"
               >
-                Delete
+                {t('settings:account.delete.button')}
               </Button>
             </div>
           </div>
@@ -438,7 +482,7 @@ export const AccountPage = ({
       <Modal
         isOpen={showDeleteConfirm}
         onClose={handleCancelDelete}
-        title="Delete Account"
+        title={t('settings:account.delete.modalTitle')}
         showCloseButton={true}
         type="modal"
         disableBackdropClick={true}
@@ -457,10 +501,10 @@ export const AccountPage = ({
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Are you sure you want to delete your account?
+                  {t('settings:account.delete.heading')}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  This action cannot be undone. All your data, conversations, and settings will be permanently deleted.
+                  {t('settings:account.delete.description')}
                 </p>
                 <div 
                   className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4" 
@@ -469,13 +513,12 @@ export const AccountPage = ({
                   role="presentation"
                 >
                   <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <strong>This will permanently delete:</strong>
+                    <strong>{t('settings:account.delete.listIntro')}</strong>
                   </p>
                   <ul className="text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1">
-                    <li>• All your conversations and chat history</li>
-                    <li>• Your account settings and preferences</li>
-                    <li>• Any uploaded files and documents</li>
-                    <li>• Your subscription and billing information</li>
+                    {deleteListItems.map((item, idx) => (
+                      <li key={idx}>• {item}</li>
+                    ))}
                   </ul>
                 </div>
                 
@@ -487,7 +530,7 @@ export const AccountPage = ({
                   role="presentation"
                 >
                   <label htmlFor="delete-confirm" className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                    To confirm, type your email address: <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{emailSettings?.email || 'chris@whynot.earth'}</span>
+                    {confirmLabel} <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{emailAddress}</span>
                   </label>
                   <input
                     id="delete-confirm"
@@ -512,7 +555,7 @@ export const AccountPage = ({
                     onFocus={(e) => {
                       e.stopPropagation();
                     }}
-                    placeholder="Type your email address here"
+                    placeholder={t('settings:account.delete.inputPlaceholder')}
                     className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
                       deleteError ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''
                     }`}
@@ -539,16 +582,16 @@ export const AccountPage = ({
               onClick={handleCancelDelete}
               className="min-w-[80px]"
             >
-              Cancel
+              {t('settings:account.delete.cancel')}
             </Button>
             <Button
               variant="primary"
               size="sm"
               onClick={handleConfirmDelete}
-              disabled={deleteConfirmInput.trim() !== (emailSettings?.email || 'chris@whynot.earth')}
+              disabled={deleteConfirmInput.trim() !== emailAddress}
               className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500 min-w-[80px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Delete Account
+              {t('settings:account.delete.confirmButton')}
             </Button>
           </div>
         </div>
@@ -558,14 +601,14 @@ export const AccountPage = ({
       <Modal
         isOpen={showDomainModal}
         onClose={handleCloseDomainModal}
-        title="Add New Domain"
+        title={t('settings:account.domainModal.title')}
         showCloseButton={true}
         type="modal"
       >
         <div className="space-y-4">
           <div>
             <label htmlFor="domain-input" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-              Domain
+              {t('settings:account.domainModal.label')}
             </label>
             <input
               id="domain-input"
@@ -580,7 +623,7 @@ export const AccountPage = ({
                   handleDomainSubmit();
                 }
               }}
-              placeholder="example.com"
+              placeholder={t('settings:account.links.domainPlaceholder')}
               className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 ${
                 domainError ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''
               }`}
@@ -599,7 +642,7 @@ export const AccountPage = ({
               onClick={handleCloseDomainModal}
               className="min-w-[80px]"
             >
-              Cancel
+              {t('settings:account.domainModal.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -607,7 +650,7 @@ export const AccountPage = ({
               onClick={handleDomainSubmit}
               className="min-w-[80px]"
             >
-              Add Domain
+              {t('settings:account.domainModal.submit')}
             </Button>
           </div>
         </div>

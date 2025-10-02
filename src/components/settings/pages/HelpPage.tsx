@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useNavigation } from '../../../utils/navigation';
 
 export interface HelpPageProps {
@@ -6,6 +7,7 @@ export interface HelpPageProps {
 
 export const HelpPage = ({ className = '' }: HelpPageProps) => {
   const { navigate } = useNavigation();
+  const { t } = useTranslation('settings');
 
   const handleExternalLink = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -26,7 +28,7 @@ export const HelpPage = ({ className = '' }: HelpPageProps) => {
       {/* Header */}
       <div className="px-6 py-4">
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Help
+          {t('help.title')}
         </h1>
         <div className="border-t border-gray-200 dark:border-dark-border mt-4" />
       </div>
@@ -38,21 +40,21 @@ export const HelpPage = ({ className = '' }: HelpPageProps) => {
           <div className="py-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Help Center
+                {t('help.sections.helpCenter.title')}
               </div>
               <button
                 onClick={() => handleExternalLink('https://help.blawby.com')}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
-                aria-label="Visit Blawby help — opens in a new tab"
+                aria-label={t('help.sections.helpCenter.ariaLabel')}
               >
-                <span>Visit</span>
+                <span>{t('help.sections.helpCenter.cta')}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Get help and find answers to common questions
+              {t('help.sections.helpCenter.description')}
             </div>
           </div>
           
@@ -62,21 +64,21 @@ export const HelpPage = ({ className = '' }: HelpPageProps) => {
           <div className="py-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Release Notes
+                {t('help.sections.releaseNotes.title')}
               </div>
               <button
                 onClick={() => handleExternalLink('https://blawby.com/release-notes')}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
-                aria-label="View release notes — opens in a new tab"
+                aria-label={t('help.sections.releaseNotes.ariaLabel')}
               >
-                <span>View</span>
+                <span>{t('help.sections.releaseNotes.cta')}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              See what's new in the latest updates
+              {t('help.sections.releaseNotes.description')}
             </div>
           </div>
           
@@ -86,21 +88,21 @@ export const HelpPage = ({ className = '' }: HelpPageProps) => {
           <div className="py-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Terms & Policies
+                {t('help.sections.terms.title')}
               </div>
               <button
                 onClick={() => handleExternalLink('https://blawby.com/terms')}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
-                aria-label="Read terms and policies — opens in a new tab"
+                aria-label={t('help.sections.terms.ariaLabel')}
               >
-                <span>Read</span>
+                <span>{t('help.sections.terms.cta')}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Read our terms of service and privacy policy
+              {t('help.sections.terms.description')}
             </div>
           </div>
           
@@ -110,17 +112,17 @@ export const HelpPage = ({ className = '' }: HelpPageProps) => {
           <div className="py-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Report Bug
+                {t('help.sections.bug.title')}
               </div>
               <button
                 onClick={handleReportBug}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
               >
-                <span>Report</span>
+                <span>{t('help.sections.bug.cta')}</span>
               </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Help us improve by reporting issues
+              {t('help.sections.bug.description')}
             </div>
           </div>
           
@@ -130,21 +132,21 @@ export const HelpPage = ({ className = '' }: HelpPageProps) => {
           <div className="py-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Download Apps
+                {t('help.sections.downloads.title')}
               </div>
               <button
                 onClick={() => handleExternalLink('https://blawby.com/download')}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
-                aria-label="Download Blawby apps — opens in a new tab"
+                aria-label={t('help.sections.downloads.ariaLabel')}
               >
-                <span>Download</span>
+                <span>{t('help.sections.downloads.cta')}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Get our mobile and desktop applications
+              {t('help.sections.downloads.description')}
             </div>
           </div>
           
@@ -154,17 +156,17 @@ export const HelpPage = ({ className = '' }: HelpPageProps) => {
           <div className="py-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Keyboard Shortcuts
+                {t('help.sections.shortcuts.title')}
               </div>
               <button
                 onClick={handleKeyboardShortcuts}
                 className="flex items-center gap-2 px-3 py-1 text-sm text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
               >
-                <span>View</span>
+                <span>{t('help.sections.shortcuts.cta')}</span>
               </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Learn keyboard shortcuts to work faster
+              {t('help.sections.shortcuts.description')}
             </div>
           </div>
         </div>

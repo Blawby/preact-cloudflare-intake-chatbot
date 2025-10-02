@@ -9,10 +9,10 @@ export default defineConfig({
     setupFiles: ["./tests/setup-real-api.ts", "./tests/setup-node.ts"],
     testTimeout: 60000, // 60 seconds for real API tests
     hookTimeout: 60000, // 60 seconds for hooks (beforeAll/afterAll)
-    threads: false, // Disable worker threads to prevent multiple wrangler dev instances from colliding
     fileParallelism: false, // Force single-file execution to prevent file-level parallelism
     include: [
-      'tests/**/*.{test,spec}.{js,ts,jsx,tsx}'
+      'tests/**/*.{test,spec}.{js,ts,jsx,tsx}',
+      'src/__tests__/**/*.{test,spec}.{js,ts,jsx,tsx}'
     ],
     exclude: [
       'node_modules/**',
@@ -33,7 +33,8 @@ export default defineConfig({
   },
   esbuild: {
     target: 'es2020',
-    loader: 'ts'
+    loader: 'tsx',
+    jsxImportSource: 'preact'
   },
   resolve: {
     alias: {
@@ -41,6 +42,8 @@ export default defineConfig({
       '~': resolve(__dirname, './'),
       '@tests': resolve(__dirname, './tests'),
       '@fixtures': resolve(__dirname, './tests/fixtures'),
+      '@i18n': resolve(__dirname, './src/i18n/index.ts'),
+      '@locales': resolve(__dirname, './src/locales')
     }
   }
 }); 

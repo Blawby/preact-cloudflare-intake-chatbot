@@ -163,7 +163,7 @@ export default [
 
   // Node.js scripts
   {
-    files: ['scripts/**/*.{js,ts}'],
+    files: ['scripts/**/*.{js,ts,mjs}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
@@ -176,7 +176,8 @@ export default [
         global: 'readonly',
         module: 'readonly',
         require: 'readonly',
-        exports: 'readonly'
+        exports: 'readonly',
+        URL: 'readonly'
       }
     },
     plugins: { '@typescript-eslint': typescript },
@@ -185,6 +186,32 @@ export default [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off', // console useful in scripts
+      'no-unused-vars': 'off'
+    }
+  },
+
+  // Root config files (Node environment)
+  {
+    files: ['*.config.{js,ts,mjs}', 'vite.config.ts', 'vitest.config.ts', 'tailwind.config.js', 'postcss.config.js'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly'
+      }
+    },
+    plugins: { '@typescript-eslint': typescript },
+    rules: {
+      ...typescript.configs.recommended.rules,
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'no-console': 'off',
       'no-unused-vars': 'off'
     }
   },

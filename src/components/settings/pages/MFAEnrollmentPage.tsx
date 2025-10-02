@@ -3,6 +3,7 @@ import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
 import { mockUserDataService } from '../../../utils/mockUserData';
+import { useTranslation } from 'react-i18next';
 
 export interface MFAEnrollmentPageProps {
   className?: string;
@@ -15,6 +16,7 @@ export const MFAEnrollmentPage = ({
   const { navigate } = useNavigation();
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const { t } = useTranslation(['settings', 'common']);
 
   // Mock QR code data - in real app, this would come from your backend
   const manualCode = 'JBSWY3DPEHPK3PXP';
@@ -33,12 +35,18 @@ export const MFAEnrollmentPage = ({
 
   const handleVerification = async () => {
     if (!verificationCode.trim()) {
-      showError('Code required', 'Please enter the verification code from your authenticator app');
+      showError(
+        t('settings:mfa.errors.codeRequired.title'),
+        t('settings:mfa.errors.codeRequired.body')
+      );
       return;
     }
 
     if (verificationCode.length < 6) {
-      showError('Invalid code', 'Please enter a valid 6-digit code');
+      showError(
+        t('settings:mfa.errors.codeInvalid.title'),
+        t('settings:mfa.errors.codeInvalid.body')
+      );
       return;
     }
 
@@ -64,10 +72,16 @@ export const MFAEnrollmentPage = ({
       const updatedSettings = { ...currentSettings, twoFactorEnabled: true };
       mockUserDataService.setSecuritySettings(updatedSettings);
       
-      showSuccess('MFA enabled', 'Multi-factor authentication has been successfully enabled');
+      showSuccess(
+        t('settings:security.mfa.toastEnabled.title'),
+        t('settings:security.mfa.toastEnabled.body')
+      );
       navigate('/settings/security');
     } catch (_error) {
-      showError('Verification failed', 'Invalid code. Please try again.');
+      showError(
+        t('settings:mfa.errors.verifyFailed.title'),
+        t('settings:mfa.errors.verifyFailed.body')
+      );
     } finally {
       setIsVerifying(false);
     }
@@ -76,15 +90,23 @@ export const MFAEnrollmentPage = ({
   const handleCopyManualCode = async () => {
     // Check if clipboard API is supported
     if (!navigator.clipboard || !navigator.clipboard.writeText) {
-      showError('Clipboard not supported', 'Your browser does not support copying to clipboard. Please manually copy the code.');
+      showError(
+        t('settings:mfa.errors.clipboardUnsupported.title'),
+        t('settings:mfa.errors.clipboardUnsupported.body')
+      );
       return;
     }
 
     try {
       await navigator.clipboard.writeText(manualCode);
-      showSuccess('Copied', 'Manual code copied to clipboard');
+      showSuccess(t('settings:mfa.copied.title'), t('settings:mfa.copied.body'));
     } catch (error) {
-      showError('Copy failed', `Failed to copy code to clipboard: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const rawMessage = error instanceof Error ? error.message : '';
+      const message = rawMessage || t('settings:mfa.errors.copyFailed.unknown');
+      showError(
+        t('settings:mfa.errors.copyFailed.title'),
+        t('settings:mfa.errors.copyFailed.body', { message })
+      );
     }
   };
 
@@ -97,10 +119,10 @@ export const MFAEnrollmentPage = ({
             onClick={() => navigate('/settings/security')}
             className="mb-6 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 flex items-center"
           >
-            ← Back to Security
+            {t('settings:mfa.back')}
           </button>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 text-center">
-            Secure your account
+            {t('settings:mfa.title')}
           </h1>
         </div>
       </div>
@@ -111,7 +133,7 @@ export const MFAEnrollmentPage = ({
           {/* Instructions */}
           <div className="space-y-2">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Scan the QR Code below using your preferred authenticator app and then enter the provided one-time code below.
+              {t('settings:mfa.instructions')}
             </p>
           </div>
 
@@ -133,7 +155,7 @@ export const MFAEnrollmentPage = ({
                     ))}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    QR Code
+                    {t('settings:mfa.qrLabel')}
                   </p>
                 </div>
               </div>
@@ -146,7 +168,7 @@ export const MFAEnrollmentPage = ({
               onClick={handleCopyManualCode}
               className="text-sm text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 underline"
             >
-              Trouble scanning?
+              {t('settings:mfa.troubleScanning')}
             </button>
           </div>
 
@@ -157,7 +179,7 @@ export const MFAEnrollmentPage = ({
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-white dark:bg-dark-bg text-gray-500 dark:text-gray-400">
-                Then
+                {t('settings:mfa.then')}
               </span>
             </div>
           </div>
@@ -166,14 +188,14 @@ export const MFAEnrollmentPage = ({
           <div className="space-y-4">
             <div className="text-left">
               <label htmlFor="verification-code" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                Enter your one-time code*
+                {t('settings:mfa.codeLabel')}
               </label>
               <input
                 id="verification-code"
                 type="text"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.currentTarget.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
+                placeholder={t('settings:mfa.codePlaceholder')}
                 className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-center text-lg tracking-widest"
                 maxLength={6}
               />
@@ -190,10 +212,10 @@ export const MFAEnrollmentPage = ({
               {isVerifying ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Verifying...
+                  {t('settings:mfa.verifying')}
                 </>
               ) : (
-                'Continue'
+                t('settings:mfa.verifyButton')
               )}
             </Button>
           </div>
@@ -205,14 +227,14 @@ export const MFAEnrollmentPage = ({
                 type="button"
                 className="text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300"
               >
-                Terms of Use
+                {t('settings:mfa.footer.terms')}
               </button>
               <span className="text-gray-300 dark:text-gray-600">|</span>
               <button
                 type="button"
                 className="text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300"
               >
-                Privacy Policy
+                {t('settings:mfa.footer.privacy')}
               </button>
             </div>
           </div>

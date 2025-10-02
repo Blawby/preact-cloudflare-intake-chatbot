@@ -9,7 +9,13 @@ import { Plugin } from 'vite';
 import zlib from 'zlib';
 
 // Custom compression plugin to avoid path issues
-const customCompressionPlugin = (options = {}) => {
+interface CompressionOptions {
+	algorithm?: 'gzip' | 'brotli';
+	ext?: string;
+	threshold?: number;
+}
+
+const customCompressionPlugin = (options: CompressionOptions = {}): Plugin => {
 	const {
 		algorithm = 'gzip',
 		ext = algorithm === 'brotli' ? '.br' : '.gz',
@@ -19,13 +25,14 @@ const customCompressionPlugin = (options = {}) => {
 	return {
 		name: 'custom-compression',
 		apply: 'build',
-		async writeBundle(_, bundle) {
+		async writeBundle(_: unknown, bundle: Record<string, unknown>) {
 			const compressFunction = algorithm === 'brotli' 
 				? zlib.brotliCompressSync 
 				: zlib.gzipSync;
 			
 			for (const [fileName, file] of Object.entries(bundle)) {
-				if (file.type === 'chunk' || file.type === 'asset') {
+				const fileInfo = file as { type?: string };
+				if (fileInfo.type === 'chunk' || fileInfo.type === 'asset') {
 					const filePath = resolve('dist', fileName);
 					try {
 						const source = await fs.readFile(filePath);
@@ -200,7 +207,7 @@ export default defineConfig({
 		assetsInlineLimit: 4096, // 4kb - small assets will be inlined
 	},
 	optimizeDeps: {
-		include: ['preact', 'preact/hooks', 'preact/compat', 'preact/jsx-runtime'],
+		include: ['preact', 'preact/hooks', 'preact/compat', 'preact/jsx-runtime', 'i18next', 'react-i18next', 'i18next-browser-languagedetector'],
 	},
 	resolve: {
 		alias: {
@@ -212,22 +219,20 @@ export default defineConfig({
 		}
 	},
 	server: {
-		// Enable compression in development server
-		compress: true,
 		// Proxy API calls to local backend, but exclude file endpoints
 		proxy: {
 			'/api': {
 				target: 'http://localhost:8787',
 				changeOrigin: true,
 				secure: false,
-				configure: (proxy, options) => {
-					proxy.on('error', (err, req, res) => {
+				configure: (proxy, _options) => {
+					proxy.on('error', (err, _req, _res) => {
 						console.log('proxy error', err);
 					});
-					proxy.on('proxyReq', (proxyReq, req, res) => {
+					proxy.on('proxyReq', (_proxyReq, req, _res) => {
 						console.log('Sending Request to the Target:', req.method, req.url);
 					});
-					proxy.on('proxyRes', (proxyRes, req, res) => {
+					proxy.on('proxyRes', (proxyRes, req, _res) => {
 						console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
 					});
 				},
