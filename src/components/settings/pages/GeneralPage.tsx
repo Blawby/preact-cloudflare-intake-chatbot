@@ -32,9 +32,8 @@ export const GeneralPage = ({
     // Helper function to validate language against supported options
     const getValidLanguage = (lang: string | undefined): 'auto-detect' | Language => {
       if (!lang || lang === 'auto-detect') return 'auto-detect';
-      // Check if it's a supported language in our options
-      const supportedLanguages = ['en', 'vi', 'es', 'fr', 'de', 'zh', 'ja'];
-      return supportedLanguages.includes(lang) ? lang as Language : 'auto-detect';
+      // Check if it's a supported language in our i18n layer
+      return SUPPORTED_LOCALES.includes(lang as typeof SUPPORTED_LOCALES[number]) ? lang as Language : 'auto-detect';
     };
     
     // Defensive checks with sensible fallbacks
@@ -52,13 +51,10 @@ export const GeneralPage = ({
   }, []);
   const languageOptions = useMemo(() => ([
     { value: 'auto-detect', label: t('common:language.auto') },
-    { value: 'en', label: t('common:language.en') },
-    { value: 'vi', label: t('common:language.vi') },
-    { value: 'es', label: t('common:language.es') },
-    { value: 'fr', label: t('common:language.fr') },
-    { value: 'de', label: t('common:language.de') },
-    { value: 'zh', label: t('common:language.zh') },
-    { value: 'ja', label: t('common:language.ja') }
+    ...SUPPORTED_LOCALES.map(locale => ({
+      value: locale,
+      label: t(`common:language.${locale}`)
+    }))
   ]), [t]);
 
   const handleLocaleChange = useCallback(async (value: string) => {
@@ -178,13 +174,10 @@ export const GeneralPage = ({
             value={settings.spokenLanguage}
             options={[
               { value: 'auto-detect', label: t('common:language.auto') },
-              { value: 'en', label: t('common:language.en') },
-              { value: 'vi', label: t('common:language.vi') },
-              { value: 'es', label: t('common:language.es') },
-              { value: 'fr', label: t('common:language.fr') },
-              { value: 'de', label: t('common:language.de') },
-              { value: 'zh', label: t('common:language.zh') },
-              { value: 'ja', label: t('common:language.ja') }
+              ...SUPPORTED_LOCALES.map(locale => ({
+                value: locale,
+                label: t(`common:language.${locale}`)
+              }))
             ]}
             onChange={(value) => handleSettingChange('spokenLanguage', value)}
             description={t('settings:general.spokenLanguage.description')}

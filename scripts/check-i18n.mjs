@@ -2,9 +2,10 @@
 /* eslint-env node */
 import { promises as fs } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const ROOT = new URL('..', import.meta.url);
-const LOCALES_DIR = path.join(ROOT.pathname, 'src', 'locales');
+const ROOT_PATH = fileURLToPath(new URL('..', import.meta.url));
+const LOCALES_DIR = path.join(ROOT_PATH, 'src', 'locales');
 const BASE_LOCALE = process.env.I18N_BASE_LOCALE || 'en';
 
 const log = (message) => {
