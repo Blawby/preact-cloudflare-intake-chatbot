@@ -52,10 +52,7 @@ NODE_ENV = "development"
 DEBUG = "false"
 VITE_DEBUG_OVERLAY = "false"
 
-# Authentication Configuration
-# Base URL for OAuth redirects - required for production
-# In production, set via: wrangler secret put BETTER_AUTH_URL
-# BETTER_AUTH_URL = "http://localhost:8787"  # Development only
+# Authentication removed - frontend-only application
 
 # AI Model Configuration (used in worker/agents/legal-intake/index.ts)
 AI_MODEL = "llama-3.1-8b-instant"
@@ -96,10 +93,6 @@ d1_databases = [
 # Production environment variables
 [env.production.vars]
 NODE_ENV = "production"
-# BETTER_AUTH_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET should be set as secrets:
-# wrangler secret put BETTER_AUTH_URL --env production
-# wrangler secret put GOOGLE_CLIENT_ID --env production  
-# wrangler secret put GOOGLE_CLIENT_SECRET --env production
 # Updated to use modern nested producers syntax
 [[env.production.queues.producers]]
 queue = "doc-events"

@@ -15,7 +15,6 @@ import {
   handlePDF,
   handleDebug
 } from './routes';
-import { handleAuth } from './routes/auth';
 import { createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
@@ -93,8 +92,6 @@ async function handleRequestInternal(request: Request, env: Env, ctx: ExecutionC
       response = await handlePDF(request, env);
     } else if (path.startsWith('/api/debug')) {
       response = await handleDebug(request, env);
-    } else if (path.startsWith('/api/auth')) {
-      response = await handleAuth(request, env, ctx);
     } else if (path === '/api/health') {
       response = await handleHealth(request, env);
     } else if (path === '/') {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { UserIcon, LockClosedIcon, EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { authClient } from '../lib/authClient';
+// No authentication required - authClient removed
 
 interface AuthPageProps {
   mode?: 'signin' | 'signup';
@@ -42,38 +42,53 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
           return;
         }
 
-        const result = await authClient.signUp.email({
+        // No actual authentication - just simulate success
+        // Store mock user data in localStorage
+        const mockUser = {
+          id: 'mock-user-123',
+          name: formData.name || formData.email.split('@')[0] || 'Demo User',
           email: formData.email,
-          password: formData.password,
-          name: formData.name,
-        });
-
-        if (result.error) {
-          setError(result.error.message);
-        } else {
-          setMessage('Account created successfully! You can now sign in.');
-          setIsSignUp(false);
-          setFormData({ name: '', email: '', password: '', confirmPassword: '' });
-        }
+          image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
+          teamId: null,
+          role: 'user',
+          phone: null
+        };
+        localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        
+        // Dispatch custom event to notify UserProfile component
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
+        
+        setMessage('Account created successfully! You are now signed in.');
+        // Redirect to home page after successful sign up
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
       } else {
-        const result = await authClient.signIn.email({
+        // No actual authentication - just simulate success
+        // Store mock user data in localStorage
+        const mockUser = {
+          id: 'mock-user-123',
+          name: formData.email.split('@')[0] || 'Demo User',
           email: formData.email,
-          password: formData.password,
-        });
-
-        if (result.error) {
-          setError(result.error.message);
-        } else {
-          setMessage('Signed in successfully!');
-          // Call onSuccess callback and wait for it to complete before redirecting
-          if (onSuccess) {
-            await onSuccess();
-          }
-          // Redirect to home page after successful sign in and callback completion
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1000);
+          image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
+          teamId: null,
+          role: 'user',
+          phone: null
+        };
+        localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        
+        // Dispatch custom event to notify UserProfile component
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
+        
+        setMessage('Signed in successfully!');
+        // Call onSuccess callback and wait for it to complete before redirecting
+        if (onSuccess) {
+          await onSuccess();
         }
+        // Redirect to home page after successful sign in and callback completion
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -88,22 +103,26 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
     setMessage('');
 
     try {
-      // For social sign-in, we need to redirect to the OAuth provider
-      const result = await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: `${window.location.origin}/`,
-      });
-
-      if (result.error) {
-        setError(result.error.message);
-        setLoading(false);
-      } else if (result.data?.url) {
-        // Redirect to Google OAuth
-        window.location.href = result.data.url;
-      } else {
-        setError('Failed to initiate Google sign-in');
-        setLoading(false);
-      }
+      // No actual authentication - just simulate success
+      // Store mock user data in localStorage
+      const mockUser = {
+        id: 'mock-user-google-123',
+        name: 'Google User',
+        email: 'user@gmail.com',
+        image: 'https://i.pravatar.cc/300?u=google-user',
+        teamId: null,
+        role: 'user',
+        phone: null
+      };
+      localStorage.setItem('mockUser', JSON.stringify(mockUser));
+      
+      // Dispatch custom event to notify UserProfile component
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
+      
+      setMessage('Signed in with Google successfully!');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);

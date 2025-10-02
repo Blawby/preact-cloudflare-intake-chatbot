@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { authClient } from '../lib/authClient';
+// No authentication required - authClient removed
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
 import { SettingsPage } from './settings/SettingsPage';
@@ -30,6 +30,30 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
 
   useEffect(() => {
     checkAuthStatus();
+    
+    // Listen for storage changes (when user logs in/out in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'mockUser') {
+        checkAuthStatus();
+      }
+    };
+    
+    // Listen for custom auth state changes (same tab)
+    const handleAuthStateChange = (e: CustomEvent) => {
+      if (e.detail) {
+        setUser(e.detail);
+      } else {
+        checkAuthStatus();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
+    };
   }, []);
 
   // Handle Escape key, body scroll, and click outside for overlay
@@ -74,26 +98,36 @@ const UserProfile = ({ isCollapsed = false, isMobile = false }: UserProfileProps
   }, [showProfile, isMobile, isCollapsed]);
 
   const checkAuthStatus = async () => {
-    try {
-      const result = await authClient.getSession();
-      if (result.data?.user) {
-        // Ensure email is present for the User interface
-        const userData = result.data.user;
-        if (userData.email) {
-          setUser(userData as User);
-        }
+    // Check if user is "logged in" (stored in localStorage for demo)
+    const mockUser = localStorage.getItem('mockUser');
+    if (mockUser) {
+      try {
+        const userData = JSON.parse(mockUser);
+        setUser(userData);
+      } catch (e) {
+        localStorage.removeItem('mockUser');
+        setUser(null);
       }
-    } catch (_error) {
-      // Failed to get user session
-    } finally {
-      setLoading(false);
+    } else {
+      setUser(null);
     }
+    setLoading(false);
   };
 
 
   const handleSignIn = () => {
-    // Navigate to auth page
+    // Navigate to auth page (no actual auth required)
     navigateToAuth('signin');
+  };
+
+  const handleSignOut = () => {
+    // Remove mock user data and refresh
+    localStorage.removeItem('mockUser');
+    setUser(null);
+    setShowProfile(false);
+    
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
   };
 
   if (loading) {

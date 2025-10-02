@@ -12,7 +12,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useNavigation } from '../../utils/navigation';
-import { authClient } from '../../lib/authClient';
+// No authentication required - authClient removed
 import { useToastContext } from '../../contexts/ToastContext';
 
 // Utility function for className merging (following codebase pattern)
@@ -52,23 +52,14 @@ export const SettingsPage = ({
   };
 
   const handleSignOut = async () => {
-    try {
-      await authClient.signOut();
-      showSuccess('Signed out successfully', 'You have been signed out of your account');
-      // Close settings panel if open
-      if (onClose) {
-        onClose();
-      }
-      navigateToHome(); // Navigate after sign-out
-    } catch (_error) {
-      // Sign out failed
-      showError('Sign out failed', 'There was an error signing you out. Please try again.');
-      // Still perform local cleanup and navigation even if sign-out fails
-      if (onClose) {
-        onClose();
-      }
-      navigateToHome();
+    // Remove mock user data and refresh
+    localStorage.removeItem('mockUser');
+    showSuccess('Signed out successfully', 'You have been signed out');
+    if (onClose) {
+      onClose();
     }
+    // Refresh the page to update the UI
+    window.location.reload();
   };
 
 

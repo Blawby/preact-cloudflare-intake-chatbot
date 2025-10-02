@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
-import { authClient } from '../../../lib/authClient';
+// No authentication required - authClient removed
 
 // Better Auth session user type (what we get from authClient.getSession())
 interface BetterAuthUser {
@@ -178,19 +178,8 @@ export const useUserProfile = (): UseUserProfileReturn => {
       setLoading(true);
       setError(null);
 
-      // Use Better Auth's built-in session endpoint
-      const session = await authClient.getSession();
-      if (!session.data?.user) {
-        throw new Error('Not authenticated');
-      }
-
-      // Validate and safely map the Better Auth user to UserProfile
-      if (!isValidBetterAuthUser(session.data.user)) {
-        throw new Error('Invalid user data received from authentication service');
-      }
-
-      const mappedProfile = mapBetterAuthUserToProfile(session.data.user);
-      setProfile(mappedProfile);
+      // No authentication required - return null profile
+      setProfile(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile';
       setError(errorMessage);
