@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { Plus, Image, Camera, X } from 'lucide-preact';
+import { PlusIcon, PhotoIcon, CameraIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 import CameraModal from './CameraModal';
 
@@ -159,7 +159,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
           dark:bg-dark-message-bg-user dark:border-dark-border dark:text-dark-text
           dark:hover:bg-dark-hover
         "
-        icon={<Plus className="w-4 h-4" aria-hidden="true" />}
+        icon={<PlusIcon className="w-4 h-4" aria-hidden="true" />}
       />
 
       {(isOpen || isClosing) && (
@@ -189,7 +189,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
             "
           >
             <span>Add photos &amp; files</span>
-            <Image className="w-5 h-5" aria-hidden="true" />
+            <PhotoIcon className="w-5 h-5" aria-hidden="true" />
           </Button>
 
           <Button
@@ -206,7 +206,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
             "
           >
             <span>Take Photo</span>
-            <Camera className="w-5 h-5" aria-hidden="true" />
+            <CameraIcon className="w-5 h-5" aria-hidden="true" />
           </Button>
         </div>
       )}
@@ -226,7 +226,7 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
               className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 transition-colors"
               aria-label="Dismiss error message"
             >
-              <X className="w-4 h-4" />
+              <XMarkIcon className="w-4 h-4" />
             </button>
           </div>
         </div>

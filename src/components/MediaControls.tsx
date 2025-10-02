@@ -1,7 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import AudioRecordingUI from './AudioRecordingUI';
-import { Mic } from 'lucide-preact';
+import { MicrophoneIcon } from "@heroicons/react/24/outline";
 import { features } from '../config/features';
 import { Button } from './ui/Button';
 
@@ -75,7 +75,7 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 				const errorMessage = document.createElement('div');
 				errorMessage.setAttribute('role', 'alert');
 				errorMessage.classList.add('sr-only');
-				errorMessage.textContent = 'Microphone access denied. Please check your browser permissions.';
+				errorMessage.textContent = 'MicrophoneIconrophone access denied. Please check your browser permissions.';
 				document.body.appendChild(errorMessage);
 				setTimeout(() => {
 					document.body.removeChild(errorMessage);
@@ -161,11 +161,11 @@ const MediaControls: FunctionComponent<MediaControlsProps> = ({
 				disabled={permissionDenied}
 				className="w-8 h-8 p-0 rounded-full"
 			>
-				<Mic className="w-4 h-4" aria-hidden="true" />
+				<MicrophoneIcon className="w-4 h-4" aria-hidden="true" />
 			</Button>
 			{permissionDenied && (
 				<div className="sr-only" role="alert">
-					Microphone access denied. Please check your browser permissions.
+					MicrophoneIconrophone access denied. Please check your browser permissions.
 				</div>
 			)}
 		</div>

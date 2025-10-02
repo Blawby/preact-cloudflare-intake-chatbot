@@ -2,14 +2,14 @@ import { FunctionComponent } from 'preact';
 import { useRef } from 'preact/hooks';
 import { analyzeMissingInfo } from '../utils/matterAnalysis';
 import {
-  File,
-  CheckCircle,
-  AlertTriangle,
-  CreditCard
-} from 'lucide-preact';
+  DocumentIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  CreditCardIcon
+} from "@heroicons/react/24/outline";
 import { MatterData, MatterStatus } from '../types/matter';
 import { getDefaultDocumentSuggestions } from '../hooks/useMatterState';
-import { FileAttachment } from '../../worker/types';
+import { DocumentIconAttachment } from '../../worker/types';
 
 interface MatterTabProps {
   matter: MatterData | null;
@@ -19,7 +19,7 @@ interface MatterTabProps {
   onPayNow?: () => void;
   onViewPDF?: () => void;
   onShareMatter?: () => void;
-  onUploadDocument?: (files: File[], metadata?: { documentType?: string; matterId?: string; documentId?: string }) => Promise<FileAttachment[]>;
+  onUploadDocument?: (files: DocumentIcon[], metadata?: { documentType?: string; matterId?: string; documentId?: string }) => Promise<DocumentIconAttachment[]>;
 }
 
 const MatterTab: FunctionComponent<MatterTabProps> = ({
@@ -36,7 +36,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
   const pendingUploadDocId = useRef<string | null>(null);
 
   // Handle file upload
-  const handleFileUpload = async (event: Event) => {
+  const handleDocumentIconUpload = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     const files = target.files;
     if (files && files.length > 0 && onUploadDocument) {
@@ -54,7 +54,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
         }
         pendingUploadDocId.current = null;
       } catch (error) {
-        console.error('File upload failed:', error);
+        console.error('DocumentIcon upload failed:', error);
         // Clear pending document ID even on error
         pendingUploadDocId.current = null;
       }
@@ -62,7 +62,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
   };
 
   // Trigger file input
-  const triggerFileUpload = (documentId?: string) => {
+  const triggerDocumentIconUpload = (documentId?: string) => {
     // Set the pending document ID before opening the file picker
     if (documentId) {
       pendingUploadDocId.current = documentId;
@@ -76,7 +76,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
   if (status === 'empty') {
     return (
       <div>
-        <File />
+        <DocumentIcon />
         <h3>No Matter Yet</h3>
         <p>Start a chat to create your matter</p>
         <button onClick={onStartChat}>
@@ -115,7 +115,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
       {missingInfo.length > 0 && (
         <div>
           <div>
-            <AlertTriangle />
+            <ExclamationTriangleIcon />
             <h4>Missing Information</h4>
           </div>
           <ul>
@@ -135,7 +135,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
       {/* Document Suggestions */}
       <div>
         <div>
-          <File />
+          <DocumentIcon />
           <h4>Suggested Documents</h4>
         </div>
         <div>
@@ -143,9 +143,9 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
             <div key={doc.id}>
               <div>
                 {doc.status === 'uploaded' ? (
-                  <CheckCircle />
+                  <CheckCircleIcon />
                 ) : (
-                  <File />
+                  <DocumentIcon />
                 )}
                 <div>
                   <p>{doc.name}</p>
@@ -155,7 +155,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
                 </div>
               </div>
               {doc.status === 'missing' && (
-                <button onClick={() => triggerFileUpload(doc.id)}>Upload</button>
+                <button onClick={() => triggerDocumentIconUpload(doc.id)}>Upload</button>
               )}
             </div>
           ))}
@@ -169,7 +169,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
       {matter.hasPayment && matter.paymentEmbed && (
         <div>
           <div>
-            <CreditCard />
+            <CreditCardIcon />
             <h4>Payment Required</h4>
           </div>
           <p>
@@ -193,7 +193,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
       {status === 'ready' && (
         <div>
           <div>
-            <CheckCircle />
+            <CheckCircleIcon />
             <h4>Matter Complete</h4>
           </div>
           <p>All required information has been provided</p>
@@ -221,7 +221,7 @@ const MatterTab: FunctionComponent<MatterTabProps> = ({
         type="file"
         multiple
         accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp"
-        onChange={handleFileUpload}
+        onChange={handleDocumentIconUpload}
         style={{ display: 'none' }}
       />
     </div>

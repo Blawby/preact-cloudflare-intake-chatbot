@@ -1,9 +1,9 @@
-import type { RefObject, JSX } from 'preact';
+import type { RefObject, JSXMarkIcon } from 'preact';
 import { useLayoutEffect } from 'preact/hooks';
 import { Button } from './ui/Button';
 import FileMenu from './FileMenu';
 import MediaControls from './MediaControls';
-import { ArrowUp, X } from 'lucide-preact';
+import { ArrowUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { features } from '../config/features';
 import { FileAttachment } from '../../worker/types';
 
@@ -41,7 +41,7 @@ const MessageComposer = ({
   isReadyToUpload,
   isSessionReady,
 }: MessageComposerProps) => {
-  const handleInput = (e: JSX.TargetedEvent<HTMLTextAreaElement, Event>) => {
+  const handleInput = (e: JSXMarkIcon.TargetedEvent<HTMLTextAreaElement, Event>) => {
     const t = e.currentTarget;
     setInputValue(t.value);
     t.style.height = 'auto';
@@ -108,7 +108,7 @@ const MessageComposer = ({
                   aria-label={`Remove ${file.name}`}
                   className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
                 >
-                  <X className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  <XMarkIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
                 </Button>
               </div>
             ))}
@@ -156,7 +156,7 @@ const MessageComposer = ({
                   ? 'Send message (disabled)'
                   : 'Send message')}
               className="w-8 h-8 p-0 rounded-full"
-              icon={<ArrowUp className="w-3.5 h-3.5" aria-hidden="true" />}
+              icon={<ArrowUpIcon className="w-3.5 h-3.5" aria-hidden="true" />}
               data-testid="message-send-button"
             />
           </div>

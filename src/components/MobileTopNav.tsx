@@ -1,4 +1,4 @@
-import { Menu, Sun, Moon } from 'lucide-preact';
+import { Bars3Icon, SunIcon, MoonIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/Button';
 import { useTheme } from '../hooks/useTheme';
@@ -33,13 +33,13 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
           }}
         >
           <div className="flex items-center justify-between px-4">
-            {/* Left Section - Hamburger Menu + Team Profile */}
+            {/* Left Section - Hamburger Bars3Icon + Team Profile */}
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="md"
                 onClick={onOpenSidebar}
-                icon={<Menu className="w-5 h-5" aria-hidden="true" focusable="false" />}
+                icon={<Bars3Icon className="w-5 h-5" aria-hidden="true" focusable="false" />}
                 aria-label="Open menu"
               />
               <img 
@@ -56,7 +56,7 @@ const MobileTopNav = ({ teamConfig, onOpenSidebar, isVisible = true }: MobileTop
                 variant="ghost"
                 size="lg"
                 onClick={toggleTheme}
-                icon={isDark ? <Sun className="w-6 h-6" aria-hidden="true" /> : <Moon className="w-6 h-6" aria-hidden="true" />}
+                icon={isDark ? <SunIcon className="w-6 h-6" aria-hidden="true" /> : <MoonIcon className="w-6 h-6" aria-hidden="true" />}
                 aria-label="Toggle theme"
                 aria-pressed={isDark}
                 title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}

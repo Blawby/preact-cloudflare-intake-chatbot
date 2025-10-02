@@ -1,14 +1,14 @@
 import { useState } from 'preact/hooks';
 import {
-  Image,
-  Video,
-  Music,
-  File,
-  FileText,
-  Table,
-  Eye,
-  Download
-} from 'lucide-preact';
+  PhotoIcon,
+  VideoCameraIcon,
+  MusicalNoteIcon,
+  DocumentIcon,
+  DocumentTextIcon,
+  TableCellsIcon,
+  EyeIcon,
+  ArrowDownTrayIcon
+} from "@heroicons/react/24/outline";
 import { 
   aggregateMediaFromMessages, 
   formatFileSize, 
@@ -26,16 +26,16 @@ interface MediaSidebarProps {
 }
 
 const iconMap = {
-  PhotoIcon: Image,
-  VideoCameraIcon: Video,
-  MusicalNoteIcon: Music,
-  DocumentIcon: File,
-  DocumentTextIcon: FileText,
-  TableCellsIcon: Table
+  PhotoIcon: PhotoIcon,
+  VideoCameraIcon: VideoCameraIcon,
+  MusicalNoteIcon: MusicalNoteIcon,
+  DocumentIcon: DocumentIcon,
+  DocumentTextIcon: DocumentTextIcon,
+  TableCellsIcon: TableCellsIcon
 };
 
 const categoryLabels = {
-  image: 'Images',
+  image: 'Photos',
   video: 'Videos',
   document: 'Documents',
   audio: 'Audio',
@@ -47,7 +47,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const mediaGroups = aggregateMediaFromMessages(messages);
-  const totalFiles = mediaGroups.reduce((sum, group) => sum + group.files.length, 0);
+  const totalDocumentIcons = mediaGroups.reduce((sum, group) => sum + group.files.length, 0);
 
   const handleMediaClick = (media: AggregatedMedia) => {
     if (media.category === 'image' || media.category === 'video') {
@@ -70,16 +70,16 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
     link.click();
   };
 
-  if (totalFiles === 0) {
+  if (totalDocumentIcons === 0) {
     return (
       <Accordion type="single" collapsible>
         <AccordionItem value="media-section">
-          <AccordionTrigger>Media, Files, and Links</AccordionTrigger>
+          <AccordionTrigger>Media, DocumentIcons, and Links</AccordionTrigger>
           <AccordionContent>
             <div className="flex flex-col items-center justify-center text-center py-6">
-              <Image className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 mb-2" />
+              <PhotoIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 mb-2" />
               <p className="text-xs sm:text-sm lg:text-base font-medium mb-1 text-gray-900 dark:text-white">No files shared yet</p>
-              <p className="text-xs sm:text-sm opacity-70 text-gray-500 dark:text-gray-400">Files you share in the conversation will appear here</p>
+              <p className="text-xs sm:text-sm opacity-70 text-gray-500 dark:text-gray-400">DocumentIcons you share in the conversation will appear here</p>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -91,7 +91,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
     <>
       <Accordion type="single" collapsible>
         <AccordionItem value="media-section">
-          <AccordionTrigger>Media, Files, and Links ({totalFiles})</AccordionTrigger>
+          <AccordionTrigger>Media, DocumentIcons, and Links ({totalDocumentIcons})</AccordionTrigger>
           <AccordionContent>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 pt-2">
@@ -102,7 +102,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                     </h5>
                     <div className="flex flex-col gap-2">
                       {group.files.map((media) => {
-                        const IconComponent = iconMap[getFileIconName(media.category, media.name) as keyof typeof iconMap] || File;
+                        const IconComponent = iconMap[getFileIconName(media.category, media.name) as keyof typeof iconMap] || DocumentIcon;
                         
                         return (
                           <div 
@@ -126,7 +126,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                                   className="w-full h-full object-cover"
                                 />
                                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
-                                  <Eye className="text-white w-4 h-4" />
+                                  <EyeIcon className="text-white w-4 h-4" />
                                 </div>
                               </div>
                             ) : (
@@ -148,7 +148,7 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                                   title="Download file"
                                   className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
                                 >
-                                  <Download className="w-3 h-3" />
+                                  <ArrowDownTrayIcon className="w-3 h-3" />
                                 </Button>
                               </div>
                             </div>

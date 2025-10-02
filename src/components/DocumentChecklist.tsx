@@ -2,12 +2,12 @@ import { FunctionComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
 import {
-  File,
-  CheckCircle,
-  AlertTriangle,
-  CloudUpload,
-  X
-} from 'lucide-preact';
+  DocumentIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  CloudArrowUpIcon,
+  XMarkIconMarkIcon
+} from "@heroicons/react/24/outline";
 
 interface DocumentItem {
   id: string;
@@ -15,13 +15,13 @@ interface DocumentItem {
   description?: string;
   required: boolean;
   status: 'missing' | 'uploaded' | 'pending';
-  file?: File;
+  file?: DocumentIcon;
 }
 
 interface DocumentChecklistProps {
   matterType: string;
   documents: DocumentItem[];
-  onDocumentUpload: (documentId: string, file: File) => void;
+  onDocumentUpload: (documentId: string, file: DocumentIcon) => void;
   onDocumentRemove: (documentId: string) => void;
   onComplete: () => void;
   onSkip: () => void;
@@ -37,7 +37,7 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
 }) => {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  const handleFileSelect = (documentId: string, event: Event) => {
+  const handleDocumentIconSelect = (documentId: string, event: Event) => {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
@@ -67,13 +67,13 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
   const getStatusIcon = (status: DocumentItem['status'], required: boolean) => {
     switch (status) {
       case 'uploaded':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return <CheckCircleIcon className="w-5 h-5 text-green-500" />;
       case 'pending':
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
+        return <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500" />;
       case 'missing':
         return required ?
-          <AlertTriangle className="w-5 h-5 text-red-500" /> :
-          <File className="w-5 h-5 text-gray-400" />;
+          <ExclamationTriangleIcon className="w-5 h-5 text-red-500" /> :
+          <DocumentIcon className="w-5 h-5 text-gray-400" />;
     }
   };
 
@@ -155,7 +155,7 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
                   </p>
                 )}
                 
-                {/* File Upload Area */}
+                {/* DocumentIcon Upload Area */}
                 {doc.status === 'missing' && (
                   <div className="flex items-center gap-3">
                     <label className="cursor-pointer">
@@ -163,14 +163,14 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
                         type="file"
                         className="hidden"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
-                        onChange={(e) => handleFileSelect(doc.id, e)}
+                        onChange={(e) => handleDocumentIconSelect(doc.id, e)}
                       />
                       <Button
                         variant="secondary"
                         size="sm"
-                        icon={<CloudUpload className="w-4 h-4" />}
+                        icon={<CloudArrowUpIcon className="w-4 h-4" />}
                       >
-                        Choose File
+                        Choose DocumentIcon
                       </Button>
                     </label>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -179,17 +179,17 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
                   </div>
                 )}
 
-                {/* Uploaded File Display */}
+                {/* Uploaded DocumentIcon Display */}
                 {doc.status === 'uploaded' && doc.file && (
                   <div className="flex items-center gap-2 mt-2">
-                    <File className="w-4 h-4 text-green-500" />
+                    <DocumentIcon className="w-4 h-4 text-green-500" />
                     <span className="text-sm text-gray-700 dark:text-gray-300">
                       {doc.file.name}
                     </span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={<X className="w-4 h-4" />}
+                      icon={<XMarkIcon className="w-4 h-4" />}
                       onClick={() => onDocumentRemove(doc.id)}
                       className="text-red-500 hover:text-red-700"
                     />

@@ -1,5 +1,5 @@
 import { FunctionComponent, useState, useEffect, useRef } from 'preact/compat';
-import { ExternalLink, CreditCard } from 'lucide-preact';
+import { ArrowTopRightOnSquareIcon, CreditCardIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 import Modal from './Modal';
 import PaymentContent from './PaymentContent';
@@ -22,7 +22,7 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
 }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  const handleExternalLink = () => {
+  const handleArrowTopRightOnSquareIcon = () => {
     window.open(paymentUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -54,17 +54,17 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
               onClick={handlePaymentClick}
               className="bg-accent-500 text-gray-900 hover:bg-accent-600"
             >
-              <CreditCard className="w-5 h-5 mr-2" />
+              <CreditCardIcon className="w-5 h-5 mr-2" />
               Pay ${amount || '0'}
             </Button>
 
             <Button
               variant="secondary"
               size="lg"
-              onClick={handleExternalLink}
+              onClick={handleArrowTopRightOnSquareIcon}
               className="flex-1 sm:flex-none"
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
+              <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
               Open in Browser
             </Button>
           </>
@@ -73,10 +73,10 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
           <Button
             variant="primary"
             size="lg"
-            onClick={handleExternalLink}
+            onClick={handleArrowTopRightOnSquareIcon}
             className="bg-accent-500 text-gray-900 hover:bg-accent-600 w-full sm:w-auto"
           >
-            <CreditCard className="w-5 h-5 mr-2" />
+            <CreditCardIcon className="w-5 h-5 mr-2" />
             Pay ${amount || '0'}
           </Button>
         )}

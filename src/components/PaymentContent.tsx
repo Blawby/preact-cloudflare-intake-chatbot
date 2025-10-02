@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef } from 'preact/hooks';
-import { ExternalLink } from 'lucide-preact';
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 
 interface PaymentContentProps {
@@ -27,7 +27,7 @@ const PaymentContent: FunctionComponent<PaymentContentProps> = ({
         setHasError(true);
     };
 
-    const handleExternalLink = () => {
+    const handleArrowTopRightOnSquareIcon = () => {
         window.open(paymentUrl, '_blank', 'noopener,noreferrer');
     };
 
@@ -55,9 +55,9 @@ const PaymentContent: FunctionComponent<PaymentContentProps> = ({
                         <Button
                             variant="primary"
                             size="lg"
-                            onClick={handleExternalLink}
+                            onClick={handleArrowTopRightOnSquareIcon}
                         >
-                            <ExternalLink className="w-4 h-4 mr-2" />
+                            <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" />
                             Open Payment Page
                         </Button>
                     </div>

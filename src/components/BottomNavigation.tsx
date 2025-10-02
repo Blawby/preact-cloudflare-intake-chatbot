@@ -1,6 +1,6 @@
 import {
   MessageCircle
-} from 'lucide-preact';
+} from "@heroicons/react/24/outline";
 
 interface BottomNavigationProps {
   activeTab: 'chats';

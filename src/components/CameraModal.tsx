@@ -1,16 +1,16 @@
 import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState } from 'preact/hooks';
 import Modal from './Modal';
-import { Camera } from 'lucide-preact';
+import { CameraIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 
-interface CameraModalProps {
+interface CameraIconModalProps {
     isOpen: boolean;
     onClose: () => void;
     onCapture: (file: File) => void;
 }
 
-const CameraModal: FunctionComponent<CameraModalProps> = ({
+const CameraIconModal: FunctionComponent<CameraIconModalProps> = ({
     isOpen,
     onClose,
     onCapture
@@ -18,26 +18,26 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
-    const [isCameraReady, setIsCameraReady] = useState(false);
+    const [isCameraIconReady, setIsCameraIconReady] = useState(false);
     const [error, setError] = useState('');
 
     // Initialize the camera
     useEffect(() => {
         if (isOpen) {
-            startCamera();
+            startCameraIcon();
         }
         return () => {
-            stopCamera();
+            stopCameraIcon();
         };
     }, [isOpen]);
 
-    const startCamera = async () => {
+    const startCameraIcon = async () => {
         try {
             setError('');
-            setIsCameraReady(false);
+            setIsCameraIconReady(false);
             
             if (streamRef.current) {
-                stopCamera();
+                stopCameraIcon();
             }
             
             // Try environment camera first, fallback to user camera
@@ -58,7 +58,7 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 videoRef.current.onloadedmetadata = () => {
-                    setIsCameraReady(true);
+                    setIsCameraIconReady(true);
                 };
                 videoRef.current.onerror = () => {
                     setError('Error loading video stream.');
@@ -70,17 +70,17 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
         }
     };
 
-    const stopCamera = () => {
+    const stopCameraIcon = () => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         }
-        setIsCameraReady(false);
+        setIsCameraIconReady(false);
     };
 
     const takePhoto = () => {
-        if (!isCameraReady || !videoRef.current || !canvasRef.current) {
-            console.error('Camera not ready or elements not available');
+        if (!isCameraIconReady || !videoRef.current || !canvasRef.current) {
+            console.error('CameraIcon not ready or elements not available');
             return;
         }
         
@@ -90,7 +90,7 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
         // Check if video has valid dimensions
         if (video.videoWidth === 0 || video.videoHeight === 0) {
             console.error('Video has no dimensions');
-            setError('Camera not ready. Please wait a moment and try again.');
+            setError('CameraIcon not ready. Please wait a moment and try again.');
             return;
         }
         
@@ -151,11 +151,11 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
                         type="button"
                         variant="primary"
                         onClick={takePhoto}
-                        disabled={!isCameraReady}
+                        disabled={!isCameraIconReady}
                         title="Take photo"
                         className="cursor-pointer flex items-center justify-center transition-all duration-200 w-20 h-20 rounded-full bg-white shadow-lg p-0 relative disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
                     >
-                        <Camera className="w-16 h-16 text-gray-800" />
+                        <CameraIcon className="w-16 h-16 text-gray-800" />
                     </Button>
                 </div>
             </div>
@@ -163,4 +163,4 @@ const CameraModal: FunctionComponent<CameraModalProps> = ({
     );
 };
 
-export default CameraModal; 
+export default CameraIconModal; 

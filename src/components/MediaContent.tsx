@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState } from 'preact/hooks';
-import { Play } from 'lucide-preact';
+import { PlayIcon } from "@heroicons/react/24/outline";
 import { type AggregatedMedia } from '../utils/mediaAggregation';
 
 interface MediaContentProps {
@@ -8,18 +8,18 @@ interface MediaContentProps {
 }
 
 const MediaContent: FunctionComponent<MediaContentProps> = ({ media }) => {
-    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+    const [isVideoPlayIconing, setIsVideoPlayIconing] = useState(false);
 
     const handleVideoClick = (e: Event) => {
         e.stopPropagation();
-        setIsVideoPlaying(true);
+        setIsVideoPlayIconing(true);
     };
 
     const renderMediaContent = () => {
         if (media.category === 'video') {
             return (
                 <div className="max-w-full max-h-[80vh] rounded-lg overflow-hidden shadow-2xl">
-                    {!isVideoPlaying ? (
+                    {!isVideoPlayIconing ? (
                         <div className="relative cursor-pointer max-w-full max-h-[80vh]" onClick={handleVideoClick}>
                             <video 
                                 src={media.url} 
@@ -28,7 +28,7 @@ const MediaContent: FunctionComponent<MediaContentProps> = ({ media }) => {
                                 playsInline
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center gap-2">
-                                <Play className="text-white w-12 h-12" />
+                                <PlayIcon className="text-white w-12 h-12" />
                                 <p className="text-white text-sm font-medium">Click to play</p>
                             </div>
                         </div>
@@ -37,7 +37,7 @@ const MediaContent: FunctionComponent<MediaContentProps> = ({ media }) => {
                             src={media.url} 
                             className="w-full h-auto max-h-[80vh]"
                             controls
-                            autoPlay
+                            autoPlayIcon
                             playsInline
                         />
                     )}

@@ -3,19 +3,19 @@ import { useState } from 'preact/hooks';
 import { Button } from './ui/Button';
 import ContactOptionsModal from './ContactOptionsModal';
 import {
-  User,
-  Building,
-  MapPin,
-  Star,
-  StarHalf,
-  Phone,
-  Mail,
-  Globe,
-  Clock,
-  DollarSign,
-  MessageCircle,
-  MoreVertical
-} from 'lucide-preact';
+  UserIcon,
+  BuildingOfficeIconOfficeIcon,
+  MapPinIcon,
+  StarIcon,
+  StarIcon as StarIconHalfIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  GlobeAltIconAltIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  ChatBubbleOvalLeftIcon,
+  EllipsisVerticalIcon
+} from "@heroicons/react/24/outline";
 import { useTheme } from '../hooks/useTheme';
 
 interface LawyerProfile {
@@ -71,27 +71,27 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
     setSelectedLawyer(null);
   };
 
-  const renderStars = (rating: number) => {
+  const renderStarIcons = (rating: number) => {
     const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
+    const fullStarIcons = Math.floor(rating);
+    const hasHalfStarIcon = rating % 1 !== 0;
 
-    for (let i = 0; i < fullStars; i++) {
+    for (let i = 0; i < fullStarIcons; i++) {
       stars.push(
-        <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+        <StarIcon key={i} className="w-4 h-4 text-yellow-400 fill-current" />
       );
     }
 
-    if (hasHalfStar) {
+    if (hasHalfStarIcon) {
       stars.push(
-        <StarHalf key="half" className="w-4 h-4 text-yellow-400 fill-current" />
+        <StarIconHalf key="half" className="w-4 h-4 text-yellow-400 fill-current" />
       );
     }
 
-    const emptyStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < emptyStars; i++) {
+    const emptyStarIcons = 5 - Math.ceil(rating);
+    for (let i = 0; i < emptyStarIcons; i++) {
       stars.push(
-        <Star key={`empty-${i}`} className="w-4 h-4 text-gray-300" />
+        <StarIcon key={`empty-${i}`} className="w-4 h-4 text-gray-300" />
       );
     }
 
@@ -138,7 +138,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center space-x-3">
                 <div className={`p-2 rounded-full ${isDark ? 'bg-dark-card' : 'bg-white'}`}>
-                  <User className="w-6 h-6 text-blue-500" />
+                  <UserIcon className="w-6 h-6 text-blue-500" />
                 </div>
                 <div>
                   <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -146,7 +146,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
                   </h4>
                   {lawyer.firm && (
                     <div className="flex items-center text-sm text-gray-500">
-                      <Building className="w-4 h-4 mr-1" />
+                      <BuildingOfficeIcon className="w-4 h-4 mr-1" />
                       {lawyer.firm}
                     </div>
                   )}
@@ -155,7 +155,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
               
               {lawyer.rating && (
                 <div className="flex items-center space-x-1">
-                  <div className="flex">{renderStars(lawyer.rating)}</div>
+                  <div className="flex">{renderStarIcons(lawyer.rating)}</div>
                   <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     ({lawyer.reviewCount || 0})
                   </span>
@@ -165,27 +165,27 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <div className="flex items-center text-sm text-gray-600">
-                <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                <MapPinIcon className="w-4 h-4 mr-2 text-gray-400" />
                 {lawyer.location}
               </div>
 
               {lawyer.experience && (
                 <div className="flex items-center text-sm text-gray-600">
-                  <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                  <ClockIcon className="w-4 h-4 mr-2 text-gray-400" />
                   {lawyer.experience} years experience
                 </div>
               )}
 
               {lawyer.consultationFee && (
                 <div className="flex items-center text-sm text-gray-600">
-                  <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
+                  <CurrencyDollarIcon className="w-4 h-4 mr-2 text-gray-400" />
                   ${lawyer.consultationFee}/hour
                 </div>
               )}
 
               {lawyer.languages && lawyer.languages.length > 0 && (
                 <div className="flex items-center text-sm text-gray-600">
-                  <MessageCircle className="w-4 h-4 mr-2 text-gray-400" />
+                  <ChatBubbleOvalLeftIcon className="w-4 h-4 mr-2 text-gray-400" />
                   {lawyer.languages.join(', ')}
                 </div>
               )}
@@ -227,7 +227,7 @@ const LawyerSearchResults: FunctionComponent<LawyerSearchResultsProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                icon={<MoreVertical className="w-4 h-4" />}
+                icon={<EllipsisVerticalIcon className="w-4 h-4" />}
                 onClick={() => openContactModal(lawyer)}
               >
                 Contact Options

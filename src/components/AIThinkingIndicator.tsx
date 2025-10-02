@@ -1,4 +1,4 @@
-import { Lightbulb, Settings, Sparkles } from 'lucide-preact';
+import { LightBulbIcon, Cog6ToothIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import DOMPurify from 'dompurify';
 import type { ComponentType, SVGProps } from 'react';
 import type { VNode } from 'preact';
@@ -12,17 +12,17 @@ type IconComponentType = ComponentType<SVGProps<SVGSVGElement>>;
 // Icon and default message mapping with proper typing
 const variantConfig = {
   thinking: {
-    icon: Lightbulb,
+    icon: LightBulbIcon,
     defaultMessage: 'AI is thinking',
     ariaLabel: 'AI is thinking'
   },
   processing: {
-    icon: Settings,
+    icon: Cog6ToothIcon,
     defaultMessage: 'Processing your request',
     ariaLabel: 'Processing your request'
   },
   generating: {
-    icon: Sparkles,
+    icon: SparklesIcon,
     defaultMessage: 'Generating response',
     ariaLabel: 'Generating response'
   }

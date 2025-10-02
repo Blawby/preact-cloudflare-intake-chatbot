@@ -1,8 +1,8 @@
 import {
-  ShieldCheck,
-  HelpCircle,
-  ExternalLink
-} from 'lucide-preact';
+  ShieldCheckIcon,
+  QuestionMarkCircleIcon,
+  ArrowTopRightOnSquareIcon
+} from "@heroicons/react/24/outline";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
 
 interface PrivacySupportSidebarProps {
@@ -23,9 +23,9 @@ const PrivacySupportSidebar = ({ className }: PrivacySupportSidebarProps) => {
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-accent dark:hover:text-accent transition-colors duration-200"
             >
-              <ShieldCheck className="w-4 h-4" />
+              <ShieldCheckIcon className="w-4 h-4" />
               Privacy Policy
-              <ExternalLink className="w-3 h-3" />
+              <ArrowTopRightOnSquareIcon className="w-3 h-3" />
             </a>
             <a
               href="https://blawby.com/help"
@@ -33,9 +33,9 @@ const PrivacySupportSidebar = ({ className }: PrivacySupportSidebarProps) => {
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-accent dark:hover:text-accent transition-colors duration-200"
             >
-              <HelpCircle className="w-4 h-4" />
+              <QuestionMarkCircleIcon className="w-4 h-4" />
               Help & Support
-              <ExternalLink className="w-3 h-3" />
+              <ArrowTopRightOnSquareIcon className="w-3 h-3" />
             </a>
           </div>
         </AccordionContent>
