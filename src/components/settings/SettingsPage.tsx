@@ -87,7 +87,8 @@ export const SettingsPage = ({
     { id: 'notifications', label: 'Notifications', icon: BellIcon as IconComponent },
     { id: 'account', label: 'Account', icon: UserIcon as IconComponent },
     { id: 'preferences', label: 'Preferences', icon: Cog6ToothIcon as IconComponent },
-    { id: 'security', label: 'Security', icon: ShieldCheckIcon as IconComponent }
+    { id: 'security', label: 'Security', icon: ShieldCheckIcon as IconComponent },
+    { id: 'signout', label: 'Sign Out', icon: ArrowRightOnRectangleIcon as IconComponent, isAction: true, onClick: handleSignOut, variant: 'danger' }
   ];
 
 
