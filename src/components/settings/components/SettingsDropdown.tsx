@@ -178,7 +178,6 @@ export const SettingsDropdown = ({
       </div>
     );
   }
-  }
 
   // Desktop layout - original
   return (
