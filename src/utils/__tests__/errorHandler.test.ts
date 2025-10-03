@@ -103,7 +103,7 @@ describe('errorHandler', () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    it('should not log to console in production mode', () => {
+    it('should log minimal information to console in production mode', () => {
       // Mock NODE_ENV to be production
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
@@ -113,7 +113,10 @@ describe('errorHandler', () => {
 
       handleError(error, context, { component: 'TestComponent' });
 
-      expect(mockConsoleError).not.toHaveBeenCalled();
+      expect(mockConsoleError).toHaveBeenCalledTimes(1);
+      const loggedOutput = mockConsoleError.mock.calls[0][0];
+      expect(loggedOutput).toContain('Test error');
+      expect(loggedOutput).toContain('TestComponent');
 
       // Restore original NODE_ENV
       process.env.NODE_ENV = originalEnv;

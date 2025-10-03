@@ -17,7 +17,13 @@ export const DropdownMenuCheckboxItem = ({
   disabled = false,
   className = ''
 }: DropdownMenuCheckboxItemProps) => {
-  const handleClick = () => {
+  const handleClick = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
+    // Prevent double toggle when clicking the switch
+    const target = event.target as HTMLElement;
+    if (target.closest('button')) {
+      return;
+    }
+    
     if (!disabled) {
       onCheckedChange(!checked);
     }
@@ -50,7 +56,14 @@ export const DropdownMenuCheckboxItem = ({
       onKeyDown={handleKeyDown}
     >
       <span className="flex-1">{children}</span>
-      <div className="ml-2">
+      <div 
+        className="ml-2" 
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        role="button"
+        tabIndex={-1}
+        aria-hidden="true"
+      >
         <Switch
           value={checked}
           onChange={onCheckedChange}

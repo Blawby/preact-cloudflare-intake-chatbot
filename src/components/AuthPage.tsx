@@ -113,45 +113,32 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         setShowOnboarding(true);
       } else {
         // Simulate API call for sign-in
-        // Check if user exists (simulate API lookup)
+        // Check if user exists with the specific email (simulate API lookup)
         const existingUser = localStorage.getItem('mockUser');
         
         if (existingUser) {
-          // User exists - sign them in
           const userData = JSON.parse(existingUser);
-          userData.email = formData.email; // Update email if different
-          
-          // Dispatch custom event to notify UserProfile component
-          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
-          
-                      setMessage(t('messages.signedIn'));
-          
-          // Redirect to home page after successful sign in, waiting for onSuccess if provided
-          await handleRedirect();
+          // Only sign in if the email matches the existing user's email
+          if (userData.email === formData.email) {
+            // User exists with matching email - sign them in
+            // Dispatch custom event to notify UserProfile component
+            window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
+            
+            setMessage(t('messages.signedIn'));
+            
+            // Redirect to home page after successful sign in, waiting for onSuccess if provided
+            await handleRedirect();
+          } else {
+            // User exists but with different email - show error
+            setError(t('errors.userNotFound'));
+            setLoading(false);
+            return;
+          }
         } else {
-          // User doesn't exist - create new user (like some APIs do)
-          const userId = `mock-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          const mockUser = {
-            id: userId,
-            name: formData.email.split('@')[0] || t('defaults.demoUserName'),
-            email: formData.email,
-            image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
-            teamId: null,
-            role: 'user',
-            phone: null,
-            subscriptionTier: 'free'
-          };
-          
-          localStorage.setItem('mockUser', JSON.stringify(mockUser));
-          
-          // Dispatch custom event to notify UserProfile component
-          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
-          
-                      setMessage(t('messages.accountCreatedAndSignedIn'));
-          
-          // Show onboarding for new users created via sign-in
-          setShowOnboarding(true);
+          // No user exists - show error and suggest sign-up
+          setError(t('errors.userNotFound'));
+          setLoading(false);
+          return;
         }
       }
     } catch (err) {
@@ -167,40 +154,53 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     setMessage('');
 
     try {
-      // Check if this is a new Google user
-      const existingUser = localStorage.getItem('mockUser');
-      const isNewUser = !existingUser;
-      
-      // Generate unique ID for new users
-      const userId = isNewUser ? `mock-user-google-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : 'mock-user-google-123';
-      
-      // No actual authentication - just simulate success
-      // Store mock user data in localStorage
-      const mockUser = {
-        id: userId,
-        name: t('defaults.googleUserName'),
-        email: 'user@gmail.com',
-        image: 'https://i.pravatar.cc/300?u=google-user',
-        teamId: null,
-        role: 'user',
-        phone: null,
-        subscriptionTier: 'free' // Default to free tier
-      };
-      localStorage.setItem('mockUser', JSON.stringify(mockUser));
-      
-      // Dispatch custom event to notify UserProfile component
-      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
-      
-      setMessage(t('messages.googleSignedIn'));
-      
-      // Only show onboarding modal for new Google users
-      if (isNewUser) {
-        // New Google user detected, showing onboarding modal
+      if (isSignUp) {
+        // Sign-up mode: Create new Google user and show onboarding
+        const userId = `mock-user-google-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        const mockUser = {
+          id: userId,
+          name: t('defaults.googleUserName'),
+          email: 'user@gmail.com',
+          image: 'https://i.pravatar.cc/300?u=google-user',
+          teamId: null,
+          role: 'user',
+          phone: null,
+          subscriptionTier: 'free'
+        };
+        localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        
+        // Dispatch custom event to notify UserProfile component
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
+        
+        setMessage(t('messages.googleSignedIn'));
+        
+        // Always show onboarding for new sign-ups
         setLoading(false);
         setShowOnboarding(true);
       } else {
-        // Existing Google user, skipping onboarding
-        // Redirect existing users, waiting for onSuccess if provided
+        // Sign-in mode: Use existing mock user (simulate existing user)
+        // Create a mock existing Google user for sign-in
+        const existingMockUser = {
+          id: 'mock-user-google-existing',
+          name: t('defaults.googleUserName'),
+          email: 'user@gmail.com',
+          image: 'https://i.pravatar.cc/300?u=google-user',
+          teamId: null,
+          role: 'user',
+          phone: null,
+          subscriptionTier: 'free'
+        };
+        
+        // Store the existing user data
+        localStorage.setItem('mockUser', JSON.stringify(existingMockUser));
+        
+        // Dispatch custom event to notify UserProfile component
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: existingMockUser }));
+        
+        setMessage(t('messages.googleSignedIn'));
+        
+        // Sign-in should NOT show onboarding - redirect to main app
         setLoading(false);
         await handleRedirect();
       }
@@ -333,13 +333,13 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
               )}
 
               <FormField name="email">
-                {({ value, error, onChange }) => (
+                {({ error, onChange }) => (
                   <FormItem>
                     <FormControl>
                       <EmailInput
                         label={t(isSignUp ? 'signup.email' : 'signin.email')}
                         required
-                        value={(value as string) || ''}
+                        value={formData.email}
                         onChange={(value) => {
                           onChange(value);
                           setFormData(prev => ({ ...prev, email: String(value) }));
@@ -354,14 +354,14 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
               </FormField>
 
               <FormField name="password">
-                {({ value, error, onChange }) => (
+                {({ error, onChange }) => (
                   <FormItem>
                     <FormControl>
                       <PasswordInput
                         id="password-field"
                         label={t(isSignUp ? 'signup.password' : 'signin.password')}
                         required
-                        value={(value as string) || ''}
+                        value={formData.password}
                         onChange={(value) => {
                           onChange(value);
                           setFormData(prev => ({ ...prev, password: String(value) }));

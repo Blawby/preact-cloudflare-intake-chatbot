@@ -9,9 +9,6 @@ export interface SwitchProps {
   disabled?: boolean;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
-  labelKey?: string;
-  descriptionKey?: string;
-  namespace?: string;
 }
 
 export const Switch = ({
@@ -21,21 +18,10 @@ export const Switch = ({
   description,
   disabled = false,
   className = '',
-  size = 'md',
-  labelKey,
-  descriptionKey,
-  namespace = 'common'
+  size = 'md'
 }: SwitchProps) => {
-  // TODO: Add i18n support when useTranslation hook is available
-  // const { t } = useTranslation(namespace);
-  // const displayLabel = labelKey ? t(labelKey) : label;
-  // const displayDescription = descriptionKey ? t(descriptionKey) : description;
-  
-  const displayLabel = label;
-  const displayDescription = description;
-
   const sizeClasses = {
-    sm: 'h-4 w-7',
+    sm: 'h-4 w-8',
     md: 'h-6 w-11',
     lg: 'h-8 w-14'
   };
@@ -47,7 +33,7 @@ export const Switch = ({
   };
 
   const thumbTranslateClasses = {
-    sm: value ? 'translate-x-3' : 'translate-x-0.5',
+    sm: value ? 'translate-x-[18px]' : 'translate-x-0.5',
     md: value ? 'translate-x-6' : 'translate-x-1',
     lg: value ? 'translate-x-7' : 'translate-x-1'
   };
@@ -55,14 +41,14 @@ export const Switch = ({
   return (
     <div className={cn('flex items-center justify-between py-3', className)}>
       <div className="flex-1 min-w-0">
-        {displayLabel && (
+        {label && (
           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            {displayLabel}
+            {label}
           </div>
         )}
-        {displayDescription && (
+        {description && (
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {displayDescription}
+            {description}
           </div>
         )}
       </div>
@@ -79,12 +65,12 @@ export const Switch = ({
         )}
         onClick={() => !disabled && onChange(!value)}
         disabled={disabled}
-        aria-pressed={Boolean(value)}
-        aria-label={displayLabel ? `Toggle ${displayLabel}` : 'Toggle switch'}
+        aria-pressed={value}
+        aria-label={label ? `Toggle ${label}` : 'Toggle switch'}
       >
         <span
           className={cn(
-            'inline-block transform rounded-full bg-white transition-transform',
+            'inline-block transform rounded-full bg-white transition-transform duration-200 ease-in-out',
             thumbSizeClasses[size],
             thumbTranslateClasses[size]
           )}

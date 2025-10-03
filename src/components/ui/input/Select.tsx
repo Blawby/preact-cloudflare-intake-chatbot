@@ -205,6 +205,7 @@ export const Select = ({
               {filteredOptions.map((option, index) => (
                 <button
                   key={option.value}
+                  type="button"
                   id={`${dropdownId}-option-${option.value}`}
                   role="option"
                   aria-selected={value === option.value}
@@ -294,6 +295,7 @@ export const Select = ({
             {filteredOptions.map((option, index) => (
               <button
                 key={option.value}
+                type="button"
                 id={`${dropdownId}-option-${option.value}`}
                 role="option"
                 aria-selected={value === option.value}

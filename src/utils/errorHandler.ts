@@ -58,7 +58,7 @@ function sanitizeError(error: unknown, context: ErrorContext = {}): SanitizedErr
       sanitizedContext[key] = value;
     } else if (value && typeof value === 'object') {
       // Recursively sanitize nested objects
-      sanitizedContext[key] = sanitizeError(value, {}).context;
+      sanitizedContext[key] = sanitizeError(value, value).context;
     }
   }
 

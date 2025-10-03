@@ -40,6 +40,7 @@ export const NotificationsPage = ({
   const handleToggleChange = (section: string, toggleKey: string, value: boolean) => {
     if (!settings) return;
     
+    // Create a new settings object to ensure React detects the change
     const updatedSettings = {
       ...settings,
       [section]: {
@@ -48,10 +49,13 @@ export const NotificationsPage = ({
       }
     };
     
+    // Update local state
     setSettings(updatedSettings);
     
     // Save to mock data service
     mockUserDataService.setNotificationSettings(updatedSettings);
+    
+    // Show success toast
     showSuccess(
       t('common:notifications.settingsSavedTitle'),
       t('settings:notifications.toastBody')

@@ -1,5 +1,5 @@
 import { createContext, ComponentChildren } from 'preact';
-import { useState, useCallback, useContext } from 'preact/hooks';
+import { useState, useCallback, useContext, useEffect } from 'preact/hooks';
 import { cn } from '../../../utils/cn';
 import { z, ZodSchema } from 'zod';
 import { useFormValidation } from '../validation';
@@ -61,6 +61,12 @@ export const Form = ({
   const [errors, setErrors] = useState<FormError[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Rehydrate form when initialData changes
+  useEffect(() => {
+    setData(initialData);
+    setErrors([]); // Clear any stale validation errors
+  }, [JSON.stringify(initialData)]);
+
   const setFieldValue = useCallback((field: string, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
     // Clear field error when value changes
@@ -83,13 +89,28 @@ export const Form = ({
   }, []);
 
   const validate = useCallback(() => {
-    // TODO: Implement Zod validation when available
-    // For now, basic validation
     const newErrors: FormError[] = [];
     
-    // Basic required field validation
+    // Use schema validation if provided
+    if (schema) {
+      const result = schema.safeParse(data);
+      if (!result.success) {
+        result.error.issues.forEach(issue => {
+          const field = issue.path.length > 0 ? issue.path.join('.') : issue.path[0]?.toString() || 'unknown';
+          newErrors.push({
+            code: 'invalid',
+            field,
+            message: issue.message,
+            hint: issue.message
+          });
+        });
+      }
+    }
+    
+    // For fields not reported by schema, fall back to basic required validation
+    const schemaFields = new Set(newErrors.map(error => error.field));
     Object.entries(data).forEach(([field, value]) => {
-      if (value === undefined || value === null || value === '') {
+      if (!schemaFields.has(field) && (value === undefined || value === null || value === '')) {
         newErrors.push({
           code: 'required',
           field,
@@ -101,7 +122,7 @@ export const Form = ({
 
     setErrors(newErrors);
     return newErrors.length === 0;
-  }, [data]);
+  }, [data, schema]);
 
   const reset = useCallback(() => {
     setData(initialData);

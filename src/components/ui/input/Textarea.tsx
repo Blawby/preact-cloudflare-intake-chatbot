@@ -116,7 +116,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   }, [value, maxLength, enforceMaxLength]);
 
   // Determine the actual value to use based on enforceMaxLength mode
-  const actualValue = enforceMaxLength === 'truncate' ? internalValue : value;
+  const actualValue = (enforceMaxLength === 'truncate' || enforceMaxLength === 'hard') ? internalValue : value;
 
   const sizeClasses = {
     sm: 'px-2 py-1 text-sm',
@@ -166,13 +166,24 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
         value={actualValue}
         onChange={(e) => {
           const newValue = (e.target as HTMLTextAreaElement).value;
-          if (enforceMaxLength === 'truncate' && maxLength && newValue.length > maxLength) {
-            const truncatedValue = newValue.substring(0, maxLength);
+          if ((enforceMaxLength === 'truncate' || enforceMaxLength === 'hard') && maxLength && newValue.length > maxLength) {
+            const truncatedValue = newValue.slice(0, maxLength);
             setInternalValue(truncatedValue);
             onChange?.(truncatedValue);
           } else {
             setInternalValue(newValue);
             onChange?.(newValue);
+          }
+        }}
+        onPaste={(e) => {
+          if ((enforceMaxLength === 'truncate' || enforceMaxLength === 'hard') && maxLength) {
+            e.preventDefault();
+            const pastedText = e.clipboardData?.getData('text') || '';
+            const currentValue = actualValue || '';
+            const newValue = currentValue + pastedText;
+            const truncatedValue = newValue.slice(0, maxLength);
+            setInternalValue(truncatedValue);
+            onChange?.(truncatedValue);
           }
         }}
         placeholder={displayPlaceholder}

@@ -1,6 +1,7 @@
 import { forwardRef, useCallback } from 'preact/compat';
 import { LinkIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface URLInputProps {
   value?: string;
@@ -56,6 +57,17 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
   const displayDescription = description;
   const displayPlaceholder = placeholder;
   const displayError = error;
+
+  // Generate unique IDs for accessibility
+  const inputId = useUniqueId('url-input');
+  const descriptionId = useUniqueId('url-description');
+  const errorId = useUniqueId('url-error');
+  
+  // Create aria-describedby string
+  const ariaDescribedBy = [
+    displayDescription ? descriptionId : null,
+    displayError ? errorId : null
+  ].filter(Boolean).join(' ');
 
   const sizeClasses = {
     sm: 'px-2 py-1 text-sm',
@@ -144,7 +156,7 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -157,6 +169,7 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
         
         <input
           ref={ref}
+          id={inputId}
           type="url"
           value={value}
           onChange={handleChange}
@@ -164,6 +177,7 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
           placeholder={displayPlaceholder}
           disabled={disabled}
           required={required}
+          aria-describedby={ariaDescribedBy || undefined}
           className={inputClasses}
         />
         
@@ -199,13 +213,13 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
       )}
       
       {displayDescription && !displayError && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
         </p>
       )}
       
       {displayError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           {displayError}
         </p>
       )}
