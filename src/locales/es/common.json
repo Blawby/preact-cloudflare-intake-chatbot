@@ -87,6 +87,9 @@
       }
     }
   },
+  "validation": {
+    "invalidDate": "Por favor ingresa una fecha válida (DD/MM/AAAA)"
+  },
   "onboarding": {
     "title": "Bienvenido a Blawby AI",
     "subtitle": "Vamos a configurarte",
