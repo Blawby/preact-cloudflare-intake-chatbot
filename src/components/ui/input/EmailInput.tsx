@@ -148,21 +148,15 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
         )}
       </div>
       
-      {showValidation && value && !isEmailValid && !displayError && (
+      {showValidation && value && !isEmailValid && (
         <p id={validationErrorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           Please enter a valid email address
         </p>
       )}
       
-      {displayDescription && !displayError && (
+      {displayDescription && (
         <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
-        </p>
-      )}
-      
-      {displayError && (
-        <p id={externalErrorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
-          {displayError}
         </p>
       )}
     </div>

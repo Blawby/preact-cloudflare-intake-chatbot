@@ -107,15 +107,9 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(({
         className={inputClasses}
       />
       
-      {displayDescription && !displayError && (
+      {displayDescription && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
-        </p>
-      )}
-      
-      {displayError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-          {displayError}
         </p>
       )}
     </div>

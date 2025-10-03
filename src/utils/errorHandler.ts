@@ -22,7 +22,7 @@ interface SanitizedError {
 /**
  * Sanitizes error data to remove sensitive information
  */
-function sanitizeError(error: unknown, context: ErrorContext = {}): SanitizedError {
+function sanitizeError(error: unknown, context: ErrorContext = {}, visited: WeakSet<object> = new WeakSet()): SanitizedError {
   const isProduction = typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
   
   // Extract safe error information
@@ -59,8 +59,38 @@ function sanitizeError(error: unknown, context: ErrorContext = {}): SanitizedErr
     } else if (typeof value === 'number' || typeof value === 'boolean') {
       sanitizedContext[key] = value;
     } else if (value && typeof value === 'object') {
-      // Recursively sanitize nested objects
-      sanitizedContext[key] = sanitizeError(error, value).context;
+      // Check for circular references
+      if (visited.has(value)) {
+        sanitizedContext[key] = '[Circular]';
+        continue;
+      }
+      
+      // Add to visited set before recursing
+      visited.add(value);
+      
+      try {
+        if (Array.isArray(value)) {
+          // Preserve array structure by mapping each element
+          sanitizedContext[key] = value.map(item => {
+            if (item && typeof item === 'object') {
+              if (visited.has(item)) {
+                return '[Circular]';
+              }
+              visited.add(item);
+              const result = sanitizeError(error, item, visited).context;
+              visited.delete(item);
+              return result;
+            }
+            return item;
+          });
+        } else {
+          // Recursively sanitize nested objects
+          sanitizedContext[key] = sanitizeError(error, value, visited).context;
+        }
+      } finally {
+        // Remove from visited set after processing
+        visited.delete(value);
+      }
     }
   }
 

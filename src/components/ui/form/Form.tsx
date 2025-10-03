@@ -1,11 +1,10 @@
 import { createContext, ComponentChildren } from 'preact';
 import { useState, useCallback, useContext, useEffect } from 'preact/hooks';
 import { cn } from '../../../utils/cn';
-import { z, ZodSchema } from 'zod';
-import { useFormValidation } from '../validation';
+import { ZodSchema } from 'zod';
 
 export interface FormData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface FormError {
@@ -19,12 +18,15 @@ export interface FormContextValue {
   errors: FormError[];
   isSubmitting: boolean;
   isValid: boolean;
-  setFieldValue: (field: string, value: any) => void;
+  validateOnChange: boolean;
+  validateOnBlur: boolean;
+  setFieldValue: (field: string, value: unknown) => void;
   setFieldError: (field: string, error: FormError) => void;
   clearFieldError: (field: string) => void;
   setSubmitting: (submitting: boolean) => void;
   validate: () => boolean;
   reset: () => void;
+  onFieldBlur: (field: string) => void;
 }
 
 const FormContext = createContext<FormContextValue | null>(null);
@@ -41,7 +43,7 @@ export interface FormProps {
   children: ComponentChildren;
   initialData?: FormData;
   onSubmit?: (data: FormData) => void | Promise<void>;
-  schema?: ZodSchema<any>;
+  schema?: ZodSchema<unknown>;
   className?: string;
   disabled?: boolean;
   validateOnChange?: boolean;
@@ -54,7 +56,9 @@ export const Form = ({
   onSubmit,
   schema,
   className = '',
-  disabled = false
+  disabled = false,
+  validateOnChange = false,
+  validateOnBlur = false
 }: FormProps) => {
   const [data, setData] = useState<FormData>(initialData);
   const [errors, setErrors] = useState<FormError[]>([]);
@@ -66,7 +70,72 @@ export const Form = ({
     setErrors([]); // Clear any stale validation errors
   }, [initialData]);
 
-  const setFieldValue = useCallback((field: string, value: any) => {
+  const validate = useCallback(() => {
+    const newErrors: FormError[] = [];
+    
+    // Use schema validation if provided
+    if (schema) {
+      const result = schema.safeParse(data);
+      if (!result.success) {
+        result.error.issues.forEach(issue => {
+          const field = issue.path.length ? issue.path.join('.') : 'unknown';
+          newErrors.push({
+            code: 'invalid',
+            field,
+            message: issue.message
+          });
+        });
+      }
+      
+      // Get all fields defined in the schema
+      const schemaFields = new Set<string>();
+      if (result.success && result.data) {
+        // Extract field names from the parsed data structure
+        Object.keys(result.data).forEach(key => schemaFields.add(key));
+      } else if (result.error) {
+        // Extract field names from error paths
+        result.error.issues.forEach(issue => {
+          if (issue.path.length > 0) {
+            schemaFields.add(issue.path[0] as string);
+          }
+        });
+      }
+      
+      // For fields not defined in schema, fall back to basic required validation
+      Object.entries(data).forEach(([field, value]) => {
+        if (!schemaFields.has(field) && (value === undefined || value === null || value === '')) {
+          newErrors.push({
+            code: 'required',
+            field,
+            message: `${field} is required`
+          });
+        }
+      });
+    } else {
+      // No schema provided, use basic required validation for all fields
+      Object.entries(data).forEach(([field, value]) => {
+        if (value === undefined || value === null || value === '') {
+          newErrors.push({
+            code: 'required',
+            field,
+            message: `${field} is required`
+          });
+        }
+      });
+    }
+
+    setErrors(newErrors);
+    return newErrors.length === 0;
+  }, [data, schema]);
+
+  // Handle validation on change
+  useEffect(() => {
+    if (validateOnChange) {
+      validate();
+    }
+  }, [data, validateOnChange, validate]);
+
+  const setFieldValue = useCallback((field: string, value: unknown) => {
     setData(prev => ({ ...prev, [field]: value }));
     // Clear field error when value changes
     setErrors(prev => prev.filter(error => error.field !== field));
@@ -87,45 +156,17 @@ export const Form = ({
     setIsSubmitting(submitting);
   }, []);
 
-  const validate = useCallback(() => {
-    const newErrors: FormError[] = [];
-    
-    // Use schema validation if provided
-    if (schema) {
-      const result = schema.safeParse(data);
-      if (!result.success) {
-        result.error.issues.forEach(issue => {
-          const field = issue.path.length ? issue.path.join('.') : 'unknown';
-          newErrors.push({
-            code: 'invalid',
-            field,
-            message: issue.message
-          });
-        });
-      }
-    }
-    
-    // For fields not reported by schema, fall back to basic required validation
-    const schemaFields = new Set(newErrors.map(error => error.field));
-    Object.entries(data).forEach(([field, value]) => {
-      if (!schemaFields.has(field) && (value === undefined || value === null || value === '')) {
-        newErrors.push({
-          code: 'required',
-          field,
-          message: `${field} is required`
-        });
-      }
-    });
-
-    setErrors(newErrors);
-    return newErrors.length === 0;
-  }, [data, schema]);
-
   const reset = useCallback(() => {
     setData(initialData);
     setErrors([]);
     setIsSubmitting(false);
   }, [initialData]);
+
+  const onFieldBlur = useCallback((_field: string) => {
+    if (validateOnBlur) {
+      validate();
+    }
+  }, [validateOnBlur, validate]);
 
   const handleSubmit = useCallback(async (e: Event) => {
     e.preventDefault();
@@ -139,8 +180,8 @@ export const Form = ({
     
     try {
       await onSubmit?.(data);
-    } catch (error) {
-      console.error('Form submission error:', error);
+    } catch (_error) {
+      // Form submission error
       // TODO: Handle submission errors
     } finally {
       setIsSubmitting(false);
@@ -154,12 +195,15 @@ export const Form = ({
     errors,
     isSubmitting,
     isValid,
+    validateOnChange,
+    validateOnBlur,
     setFieldValue,
     setFieldError,
     clearFieldError,
     setSubmitting,
     validate,
-    reset
+    reset,
+    onFieldBlur
   };
 
   return (

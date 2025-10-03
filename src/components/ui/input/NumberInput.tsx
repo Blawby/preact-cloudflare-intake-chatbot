@@ -210,15 +210,9 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
         )}
       </div>
       
-      {displayDescription && !displayError && (
+      {displayDescription && (
         <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
-        </p>
-      )}
-      
-      {displayError && (
-        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
-          {displayError}
         </p>
       )}
     </div>

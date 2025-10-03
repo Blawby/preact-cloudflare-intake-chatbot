@@ -111,30 +111,46 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
   const normalizeURL = useCallback((url: string) => {
     if (!url) return '';
     
-    // Check if URL already has a valid protocol from the protocols array
-    const hasValidProtocol = protocols.some(protocol => {
-      const protocolWithSlashes = protocol.endsWith('://') ? protocol : 
-                                  protocol.endsWith(':') ? `${protocol}//` : `${protocol}://`;
-      return url.startsWith(protocolWithSlashes);
+    // Normalize protocols into canonical pairs of {scheme, usesSlashes}
+    const protocolMap = protocols.map(protocol => {
+      const cleanProtocol = protocol.replace(/[:/]/g, '');
+      const usesSlashes = protocol.includes('://');
+      return { scheme: cleanProtocol, usesSlashes };
     });
     
-    // If URL already has a valid protocol, return as-is
-    if (hasValidProtocol) {
-      return url;
+    // Extract existing scheme and separator using regex
+    const protocolRegex = /^([a-zA-Z][a-zA-Z0-9+.-]*)(:)(\/\/)?/;
+    const match = url.match(protocolRegex);
+    
+    if (match) {
+      const [, scheme, _separator, slashes] = match;
+      const usesSlashes = !!slashes;
+      
+      // Check if this scheme is in our allowed protocols
+      const allowedProtocol = protocolMap.find(p => 
+        p.scheme === scheme && p.usesSlashes === usesSlashes
+      );
+      
+      if (allowedProtocol) {
+        // Return original URL unchanged if it has a valid protocol
+        return url;
+      } else {
+        // Remove the invalid protocol and separator
+        const urlWithoutProtocol = url.substring(match[0].length);
+        
+        // Use the first allowed protocol or default to https
+        const defaultProtocol = protocolMap.length > 0 ? protocolMap[0] : { scheme: 'https', usesSlashes: true };
+        const prefix = defaultProtocol.usesSlashes ? `${defaultProtocol.scheme}://` : `${defaultProtocol.scheme}:`;
+        
+        return `${prefix}${urlWithoutProtocol}`;
+      }
+    } else {
+      // No existing protocol, prepend default
+      const defaultProtocol = protocolMap.length > 0 ? protocolMap[0] : { scheme: 'https', usesSlashes: true };
+      const prefix = defaultProtocol.usesSlashes ? `${defaultProtocol.scheme}://` : `${defaultProtocol.scheme}:`;
+      
+      return `${prefix}${url}`;
     }
-    
-    // Remove any existing protocol/scheme that's not in the allowed protocols list
-    // Match common forms like scheme:, scheme:// or scheme://user@
-    const protocolRegex = /^[a-zA-Z][a-zA-Z0-9+.-]*:(?:\/\/[^@]*@)?/;
-    const urlWithoutProtocol = url.replace(protocolRegex, '');
-    
-    // Use the first protocol from the array, or default to https:// if array is empty
-    const defaultProtocol = protocols.length > 0 
-      ? (protocols[0].endsWith('://') ? protocols[0] : 
-         protocols[0].endsWith(':') ? `${protocols[0]}//` : `${protocols[0]}://`)
-      : 'https://';
-    
-    return `${defaultProtocol}${urlWithoutProtocol}`;
   }, [protocols]);
 
   const handleChange = useCallback((e: Event) => {
@@ -212,15 +228,9 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
         </p>
       )}
       
-      {displayDescription && !displayError && (
+      {displayDescription && (
         <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
-        </p>
-      )}
-      
-      {displayError && (
-        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
-          {displayError}
         </p>
       )}
     </div>

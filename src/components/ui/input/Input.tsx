@@ -154,15 +154,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
         )}
       </div>
       
-      {displayDescription && !displayError && (
+      {displayDescription && (
         <p id={descriptionId} className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {displayDescription}
-        </p>
-      )}
-      
-      {displayError && (
-        <p id={errorId} className="mt-1 text-xs text-red-600 dark:text-red-400">
-          {displayError}
         </p>
       )}
     </div>

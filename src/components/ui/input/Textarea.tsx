@@ -73,7 +73,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   const displayLabel = label;
   const displayDescription = description;
   const displayPlaceholder = placeholder;
-  const displayError = error;
+  const _displayError = error;
 
   // Track if component is mounted to skip initial render in effect
   const isMountedRef = useRef(false);
@@ -195,15 +195,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
       />
       
       <div className="flex justify-between items-center mt-1">
-        {displayDescription && !displayError && (
+        {displayDescription && (
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {displayDescription}
-          </p>
-        )}
-        
-        {displayError && (
-          <p className="text-xs text-red-600 dark:text-red-400">
-            {displayError}
           </p>
         )}
         

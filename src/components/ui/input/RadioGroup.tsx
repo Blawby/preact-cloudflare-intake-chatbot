@@ -61,7 +61,7 @@ export const RadioGroup = ({
   
   const displayLabel = label;
   const displayDescription = description;
-  const displayError = error;
+  const _displayError = error;
 
   const sizeClasses = {
     sm: 'w-3 h-3',
@@ -133,15 +133,9 @@ export const RadioGroup = ({
         ))}
       </div>
       
-      {displayDescription && !displayError && (
+      {displayDescription && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
-        </p>
-      )}
-      
-      {displayError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-          {displayError}
         </p>
       )}
     </div>

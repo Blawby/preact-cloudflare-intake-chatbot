@@ -204,13 +204,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     if (!showDropdown || isMobile) return null;
     
     return (
-      <div className="absolute bottom-full left-0 mb-2 w-64 max-w-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-        {/* User Email */}
-        <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-          <UserIcon className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate" title={user.email}>{user.email}</span>
-        </div>
-        
+      <div className="absolute bottom-full right-0 mb-2 w-full max-w-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
         {/* Upgrade Plan */}
         {user.subscriptionTier === 'free' && (
           <button
