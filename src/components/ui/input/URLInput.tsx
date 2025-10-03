@@ -108,6 +108,42 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
     }
   }, [protocols]);
 
+  // Helper function to normalize URL after protocol removal
+  const normalizeUrlAfterProtocol = useCallback((urlWithoutProtocol: string, defaultProtocol: { scheme: string; usesSlashes: boolean }): string | null => {
+    // 1. Detect and preserve any leading credentials (user:pass@)
+    // Stricter regex: username (no @, :, or /) + : + password (no @ or /) + @
+    const credentialsRegex = /^([^@:/]+:[^@/]+@)/;
+    const credentialsMatch = urlWithoutProtocol.match(credentialsRegex);
+    let credentials = '';
+    let urlAfterCredentials = urlWithoutProtocol;
+    
+    if (credentialsMatch) {
+      credentials = credentialsMatch[1];
+      urlAfterCredentials = urlWithoutProtocol.substring(credentialsMatch[0].length);
+    }
+    
+    // 2. Normalize malformed separators by collapsing multiple leading slashes
+    let normalizedUrl = urlAfterCredentials;
+    if (defaultProtocol.usesSlashes) {
+      // Collapse multiple leading slashes to a single pair
+      normalizedUrl = urlAfterCredentials.replace(/^\/+/, '//');
+    }
+    
+    // 3. Validate that there's a non-empty host/path segment after normalization
+    const hasValidContent = normalizedUrl && 
+      normalizedUrl !== '//' && 
+      normalizedUrl !== '/' && 
+      normalizedUrl.trim() !== '';
+    
+    if (!hasValidContent) {
+      // Return null if no valid content after normalization
+      return null;
+    }
+    
+    // 4. Return the reconstructed string (credentials + normalized remainder)
+    return `${credentials}${normalizedUrl}`;
+  }, []);
+
   const normalizeURL = useCallback((url: string) => {
     if (!url) return '';
     
@@ -149,77 +185,31 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
         // Use the first allowed protocol or default to https
         const defaultProtocol = protocolMap.length > 0 ? protocolMap[0] : { scheme: 'https', usesSlashes: true };
         
-        // 1. Detect and preserve any leading credentials (user:pass@)
-        const credentialsRegex = /^([^@/]+@)/;
-        const credentialsMatch = urlWithoutProtocol.match(credentialsRegex);
-        let credentials = '';
-        let urlAfterCredentials = urlWithoutProtocol;
-        
-        if (credentialsMatch) {
-          credentials = credentialsMatch[1];
-          urlAfterCredentials = urlWithoutProtocol.substring(credentialsMatch[0].length);
-        }
-        
-        // 2. Normalize malformed separators by collapsing multiple leading slashes
-        let normalizedUrl = urlAfterCredentials;
-        if (defaultProtocol.usesSlashes) {
-          // Collapse multiple leading slashes to a single pair
-          normalizedUrl = urlAfterCredentials.replace(/^\/+/, '//');
-        }
-        
-        // 3. Validate that there's a non-empty host/path segment after normalization
-        const hasValidContent = normalizedUrl && 
-          normalizedUrl !== '//' && 
-          normalizedUrl !== '/' && 
-          normalizedUrl.trim() !== '';
-        
-        if (!hasValidContent) {
+        const normalizedUrlPart = normalizeUrlAfterProtocol(urlWithoutProtocol, defaultProtocol);
+        if (!normalizedUrlPart) {
           // Return original input unchanged if no valid content after normalization
           return url;
         }
         
         const prefix = defaultProtocol.usesSlashes ? `${defaultProtocol.scheme}://` : `${defaultProtocol.scheme}:`;
         
-        return `${prefix}${credentials}${normalizedUrl}`;
+        return `${prefix}${normalizedUrlPart}`;
       }
     } else {
       // No existing protocol, prepend default
       const defaultProtocol = protocolMap.length > 0 ? protocolMap[0] : { scheme: 'https', usesSlashes: true };
       
-      // 1. Detect and preserve any leading credentials (user:pass@)
-      const credentialsRegex = /^([^@/]+@)/;
-      const credentialsMatch = url.match(credentialsRegex);
-      let credentials = '';
-      let urlAfterCredentials = url;
-      
-      if (credentialsMatch) {
-        credentials = credentialsMatch[1];
-        urlAfterCredentials = url.substring(credentialsMatch[0].length);
-      }
-      
-      // 2. Normalize malformed separators by collapsing multiple leading slashes
-      let normalizedUrl = urlAfterCredentials;
-      if (defaultProtocol.usesSlashes) {
-        // Collapse multiple leading slashes to a single pair
-        normalizedUrl = urlAfterCredentials.replace(/^\/+/, '//');
-      }
-      
-      // 3. Validate that there's a non-empty host/path segment after normalization
-      const hasValidContent = normalizedUrl && 
-        normalizedUrl !== '//' && 
-        normalizedUrl !== '/' && 
-        normalizedUrl.trim() !== '';
-      
-      if (!hasValidContent) {
+      const normalizedUrlPart = normalizeUrlAfterProtocol(url, defaultProtocol);
+      if (!normalizedUrlPart) {
         // Return original input unchanged if no valid content after normalization
         return url;
       }
       
       const prefix = defaultProtocol.usesSlashes ? `${defaultProtocol.scheme}://` : `${defaultProtocol.scheme}:`;
       
-      return `${prefix}${credentials}${normalizedUrl}`;
+      return `${prefix}${normalizedUrlPart}`;
     }
-  }, [protocols]);
+  }, [protocols, normalizeUrlAfterProtocol]);
 
   const handleChange = useCallback((e: Event) => {
     const target = e.target as HTMLInputElement;
