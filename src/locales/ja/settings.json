@@ -1,0 +1,355 @@
+{
+  "navigation": {
+    "close": "設定を閉じる",
+    "backToSettings": "設定に戻る",
+    "items": {
+      "general": "一般",
+      "notifications": "通知",
+      "account": "アカウント",
+      "security": "セキュリティ",
+      "help": "ヘルプ",
+      "signOut": "サインアウト"
+    },
+    "signOut": {
+      "toastTitle": "サインアウトしました",
+      "toastBody": "サインアウトしました"
+    }
+  },
+  "general": {
+    "title": "一般",
+    "theme": {
+      "label": "テーマ",
+      "options": {
+        "light": "ライト",
+        "dark": "ダーク",
+        "system": "システム"
+      }
+    },
+    "accent": {
+      "label": "アクセントカラー",
+      "options": {
+        "default": "デフォルト",
+        "blue": "ブルー",
+        "green": "グリーン",
+        "purple": "パープル",
+        "red": "レッド"
+      }
+    },
+    "language": {
+      "label": "言語",
+      "description": "インターフェースで使用する言語を選択してください。",
+      "toastTitle": "言語を更新しました",
+      "toastBody": "言語設定が適用されました。"
+    },
+    "spokenLanguage": {
+      "label": "話す言語",
+      "description": "最良の結果を得るために、主に話す言語を選択してください。リストにない場合でも、自動検出が機能する可能性があります。"
+    }
+  },
+  "account": {
+    "title": "アカウント",
+    "loadingError": "アカウントデータの読み込みに失敗しました",
+    "retry": "再試行",
+    "plan": {
+      "currentPlanLabel": "現在のプラン: {{tier}}",
+      "tiers": {
+        "free": "無料",
+        "plus": "プラス",
+        "business": "ビジネス"
+      },
+      "descriptions": {
+        "free": "基本機能と制限付き使用",
+        "plus": "拡張機能とより高い制限",
+        "business": "すべての機能と無制限の使用"
+      },
+      "sections": {
+        "free": "ChatGPT Plus を取得",
+        "plus": "ChatGPT Business を取得",
+        "business": "現在のプラン",
+        "default": "現在のプラン"
+      },
+      "upgradeButton": "{{plan}} にアップグレード",
+      "currentButton": "現在のプラン",
+      "toasts": {
+        "upgrade": {
+          "title": "アップグレード",
+          "body": "アップグレードページにリダイレクトしています..."
+        },
+        "upgradeWithPlan": {
+          "title": "アップグレード",
+          "body": "{{plan}} へのアップグレードにリダイレクトしています..."
+        },
+        "highest": {
+          "title": "アカウント",
+          "body": "すでに最高のプランをご利用いただいています！"
+        }
+      }
+    },
+    "links": {
+      "title": "リンク",
+      "domainLabel": "ドメインを選択",
+      "selectOption": "ドメインを選択",
+      "verifyNew": "新しいドメインを確認",
+      "addButton": "追加",
+      "invalidDomainToast": {
+        "title": "無効なドメイン"
+      },
+      "addDomainToast": {
+        "title": "ドメインを追加しました",
+        "body": "ドメイン {{domain}} が追加され、確認待ちです。"
+      },
+      "linkedinToast": {
+        "title": "LinkedIn",
+        "body": "LinkedIn 接続にリダイレクトしています..."
+      },
+      "githubToast": {
+        "title": "GitHub",
+        "body": "GitHub 接続にリダイレクトしています..."
+      },
+      "verifiedToast": {
+        "title": "ドメインを確認しました",
+        "body": "ドメイン {{domain}} が正常に確認されました！"
+      },
+      "domainPlaceholder": "example.com"
+    },
+    "domainErrors": {
+      "empty": "ドメインを空にすることはできません",
+      "spaces": "ドメインの先頭または末尾にスペースを含めることはできません",
+      "format": "有効なドメイン形式を入力してください（例：example.com）",
+      "duplicate": "このドメインは既に追加されています"
+    },
+    "email": {
+      "title": "メール",
+      "addressFallback": "chris@whynot.earth",
+      "receiveFeedback": "フィードバックメールを受け取る"
+    },
+    "delete": {
+      "sectionTitle": "アカウントを削除",
+      "button": "削除",
+      "modalTitle": "アカウントを削除",
+      "heading": "本当にアカウントを削除しますか？",
+      "description": "この操作は元に戻せません。すべてのデータ、会話、設定が完全に削除されます。",
+      "listIntro": "これにより完全に削除されます：",
+      "listItems": [
+        "すべての会話とチャット履歴",
+        "アカウント設定と設定",
+        "アップロードされたすべてのファイルとドキュメント",
+        "サブスクリプションと請求情報"
+      ],
+      "confirmLabel": "確認するには、メールアドレスを入力してください：",
+      "inputPlaceholder": "ここにメールアドレスを入力してください",
+      "errorMismatch": "削除を確認するには、表示されているとおりにメールアドレスを入力してください。",
+      "errorFailed": "アカウントの削除に失敗しました。もう一度お試しください。",
+      "toastFailedTitle": "アカウントの削除に失敗しました",
+      "toastFailedBody": "アカウントの削除中にエラーが発生しました。もう一度お試しください。",
+      "toastSuccessTitle": "アカウントを削除しました",
+      "toastSuccessBody": "アカウントは完全に削除されました。",
+      "cancel": "キャンセル",
+      "confirmButton": "アカウントを削除"
+    },
+    "domainModal": {
+      "title": "新しいドメインを追加",
+      "label": "ドメイン",
+      "cancel": "キャンセル",
+      "submit": "ドメインを追加"
+    }
+  },
+  "notifications": {
+    "title": "通知",
+    "loadError": "通知設定の読み込みに失敗しました",
+    "toastBody": "通知設定が更新されました",
+    "sections": {
+      "responses": {
+        "title": "応答",
+        "description": "調査や画像生成など、時間がかかるリクエストに ChatGPT が応答したときに通知を受け取ります。"
+      },
+      "tasks": {
+        "title": "タスク",
+        "description": "作成したタスクに更新があったときに通知を受け取ります。",
+        "manage": "タスクを管理"
+      },
+      "messaging": {
+        "title": "メッセージング",
+        "description": "Calpico"
+      }
+    },
+    "channels": {
+      "push": "プッシュ",
+      "email": "メール"
+    }
+  },
+  "security": {
+    "title": "セキュリティ",
+    "loadError": "セキュリティ設定の読み込みに失敗しました",
+    "fallback": "セキュリティ設定の読み込みに失敗しました",
+    "toasts": {
+      "settingsUpdated": "セキュリティ設定が更新されました"
+    },
+    "password": {
+      "sectionTitle": "パスワード",
+      "description": "アカウントのパスワードを変更するか、忘れた場合はリセットしてください。",
+      "changeButton": "パスワードを変更",
+      "cancelButton": "キャンセル",
+      "resetButton": "パスワードをリセット",
+      "fields": {
+        "current": {
+          "label": "現在のパスワード",
+          "placeholder": "現在のパスワードを入力"
+        },
+        "new": {
+          "label": "新しいパスワード",
+          "placeholder": "新しいパスワードを入力"
+        },
+        "confirm": {
+          "label": "新しいパスワードを確認",
+          "placeholder": "新しいパスワードを確認"
+        }
+      },
+      "submit": "パスワードを変更",
+      "errors": {
+        "missing": {
+          "title": "項目が不足しています",
+          "body": "すべてのパスワード項目を入力してください"
+        },
+        "mismatch": {
+          "title": "パスワードが一致しません",
+          "body": "新しいパスワードと確認が一致しません"
+        },
+        "weak": {
+          "title": "パスワードが弱すぎます",
+          "body": "パスワードは8文字以上である必要があります"
+        },
+        "failed": {
+          "title": "パスワードの変更に失敗しました",
+          "body": "もう一度お試しください"
+        }
+      },
+      "success": {
+        "title": "パスワードを変更しました",
+        "body": "パスワードが正常に更新されました"
+      },
+      "reset": {
+        "title": "リセットメールを送信しました",
+        "body": "パスワードリセット手順についてメールをご確認ください"
+      }
+    },
+    "mfa": {
+      "title": "多要素認証",
+      "description": "サインイン時に追加のセキュリティチャレンジが必要です。このチャレンジに合格できない場合は、メールでアカウントを回復するオプションがあります。",
+      "toastEnabled": {
+        "title": "MFA を有効にしました",
+        "body": "多要素認証が正常に有効になりました"
+      },
+      "disable": {
+        "modalTitle": "多要素認証を無効にする",
+        "heading": "本当に MFA を無効にしますか？",
+        "description": "多要素認証を無効にすると、アカウントの安全性が低下します。サインイン時に2番目の認証要素を提供する必要がなくなります。",
+        "cancel": "キャンセル",
+        "confirm": "MFA を無効にする",
+        "toastTitle": "MFA を無効にしました",
+        "toastBody": "多要素認証が無効になりました"
+      }
+    },
+    "trustedDevices": {
+      "title": "信頼できるデバイス",
+      "description": "別のデバイスでサインインすると、ここに追加され、サインインのデバイスプロンプトを自動的に受信できます。"
+    },
+    "logout": {
+      "current": {
+        "title": "このデバイスからサインアウト",
+        "button": "サインアウト",
+        "toastTitle": "サインアウトしました",
+        "toastBody": "このデバイスからサインアウトしました"
+      },
+      "all": {
+        "title": "すべてのデバイスからサインアウト",
+        "description": "現在のセッションを含む、すべてのデバイスのすべてのアクティブなセッションからサインアウトします。他のデバイスがサインアウトされるまでに最大30分かかる場合があります。",
+        "button": "すべてサインアウト",
+        "toastTitle": "サインアウトしました",
+        "toastBody": "すべてのデバイスからサインアウトしました"
+      }
+    }
+  },
+  "mfa": {
+    "back": "← セキュリティに戻る",
+    "title": "アカウントを保護する",
+    "instructions": "お好みの認証アプリを使用して下のQRコードをスキャンし、以下に提供されたワンタイムコードを入力してください。",
+    "qrLabel": "QRコード",
+    "troubleScanning": "スキャンに問題がありますか？",
+    "then": "その後",
+    "codeLabel": "ワンタイムコードを入力してください*",
+    "codePlaceholder": "000000",
+    "verifyButton": "続ける",
+    "verifying": "確認中...",
+    "errors": {
+      "codeRequired": {
+        "title": "コードが必要です",
+        "body": "認証アプリからの確認コードを入力してください"
+      },
+      "codeInvalid": {
+        "title": "無効なコード",
+        "body": "有効な6桁のコードを入力してください"
+      },
+      "verifyFailed": {
+        "title": "確認に失敗しました",
+        "body": "無効なコードです。もう一度お試しください。"
+      },
+      "clipboardUnsupported": {
+        "title": "クリップボードがサポートされていません",
+        "body": "お使いのブラウザはクリップボードへのコピーをサポートしていません。手動でコードをコピーしてください。"
+      },
+      "copyFailed": {
+        "title": "コピーに失敗しました",
+        "body": "クリップボードへのコードのコピーに失敗しました：{{message}}",
+        "unknown": "不明なエラー"
+      }
+    },
+    "copied": {
+      "title": "コピーしました",
+      "body": "手動コードをクリップボードにコピーしました"
+    },
+    "footer": {
+      "terms": "利用規約",
+      "privacy": "プライバシーポリシー"
+    }
+  },
+  "help": {
+    "title": "ヘルプ",
+    "sections": {
+      "helpCenter": {
+        "title": "ヘルプセンター",
+        "description": "ヘルプを取得し、よくある質問への回答を見つける",
+        "cta": "訪問",
+        "ariaLabel": "Blawby ヘルプを訪問 — 新しいタブで開きます"
+      },
+      "releaseNotes": {
+        "title": "リリースノート",
+        "description": "最新のアップデートの新機能を確認する",
+        "cta": "表示",
+        "ariaLabel": "リリースノートを表示 — 新しいタブで開きます"
+      },
+      "terms": {
+        "title": "利用規約とポリシー",
+        "description": "利用規約とプライバシーポリシーを読む",
+        "cta": "読む",
+        "ariaLabel": "利用規約とポリシーを読む — 新しいタブで開きます"
+      },
+      "bug": {
+        "title": "バグを報告",
+        "description": "問題を報告して改善にご協力ください",
+        "cta": "報告"
+      },
+      "downloads": {
+        "title": "アプリをダウンロード",
+        "description": "モバイルおよびデスクトップアプリケーションを入手する",
+        "cta": "ダウンロード",
+        "ariaLabel": "Blawby アプリをダウンロード — 新しいタブで開きます"
+      },
+      "shortcuts": {
+        "title": "キーボードショートカット",
+        "description": "より速く作業するためのキーボードショートカットを学ぶ",
+        "cta": "表示"
+      }
+    }
+  }
+}

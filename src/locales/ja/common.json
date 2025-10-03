@@ -1,0 +1,71 @@
+{
+  "app": {
+    "loading": "読み込み中…"
+  },
+  "notifications": {
+    "settingsSavedTitle": "設定を保存しました",
+    "settingsSavedBody": "設定が更新されました。"
+  },
+  "language": {
+    "auto": "自動検出",
+    "en": "英語",
+    "vi": "Tiếng Việt",
+    "es": "スペイン語",
+    "fr": "フランス語",
+    "de": "ドイツ語",
+    "zh": "中文",
+    "ja": "日本語"
+  },
+  "validation": {
+    "invalidDate": "有効な日付を入力してください (YYYY/MM/DD)"
+  },
+  "onboarding": {
+    "title": "Blawby AI へようこそ",
+    "subtitle": "セットアップを始めましょう",
+    "step1": {
+      "title": "あなたについて教えてください",
+      "subtitle": "あなたの体験をパーソナライズするのを手伝ってください",
+      "fullName": "氏名",
+      "fullNamePlaceholder": "氏名を入力してください",
+      "birthday": "誕生日",
+      "birthdayPlaceholder": "YYYY/MM/DD",
+      "termsAgreement": "「続ける」をクリックすることで、当社の<termsLink>利用規約</termsLink>に同意し、<privacyLink>プライバシーポリシー</privacyLink>を読んだことになります。",
+      "continue": "続ける",
+      "required": "この項目は必須です"
+    },
+    "step2": {
+      "title": "Blawby AI を何に使用しますか？",
+      "subtitle": "より関連性の高い提案を提供するのに役立ちます",
+      "options": {
+        "personal": "個人的な法律問題",
+        "business": "ビジネス上の法的ニーズ",
+        "research": "法律調査",
+        "documents": "文書レビュー",
+        "other": "その他"
+      },
+      "otherPlaceholder": "詳しく教えてください...",
+      "next": "次へ",
+      "skip": "スキップ"
+    },
+    "welcome": {
+      "title": "Blawby AI",
+      "subtitle": "始めるためのヒント",
+      "tips": {
+        "askAway": {
+          "title": "遠慮なく質問してください",
+          "description": "Blawby AI は法律に関する質問に答えたり、法的概念を理解するのを手伝ったり、文書をレビューしたりすることができます。"
+        },
+        "privacy": {
+          "title": "機密情報を共有しないでください",
+          "description": "チャット履歴は、サービス改善のためにレビューまたは使用される場合があります。<helpCenterLink>ヘルプセンター</helpCenterLink>で選択肢について詳しく学んでください。"
+        },
+        "accuracy": {
+          "title": "事実を確認してください",
+          "description": "セーフガードはありますが、Blawby AI が不正確な情報を提供する可能性があります。法的助言を提供することを意図したものではありません。"
+        }
+      },
+      "helpCenter": "ヘルプセンター",
+      "letsGo": "さあ、始めましょう"
+    }
+  }
+}
