@@ -43,8 +43,10 @@ function sanitizeError(error: unknown, context: ErrorContext = {}): SanitizedErr
   const sanitizedContext: ErrorContext = {};
   for (const [key, value] of Object.entries(context)) {
     if (typeof value === 'string') {
-      // Check for sensitive patterns
-      if (key.toLowerCase().includes('token') || 
+      // Allow componentStack in development for debugging
+      if (key === 'componentStack' && !isProduction) {
+        sanitizedContext[key] = value;
+      } else if (key.toLowerCase().includes('token') || 
           key.toLowerCase().includes('password') || 
           key.toLowerCase().includes('secret') ||
           key.toLowerCase().includes('key') ||
@@ -58,7 +60,7 @@ function sanitizeError(error: unknown, context: ErrorContext = {}): SanitizedErr
       sanitizedContext[key] = value;
     } else if (value && typeof value === 'object') {
       // Recursively sanitize nested objects
-      sanitizedContext[key] = sanitizeError(value, value).context;
+      sanitizedContext[key] = sanitizeError(error, value).context;
     }
   }
 
@@ -113,8 +115,10 @@ export function handleError(
         extra: sanitized.context
       });
     } catch (sentryError) {
-      // If Sentry fails, fall back to console logging
-      console.warn('[ErrorHandler] Sentry capture failed:', sentryError);
+      // If Sentry fails, fall back to console logging only if not in production and not silent
+      if (!sanitized.isProduction && !options.silent) {
+        console.warn('[ErrorHandler] Sentry capture failed:', sentryError);
+      }
     }
   }
 
@@ -126,10 +130,9 @@ export function handleError(
       timestamp: sanitized.timestamp
     });
   } else if (!options.silent) {
-    // In production, log minimal information
+    // In production, log minimal information without context to prevent sensitive data leakage
     console.error(`[${options.component || 'ErrorHandler'}] ${sanitized.message}`, {
-      timestamp: sanitized.timestamp,
-      context: sanitized.context
+      timestamp: sanitized.timestamp
     });
   }
 }
@@ -162,11 +165,8 @@ export function createErrorBoundaryHandler(componentName: string) {
   return (error: Error, errorInfo: { componentStack: string }) => {
     handleError(error, {
       component: componentName,
-      action: 'render',
+      action: 'error-boundary',
       componentStack: errorInfo.componentStack
-    }, {
-      component: componentName,
-      action: 'error-boundary'
     });
   };
 }

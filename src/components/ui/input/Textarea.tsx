@@ -91,9 +91,6 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   // Internal state to manage truncated value for hard and truncate modes
   const [internalValue, setInternalValue] = useState(getInitialValue);
 
-  // Store the latest onChange handler in a ref to avoid re-running effect when prop identity changes
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
 
   // Handle external value changes and truncation for hard and truncate modes
   useEffect(() => {
@@ -180,7 +177,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
             e.preventDefault();
             const pastedText = e.clipboardData?.getData('text') || '';
             const currentValue = actualValue || '';
-            const newValue = currentValue + pastedText;
+            const target = e.target as HTMLTextAreaElement;
+            const selectionStart = target.selectionStart || 0;
+            const selectionEnd = target.selectionEnd || 0;
+            const newValue = currentValue.slice(0, selectionStart) + pastedText + currentValue.slice(selectionEnd);
             const truncatedValue = newValue.slice(0, maxLength);
             setInternalValue(truncatedValue);
             onChange?.(truncatedValue);

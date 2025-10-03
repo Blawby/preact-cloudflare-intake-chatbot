@@ -12,7 +12,6 @@ export interface FormError {
   code: string;
   field: string;
   message: string;
-  hint?: string;
 }
 
 export interface FormContextValue {
@@ -65,7 +64,7 @@ export const Form = ({
   useEffect(() => {
     setData(initialData);
     setErrors([]); // Clear any stale validation errors
-  }, [JSON.stringify(initialData)]);
+  }, [initialData]);
 
   const setFieldValue = useCallback((field: string, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
@@ -96,12 +95,11 @@ export const Form = ({
       const result = schema.safeParse(data);
       if (!result.success) {
         result.error.issues.forEach(issue => {
-          const field = issue.path.length > 0 ? issue.path.join('.') : issue.path[0]?.toString() || 'unknown';
+          const field = issue.path.length ? issue.path.join('.') : 'unknown';
           newErrors.push({
             code: 'invalid',
             field,
-            message: issue.message,
-            hint: issue.message
+            message: issue.message
           });
         });
       }
@@ -114,8 +112,7 @@ export const Form = ({
         newErrors.push({
           code: 'required',
           field,
-          message: `${field} is required`,
-          hint: 'Please fill in this field'
+          message: `${field} is required`
         });
       }
     });

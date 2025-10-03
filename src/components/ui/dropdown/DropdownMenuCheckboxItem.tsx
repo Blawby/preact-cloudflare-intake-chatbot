@@ -60,9 +60,6 @@ export const DropdownMenuCheckboxItem = ({
         className="ml-2" 
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
-        role="button"
-        tabIndex={-1}
-        aria-hidden="true"
       >
         <Switch
           value={checked}
