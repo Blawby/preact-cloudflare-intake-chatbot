@@ -7,7 +7,6 @@ const TOOL_LOADING_MESSAGES: Record<string, string> = {
   'show_contact_form': 'Preparing contact form...',
   'create_matter': 'Creating your case file...',
   'request_lawyer_review': 'Requesting lawyer review...',
-  'analyze_document': 'Analyzing document...',
   'create_payment_invoice': 'Creating payment invoice...'
 };
 // Global interface for window API base override

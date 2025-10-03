@@ -74,6 +74,7 @@ interface FeatureFlags {
      */
     enableLeadQualification: boolean;
 
+
 }
 
 // Immutable base configuration

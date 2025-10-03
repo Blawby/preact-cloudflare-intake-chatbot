@@ -10,7 +10,7 @@ import { ValidationService } from '../../services/ValidationService.js';
 import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
 import { ContactIntakeOrchestrator } from '../../services/ContactIntakeOrchestrator.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
-import { analyzeFile, getAnalysisQuestion } from '../../utils/fileAnalysisUtils.js';
+import { chunkResponseText } from '../../utils/streaming.js';
 import { createSuccessResult, createErrorResult, ValidationError } from './errors.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
 
@@ -32,10 +32,6 @@ const MATTER_TYPES = [
 
 const COMPLEXITY_LEVELS = ['Low', 'Medium', 'High', 'Very High'] as const;
 
-const ANALYSIS_TYPES = [
-  'general', 'legal_document', 'contract', 'government_form', 
-  'medical_document', 'image', 'resume'
-] as const;
 
 const DETECTION_THRESHOLDS = {
   MIN_SCORE: 0.1,
@@ -123,7 +119,6 @@ const PLACEHOLDER_PATTERNS = /client|user|placeholder|example|test|xxx|n\/a|tbd/
 
 export type MatterType = typeof MATTER_TYPES[number];
 export type ComplexityLevel = typeof COMPLEXITY_LEVELS[number];
-export type AnalysisType = typeof ANALYSIS_TYPES[number];
 
 export enum Currency {
   USD = 'USD',
@@ -237,11 +232,6 @@ export interface RequestLawyerReviewParams {
   readonly complexity?: ComplexityLevel;
 }
 
-export interface AnalyzeDocumentParams {
-  readonly file_id: string;
-  readonly analysis_type?: AnalysisType;
-  readonly specific_question?: string;
-}
 
 export interface CreatePaymentInvoiceParams {
   readonly invoice_id: string;
@@ -350,20 +340,6 @@ const requestLawyerReview: ToolDefinition = {
   }
 };
 
-const analyzeDocument: ToolDefinition = {
-  name: 'analyze_document',
-  description: 'Analyze an uploaded document or image to extract key information for legal intake',
-  parameters: {
-    type: 'object',
-    properties: {
-      file_id: { type: 'string', description: 'The file ID of the uploaded document to analyze', pattern: '^[a-zA-Z0-9\\-_]+$', minLength: 1, maxLength: 50 },
-      analysis_type: { type: 'string', description: 'Type of analysis to perform', enum: ANALYSIS_TYPES, default: 'general' },
-      specific_question: { type: 'string', description: 'Optional specific question to ask about the document', maxLength: 500, minLength: 10 }
-    },
-    required: ['file_id'] as const,
-    additionalProperties: false
-  }
-};
 
 const createPaymentInvoice: ToolDefinition = {
   name: 'create_payment_invoice',
@@ -622,13 +598,17 @@ class PromptBuilder {
     
     return `You are a legal intake specialist for ${teamName}.
 Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}${locationRequirement}${locationFlagMessage}${skipToLawyerMessage}
-Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document
+Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice
 
 Rules:
 - CRITICAL: Use create_matter ONLY when you have ACTUAL values for: name + legal issue + contact info${requiresLocation ? ' + location' : ''}
 - If ANY field would use a placeholder like "Client Name", "Client Location", STOP and use show_contact_form instead
 - Use show_contact_form when user agrees to create matter but is missing name, email, phone, or location
 - Use show_contact_form ONLY after qualifying the lead with questions about urgency, timeline, and seriousness
+- IMPORTANT: For informational questions about legal topics, provide helpful explanations directly without using tools
+- Only use tools when the user is ready to take action (create matter, contact form, etc.)
+- DO NOT use tools for general questions about legal processes, consultations, or explanations
+- Answer informational questions conversationally without calling any tools
 
 DECISION TREE:
 1. Do you have the user's actual name (not "Client Name")? If NO → use show_contact_form
@@ -665,7 +645,9 @@ NEVER DO THIS - These are WRONG examples:
 TOOL_CALL: create_matter
 PARAMETERS: {"name": "Client Name", "matter_type": "Family Law", "description": "Divorce case", "email": "user@example.com", "phone": "555-123-4567"}
 
-Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.`;
+Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.
+
+REMEMBER: If the user is asking for information, explanations, or general questions about legal topics, respond conversationally without using any tools. Only use tools when the user wants to take specific actions like creating a matter or filling out a contact form.`;
   }
 }
 
@@ -762,6 +744,8 @@ class ToolCallDetector {
 // SSE STREAMING UTILITIES
 // ============================================================================
 
+const STREAM_TOKEN_DELAY_MS = 15;
+
 class SSEController {
   constructor(
     private controller?: ReadableStreamDefaultController<Uint8Array>
@@ -803,12 +787,337 @@ class SSEController {
   }
 
   async text(text: string): Promise<void> {
-    if (!text || text.trim().length < 10) {
-      text = 'I apologize, but I encountered an error processing your request.';
+    if (typeof text !== 'string' || text.length === 0) {
+      return;
     }
+
     await this.emit({ type: 'text', text });
-    await this.emit({ type: 'final', response: text });
   }
+
+  async final(response: string, extra: Record<string, unknown> = {}): Promise<void> {
+    const safeResponse = typeof response === 'string' && response.trim().length > 0
+      ? response
+      : 'I apologize, but I encountered an error processing your request.';
+
+    await this.emit({
+      type: 'final',
+      response: safeResponse,
+      ...extra
+    });
+  }
+}
+
+async function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return;
+  await new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isReadableStream(value: unknown): value is ReadableStream<Uint8Array> {
+  return Boolean(value && typeof (value as ReadableStream<Uint8Array>).getReader === 'function');
+}
+
+function normalizeToolCallArguments(args: unknown): Record<string, unknown> | undefined {
+  if (!args) {
+    return undefined;
+  }
+
+  if (typeof args === 'string') {
+    const trimmed = args.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : { value: parsed };
+    } catch (_) {
+      return { raw: trimmed };
+    }
+  }
+
+  if (typeof args === 'object') {
+    return args as Record<string, unknown>;
+  }
+
+  return { value: args } as Record<string, unknown>;
+}
+
+function normalizeToolCall(call: unknown): ToolCall | null {
+  if (!call || typeof call !== 'object') {
+    return null;
+  }
+
+  const callObj = call as Record<string, unknown>;
+  const fn = (callObj.function ?? call) as Record<string, unknown>;
+  const name = (callObj.name ?? fn?.name) as string;
+  if (!name || typeof name !== 'string') {
+    return null;
+  }
+
+  const args = callObj.arguments ?? fn?.arguments;
+  const normalizedArgs = normalizeToolCallArguments(args);
+
+  return {
+    name,
+    arguments: normalizedArgs
+  };
+}
+
+type ToolCallAccumulator = Map<string, { name?: string; arguments?: string }>;
+
+function accumulateToolCallDelta(payload: unknown, accumulator: ToolCallAccumulator): void {
+  if (!payload || typeof payload !== 'object') {
+    return;
+  }
+  
+  const payloadObj = payload as Record<string, unknown>;
+  const response = payloadObj.response as Record<string, unknown> | undefined;
+  const choices = (response?.choices ?? payloadObj.choices) as unknown[];
+  if (!Array.isArray(choices)) {
+    return;
+  }
+
+  for (const choice of choices) {
+    if (!choice || typeof choice !== 'object') continue;
+    const choiceObj = choice as Record<string, unknown>;
+    const delta = choiceObj.delta as Record<string, unknown> | undefined;
+    const deltas = (delta?.tool_calls ?? delta?.function_call) ? (delta.tool_calls as unknown[] || [delta]) : [];
+    if (!Array.isArray(deltas) || deltas.length === 0) {
+      continue;
+    }
+
+    for (const delta of deltas) {
+      if (!delta || typeof delta !== 'object') continue;
+      const deltaObj = delta as Record<string, unknown>;
+      const identifier = (deltaObj.id ?? deltaObj.tool_call_id ?? String(deltaObj.index ?? 0)) as string;
+      const fn = (deltaObj.function ?? delta) as Record<string, unknown>;
+      const existing = accumulator.get(identifier) ?? {};
+
+      if (fn?.name && typeof fn.name === 'string') {
+        existing.name = fn.name;
+      }
+
+      if (typeof fn?.arguments === 'string') {
+        existing.arguments = (existing.arguments || '') + fn.arguments;
+      }
+
+      accumulator.set(identifier, existing);
+    }
+  }
+}
+
+function extractDirectToolCalls(payload: unknown): ToolCall[] {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+  
+  const payloadObj = payload as Record<string, unknown>;
+  const response = payloadObj.response as Record<string, unknown> | undefined;
+  const choices = payloadObj.choices as unknown[] | undefined;
+  const firstChoice = choices?.[0] as Record<string, unknown> | undefined;
+  const message = firstChoice?.message as Record<string, unknown> | undefined;
+  
+  const directSources = [
+    response?.tool_calls,
+    payloadObj.tool_calls,
+    message?.tool_calls
+  ];
+
+  for (const source of directSources) {
+    if (Array.isArray(source) && source.length > 0) {
+      return source
+        .map(normalizeToolCall)
+        .filter((call): call is ToolCall => Boolean(call));
+    }
+  }
+
+  return [];
+}
+
+function finalizeAccumulatedToolCalls(accumulator: ToolCallAccumulator): ToolCall[] {
+  const finalized: ToolCall[] = [];
+
+  for (const entry of accumulator.values()) {
+    if (!entry.name) continue;
+    finalized.push({
+      name: entry.name,
+      arguments: normalizeToolCallArguments(entry.arguments)
+    });
+  }
+
+  return finalized;
+}
+
+function extractTextFromPayload(payload: unknown): string {
+  if (!payload) {
+    return '';
+  }
+
+  if (typeof payload === 'string') {
+    return payload;
+  }
+
+  if (typeof payload !== 'object') {
+    return '';
+  }
+  
+  const payloadObj = payload as Record<string, unknown>;
+  const response = payloadObj.response as Record<string, unknown> | undefined;
+  
+  if (typeof response === 'string') {
+    return response;
+  }
+
+  const directText = response?.text ?? payloadObj.text ?? (payloadObj.delta as Record<string, unknown>)?.content;
+  if (typeof directText === 'string') {
+    return directText;
+  }
+
+  const choices = response?.choices ?? payloadObj.choices;
+  if (Array.isArray(choices)) {
+    const textFragments: string[] = [];
+    for (const choice of choices) {
+      if (!choice) continue;
+
+      if (typeof choice.text === 'string') {
+        textFragments.push(choice.text);
+      }
+
+      const deltaContent = choice.delta?.content;
+      if (typeof deltaContent === 'string') {
+        textFragments.push(deltaContent);
+      } else if (Array.isArray(deltaContent)) {
+        for (const item of deltaContent) {
+          if (typeof item === 'string') {
+            textFragments.push(item);
+          } else if (item?.type === 'output_text_delta' && typeof item.text === 'string') {
+            textFragments.push(item.text);
+          } else if (item?.type === 'text' && typeof item.text === 'string') {
+            textFragments.push(item.text);
+          }
+        }
+      }
+
+      const messageContent = choice.message?.content;
+      if (Array.isArray(messageContent)) {
+        for (const part of messageContent) {
+          if (part?.type === 'text' && typeof part.text === 'string') {
+            textFragments.push(part.text);
+          }
+        }
+      } else if (typeof messageContent === 'string') {
+        textFragments.push(messageContent);
+      }
+    }
+
+    if (textFragments.length > 0) {
+      return textFragments.join('');
+    }
+  }
+
+  const delta = payloadObj.delta as Record<string, unknown> | undefined;
+  if (delta) {
+    if (typeof delta === 'string') {
+      return delta;
+    }
+    if (typeof delta.content === 'string') {
+      return delta.content;
+    }
+    if (Array.isArray(delta.content)) {
+      return delta.content
+        .map((item: unknown) => (typeof item === 'string' ? item : (item as { text?: string })?.text ?? ''))
+        .filter(Boolean)
+        .join('');
+    }
+  }
+
+  return '';
+}
+
+async function consumeAIStream(
+  stream: ReadableStream<Uint8Array>,
+  sse: SSEController
+): Promise<{ text: string; toolCalls: ToolCall[] }> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  const accumulator: ToolCallAccumulator = new Map();
+
+  let buffer = '';
+  let fullText = '';
+  let toolCalls: ToolCall[] = [];
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop() ?? '';
+
+      for (const event of events) {
+        const dataLines = event.split('\n').filter(line => line.startsWith('data:'));
+        if (dataLines.length === 0) {
+          continue;
+        }
+
+        const payloadString = dataLines.map(line => line.slice(6)).join('\n').trim();
+        if (!payloadString || payloadString === '[DONE]') {
+          continue;
+        }
+
+        let payload: unknown;
+        try {
+          payload = JSON.parse(payloadString);
+        } catch (_error) {
+          continue;
+        }
+
+        const textDelta = extractTextFromPayload(payload);
+        if (textDelta) {
+          fullText += textDelta;
+          await sse.text(textDelta);
+          await sleep(STREAM_TOKEN_DELAY_MS);
+        }
+
+        const directCalls = extractDirectToolCalls(payload);
+        if (directCalls.length > 0) {
+          toolCalls = directCalls;
+        } else {
+          accumulateToolCallDelta(payload, accumulator);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (buffer.trim().length > 0) {
+    try {
+      const payload = JSON.parse(buffer.replace(/^data:\s*/, '').trim());
+      const textDelta = extractTextFromPayload(payload);
+      if (textDelta) {
+        fullText += textDelta;
+        await sse.text(textDelta);
+      }
+
+      const directCalls = extractDirectToolCalls(payload);
+      if (directCalls.length > 0) {
+        toolCalls = directCalls;
+      } else {
+        accumulateToolCallDelta(payload, accumulator);
+      }
+    } catch (_error) {
+      // Ignore trailing parse errors
+    }
+  }
+
+  if (toolCalls.length === 0) {
+    toolCalls = finalizeAccumulatedToolCalls(accumulator);
+  }
+
+  return { text: fullText, toolCalls };
 }
 
 // ============================================================================
@@ -917,10 +1226,7 @@ class ToolExecutor {
         return;
       }
 
-      await this.sse.emit({
-        type: 'final',
-        response: finalResponse
-      });
+      await this.sse.final(finalResponse);
     } catch (error) {
       Logger.error('Tool execution failed:', error);
       ToolUsageMonitor.recordToolUsage(toolCall.name, false);
@@ -996,6 +1302,7 @@ class ToolExecutor {
       return 'An error occurred while executing the tool.';
     }
   }
+
 }
 
 // ============================================================================
@@ -1267,104 +1574,6 @@ async function handleRequestLawyerReview(
   );
 }
 
-async function handleAnalyzeDocument(
-  parameters: Record<string, unknown>,
-  env: Env,
-  _team: Team | null
-): Promise<ToolResult> {
-  const { file_id, analysis_type, specific_question } = parameters as {
-    file_id?: string;
-    analysis_type?: string;
-    specific_question?: string;
-  };
-
-  Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
-  Logger.debug('File ID:', ToolCallParser.sanitizeParameters(file_id as string));
-  Logger.debug('Analysis Type:', ToolCallParser.sanitizeParameters(analysis_type as string));
-
-  // Validate required parameters
-  if (!file_id || typeof file_id !== 'string') {
-    Logger.error('Missing or invalid file_id parameter', { file_id, parameters });
-    return createValidationError(
-      "I'm sorry, I couldn't identify the file to analyze. Please try uploading the file again."
-    );
-  }
-
-  const customQuestion = getAnalysisQuestion(analysis_type as string, specific_question as string);
-  const fileAnalysis = await analyzeFile(env, file_id, customQuestion);
-
-  if (!fileAnalysis || fileAnalysis.confidence === 0.0) {
-    return createValidationError(
-      fileAnalysis?.summary || 
-      "I'm sorry, I couldn't analyze that document. Please try uploading it again."
-    );
-  }
-
-  fileAnalysis.documentType = analysis_type;
-
-  const parties = fileAnalysis.entities?.people || [];
-  const organizations = fileAnalysis.entities?.orgs || [];
-  const dates = fileAnalysis.entities?.dates || [];
-  const keyFacts = fileAnalysis.key_facts || [];
-
-  let suggestedMatterType = 'General Consultation';
-  if (analysis_type === 'contract' || fileAnalysis.summary?.toLowerCase().includes('contract')) {
-    suggestedMatterType = 'Contract Review';
-  } else if (analysis_type === 'medical_document' || fileAnalysis.summary?.toLowerCase().includes('medical')) {
-    suggestedMatterType = 'Personal Injury';
-  } else if (analysis_type === 'government_form' || fileAnalysis.summary?.toLowerCase().includes('form')) {
-    suggestedMatterType = 'Administrative Law';
-  } else if (analysis_type === 'image') {
-    if (fileAnalysis.summary?.toLowerCase().includes('accident') || 
-        fileAnalysis.summary?.toLowerCase().includes('injury')) {
-      suggestedMatterType = 'Personal Injury';
-    } else if (fileAnalysis.summary?.toLowerCase().includes('property')) {
-      suggestedMatterType = 'Property Law';
-    }
-  }
-
-  let response = `I've analyzed your document and here's what I found:\n\n`;
-
-  if (fileAnalysis.summary) {
-    response += `**Document Analysis:** ${fileAnalysis.summary}\n\n`;
-  }
-
-  if (parties.length > 0) {
-    response += `**Parties Involved:** ${parties.join(', ')}\n`;
-  }
-
-  if (organizations.length > 0) {
-    response += `**Organizations:** ${organizations.join(', ')}\n`;
-  }
-
-  if (dates.length > 0) {
-    response += `**Important Dates:** ${dates.join(', ')}\n`;
-  }
-
-  if (keyFacts.length > 0) {
-    response += `**Key Facts:**\n`;
-    keyFacts.slice(0, 3).forEach(fact => {
-      response += `• ${fact}\n`;
-    });
-  }
-
-  response += `\n**Suggested Legal Matter Type:** ${suggestedMatterType}\n\n`;
-  response += `Based on this analysis, I can help you:\n`;
-  response += `• Create a legal matter for attorney review\n`;
-  response += `• Identify potential legal issues or concerns\n`;
-  response += `• Determine appropriate legal services needed\n`;
-  response += `• Prepare for consultation with an attorney\n\n`;
-  response += `Would you like me to create a legal matter for this ${suggestedMatterType.toLowerCase()} case? I'll need your contact information to get started.`;
-
-  return createSuccessResponse(response, {
-    ...fileAnalysis,
-    suggestedMatterType,
-    parties,
-    organizations,
-    dates,
-    keyFacts
-  });
-}
 
 async function handleCreatePaymentInvoice(
   parameters: Record<string, unknown>,
@@ -1540,7 +1749,6 @@ const TOOL_HANDLERS = {
   show_contact_form: handleShowContactForm,
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
-  analyze_document: handleAnalyzeDocument,
   create_payment_invoice: handleCreatePaymentInvoice
 } as const;
 
@@ -1558,11 +1766,11 @@ const TOOL_HANDLERS = {
 // ============================================================================
 
 function getAvailableTools(state: ConversationState, context: ConversationContext): ToolDefinition[] {
-  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument];
+  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice];
   
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:
-      return context.hasLegalIssue ? [analyzeDocument] : [];
+      return [];
     case ConversationState.QUALIFYING_LEAD:
       return context.isQualifiedLead ? [showContactForm] : [];
     case ConversationState.SHOWING_CONTACT_FORM:
@@ -1651,8 +1859,7 @@ export async function runLegalIntakeAgentStream(
         "I've already helped you create a matter for your case. A lawyer will contact you within 24 hours to discuss your situation further. Is there anything else I can help you with?";
 
       if (controller) {
-        await sse.emit({ type: 'final', response: completionMessage });
-        await sse.complete();
+        await sse.final(completionMessage);
       } else {
         const lastUserMessage = messages.filter(msg => msg.isUser).pop()?.content || null;
         return {
@@ -1699,20 +1906,54 @@ export async function runLegalIntakeAgentStream(
     );
 
     const aiResult = await withAIRetry(
-      () => env.AI.run(AI_MODEL_CONFIG.model as any, {
+      () => (env.AI.run as any)(AI_MODEL_CONFIG.model, {
         messages: [
           { role: 'system', content: systemPrompt },
           ...buildPromptMessages(messages)
         ],
         tools: availableTools,
         max_tokens: AI_MODEL_CONFIG.maxTokens,
-        temperature: AI_MODEL_CONFIG.temperature
+        temperature: AI_MODEL_CONFIG.temperature,
+        stream: true
       }),
       { attempts: 4, baseDelay: 400, operationName: 'Legal Intake AI Call' }
-    );
+    ) as ReadableStream<Uint8Array>;
+
+    const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
+
+    let finalResponse = '';
+    let streamToolCalls: ToolCall[] = [];
+    let handled = false;
+
+    const possibleStream = isReadableStream(aiResult)
+      ? aiResult
+      : typeof (aiResult as unknown as Response)?.body?.getReader === 'function'
+        ? (aiResult as unknown as Response).body!
+        : undefined;
+
+    if (possibleStream) {
+      const streamResult = await consumeAIStream(possibleStream, sse);
+      finalResponse = streamResult.text;
+      streamToolCalls = streamResult.toolCalls;
+      handled = true;
+    }
+
+    if (!handled) {
+      const response = extractAIResponse(aiResult);
+      finalResponse = response;
+
+      const responseChunks = chunkResponseText(response);
+      if (responseChunks.length === 0) {
+        await sse.text(response);
+      } else {
+        for (const chunk of responseChunks) {
+          await sse.text(chunk);
+          await sleep(STREAM_TOKEN_DELAY_MS);
+        }
+      }
+    }
 
     const processingTime = Date.now() - aiCallStartTime;
-    const response = extractAIResponse(aiResult);
 
     LegalIntakeLogger.logAIModelCall(
       correlationId,
@@ -1721,24 +1962,20 @@ export async function runLegalIntakeAgentStream(
       LegalIntakeOperation.AI_MODEL_RESPONSE,
       AI_MODEL_CONFIG.model,
       undefined,
-      response.length,
+      finalResponse.length,
       processingTime
     );
 
-    // Handle AI response
-    const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
+    const effectiveToolCalls = streamToolCalls.length > 0 ? streamToolCalls : (hasToolCalls(aiResult) ? aiResult.tool_calls : []);
 
-    // File analysis is now handled by the fileAnalysisMiddleware in the pipeline
-    // No need to handle attachments here anymore
-
-    if (hasToolCalls(aiResult)) {
-      await executor.execute(aiResult.tool_calls[0]);
+    if (effectiveToolCalls && effectiveToolCalls.length > 0) {
+      await executor.execute(effectiveToolCalls[0]);
     } else {
-      const detectedToolCall = ToolCallDetector.detect(response);
+      const detectedToolCall = ToolCallDetector.detect(finalResponse);
       if (detectedToolCall) {
         await executor.execute(detectedToolCall);
       } else {
-        await sse.text(response);
+        await sse.final(finalResponse);
       }
     }
   } catch (error) {
@@ -1785,7 +2022,6 @@ export {
   createMatter,
   showContactForm,
   requestLawyerReview,
-  analyzeDocument,
   createPaymentInvoice,
   TOOL_HANDLERS
 };
