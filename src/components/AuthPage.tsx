@@ -117,7 +117,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         
         if (emailExists) {
           // Account already exists, set error
-          setError('accountExists');
+          setError(t('errors.accountExists'));
           setLoading(false);
           return;
         }
@@ -130,7 +130,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
           localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
         } catch (_error) {
           // Failed to store users in localStorage
-          setError('storageError');
+          setError(t('errors.storageError'));
           setLoading(false);
           return;
         }
@@ -140,7 +140,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
           localStorage.setItem('mockUser', JSON.stringify(mockUser));
         } catch (_error) {
           // Failed to store user in localStorage
-          setError('storageError');
+          setError(t('errors.storageError'));
           setLoading(false);
           return;
         }

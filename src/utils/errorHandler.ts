@@ -77,9 +77,12 @@ function sanitizeError(error: unknown, context: ErrorContext = {}, visited: Weak
                 return '[Circular]';
               }
               visited.add(item);
-              const result = sanitizeError(error, item, visited).context;
-              visited.delete(item);
-              return result;
+              try {
+                const result = sanitizeError(error, item, visited).context;
+                return result;
+              } finally {
+                visited.delete(item);
+              }
             }
             return item;
           });

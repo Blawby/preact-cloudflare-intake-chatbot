@@ -30,7 +30,6 @@ export interface FileInputProps {
   variant?: 'default' | 'error' | 'success';
   label?: string;
   description?: string;
-  error?: string;
   /** @deprecated Use maxFileSize and maxTotalSize instead */
   maxSize?: number; // in bytes
   maxFileSize?: number; // in bytes - maximum size per individual file
@@ -38,7 +37,6 @@ export interface FileInputProps {
   maxFiles?: number;
   labelKey?: string;
   descriptionKey?: string;
-  errorKey?: string;
   namespace?: string;
 }
 
@@ -54,14 +52,12 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
   variant = 'default',
   label,
   description,
-  error,
   maxSize, // deprecated
   maxFileSize,
   maxTotalSize,
   maxFiles: _maxFiles,
   labelKey: _labelKey,
   descriptionKey: _descriptionKey,
-  errorKey: _errorKey,
   namespace: _namespace = 'common'
 }, ref) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -74,11 +70,9 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
   // const { t } = useTranslation(namespace);
   // const displayLabel = labelKey ? t(labelKey) : label;
   // const displayDescription = descriptionKey ? t(descriptionKey) : description;
-  // const displayError = errorKey ? t(errorKey) : error;
   
   const displayLabel = label;
   const displayDescription = description;
-  const _displayError = error;
 
 
   const variantClasses = {
