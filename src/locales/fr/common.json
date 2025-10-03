@@ -34,7 +34,7 @@
       "required": "Ce champ est obligatoire"
     },
     "step2": {
-      "title": "À quoi souhaitez-vous utiliser Blawby AI ?",
+      "title": "Comment souhaitez-vous utiliser Blawby AI ?",
       "subtitle": "Cela nous aide à fournir des suggestions plus pertinentes",
       "options": {
         "personal": "Problèmes juridiques personnels",

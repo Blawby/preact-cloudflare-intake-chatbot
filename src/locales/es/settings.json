@@ -63,8 +63,8 @@
         "business": "Todas las características con uso ilimitado"
       },
       "sections": {
-        "free": "Obtén ChatGPT Plus",
-        "plus": "Obtén ChatGPT Business",
+        "free": "Obtén Blawby AI Plus",
+        "plus": "Obtén Blawby AI Business",
         "business": "Plan actual",
         "default": "Plan actual"
       },
@@ -161,7 +161,7 @@
     "sections": {
       "responses": {
         "title": "Respuestas",
-        "description": "Recibe avisos cuando ChatGPT responda a solicitudes que requieren tiempo, como investigaciones o generación de imágenes."
+        "description": "Recibe avisos cuando Blawby AI responda a solicitudes que requieren tiempo, como investigaciones o generación de imágenes."
       },
       "tasks": {
         "title": "Tareas",
@@ -170,7 +170,7 @@
       },
       "messaging": {
         "title": "Mensajería",
-        "description": "Calpico"
+        "description": "Recibe notificaciones de nuevos mensajes y actualizaciones"
       }
     },
     "channels": {

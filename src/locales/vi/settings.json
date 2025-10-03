@@ -63,8 +63,8 @@
         "business": "Tính năng đầy đủ với sử dụng không giới hạn"
       },
       "sections": {
-        "free": "Nhận ChatGPT Plus",
-        "plus": "Nhận ChatGPT Business",
+        "free": "Nhận Blawby AI Plus",
+        "plus": "Nhận Blawby AI Business",
         "business": "Gói hiện tại",
         "default": "Gói hiện tại"
       },
@@ -161,7 +161,7 @@
     "sections": {
       "responses": {
         "title": "Phản hồi",
-        "description": "Nhận thông báo khi ChatGPT phản hồi các yêu cầu mất thời gian, như nghiên cứu hoặc tạo hình ảnh."
+        "description": "Nhận thông báo khi Blawby AI phản hồi các yêu cầu mất thời gian, như nghiên cứu hoặc tạo hình ảnh."
       },
       "tasks": {
         "title": "Nhiệm vụ",
@@ -170,7 +170,7 @@
       },
       "messaging": {
         "title": "Nhắn tin",
-        "description": "Calpico"
+        "description": "Nhận thông báo cho tin nhắn mới và cập nhật"
       }
     },
     "channels": {

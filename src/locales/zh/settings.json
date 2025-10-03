@@ -63,8 +63,8 @@
         "business": "完整功能，无限使用"
       },
       "sections": {
-        "free": "获取 ChatGPT Plus",
-        "plus": "获取 ChatGPT Business",
+        "free": "获取 Blawby AI Plus",
+        "plus": "获取 Blawby AI Business",
         "business": "当前套餐",
         "default": "当前套餐"
       },
@@ -161,7 +161,7 @@
     "sections": {
       "responses": {
         "title": "响应",
-        "description": "当 ChatGPT 响应需要时间的请求（如研究或图像生成）时接收通知。"
+        "description": "当 Blawby AI 响应需要时间的请求（如研究或图像生成）时接收通知。"
       },
       "tasks": {
         "title": "任务",
@@ -170,7 +170,7 @@
       },
       "messaging": {
         "title": "消息",
-        "description": "Calpico"
+        "description": "接收新消息和更新的通知"
       }
     },
     "channels": {
