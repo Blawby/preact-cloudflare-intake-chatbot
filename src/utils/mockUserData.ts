@@ -245,6 +245,8 @@ export interface MockUserPreferences {
   timeFormat: '12-hour' | '24-hour';
   autoSaveConversations: boolean;
   typingIndicators: boolean;
+  onboardingCompleted?: boolean;
+  onboardingData?: any;
 }
 
 export interface MockSecuritySettings {

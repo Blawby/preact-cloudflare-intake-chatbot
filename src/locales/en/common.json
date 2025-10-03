@@ -15,5 +15,56 @@
     "de": "Deutsch",
     "zh": "中文",
     "ja": "日本語"
+  },
+  "onboarding": {
+    "title": "Welcome to Blawby AI",
+    "subtitle": "Let's get you set up",
+    "step1": {
+      "title": "Tell us about you",
+      "subtitle": "Help us personalize your experience",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "Enter your full name",
+      "birthday": "Birthday",
+      "birthdayPlaceholder": "MM/DD/YYYY",
+      "termsAgreement": "By clicking \"Continue\", you agree to our Terms and have read our Privacy Policy.",
+      "termsLink": "Terms",
+      "privacyLink": "Privacy Policy",
+      "continue": "Continue",
+      "required": "This field is required"
+    },
+    "step2": {
+      "title": "What do you want to use Blawby AI for?",
+      "subtitle": "We'll use this information to suggest ideas you might find useful.",
+      "options": {
+        "personal": "Personal Legal Issues",
+        "business": "Business Legal Needs", 
+        "research": "Legal Research",
+        "documents": "Document Review",
+        "other": "Other"
+      },
+      "otherPlaceholder": "Tell us more...",
+      "next": "Next",
+      "skip": "Skip"
+    },
+    "welcome": {
+      "title": "Blawby AI",
+      "subtitle": "Tips for getting started",
+      "tips": {
+        "askAway": {
+          "title": "Ask away",
+          "description": "Blawby AI can answer legal questions, help you understand legal concepts, review documents, and much more."
+        },
+        "privacy": {
+          "title": "Don't share sensitive info",
+          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our Help Center."
+        },
+        "accuracy": {
+          "title": "Check your facts",
+          "description": "While we have safeguards, Blawby AI may give you inaccurate information. It's not intended to give legal advice."
+        }
+      },
+      "helpCenter": "Help Center",
+      "letsGo": "Okay, let's go"
+    }
   }
 }

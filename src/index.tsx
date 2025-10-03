@@ -18,6 +18,7 @@ import { ChatMessageUI } from '../worker/types';
 import { SettingsLayout } from './components/settings/SettingsLayout';
 import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
+import WelcomeModal from './components/onboarding/WelcomeModal';
 import { debounce } from './utils/debounce';
 import './index.css';
 import { i18n, initI18n } from './i18n';
@@ -32,6 +33,7 @@ function MainApp() {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
 	const [showSettingsModal, setShowSettingsModal] = useState(false);
+	const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 	
 	// Mobile state - initialized as false to avoid SSR/client hydration mismatch
 	const [isMobile, setIsMobile] = useState(false);
@@ -96,6 +98,17 @@ function MainApp() {
 		const isSettingsRoute = location.path.startsWith('/settings');
 		setShowSettingsModal(isSettingsRoute);
 	}, [location.path]);
+
+	// Check if we should show welcome modal (after onboarding completion)
+	useEffect(() => {
+		// Check if user just completed onboarding
+		const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+		if (onboardingCompleted === 'true') {
+			setShowWelcomeModal(true);
+			// Clear the flag so it doesn't show again
+			localStorage.removeItem('onboardingCompleted');
+		}
+	}, []);
 
 	// Handle hash-based routing for pricing modal
 	const [showPricingModal, setShowPricingModal] = useState(false);
@@ -264,6 +277,16 @@ function MainApp() {
 		// Could show a toast notification here
 	}, []);
 
+	// Handle welcome modal
+	const handleWelcomeComplete = () => {
+		setShowWelcomeModal(false);
+	};
+
+	const handleWelcomeClose = () => {
+		setShowWelcomeModal(false);
+	};
+
+
 
 
 
@@ -420,6 +443,13 @@ function MainApp() {
 					setShowPricingModal(false);
 					window.location.hash = '';
 				}}
+			/>
+
+			{/* Welcome Modal */}
+			<WelcomeModal
+				isOpen={showWelcomeModal}
+				onClose={handleWelcomeClose}
+				onComplete={handleWelcomeComplete}
 			/>
 		</>
 	);
