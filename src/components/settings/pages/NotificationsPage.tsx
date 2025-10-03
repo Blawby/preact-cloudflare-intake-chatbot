@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'preact/hooks';
-import { SettingsDropdownWithToggles } from '../components/SettingsDropdownWithToggles';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, SectionDivider } from '../../ui';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { mockUserDataService, MockNotificationSettings } from '../../../utils/mockUserData';
 import { useTranslation } from 'react-i18next';
+import { getNotificationDisplayText, NOTIFICATION_DEFAULTS } from '../../ui/validation/defaultValues';
 
 export interface NotificationsPageProps {
   className?: string;
@@ -15,6 +17,7 @@ export const NotificationsPage = ({
   const [settings, setSettings] = useState<MockNotificationSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation(['settings', 'common']);
+  
 
   // Load settings from mock data service
   useEffect(() => {
@@ -53,6 +56,20 @@ export const NotificationsPage = ({
       t('common:notifications.settingsSavedTitle'),
       t('settings:notifications.toastBody')
     );
+  };
+
+  // Generate display text for dropdown triggers using atomic design defaults
+  const getDisplayText = (section: keyof MockNotificationSettings) => {
+    if (!settings) return '';
+    
+    const sectionSettings = settings[section];
+    const translations = {
+      push: t('settings:notifications.channels.push'),
+      email: t('settings:notifications.channels.email'),
+      none: t('settings:notifications.channels.none'),
+    };
+    
+    return getNotificationDisplayText(sectionSettings, translations);
   };
 
   if (loading) {
@@ -95,21 +112,20 @@ export const NotificationsPage = ({
               </p>
             </div>
             <div className="ml-4">
-              <SettingsDropdownWithToggles
-                label=""
-                value="responses"
-                options={[]}
-                onChange={() => {}}
-                className="py-1"
-                toggles={[
-                  {
-                    id: 'push',
-                    label: t('settings:notifications.channels.push'),
-                    value: settings.responses.push,
-                    onChange: (value) => handleToggleChange('responses', 'push', value)
-                  }
-                ]}
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <span>{getDisplayText('responses')}</span>
+                  <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuCheckboxItem
+                    checked={settings.responses.push}
+                    onCheckedChange={(value) => handleToggleChange('responses', 'push', value)}
+                  >
+                    {t('settings:notifications.channels.push')}
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -132,27 +148,26 @@ export const NotificationsPage = ({
               </button>
             </div>
             <div className="ml-4">
-              <SettingsDropdownWithToggles
-                label=""
-                value="tasks"
-                options={[]}
-                onChange={() => {}}
-                className="py-1"
-                toggles={[
-                  {
-                    id: 'push',
-                    label: t('settings:notifications.channels.push'),
-                    value: settings.tasks.push,
-                    onChange: (value) => handleToggleChange('tasks', 'push', value)
-                  },
-                  {
-                    id: 'email',
-                    label: t('settings:notifications.channels.email'),
-                    value: settings.tasks.email,
-                    onChange: (value) => handleToggleChange('tasks', 'email', value)
-                  }
-                ]}
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <span>{getDisplayText('tasks')}</span>
+                  <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuCheckboxItem
+                    checked={settings.tasks.push}
+                    onCheckedChange={(value) => handleToggleChange('tasks', 'push', value)}
+                  >
+                    {t('settings:notifications.channels.push')}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={settings.tasks.email}
+                    onCheckedChange={(value) => handleToggleChange('tasks', 'email', value)}
+                  >
+                    {t('settings:notifications.channels.email')}
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -169,21 +184,20 @@ export const NotificationsPage = ({
               </p>
             </div>
             <div className="ml-4">
-              <SettingsDropdownWithToggles
-                label=""
-                value="messaging"
-                options={[]}
-                onChange={() => {}}
-                className="py-1"
-                toggles={[
-                  {
-                    id: 'push',
-                    label: t('settings:notifications.channels.push'),
-                    value: settings.messaging.push,
-                    onChange: (value) => handleToggleChange('messaging', 'push', value)
-                  }
-                ]}
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <span>{getDisplayText('messaging')}</span>
+                  <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuCheckboxItem
+                    checked={settings.messaging.push}
+                    onCheckedChange={(value) => handleToggleChange('messaging', 'push', value)}
+                  >
+                    {t('settings:notifications.channels.push')}
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

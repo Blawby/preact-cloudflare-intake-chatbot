@@ -1,0 +1,141 @@
+import { forwardRef } from 'preact/compat';
+import { cn } from '../../../utils/cn';
+
+export interface TextareaProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  required?: boolean;
+  className?: string;
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'error' | 'success';
+  rows?: number;
+  resize?: 'none' | 'vertical' | 'horizontal' | 'both';
+  maxLength?: number;
+  showCharCount?: boolean;
+  label?: string;
+  description?: string;
+  error?: string;
+  labelKey?: string;
+  descriptionKey?: string;
+  placeholderKey?: string;
+  errorKey?: string;
+  namespace?: string;
+}
+
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
+  value = '',
+  onChange,
+  placeholder,
+  disabled = false,
+  required = false,
+  className = '',
+  size = 'md',
+  variant = 'default',
+  rows = 3,
+  resize = 'vertical',
+  maxLength,
+  showCharCount = false,
+  label,
+  description,
+  error,
+  labelKey,
+  descriptionKey,
+  placeholderKey,
+  errorKey,
+  namespace = 'common'
+}, ref) => {
+  // TODO: Add i18n support when useTranslation hook is available
+  // const { t } = useTranslation(namespace);
+  // const displayLabel = labelKey ? t(labelKey) : label;
+  // const displayDescription = descriptionKey ? t(descriptionKey) : description;
+  // const displayPlaceholder = placeholderKey ? t(placeholderKey) : placeholder;
+  // const displayError = errorKey ? t(errorKey) : error;
+  
+  const displayLabel = label;
+  const displayDescription = description;
+  const displayPlaceholder = placeholder;
+  const displayError = error;
+
+  const sizeClasses = {
+    sm: 'px-2 py-1 text-sm',
+    md: 'px-3 py-2 text-sm',
+    lg: 'px-4 py-3 text-base'
+  };
+
+  const variantClasses = {
+    default: 'border-gray-300 dark:border-gray-600 focus:ring-accent-500 focus:border-accent-500',
+    error: 'border-red-300 dark:border-red-600 focus:ring-red-500 focus:border-red-500',
+    success: 'border-green-300 dark:border-green-600 focus:ring-green-500 focus:border-green-500'
+  };
+
+  const resizeClasses = {
+    none: 'resize-none',
+    vertical: 'resize-y',
+    horizontal: 'resize-x',
+    both: 'resize'
+  };
+
+  const textareaClasses = cn(
+    'w-full border rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white',
+    'focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors',
+    sizeClasses[size],
+    resizeClasses[resize],
+    variantClasses[variant],
+    disabled && 'opacity-50 cursor-not-allowed',
+    className
+  );
+
+  const currentLength = value?.length || 0;
+  const isNearLimit = maxLength && currentLength > maxLength * 0.8;
+  const isOverLimit = maxLength && currentLength > maxLength;
+
+  return (
+    <div className="w-full">
+      {displayLabel && (
+        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+          {displayLabel}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
+      
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={(e) => onChange?.((e.target as HTMLTextAreaElement).value)}
+        placeholder={displayPlaceholder}
+        disabled={disabled}
+        required={required}
+        rows={rows}
+        maxLength={maxLength}
+        className={textareaClasses}
+      />
+      
+      <div className="flex justify-between items-center mt-1">
+        {displayDescription && !displayError && (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {displayDescription}
+          </p>
+        )}
+        
+        {displayError && (
+          <p className="text-xs text-red-600 dark:text-red-400">
+            {displayError}
+          </p>
+        )}
+        
+        {showCharCount && maxLength && (
+          <p className={cn(
+            'text-xs ml-auto',
+            isOverLimit ? 'text-red-600 dark:text-red-400' : 
+            isNearLimit ? 'text-yellow-600 dark:text-yellow-400' : 
+            'text-gray-500 dark:text-gray-400'
+          )}>
+            {currentLength}/{maxLength}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+});

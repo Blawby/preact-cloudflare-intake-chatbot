@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
-import { SettingsToggle } from '../components/SettingsToggle';
+import { Switch, FormLabel, FormControl, SectionDivider } from '../../ui';
+import { FormItem } from '../../ui/form';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
@@ -349,8 +350,7 @@ export const SecurityPage = ({
               </p>
             </div>
             <div className="ml-4">
-              <SettingsToggle
-                label=""
+              <Switch
                 value={settings.twoFactorEnabled}
                 onChange={(value) => handleToggleChange('twoFactorEnabled', value)}
               />

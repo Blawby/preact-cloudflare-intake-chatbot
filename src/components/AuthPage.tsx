@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useTranslation } from 'react-i18next';
-import { UserIcon, LockClosedIcon, EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { UserIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import OnboardingModal from './onboarding/OnboardingModal';
 import { OnboardingData } from '../utils/mockUserData';
 import { Logo } from './ui/Logo';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from './ui/form';
+import { Input, EmailInput, PasswordInput } from './ui/input';
 // No authentication required - authClient removed
 
 interface AuthPageProps {
@@ -40,8 +42,8 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     if (onSuccess) {
       try {
         await onSuccess();
-      } catch (error) {
-        console.error('onSuccess callback failed:', error);
+      } catch (_error) {
+        // onSuccess callback failed - continue with redirect
         // Continue with redirect even if onSuccess fails
       }
     }
@@ -61,8 +63,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     }
   };
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
     setError('');
     setMessage('');
@@ -99,7 +100,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
                     setMessage(t('messages.accountCreated'));
         
         // Always show onboarding for new sign-ups
-        console.log('New user registration, showing onboarding modal');
+        // New user registration, showing onboarding modal
         setShowOnboarding(true);
       } else {
         // Simulate API call for sign-in
@@ -185,11 +186,11 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       
       // Only show onboarding modal for new Google users
       if (isNewUser) {
-        console.log('New Google user detected, showing onboarding modal');
+        // New Google user detected, showing onboarding modal
         setLoading(false);
         setShowOnboarding(true);
       } else {
-        console.log('Existing Google user, skipping onboarding');
+        // Existing Google user, skipping onboarding
         // Redirect existing users, waiting for onSuccess if provided
         setLoading(false);
         await handleRedirect();
@@ -211,7 +212,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
   const handleOnboardingComplete = async (data: OnboardingData) => {
     // Development-only debug log with redacted sensitive data
     if (import.meta.env.DEV) {
-      const redactedData = {
+      const _redactedData = {
         personalInfo: {
           fullName: data.personalInfo.fullName ? '[REDACTED]' : undefined,
           birthday: data.personalInfo.birthday ? '[REDACTED]' : undefined,
@@ -224,7 +225,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         completedAt: data.completedAt,
         skippedSteps: data.skippedSteps
       };
-      console.log('Onboarding completed:', redactedData);
+      // Onboarding completed with redacted data
     }
     // Persist onboarding completion flag before redirecting
     localStorage.setItem('onboardingCompleted', 'true');
@@ -297,89 +298,72 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
             </div>
           </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <Form onSubmit={handleSubmit}>
             <div className="space-y-4">
               {isSignUp && (
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t('signup.fullName')}
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required={isSignUp}
-                      value={formData.name}
-                      onInput={(e) => handleInputChange('name', (e.target as HTMLInputElement).value)}
-                      className="input-base input-with-icon relative block"
-                      placeholder={t('signup.fullNamePlaceholder')}
-                    />
-                    <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
+                <FormField name="name">
+                  <FormItem>
+                    <FormLabel>{t('signup.fullName')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        required={isSignUp}
+                        value={formData.name}
+                        onChange={(e) => handleInputChange('name', e)}
+                        placeholder={t('signup.fullNamePlaceholder')}
+                        icon={<UserIcon className="h-5 w-5 text-gray-400" />}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                </FormField>
               )}
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t(isSignUp ? 'signup.email' : 'signin.email')}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onInput={(e) => handleInputChange('email', (e.target as HTMLInputElement).value)}
-                    className="input-base input-with-icon relative block"
-                    placeholder={t(isSignUp ? 'signup.emailPlaceholder' : 'signin.emailPlaceholder')}
-                  />
-                  <EnvelopeIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-              </div>
+              <FormField name="email">
+                <FormItem>
+                  <FormLabel>{t(isSignUp ? 'signup.email' : 'signin.email')}</FormLabel>
+                  <FormControl>
+                    <EmailInput
+                      required
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e)}
+                      placeholder={t(isSignUp ? 'signup.emailPlaceholder' : 'signin.emailPlaceholder')}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t(isSignUp ? 'signup.password' : 'signin.password')}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                    required
-                    value={formData.password}
-                    onInput={(e) => handleInputChange('password', (e.target as HTMLInputElement).value)}
-                    className="input-base input-with-icon relative block"
-                    placeholder={t(isSignUp ? 'signup.passwordPlaceholder' : 'signin.passwordPlaceholder')}
-                  />
-                  <LockClosedIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-              </div>
+              <FormField name="password">
+                <FormItem>
+                  <FormLabel>{t(isSignUp ? 'signup.password' : 'signin.password')}</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      required
+                      value={formData.password}
+                      onChange={(e) => handleInputChange('password', e)}
+                      placeholder={t(isSignUp ? 'signup.passwordPlaceholder' : 'signin.passwordPlaceholder')}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
 
               {isSignUp && (
-                <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t('signup.confirmPassword')}
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      autoComplete="new-password"
-                      required={isSignUp}
-                      value={formData.confirmPassword}
-                      onInput={(e) => handleInputChange('confirmPassword', (e.target as HTMLInputElement).value)}
-                      className="input-base input-with-icon relative block"
-                      placeholder={t('signup.confirmPasswordPlaceholder')}
-                    />
-                    <LockClosedIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
+                <FormField name="confirmPassword">
+                  <FormItem>
+                    <FormLabel>{t('signup.confirmPassword')}</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        required={isSignUp}
+                        value={formData.confirmPassword}
+                        onChange={(e) => handleInputChange('confirmPassword', e)}
+                        placeholder={t('signup.confirmPasswordPlaceholder')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                </FormField>
               )}
             </div>
 
@@ -423,7 +407,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
                 {isSignUp ? `${t('signup.hasAccount')} ${t('signup.signInLink')}` : `${t('signin.noAccount')} ${t('signin.signUpLink')}`}
               </button>
             </div>
-          </form>
+          </Form>
         </div>
       </div>
 

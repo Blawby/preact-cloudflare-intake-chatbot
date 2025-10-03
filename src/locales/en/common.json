@@ -17,7 +17,79 @@
     "ja": "日本語"
   },
   "validation": {
-    "invalidDate": "Please enter a valid date (MM/DD/YYYY)"
+    "invalidDate": "Please enter a valid date (MM/DD/YYYY)",
+    "futureDate": "Date cannot be in the future"
+  },
+  "forms": {
+    "labels": {
+      "name": "Full Name",
+      "email": "Email Address",
+      "phone": "Phone Number",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "birthday": "Birthday",
+      "terms": "Terms and Conditions",
+      "privacy": "Privacy Policy",
+      "search": "Search",
+      "select": "Select an option",
+      "upload": "Upload File",
+      "message": "Message",
+      "subject": "Subject"
+    },
+    "placeholders": {
+      "name": "Enter your full name",
+      "email": "Enter your email address",
+      "phone": "Enter your phone number",
+      "password": "Enter your password",
+      "confirmPassword": "Confirm your password",
+      "birthday": "Select your birthday",
+      "search": "Search...",
+      "select": "Select an option",
+      "message": "Enter your message",
+      "subject": "Enter subject"
+    },
+    "descriptions": {
+      "optional": "Optional",
+      "required": "Required",
+      "passwordHelp": "Must be at least 8 characters long",
+      "phoneHelp": "Include country code for international numbers",
+      "fileHelp": "Supported formats: PDF, DOC, DOCX"
+    },
+    "validation": {
+      "required": "This field is required",
+      "email": "Please enter a valid email address",
+      "phone": "Please enter a valid phone number",
+      "password": "Password must be at least 8 characters",
+      "confirmPassword": "Passwords do not match",
+      "date": "Please enter a valid date",
+      "futureDate": "Date cannot be in the future",
+      "fileType": "Please select a valid file type",
+      "fileSize": "File size must be less than 10MB",
+      "termsRequired": "You must agree to the terms"
+    },
+    "accessibility": {
+      "togglePassword": "Toggle password visibility",
+      "clearSearch": "Clear search",
+      "selectOption": "Select option",
+      "removeOption": "Remove option",
+      "uploadFile": "Upload file",
+      "removeFile": "Remove file",
+      "calendarOpen": "Open calendar",
+      "calendarClose": "Close calendar"
+    },
+    "actions": {
+      "submit": "Submit",
+      "submitting": "Submitting...",
+      "reset": "Reset",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving..."
+    },
+    "examples": {
+      "validatedForm": {
+        "title": "Validated Form Example"
+      }
+    }
   },
   "onboarding": {
     "title": "Welcome to Blawby AI",

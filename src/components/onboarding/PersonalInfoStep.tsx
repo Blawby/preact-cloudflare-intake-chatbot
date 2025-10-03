@@ -2,7 +2,10 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { useTranslation, Trans } from 'react-i18next';
 import { Button } from '../ui/Button';
 import { Logo } from '../ui/Logo';
-import { UserIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { UserIcon } from '@heroicons/react/24/outline';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '../ui/form';
+import { Input, DatePicker } from '../ui/input';
+import { Checkbox } from '../ui/input';
 
 interface PersonalInfoData {
   fullName: string;
@@ -42,24 +45,17 @@ const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoSte
       newErrors.agreedToTerms = t('onboarding.step1.required');
     }
 
-    // Validate birthday format if provided
+    // Validate birthday format if provided (now expects ISO date format YYYY-MM-DD)
     if (formData.birthday && formData.birthday.trim()) {
-      const birthdayRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
-      if (!birthdayRegex.test(formData.birthday)) {
+      const date = new Date(formData.birthday);
+      if (isNaN(date.getTime())) {
         newErrors.birthday = t('validation.invalidDate');
       } else {
-        // Parse the date components and validate semantic correctness
-        const [monthStr, dayStr, yearStr] = formData.birthday.split('/');
-        const month = parseInt(monthStr, 10);
-        const day = parseInt(dayStr, 10);
-        const year = parseInt(yearStr, 10);
-        
-        // Create a Date object and verify it matches the parsed values
-        const date = new Date(year, month - 1, day);
-        if (date.getFullYear() !== year || 
-            date.getMonth() !== month - 1 || 
-            date.getDate() !== day) {
-          newErrors.birthday = t('validation.invalidDate');
+        // Check if the date is in the future
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (date > today) {
+          newErrors.birthday = t('validation.futureDate');
         }
       }
     }
@@ -68,9 +64,7 @@ const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoSte
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
     if (!validateForm()) {
       return;
     }
@@ -115,85 +109,77 @@ const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoSte
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-dark-card-bg py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <Form onSubmit={handleSubmit}>
             <div className="space-y-4">
               {/* Full Name */}
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t('onboarding.step1.fullName')}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="fullName"
-                    name="fullName"
-                    type="text"
-                    required
-                    value={formData.fullName}
-                    onInput={(e) => handleInputChange('fullName', (e.target as HTMLInputElement).value)}
-                    className={`input-base input-with-icon relative block ${
-                      errors.fullName ? 'error' : ''
-                    }`}
-                    placeholder={t('onboarding.step1.fullNamePlaceholder')}
-                  />
-                  <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-                {errors.fullName && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.fullName}</p>
-                )}
-              </div>
+              <FormField name="fullName">
+                <FormItem>
+                  <FormLabel>{t('onboarding.step1.fullName')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      required
+                      value={formData.fullName}
+                      onChange={(e) => handleInputChange('fullName', e)}
+                      placeholder={t('onboarding.step1.fullNamePlaceholder')}
+                      icon={<UserIcon className="h-5 w-5 text-gray-400" />}
+                      error={errors.fullName}
+                    />
+                  </FormControl>
+                  {errors.fullName && (
+                    <FormMessage>{errors.fullName}</FormMessage>
+                  )}
+                </FormItem>
+              </FormField>
 
               {/* Birthday */}
-              <div>
-                <label htmlFor="birthday" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t('onboarding.step1.birthday')}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="birthday"
-                    name="birthday"
-                    type="text"
-                    value={formData.birthday || ''}
-                    onInput={(e) => handleInputChange('birthday', (e.target as HTMLInputElement).value)}
-                    className={`input-base input-with-icon relative block ${
-                      errors.birthday ? 'error' : ''
-                    }`}
-                    placeholder={t('onboarding.step1.birthdayPlaceholder')}
-                  />
-                  <CalendarIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-                {errors.birthday && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.birthday}</p>
-                )}
-              </div>
+              <FormField name="birthday">
+                <FormItem>
+                  <FormLabel>{t('onboarding.step1.birthday')}</FormLabel>
+                  <FormControl>
+                    <DatePicker
+                      value={formData.birthday || ''}
+                      onChange={(value) => handleInputChange('birthday', value)}
+                      placeholder={t('onboarding.step1.birthdayPlaceholder')}
+                      format="date"
+                      max={new Date().toISOString().split('T')[0]} // Prevent future dates
+                      error={errors.birthday}
+                    />
+                  </FormControl>
+                  {errors.birthday && (
+                    <FormMessage>{errors.birthday}</FormMessage>
+                  )}
+                </FormItem>
+              </FormField>
             </div>
 
             {/* Terms Agreement */}
-            <div className="flex items-start">
-              <div className="flex items-center h-5">
-                <input
-                  id="agreedToTerms"
-                  name="agreedToTerms"
-                  type="checkbox"
-                  checked={formData.agreedToTerms}
-                  onChange={(e) => handleInputChange('agreedToTerms', (e.target as HTMLInputElement).checked)}
-                  className="focus:ring-accent-500 h-4 w-4 text-accent-600 border-gray-300 dark:border-gray-600 rounded"
-                />
-              </div>
-              <div className="ml-3 text-sm">
-                <label htmlFor="agreedToTerms" className="text-gray-700 dark:text-gray-300">
-                  <Trans
-                    i18nKey="onboarding.step1.termsAgreement"
-                    components={{
-                      termsLink: <a href="/terms" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Terms of Service">Terms</a>,
-                      privacyLink: <a href="/privacy" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Privacy Policy">Privacy Policy</a>
-                    }}
-                  />
-                </label>
-                {errors.agreedToTerms && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.agreedToTerms}</p>
-                )}
-              </div>
-            </div>
+            <FormField name="agreedToTerms">
+              <FormItem>
+                <div className="flex items-start space-x-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={formData.agreedToTerms}
+                      onChange={(e) => handleInputChange('agreedToTerms', e)}
+                    />
+                  </FormControl>
+                  <div className="text-sm">
+                    <FormLabel htmlFor="agreedToTerms" className="text-gray-700 dark:text-gray-300">
+                      <Trans
+                        i18nKey="onboarding.step1.termsAgreement"
+                        components={{
+                          termsLink: <a href="/terms" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Terms of Service">Terms</a>,
+                          privacyLink: <a href="/privacy" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Privacy Policy">Privacy Policy</a>
+                        }}
+                      />
+                    </FormLabel>
+                    {errors.agreedToTerms && (
+                      <FormMessage>{errors.agreedToTerms}</FormMessage>
+                    )}
+                  </div>
+                </div>
+              </FormItem>
+            </FormField>
 
             {/* Submit Button */}
             <div>
@@ -211,7 +197,7 @@ const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoSte
                 )}
               </Button>
             </div>
-          </form>
+          </Form>
         </div>
       </div>
     </div>

@@ -175,7 +175,8 @@
     },
     "channels": {
       "push": "Push",
-      "email": "Correo"
+      "email": "Correo",
+      "none": "Ninguno"
     }
   },
   "security": {
