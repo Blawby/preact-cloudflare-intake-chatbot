@@ -38,10 +38,10 @@ export function generateAriaLabels({
   };
 }
 
-export function generateFieldAriaLabels(fieldName: string, _options: AriaLabelProps = {}) {
+export function generateFieldAriaLabels(fieldName: string, options: AriaLabelProps = {}) {
   return generateAriaLabels({
     id: `${fieldName}-field`,
-    ..._options,
+    ...options,
   });
 }
 

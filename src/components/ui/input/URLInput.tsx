@@ -106,17 +106,23 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
       return url.startsWith(protocolWithSlashes);
     });
     
-    // If no valid protocol is present, add a default one
-    if (!hasValidProtocol) {
-      // Use the first protocol from the array, or default to https:// if array is empty
-      const defaultProtocol = protocols.length > 0 
-        ? (protocols[0].endsWith('://') ? protocols[0] : 
-           protocols[0].endsWith(':') ? `${protocols[0]}//` : `${protocols[0]}://`)
-        : 'https://';
-      return `${defaultProtocol}${url}`;
+    // If URL already has a valid protocol, return as-is
+    if (hasValidProtocol) {
+      return url;
     }
     
-    return url;
+    // Remove any existing protocol/scheme that's not in the allowed protocols list
+    // Match common forms like scheme:, scheme:// or scheme://user@
+    const protocolRegex = /^[a-zA-Z][a-zA-Z0-9+.-]*:(?:\/\/[^@]*@)?/;
+    const urlWithoutProtocol = url.replace(protocolRegex, '');
+    
+    // Use the first protocol from the array, or default to https:// if array is empty
+    const defaultProtocol = protocols.length > 0 
+      ? (protocols[0].endsWith('://') ? protocols[0] : 
+         protocols[0].endsWith(':') ? `${protocols[0]}//` : `${protocols[0]}://`)
+      : 'https://';
+    
+    return `${defaultProtocol}${urlWithoutProtocol}`;
   }, [protocols]);
 
   const handleChange = useCallback((e: Event) => {

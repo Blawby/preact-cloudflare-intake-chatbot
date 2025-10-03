@@ -6,6 +6,7 @@ import { OnboardingData } from '../utils/mockUserData';
 import { Logo } from './ui/Logo';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from './ui/form';
 import { Input, EmailInput, PasswordInput } from './ui/input';
+import { handleError } from '../utils/errorHandler';
 // No authentication required - authClient removed
 
 interface AuthPageProps {
@@ -43,8 +44,15 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       try {
         await onSuccess();
       } catch (error) {
-        // onSuccess callback failed - log error for debugging/monitoring
-        console.error('onSuccess callback failed:', error);
+        // onSuccess callback failed - use production-safe error handling
+        handleError(error, {
+          component: 'AuthPage',
+          action: 'onSuccess-callback',
+          mode
+        }, {
+          component: 'AuthPage',
+          action: 'handleRedirect'
+        });
         // Continue with redirect even if onSuccess fails
       }
     }
@@ -300,7 +308,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
             <div className="space-y-4">
               {isSignUp && (
                 <FormField name="name">
-                  {({ value, error, onChange }) => (
+                  {({ error, onChange }) => (
                     <FormItem>
                       <FormLabel htmlFor="signup-fullname">{t('signup.fullName')}</FormLabel>
                       <FormControl>
@@ -308,8 +316,11 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
                           id="signup-fullname"
                           type="text"
                           required={isSignUp}
-                          value={(value as string) || ''}
-                          onChange={(value) => onChange(value)}
+                          value={formData.name}
+                          onChange={(value) => {
+                            onChange(value);
+                            setFormData(prev => ({ ...prev, name: String(value) }));
+                          }}
                           placeholder={t('signup.fullNamePlaceholder')}
                           icon={<UserIcon className="h-5 w-5 text-gray-400" />}
                           error={error?.message}
@@ -329,7 +340,10 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
                         label={t(isSignUp ? 'signup.email' : 'signin.email')}
                         required
                         value={(value as string) || ''}
-                        onChange={(value) => onChange(value)}
+                        onChange={(value) => {
+                          onChange(value);
+                          setFormData(prev => ({ ...prev, email: String(value) }));
+                        }}
                         placeholder={t(isSignUp ? 'signup.emailPlaceholder' : 'signin.emailPlaceholder')}
                         error={error?.message}
                       />
@@ -348,7 +362,10 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
                         label={t(isSignUp ? 'signup.password' : 'signin.password')}
                         required
                         value={(value as string) || ''}
-                        onChange={(value) => onChange(value)}
+                        onChange={(value) => {
+                          onChange(value);
+                          setFormData(prev => ({ ...prev, password: String(value) }));
+                        }}
                         placeholder={t(isSignUp ? 'signup.passwordPlaceholder' : 'signin.passwordPlaceholder')}
                         error={error?.message}
                       />
@@ -360,15 +377,18 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
 
               {isSignUp && (
                 <FormField name="confirmPassword">
-                  {({ value, error, onChange }) => (
+                  {({ error, onChange }) => (
                     <FormItem>
                       <FormControl>
                         <PasswordInput
                           id="confirm-password-field"
                           label={t('signup.confirmPassword')}
                           required={isSignUp}
-                          value={(value as string) || ''}
-                          onChange={(value) => onChange(value)}
+                          value={formData.confirmPassword}
+                          onChange={(value) => {
+                            onChange(value);
+                            setFormData(prev => ({ ...prev, confirmPassword: String(value) }));
+                          }}
                           placeholder={t('signup.confirmPasswordPlaceholder')}
                           error={error?.message}
                         />

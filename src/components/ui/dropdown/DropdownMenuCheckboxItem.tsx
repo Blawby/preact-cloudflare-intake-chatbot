@@ -1,4 +1,4 @@
-import { ComponentChildren } from 'preact';
+import { ComponentChildren, JSX } from 'preact';
 import { cn } from '../../../utils/cn';
 import { Switch } from '../input/Switch';
 
@@ -23,7 +23,7 @@ export const DropdownMenuCheckboxItem = ({
     }
   };
 
-  const handleKeyDown = (event: KeyboardEvent) => {
+  const handleKeyDown = (event: JSX.TargetedKeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
     
     if (event.key === 'Enter' || event.key === ' ') {

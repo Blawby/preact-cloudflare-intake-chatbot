@@ -38,7 +38,7 @@ export default function TeamProfile({
 
 			{/* Team Name with Verified Badge */}
 			<div className="flex items-center justify-center gap-2 w-full">
-				<h3 className="text-base sm:text-lg lg:text-xl font-semibold text-center m-0 text-gray-900 dark:text-white leading-tight truncate" title={name}>{name}</h3>
+				<h3 className="text-base sm:text-lg lg:text-xl font-semibold text-center m-0 text-gray-900 dark:text-white leading-tight truncate min-w-0" title={name}>{name}</h3>
 				{showVerified && variant === 'welcome' && (
 					<CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white flex-shrink-0" aria-label="Verified" title="Verified" />
 				)}

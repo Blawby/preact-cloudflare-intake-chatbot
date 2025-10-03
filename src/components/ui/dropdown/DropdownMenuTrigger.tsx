@@ -1,4 +1,4 @@
-import { ComponentChildren, cloneElement, isValidElement, RefObject } from 'preact';
+import { ComponentChildren, cloneElement, isValidElement, RefObject, VNode } from 'preact';
 import { useContext, useRef } from 'preact/hooks';
 import { cn } from '../../../utils/cn';
 import { DropdownContext } from './DropdownMenu';
@@ -31,7 +31,7 @@ export const DropdownMenuTrigger = ({
   const assignRef = (node: HTMLElement | null, targetRef: RefObject<HTMLElement | null>, forwardedRef?: any) => {
     // Update the target ref
     if (targetRef) {
-      (targetRef as any).current = node;
+      (targetRef as RefObject<HTMLElement | null>).current = node;
     }
     
     // Handle forwarded ref (function or object)
@@ -44,7 +44,7 @@ export const DropdownMenuTrigger = ({
     }
   };
 
-  const handleClick = () => {
+  const handleClick = (_event?: MouseEvent) => {
     // Always call the custom onClick if provided (safely)
     if (onClick) {
       try {
@@ -87,24 +87,36 @@ export const DropdownMenuTrigger = ({
       throw new Error('DropdownMenuTrigger with asChild requires a single React element as children');
     }
 
-    // Create merged ref function
+    // Assert children is a VNode and extract props
+    const childElement = children as VNode<any>;
+    const childProps = childElement.props as any;
+
+    // Create merged ref function with proper typing
     const mergedRef = (element: HTMLElement | null) => {
-      assignRef(element, triggerRef, (children as any).ref);
+      assignRef(element, triggerRef, childElement.ref);
     };
 
     // Prepare trigger props to merge
     const triggerProps = {
-      onClick: (event: Event) => {
-        // Call the child's onClick if it exists
-        if ((children as any).props?.onClick) {
-          (children as any).props.onClick(event);
+      onClick: (event: MouseEvent) => {
+        // Call the child's onClick if it exists with error handling
+        if (childProps.onClick) {
+          try {
+            childProps.onClick(event);
+          } catch (error) {
+            console.error('Error in child onClick callback:', error);
+          }
         }
-        handleClick();
+        handleClick(event);
       },
       onKeyDown: (event: KeyboardEvent) => {
-        // Call the child's onKeyDown if it exists
-        if ((children as any).props?.onKeyDown) {
-          (children as any).props.onKeyDown(event);
+        // Call the child's onKeyDown if it exists with error handling
+        if (childProps.onKeyDown) {
+          try {
+            childProps.onKeyDown(event);
+          } catch (error) {
+            console.error('Error in child onKeyDown callback:', error);
+          }
         }
         handleKeyDown(event);
       },
@@ -114,14 +126,14 @@ export const DropdownMenuTrigger = ({
       'aria-controls': `${dropdownId}-menu`,
       id: `${dropdownId}-trigger`,
       className: cn(
-        (children as any).props?.className || '',
+        childProps.className || '',
         className
       ),
       tabIndex: 0, // Ensure keyboard accessibility
     };
 
     // Clone the child element with merged props
-    return cloneElement(children as any, triggerProps);
+    return cloneElement(childElement, triggerProps);
   }
 
   return (

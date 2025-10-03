@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState } from 'preact/compat';
+import { forwardRef, useEffect, useRef, useState } from 'preact/compat';
 import { cn } from '../../../utils/cn';
 import { useUniqueId } from '../../../hooks/useUniqueId';
 
@@ -75,26 +75,45 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   const displayPlaceholder = placeholder;
   const displayError = error;
 
+  // Track if component is mounted to skip initial render in effect
+  const isMountedRef = useRef(false);
+
+  // Initialize internalValue with proper truncation based on enforceMaxLength
+  const getInitialValue = () => {
+    if (enforceMaxLength === 'hard' || enforceMaxLength === 'truncate') {
+      if (maxLength && value && value.length > maxLength) {
+        return value.substring(0, maxLength);
+      }
+    }
+    return value;
+  };
+
   // Internal state to manage truncated value for hard and truncate modes
-  const [internalValue, setInternalValue] = useState(value);
+  const [internalValue, setInternalValue] = useState(getInitialValue);
+
+  // Store the latest onChange handler in a ref to avoid re-running effect when prop identity changes
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   // Handle external value changes and truncation for hard and truncate modes
   useEffect(() => {
+    // Skip initial render
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
+
     if (enforceMaxLength === 'hard' || enforceMaxLength === 'truncate') {
       if (maxLength && value && value.length > maxLength) {
         const truncatedValue = value.substring(0, maxLength);
         setInternalValue(truncatedValue);
-        // For hard mode, we need to notify parent of truncation
-        if (enforceMaxLength === 'hard' && onChange) {
-          onChange(truncatedValue);
-        }
       } else {
         setInternalValue(value);
       }
     } else {
       setInternalValue(value);
     }
-  }, [value, maxLength, enforceMaxLength, onChange]);
+  }, [value, maxLength, enforceMaxLength]);
 
   // Determine the actual value to use based on enforceMaxLength mode
   const actualValue = enforceMaxLength === 'truncate' ? internalValue : value;
@@ -152,6 +171,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
             setInternalValue(truncatedValue);
             onChange?.(truncatedValue);
           } else {
+            setInternalValue(newValue);
             onChange?.(newValue);
           }
         }}

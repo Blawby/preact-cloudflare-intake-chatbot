@@ -304,16 +304,16 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
         // Expanded state - show full profile with tier and upgrade button
         <div className="space-y-3">
           {/* Profile Section */}
-          <div className="relative flex items-center gap-3" ref={dropdownRef}>
+          <div className="relative flex items-center gap-2 min-w-0" ref={dropdownRef}>
             <button
               onClick={handleProfileClick}
-              className="flex items-center gap-3 flex-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors"
+              className="flex items-center gap-2 flex-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors min-w-0"
               aria-label={`User profile for ${user.name}`}
             >
               <div className="w-8 h-8 rounded-full bg-gray-600 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
                 {renderAvatar()}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={user.name}>{user.name}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-300 truncate" title={getTierDisplayName(user.subscriptionTier || 'free')}>
                   {getTierDisplayName(user.subscriptionTier || 'free')}
@@ -325,7 +325,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
             {user.subscriptionTier === 'free' && (
               <button
                 onClick={handleUpgrade}
-                className="px-3 py-1 text-xs font-medium text-gray-900 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
+                className="px-2 py-1 text-xs font-medium text-gray-900 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
+                title="Upgrade your plan"
               >
                 Upgrade
               </button>

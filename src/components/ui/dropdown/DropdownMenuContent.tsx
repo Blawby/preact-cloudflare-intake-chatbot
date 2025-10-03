@@ -38,11 +38,24 @@ export const DropdownMenuContent = ({
       left: 'right-full'
     };
     
-    const alignClasses = {
+    // For vertical sides (top/bottom), alignment controls horizontal positioning
+    const horizontalAlignClasses = {
       start: 'left-0',
       center: 'left-1/2 -translate-x-1/2',
       end: 'right-0'
     };
+    
+    // For horizontal sides (left/right), alignment controls vertical positioning
+    const verticalAlignClasses = {
+      start: 'top-0',
+      center: 'top-1/2 -translate-y-1/2',
+      end: 'bottom-0'
+    };
+    
+    // Choose the appropriate alignment mapping based on side
+    const alignClasses = (side === 'left' || side === 'right') 
+      ? verticalAlignClasses 
+      : horizontalAlignClasses;
     
     return cn(baseClasses, sideClasses[side], alignClasses[align] || alignClasses.end);
   };

@@ -20,7 +20,7 @@ interface PersonalInfoStepProps {
   onBack: () => void;
 }
 
-const PersonalInfoStep = ({ data: _data, onComplete, onBack: _onBack }: PersonalInfoStepProps) => {
+const PersonalInfoStep = ({ data: _data, onComplete, onBack }: PersonalInfoStepProps) => {
   const { t } = useTranslation('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const mountedRef = useRef<boolean>(true);
@@ -38,9 +38,6 @@ const PersonalInfoStep = ({ data: _data, onComplete, onBack: _onBack }: Personal
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       await onComplete(formData);
     } catch (error) {
       console.error('Error submitting personal info:', error);
@@ -146,8 +143,8 @@ const PersonalInfoStep = ({ data: _data, onComplete, onBack: _onBack }: Personal
               )}
             </FormField>
 
-            {/* Submit Button */}
-            <div>
+            {/* Action Buttons */}
+            <div className="space-y-3">
               <Button
                 type="submit"
                 disabled={isSubmitting}
@@ -160,6 +157,16 @@ const PersonalInfoStep = ({ data: _data, onComplete, onBack: _onBack }: Personal
                 ) : (
                   t('onboarding.step1.continue')
                 )}
+              </Button>
+              
+              <Button
+                type="button"
+                onClick={onBack}
+                variant="secondary"
+                size="lg"
+                className="w-full"
+              >
+                {t('onboarding.step1.back')}
               </Button>
             </div>
           </Form>
