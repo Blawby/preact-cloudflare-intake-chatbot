@@ -1,15 +1,13 @@
 import { FunctionComponent } from 'preact';
 import { memo } from 'preact/compat';
-import { useState, useEffect } from 'preact/hooks';
-import DOMPurify from 'dompurify';
+import { useState } from 'preact/hooks';
 import {
 	DocumentIcon,
-	DocumentTextIcon,
 	TableCellsIcon,
 	MusicalNoteIcon,
 	VideoCameraIcon
 } from "@heroicons/react/24/outline";
-import { DocumentIconAttachment } from '../../worker/types';
+import { FileAttachment } from '../../worker/types';
 import { useToastContext } from '../contexts/ToastContext';
 import { AIThinkingIndicator } from './AIThinkingIndicator';
 import { ContactForm, ContactData } from './ContactForm';
@@ -20,13 +18,14 @@ import MatterCanvas from './MatterCanvas';
 import MediaContent from './MediaContent';
 import Modal from './Modal';
 import PaymentEmbed from './PaymentEmbed';
+import ChatMarkdown from './ChatMarkdown';
 
 
 
 interface MessageProps {
 	content: string;
 	isUser: boolean;
-	files?: DocumentIconAttachment[];
+	files?: FileAttachment[];
 	matterCanvas?: {
 		matterId?: string;
 		matterNumber?: string;
@@ -61,7 +60,7 @@ interface MessageProps {
 			description?: string;
 			required: boolean;
 			status: 'missing' | 'uploaded' | 'pending';
-			file?: globalThis.DocumentIcon;
+			file?: File;
 		}>;
 	};
 	lawyerSearchResults?: {
@@ -100,7 +99,7 @@ interface MessageProps {
 	sessionId?: string;
 	teamId?: string;
 	showFeedback?: boolean;
-	onFeedbackSubmit?: (feedback: any) => void;
+	onFeedbackSubmit?: (feedback: { rating: number; comment?: string }) => void;
 }
 
 const formatDocumentIconSize = (bytes: number): string => {
@@ -111,14 +110,14 @@ const formatDocumentIconSize = (bytes: number): string => {
 	return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
-const getDocumentIcon = (file: DocumentIconAttachment) => {
+const getDocumentIcon = (file: FileAttachment) => {
 	// Get file extension
 			const ext = file.name.split('.').pop()?.toLowerCase();
 	
 	// PDF icon
 	if (file.type === 'application/pdf' || ext === 'pdf') {
 		return (
-			<DocumentIconText className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+			<DocumentIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 		);
 	}
 
@@ -160,7 +159,7 @@ const getDocumentIcon = (file: DocumentIconAttachment) => {
 	);
 };
 
-const DocumentIconPreview: FunctionComponent<{ file: DocumentIconAttachment; onDocumentIconClick: (file: DocumentIconAttachment) => void }> = ({ file, onDocumentIconClick }) => {
+const DocumentIconPreview: FunctionComponent<{ file: FileAttachment; onDocumentIconClick: (file: FileAttachment) => void }> = ({ file, onDocumentIconClick }) => {
 	const handleKeyDown = (e: globalThis.KeyboardEvent) => {
 		if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
 			e.preventDefault();
@@ -190,7 +189,7 @@ const DocumentIconPreview: FunctionComponent<{ file: DocumentIconAttachment; onD
 	);
 };
 
-const ImagePreview: FunctionComponent<{ file: DocumentIconAttachment; onImageClick: (file: DocumentIconAttachment) => void }> = ({ file, onImageClick }) => {
+const ImagePreview: FunctionComponent<{ file: FileAttachment; onImageClick: (file: FileAttachment) => void }> = ({ file, onImageClick }) => {
 	return (
 		<div className="message-media-container my-2">
 			<LazyMedia
@@ -231,23 +230,18 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	showFeedback: _showFeedback = true,
 	onFeedbackSubmit: _onFeedbackSubmit
 }) => {
-	const [isClient, setIsClient] = useState(false);
-	const { showSuccess, showError, showInfo } = useToastContext();
-	const [ReactMarkdown, setReactMarkdown] = useState<any>(null);
+	const { showSuccess, showInfo } = useToastContext();
 	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [selectedMedia, setSelectedMedia] = useState<any>(null);
-
-	useEffect(() => {
-		setIsClient(true);
-		// Dynamically import ReactMarkdown only on the client side
-		import('react-markdown')
-			.then((module) => {
-				setReactMarkdown(() => module.default);
-			})
-			.catch((_error) => {
-				// Keep ReactMarkdown as null to use fallback rendering
-			});
-	}, []);
+	const [selectedMedia, setSelectedMedia] = useState<{
+		id: string;
+		name: string;
+		size: number;
+		type: string;
+		url: string;
+		timestamp: Date;
+		messageIndex: number;
+		category: 'image' | 'video' | 'audio';
+	} | null>(null);
 	const imageDocumentIcons = files.filter(file => file.type.startsWith('image/'));
 	const audioDocumentIcons = files.filter(file => file.type.startsWith('audio/'));
 	const videoDocumentIcons = files.filter(file => file.type.startsWith('video/'));
@@ -265,6 +259,10 @@ const Message: FunctionComponent<MessageProps> = memo(({
 
 
 
+	const hasContent = Boolean(content);
+	const isStreaming = isLoading && hasContent && aiState === 'generating';
+	const shouldShowIndicator = isLoading && (!hasContent || aiState !== 'generating');
+
 	return (
 		<div className={`flex flex-col max-w-full my-4 px-3 py-2 rounded-xl break-words relative ${
 			isUser 
@@ -273,27 +271,19 @@ const Message: FunctionComponent<MessageProps> = memo(({
 		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`} data-testid={isUser ? "user-message" : "ai-message"}>
 			{/* Agent handles welcome messages - no special logic needed */}
 			<div className="text-base leading-6 min-h-4">
-				{/* Show content if available and not loading */}
-				{content && !isLoading && (
-					<div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
-						{isClient && ReactMarkdown ? (
-							<ReactMarkdown>{content}</ReactMarkdown>
-						) : (
-							<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
-						)}
-					</div>
+				{/* Show message content as soon as it exists */}
+				{hasContent && (
+					<ChatMarkdown text={content} isStreaming={isStreaming} />
 				)}
 				
-				{/* Show AI thinking indicator for all loading states */}
-				{isLoading && (
+				{/* Show AI thinking indicator only when we truly need a spinner */}
+				{shouldShowIndicator && (
 					<AIThinkingIndicator 
 						variant={aiState || 'thinking'} 
-						content={content || undefined}
 						toolMessage={toolMessage}
 					/>
 				)}
 				
-
 				
 				{/* Display matter canvas */}
 				{matterCanvas && (

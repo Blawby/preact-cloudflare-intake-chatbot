@@ -48,7 +48,12 @@ function createCorsHeaders(request: Request, options: Required<CorsOptions>, isS
   // Handle origin validation - SECURITY CRITICAL
   if (options.allowedOrigins === '*') {
     // Allow all origins (development only)
-    headers['Access-Control-Allow-Origin'] = '*';
+    // If credentials are allowed, we must use the specific origin, not wildcard
+    if (options.allowCredentials && origin) {
+      headers['Access-Control-Allow-Origin'] = origin;
+    } else {
+      headers['Access-Control-Allow-Origin'] = '*';
+    }
   } else if (Array.isArray(options.allowedOrigins)) {
     // Validate against allowlist - only set header if origin matches
     if (origin && options.allowedOrigins.includes(origin)) {
@@ -173,7 +178,7 @@ export function createDevelopmentCorsOptions(): CorsOptions {
     allowedOrigins: '*',
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    allowCredentials: false,
+    allowCredentials: true, // Allow credentials in development
     maxAge: 86400,
     exposeHeaders: ['Content-Disposition', 'Content-Length']
   };

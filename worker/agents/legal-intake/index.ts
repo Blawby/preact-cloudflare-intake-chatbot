@@ -11,6 +11,7 @@ import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
 import { ContactIntakeOrchestrator } from '../../services/ContactIntakeOrchestrator.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
 import { analyzeFile, getAnalysisQuestion } from '../../utils/fileAnalysisUtils.js';
+import { chunkResponseText } from '../../utils/streaming.js';
 import { createSuccessResult, createErrorResult, ValidationError } from './errors.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
 
@@ -622,13 +623,17 @@ class PromptBuilder {
     
     return `You are a legal intake specialist for ${teamName}.
 Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}${locationRequirement}${locationFlagMessage}${skipToLawyerMessage}
-Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice, analyze_document
+Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice
 
 Rules:
 - CRITICAL: Use create_matter ONLY when you have ACTUAL values for: name + legal issue + contact info${requiresLocation ? ' + location' : ''}
 - If ANY field would use a placeholder like "Client Name", "Client Location", STOP and use show_contact_form instead
 - Use show_contact_form when user agrees to create matter but is missing name, email, phone, or location
 - Use show_contact_form ONLY after qualifying the lead with questions about urgency, timeline, and seriousness
+- IMPORTANT: For informational questions about legal topics, provide helpful explanations directly without using tools
+- Only use tools when the user is ready to take action (create matter, contact form, etc.)
+- DO NOT use tools for general questions about legal processes, consultations, or explanations
+- Answer informational questions conversationally without calling any tools
 
 DECISION TREE:
 1. Do you have the user's actual name (not "Client Name")? If NO → use show_contact_form
@@ -665,7 +670,9 @@ NEVER DO THIS - These are WRONG examples:
 TOOL_CALL: create_matter
 PARAMETERS: {"name": "Client Name", "matter_type": "Family Law", "description": "Divorce case", "email": "user@example.com", "phone": "555-123-4567"}
 
-Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.`;
+Be empathetic and professional. Focus on understanding the client's legal needs and gathering necessary information.
+
+REMEMBER: If the user is asking for information, explanations, or general questions about legal topics, respond conversationally without using any tools. Only use tools when the user wants to take specific actions like creating a matter or filling out a contact form.`;
   }
 }
 
@@ -762,6 +769,8 @@ class ToolCallDetector {
 // SSE STREAMING UTILITIES
 // ============================================================================
 
+const STREAM_TOKEN_DELAY_MS = 15;
+
 class SSEController {
   constructor(
     private controller?: ReadableStreamDefaultController<Uint8Array>
@@ -803,12 +812,310 @@ class SSEController {
   }
 
   async text(text: string): Promise<void> {
-    if (!text || text.trim().length < 10) {
-      text = 'I apologize, but I encountered an error processing your request.';
+    if (typeof text !== 'string' || text.length === 0) {
+      return;
     }
+
     await this.emit({ type: 'text', text });
-    await this.emit({ type: 'final', response: text });
   }
+
+  async final(response: string, extra: Record<string, unknown> = {}): Promise<void> {
+    const safeResponse = typeof response === 'string' && response.trim().length > 0
+      ? response
+      : 'I apologize, but I encountered an error processing your request.';
+
+    await this.emit({
+      type: 'final',
+      response: safeResponse,
+      ...extra
+    });
+  }
+}
+
+async function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return;
+  await new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isReadableStream(value: unknown): value is ReadableStream<Uint8Array> {
+  return Boolean(value && typeof (value as ReadableStream<Uint8Array>).getReader === 'function');
+}
+
+function normalizeToolCallArguments(args: unknown): Record<string, unknown> | undefined {
+  if (!args) {
+    return undefined;
+  }
+
+  if (typeof args === 'string') {
+    const trimmed = args.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : { value: parsed };
+    } catch (_) {
+      return { raw: trimmed };
+    }
+  }
+
+  if (typeof args === 'object') {
+    return args as Record<string, unknown>;
+  }
+
+  return { value: args } as Record<string, unknown>;
+}
+
+function normalizeToolCall(call: any): ToolCall | null {
+  if (!call) {
+    return null;
+  }
+
+  const fn = call.function ?? call;
+  const name = call.name ?? fn?.name;
+  if (!name || typeof name !== 'string') {
+    return null;
+  }
+
+  const args = call.arguments ?? fn?.arguments;
+  const normalizedArgs = normalizeToolCallArguments(args);
+
+  return {
+    name,
+    arguments: normalizedArgs
+  };
+}
+
+type ToolCallAccumulator = Map<string, { name?: string; arguments?: string }>;
+
+function accumulateToolCallDelta(payload: any, accumulator: ToolCallAccumulator): void {
+  const choices = payload?.response?.choices ?? payload?.choices;
+  if (!Array.isArray(choices)) {
+    return;
+  }
+
+  for (const choice of choices) {
+    const deltas = choice?.delta?.tool_calls ?? choice?.delta?.function_call ? [choice.delta] : [];
+    if (!Array.isArray(deltas) || deltas.length === 0) {
+      continue;
+    }
+
+    for (const delta of deltas) {
+      if (!delta) continue;
+      const identifier = delta.id ?? delta.tool_call_id ?? String(delta.index ?? 0);
+      const fn = delta.function ?? delta;
+      const existing = accumulator.get(identifier) ?? {};
+
+      if (fn?.name && typeof fn.name === 'string') {
+        existing.name = fn.name;
+      }
+
+      if (typeof fn?.arguments === 'string') {
+        existing.arguments = (existing.arguments || '') + fn.arguments;
+      }
+
+      accumulator.set(identifier, existing);
+    }
+  }
+}
+
+function extractDirectToolCalls(payload: any): ToolCall[] {
+  const directSources = [
+    payload?.response?.tool_calls,
+    payload?.tool_calls,
+    payload?.response?.choices?.[0]?.message?.tool_calls,
+    payload?.choices?.[0]?.message?.tool_calls
+  ];
+
+  for (const source of directSources) {
+    if (Array.isArray(source) && source.length > 0) {
+      return source
+        .map(normalizeToolCall)
+        .filter((call): call is ToolCall => Boolean(call));
+    }
+  }
+
+  return [];
+}
+
+function finalizeAccumulatedToolCalls(accumulator: ToolCallAccumulator): ToolCall[] {
+  const finalized: ToolCall[] = [];
+
+  for (const entry of accumulator.values()) {
+    if (!entry.name) continue;
+    finalized.push({
+      name: entry.name,
+      arguments: normalizeToolCallArguments(entry.arguments)
+    });
+  }
+
+  return finalized;
+}
+
+function extractTextFromPayload(payload: any): string {
+  if (!payload) {
+    return '';
+  }
+
+  if (typeof payload === 'string') {
+    return payload;
+  }
+
+  if (typeof payload.response === 'string') {
+    return payload.response;
+  }
+
+  const directText = payload?.response?.text ?? payload?.text ?? payload?.delta?.content;
+  if (typeof directText === 'string') {
+    return directText;
+  }
+
+  const choices = payload?.response?.choices ?? payload?.choices;
+  if (Array.isArray(choices)) {
+    const textFragments: string[] = [];
+    for (const choice of choices) {
+      if (!choice) continue;
+
+      if (typeof choice.text === 'string') {
+        textFragments.push(choice.text);
+      }
+
+      const deltaContent = choice.delta?.content;
+      if (typeof deltaContent === 'string') {
+        textFragments.push(deltaContent);
+      } else if (Array.isArray(deltaContent)) {
+        for (const item of deltaContent) {
+          if (typeof item === 'string') {
+            textFragments.push(item);
+          } else if (item?.type === 'output_text_delta' && typeof item.text === 'string') {
+            textFragments.push(item.text);
+          } else if (item?.type === 'text' && typeof item.text === 'string') {
+            textFragments.push(item.text);
+          }
+        }
+      }
+
+      const messageContent = choice.message?.content;
+      if (Array.isArray(messageContent)) {
+        for (const part of messageContent) {
+          if (part?.type === 'text' && typeof part.text === 'string') {
+            textFragments.push(part.text);
+          }
+        }
+      } else if (typeof messageContent === 'string') {
+        textFragments.push(messageContent);
+      }
+    }
+
+    if (textFragments.length > 0) {
+      return textFragments.join('');
+    }
+  }
+
+  const delta = payload?.delta;
+  if (delta) {
+    if (typeof delta === 'string') {
+      return delta;
+    }
+    if (typeof delta?.content === 'string') {
+      return delta.content;
+    }
+    if (Array.isArray(delta?.content)) {
+      return delta.content
+        .map((item: any) => (typeof item === 'string' ? item : item?.text ?? ''))
+        .filter(Boolean)
+        .join('');
+    }
+  }
+
+  return '';
+}
+
+async function consumeAIStream(
+  stream: ReadableStream<Uint8Array>,
+  sse: SSEController
+): Promise<{ text: string; toolCalls: ToolCall[] }> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  const accumulator: ToolCallAccumulator = new Map();
+
+  let buffer = '';
+  let fullText = '';
+  let toolCalls: ToolCall[] = [];
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop() ?? '';
+
+      for (const event of events) {
+        const dataLines = event.split('\n').filter(line => line.startsWith('data:'));
+        if (dataLines.length === 0) {
+          continue;
+        }
+
+        const payloadString = dataLines.map(line => line.slice(6)).join('\n').trim();
+        if (!payloadString || payloadString === '[DONE]') {
+          continue;
+        }
+
+        let payload: any;
+        try {
+          payload = JSON.parse(payloadString);
+        } catch (_error) {
+          continue;
+        }
+
+        const textDelta = extractTextFromPayload(payload);
+        if (textDelta) {
+          fullText += textDelta;
+          await sse.text(textDelta);
+          await sleep(STREAM_TOKEN_DELAY_MS);
+        }
+
+        const directCalls = extractDirectToolCalls(payload);
+        if (directCalls.length > 0) {
+          toolCalls = directCalls;
+        } else {
+          accumulateToolCallDelta(payload, accumulator);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (buffer.trim().length > 0) {
+    try {
+      const payload = JSON.parse(buffer.replace(/^data:\s*/, '').trim());
+      const textDelta = extractTextFromPayload(payload);
+      if (textDelta) {
+        fullText += textDelta;
+        await sse.text(textDelta);
+      }
+
+      const directCalls = extractDirectToolCalls(payload);
+      if (directCalls.length > 0) {
+        toolCalls = directCalls;
+      } else {
+        accumulateToolCallDelta(payload, accumulator);
+      }
+    } catch (_error) {
+      // Ignore trailing parse errors
+    }
+  }
+
+  if (toolCalls.length === 0) {
+    toolCalls = finalizeAccumulatedToolCalls(accumulator);
+  }
+
+  return { text: fullText, toolCalls };
 }
 
 // ============================================================================
@@ -826,6 +1133,35 @@ class ToolExecutor {
   ) {}
 
   async execute(toolCall: ToolCall): Promise<void> {
+    // Feature flag check for analyze_document tool
+    if (toolCall.name === 'analyze_document') {
+      // Check if analyze_document tool is disabled via feature flag
+      const features = await this.getFeatureFlags();
+      if (!features.enableAnalyzeDocumentTool) {
+        Logger.warn('analyze_document tool is disabled via feature flag', {
+          correlationId: this.correlationId,
+          sessionId: this.sessionId,
+          teamId: this.teamId
+        });
+        
+        await this.sse.emit({
+          type: 'tool_call',
+          name: toolCall.name,
+          parameters: toolCall.arguments
+        });
+        
+        await this.sse.emit({
+          type: 'tool_result',
+          name: toolCall.name,
+          result: {
+            success: false,
+            message: "Document analysis is currently unavailable. Please provide your legal question directly and I'll help you with that."
+          }
+        });
+        return;
+      }
+    }
+
     // Pre-flight check for placeholder values
     if (toolCall.name === 'create_matter') {
       if (this.hasPlaceholders(toolCall.arguments || {})) {
@@ -917,10 +1253,7 @@ class ToolExecutor {
         return;
       }
 
-      await this.sse.emit({
-        type: 'final',
-        response: finalResponse
-      });
+      await this.sse.final(finalResponse);
     } catch (error) {
       Logger.error('Tool execution failed:', error);
       ToolUsageMonitor.recordToolUsage(toolCall.name, false);
@@ -995,6 +1328,14 @@ class ToolExecutor {
       }
       return 'An error occurred while executing the tool.';
     }
+  }
+
+  private async getFeatureFlags(): Promise<{ enableAnalyzeDocumentTool: boolean }> {
+    // For now, return a hardcoded value since we don't have access to the frontend feature flags
+    // In a real implementation, this would fetch from a shared config or environment variable
+    return {
+      enableAnalyzeDocumentTool: false // Disabled by default
+    };
   }
 }
 
@@ -1651,8 +1992,7 @@ export async function runLegalIntakeAgentStream(
         "I've already helped you create a matter for your case. A lawyer will contact you within 24 hours to discuss your situation further. Is there anything else I can help you with?";
 
       if (controller) {
-        await sse.emit({ type: 'final', response: completionMessage });
-        await sse.complete();
+        await sse.final(completionMessage);
       } else {
         const lastUserMessage = messages.filter(msg => msg.isUser).pop()?.content || null;
         return {
@@ -1706,13 +2046,47 @@ export async function runLegalIntakeAgentStream(
         ],
         tools: availableTools,
         max_tokens: AI_MODEL_CONFIG.maxTokens,
-        temperature: AI_MODEL_CONFIG.temperature
+        temperature: AI_MODEL_CONFIG.temperature,
+        stream: true
       }),
       { attempts: 4, baseDelay: 400, operationName: 'Legal Intake AI Call' }
     );
 
+    const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
+
+    let finalResponse = '';
+    let streamToolCalls: ToolCall[] = [];
+    let handled = false;
+
+    const possibleStream = isReadableStream(aiResult)
+      ? aiResult
+      : typeof (aiResult as Response)?.body?.getReader === 'function'
+        ? (aiResult as Response).body!
+        : undefined;
+
+    if (possibleStream) {
+      const streamResult = await consumeAIStream(possibleStream, sse);
+      finalResponse = streamResult.text;
+      streamToolCalls = streamResult.toolCalls;
+      handled = true;
+    }
+
+    if (!handled) {
+      const response = extractAIResponse(aiResult);
+      finalResponse = response;
+
+      const responseChunks = chunkResponseText(response);
+      if (responseChunks.length === 0) {
+        await sse.text(response);
+      } else {
+        for (const chunk of responseChunks) {
+          await sse.text(chunk);
+          await sleep(STREAM_TOKEN_DELAY_MS);
+        }
+      }
+    }
+
     const processingTime = Date.now() - aiCallStartTime;
-    const response = extractAIResponse(aiResult);
 
     LegalIntakeLogger.logAIModelCall(
       correlationId,
@@ -1721,24 +2095,20 @@ export async function runLegalIntakeAgentStream(
       LegalIntakeOperation.AI_MODEL_RESPONSE,
       AI_MODEL_CONFIG.model,
       undefined,
-      response.length,
+      finalResponse.length,
       processingTime
     );
 
-    // Handle AI response
-    const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
+    const effectiveToolCalls = streamToolCalls.length > 0 ? streamToolCalls : (hasToolCalls(aiResult) ? aiResult.tool_calls : []);
 
-    // File analysis is now handled by the fileAnalysisMiddleware in the pipeline
-    // No need to handle attachments here anymore
-
-    if (hasToolCalls(aiResult)) {
-      await executor.execute(aiResult.tool_calls[0]);
+    if (effectiveToolCalls && effectiveToolCalls.length > 0) {
+      await executor.execute(effectiveToolCalls[0]);
     } else {
-      const detectedToolCall = ToolCallDetector.detect(response);
+      const detectedToolCall = ToolCallDetector.detect(finalResponse);
       if (detectedToolCall) {
         await executor.execute(detectedToolCall);
       } else {
-        await sse.text(response);
+        await sse.final(finalResponse);
       }
     }
   } catch (error) {

@@ -1,33 +1,24 @@
-import { LightBulbIcon, Cog6ToothIcon, SparklesIcon } from "@heroicons/react/24/outline";
-import DOMPurify from 'dompurify';
-import type { ComponentType, SVGProps } from 'react';
 import type { VNode } from 'preact';
+import ChatMarkdown from './ChatMarkdown';
 
 // Define allowed variant types
 export type AIThinkingVariant = 'thinking' | 'processing' | 'generating';
 
-// Type for icon components
-type IconComponentType = ComponentType<SVGProps<SVGSVGElement>>;
-
 // Icon and default message mapping with proper typing
 const variantConfig = {
   thinking: {
-    icon: LightBulbIcon,
     defaultMessage: 'AI is thinking',
     ariaLabel: 'AI is thinking'
   },
   processing: {
-    icon: Cog6ToothIcon,
     defaultMessage: 'Processing your request',
     ariaLabel: 'Processing your request'
   },
   generating: {
-    icon: SparklesIcon,
     defaultMessage: 'Generating response',
     ariaLabel: 'Generating response'
   }
 } satisfies Record<AIThinkingVariant, {
-  icon: IconComponentType;
   defaultMessage: string;
   ariaLabel: string;
 }>;
@@ -48,16 +39,13 @@ export function AIThinkingIndicator({
   toolMessage
 }: AIThinkingIndicatorProps): VNode {
   const config = variantConfig[variant];
-  const IconComponent: IconComponentType = config.icon;
   const displayMessage = toolMessage ?? message ?? config.defaultMessage;
 
-  // For streaming content, return wrapped prose div to match final state
+  // For streaming content, reuse the shared chat markdown renderer
   if (content) {
     return (
-      <div className={`text-base leading-6 min-h-4 ${className}`}>
-        <div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
-          <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
-        </div>
+      <div className={`min-h-4 ${className}`}>
+        <ChatMarkdown text={content} />
       </div>
     );
   }
@@ -65,21 +53,17 @@ export function AIThinkingIndicator({
   // For thinking indicators, use the full wrapper
   return (
     <div 
-      className={`text-base leading-6 min-h-4 ${className}`}
+      className={`flex items-center gap-2 min-h-4 ${className}`}
       role="status"
       aria-live="polite"
       aria-busy="true"
       aria-atomic="true"
     >
-      <div className="flex items-center gap-2 motion-safe:animate-pulse motion-reduce:animate-none">
-        <IconComponent 
-          className="w-4 h-4 flex-shrink-0 text-gray-600 dark:text-gray-300" 
-          aria-hidden="true"
-        />
-        <div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
-          {displayMessage}
-        </div>
-      </div>
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-gray-400/60 dark:bg-gray-500/60 animate-ping" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-gray-500 dark:bg-gray-300" />
+      </span>
+      <span className="sr-only">{displayMessage}</span>
     </div>
   );
 }
