@@ -1,0 +1,19 @@
+{
+  "menu": {
+    "profile": "Profile",
+    "settings": "Settings",
+    "upgrade": "Upgrade plan",
+    "upgradeShort": "Upgrade",
+    "help": "Get help",
+    "signOut": "Sign out",
+    "signIn": "Sign In"
+  },
+  "status": {
+    "signingOut": "Signing Out...",
+    "loading": "Loading..."
+  },
+  "aria": {
+    "userProfile": "User profile for {{name}}",
+    "signInButton": "Sign in to your account"
+  }
+}

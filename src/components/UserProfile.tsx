@@ -7,6 +7,7 @@ import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService } from '../utils/mockPricingData';
 import { mockUserDataService } from '../utils/mockUserData';
 import { debounce } from '../utils/debounce';
+import { useTranslation } from 'react-i18next';
 
 interface User {
   id: string;
@@ -25,6 +26,7 @@ interface UserProfileProps {
 }
 
 const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
+  const { t } = useTranslation(['profile', 'common']);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -218,7 +220,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
             className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
           >
             <SparklesIcon className="w-4 h-4" />
-            Upgrade plan
+            {t('profile:menu.upgrade')}
           </button>
         )}
         
@@ -228,7 +230,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
           className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
         >
           <Cog6ToothIcon className="w-4 h-4" />
-          Settings
+          {t('profile:menu.settings')}
         </button>
         
         {/* Separator */}
@@ -240,7 +242,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
           className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
         >
           <QuestionMarkCircleIcon className="w-4 h-4" />
-          Help
+          {t('profile:menu.help')}
         </button>
         
         {/* Log out */}
@@ -249,7 +251,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
           className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
         >
           <ArrowRightOnRectangleIcon className="w-4 h-4" />
-          Log out
+          {t('profile:menu.signOut')}
         </button>
       </div>
     );
@@ -274,10 +276,11 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
               ? 'justify-center py-2' 
               : 'gap-3 px-3 py-2'
           }`}
-          title={isCollapsed ? 'Sign In' : undefined}
+          title={isCollapsed ? t('profile:menu.signIn') : undefined}
+          aria-label={t('profile:aria.signInButton')}
         >
           <UserIcon className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span className="text-sm font-medium">Sign In</span>}
+          {!isCollapsed && <span className="text-sm font-medium">{t('profile:menu.signIn')}</span>}
         </button>
       </div>
     );
@@ -308,7 +311,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
             <button
               onClick={handleProfileClick}
               className="flex items-center gap-3 flex-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors"
-              aria-label={`User profile for ${user.name}`}
+              aria-label={t('profile:aria.userProfile', { name: user.name })}
             >
               <div className="w-8 h-8 rounded-full bg-gray-600 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
                 {renderAvatar()}
@@ -327,7 +330,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
                 onClick={handleUpgrade}
                 className="px-3 py-1 text-xs font-medium text-gray-900 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
               >
-                Upgrade
+                {t('profile:menu.upgradeShort')}
               </button>
             )}
             
