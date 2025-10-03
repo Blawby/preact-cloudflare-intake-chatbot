@@ -63,8 +63,8 @@
         "business": "Vollständige Funktionen mit unbegrenzter Nutzung"
       },
       "sections": {
-        "free": "ChatGPT Plus erhalten",
-        "plus": "ChatGPT Business erhalten",
+        "free": "Blawby AI Plus erhalten",
+        "plus": "Blawby AI Business erhalten",
         "business": "Aktueller Plan",
         "default": "Aktueller Plan"
       },
@@ -161,7 +161,7 @@
     "sections": {
       "responses": {
         "title": "Antworten",
-        "description": "Erhalten Sie Benachrichtigungen, wenn ChatGPT auf Anfragen antwortet, die Zeit benötigen, wie Recherchen oder Bildgenerierung."
+        "description": "Erhalten Sie Benachrichtigungen, wenn Blawby AI auf Anfragen antwortet, die Zeit benötigen, wie Recherchen oder Bildgenerierung."
       },
       "tasks": {
         "title": "Aufgaben",
@@ -170,7 +170,7 @@
       },
       "messaging": {
         "title": "Nachrichten",
-        "description": "Calpico"
+        "description": "Erhalten Sie Benachrichtigungen für neue Nachrichten und Updates"
       }
     },
     "channels": {

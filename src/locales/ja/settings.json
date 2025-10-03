@@ -161,7 +161,7 @@
     "sections": {
       "responses": {
         "title": "応答",
-        "description": "調査や画像生成など、時間がかかるリクエストに ChatGPT が応答したときに通知を受け取ります。"
+        "description": "調査や画像生成など、時間がかかるリクエストに Blawby AI が応答したときに通知を受け取ります。"
       },
       "tasks": {
         "title": "タスク",
@@ -170,7 +170,7 @@
       },
       "messaging": {
         "title": "メッセージング",
-        "description": "Calpico"
+        "description": "新しいメッセージと更新の通知を受け取ります"
       }
     },
     "channels": {
