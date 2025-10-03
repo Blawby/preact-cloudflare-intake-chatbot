@@ -210,7 +210,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
 
   const handleOnboardingComplete = async (data: OnboardingData) => {
     // Development-only debug log with redacted sensitive data
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       const redactedData = {
         personalInfo: {
           fullName: data.personalInfo.fullName ? '[REDACTED]' : undefined,
@@ -226,6 +226,8 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       };
       console.log('Onboarding completed:', redactedData);
     }
+    // Persist onboarding completion flag before redirecting
+    localStorage.setItem('onboardingCompleted', 'true');
     // Close onboarding modal and redirect to main app
     setShowOnboarding(false);
     // Redirect to main app where the welcome modal will show, waiting for onSuccess if provided
