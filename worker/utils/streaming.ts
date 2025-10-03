@@ -16,7 +16,7 @@ export function chunkResponseText(response: string, maxChunkSize = 320): string[
       return;
     }
 
-    const sentences = trimmedParagraph.match(/[^.!?]+[.!?]?/g) ?? [trimmedParagraph];
+    const sentences = trimmedParagraph.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [trimmedParagraph];
     let buffer = '';
 
     for (const sentence of sentences) {
@@ -45,7 +45,11 @@ export function chunkResponseText(response: string, maxChunkSize = 320): string[
           }
 
           if (candidateWord.length > maxChunkSize) {
-            chunks.push(word);
+            // Split long word into character-level substrings of maxChunkSize
+            for (let i = 0; i < word.length; i += maxChunkSize) {
+              const segment = word.slice(i, i + maxChunkSize);
+              chunks.push(segment);
+            }
             wordBuffer = '';
             continue;
           }

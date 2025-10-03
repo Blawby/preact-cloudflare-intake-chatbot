@@ -74,12 +74,6 @@ interface FeatureFlags {
      */
     enableLeadQualification: boolean;
 
-    /**
-     * Enable analyze_document tool
-     * When false, the analyze_document tool will be disabled and not executed
-     * This tool is currently broken and causes errors
-     */
-    enableAnalyzeDocumentTool: boolean;
 
 }
 
@@ -96,7 +90,6 @@ const baseFeatureConfig: FeatureFlags = {
     enableMobileBottomNav: false, // Temporarily hide mobile bottom nav
     enablePaymentIframe: false, // Disable payment iframe/drawer - only show "Open in Browser" button
     enableLeadQualification: true, // Enable lead qualification flow - AI asks questions before contact form
-    enableAnalyzeDocumentTool: false, // Disable analyze_document tool - currently broken
 };
 
 // DEV-only overrides (computed via spread, no mutation)

@@ -31,7 +31,7 @@ const DEFAULT_CORS_OPTIONS: Required<CorsOptions> = {
 // Security headers following Cloudflare best practices
 export const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
+  'X-Frame-Options': 'SAMEORIGIN',
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
@@ -178,7 +178,7 @@ export function createDevelopmentCorsOptions(): CorsOptions {
     allowedOrigins: '*',
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    allowCredentials: true, // Allow credentials in development
+    allowCredentials: false, // Allow credentials in development
     maxAge: 86400,
     exposeHeaders: ['Content-Disposition', 'Content-Length']
   };

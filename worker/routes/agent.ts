@@ -294,6 +294,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
               type: 'error',
               message: error instanceof Error ? error.message : String(error)
             });
+            sendEvent({ type: 'complete' });
             controller.close();
           }
         }

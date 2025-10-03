@@ -10,7 +10,6 @@ import { ValidationService } from '../../services/ValidationService.js';
 import { PaymentServiceFactory } from '../../services/PaymentServiceFactory.js';
 import { ContactIntakeOrchestrator } from '../../services/ContactIntakeOrchestrator.js';
 import { createValidationError, createSuccessResponse } from '../../utils/responseUtils.js';
-import { analyzeFile, getAnalysisQuestion } from '../../utils/fileAnalysisUtils.js';
 import { chunkResponseText } from '../../utils/streaming.js';
 import { createSuccessResult, createErrorResult, ValidationError } from './errors.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
@@ -33,10 +32,6 @@ const MATTER_TYPES = [
 
 const COMPLEXITY_LEVELS = ['Low', 'Medium', 'High', 'Very High'] as const;
 
-const ANALYSIS_TYPES = [
-  'general', 'legal_document', 'contract', 'government_form', 
-  'medical_document', 'image', 'resume'
-] as const;
 
 const DETECTION_THRESHOLDS = {
   MIN_SCORE: 0.1,
@@ -124,7 +119,6 @@ const PLACEHOLDER_PATTERNS = /client|user|placeholder|example|test|xxx|n\/a|tbd/
 
 export type MatterType = typeof MATTER_TYPES[number];
 export type ComplexityLevel = typeof COMPLEXITY_LEVELS[number];
-export type AnalysisType = typeof ANALYSIS_TYPES[number];
 
 export enum Currency {
   USD = 'USD',
@@ -238,11 +232,6 @@ export interface RequestLawyerReviewParams {
   readonly complexity?: ComplexityLevel;
 }
 
-export interface AnalyzeDocumentParams {
-  readonly file_id: string;
-  readonly analysis_type?: AnalysisType;
-  readonly specific_question?: string;
-}
 
 export interface CreatePaymentInvoiceParams {
   readonly invoice_id: string;
@@ -351,20 +340,6 @@ const requestLawyerReview: ToolDefinition = {
   }
 };
 
-const analyzeDocument: ToolDefinition = {
-  name: 'analyze_document',
-  description: 'Analyze an uploaded document or image to extract key information for legal intake',
-  parameters: {
-    type: 'object',
-    properties: {
-      file_id: { type: 'string', description: 'The file ID of the uploaded document to analyze', pattern: '^[a-zA-Z0-9\\-_]+$', minLength: 1, maxLength: 50 },
-      analysis_type: { type: 'string', description: 'Type of analysis to perform', enum: ANALYSIS_TYPES, default: 'general' },
-      specific_question: { type: 'string', description: 'Optional specific question to ask about the document', maxLength: 500, minLength: 10 }
-    },
-    required: ['file_id'] as const,
-    additionalProperties: false
-  }
-};
 
 const createPaymentInvoice: ToolDefinition = {
   name: 'create_payment_invoice',
@@ -1133,35 +1108,6 @@ class ToolExecutor {
   ) {}
 
   async execute(toolCall: ToolCall): Promise<void> {
-    // Feature flag check for analyze_document tool
-    if (toolCall.name === 'analyze_document') {
-      // Check if analyze_document tool is disabled via feature flag
-      const features = await this.getFeatureFlags();
-      if (!features.enableAnalyzeDocumentTool) {
-        Logger.warn('analyze_document tool is disabled via feature flag', {
-          correlationId: this.correlationId,
-          sessionId: this.sessionId,
-          teamId: this.teamId
-        });
-        
-        await this.sse.emit({
-          type: 'tool_call',
-          name: toolCall.name,
-          parameters: toolCall.arguments
-        });
-        
-        await this.sse.emit({
-          type: 'tool_result',
-          name: toolCall.name,
-          result: {
-            success: false,
-            message: "Document analysis is currently unavailable. Please provide your legal question directly and I'll help you with that."
-          }
-        });
-        return;
-      }
-    }
-
     // Pre-flight check for placeholder values
     if (toolCall.name === 'create_matter') {
       if (this.hasPlaceholders(toolCall.arguments || {})) {
@@ -1330,13 +1276,6 @@ class ToolExecutor {
     }
   }
 
-  private async getFeatureFlags(): Promise<{ enableAnalyzeDocumentTool: boolean }> {
-    // For now, return a hardcoded value since we don't have access to the frontend feature flags
-    // In a real implementation, this would fetch from a shared config or environment variable
-    return {
-      enableAnalyzeDocumentTool: false // Disabled by default
-    };
-  }
 }
 
 // ============================================================================
@@ -1608,104 +1547,6 @@ async function handleRequestLawyerReview(
   );
 }
 
-async function handleAnalyzeDocument(
-  parameters: Record<string, unknown>,
-  env: Env,
-  _team: Team | null
-): Promise<ToolResult> {
-  const { file_id, analysis_type, specific_question } = parameters as {
-    file_id?: string;
-    analysis_type?: string;
-    specific_question?: string;
-  };
-
-  Logger.debug('=== ANALYZE DOCUMENT TOOL CALLED ===');
-  Logger.debug('File ID:', ToolCallParser.sanitizeParameters(file_id as string));
-  Logger.debug('Analysis Type:', ToolCallParser.sanitizeParameters(analysis_type as string));
-
-  // Validate required parameters
-  if (!file_id || typeof file_id !== 'string') {
-    Logger.error('Missing or invalid file_id parameter', { file_id, parameters });
-    return createValidationError(
-      "I'm sorry, I couldn't identify the file to analyze. Please try uploading the file again."
-    );
-  }
-
-  const customQuestion = getAnalysisQuestion(analysis_type as string, specific_question as string);
-  const fileAnalysis = await analyzeFile(env, file_id, customQuestion);
-
-  if (!fileAnalysis || fileAnalysis.confidence === 0.0) {
-    return createValidationError(
-      fileAnalysis?.summary || 
-      "I'm sorry, I couldn't analyze that document. Please try uploading it again."
-    );
-  }
-
-  fileAnalysis.documentType = analysis_type;
-
-  const parties = fileAnalysis.entities?.people || [];
-  const organizations = fileAnalysis.entities?.orgs || [];
-  const dates = fileAnalysis.entities?.dates || [];
-  const keyFacts = fileAnalysis.key_facts || [];
-
-  let suggestedMatterType = 'General Consultation';
-  if (analysis_type === 'contract' || fileAnalysis.summary?.toLowerCase().includes('contract')) {
-    suggestedMatterType = 'Contract Review';
-  } else if (analysis_type === 'medical_document' || fileAnalysis.summary?.toLowerCase().includes('medical')) {
-    suggestedMatterType = 'Personal Injury';
-  } else if (analysis_type === 'government_form' || fileAnalysis.summary?.toLowerCase().includes('form')) {
-    suggestedMatterType = 'Administrative Law';
-  } else if (analysis_type === 'image') {
-    if (fileAnalysis.summary?.toLowerCase().includes('accident') || 
-        fileAnalysis.summary?.toLowerCase().includes('injury')) {
-      suggestedMatterType = 'Personal Injury';
-    } else if (fileAnalysis.summary?.toLowerCase().includes('property')) {
-      suggestedMatterType = 'Property Law';
-    }
-  }
-
-  let response = `I've analyzed your document and here's what I found:\n\n`;
-
-  if (fileAnalysis.summary) {
-    response += `**Document Analysis:** ${fileAnalysis.summary}\n\n`;
-  }
-
-  if (parties.length > 0) {
-    response += `**Parties Involved:** ${parties.join(', ')}\n`;
-  }
-
-  if (organizations.length > 0) {
-    response += `**Organizations:** ${organizations.join(', ')}\n`;
-  }
-
-  if (dates.length > 0) {
-    response += `**Important Dates:** ${dates.join(', ')}\n`;
-  }
-
-  if (keyFacts.length > 0) {
-    response += `**Key Facts:**\n`;
-    keyFacts.slice(0, 3).forEach(fact => {
-      response += `• ${fact}\n`;
-    });
-  }
-
-  response += `\n**Suggested Legal Matter Type:** ${suggestedMatterType}\n\n`;
-  response += `Based on this analysis, I can help you:\n`;
-  response += `• Create a legal matter for attorney review\n`;
-  response += `• Identify potential legal issues or concerns\n`;
-  response += `• Determine appropriate legal services needed\n`;
-  response += `• Prepare for consultation with an attorney\n\n`;
-  response += `Would you like me to create a legal matter for this ${suggestedMatterType.toLowerCase()} case? I'll need your contact information to get started.`;
-
-  return createSuccessResponse(response, {
-    ...fileAnalysis,
-    suggestedMatterType,
-    parties,
-    organizations,
-    dates,
-    keyFacts
-  });
-}
 
 async function handleCreatePaymentInvoice(
   parameters: Record<string, unknown>,
@@ -1881,7 +1722,6 @@ const TOOL_HANDLERS = {
   show_contact_form: handleShowContactForm,
   create_matter: handleCreateMatter,
   request_lawyer_review: handleRequestLawyerReview,
-  analyze_document: handleAnalyzeDocument,
   create_payment_invoice: handleCreatePaymentInvoice
 } as const;
 
@@ -1899,11 +1739,11 @@ const TOOL_HANDLERS = {
 // ============================================================================
 
 function getAvailableTools(state: ConversationState, context: ConversationContext): ToolDefinition[] {
-  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice, analyzeDocument];
+  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice];
   
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:
-      return context.hasLegalIssue ? [analyzeDocument] : [];
+      return [];
     case ConversationState.QUALIFYING_LEAD:
       return context.isQualifiedLead ? [showContactForm] : [];
     case ConversationState.SHOWING_CONTACT_FORM:
@@ -2155,7 +1995,6 @@ export {
   createMatter,
   showContactForm,
   requestLawyerReview,
-  analyzeDocument,
   createPaymentInvoice,
   TOOL_HANDLERS
 };
