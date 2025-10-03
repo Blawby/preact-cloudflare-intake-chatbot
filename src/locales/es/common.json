@@ -54,9 +54,7 @@
         },
         "privacy": {
           "title": "No compartas información sensible",
-          "description": "El historial de chat puede ser revisado o usado para mejorar nuestros servicios. Aprende más sobre tus opciones en nuestro <helpCenterLink>Centro de Ayuda</helpCenterLink>.",
-          "descriptionBefore": "El historial de chat puede ser revisado o usado para mejorar nuestros servicios. Aprende más sobre tus opciones en nuestro ",
-          "descriptionAfter": "."
+          "description": "El historial de chat puede ser revisado o usado para mejorar nuestros servicios. Aprende más sobre tus opciones en nuestro <helpCenterLink>Centro de Ayuda</helpCenterLink>."
         },
         "accuracy": {
           "title": "Verifica tus hechos",

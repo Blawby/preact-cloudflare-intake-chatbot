@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { Button } from '../ui/Button';
+import { useToastContext } from '../../contexts/ToastContext';
 import { 
   ChatBubbleLeftRightIcon, 
   ShieldCheckIcon, 
@@ -13,6 +14,7 @@ interface WelcomeStepProps {
 
 const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
   const { t } = useTranslation('common');
+  const { showError } = useToastContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleComplete = async () => {
@@ -22,7 +24,15 @@ const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      onComplete();
+      try {
+        onComplete();
+      } catch (error) {
+        console.error('Error in onComplete callback:', error);
+        showError(
+          'Setup Error',
+          'There was a problem completing the setup. Please try again.'
+        );
+      }
     } finally {
       // Ensure isSubmitting is always reset, whether the API call succeeds or throws
       setIsSubmitting(false);
@@ -81,16 +91,19 @@ const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
                       </h3>
                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                         {tip.id === 'privacy' ? (
-                          <>
-                            {t(`onboarding.welcome.tips.${tip.id}.descriptionBefore`)}
-                            <a 
-                              href="/help" 
-                              className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline"
-                            >
-                              {t('onboarding.welcome.helpCenter')}
-                            </a>
-                            {t(`onboarding.welcome.tips.${tip.id}.descriptionAfter`)}
-                          </>
+                          <Trans
+                            i18nKey={`onboarding.welcome.tips.${tip.id}.description`}
+                            components={{
+                              helpCenterLink: (
+                                <a 
+                                  href="/help" 
+                                  className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline"
+                                >
+                                  {t('onboarding.welcome.helpCenter')}
+                                </a>
+                              )
+                            }}
+                          />
                         ) : (
                           t(`onboarding.welcome.tips.${tip.id}.description`)
                         )}

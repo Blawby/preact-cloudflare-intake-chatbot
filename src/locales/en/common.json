@@ -57,9 +57,7 @@
         },
         "privacy": {
           "title": "Don't share sensitive info",
-          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our <helpCenterLink>Help Center</helpCenterLink>.",
-          "descriptionBefore": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our ",
-          "descriptionAfter": "."
+          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our <helpCenterLink>Help Center</helpCenterLink>."
         },
         "accuracy": {
           "title": "Check your facts",

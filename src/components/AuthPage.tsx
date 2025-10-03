@@ -46,8 +46,11 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       }
     }
     
-    // Use configurable delay only if onSuccess is not provided or doesn't return a promise
-    const delay = onSuccess ? 0 : redirectDelay;
+    // Reset loading state before delay so UI stops showing spinner
+    setLoading(false);
+    
+    // Always respect the configured redirectDelay
+    const delay = redirectDelay;
     
     if (delay > 0) {
       setTimeout(() => {
@@ -183,10 +186,12 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       // Only show onboarding modal for new Google users
       if (isNewUser) {
         console.log('New Google user detected, showing onboarding modal');
+        setLoading(false);
         setShowOnboarding(true);
       } else {
         console.log('Existing Google user, skipping onboarding');
         // Redirect existing users, waiting for onSuccess if provided
+        setLoading(false);
         await handleRedirect();
       }
     } catch (err) {

@@ -16,115 +16,73 @@ This document outlines the implementation plan for pricing/checkout onboarding f
 ```
 
 ### Cart Page (`/pricing/cart`)
-**Design Reference**: ChatGPT's plan selection with user count
-
-#### Components Needed:
-- `PricingCartPage.tsx` - Main cart component
-- `PlanSelector.tsx` - Plan selection cards
-- `UserCountSelector.tsx` - User count input with +/- buttons
-- `OrderSummary.tsx` - Right sidebar with pricing breakdown
+**Implementation**: Simple placeholder page that will integrate with Stripe Elements
 
 #### Features:
 - **Plan Selection**: Annual (Save 16%) vs Monthly
 - **User Count**: Minimum 2 users, adjustable with +/- buttons
 - **Real-time Pricing**: Updates based on plan and user count
-- **Continue to Billing** button
-
-#### Implementation Details:
-```typescript
-interface CartData {
-  planType: 'annual' | 'monthly';
-  userCount: number;
-  planTier: 'plus' | 'business';
-  subtotal: number;
-  discount: number;
-  total: number;
-}
-```
+- **Stripe Integration**: Will use Stripe Elements for secure checkout
 
 ### Checkout Page (`/pricing/checkout`)
-**Design Reference**: ChatGPT's billing information form
-
-#### Components Needed:
-- `CheckoutPage.tsx` - Main checkout component
-- `ContactInfoForm.tsx` - Contact information section
-- `PaymentMethodForm.tsx` - Payment method selection
-- `BillingAddressForm.tsx` - Billing address form
-- `OrderSummary.tsx` - Order summary sidebar
+**Implementation**: Simple placeholder page that will integrate with Stripe Elements
 
 #### Features:
-- **Contact Information**: Email field
-- **Payment Method**: Card selection with card icons
-- **Card Details**: Number, expiration, CVC
-- **Billing Address**: Full name, country, address
-- **Terms Agreement**: Checkbox with legal text
-- **Subscribe Button**: Final payment submission
+- **Stripe Elements**: Pre-built, secure checkout components
+- **Payment Processing**: Handled by Stripe
+- **Form Validation**: Built into Stripe Elements
+- **Security**: PCI compliance handled by Stripe
 
-#### Implementation Details:
-```typescript
-interface CheckoutData {
-  contactInfo: {
-    email: string;
-  };
-  paymentMethod: {
-    type: 'card';
-    cardNumber: string;
-    expirationDate: string;
-    securityCode: string;
-  };
-  billingAddress: {
-    fullName: string;
-    country: string;
-    addressLine1: string;
-    addressLine2?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-  };
-  agreedToTerms: boolean;
-}
-```
+#### Benefits of Stripe Elements:
+- **Security**: PCI DSS compliant out of the box
+- **Maintenance**: Stripe handles security updates
+- **UX**: Optimized checkout experience
+- **Mobile**: Responsive design built-in
+- **Compliance**: Automatic compliance with payment regulations
 
-## 2. Component Architecture
+## 2. Implementation Approach
 
-### Shared Components:
-- `InputField.tsx` - Reusable input component
-- `SelectionCard.tsx` - Reusable selection card component
-- `ProgressIndicator.tsx` - Step progress indicator
+### Simple Placeholder Pages:
+- Create basic route handlers for `/pricing/cart` and `/pricing/checkout`
+- Minimal UI components for navigation and testing
+- Focus on routing structure rather than complex UI
+
+### Stripe Elements Integration:
+- Use Stripe Elements for all payment processing
+- Leverage Stripe's pre-built components for security and UX
+- Minimal custom code required for checkout functionality
 
 ### Existing Components to Leverage:
 - `Button` from `src/components/ui/Button.tsx`
 - `Modal` from `src/components/Modal.tsx`
-- `SettingsDropdown` from `src/components/settings/components/SettingsDropdown.tsx`
-- Input patterns from `ContactForm.tsx`
-
-### Mock Data Integration:
-- Use `mockUserDataService` for user preferences
-- Use `mockPricingDataService` for pricing calculations
-- Use `mockPaymentService` for payment processing simulation
+- Basic layout components for consistent styling
 
 ## 3. Implementation Phases
 
-### Phase 1: Pricing Cart System
-1. Create routing structure (`/pricing/cart`)
-2. Implement `PricingCartPage.tsx`
-3. Create `PlanSelector.tsx` and `UserCountSelector.tsx`
-4. Implement `OrderSummary.tsx`
-5. Add real-time pricing calculations
+### Phase 1: Mock Data Foundation
+1. Create `mockPaymentData.ts` service following existing patterns
+2. Implement cart session management
+3. Implement checkout session management
+4. Add payment processing simulation
+5. Test mock data flows end-to-end
 
-### Phase 2: Checkout System
-1. Create routing structure (`/pricing/checkout`)
-2. Implement `CheckoutPage.tsx`
-3. Create form components for contact, payment, billing
-4. Integrate with mock payment service
-5. Add form validation and error handling
+### Phase 2: Basic Routing & UI
+1. Create routing structure (`/pricing/cart` and `/pricing/checkout`)
+2. Create simple placeholder pages with mock data integration
+3. Add basic navigation between routes
+4. Test routing functionality with mock data
 
-### Phase 3: Integration & Testing
-1. Connect all flows end-to-end
-2. Test with different user scenarios
-3. Add loading states and error handling
-4. Implement proper navigation between steps
-5. Add analytics tracking points
+### Phase 3: Stripe Elements Integration
+1. Replace mock payment processing with Stripe Elements
+2. Configure Stripe checkout sessions
+3. Handle payment success/failure redirects
+4. Test payment flow end-to-end
+
+### Phase 4: Polish & Testing
+1. Add proper loading states
+2. Implement error handling
+3. Add analytics tracking points
+4. Test with different user scenarios
 
 ## 4. Technical Requirements
 
@@ -149,9 +107,12 @@ interface CheckoutData {
 - Screen reader compatibility
 - Focus management
 
-## 5. Mock Data Enhancements
+## 5. Mock Data Strategy for Payments
 
-### Cart/Checkout Data:
+### Mock Payment Data Service (`mockPaymentData.ts`)
+Following the existing pattern of `mockUserData.ts` and `mockPricingData.ts`, create a comprehensive mock payment service:
+
+#### Core Interfaces:
 ```typescript
 interface CartSession {
   cartId: string;
@@ -166,7 +127,56 @@ interface CartSession {
   createdAt: string;
   expiresAt: string;
 }
+
+interface CheckoutSession {
+  sessionId: string;
+  cartId: string;
+  customerInfo: {
+    email: string;
+    name: string;
+    company?: string;
+  };
+  billingAddress: {
+    country: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  paymentMethod: {
+    type: 'card' | 'bank_transfer';
+    last4?: string;
+    brand?: string;
+  };
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  createdAt: string;
+}
+
+interface PaymentResult {
+  success: boolean;
+  paymentId?: string;
+  invoiceUrl?: string;
+  error?: string;
+  status?: 'pending' | 'completed' | 'failed';
+}
 ```
+
+#### Mock Service Methods:
+- `createCartSession(planData)` - Create shopping cart
+- `updateCartSession(cartId, updates)` - Update cart contents
+- `createCheckoutSession(cartId, customerInfo)` - Start checkout
+- `processPayment(sessionId, paymentData)` - Simulate payment processing
+- `getPaymentStatus(paymentId)` - Check payment status
+- `getCartSession(cartId)` - Retrieve cart data
+- `getCheckoutSession(sessionId)` - Retrieve checkout data
+
+#### Integration with Existing Services:
+- Use `mockPricingDataService` for plan pricing calculations
+- Use `mockUserDataService` for customer preferences
+- Simulate API delays and realistic response times
+- Handle different payment scenarios (success, failure, pending)
+- Store session data in localStorage for persistence
 
 ## 6. Success Metrics
 
