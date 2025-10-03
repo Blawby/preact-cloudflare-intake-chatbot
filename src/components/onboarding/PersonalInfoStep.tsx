@@ -1,5 +1,5 @@
-import { useState } from 'preact/hooks';
-import { useTranslation } from 'react-i18next';
+import { useState, useRef, useEffect } from 'preact/hooks';
+import { useTranslation, Trans } from 'react-i18next';
 import { Button } from '../ui/Button';
 import { Logo } from '../ui/Logo';
 import { UserIcon, CalendarIcon } from '@heroicons/react/24/outline';
@@ -10,20 +10,29 @@ interface PersonalInfoData {
   agreedToTerms: boolean;
 }
 
+
 interface PersonalInfoStepProps {
   data: PersonalInfoData;
   onComplete: (data: PersonalInfoData) => void;
   onBack: () => void;
 }
 
-const PersonalInfoStep = ({ data, onComplete, onBack }: PersonalInfoStepProps) => {
+const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoStepProps) => {
   const { t } = useTranslation('common');
   const [formData, setFormData] = useState<PersonalInfoData>(data);
-  const [errors, setErrors] = useState<Partial<PersonalInfoData>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof PersonalInfoData, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const mountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<PersonalInfoData> = {};
+    const newErrors: Partial<Record<keyof PersonalInfoData, string>> = {};
 
     if (!formData.fullName.trim()) {
       newErrors.fullName = t('onboarding.step1.required');
@@ -37,7 +46,21 @@ const PersonalInfoStep = ({ data, onComplete, onBack }: PersonalInfoStepProps) =
     if (formData.birthday && formData.birthday.trim()) {
       const birthdayRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
       if (!birthdayRegex.test(formData.birthday)) {
-        newErrors.birthday = 'Please enter a valid date (MM/DD/YYYY)';
+        newErrors.birthday = t('validation.invalidDate');
+      } else {
+        // Parse the date components and validate semantic correctness
+        const [monthStr, dayStr, yearStr] = formData.birthday.split('/');
+        const month = parseInt(monthStr, 10);
+        const day = parseInt(dayStr, 10);
+        const year = parseInt(yearStr, 10);
+        
+        // Create a Date object and verify it matches the parsed values
+        const date = new Date(year, month - 1, day);
+        if (date.getFullYear() !== year || 
+            date.getMonth() !== month - 1 || 
+            date.getDate() !== day) {
+          newErrors.birthday = t('validation.invalidDate');
+        }
       }
     }
 
@@ -58,7 +81,11 @@ const PersonalInfoStep = ({ data, onComplete, onBack }: PersonalInfoStepProps) =
     await new Promise(resolve => setTimeout(resolve, 500));
     
     onComplete(formData);
-    setIsSubmitting(false);
+    
+    // Only update state if component is still mounted
+    if (mountedRef.current) {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (field: keyof PersonalInfoData, value: string | boolean) => {
@@ -154,15 +181,13 @@ const PersonalInfoStep = ({ data, onComplete, onBack }: PersonalInfoStepProps) =
               </div>
               <div className="ml-3 text-sm">
                 <label htmlFor="agreedToTerms" className="text-gray-700 dark:text-gray-300">
-                  {t('onboarding.step1.termsAgreement').split('Terms')[0]}
-                  <a href="/terms" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline">
-                    {t('onboarding.step1.termsLink')}
-                  </a>
-                  {t('onboarding.step1.termsAgreement').split('Terms')[1].split('Privacy Policy')[0]}
-                  <a href="/privacy" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline">
-                    {t('onboarding.step1.privacyLink')}
-                  </a>
-                  {t('onboarding.step1.termsAgreement').split('Privacy Policy')[1]}
+                  <Trans
+                    i18nKey="onboarding.step1.termsAgreement"
+                    components={{
+                      termsLink: <a href="/terms" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Terms of Service">Terms</a>,
+                      privacyLink: <a href="/privacy" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Privacy Policy">Privacy Policy</a>
+                    }}
+                  />
                 </label>
                 {errors.agreedToTerms && (
                   <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.agreedToTerms}</p>

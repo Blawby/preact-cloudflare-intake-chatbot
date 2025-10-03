@@ -3,21 +3,8 @@ import { useTranslation } from 'react-i18next';
 import Modal from '../Modal';
 import PersonalInfoStep from './PersonalInfoStep';
 import UseCaseStep from './UseCaseStep';
-import { mockUserDataService } from '../../utils/mockUserData';
-
-export interface OnboardingData {
-  personalInfo: {
-    fullName: string;
-    birthday?: string;
-    agreedToTerms: boolean;
-  };
-  useCase: {
-    primaryUseCase: 'personal' | 'business' | 'research' | 'documents' | 'other';
-    additionalInfo?: string;
-  };
-  completedAt?: string;
-  skippedSteps: string[];
-}
+import { mockUserDataService, OnboardingData } from '../../utils/mockUserData';
+import { useToastContext } from '../../contexts/ToastContext';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -28,18 +15,18 @@ interface OnboardingModalProps {
 type OnboardingStep = 'personal' | 'useCase';
 
 const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) => {
-  console.log('OnboardingModal rendered with isOpen:', isOpen);
   const { t } = useTranslation('common');
+  const { showError, showSuccess } = useToastContext();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('personal');
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     personalInfo: {
       fullName: '',
-      birthday: '',
+      birthday: undefined,
       agreedToTerms: false
     },
     useCase: {
       primaryUseCase: 'personal',
-      additionalInfo: ''
+      additionalInfo: undefined
     },
     skippedSteps: []
   });
@@ -60,7 +47,7 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
     }
   }, [isOpen]);
 
-  const handleStepComplete = (step: OnboardingStep, data: Partial<OnboardingData>) => {
+  const handleStepComplete = async (step: OnboardingStep, data: Partial<OnboardingData>) => {
     setOnboardingData(prev => ({
       ...prev,
       ...data
@@ -70,11 +57,11 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
       setCurrentStep('useCase');
     } else if (step === 'useCase') {
       // After use case step, complete onboarding and redirect to main app
-      handleComplete();
+      await handleComplete();
     }
   };
 
-  const handleSkip = (step: OnboardingStep) => {
+  const handleSkip = async (step: OnboardingStep) => {
     setOnboardingData(prev => ({
       ...prev,
       skippedSteps: [...prev.skippedSteps, step]
@@ -82,32 +69,50 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
 
     if (step === 'useCase') {
       // Skip use case step and complete onboarding
-      handleComplete();
+      await handleComplete();
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     const completedData = {
       ...onboardingData,
       completedAt: new Date().toISOString()
     };
 
-    // Save onboarding data to user preferences
-    mockUserDataService.setPreferences({
-      onboardingCompleted: true,
-      onboardingData: completedData
-    });
+    try {
+      // Save onboarding data to user preferences (single source of truth)
+      mockUserDataService.setPreferences({
+        onboardingCompleted: true,
+        onboardingData: completedData
+      });
 
-    // Set flag for main app to show welcome modal
-    localStorage.setItem('onboardingCompleted', 'true');
+      // Cache the completion status in localStorage for quick access
+      // This is just a cache, not the source of truth
+      localStorage.setItem('onboardingCompleted', 'true');
 
-    onComplete(completedData);
-    onClose();
-  };
+      // Show success notification
+      showSuccess(
+        t('onboarding.completed.title', 'Onboarding Complete!'),
+        t('onboarding.completed.message', 'Welcome to Blawby AI! Your preferences have been saved.')
+      );
 
-  const handleBack = () => {
-    if (currentStep === 'useCase') {
-      setCurrentStep('personal');
+      onComplete(completedData);
+      onClose();
+    } catch (error) {
+      // Log the error for debugging in development
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to save onboarding data:', error);
+      }
+      
+      // Show error notification to user
+      showError(
+        t('onboarding.error.title', 'Save Failed'),
+        t('onboarding.error.message', 'Unable to save your onboarding data. Please try again.')
+      );
+      
+      // Don't close the modal or call onComplete - keep state consistent
+      // User can retry by completing the step again
     }
   };
 
@@ -117,7 +122,7 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
         return (
           <PersonalInfoStep
             data={onboardingData.personalInfo}
-            onComplete={(data) => handleStepComplete('personal', { personalInfo: data })}
+            onComplete={async (data) => await handleStepComplete('personal', { personalInfo: data })}
             onBack={onClose}
           />
         );
@@ -125,9 +130,8 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
         return (
           <UseCaseStep
             data={onboardingData.useCase}
-            onComplete={(data) => handleStepComplete('useCase', { useCase: data })}
-            onSkip={() => handleSkip('useCase')}
-            onBack={handleBack}
+            onComplete={async (data) => await handleStepComplete('useCase', { useCase: data })}
+            onSkip={async () => await handleSkip('useCase')}
           />
         );
       default:
@@ -135,7 +139,6 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
     }
   };
 
-  console.log('OnboardingModal render - isOpen:', isOpen, 'currentStep:', currentStep);
   
   return (
     <Modal

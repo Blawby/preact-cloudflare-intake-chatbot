@@ -1,7 +1,7 @@
-# Blawby AI Design System Plan
+# Blawby AI Form & Input Components Plan
 
 ## Overview
-This document outlines a comprehensive design system for reusable input components in our Preact application, inspired by shadcn/ui patterns but tailored for our specific needs and existing architecture.
+This document outlines a focused plan for building reusable form and input components in our Preact application, inspired by shadcn/ui patterns but tailored for our specific needs and existing architecture.
 
 ## Current State Audit
 
@@ -32,7 +32,33 @@ Based on the codebase audit, we currently have:
    - Consistent focus states and transitions
    - Icon integration with Heroicons
 
-## Design System Architecture
+### Existing Reusable Components (Settings)
+We have several well-built components in settings that can be extracted and renamed:
+
+1. **SettingsToggle.tsx** → **Switch.tsx**
+   - Full toggle switch with accessibility
+   - Boolean value handling, disabled states
+   - Dark mode support, focus management
+   - Ready to move to `src/components/ui/input/Switch.tsx`
+
+2. **SettingsDropdown.tsx** → **Select.tsx**
+   - Complete dropdown/select component
+   - Keyboard navigation, accessibility (ARIA)
+   - Mobile/desktop responsive layouts
+   - Ready to move to `src/components/ui/input/Select.tsx`
+
+3. **SettingsItem.tsx** → **FormItem.tsx** (partial)
+   - Multi-purpose form item with input types
+   - Built-in: text, password, email, select, textarea
+   - Toggle functionality, icon support, loading states
+   - Can extract input logic for form components
+
+4. **SettingsDropdownWithToggles.tsx** → **MultiSelect.tsx** (partial)
+   - Dropdown with multiple toggle options
+   - Keyboard navigation, accessibility
+   - Can extract toggle functionality for MultiSelect
+
+## Form & Input Architecture
 
 ### Directory Structure
 ```
@@ -61,52 +87,10 @@ src/components/ui/
 │   ├── PhoneInput.tsx          # Phone number with formatting
 │   ├── EmailInput.tsx          # Email with validation
 │   ├── URLInput.tsx            # URL with validation
-│   ├── ColorInput.tsx          # Color picker
-│   ├── Slider.tsx              # Range slider
 │   ├── Combobox.tsx            # Searchable dropdown
 │   ├── MultiSelect.tsx         # Multiple selection
-│   ├── TagsInput.tsx           # Tag input with autocomplete
-│   ├── RichTextEditor.tsx      # WYSIWYG editor
-│   ├── CodeEditor.tsx          # Code input with syntax highlighting
 │   └── index.ts                # Input exports
-├── button/
-│   ├── Button.tsx              # Already exists - enhance
-│   ├── ButtonGroup.tsx         # Button groups
-│   ├── IconButton.tsx          # Icon-only buttons
-│   ├── LoadingButton.tsx       # Button with loading state
-│   ├── ToggleButton.tsx        # Toggle state button
-│   └── index.ts                # Button exports
-├── feedback/
-│   ├── Alert.tsx               # Alert messages
-│   ├── Toast.tsx               # Already exists - enhance
-│   ├── Badge.tsx               # Status badges
-│   ├── Progress.tsx            # Progress indicators
-│   ├── Spinner.tsx             # Loading spinners
-│   ├── Skeleton.tsx            # Loading placeholders
-│   └── index.ts                # Feedback exports
-├── layout/
-│   ├── Card.tsx                # Card container
-│   ├── Modal.tsx               # Already exists - enhance
-│   ├── Drawer.tsx              # Slide-out drawer
-│   ├── Popover.tsx             # Floating content
-│   ├── Tooltip.tsx             # Hover tooltips
-│   ├── Accordion.tsx           # Already exists - enhance
-│   ├── Tabs.tsx                # Tab navigation
-│   ├── Separator.tsx           # Visual separators
-│   └── index.ts                # Layout exports
-├── navigation/
-│   ├── Menu.tsx                # Dropdown menus
-│   ├── Breadcrumb.tsx          # Breadcrumb navigation
-│   ├── Pagination.tsx          # Page navigation
-│   ├── Stepper.tsx             # Step-by-step process
-│   └── index.ts                # Navigation exports
-├── data/
-│   ├── Table.tsx               # Data tables
-│   ├── List.tsx                # List components
-│   ├── Grid.tsx                # Grid layouts
-│   ├── DataTable.tsx           # Advanced data table
-│   └── index.ts                # Data exports
-└── index.ts                    # Main design system exports
+└── index.ts                    # Form & input exports
 ```
 
 ## Core Components to Build
@@ -114,13 +98,46 @@ src/components/ui/
 ### 1. Form System (`src/components/ui/form/`)
 
 #### Form.tsx
-- **Purpose**: Root form provider with validation context
+- **Purpose**: Root form provider with validation context and legal compliance
 - **Features**: 
-  - Integration with validation libraries (Zod/joi)
-  - Form state management
-  - Submission handling
-  - Error aggregation
-- **Usage**: Wrap entire forms, provide validation context
+  - **Primary Validation Library**: Zod (TypeScript-first schema validation)
+  - **Schema Sharing Strategy**: 
+    - Shared schemas package (`@company/schemas`) or mono-repo folder (`packages/schemas/`)
+    - Buildable TypeScript types exported for client/server reuse
+    - Version-controlled schema definitions with semantic versioning
+  - **Standardized Error Payload**:
+    ```typescript
+    interface ValidationError {
+      code: string;           // Error type identifier (e.g., 'required', 'invalid_email')
+      field: string;          // Field path (e.g., 'user.profile.email')
+      message: string;        // Human-readable error message
+      hint?: string;          // Optional guidance for fixing the error
+    }
+    ```
+  - **Message Localization**: 
+    - Error messages keyed by `code` in i18n files
+    - Field-specific overrides supported
+    - Fallback to generic messages for unknown codes
+  - **Server-Side Enforcement**:
+    - All form submissions MUST re-validate using shared schemas
+    - No client-side validation bypassing allowed
+    - API endpoints enforce schema validation before processing
+  - **PII/Legal Compliance Checklist**:
+    ```typescript
+    interface FieldCompliance {
+      field: string;
+      required: boolean;
+      storage: 'encrypted' | 'plain' | 'none';
+      retention: number; // days
+      consentRequired: boolean;
+      gdprCategory: 'personal' | 'sensitive' | 'public';
+      ccpaCategory: 'personal' | 'sensitive' | 'public';
+    }
+    ```
+  - Form state management with compliance validation
+  - Submission handling with legal requirement enforcement
+  - Error aggregation with localized messages
+- **Usage**: Wrap entire forms, provide validation context and legal compliance
 
 #### FormField.tsx
 - **Purpose**: Individual field wrapper with validation
@@ -363,258 +380,106 @@ src/components/ui/
   - Code completion
 - **Usage**: Code input, configuration
 
-### 3. Enhanced Button System (`src/components/ui/button/`)
+### External Dependencies & Compliance Considerations
 
-#### Button.tsx (Enhance Existing)
-- **Current**: Basic button with variants
-- **Enhancements**:
-  - Loading states
-  - Icon positioning
-  - Size variants
-  - Accessibility improvements
-  - Animation support
+#### DatePicker.tsx
+- **Preferred Library**: `react-datepicker` (alternative: `@mantine/dates`)
+- **Bundle Impact**: ~45KB gzipped (react-datepicker + dependencies)
+- **Accessibility**: Full ARIA support, keyboard navigation, screen reader compatible
+- **License**: MIT (compatible with commercial use)
 
-#### ButtonGroup.tsx
-- **Purpose**: Grouped buttons
-- **Features**:
-  - Horizontal/vertical layouts
-  - Connected styling
-  - Shared state
-  - Keyboard navigation
-- **Usage**: Action groups, toolbar buttons
+#### RichTextEditor.tsx
+- **Preferred Library**: `@tiptap/react` (alternative: `react-quill`)
+- **Bundle Impact**: ~120KB gzipped (Tiptap core + extensions)
+- **Accessibility**: ARIA-compliant toolbar, keyboard shortcuts, screen reader support
+- **License**: MIT (compatible with commercial use)
 
-#### IconButton.tsx
-- **Purpose**: Icon-only buttons
-- **Features**:
-  - Icon-only display
-  - Size variants
-  - Tooltip support
-  - Accessibility
-- **Usage**: Toolbar actions, compact buttons
+#### CodeEditor.tsx
+- **Preferred Library**: `@monaco-editor/react` (alternative: `react-codemirror`)
+- **Bundle Impact**: ~2.5MB gzipped (Monaco Editor full bundle)
+- **Accessibility**: Limited ARIA support, requires custom keyboard navigation implementation
+- **License**: MIT (compatible with commercial use)
 
-#### LoadingButton.tsx
-- **Purpose**: Button with loading state
-- **Features**:
-  - Loading spinner
-  - Disabled state
-  - Progress indication
-  - Async handling
-- **Usage**: Form submissions, async actions
+#### ColorInput.tsx
+- **Preferred Library**: `react-colorful` (alternative: `react-color`)
+- **Bundle Impact**: ~8KB gzipped (minimal footprint)
+- **Accessibility**: ARIA-compliant, keyboard navigation, color contrast indicators
+- **License**: MIT (compatible with commercial use)
 
-#### ToggleButton.tsx
-- **Purpose**: Toggle state button
-- **Features**:
-  - Toggle states
-  - Visual feedback
-  - Group support
-  - Accessibility
-- **Usage**: Toggle actions, mode switches
+**Bundling Strategy**: Implement lazy-loading for complex components (DatePicker, RichTextEditor, CodeEditor) using dynamic imports to reduce initial bundle size. Create wrapper abstractions that handle loading states and provide consistent APIs. Consider code-splitting at the route level for pages that heavily use these components. For CodeEditor specifically, implement a lightweight fallback for basic text editing when full syntax highlighting isn't required.
 
-### 4. Feedback Components (`src/components/ui/feedback/`)
+### 3. Form Validation & Error Handling
 
-#### Alert.tsx
-- **Purpose**: Alert messages
-- **Features**:
-  - Success/error/warning/info variants
-  - Dismissible alerts
-  - Icon support
-  - Action buttons
-- **Usage**: Form feedback, notifications
+#### Validation Patterns
+- **Field-level validation**: Real-time validation with error clearing
+- **Form-level validation**: Submission validation with error aggregation
+- **Custom validation rules**: Email, phone, date formats, legal data
+- **Error state management**: Consistent error display and clearing
 
-#### Toast.tsx (Enhance Existing)
-- **Current**: Basic toast notifications
-- **Enhancements**:
-  - Multiple toast support
-  - Auto-dismiss
-  - Action buttons
-  - Positioning options
-  - Animation improvements
+#### Error Display Components
+- **FormMessage**: Field-level error and success messages
+- **FormDescription**: Helper text and field guidance
+- **Alert**: Form-level error messages and notifications
 
-#### Badge.tsx
-- **Purpose**: Status badges
-- **Features**:
-  - Status variants
-  - Size options
-  - Custom colors
-  - Icon support
-- **Usage**: Status indicators, counts
+### 4. Internationalization (i18n) Support
 
-#### Progress.tsx
-- **Purpose**: Progress indicators
-- **Features**:
-  - Linear/circular progress
-  - Percentage display
-  - Indeterminate state
-  - Custom styling
-- **Usage**: Loading states, progress tracking
+#### Current i18n Setup
+- **Supported locales**: English (en), Spanish (es)
+- **Namespaces**: `common`, `settings`, `auth`
+- **Hook**: `useTranslation` from `react-i18next`
+- **Pattern**: `const { t } = useTranslation('namespace')`
 
-#### Spinner.tsx
-- **Purpose**: Loading spinners
-- **Features**:
-  - Size variants
-  - Color options
-  - Animation controls
-  - Accessibility
-- **Usage**: Loading states, async operations
+#### i18n Integration Requirements
+All form and input components must support:
 
-#### Skeleton.tsx
-- **Purpose**: Loading placeholders
-- **Features**:
-  - Content placeholders
-  - Animation effects
-  - Custom shapes
-  - Responsive design
-- **Usage**: Loading states, content placeholders
+1. **Translation Keys**: All text content via translation keys
+2. **Namespace Support**: Use appropriate namespaces (`common`, `settings`, `auth`)
+3. **Placeholder Text**: Translatable placeholder text
+4. **Error Messages**: Translatable validation error messages
+5. **Helper Text**: Translatable descriptions and guidance
+6. **Accessibility Labels**: Translatable ARIA labels and descriptions
 
-### 5. Layout Components (`src/components/ui/layout/`)
-
-#### Card.tsx
-- **Purpose**: Card container
-- **Features**:
-  - Header/content/footer sections
-  - Variants (elevated, outlined)
-  - Interactive states
-  - Custom styling
-- **Usage**: Content containers, feature cards
-
-#### Modal.tsx (Enhance Existing)
-- **Current**: Basic modal functionality
-- **Enhancements**:
-  - Size variants
-  - Animation improvements
-  - Accessibility enhancements
-  - Nested modal support
-  - Custom positioning
-
-#### Drawer.tsx
-- **Purpose**: Slide-out drawer
-- **Features**:
-  - Slide directions
-  - Overlay support
-  - Size variants
-  - Animation controls
-- **Usage**: Mobile navigation, side panels
-
-#### Popover.tsx
-- **Purpose**: Floating content
-- **Features**:
-  - Positioning options
-  - Trigger controls
-  - Custom content
-  - Animation support
-- **Usage**: Context menus, tooltips
-
-#### Tooltip.tsx
-- **Purpose**: Hover tooltips
-- **Features**:
-  - Positioning options
-  - Delay controls
-  - Rich content
-  - Accessibility
-- **Usage**: Help text, additional information
-
-#### Accordion.tsx (Enhance Existing)
-- **Current**: Basic accordion functionality
-- **Enhancements**:
-  - Multiple open items
-  - Custom styling
-  - Animation improvements
-  - Accessibility enhancements
-
-#### Tabs.tsx
-- **Purpose**: Tab navigation
-- **Features**:
-  - Horizontal/vertical tabs
-  - Custom styling
-  - Keyboard navigation
-  - Lazy loading
-- **Usage**: Content organization, navigation
-
-#### Separator.tsx
-- **Purpose**: Visual separators
-- **Features**:
-  - Horizontal/vertical orientation
-  - Custom styling
-  - Spacing options
-  - Accessibility
-- **Usage**: Content separation, visual hierarchy
-
-### 6. Navigation Components (`src/components/ui/navigation/`)
-
-#### Menu.tsx
-- **Purpose**: Dropdown menus
-- **Features**:
-  - Nested menus
-  - Keyboard navigation
-  - Custom styling
-  - Accessibility
-- **Usage**: Context menus, navigation
-
-#### Breadcrumb.tsx
-- **Purpose**: Breadcrumb navigation
-- **Features**:
-  - Hierarchical navigation
-  - Custom separators
-  - Link support
-  - Responsive design
-- **Usage**: Page navigation, hierarchy
-
-#### Pagination.tsx
-- **Purpose**: Page navigation
-- **Features**:
-  - Page controls
-  - Size options
-  - Custom styling
-  - Accessibility
-- **Usage**: Data pagination, navigation
-
-#### Stepper.tsx
-- **Purpose**: Step-by-step process
-- **Features**:
-  - Step indicators
-  - Progress tracking
-  - Custom styling
-  - Navigation controls
-- **Usage**: Onboarding flows, multi-step forms
-
-### 7. Data Components (`src/components/ui/data/`)
-
-#### Table.tsx
-- **Purpose**: Basic data tables
-- **Features**:
-  - Column definitions
-  - Sorting functionality
-  - Custom styling
-  - Responsive design
-- **Usage**: Data display, simple tables
-
-#### List.tsx
-- **Purpose**: List components
-- **Features**:
-  - Item rendering
-  - Selection support
-  - Custom styling
-  - Virtualization
-- **Usage**: Item lists, data display
-
-#### Grid.tsx
-- **Purpose**: Grid layouts
-- **Features**:
-  - Responsive columns
-  - Gap controls
-  - Custom styling
-  - Item alignment
-- **Usage**: Layout grids, card grids
-
-#### DataTable.tsx
-- **Purpose**: Advanced data table
-- **Features**:
-  - Sorting/filtering
-  - Pagination
-  - Column resizing
-  - Row selection
-  - Export functionality
-- **Usage**: Complex data display, admin interfaces
+#### Translation Key Structure
+```json
+{
+  "forms": {
+    "validation": {
+      "required": "This field is required",
+      "email": "Please enter a valid email address",
+      "phone": "Please enter a valid phone number",
+      "password": "Password must be at least 8 characters",
+      "confirmPassword": "Passwords do not match",
+      "date": "Please enter a valid date (MM/DD/YYYY)"
+    },
+    "placeholders": {
+      "name": "Enter your full name",
+      "email": "Enter your email address",
+      "phone": "Enter your phone number",
+      "password": "Enter your password",
+      "confirmPassword": "Confirm your password",
+      "birthday": "MM/DD/YYYY",
+      "search": "Search...",
+      "select": "Select an option"
+    },
+    "labels": {
+      "name": "Full Name",
+      "email": "Email Address",
+      "phone": "Phone Number",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "birthday": "Birthday",
+      "terms": "Terms and Conditions",
+      "privacy": "Privacy Policy"
+    },
+    "descriptions": {
+      "optional": "Optional",
+      "required": "Required",
+      "passwordHelp": "Must be at least 8 characters long",
+      "phoneHelp": "Include country code for international numbers"
+    }
+  }
+}
+```
 
 ## Usage Patterns Throughout the App
 
@@ -670,40 +535,50 @@ src/components/ui/
 
 ## Implementation Strategy
 
-### Phase 1: Core Form System
+### Phase 1: Extract Existing Components (Week 1)
+1. **Move SettingsToggle → Switch.tsx**
+   - Move `src/components/settings/components/SettingsToggle.tsx` → `src/components/ui/input/Switch.tsx`
+   - Add size variants and enhanced styling options
+   - **Add i18n support**: Translation keys for labels and descriptions
+   - Update imports in settings pages
+
+2. **Move SettingsDropdown → Select.tsx**
+   - Move `src/components/settings/components/SettingsDropdown.tsx` → `src/components/ui/input/Select.tsx`
+   - Add multi-select support and search functionality
+   - **Add i18n support**: Translation keys for options, labels, and descriptions
+   - Update imports in settings pages
+
+3. **Extract from SettingsItem → Input.tsx, Textarea.tsx**
+   - Extract text input logic from `SettingsItem.tsx`
+   - Create `Input.tsx` and `Textarea.tsx` components
+   - **Add i18n support**: Translation keys for placeholders, labels, and error messages
+   - Maintain existing functionality
+
+### Phase 2: Build Form System (Week 2)
 1. Build Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription
-2. Create base Input, Textarea, Select, Checkbox components
-3. Implement validation integration
-4. Update existing forms to use new system
+2. Extract form logic from SettingsItem for FormItem components
+3. **Add comprehensive i18n support**: Translation keys for all form elements
+4. Implement validation integration with existing patterns
+5. Test with authentication and onboarding forms
 
-### Phase 2: Enhanced Inputs
-1. Build specialized inputs (PasswordInput, EmailInput, PhoneInput, etc.)
-2. Create advanced inputs (DatePicker, FileInput, SearchInput)
-3. Implement input validation patterns
-4. Update authentication and onboarding flows
+### Phase 3: Build Remaining Inputs (Week 3)
+1. Build Checkbox, RadioGroup, FileInput, DatePicker
+2. Build specialized inputs (PasswordInput, EmailInput, PhoneInput)
+3. Extract toggle functionality from SettingsDropdownWithToggles → MultiSelect
+4. **Add i18n support**: Translation keys for all input types
+5. Update all forms to use new system
 
-### Phase 3: Feedback and Layout
-1. Build feedback components (Alert, Badge, Progress, Spinner)
-2. Create layout components (Card, Drawer, Popover, Tooltip)
-3. Enhance existing Modal and Accordion components
-4. Update settings and data display pages
-
-### Phase 4: Navigation and Data
-1. Build navigation components (Menu, Breadcrumb, Pagination, Stepper)
-2. Create data components (Table, List, Grid, DataTable)
-3. Implement advanced data handling
-4. Update complex data display areas
-
-### Phase 5: Advanced Features
-1. Build advanced inputs (RichTextEditor, CodeEditor, MultiSelect)
-2. Create specialized components for legal use cases
-3. Implement accessibility enhancements
-4. Add animation and interaction improvements
+### Phase 4: Advanced Features (Week 4)
+1. Build Combobox, SearchInput, NumberInput, URLInput
+2. Add advanced validation patterns
+3. **Complete i18n integration**: Spanish translations for all components
+4. Implement consistent error handling
+5. Polish and optimize all components
 
 ## Design Principles
 
 ### 1. Consistency
-- Unified styling approach using Tailwind CSS
+- Unified styling approach using existing `.input-base` classes
 - Consistent spacing, typography, and color usage
 - Standardized component APIs and prop patterns
 
@@ -716,26 +591,31 @@ src/components/ui/
 ### 3. Performance
 - Minimal bundle size impact
 - Efficient re-rendering
-- Lazy loading for complex components
-- Optimized animations
+- Optimized validation patterns
 
 ### 4. Flexibility
 - Composable component architecture
 - Customizable styling options
 - Extensible validation system
-- Theme support
+- Dark mode support
 
 ### 5. Developer Experience
 - TypeScript support throughout
 - Clear component APIs
-- Comprehensive documentation
-- Easy integration patterns
+- Easy integration with existing patterns
+- **i18n-first design**: All components support translation from the start
 
 ### 6. Legal Compliance
 - PII protection in form handling
 - Attorney-client privilege considerations
 - Data validation and sanitization
 - Audit trail support
+
+### 7. Internationalization
+- **Full Spanish support**: All components work in both English and Spanish
+- **Translation key structure**: Consistent naming and organization
+- **Namespace support**: Proper use of `common`, `settings`, `auth` namespaces
+- **Accessibility**: Translatable ARIA labels and descriptions
 
 ## Integration with Existing Code
 
@@ -766,27 +646,89 @@ src/components/ui/
 ## Benefits
 
 ### 1. Developer Productivity
-- Faster component development
-- Consistent patterns across the app
+- **Reuse existing code**: Leverage well-built settings components
+- Faster form development with proven components
+- Consistent input patterns across the app
 - Reduced code duplication
 - Better maintainability
 
 ### 2. User Experience
-- Consistent interface behavior
-- Better accessibility
-- Improved performance
+- **Preserve existing functionality**: All current features maintained
+- Consistent form behavior
+- Better accessibility (already implemented)
+- Improved validation feedback
 - Enhanced visual design
 
 ### 3. Legal Compliance
-- Standardized data handling
+- **Maintain security**: Existing PII protection preserved
+- Standardized form data handling
 - Consistent validation patterns
 - Better audit capabilities
 - Enhanced security
 
 ### 4. Scalability
-- Easy addition of new components
-- Consistent architecture
+- **Build on solid foundation**: Existing components are well-tested
+- Easy addition of new input types
+- Consistent form architecture
 - Better testing capabilities
 - Future-proof design
 
-This design system will provide a solid foundation for building consistent, accessible, and maintainable user interfaces throughout the Blawby AI application while maintaining the existing patterns and improving upon them systematically.
+## Key Advantages of This Approach
+
+### 1. **Leverage Existing Work**
+- SettingsToggle and SettingsDropdown are already fully-featured
+- Accessibility, keyboard navigation, and dark mode already implemented
+- No need to rebuild complex functionality from scratch
+
+### 2. **Minimal Risk**
+- Components are already in production use
+- Well-tested and proven functionality
+- Gradual migration approach reduces risk
+
+### 3. **Faster Implementation**
+- Phase 1 can be completed in days, not weeks
+- Immediate benefits from better organization
+- Foundation for remaining components already exists
+
+### 4. **Full i18n Support**
+- **Existing i18n integration**: Components already use `useTranslation` hook
+- **Spanish translations**: All form components will work in Spanish
+- **Consistent patterns**: Follow existing translation key structure
+- **Accessibility**: Translatable ARIA labels and descriptions
+
+## Component i18n Examples
+
+### Input Component with i18n
+```typescript
+interface InputProps {
+  labelKey?: string;        // Translation key for label
+  placeholderKey?: string;  // Translation key for placeholder
+  descriptionKey?: string;  // Translation key for description
+  errorKey?: string;        // Translation key for error message
+  namespace?: string;       // i18n namespace (default: 'common')
+}
+
+// Usage
+<Input 
+  labelKey="forms.labels.email"
+  placeholderKey="forms.placeholders.email"
+  descriptionKey="forms.descriptions.optional"
+  errorKey="forms.validation.email"
+  namespace="auth"
+/>
+```
+
+### Select Component with i18n
+```typescript
+interface SelectProps {
+  labelKey?: string;
+  placeholderKey?: string;
+  options: Array<{
+    value: string;
+    labelKey: string;  // Translation key for option label
+  }>;
+  namespace?: string;
+}
+```
+
+This focused form and input system will provide a solid foundation for building consistent, accessible, and maintainable forms throughout the Blawby AI application while leveraging your existing, well-built components, maintaining all current functionality, and providing full Spanish language support.

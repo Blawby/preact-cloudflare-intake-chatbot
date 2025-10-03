@@ -16,6 +16,9 @@
     "zh": "中文",
     "ja": "日本語"
   },
+  "validation": {
+    "invalidDate": "Please enter a valid date (MM/DD/YYYY)"
+  },
   "onboarding": {
     "title": "Welcome to Blawby AI",
     "subtitle": "Let's get you set up",
@@ -26,15 +29,13 @@
       "fullNamePlaceholder": "Enter your full name",
       "birthday": "Birthday",
       "birthdayPlaceholder": "MM/DD/YYYY",
-      "termsAgreement": "By clicking \"Continue\", you agree to our Terms and have read our Privacy Policy.",
-      "termsLink": "Terms",
-      "privacyLink": "Privacy Policy",
+      "termsAgreement": "By clicking \"Continue\", you agree to our <termsLink>Terms</termsLink> and have read our <privacyLink>Privacy Policy</privacyLink>.",
       "continue": "Continue",
       "required": "This field is required"
     },
     "step2": {
       "title": "What do you want to use Blawby AI for?",
-      "subtitle": "We'll use this information to suggest ideas you might find useful.",
+        "business": "Business Legal Needs",
       "options": {
         "personal": "Personal Legal Issues",
         "business": "Business Legal Needs", 
@@ -56,7 +57,9 @@
         },
         "privacy": {
           "title": "Don't share sensitive info",
-          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our Help Center."
+          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our <helpCenterLink>Help Center</helpCenterLink>.",
+          "descriptionBefore": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our ",
+          "descriptionAfter": "."
         },
         "accuracy": {
           "title": "Check your facts",

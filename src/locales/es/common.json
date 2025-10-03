@@ -25,10 +25,8 @@
       "fullName": "Nombre completo",
       "fullNamePlaceholder": "Ingresa tu nombre completo",
       "birthday": "Fecha de nacimiento",
-      "birthdayPlaceholder": "MM/DD/AAAA",
-      "termsAgreement": "Al hacer clic en \"Continuar\", aceptas nuestros Términos y has leído nuestra Política de Privacidad.",
-      "termsLink": "Términos",
-      "privacyLink": "Política de Privacidad",
+      "birthdayPlaceholder": "DD/MM/AAAA",
+      "termsAgreement": "Al hacer clic en \"Continuar\", aceptas nuestros <termsLink>Términos</termsLink> y has leído nuestra <privacyLink>Política de Privacidad</privacyLink>.",
       "continue": "Continuar",
       "required": "Este campo es obligatorio"
     },
@@ -56,7 +54,9 @@
         },
         "privacy": {
           "title": "No compartas información sensible",
-          "description": "El historial de chat puede ser revisado o usado para mejorar nuestros servicios. Aprende más sobre tus opciones en nuestro Centro de Ayuda."
+          "description": "El historial de chat puede ser revisado o usado para mejorar nuestros servicios. Aprende más sobre tus opciones en nuestro <helpCenterLink>Centro de Ayuda</helpCenterLink>.",
+          "descriptionBefore": "El historial de chat puede ser revisado o usado para mejorar nuestros servicios. Aprende más sobre tus opciones en nuestro ",
+          "descriptionAfter": "."
         },
         "accuracy": {
           "title": "Verifica tus hechos",

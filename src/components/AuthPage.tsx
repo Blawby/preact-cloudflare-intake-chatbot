@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useTranslation } from 'react-i18next';
 import { UserIcon, LockClosedIcon, EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import OnboardingModal, { OnboardingData } from './onboarding/OnboardingModal';
+import OnboardingModal from './onboarding/OnboardingModal';
+import { OnboardingData } from '../utils/mockUserData';
 import { Logo } from './ui/Logo';
 // No authentication required - authClient removed
 
 interface AuthPageProps {
   mode?: 'signin' | 'signup';
-  onSuccess?: () => void;
+  onSuccess?: () => void | Promise<void>;
+  redirectDelay?: number;
 }
 
-const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
+const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPageProps) => {
   const { t } = useTranslation('auth');
   const [isSignUp, setIsSignUp] = useState(mode === 'signup');
   const [formData, setFormData] = useState({
@@ -32,6 +34,29 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
       setIsSignUp(urlMode === 'signup');
     }
   }, []);
+
+  // Helper function to handle redirect with proper onSuccess awaiting
+  const handleRedirect = async () => {
+    if (onSuccess) {
+      try {
+        await onSuccess();
+      } catch (error) {
+        console.error('onSuccess callback failed:', error);
+        // Continue with redirect even if onSuccess fails
+      }
+    }
+    
+    // Use configurable delay only if onSuccess is not provided or doesn't return a promise
+    const delay = onSuccess ? 0 : redirectDelay;
+    
+    if (delay > 0) {
+      setTimeout(() => {
+        window.location.href = '/';
+      }, delay);
+    } else {
+      window.location.href = '/';
+    }
+  };
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -88,14 +113,8 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
           
                       setMessage(t('messages.signedIn'));
           
-          // Call onSuccess callback and wait for it to complete before redirecting
-          if (onSuccess) {
-            await onSuccess();
-          }
-          // Redirect to home page after successful sign in and callback completion
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1000);
+          // Redirect to home page after successful sign in, waiting for onSuccess if provided
+          await handleRedirect();
         } else {
           // User doesn't exist - create new user (like some APIs do)
           const userId = `mock-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -167,10 +186,8 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
         setShowOnboarding(true);
       } else {
         console.log('Existing Google user, skipping onboarding');
-        // Redirect existing users immediately
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 1000);
+        // Redirect existing users, waiting for onSuccess if provided
+        await handleRedirect();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.unknownError'));
@@ -186,22 +203,34 @@ const AuthPage = ({ mode = 'signin', onSuccess }: AuthPageProps) => {
     window.location.href = '/';
   };
 
-  const handleOnboardingComplete = (data: OnboardingData) => {
-    console.log('Onboarding completed:', data);
+  const handleOnboardingComplete = async (data: OnboardingData) => {
+    // Development-only debug log with redacted sensitive data
+    if (process.env.NODE_ENV === 'development') {
+      const redactedData = {
+        personalInfo: {
+          fullName: data.personalInfo.fullName ? '[REDACTED]' : undefined,
+          birthday: data.personalInfo.birthday ? '[REDACTED]' : undefined,
+          agreedToTerms: data.personalInfo.agreedToTerms
+        },
+        useCase: {
+          primaryUseCase: data.useCase.primaryUseCase,
+          additionalInfo: data.useCase.additionalInfo ? '[REDACTED]' : undefined
+        },
+        completedAt: data.completedAt,
+        skippedSteps: data.skippedSteps
+      };
+      console.log('Onboarding completed:', redactedData);
+    }
     // Close onboarding modal and redirect to main app
     setShowOnboarding(false);
-    // Redirect to main app where the welcome modal will show
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 500);
+    // Redirect to main app where the welcome modal will show, waiting for onSuccess if provided
+    await handleRedirect();
   };
 
-  const handleOnboardingClose = () => {
+  const handleOnboardingClose = async () => {
     setShowOnboarding(false);
-    // Redirect to home page if onboarding is closed
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 500);
+    // Redirect to home page if onboarding is closed, waiting for onSuccess if provided
+    await handleRedirect();
   };
 
 

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'preact/hooks';
-import { useTranslation } from 'react-i18next';
+import { useState } from 'preact/hooks';
+import { useTranslation, Trans } from 'react-i18next';
 import Modal from '../Modal';
 import { Button } from '../ui/Button';
 import { 
@@ -82,16 +82,19 @@ const WelcomeModal = ({ isOpen, onClose, onComplete }: WelcomeModalProps) => {
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   {tip.id === 'privacy' ? (
-                    <>
-                      {t(`onboarding.welcome.tips.${tip.id}.description`).split('Help Center')[0]}
-                      <a 
-                        href="/help" 
-                        className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline"
-                      >
-                        {t('onboarding.welcome.helpCenter')}
-                      </a>
-                      {t(`onboarding.welcome.tips.${tip.id}.description`).split('Help Center')[1]}
-                    </>
+                    <Trans
+                      i18nKey={`onboarding.welcome.tips.${tip.id}.description`}
+                      components={{
+                        helpCenterLink: (
+                          <a 
+                            href="/help" 
+                            className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline"
+                          >
+                            {t('onboarding.welcome.helpCenter')}
+                          </a>
+                        )
+                      }}
+                    />
                   ) : (
                     t(`onboarding.welcome.tips.${tip.id}.description`)
                   )}

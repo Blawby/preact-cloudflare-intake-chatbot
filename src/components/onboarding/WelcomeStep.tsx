@@ -9,11 +9,9 @@ import {
 
 interface WelcomeStepProps {
   onComplete: () => void;
-  onSkip: () => void;
-  onBack: () => void;
 }
 
-const WelcomeStep = ({ onComplete, onSkip, onBack }: WelcomeStepProps) => {
+const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
   const { t } = useTranslation('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,7 +22,6 @@ const WelcomeStep = ({ onComplete, onSkip, onBack }: WelcomeStepProps) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     onComplete();
-    setIsSubmitting(false);
   };
 
   const tips = [
@@ -80,14 +77,14 @@ const WelcomeStep = ({ onComplete, onSkip, onBack }: WelcomeStepProps) => {
                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                         {tip.id === 'privacy' ? (
                           <>
-                            {t(`onboarding.welcome.tips.${tip.id}.description`).split('Help Center')[0]}
+                            {t(`onboarding.welcome.tips.${tip.id}.descriptionBefore`)}
                             <a 
                               href="/help" 
                               className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline"
                             >
                               {t('onboarding.welcome.helpCenter')}
                             </a>
-                            {t(`onboarding.welcome.tips.${tip.id}.description`).split('Help Center')[1]}
+                            {t(`onboarding.welcome.tips.${tip.id}.descriptionAfter`)}
                           </>
                         ) : (
                           t(`onboarding.welcome.tips.${tip.id}.description`)

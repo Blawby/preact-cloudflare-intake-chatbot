@@ -233,6 +233,20 @@ export interface MockUserProfile {
   updatedAt: string;
 }
 
+export interface OnboardingData {
+  personalInfo: {
+    fullName: string;
+    birthday?: string;
+    agreedToTerms: boolean;
+  };
+  useCase: {
+    primaryUseCase: 'personal' | 'business' | 'research' | 'documents' | 'other';
+    additionalInfo?: string;
+  };
+  completedAt?: string;
+  skippedSteps: string[];
+}
+
 export interface MockUserPreferences {
   theme: 'light' | 'dark' | 'system';
   accentColor: 'default' | 'blue' | 'green' | 'purple' | 'red';
@@ -246,7 +260,7 @@ export interface MockUserPreferences {
   autoSaveConversations: boolean;
   typingIndicators: boolean;
   onboardingCompleted?: boolean;
-  onboardingData?: any;
+  onboardingData?: OnboardingData;
 }
 
 export interface MockSecuritySettings {

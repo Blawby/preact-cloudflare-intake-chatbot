@@ -20,7 +20,6 @@ interface UseCaseStepProps {
   data: UseCaseData;
   onComplete: (data: UseCaseData) => void;
   onSkip: () => void;
-  onBack: () => void;
 }
 
 const useCaseOptions = [
@@ -51,7 +50,7 @@ const useCaseOptions = [
   }
 ];
 
-const UseCaseStep = ({ data, onComplete, onSkip, onBack }: UseCaseStepProps) => {
+const UseCaseStep = ({ data, onComplete, onSkip }: UseCaseStepProps) => {
   const { t } = useTranslation('common');
   const [selectedUseCase, setSelectedUseCase] = useState<UseCaseData['primaryUseCase']>(data.primaryUseCase);
   const [additionalInfo, setAdditionalInfo] = useState(data.additionalInfo || '');
@@ -87,7 +86,7 @@ const UseCaseStep = ({ data, onComplete, onSkip, onBack }: UseCaseStepProps) => 
         <div className="flex justify-center mb-6">
           <Logo size="lg" />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+        <h2 id="use-case-title" className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
           {t('onboarding.step2.title')}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
@@ -99,7 +98,7 @@ const UseCaseStep = ({ data, onComplete, onSkip, onBack }: UseCaseStepProps) => 
         <div className="bg-white dark:bg-dark-card-bg py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Use Case Options */}
-            <div className="space-y-3">
+            <div role="radiogroup" aria-labelledby="use-case-title" className="space-y-3">
               {useCaseOptions.map((option) => {
                 const Icon = option.icon;
                 const isSelected = selectedUseCase === option.id;
@@ -108,6 +107,9 @@ const UseCaseStep = ({ data, onComplete, onSkip, onBack }: UseCaseStepProps) => 
                   <button
                     key={option.id}
                     type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    tabIndex={isSelected ? 0 : -1}
                     onClick={() => handleUseCaseSelect(option.id)}
                     className={`w-full text-left p-4 rounded-lg border-2 transition-all duration-200 ${
                       isSelected
@@ -167,7 +169,13 @@ const UseCaseStep = ({ data, onComplete, onSkip, onBack }: UseCaseStepProps) => 
                 className="w-full"
               >
                 {isSubmitting ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="flex items-center justify-center space-x-2" aria-live="polite" role="status">
+                    <div 
+                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" 
+                      aria-label="Submitting"
+                    />
+                    <span className="sr-only">Submitting...</span>
+                  </div>
                 ) : (
                   t('onboarding.step2.next')
                 )}
