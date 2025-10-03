@@ -1,6 +1,7 @@
 import { forwardRef, useState } from 'preact/compat';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface PasswordInputProps {
   value?: string;
@@ -22,6 +23,7 @@ export interface PasswordInputProps {
   placeholderKey?: string;
   errorKey?: string;
   namespace?: string;
+  id?: string;
 }
 
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
@@ -43,9 +45,16 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
   descriptionKey: _descriptionKey,
   placeholderKey: _placeholderKey,
   errorKey: _errorKey,
-  namespace: _namespace = 'common'
+  namespace: _namespace = 'common',
+  id
 }, ref) => {
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Generate stable unique ID for this component instance
+  const generatedId = useUniqueId('password-input');
+  const inputId = id || generatedId;
+  const descriptionId = `${inputId}-description`;
+  const errorId = `${inputId}-error`;
   
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -115,10 +124,20 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
   const strengthColor = getStrengthColor(strength);
   const strengthText = getStrengthText(strength);
 
+  // Build aria-describedby attribute
+  const describedByIds = [];
+  if (displayDescription && !displayError) {
+    describedByIds.push(descriptionId);
+  }
+  if (displayError) {
+    describedByIds.push(errorId);
+  }
+  const ariaDescribedBy = describedByIds.length > 0 ? describedByIds.join(' ') : undefined;
+
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -127,6 +146,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
       <div className="relative">
         <input
           ref={ref}
+          id={inputId}
           type={showPassword ? 'text' : 'password'}
           value={value}
           onChange={(e) => onChange?.((e.target as HTMLInputElement).value)}
@@ -135,6 +155,9 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
           required={required}
           minLength={minLength}
           maxLength={maxLength}
+          aria-required={required}
+          aria-invalid={Boolean(displayError)}
+          aria-describedby={ariaDescribedBy}
           className={inputClasses}
         />
         
@@ -175,13 +198,13 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
       )}
       
       {displayDescription && !displayError && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
         </p>
       )}
       
       {displayError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           {displayError}
         </p>
       )}

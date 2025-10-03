@@ -1,4 +1,4 @@
-import { ComponentChildren, cloneElement, isValidElement } from 'preact';
+import { ComponentChildren, cloneElement, isValidElement, RefObject } from 'preact';
 import { useContext, useRef } from 'preact/hooks';
 import { cn } from '../../../utils/cn';
 import { DropdownContext } from './DropdownMenu';
@@ -19,13 +19,30 @@ export const DropdownMenuTrigger = ({
   onKeyDown
 }: DropdownMenuTriggerProps) => {
   const context = useContext(DropdownContext);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   
   if (!context) {
     throw new Error('DropdownMenuTrigger must be used within a DropdownMenu');
   }
 
   const { isOpen, handleOpenChange, dropdownId } = context;
+
+  // Helper function to safely assign refs
+  const assignRef = (node: HTMLElement | null, targetRef: RefObject<HTMLElement | null>, forwardedRef?: any) => {
+    // Update the target ref
+    if (targetRef) {
+      (targetRef as any).current = node;
+    }
+    
+    // Handle forwarded ref (function or object)
+    if (forwardedRef) {
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(node);
+      } else if (forwardedRef && typeof forwardedRef === 'object') {
+        forwardedRef.current = node;
+      }
+    }
+  };
 
   const handleClick = () => {
     // Always call the custom onClick if provided (safely)
@@ -70,17 +87,9 @@ export const DropdownMenuTrigger = ({
       throw new Error('DropdownMenuTrigger with asChild requires a single React element as children');
     }
 
-    // Merge refs function
-    const mergeRefs = (element: HTMLElement | null) => {
-      if (triggerRef.current) {
-        (triggerRef as any).current = element;
-      }
-      // If the child has a ref, call it too
-      if (typeof (children as any).ref === 'function') {
-        (children as any).ref(element);
-      } else if ((children as any).ref) {
-        (children as any).ref.current = element;
-      }
+    // Create merged ref function
+    const mergedRef = (element: HTMLElement | null) => {
+      assignRef(element, triggerRef, (children as any).ref);
     };
 
     // Prepare trigger props to merge
@@ -99,7 +108,7 @@ export const DropdownMenuTrigger = ({
         }
         handleKeyDown(event);
       },
-      ref: mergeRefs,
+      ref: mergedRef,
       'aria-haspopup': 'menu' as const,
       'aria-expanded': isOpen,
       'aria-controls': `${dropdownId}-menu`,
@@ -117,7 +126,8 @@ export const DropdownMenuTrigger = ({
 
   return (
     <button
-      ref={triggerRef}
+      type="button"
+      ref={(node) => assignRef(node, triggerRef)}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(

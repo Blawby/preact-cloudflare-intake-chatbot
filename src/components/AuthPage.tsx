@@ -302,9 +302,10 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
                 <FormField name="name">
                   {({ value, error, onChange }) => (
                     <FormItem>
-                      <FormLabel>{t('signup.fullName')}</FormLabel>
+                      <FormLabel htmlFor="signup-fullname">{t('signup.fullName')}</FormLabel>
                       <FormControl>
                         <Input
+                          id="signup-fullname"
                           type="text"
                           required={isSignUp}
                           value={(value as string) || ''}
@@ -323,9 +324,9 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
               <FormField name="email">
                 {({ value, error, onChange }) => (
                   <FormItem>
-                    <FormLabel>{t(isSignUp ? 'signup.email' : 'signin.email')}</FormLabel>
                     <FormControl>
                       <EmailInput
+                        label={t(isSignUp ? 'signup.email' : 'signin.email')}
                         required
                         value={(value as string) || ''}
                         onChange={(value) => onChange(value)}
@@ -341,9 +342,10 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
               <FormField name="password">
                 {({ value, error, onChange }) => (
                   <FormItem>
-                    <FormLabel>{t(isSignUp ? 'signup.password' : 'signin.password')}</FormLabel>
                     <FormControl>
                       <PasswordInput
+                        id="password-field"
+                        label={t(isSignUp ? 'signup.password' : 'signin.password')}
                         required
                         value={(value as string) || ''}
                         onChange={(value) => onChange(value)}
@@ -360,9 +362,10 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
                 <FormField name="confirmPassword">
                   {({ value, error, onChange }) => (
                     <FormItem>
-                      <FormLabel>{t('signup.confirmPassword')}</FormLabel>
                       <FormControl>
                         <PasswordInput
+                          id="confirm-password-field"
+                          label={t('signup.confirmPassword')}
                           required={isSignUp}
                           value={(value as string) || ''}
                           onChange={(value) => onChange(value)}

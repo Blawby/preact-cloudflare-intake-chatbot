@@ -122,15 +122,12 @@ const PersonalInfoStep = ({ data: _data, onComplete, onBack: _onBack }: Personal
             <FormField name="agreedToTerms">
               {({ value, error, onChange }) => (
                 <FormItem>
-                  <div className="flex items-start space-x-3">
-                    <FormControl>
-                      <Checkbox
-                        checked={(value as boolean) || false}
-                        onChange={(checked) => onChange(checked)}
-                      />
-                    </FormControl>
-                    <div className="text-sm">
-                      <FormLabel htmlFor="agreedToTerms" className="text-gray-700 dark:text-gray-300">
+                  <FormControl>
+                    <Checkbox
+                      id="agreedToTerms"
+                      checked={(value as boolean) || false}
+                      onChange={(checked) => onChange(checked)}
+                      label={
                         <Trans
                           i18nKey="onboarding.step1.termsAgreement"
                           components={{
@@ -138,12 +135,13 @@ const PersonalInfoStep = ({ data: _data, onComplete, onBack: _onBack }: Personal
                             privacyLink: <a href="/privacy" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Privacy Policy">Privacy Policy</a>
                           }}
                         />
-                      </FormLabel>
-                      {error && (
-                        <FormMessage>{error.message}</FormMessage>
-                      )}
-                    </div>
-                  </div>
+                      }
+                      error={error?.message}
+                    />
+                  </FormControl>
+                  {error && (
+                    <FormMessage>{error.message}</FormMessage>
+                  )}
                 </FormItem>
               )}
             </FormField>

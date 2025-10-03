@@ -68,6 +68,7 @@ export const Switch = ({
       </div>
       
       <button
+        type="button"
         className={cn(
           'relative inline-flex items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
           sizeClasses[size],

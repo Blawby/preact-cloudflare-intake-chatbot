@@ -25,7 +25,12 @@ export function useTranslation(namespace: string = 'common') {
 
   const translateWithFallback = (key: string, fallbackKey: string, options?: TranslationOptions) => {
     // Check if the translation key exists using i18n existence API
-    if (!i18n.exists(key)) {
+    // If key doesn't contain ':', check against the active namespace
+    const keyExists = key.includes(':') 
+      ? i18n.exists(key)
+      : i18n.exists(key, { ns: namespace });
+    
+    if (!keyExists) {
       return translate(fallbackKey, options);
     }
     return translate(key, options);

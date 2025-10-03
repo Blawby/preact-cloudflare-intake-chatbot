@@ -45,7 +45,8 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
   // Generate stable unique IDs for accessibility
   const inputId = useUniqueId('email-input');
   const descriptionId = useUniqueId('email-description');
-  const errorId = useUniqueId('email-error');
+  const validationErrorId = useUniqueId('email-validation-error');
+  const externalErrorId = useUniqueId('email-external-error');
 
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -101,10 +102,9 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
     describedByIds.push(descriptionId);
   }
   if (displayError) {
-    describedByIds.push(errorId);
-  }
-  if (showValidation && value && !isEmailValid) {
-    describedByIds.push(errorId);
+    describedByIds.push(externalErrorId);
+  } else if (showValidation && value && !isEmailValid) {
+    describedByIds.push(validationErrorId);
   }
   const ariaDescribedBy = describedByIds.length > 0 ? describedByIds.join(' ') : undefined;
 
@@ -148,8 +148,8 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
         )}
       </div>
       
-      {showValidation && value && !isEmailValid && (
-        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
+      {showValidation && value && !isEmailValid && !displayError && (
+        <p id={validationErrorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           Please enter a valid email address
         </p>
       )}
@@ -161,7 +161,7 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
       )}
       
       {displayError && (
-        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
+        <p id={externalErrorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           {displayError}
         </p>
       )}

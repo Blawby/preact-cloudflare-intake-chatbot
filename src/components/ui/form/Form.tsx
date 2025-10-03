@@ -53,7 +53,7 @@ export const Form = ({
   children,
   initialData = {},
   onSubmit,
-  validationSchema,
+  schema,
   className = '',
   disabled = false
 }: FormProps) => {

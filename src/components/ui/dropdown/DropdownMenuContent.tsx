@@ -32,10 +32,10 @@ export const DropdownMenuContent = ({
     const baseClasses = 'absolute z-50 min-w-[8rem] overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg';
     
     const sideClasses = {
-      top: 'bottom-full mb-1',
-      right: 'left-full ml-1',
-      bottom: 'top-full mt-1',
-      left: 'right-full mr-1'
+      top: 'bottom-full',
+      right: 'left-full',
+      bottom: 'top-full',
+      left: 'right-full'
     };
     
     const alignClasses = {

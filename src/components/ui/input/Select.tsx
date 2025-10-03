@@ -91,8 +91,13 @@ export const Select = ({
       if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
         setIsOpen(true);
-        setFocusedIndex(0);
+        setFocusedIndex(filteredOptions.length > 0 ? 0 : -1);
       }
+      return;
+    }
+
+    // Guard against empty options list
+    if (filteredOptions.length === 0) {
       return;
     }
 
@@ -146,6 +151,7 @@ export const Select = ({
     return (
       <div className={cn('px-4 py-3 relative', className)} ref={dropdownRef}>
         <button
+          type="button"
           ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
           disabled={disabled}
@@ -240,6 +246,7 @@ export const Select = ({
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        type="button"
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}

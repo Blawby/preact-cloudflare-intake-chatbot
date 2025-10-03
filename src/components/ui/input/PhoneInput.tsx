@@ -60,6 +60,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
 
   // Generate stable IDs for accessibility
   const baseId = useUniqueId('phone-input');
+  const inputId = baseId;
   const descriptionId = `${baseId}-description`;
   const errorId = `${baseId}-error`;
 
@@ -129,7 +130,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -148,12 +149,14 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
         
         <input
           ref={ref}
+          id={inputId}
           type="tel"
           value={value}
           onChange={handleChange}
           placeholder={displayPlaceholder}
           disabled={disabled}
           required={required}
+          aria-required={required}
           aria-invalid={Boolean(displayError)}
           aria-describedby={displayError ? errorId : displayDescription ? descriptionId : undefined}
           className={cn(

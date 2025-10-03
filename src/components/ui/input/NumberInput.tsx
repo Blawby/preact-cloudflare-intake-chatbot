@@ -1,6 +1,7 @@
 import { forwardRef, useCallback } from 'preact/compat';
 import { PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface NumberInputProps {
   value?: number;
@@ -24,6 +25,7 @@ export interface NumberInputProps {
   placeholderKey?: string;
   errorKey?: string;
   namespace?: string;
+  id?: string;
 }
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
@@ -47,8 +49,14 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
   descriptionKey: _descriptionKey,
   placeholderKey: _placeholderKey,
   errorKey: _errorKey,
-  namespace: _namespace = 'common'
+  namespace: _namespace = 'common',
+  id
 }, ref) => {
+  // Generate stable unique IDs for accessibility
+  const generatedId = useUniqueId('number-input');
+  const inputId = id || generatedId;
+  const descriptionId = `${inputId}-description`;
+  const errorId = `${inputId}-error`;
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
   // const displayLabel = labelKey ? t(labelKey) : label;
@@ -112,12 +120,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
     const inputValue = target.value;
     
     if (inputValue === '') {
-      // Map empty string to 0 and clamp it
-      const defaultValue = 0;
-      const clampedValue = min !== undefined ? Math.max(defaultValue, min) : defaultValue;
-      const finalClampedValue = max !== undefined ? Math.min(clampedValue, max) : clampedValue;
-      const roundedValue = Number(finalClampedValue.toFixed(precision));
-      onChange?.(roundedValue);
+      // Allow clearing the field by passing undefined
+      onChange?.(undefined);
       return;
     }
     
@@ -134,10 +138,20 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
   const canIncrement = value === undefined || max === undefined || value < max;
   const canDecrement = value === undefined || min === undefined || value > min;
 
+  // Build aria-describedby attribute
+  const describedByIds = [];
+  if (displayDescription && !displayError) {
+    describedByIds.push(descriptionId);
+  }
+  if (displayError) {
+    describedByIds.push(errorId);
+  }
+  const ariaDescribedBy = describedByIds.length > 0 ? describedByIds.join(' ') : undefined;
+
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -146,6 +160,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
       <div className="relative">
         <input
           ref={ref}
+          id={inputId}
           type="number"
           value={value ?? ''}
           onChange={handleInputChange}
@@ -155,6 +170,9 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
           min={min}
           max={max}
           step={step}
+          aria-required={required}
+          aria-invalid={Boolean(displayError)}
+          aria-describedby={ariaDescribedBy}
           className={inputClasses}
         />
         
@@ -193,13 +211,13 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
       </div>
       
       {displayDescription && !displayError && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
         </p>
       )}
       
       {displayError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           {displayError}
         </p>
       )}

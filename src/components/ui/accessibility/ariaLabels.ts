@@ -61,7 +61,7 @@ export const ARIA_PATTERNS = {
   }),
   
   // Label
-  label: (fieldName: string, options: AriaLabelProps = {}) => ({
+  label: (fieldName: string, _options: AriaLabelProps = {}) => ({
     id: `${fieldName}-label`,
     htmlFor: `${fieldName}-input`,
   }),
@@ -69,14 +69,13 @@ export const ARIA_PATTERNS = {
   // Description
   description: (fieldName: string) => ({
     id: `${fieldName}-description`,
-    role: 'note',
   }),
   
   // Error message
   error: (fieldName: string) => ({
     id: `${fieldName}-error`,
     role: 'alert',
-    'aria-live': 'polite',
+    'aria-live': 'assertive',
   }),
   
   // Button

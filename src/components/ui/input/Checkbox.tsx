@@ -1,4 +1,5 @@
-import { forwardRef, useEffect } from 'preact/compat';
+import { forwardRef, useEffect, useRef, RefObject } from 'preact/compat';
+import { ComponentChildren } from 'preact';
 import { cn } from '../../../utils/cn';
 import { useUniqueId } from '../../../hooks/useUniqueId';
 
@@ -10,7 +11,7 @@ export interface CheckboxProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'error' | 'success';
-  label?: string;
+  label?: string | ComponentChildren;
   description?: string;
   error?: string;
   indeterminate?: boolean;
@@ -18,6 +19,7 @@ export interface CheckboxProps {
   descriptionKey?: string;
   errorKey?: string;
   namespace?: string;
+  id?: string;
 }
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
@@ -35,7 +37,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
   labelKey,
   descriptionKey,
   errorKey,
-  namespace = 'common'
+  namespace = 'common',
+  id
 }, ref) => {
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -48,15 +51,41 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
   const displayError = error;
 
   // Generate stable unique ID for this component instance
-  const uniqueId = useUniqueId('checkbox');
-  const descriptionId = `${uniqueId}-description`;
+  const generatedId = useUniqueId('checkbox');
+  const checkboxId = id || generatedId;
+  const descriptionId = `${checkboxId}-description`;
+
+  // Create internal ref for indeterminate handling
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Helper function to safely assign refs
+  const assignRef = (node: HTMLInputElement | null, targetRef: RefObject<HTMLInputElement | null>, forwardedRef?: any) => {
+    // Update the target ref
+    if (targetRef) {
+      (targetRef as any).current = node;
+    }
+    
+    // Handle forwarded ref (function or object)
+    if (forwardedRef) {
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(node);
+      } else if (forwardedRef && typeof forwardedRef === 'object') {
+        forwardedRef.current = node;
+      }
+    }
+  };
+
+  // Create merged ref function
+  const mergedRef = (node: HTMLInputElement | null) => {
+    assignRef(node, inputRef, ref);
+  };
 
   // Handle indeterminate state
   useEffect(() => {
-    if (typeof ref !== 'function' && ref?.current) {
-      ref.current.indeterminate = indeterminate;
+    if (inputRef.current) {
+      inputRef.current.indeterminate = indeterminate;
     }
-  }, [indeterminate, ref]);
+  }, [indeterminate]);
 
   const sizeClasses = {
     sm: 'w-3 h-3',
@@ -83,8 +112,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
     <div className="flex items-start space-x-3">
       <div className="flex items-center h-5">
         <input
-          ref={ref}
-          id={uniqueId}
+          ref={mergedRef}
+          id={checkboxId}
           type="checkbox"
           checked={checked}
           onChange={(e) => onChange?.((e.target as HTMLInputElement).checked)}
@@ -98,7 +127,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
       
       <div className="flex-1 min-w-0">
         {displayLabel && (
-          <label htmlFor={uniqueId} className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <label htmlFor={checkboxId} className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {displayLabel}
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
