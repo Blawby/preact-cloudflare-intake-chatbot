@@ -178,7 +178,7 @@ export function createDevelopmentCorsOptions(): CorsOptions {
     allowedOrigins: '*',
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    allowCredentials: false, // Allow credentials in development
+    allowCredentials: false, // Do not allow credentials for security
     maxAge: 86400,
     exposeHeaders: ['Content-Disposition', 'Content-Length']
   };

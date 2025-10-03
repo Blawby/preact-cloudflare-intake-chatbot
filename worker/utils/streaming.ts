@@ -3,6 +3,9 @@ export function chunkResponseText(response: string, maxChunkSize = 320): string[
     return [];
   }
 
+  // Use a private-use sentinel for dot protection to avoid corrupting real '§' symbols in legal text
+  const DOT_SENTINEL = '\uE000';
+
   const normalized = response.replace(/\r\n/g, '\n');
   const paragraphs = normalized.split(/\n{2,}/);
   const chunks: string[] = [];
@@ -19,18 +22,25 @@ export function chunkResponseText(response: string, maxChunkSize = 320): string[
     // More robust sentence splitting that avoids abbreviations, decimals, and URLs
     // First, protect common abbreviation patterns, decimals, and URLs
     const protectedText = trimmedParagraph
-      .replace(/\b(?:Dr|Mr|Mrs|Ms|Prof|Sr|Jr|Ph\.D|U\.S\.A|U\.S|etc|vs|Inc|Corp|Ltd|Co|a\.m|p\.m)\./g, (match) => match.replace(/\./g, '§'))
-      .replace(/\b\d+\.\d+/g, (match) => match.replace(/\./g, '§'))
-      .replace(/\b\d+:\d+\s*(?:a\.m|p\.m)\./g, (match) => match.replace(/\./g, '§'))
-      .replace(/https?:\/\/[^\s]+/g, (match) => match.replace(/\./g, '§'))
-      .replace(/\b\w+@\w+\.\w+/g, (match) => match.replace(/\./g, '§'))
-      .replace(/\bwww\.\w+\.\w+/g, (match) => match.replace(/\./g, '§'));
+      .replace(/\b(?:Dr|Mr|Mrs|Ms|Prof|Sr|Jr|Ph\.D|U\.S\.A|U\.S|etc|vs|Inc|Corp|Ltd|Co|a\.m|p\.m)\./g, (m) => m.replace(/\./g, DOT_SENTINEL))
+      .replace(/\b\d+\.\d+/g, (m) => m.replace(/\./g, DOT_SENTINEL))
+      .replace(/\b\d+:\d+\s*(?:a\.m|p\.m)\./g, (m) => m.replace(/\./g, DOT_SENTINEL))
+      .replace(/https?:\/\/[^\s]+/g, (m) => m.replace(/\./g, DOT_SENTINEL))
+      .replace(/\b\w+@\w+\.\w+/g, (m) => m.replace(/\./g, DOT_SENTINEL))
+      .replace(/\bwww\.\w+\.\w+/g, (m) => m.replace(/\./g, DOT_SENTINEL));
     
-    // Split on sentence boundaries (punctuation followed by whitespace and capital letter, or end of string)
-    const sentences = protectedText.match(/[^.!?]+[.!?]+(?=\s+[A-Z]|\s*$)/g) ?? [protectedText];
+    // Split on sentence boundaries and capture trailing fragments
+    const sentenceMatches = protectedText.match(/[^.!?]+[.!?]+(?=\s+[A-Z]|\s*$)/g) ?? [];
+    const lastMatchEnd = sentenceMatches.length > 0 ? 
+      protectedText.lastIndexOf(sentenceMatches[sentenceMatches.length - 1]) + sentenceMatches[sentenceMatches.length - 1].length : 0;
+    const trailingFragment = protectedText.slice(lastMatchEnd).trim();
+    
+    const sentences = sentenceMatches.length > 0 ? 
+      (trailingFragment ? [...sentenceMatches, trailingFragment] : sentenceMatches) : 
+      [protectedText];
     
     // Restore the protected dots
-    const restoredSentences = sentences.map(sentence => sentence.replace(/§/g, '.'));
+    const restoredSentences = sentences.map(s => s.split(DOT_SENTINEL).join('.'));
     let buffer = '';
 
     for (const sentence of restoredSentences) {

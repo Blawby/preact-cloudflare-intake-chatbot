@@ -40,6 +40,8 @@ const ChatMarkdown: FunctionComponent<ChatMarkdownProps> = memo(({ text, classNa
   const classes = className ? `${baseClassName} ${className}` : baseClassName;
 
   const hasVisibleText = text.trim().length > 0;
+  // UI designer choice: Only show streaming cursor when there's no visible text
+  // This prevents cursor from appearing over existing content during streaming
   const streamingCursor: VNode | null = isStreaming && !hasVisibleText
     ? <span className="chat-cursor" aria-hidden="true" />
     : null;

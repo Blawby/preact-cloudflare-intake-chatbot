@@ -841,18 +841,19 @@ function normalizeToolCallArguments(args: unknown): Record<string, unknown> | un
   return { value: args } as Record<string, unknown>;
 }
 
-function normalizeToolCall(call: any): ToolCall | null {
-  if (!call) {
+function normalizeToolCall(call: unknown): ToolCall | null {
+  if (!call || typeof call !== 'object') {
     return null;
   }
 
-  const fn = call.function ?? call;
-  const name = call.name ?? fn?.name;
+  const callObj = call as Record<string, unknown>;
+  const fn = (callObj.function ?? call) as Record<string, unknown>;
+  const name = (callObj.name ?? fn?.name) as string;
   if (!name || typeof name !== 'string') {
     return null;
   }
 
-  const args = call.arguments ?? fn?.arguments;
+  const args = callObj.arguments ?? fn?.arguments;
   const normalizedArgs = normalizeToolCallArguments(args);
 
   return {
@@ -863,22 +864,32 @@ function normalizeToolCall(call: any): ToolCall | null {
 
 type ToolCallAccumulator = Map<string, { name?: string; arguments?: string }>;
 
-function accumulateToolCallDelta(payload: any, accumulator: ToolCallAccumulator): void {
-  const choices = payload?.response?.choices ?? payload?.choices;
+function accumulateToolCallDelta(payload: unknown, accumulator: ToolCallAccumulator): void {
+  if (!payload || typeof payload !== 'object') {
+    return;
+  }
+  
+  const payloadObj = payload as Record<string, unknown>;
+  const response = payloadObj.response as Record<string, unknown> | undefined;
+  const choices = (response?.choices ?? payloadObj.choices) as unknown[];
   if (!Array.isArray(choices)) {
     return;
   }
 
   for (const choice of choices) {
-    const deltas = choice?.delta?.tool_calls ?? choice?.delta?.function_call ? [choice.delta] : [];
+    if (!choice || typeof choice !== 'object') continue;
+    const choiceObj = choice as Record<string, unknown>;
+    const delta = choiceObj.delta as Record<string, unknown> | undefined;
+    const deltas = (delta?.tool_calls ?? delta?.function_call) ? (delta.tool_calls as unknown[] || [delta]) : [];
     if (!Array.isArray(deltas) || deltas.length === 0) {
       continue;
     }
 
     for (const delta of deltas) {
-      if (!delta) continue;
-      const identifier = delta.id ?? delta.tool_call_id ?? String(delta.index ?? 0);
-      const fn = delta.function ?? delta;
+      if (!delta || typeof delta !== 'object') continue;
+      const deltaObj = delta as Record<string, unknown>;
+      const identifier = (deltaObj.id ?? deltaObj.tool_call_id ?? String(deltaObj.index ?? 0)) as string;
+      const fn = (deltaObj.function ?? delta) as Record<string, unknown>;
       const existing = accumulator.get(identifier) ?? {};
 
       if (fn?.name && typeof fn.name === 'string') {
@@ -894,12 +905,21 @@ function accumulateToolCallDelta(payload: any, accumulator: ToolCallAccumulator)
   }
 }
 
-function extractDirectToolCalls(payload: any): ToolCall[] {
+function extractDirectToolCalls(payload: unknown): ToolCall[] {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+  
+  const payloadObj = payload as Record<string, unknown>;
+  const response = payloadObj.response as Record<string, unknown> | undefined;
+  const choices = payloadObj.choices as unknown[] | undefined;
+  const firstChoice = choices?.[0] as Record<string, unknown> | undefined;
+  const message = firstChoice?.message as Record<string, unknown> | undefined;
+  
   const directSources = [
-    payload?.response?.tool_calls,
-    payload?.tool_calls,
-    payload?.response?.choices?.[0]?.message?.tool_calls,
-    payload?.choices?.[0]?.message?.tool_calls
+    response?.tool_calls,
+    payloadObj.tool_calls,
+    message?.tool_calls
   ];
 
   for (const source of directSources) {
@@ -927,7 +947,7 @@ function finalizeAccumulatedToolCalls(accumulator: ToolCallAccumulator): ToolCal
   return finalized;
 }
 
-function extractTextFromPayload(payload: any): string {
+function extractTextFromPayload(payload: unknown): string {
   if (!payload) {
     return '';
   }
@@ -936,16 +956,23 @@ function extractTextFromPayload(payload: any): string {
     return payload;
   }
 
-  if (typeof payload.response === 'string') {
-    return payload.response;
+  if (typeof payload !== 'object') {
+    return '';
+  }
+  
+  const payloadObj = payload as Record<string, unknown>;
+  const response = payloadObj.response as Record<string, unknown> | undefined;
+  
+  if (typeof response === 'string') {
+    return response;
   }
 
-  const directText = payload?.response?.text ?? payload?.text ?? payload?.delta?.content;
+  const directText = response?.text ?? payloadObj.text ?? (payloadObj.delta as Record<string, unknown>)?.content;
   if (typeof directText === 'string') {
     return directText;
   }
 
-  const choices = payload?.response?.choices ?? payload?.choices;
+  const choices = response?.choices ?? payloadObj.choices;
   if (Array.isArray(choices)) {
     const textFragments: string[] = [];
     for (const choice of choices) {
@@ -987,17 +1014,17 @@ function extractTextFromPayload(payload: any): string {
     }
   }
 
-  const delta = payload?.delta;
+  const delta = payloadObj.delta as Record<string, unknown> | undefined;
   if (delta) {
     if (typeof delta === 'string') {
       return delta;
     }
-    if (typeof delta?.content === 'string') {
+    if (typeof delta.content === 'string') {
       return delta.content;
     }
-    if (Array.isArray(delta?.content)) {
+    if (Array.isArray(delta.content)) {
       return delta.content
-        .map((item: any) => (typeof item === 'string' ? item : item?.text ?? ''))
+        .map((item: unknown) => (typeof item === 'string' ? item : (item as { text?: string })?.text ?? ''))
         .filter(Boolean)
         .join('');
     }
@@ -1040,7 +1067,7 @@ async function consumeAIStream(
           continue;
         }
 
-        let payload: any;
+        let payload: unknown;
         try {
           payload = JSON.parse(payloadString);
         } catch (_error) {
@@ -1879,7 +1906,7 @@ export async function runLegalIntakeAgentStream(
     );
 
     const aiResult = await withAIRetry(
-      () => env.AI.run(AI_MODEL_CONFIG.model as any, {
+      () => (env.AI.run as any)(AI_MODEL_CONFIG.model, {
         messages: [
           { role: 'system', content: systemPrompt },
           ...buildPromptMessages(messages)
@@ -1890,7 +1917,7 @@ export async function runLegalIntakeAgentStream(
         stream: true
       }),
       { attempts: 4, baseDelay: 400, operationName: 'Legal Intake AI Call' }
-    );
+    ) as ReadableStream<Uint8Array>;
 
     const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
 
@@ -1900,8 +1927,8 @@ export async function runLegalIntakeAgentStream(
 
     const possibleStream = isReadableStream(aiResult)
       ? aiResult
-      : typeof (aiResult as Response)?.body?.getReader === 'function'
-        ? (aiResult as Response).body!
+      : typeof (aiResult as unknown as Response)?.body?.getReader === 'function'
+        ? (aiResult as unknown as Response).body!
         : undefined;
 
     if (possibleStream) {
