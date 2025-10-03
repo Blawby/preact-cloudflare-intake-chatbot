@@ -1,5 +1,5 @@
-import { ComponentChildren } from 'preact';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface RadioOption {
   value: string;
@@ -23,10 +23,10 @@ export interface RadioGroupProps {
   label?: string;
   description?: string;
   error?: string;
-  labelKey?: string;
-  descriptionKey?: string;
-  errorKey?: string;
-  namespace?: string;
+  _labelKey?: string;
+  _descriptionKey?: string;
+  _errorKey?: string;
+  _namespace?: string;
 }
 
 export const RadioGroup = ({
@@ -42,11 +42,17 @@ export const RadioGroup = ({
   label,
   description,
   error,
-  labelKey,
-  descriptionKey,
-  errorKey,
-  namespace = 'common'
+  _labelKey,
+  _descriptionKey,
+  _errorKey,
+  _namespace = 'common'
 }: RadioGroupProps) => {
+  // Generate stable unique group name for radio button grouping
+  const groupName = useUniqueId('radio-group');
+  
+  // Generate unique instance ID to prevent ID collisions across multiple RadioGroup instances
+  const instanceId = useUniqueId('radio-group-instance');
+  
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
   // const displayLabel = labelKey ? t(labelKey) : label;
@@ -89,8 +95,8 @@ export const RadioGroup = ({
             <div className="flex items-center h-5">
               <input
                 type="radio"
-                id={option.value}
-                name={label}
+                id={`${instanceId}-${option.value}`}
+                name={groupName}
                 value={option.value}
                 checked={value === option.value}
                 onChange={(e) => onChange?.((e.target as HTMLInputElement).value)}
@@ -108,7 +114,7 @@ export const RadioGroup = ({
             
             <div className="flex-1 min-w-0">
               <label
-                htmlFor={option.value}
+                htmlFor={`${instanceId}-${option.value}`}
                 className={cn(
                   'text-sm font-medium text-gray-900 dark:text-gray-100',
                   (disabled || option.disabled) && 'opacity-50 cursor-not-allowed'

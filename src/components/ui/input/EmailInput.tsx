@@ -1,6 +1,7 @@
-import { forwardRef, useState } from 'preact/compat';
+import { forwardRef } from 'preact/compat';
 import { EnvelopeIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface EmailInputProps {
   value?: string;
@@ -35,12 +36,17 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
   description,
   error,
   showValidation = false,
-  labelKey,
-  descriptionKey,
-  placeholderKey,
-  errorKey,
-  namespace = 'common'
+  labelKey: _labelKey,
+  descriptionKey: _descriptionKey,
+  placeholderKey: _placeholderKey,
+  errorKey: _errorKey,
+  namespace: _namespace = 'common'
 }, ref) => {
+  // Generate stable unique IDs for accessibility
+  const inputId = useUniqueId('email-input');
+  const descriptionId = useUniqueId('email-description');
+  const errorId = useUniqueId('email-error');
+
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
   // const displayLabel = labelKey ? t(labelKey) : label;
@@ -87,12 +93,25 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
   };
 
   const isEmailValid = value ? isValidEmail(value) : false;
-  const showValidationIcon = showValidation && value.length > 0;
+  const showValidationIcon = showValidation && (value?.length ?? 0) > 0;
+
+  // Build aria-describedby attribute
+  const describedByIds = [];
+  if (displayDescription && !displayError) {
+    describedByIds.push(descriptionId);
+  }
+  if (displayError) {
+    describedByIds.push(errorId);
+  }
+  if (showValidation && value && !isEmailValid) {
+    describedByIds.push(errorId);
+  }
+  const ariaDescribedBy = describedByIds.length > 0 ? describedByIds.join(' ') : undefined;
 
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -105,12 +124,16 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
         
         <input
           ref={ref}
+          id={inputId}
           type="email"
           value={value}
           onChange={(e) => onChange?.((e.target as HTMLInputElement).value)}
           placeholder={displayPlaceholder}
           disabled={disabled}
           required={required}
+          aria-invalid={showValidation && value && !isEmailValid ? 'true' : 'false'}
+          aria-required={required}
+          aria-describedby={ariaDescribedBy}
           className={inputClasses}
         />
         
@@ -126,19 +149,19 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
       </div>
       
       {showValidation && value && !isEmailValid && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           Please enter a valid email address
         </p>
       )}
       
       {displayDescription && !displayError && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
         </p>
       )}
       
       {displayError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           {displayError}
         </p>
       )}

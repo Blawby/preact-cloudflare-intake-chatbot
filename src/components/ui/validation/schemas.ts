@@ -34,12 +34,16 @@ export const commonSchemas = {
   birthday: z.string().refine((val) => {
     const date = new Date(val);
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return !isNaN(date.getTime()) && date <= today;
+    
+    // Create UTC midnight timestamps for comparison
+    const birthdayUTC = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+    
+    return !isNaN(birthdayUTC) && birthdayUTC <= todayUTC;
   }, 'Birthday cannot be in the future'),
   
   // Number validation
-  number: z.number().min(0, 'Number must be positive'),
+  number: z.number().min(0, 'Number must be non-negative'),
   positiveNumber: z.number().positive('Number must be positive'),
   
   // File validation

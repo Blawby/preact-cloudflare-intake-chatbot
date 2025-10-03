@@ -22,7 +22,7 @@ export const LayoutFormItem = ({
 
   return (
     <div className={cn(
-      'flex items-start gap-3 text-left transition-colors w-full block',
+      'flex items-start gap-3 text-left transition-colors w-full',
       variantClasses[variant],
       hover && 'hover:bg-gray-50 dark:hover:bg-dark-hover',
       className

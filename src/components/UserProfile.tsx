@@ -204,11 +204,11 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     if (!showDropdown || isMobile) return null;
     
     return (
-      <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+      <div className="absolute bottom-full left-0 mb-2 w-64 max-w-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
         {/* User Email */}
         <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-          <UserIcon className="w-4 h-4" />
-          {user.email}
+          <UserIcon className="w-4 h-4 flex-shrink-0" />
+          <span className="truncate" title={user.email}>{user.email}</span>
         </div>
         
         {/* Upgrade Plan */}
@@ -314,8 +314,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
                 {renderAvatar()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-300 truncate">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={user.name}>{user.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300 truncate" title={getTierDisplayName(user.subscriptionTier || 'free')}>
                   {getTierDisplayName(user.subscriptionTier || 'free')}
                 </p>
               </div>

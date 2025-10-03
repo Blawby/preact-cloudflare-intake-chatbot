@@ -20,7 +20,6 @@ export interface SelectProps {
   mobile?: boolean;
   placeholder?: string;
   searchable?: boolean;
-  multiple?: boolean;
   labelKey?: string;
   descriptionKey?: string;
   placeholderKey?: string;
@@ -39,7 +38,6 @@ export const Select = ({
   mobile = false,
   placeholder = 'Select an option',
   searchable = false,
-  multiple = false,
   labelKey,
   descriptionKey,
   placeholderKey,

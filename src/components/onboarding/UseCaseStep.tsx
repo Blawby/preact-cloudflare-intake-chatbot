@@ -144,18 +144,21 @@ const UseCaseStep = ({ data, onComplete, onSkip }: UseCaseStepProps) => {
             {/* Additional Info for "Other" option */}
             {selectedUseCase === 'other' && (
               <FormField name="additionalInfo">
-                <FormItem>
-                  <FormLabel>{t('onboarding.step2.otherPlaceholder')}</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      rows={3}
-                      value={additionalInfo}
-                      onChange={(e) => setAdditionalInfo(e)}
-                      placeholder={t('onboarding.step2.otherPlaceholder')}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                {({ value, error, onChange }) => (
+                  <FormItem>
+                    <FormLabel>{t('onboarding.step2.otherPlaceholder')}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={3}
+                        value={(value as string) || ''}
+                        onChange={(value) => onChange(value)}
+                        placeholder={t('onboarding.step2.otherPlaceholder')}
+                        error={error?.message}
+                      />
+                    </FormControl>
+                    {error && <FormMessage>{error.message}</FormMessage>}
+                  </FormItem>
+                )}
               </FormField>
             )}
 

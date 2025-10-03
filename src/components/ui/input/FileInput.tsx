@@ -1,6 +1,23 @@
 import { forwardRef, useState, useCallback } from 'preact/compat';
 import { cn } from '../../../utils/cn';
 
+/**
+ * FileInput Component
+ * 
+ * @deprecated maxSize prop is deprecated. Use maxFileSize and maxTotalSize instead.
+ * 
+ * Migration guide:
+ * - Replace maxSize with maxFileSize for per-file size limits
+ * - Replace maxSize with maxTotalSize for total size limits across all files
+ * - If you were using maxSize for both per-file and total limits, you can now set different values:
+ *   - maxFileSize: maximum size for individual files
+ *   - maxTotalSize: maximum total size for all files combined
+ * 
+ * Example migration:
+ * Before: <FileInput maxSize={10 * 1024 * 1024} /> // 10MB for both per-file and total
+ * After:  <FileInput maxFileSize={5 * 1024 * 1024} maxTotalSize={10 * 1024 * 1024} /> // 5MB per file, 10MB total
+ */
+
 export interface FileInputProps {
   value?: FileList | File[];
   onChange?: (files: FileList | File[]) => void;
@@ -14,7 +31,10 @@ export interface FileInputProps {
   label?: string;
   description?: string;
   error?: string;
+  /** @deprecated Use maxFileSize and maxTotalSize instead */
   maxSize?: number; // in bytes
+  maxFileSize?: number; // in bytes - maximum size per individual file
+  maxTotalSize?: number; // in bytes - maximum total size for all files
   maxFiles?: number;
   labelKey?: string;
   descriptionKey?: string;
@@ -30,19 +50,25 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
   disabled = false,
   required = false,
   className = '',
-  size = 'md',
+  size: _size = 'md',
   variant = 'default',
   label,
   description,
   error,
-  maxSize,
-  maxFiles,
-  labelKey,
-  descriptionKey,
-  errorKey,
-  namespace = 'common'
+  maxSize, // deprecated
+  maxFileSize,
+  maxTotalSize,
+  maxFiles: _maxFiles,
+  labelKey: _labelKey,
+  descriptionKey: _descriptionKey,
+  errorKey: _errorKey,
+  namespace: _namespace = 'common'
 }, ref) => {
   const [isDragOver, setIsDragOver] = useState(false);
+  
+  // Backward compatibility: if maxSize is provided but new props are not, use maxSize for both
+  const effectiveMaxFileSize = maxFileSize ?? maxSize;
+  const effectiveMaxTotalSize = maxTotalSize ?? maxSize;
   
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -54,11 +80,6 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
   const displayDescription = description;
   const displayError = error;
 
-  const sizeClasses = {
-    sm: 'px-2 py-1 text-sm',
-    md: 'px-3 py-2 text-sm',
-    lg: 'px-4 py-3 text-base'
-  };
 
   const variantClasses = {
     default: 'border-gray-300 dark:border-gray-600 focus:ring-accent-500 focus:border-accent-500',
@@ -81,6 +102,11 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
 
   const handleDragLeave = useCallback((e: DragEvent) => {
     e.preventDefault();
+    // Only clear drag state if the pointer actually leaves the drop zone
+    // Ignore dragleave events when moving between child elements
+    if (e.relatedTarget && (e.currentTarget as Element).contains(e.relatedTarget as Node)) {
+      return;
+    }
     setIsDragOver(false);
   }, []);
 
@@ -98,8 +124,8 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
   const files = Array.isArray(value) ? value : value ? Array.from(value) : [];
@@ -181,17 +207,17 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
                   {formatFileSize(file.size)}
                 </p>
               </div>
-              {maxSize && file.size > maxSize && (
+              {effectiveMaxFileSize && file.size > effectiveMaxFileSize && (
                 <span className="text-xs text-red-600 dark:text-red-400">
-                  Too large
+                  File too large (max {formatFileSize(effectiveMaxFileSize)})
                 </span>
               )}
             </div>
           ))}
           
-          {maxSize && totalSize > maxSize && (
+          {effectiveMaxTotalSize && totalSize > effectiveMaxTotalSize && (
             <p className="text-xs text-red-600 dark:text-red-400">
-              Total size exceeds {formatFileSize(maxSize)}
+              Total size exceeds {formatFileSize(effectiveMaxTotalSize)}
             </p>
           )}
         </div>

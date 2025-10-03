@@ -16,10 +16,6 @@
     "zh": "中文",
     "ja": "日本語"
   },
-  "validation": {
-    "invalidDate": "Por favor ingresa una fecha válida (MM/DD/YYYY)",
-    "futureDate": "La fecha no puede ser en el futuro"
-  },
   "forms": {
     "labels": {
       "name": "Nombre Completo",
@@ -61,7 +57,7 @@
       "phone": "Por favor ingresa un número de teléfono válido",
       "password": "La contraseña debe tener al menos 8 caracteres",
       "confirmPassword": "Las contraseñas no coinciden",
-      "date": "Por favor ingresa una fecha válida",
+      "date": "Por favor ingresa una fecha válida (DD/MM/AAAA)",
       "futureDate": "La fecha no puede ser en el futuro",
       "fileType": "Por favor selecciona un tipo de archivo válido",
       "fileSize": "El tamaño del archivo debe ser menor a 10MB",

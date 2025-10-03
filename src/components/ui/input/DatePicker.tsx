@@ -1,5 +1,6 @@
 import { forwardRef, useState } from 'preact/compat';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface DatePickerProps {
   value?: string;
@@ -21,6 +22,7 @@ export interface DatePickerProps {
   placeholderKey?: string;
   errorKey?: string;
   namespace?: string;
+  id?: string;
 }
 
 export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(({
@@ -42,8 +44,13 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(({
   descriptionKey,
   placeholderKey,
   errorKey,
-  namespace = 'common'
+  namespace = 'common',
+  id
 }, ref) => {
+  // Generate stable ID for accessibility
+  const generatedId = useUniqueId('datepicker');
+  const inputId = id || generatedId;
+
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
   // const displayLabel = labelKey ? t(labelKey) : label;
@@ -80,13 +87,14 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(({
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
       
       <input
+        id={inputId}
         ref={ref}
         type={format}
         value={value}

@@ -1,6 +1,15 @@
-import { forwardRef } from 'preact/compat';
+import { forwardRef, useEffect, useState } from 'preact/compat';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
+/**
+ * Textarea component with configurable maxLength enforcement behavior.
+ * 
+ * @param enforceMaxLength - Controls how maxLength is enforced:
+ *   - 'soft' (default): Removes HTML maxLength attribute, only shows validation/counter
+ *   - 'hard': Keeps HTML maxLength to prevent typing, but truncates external values to prevent blocking
+ *   - 'truncate': Always truncates incoming values and onChange events to never exceed maxLength
+ */
 export interface TextareaProps {
   value?: string;
   onChange?: (value: string) => void;
@@ -13,6 +22,7 @@ export interface TextareaProps {
   rows?: number;
   resize?: 'none' | 'vertical' | 'horizontal' | 'both';
   maxLength?: number;
+  enforceMaxLength?: 'soft' | 'hard' | 'truncate';
   showCharCount?: boolean;
   label?: string;
   description?: string;
@@ -22,6 +32,7 @@ export interface TextareaProps {
   placeholderKey?: string;
   errorKey?: string;
   namespace?: string;
+  id?: string;
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
@@ -36,16 +47,22 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   rows = 3,
   resize = 'vertical',
   maxLength,
+  enforceMaxLength = 'soft',
   showCharCount = false,
   label,
   description,
   error,
-  labelKey,
-  descriptionKey,
-  placeholderKey,
-  errorKey,
-  namespace = 'common'
+  labelKey: _labelKey,
+  descriptionKey: _descriptionKey,
+  placeholderKey: _placeholderKey,
+  errorKey: _errorKey,
+  namespace: _namespace = 'common',
+  id
 }, ref) => {
+  // Generate stable ID for accessibility
+  const generatedId = useUniqueId('textarea');
+  const textareaId = id || generatedId;
+
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
   // const displayLabel = labelKey ? t(labelKey) : label;
@@ -57,6 +74,30 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   const displayDescription = description;
   const displayPlaceholder = placeholder;
   const displayError = error;
+
+  // Internal state to manage truncated value for hard and truncate modes
+  const [internalValue, setInternalValue] = useState(value);
+
+  // Handle external value changes and truncation for hard and truncate modes
+  useEffect(() => {
+    if (enforceMaxLength === 'hard' || enforceMaxLength === 'truncate') {
+      if (maxLength && value && value.length > maxLength) {
+        const truncatedValue = value.substring(0, maxLength);
+        setInternalValue(truncatedValue);
+        // For hard mode, we need to notify parent of truncation
+        if (enforceMaxLength === 'hard' && onChange) {
+          onChange(truncatedValue);
+        }
+      } else {
+        setInternalValue(value);
+      }
+    } else {
+      setInternalValue(value);
+    }
+  }, [value, maxLength, enforceMaxLength, onChange]);
+
+  // Determine the actual value to use based on enforceMaxLength mode
+  const actualValue = enforceMaxLength === 'truncate' ? internalValue : value;
 
   const sizeClasses = {
     sm: 'px-2 py-1 text-sm',
@@ -87,28 +128,38 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
     className
   );
 
-  const currentLength = value?.length || 0;
+  const currentLength = actualValue?.length || 0;
   const isNearLimit = maxLength && currentLength > maxLength * 0.8;
   const isOverLimit = maxLength && currentLength > maxLength;
 
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={textareaId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
       
       <textarea
+        id={textareaId}
         ref={ref}
-        value={value}
-        onChange={(e) => onChange?.((e.target as HTMLTextAreaElement).value)}
+        value={actualValue}
+        onChange={(e) => {
+          const newValue = (e.target as HTMLTextAreaElement).value;
+          if (enforceMaxLength === 'truncate' && maxLength && newValue.length > maxLength) {
+            const truncatedValue = newValue.substring(0, maxLength);
+            setInternalValue(truncatedValue);
+            onChange?.(truncatedValue);
+          } else {
+            onChange?.(newValue);
+          }
+        }}
         placeholder={displayPlaceholder}
         disabled={disabled}
         required={required}
         rows={rows}
-        maxLength={maxLength}
+        maxLength={enforceMaxLength === 'soft' ? undefined : maxLength}
         className={textareaClasses}
       />
       

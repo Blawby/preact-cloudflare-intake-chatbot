@@ -1,6 +1,7 @@
-import { forwardRef, useState, useCallback } from 'preact/compat';
+import { forwardRef, useCallback } from 'preact/compat';
 import { PhoneIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface PhoneInputProps {
   value?: string;
@@ -39,11 +40,11 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   countryCode = '+1',
   showCountryCode = true,
   format = true,
-  labelKey,
-  descriptionKey,
-  placeholderKey,
-  errorKey,
-  namespace = 'common'
+  labelKey: _labelKey,
+  descriptionKey: _descriptionKey,
+  placeholderKey: _placeholderKey,
+  errorKey: _errorKey,
+  namespace: _namespace = 'common'
 }, ref) => {
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -57,6 +58,11 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   const displayPlaceholder = placeholder;
   const displayError = error;
 
+  // Generate stable IDs for accessibility
+  const baseId = useUniqueId('phone-input');
+  const descriptionId = `${baseId}-description`;
+  const errorId = `${baseId}-error`;
+
   const sizeClasses = {
     sm: 'px-2 py-1 text-sm',
     md: 'px-3 py-2 text-sm',
@@ -64,6 +70,18 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   };
 
   const iconPaddingClasses = {
+    sm: 'pl-8',
+    md: 'pl-10',
+    lg: 'pl-12'
+  };
+
+  const countryCodePositionClasses = {
+    sm: 'left-4',
+    md: 'left-6',
+    lg: 'left-8'
+  };
+
+  const countryCodePaddingClasses = {
     sm: 'pl-8',
     md: 'pl-10',
     lg: 'pl-12'
@@ -123,7 +141,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
         </div>
         
         {showCountryCode && (
-          <div className="absolute inset-y-0 left-8 flex items-center pointer-events-none">
+          <div className={cn("absolute inset-y-0 flex items-center pointer-events-none", countryCodePositionClasses[size])}>
             <span className="text-sm text-gray-500 dark:text-gray-400">{countryCode}</span>
           </div>
         )}
@@ -136,21 +154,23 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
           placeholder={displayPlaceholder}
           disabled={disabled}
           required={required}
+          aria-invalid={Boolean(displayError)}
+          aria-describedby={displayError ? errorId : displayDescription ? descriptionId : undefined}
           className={cn(
             inputClasses,
-            showCountryCode && 'pl-16'
+            showCountryCode && countryCodePaddingClasses[size]
           )}
         />
       </div>
       
       {displayDescription && !displayError && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
         </p>
       )}
       
       {displayError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
           {displayError}
         </p>
       )}

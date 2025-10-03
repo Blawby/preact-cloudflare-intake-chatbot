@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'preact/hooks';
-import { z, ZodSchema, ZodError } from 'zod';
+import { z, ZodSchema, ZodError, ZodObject } from 'zod';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -25,9 +25,17 @@ export function useFormValidation<T extends Record<string, any>>({
 
   const validateField = useCallback((fieldName: keyof T, value: any) => {
     try {
-      // Create a partial schema for just this field
-      const fieldSchema = schema.pick({ [fieldName]: true } as any);
-      fieldSchema.parse({ [fieldName]: value });
+      // Check if schema is a ZodObject (has pick method)
+      if (schema instanceof ZodObject) {
+        // For ZodObject, we can safely use pick to validate just this field
+        const fieldSchema = schema.pick({ [fieldName]: true } as any);
+        fieldSchema.parse({ [fieldName]: value });
+      } else {
+        // For unions, intersections, or other schema types, validate the full object
+        // and extract the specific field error if validation fails
+        const fullObject = { ...values, [fieldName]: value };
+        schema.parse(fullObject);
+      }
       
       // Clear error for this field
       setErrors(prev => {
@@ -39,7 +47,7 @@ export function useFormValidation<T extends Record<string, any>>({
       return true;
     } catch (error) {
       if (error instanceof ZodError) {
-        const fieldError = error.errors.find(e => e.path[0] === fieldName);
+        const fieldError = error.issues.find(e => e.path[0] === fieldName);
         if (fieldError) {
           setErrors(prev => ({
             ...prev,
@@ -49,7 +57,7 @@ export function useFormValidation<T extends Record<string, any>>({
       }
       return false;
     }
-  }, [schema]);
+  }, [schema, values]);
 
   const validateForm = useCallback(() => {
     try {
@@ -59,7 +67,7 @@ export function useFormValidation<T extends Record<string, any>>({
     } catch (error) {
       if (error instanceof ZodError) {
         const formErrors: Record<string, string> = {};
-        error.errors.forEach((err) => {
+        error.issues.forEach((err) => {
           const fieldName = err.path[0] as string;
           formErrors[fieldName] = err.message;
         });

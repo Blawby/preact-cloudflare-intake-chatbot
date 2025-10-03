@@ -16,10 +16,6 @@
     "zh": "中文",
     "ja": "日本語"
   },
-  "validation": {
-    "invalidDate": "Please enter a valid date (MM/DD/YYYY)",
-    "futureDate": "Date cannot be in the future"
-  },
   "forms": {
     "labels": {
       "name": "Full Name",
@@ -46,7 +42,7 @@
       "search": "Search...",
       "select": "Select an option",
       "message": "Enter your message",
-      "subject": "Enter subject"
+      "subject": "Enter your subject"
     },
     "descriptions": {
       "optional": "Optional",
@@ -61,7 +57,7 @@
       "phone": "Please enter a valid phone number",
       "password": "Password must be at least 8 characters",
       "confirmPassword": "Passwords do not match",
-      "date": "Please enter a valid date",
+      "date": "Please enter a valid date (MM/DD/YYYY)",
       "futureDate": "Date cannot be in the future",
       "fileType": "Please select a valid file type",
       "fileSize": "File size must be less than 10MB",

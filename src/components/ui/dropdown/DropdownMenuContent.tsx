@@ -39,12 +39,12 @@ export const DropdownMenuContent = ({
     };
     
     const alignClasses = {
-      start: align === 'start' ? 'left-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0',
+      start: 'left-0',
       center: 'left-1/2 -translate-x-1/2',
-      end: align === 'start' ? 'left-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0'
+      end: 'right-0'
     };
     
-    return cn(baseClasses, sideClasses[side], alignClasses[align]);
+    return cn(baseClasses, sideClasses[side], alignClasses[align] || alignClasses.end);
   };
 
   if (!open) return null;
@@ -52,7 +52,12 @@ export const DropdownMenuContent = ({
   return (
     <div 
       className={cn(getPositionClasses(), className)}
-      style={{ marginTop: side === 'bottom' ? sideOffset : undefined, marginBottom: side === 'top' ? sideOffset : undefined }}
+      style={{ 
+        marginTop: side === 'bottom' ? sideOffset : undefined, 
+        marginBottom: side === 'top' ? sideOffset : undefined,
+        marginLeft: side === 'right' ? sideOffset : undefined,
+        marginRight: side === 'left' ? sideOffset : undefined
+      }}
     >
       <div>
         {children}

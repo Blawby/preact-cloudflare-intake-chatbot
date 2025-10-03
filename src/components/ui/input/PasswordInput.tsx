@@ -39,11 +39,11 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
   showStrength = false,
   minLength,
   maxLength,
-  labelKey,
-  descriptionKey,
-  placeholderKey,
-  errorKey,
-  namespace = 'common'
+  labelKey: _labelKey,
+  descriptionKey: _descriptionKey,
+  placeholderKey: _placeholderKey,
+  errorKey: _errorKey,
+  namespace: _namespace = 'common'
 }, ref) => {
   const [showPassword, setShowPassword] = useState(false);
   
@@ -142,7 +142,9 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
           type="button"
           onClick={() => setShowPassword(!showPassword)}
           disabled={disabled}
-          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-pressed={showPassword}
+          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:ring-2 focus:ring-accent-500 focus:ring-offset-1 focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-1"
         >
           {showPassword ? (
             <EyeSlashIcon className="w-4 h-4" />

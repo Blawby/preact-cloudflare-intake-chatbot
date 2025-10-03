@@ -1,4 +1,3 @@
-import { FORM_KEYS } from '../i18n/translationKeys';
 
 export interface AriaLabelProps {
   id?: string;
@@ -7,6 +6,7 @@ export interface AriaLabelProps {
   error?: string;
   required?: boolean;
   disabled?: boolean;
+  expanded?: boolean;
 }
 
 export function generateAriaLabels({
@@ -17,7 +17,7 @@ export function generateAriaLabels({
   required = false,
   disabled = false,
 }: AriaLabelProps) {
-  const baseId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  const baseId = id || `input-${Math.random().toString(36).slice(2, 11)}`;
   const labelId = `${baseId}-label`;
   const descriptionId = `${baseId}-description`;
   const errorId = `${baseId}-error`;
@@ -38,10 +38,10 @@ export function generateAriaLabels({
   };
 }
 
-export function generateFieldAriaLabels(fieldName: string, options: AriaLabelProps = {}) {
+export function generateFieldAriaLabels(fieldName: string, _options: AriaLabelProps = {}) {
   return generateAriaLabels({
     id: `${fieldName}-field`,
-    ...options,
+    ..._options,
   });
 }
 
@@ -105,7 +105,7 @@ export const ARIA_PATTERNS = {
     id: `${fieldName}-select`,
     role: 'combobox',
     'aria-haspopup': 'listbox',
-    'aria-expanded': false,
+    ...(options.expanded !== undefined && { 'aria-expanded': options.expanded }),
     'aria-labelledby': `${fieldName}-label`,
     'aria-describedby': [
       options.description ? `${fieldName}-description` : null,

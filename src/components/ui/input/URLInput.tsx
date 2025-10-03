@@ -1,4 +1,4 @@
-import { forwardRef, useState, useCallback } from 'preact/compat';
+import { forwardRef, useCallback } from 'preact/compat';
 import { LinkIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 
@@ -17,11 +17,11 @@ export interface URLInputProps {
   showValidation?: boolean;
   showPreview?: boolean;
   protocols?: string[];
-  labelKey?: string;
-  descriptionKey?: string;
-  placeholderKey?: string;
-  errorKey?: string;
-  namespace?: string;
+  _labelKey?: string;
+  _descriptionKey?: string;
+  _placeholderKey?: string;
+  _errorKey?: string;
+  _namespace?: string;
 }
 
 export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
@@ -39,11 +39,11 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
   showValidation = false,
   showPreview = false,
   protocols = ['http:', 'https:'],
-  labelKey,
-  descriptionKey,
-  placeholderKey,
-  errorKey,
-  namespace = 'common'
+  _labelKey,
+  _descriptionKey,
+  _placeholderKey,
+  _errorKey,
+  _namespace = 'common'
 }, ref) => {
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -99,15 +99,33 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
   const normalizeURL = useCallback((url: string) => {
     if (!url) return '';
     
-    // Add protocol if missing
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      return `https://${url}`;
+    // Check if URL already has a valid protocol from the protocols array
+    const hasValidProtocol = protocols.some(protocol => {
+      const protocolWithSlashes = protocol.endsWith('://') ? protocol : 
+                                  protocol.endsWith(':') ? `${protocol}//` : `${protocol}://`;
+      return url.startsWith(protocolWithSlashes);
+    });
+    
+    // If no valid protocol is present, add a default one
+    if (!hasValidProtocol) {
+      // Use the first protocol from the array, or default to https:// if array is empty
+      const defaultProtocol = protocols.length > 0 
+        ? (protocols[0].endsWith('://') ? protocols[0] : 
+           protocols[0].endsWith(':') ? `${protocols[0]}//` : `${protocols[0]}://`)
+        : 'https://';
+      return `${defaultProtocol}${url}`;
     }
     
     return url;
-  }, []);
+  }, [protocols]);
 
   const handleChange = useCallback((e: Event) => {
+    const target = e.target as HTMLInputElement;
+    const inputValue = target.value;
+    onChange?.(inputValue);
+  }, [onChange]);
+
+  const handleBlur = useCallback((e: Event) => {
     const target = e.target as HTMLInputElement;
     const inputValue = target.value;
     const normalizedValue = normalizeURL(inputValue);
@@ -136,6 +154,7 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
           type="url"
           value={value}
           onChange={handleChange}
+          onBlur={handleBlur}
           placeholder={displayPlaceholder}
           disabled={disabled}
           required={required}

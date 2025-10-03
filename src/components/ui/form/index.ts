@@ -7,7 +7,7 @@ export { FormMessage } from './FormMessage';
 export { FormDescription } from './FormDescription';
 
 export type { FormProps, FormData, FormError, FormContextValue } from './Form';
-export type { FormFieldProps } from './FormField';
+export type { FormFieldProps, FormFieldRenderProps } from './FormField';
 export type { FormItemProps } from './FormItem';
 export type { FormLabelProps } from './FormLabel';
 export type { FormControlProps } from './FormControl';

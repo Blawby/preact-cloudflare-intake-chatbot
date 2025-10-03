@@ -42,8 +42,9 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     if (onSuccess) {
       try {
         await onSuccess();
-      } catch (_error) {
-        // onSuccess callback failed - continue with redirect
+      } catch (error) {
+        // onSuccess callback failed - log error for debugging/monitoring
+        console.error('onSuccess callback failed:', error);
         // Continue with redirect even if onSuccess fails
       }
     }
@@ -201,9 +202,6 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
 
   const handleBackToHome = () => {
     window.location.href = '/';
@@ -302,67 +300,79 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
             <div className="space-y-4">
               {isSignUp && (
                 <FormField name="name">
-                  <FormItem>
-                    <FormLabel>{t('signup.fullName')}</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        required={isSignUp}
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('name', e)}
-                        placeholder={t('signup.fullNamePlaceholder')}
-                        icon={<UserIcon className="h-5 w-5 text-gray-400" />}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  {({ value, error, onChange }) => (
+                    <FormItem>
+                      <FormLabel>{t('signup.fullName')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          required={isSignUp}
+                          value={(value as string) || ''}
+                          onChange={(value) => onChange(value)}
+                          placeholder={t('signup.fullNamePlaceholder')}
+                          icon={<UserIcon className="h-5 w-5 text-gray-400" />}
+                          error={error?.message}
+                        />
+                      </FormControl>
+                      {error && <FormMessage>{error.message}</FormMessage>}
+                    </FormItem>
+                  )}
                 </FormField>
               )}
 
               <FormField name="email">
-                <FormItem>
-                  <FormLabel>{t(isSignUp ? 'signup.email' : 'signin.email')}</FormLabel>
-                  <FormControl>
-                    <EmailInput
-                      required
-                      value={formData.email}
-                      onChange={(e) => handleInputChange('email', e)}
-                      placeholder={t(isSignUp ? 'signup.emailPlaceholder' : 'signin.emailPlaceholder')}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                {({ value, error, onChange }) => (
+                  <FormItem>
+                    <FormLabel>{t(isSignUp ? 'signup.email' : 'signin.email')}</FormLabel>
+                    <FormControl>
+                      <EmailInput
+                        required
+                        value={(value as string) || ''}
+                        onChange={(value) => onChange(value)}
+                        placeholder={t(isSignUp ? 'signup.emailPlaceholder' : 'signin.emailPlaceholder')}
+                        error={error?.message}
+                      />
+                    </FormControl>
+                    {error && <FormMessage>{error.message}</FormMessage>}
+                  </FormItem>
+                )}
               </FormField>
 
               <FormField name="password">
-                <FormItem>
-                  <FormLabel>{t(isSignUp ? 'signup.password' : 'signin.password')}</FormLabel>
-                  <FormControl>
-                    <PasswordInput
-                      required
-                      value={formData.password}
-                      onChange={(e) => handleInputChange('password', e)}
-                      placeholder={t(isSignUp ? 'signup.passwordPlaceholder' : 'signin.passwordPlaceholder')}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                {({ value, error, onChange }) => (
+                  <FormItem>
+                    <FormLabel>{t(isSignUp ? 'signup.password' : 'signin.password')}</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        required
+                        value={(value as string) || ''}
+                        onChange={(value) => onChange(value)}
+                        placeholder={t(isSignUp ? 'signup.passwordPlaceholder' : 'signin.passwordPlaceholder')}
+                        error={error?.message}
+                      />
+                    </FormControl>
+                    {error && <FormMessage>{error.message}</FormMessage>}
+                  </FormItem>
+                )}
               </FormField>
 
               {isSignUp && (
                 <FormField name="confirmPassword">
-                  <FormItem>
-                    <FormLabel>{t('signup.confirmPassword')}</FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        required={isSignUp}
-                        value={formData.confirmPassword}
-                        onChange={(e) => handleInputChange('confirmPassword', e)}
-                        placeholder={t('signup.confirmPasswordPlaceholder')}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  {({ value, error, onChange }) => (
+                    <FormItem>
+                      <FormLabel>{t('signup.confirmPassword')}</FormLabel>
+                      <FormControl>
+                        <PasswordInput
+                          required={isSignUp}
+                          value={(value as string) || ''}
+                          onChange={(value) => onChange(value)}
+                          placeholder={t('signup.confirmPasswordPlaceholder')}
+                          error={error?.message}
+                        />
+                      </FormControl>
+                      {error && <FormMessage>{error.message}</FormMessage>}
+                    </FormItem>
+                  )}
                 </FormField>
               )}
             </div>

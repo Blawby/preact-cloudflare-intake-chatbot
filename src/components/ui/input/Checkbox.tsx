@@ -1,5 +1,6 @@
-import { forwardRef } from 'preact/compat';
+import { forwardRef, useEffect } from 'preact/compat';
 import { cn } from '../../../utils/cn';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface CheckboxProps {
   checked?: boolean;
@@ -46,6 +47,17 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
   const displayDescription = description;
   const displayError = error;
 
+  // Generate stable unique ID for this component instance
+  const uniqueId = useUniqueId('checkbox');
+  const descriptionId = `${uniqueId}-description`;
+
+  // Handle indeterminate state
+  useEffect(() => {
+    if (typeof ref !== 'function' && ref?.current) {
+      ref.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate, ref]);
+
   const sizeClasses = {
     sm: 'w-3 h-3',
     md: 'w-4 h-4',
@@ -72,27 +84,28 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
       <div className="flex items-center h-5">
         <input
           ref={ref}
+          id={uniqueId}
           type="checkbox"
           checked={checked}
           onChange={(e) => onChange?.((e.target as HTMLInputElement).checked)}
           disabled={disabled}
           required={required}
           className={checkboxClasses}
-          aria-describedby={description ? `${label}-description` : undefined}
+          aria-describedby={description ? descriptionId : undefined}
           aria-invalid={error ? 'true' : 'false'}
         />
       </div>
       
       <div className="flex-1 min-w-0">
         {displayLabel && (
-          <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <label htmlFor={uniqueId} className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {displayLabel}
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
         
         {displayDescription && !displayError && (
-          <p id={`${label}-description`} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {displayDescription}
           </p>
         )}

@@ -1,7 +1,8 @@
 import { forwardRef } from 'preact/compat';
+import { ComponentChildren } from 'preact';
 import { cn } from '../../../utils/cn';
 import { useTranslation } from '../i18n';
-import { ARIA_PATTERNS } from '../accessibility';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 export interface InputProps {
   type?: 'text' | 'password' | 'email' | 'tel' | 'url' | 'number' | 'search';
@@ -13,7 +14,7 @@ export interface InputProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'error' | 'success';
-  icon?: React.ReactNode;
+  icon?: ComponentChildren;
   iconPosition?: 'left' | 'right';
   label?: string;
   description?: string;
@@ -61,10 +62,24 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   ...restProps
 }, ref) => {
   const { t } = useTranslation(namespace);
+  const generatedId = useUniqueId('input');
+  const inputId = id || generatedId;
+  
   const displayLabel = labelKey ? t(labelKey) : label;
   const displayDescription = descriptionKey ? t(descriptionKey) : description;
   const displayPlaceholder = placeholderKey ? t(placeholderKey) : placeholder;
   const displayError = errorKey ? t(errorKey) : error;
+
+  // Generate stable IDs for description and error elements
+  const descriptionId = displayDescription ? `${inputId}-description` : undefined;
+  const errorId = displayError ? `${inputId}-error` : undefined;
+  
+  // Compute aria-describedby by joining existing ariaDescribedBy with descriptionId and errorId
+  const computedAriaDescribedBy = [
+    ariaDescribedBy,
+    descriptionId,
+    errorId
+  ].filter(Boolean).join(' ') || undefined;
 
   const sizeClasses = {
     sm: 'px-2 py-1 text-sm',
@@ -97,7 +112,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -121,10 +136,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
           disabled={disabled}
           required={required}
           className={inputClasses}
-          id={id}
+          id={inputId}
           aria-label={ariaLabel}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid}
+          aria-describedby={computedAriaDescribedBy}
+          aria-invalid={ariaInvalid !== undefined ? ariaInvalid : Boolean(error)}
           aria-required={ariaRequired}
           aria-disabled={ariaDisabled}
           {...restProps}
@@ -140,13 +155,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
       </div>
       
       {displayDescription && !displayError && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p id={descriptionId} className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {displayDescription}
         </p>
       )}
       
       {displayError && (
-        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+        <p id={errorId} className="mt-1 text-xs text-red-600 dark:text-red-400">
           {displayError}
         </p>
       )}

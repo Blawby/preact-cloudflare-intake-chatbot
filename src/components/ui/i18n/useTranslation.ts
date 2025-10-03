@@ -1,7 +1,6 @@
 import { useTranslation as useI18nTranslation } from 'react-i18next';
 
 export interface TranslationOptions {
-  namespace?: string;
   defaultValue?: string;
   count?: number;
   interpolation?: Record<string, any>;
@@ -25,11 +24,11 @@ export function useTranslation(namespace: string = 'common') {
   };
 
   const translateWithFallback = (key: string, fallbackKey: string, options?: TranslationOptions) => {
-    const translation = translate(key, options);
-    if (translation === key) {
+    // Check if the translation key exists using i18n existence API
+    if (!i18n.exists(key)) {
       return translate(fallbackKey, options);
     }
-    return translation;
+    return translate(key, options);
   };
 
   return {
@@ -38,6 +37,6 @@ export function useTranslation(namespace: string = 'common') {
     i18n,
     isReady: i18n.isInitialized,
     language: i18n.language,
-    changeLanguage: i18n.changeLanguage,
+    changeLanguage: i18n.changeLanguage.bind(i18n),
   };
 }

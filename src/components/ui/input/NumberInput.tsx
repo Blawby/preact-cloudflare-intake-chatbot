@@ -1,10 +1,10 @@
-import { forwardRef, useState, useCallback } from 'preact/compat';
+import { forwardRef, useCallback } from 'preact/compat';
 import { PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 
 export interface NumberInputProps {
   value?: number;
-  onChange?: (value: number) => void;
+  onChange?: (value: number | undefined) => void;
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
@@ -27,7 +27,7 @@ export interface NumberInputProps {
 }
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
-  value = 0,
+  value,
   onChange,
   placeholder,
   disabled = false,
@@ -43,11 +43,11 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
   step = 1,
   showControls = true,
   precision = 0,
-  labelKey,
-  descriptionKey,
-  placeholderKey,
-  errorKey,
-  namespace = 'common'
+  labelKey: _labelKey,
+  descriptionKey: _descriptionKey,
+  placeholderKey: _placeholderKey,
+  errorKey: _errorKey,
+  namespace: _namespace = 'common'
 }, ref) => {
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -91,15 +91,17 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
 
   const handleIncrement = useCallback(() => {
     if (disabled) return;
-    const newValue = (value || 0) + step;
+    const currentValue = value ?? (min ?? 0);
+    const newValue = currentValue + step;
     const clampedValue = max !== undefined ? Math.min(newValue, max) : newValue;
     const roundedValue = Number(clampedValue.toFixed(precision));
     onChange?.(roundedValue);
-  }, [value, step, max, precision, onChange, disabled]);
+  }, [value, step, min, max, precision, onChange, disabled]);
 
   const handleDecrement = useCallback(() => {
     if (disabled) return;
-    const newValue = (value || 0) - step;
+    const currentValue = value ?? (min ?? 0);
+    const newValue = currentValue - step;
     const clampedValue = min !== undefined ? Math.max(newValue, min) : newValue;
     const roundedValue = Number(clampedValue.toFixed(precision));
     onChange?.(roundedValue);
@@ -110,19 +112,27 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
     const inputValue = target.value;
     
     if (inputValue === '') {
-      onChange?.(0);
+      // Map empty string to 0 and clamp it
+      const defaultValue = 0;
+      const clampedValue = min !== undefined ? Math.max(defaultValue, min) : defaultValue;
+      const finalClampedValue = max !== undefined ? Math.min(clampedValue, max) : clampedValue;
+      const roundedValue = Number(finalClampedValue.toFixed(precision));
+      onChange?.(roundedValue);
       return;
     }
     
     const numValue = parseFloat(inputValue);
     if (!isNaN(numValue)) {
       const roundedValue = Number(numValue.toFixed(precision));
-      onChange?.(roundedValue);
+      // Clamp the rounded value to min/max range
+      const clampedValue = min !== undefined ? Math.max(roundedValue, min) : roundedValue;
+      const finalClampedValue = max !== undefined ? Math.min(clampedValue, max) : clampedValue;
+      onChange?.(finalClampedValue);
     }
-  }, [onChange, precision]);
+  }, [onChange, precision, min, max]);
 
-  const canIncrement = max === undefined || (value || 0) < max;
-  const canDecrement = min === undefined || (value || 0) > min;
+  const canIncrement = value === undefined || max === undefined || value < max;
+  const canDecrement = value === undefined || min === undefined || value > min;
 
   return (
     <div className="w-full">
@@ -137,7 +147,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
         <input
           ref={ref}
           type="number"
-          value={value}
+          value={value ?? ''}
           onChange={handleInputChange}
           placeholder={displayPlaceholder}
           disabled={disabled}
@@ -159,7 +169,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
                 'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 controlSizeClasses[size],
-                size === 'sm' ? 'rounded-tr-lg' : 'rounded-tr-lg'
+                'rounded-tr-lg'
               )}
             >
               <PlusIcon className="w-3 h-3" />
@@ -173,7 +183,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
                 'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 controlSizeClasses[size],
-                size === 'sm' ? 'rounded-br-lg' : 'rounded-br-lg'
+                'rounded-br-lg'
               )}
             >
               <MinusIcon className="w-3 h-3" />
