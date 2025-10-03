@@ -4,12 +4,14 @@ import { initReactI18next } from 'react-i18next';
 
 import commonEn from '../locales/en/common.json';
 import settingsEn from '../locales/en/settings.json';
+import authEn from '../locales/en/auth.json';
+import profileEn from '../locales/en/profile.json';
 
 export const DEFAULT_LOCALE = 'en' as const;
 export const SUPPORTED_LOCALES = ['en', 'es'] as const;
 export type AppLocale = typeof SUPPORTED_LOCALES[number];
 
-const NAMESPACES = ['common', 'settings'] as const;
+const NAMESPACES = ['common', 'settings', 'auth', 'profile'] as const;
 
 const STORAGE_KEY = 'blawby_locale';
 let initialized = false;
@@ -17,7 +19,9 @@ let initialized = false;
 const staticResources = {
   en: {
     common: commonEn,
-    settings: settingsEn
+    settings: settingsEn,
+    auth: authEn,
+    profile: profileEn
   }
 };
 
