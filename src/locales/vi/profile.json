@@ -1,0 +1,19 @@
+{
+  "menu": {
+    "profile": "Hồ sơ",
+    "settings": "Cài đặt",
+    "upgrade": "Nâng cấp gói",
+    "upgradeShort": "Nâng cấp",
+    "help": "Nhận trợ giúp",
+    "signOut": "Đăng xuất",
+    "signIn": "Đăng nhập"
+  },
+  "status": {
+    "signingOut": "Đang đăng xuất...",
+    "loading": "Đang tải..."
+  },
+  "aria": {
+    "userProfile": "Hồ sơ người dùng cho {{name}}",
+    "signInButton": "Đăng nhập vào tài khoản của bạn"
+  }
+}

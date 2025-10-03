@@ -1,0 +1,71 @@
+{
+  "app": {
+    "loading": "Đang tải…"
+  },
+  "notifications": {
+    "settingsSavedTitle": "Đã lưu cài đặt",
+    "settingsSavedBody": "Tùy chọn của bạn đã được cập nhật."
+  },
+  "language": {
+    "auto": "Tự động phát hiện",
+    "en": "Tiếng Anh",
+    "vi": "Tiếng Việt",
+    "es": "Tiếng Tây Ban Nha",
+    "fr": "Tiếng Pháp",
+    "de": "Tiếng Đức",
+    "zh": "中文",
+    "ja": "日本語"
+  },
+  "validation": {
+    "invalidDate": "Vui lòng nhập ngày hợp lệ (DD/MM/YYYY)"
+  },
+  "onboarding": {
+    "title": "Chào mừng đến với Blawby AI",
+    "subtitle": "Hãy bắt đầu thiết lập",
+    "step1": {
+      "title": "Cho chúng tôi biết về bạn",
+      "subtitle": "Giúp chúng tôi cá nhân hóa trải nghiệm của bạn",
+      "fullName": "Họ và tên",
+      "fullNamePlaceholder": "Nhập họ và tên của bạn",
+      "birthday": "Ngày sinh",
+      "birthdayPlaceholder": "DD/MM/YYYY",
+      "termsAgreement": "Bằng cách nhấp vào \"Tiếp tục\", bạn đồng ý với <termsLink>Điều khoản</termsLink> của chúng tôi và đã đọc <privacyLink>Chính sách Bảo mật</privacyLink> của chúng tôi.",
+      "continue": "Tiếp tục",
+      "required": "Trường này là bắt buộc"
+    },
+    "step2": {
+      "title": "Bạn muốn sử dụng Blawby AI để làm gì?",
+      "subtitle": "Điều này giúp chúng tôi cung cấp các đề xuất phù hợp hơn",
+      "options": {
+        "personal": "Vấn đề Pháp lý Cá nhân",
+        "business": "Nhu cầu Pháp lý Doanh nghiệp",
+        "research": "Nghiên cứu Pháp lý",
+        "documents": "Xem xét Tài liệu",
+        "other": "Khác"
+      },
+      "otherPlaceholder": "Cho chúng tôi biết thêm...",
+      "next": "Tiếp theo",
+      "skip": "Bỏ qua"
+    },
+    "welcome": {
+      "title": "Blawby AI",
+      "subtitle": "Mẹo để bắt đầu",
+      "tips": {
+        "askAway": {
+          "title": "Hỏi thoải mái",
+          "description": "Blawby AI có thể trả lời các câu hỏi pháp lý, giúp bạn hiểu các khái niệm pháp lý, xem xét tài liệu và nhiều hơn nữa."
+        },
+        "privacy": {
+          "title": "Đừng chia sẻ thông tin nhạy cảm",
+          "description": "Lịch sử trò chuyện có thể được xem xét hoặc sử dụng để cải thiện dịch vụ của chúng tôi. Tìm hiểu thêm về các lựa chọn của bạn trong <helpCenterLink>Trung tâm Trợ giúp</helpCenterLink> của chúng tôi."
+        },
+        "accuracy": {
+          "title": "Kiểm tra thông tin của bạn",
+          "description": "Mặc dù chúng tôi có các biện pháp bảo vệ, Blawby AI có thể cung cấp cho bạn thông tin không chính xác. Nó không nhằm mục đích cung cấp tư vấn pháp lý."
+        }
+      },
+      "helpCenter": "Trung tâm Trợ giúp",
+      "letsGo": "Được rồi, bắt đầu thôi"
+    }
+  }
+}

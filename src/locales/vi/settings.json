@@ -1,0 +1,355 @@
+{
+  "navigation": {
+    "close": "Đóng cài đặt",
+    "backToSettings": "Quay lại cài đặt",
+    "items": {
+      "general": "Chung",
+      "notifications": "Thông báo",
+      "account": "Tài khoản",
+      "security": "Bảo mật",
+      "help": "Trợ giúp",
+      "signOut": "Đăng xuất"
+    },
+    "signOut": {
+      "toastTitle": "Đã đăng xuất thành công",
+      "toastBody": "Bạn đã đăng xuất"
+    }
+  },
+  "general": {
+    "title": "Chung",
+    "theme": {
+      "label": "Chủ đề",
+      "options": {
+        "light": "Sáng",
+        "dark": "Tối",
+        "system": "Hệ thống"
+      }
+    },
+    "accent": {
+      "label": "Màu nhấn",
+      "options": {
+        "default": "Mặc định",
+        "blue": "Xanh dương",
+        "green": "Xanh lá",
+        "purple": "Tím",
+        "red": "Đỏ"
+      }
+    },
+    "language": {
+      "label": "Ngôn ngữ",
+      "description": "Chọn ngôn ngữ được sử dụng cho giao diện.",
+      "toastTitle": "Đã cập nhật ngôn ngữ",
+      "toastBody": "Tùy chọn ngôn ngữ của bạn đã được áp dụng."
+    },
+    "spokenLanguage": {
+      "label": "Ngôn ngữ nói",
+      "description": "Để có kết quả tốt nhất, hãy chọn ngôn ngữ bạn chủ yếu nói. Nếu nó không có trong danh sách, tự động phát hiện vẫn có thể hoạt động."
+    }
+  },
+  "account": {
+    "title": "Tài khoản",
+    "loadingError": "Không thể tải dữ liệu tài khoản",
+    "retry": "Thử lại",
+    "plan": {
+      "currentPlanLabel": "Gói hiện tại: {{tier}}",
+      "tiers": {
+        "free": "Miễn phí",
+        "plus": "Plus",
+        "business": "Business"
+      },
+      "descriptions": {
+        "free": "Tính năng cơ bản với sử dụng giới hạn",
+        "plus": "Tính năng nâng cao với giới hạn cao hơn",
+        "business": "Tính năng đầy đủ với sử dụng không giới hạn"
+      },
+      "sections": {
+        "free": "Nhận Blawby AI Plus",
+        "plus": "Nhận Blawby AI Business",
+        "business": "Gói hiện tại",
+        "default": "Gói hiện tại"
+      },
+      "upgradeButton": "Nâng cấp lên {{plan}}",
+      "currentButton": "Gói hiện tại",
+      "toasts": {
+        "upgrade": {
+          "title": "Nâng cấp",
+          "body": "Đang chuyển đến trang nâng cấp..."
+        },
+        "upgradeWithPlan": {
+          "title": "Nâng cấp",
+          "body": "Đang chuyển đến nâng cấp lên {{plan}}..."
+        },
+        "highest": {
+          "title": "Tài khoản",
+          "body": "Bạn đã ở gói cao nhất rồi!"
+        }
+      }
+    },
+    "links": {
+      "title": "Liên kết",
+      "domainLabel": "Chọn một tên miền",
+      "selectOption": "Chọn một tên miền",
+      "verifyNew": "Xác minh tên miền mới",
+      "addButton": "Thêm",
+      "invalidDomainToast": {
+        "title": "Tên miền không hợp lệ"
+      },
+      "addDomainToast": {
+        "title": "Đã thêm tên miền",
+        "body": "Tên miền {{domain}} đã được thêm và đang chờ xác minh."
+      },
+      "linkedinToast": {
+        "title": "LinkedIn",
+        "body": "Đang chuyển đến kết nối LinkedIn..."
+      },
+      "githubToast": {
+        "title": "GitHub",
+        "body": "Đang chuyển đến kết nối GitHub..."
+      },
+      "verifiedToast": {
+        "title": "Đã xác minh tên miền",
+        "body": "Tên miền {{domain}} đã được xác minh thành công!"
+      },
+      "domainPlaceholder": "example.com"
+    },
+    "domainErrors": {
+      "empty": "Tên miền không được để trống",
+      "spaces": "Tên miền không được có khoảng trắng ở đầu hoặc cuối",
+      "format": "Vui lòng nhập định dạng tên miền hợp lệ (ví dụ: example.com)",
+      "duplicate": "Tên miền này đã được thêm"
+    },
+    "email": {
+      "title": "Email",
+      "addressFallback": "chris@whynot.earth",
+      "receiveFeedback": "Nhận email phản hồi"
+    },
+    "delete": {
+      "sectionTitle": "Xóa tài khoản",
+      "button": "Xóa",
+      "modalTitle": "Xóa tài khoản",
+      "heading": "Bạn có chắc chắn muốn xóa tài khoản của mình không?",
+      "description": "Hành động này không thể hoàn tác. Tất cả dữ liệu, cuộc trò chuyện và cài đặt của bạn sẽ bị xóa vĩnh viễn.",
+      "listIntro": "Điều này sẽ xóa vĩnh viễn:",
+      "listItems": [
+        "Tất cả các cuộc trò chuyện và lịch sử trò chuyện của bạn",
+        "Cài đặt và tùy chọn tài khoản của bạn",
+        "Mọi tệp và tài liệu đã tải lên",
+        "Thông tin đăng ký và thanh toán của bạn"
+      ],
+      "confirmLabel": "Để xác nhận, hãy nhập địa chỉ email của bạn:",
+      "inputPlaceholder": "Nhập địa chỉ email của bạn tại đây",
+      "errorMismatch": "Vui lòng nhập chính xác địa chỉ email của bạn như được hiển thị để xác nhận xóa.",
+      "errorFailed": "Không thể xóa tài khoản. Vui lòng thử lại.",
+      "toastFailedTitle": "Xóa tài khoản thất bại",
+      "toastFailedBody": "Đã xảy ra lỗi khi xóa tài khoản của bạn. Vui lòng thử lại.",
+      "toastSuccessTitle": "Đã xóa tài khoản",
+      "toastSuccessBody": "Tài khoản của bạn đã bị xóa vĩnh viễn.",
+      "cancel": "Hủy",
+      "confirmButton": "Xóa tài khoản"
+    },
+    "domainModal": {
+      "title": "Thêm tên miền mới",
+      "label": "Tên miền",
+      "cancel": "Hủy",
+      "submit": "Thêm tên miền"
+    }
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "loadError": "Không thể tải cài đặt thông báo",
+    "toastBody": "Tùy chọn thông báo của bạn đã được cập nhật",
+    "sections": {
+      "responses": {
+        "title": "Phản hồi",
+        "description": "Nhận thông báo khi Blawby AI phản hồi các yêu cầu mất thời gian, như nghiên cứu hoặc tạo hình ảnh."
+      },
+      "tasks": {
+        "title": "Nhiệm vụ",
+        "description": "Nhận thông báo khi các nhiệm vụ bạn đã tạo có cập nhật.",
+        "manage": "Quản lý nhiệm vụ"
+      },
+      "messaging": {
+        "title": "Nhắn tin",
+        "description": "Nhận thông báo cho tin nhắn mới và cập nhật"
+      }
+    },
+    "channels": {
+      "push": "Push",
+      "email": "Email"
+    }
+  },
+  "security": {
+    "title": "Bảo mật",
+    "loadError": "Không thể tải cài đặt bảo mật",
+    "fallback": "Không thể tải cài đặt bảo mật",
+    "toasts": {
+      "settingsUpdated": "Cài đặt bảo mật của bạn đã được cập nhật"
+    },
+    "password": {
+      "sectionTitle": "Mật khẩu",
+      "description": "Thay đổi mật khẩu tài khoản của bạn hoặc đặt lại nếu bạn quên.",
+      "changeButton": "Thay đổi mật khẩu",
+      "cancelButton": "Hủy",
+      "resetButton": "Đặt lại mật khẩu",
+      "fields": {
+        "current": {
+          "label": "Mật khẩu hiện tại",
+          "placeholder": "Nhập mật khẩu hiện tại"
+        },
+        "new": {
+          "label": "Mật khẩu mới",
+          "placeholder": "Nhập mật khẩu mới"
+        },
+        "confirm": {
+          "label": "Xác nhận mật khẩu mới",
+          "placeholder": "Xác nhận mật khẩu mới"
+        }
+      },
+      "submit": "Thay đổi mật khẩu",
+      "errors": {
+        "missing": {
+          "title": "Thiếu trường",
+          "body": "Vui lòng điền tất cả các trường mật khẩu"
+        },
+        "mismatch": {
+          "title": "Mật khẩu không khớp",
+          "body": "Mật khẩu mới và xác nhận không khớp"
+        },
+        "weak": {
+          "title": "Mật khẩu yếu",
+          "body": "Mật khẩu phải có ít nhất 8 ký tự"
+        },
+        "failed": {
+          "title": "Không thể thay đổi mật khẩu",
+          "body": "Vui lòng thử lại"
+        }
+      },
+      "success": {
+        "title": "Đã thay đổi mật khẩu",
+        "body": "Mật khẩu của bạn đã được cập nhật thành công"
+      },
+      "reset": {
+        "title": "Đã gửi email đặt lại",
+        "body": "Kiểm tra email của bạn để biết hướng dẫn đặt lại mật khẩu"
+      }
+    },
+    "mfa": {
+      "title": "Xác thực đa yếu tố",
+      "description": "Yêu cầu thử thách bảo mật bổ sung khi đăng nhập. Nếu bạn không thể vượt qua thử thách này, bạn sẽ có tùy chọn khôi phục tài khoản của mình qua email.",
+      "toastEnabled": {
+        "title": "Đã bật MFA",
+        "body": "Xác thực đa yếu tố đã được bật thành công"
+      },
+      "disable": {
+        "modalTitle": "Tắt xác thực đa yếu tố",
+        "heading": "Bạn có chắc chắn muốn tắt MFA không?",
+        "description": "Tắt xác thực đa yếu tố sẽ làm cho tài khoản của bạn kém an toàn hơn. Bạn sẽ không còn phải cung cấp yếu tố xác thực thứ hai khi đăng nhập.",
+        "cancel": "Hủy",
+        "confirm": "Tắt MFA",
+        "toastTitle": "Đã tắt MFA",
+        "toastBody": "Xác thực đa yếu tố đã được tắt"
+      }
+    },
+    "trustedDevices": {
+      "title": "Thiết bị đáng tin cậy",
+      "description": "Khi bạn đăng nhập trên thiết bị khác, nó sẽ được thêm vào đây và có thể tự động nhận lời nhắc thiết bị để đăng nhập."
+    },
+    "logout": {
+      "current": {
+        "title": "Đăng xuất khỏi thiết bị này",
+        "button": "Đăng xuất",
+        "toastTitle": "Đã đăng xuất",
+        "toastBody": "Bạn đã đăng xuất khỏi thiết bị này"
+      },
+      "all": {
+        "title": "Đăng xuất khỏi tất cả thiết bị",
+        "description": "Đăng xuất khỏi tất cả các phiên hoạt động trên tất cả các thiết bị, bao gồm cả phiên hiện tại của bạn. Có thể mất tới 30 phút để các thiết bị khác được đăng xuất.",
+        "button": "Đăng xuất tất cả",
+        "toastTitle": "Đã đăng xuất",
+        "toastBody": "Bạn đã đăng xuất khỏi tất cả thiết bị"
+      }
+    }
+  },
+  "mfa": {
+    "back": "← Quay lại Bảo mật",
+    "title": "Bảo mật tài khoản của bạn",
+    "instructions": "Quét mã QR bên dưới bằng ứng dụng xác thực ưa thích của bạn, sau đó nhập mã một lần được cung cấp bên dưới.",
+    "qrLabel": "Mã QR",
+    "troubleScanning": "Gặp sự cố khi quét?",
+    "then": "Sau đó",
+    "codeLabel": "Nhập mã một lần của bạn*",
+    "codePlaceholder": "000000",
+    "verifyButton": "Tiếp tục",
+    "verifying": "Đang xác minh...",
+    "errors": {
+      "codeRequired": {
+        "title": "Yêu cầu mã",
+        "body": "Vui lòng nhập mã xác minh từ ứng dụng xác thực của bạn"
+      },
+      "codeInvalid": {
+        "title": "Mã không hợp lệ",
+        "body": "Vui lòng nhập mã 6 chữ số hợp lệ"
+      },
+      "verifyFailed": {
+        "title": "Xác minh thất bại",
+        "body": "Mã không hợp lệ. Vui lòng thử lại."
+      },
+      "clipboardUnsupported": {
+        "title": "Không hỗ trợ clipboard",
+        "body": "Trình duyệt của bạn không hỗ trợ sao chép vào clipboard. Vui lòng sao chép mã theo cách thủ công."
+      },
+      "copyFailed": {
+        "title": "Sao chép thất bại",
+        "body": "Không thể sao chép mã vào clipboard: {{message}}",
+        "unknown": "Lỗi không xác định"
+      }
+    },
+    "copied": {
+      "title": "Đã sao chép",
+      "body": "Đã sao chép mã thủ công vào clipboard"
+    },
+    "footer": {
+      "terms": "Điều khoản sử dụng",
+      "privacy": "Chính sách bảo mật"
+    }
+  },
+  "help": {
+    "title": "Trợ giúp",
+    "sections": {
+      "helpCenter": {
+        "title": "Trung tâm trợ giúp",
+        "description": "Nhận trợ giúp và tìm câu trả lời cho các câu hỏi thường gặp",
+        "cta": "Truy cập",
+        "ariaLabel": "Truy cập trợ giúp Blawby — mở trong tab mới"
+      },
+      "releaseNotes": {
+        "title": "Ghi chú phát hành",
+        "description": "Xem những gì mới trong các bản cập nhật mới nhất",
+        "cta": "Xem",
+        "ariaLabel": "Xem ghi chú phát hành — mở trong tab mới"
+      },
+      "terms": {
+        "title": "Điều khoản & Chính sách",
+        "description": "Đọc điều khoản dịch vụ và chính sách bảo mật của chúng tôi",
+        "cta": "Đọc",
+        "ariaLabel": "Đọc điều khoản và chính sách — mở trong tab mới"
+      },
+      "bug": {
+        "title": "Báo cáo lỗi",
+        "description": "Giúp chúng tôi cải thiện bằng cách báo cáo vấn đề",
+        "cta": "Báo cáo"
+      },
+      "downloads": {
+        "title": "Tải ứng dụng",
+        "description": "Tải ứng dụng di động và máy tính để bàn của chúng tôi",
+        "cta": "Tải xuống",
+        "ariaLabel": "Tải ứng dụng Blawby — mở trong tab mới"
+      },
+      "shortcuts": {
+        "title": "Phím tắt",
+        "description": "Học các phím tắt để làm việc nhanh hơn",
+        "cta": "Xem"
+      }
+    }
+  }
+}

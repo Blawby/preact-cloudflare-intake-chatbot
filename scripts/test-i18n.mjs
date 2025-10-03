@@ -2,19 +2,27 @@
 /* eslint-env node */
 import i18next from 'i18next';
 
-import enCommon from '../src/locales/en/common.json' assert { type: 'json' };
-import enSettings from '../src/locales/en/settings.json' assert { type: 'json' };
-import esCommon from '../src/locales/es/common.json' assert { type: 'json' };
-import esSettings from '../src/locales/es/settings.json' assert { type: 'json' };
+import enCommon from '../src/locales/en/common.json' with { type: 'json' };
+import enSettings from '../src/locales/en/settings.json' with { type: 'json' };
+import enAuth from '../src/locales/en/auth.json' with { type: 'json' };
+import enProfile from '../src/locales/en/profile.json' with { type: 'json' };
+import esCommon from '../src/locales/es/common.json' with { type: 'json' };
+import esSettings from '../src/locales/es/settings.json' with { type: 'json' };
+import esAuth from '../src/locales/es/auth.json' with { type: 'json' };
+import esProfile from '../src/locales/es/profile.json' with { type: 'json' };
 
 const resources = {
   en: {
     common: enCommon,
-    settings: enSettings
+    settings: enSettings,
+    auth: enAuth,
+    profile: enProfile
   },
   es: {
     common: esCommon,
-    settings: esSettings
+    settings: esSettings,
+    auth: esAuth,
+    profile: esProfile
   }
 };
 
@@ -24,7 +32,11 @@ const REQUIRED_KEYS = [
   'settings:navigation.items.account',
   'settings:account.delete.sectionTitle',
   'settings:security.title',
-  'common:notifications.settingsSavedTitle'
+  'common:notifications.settingsSavedTitle',
+  'profile:menu.signIn',
+  'profile:menu.signOut',
+  'profile:menu.settings',
+  'profile:aria.userProfile'
 ];
 
 const fail = (message) => {
@@ -41,7 +53,7 @@ const run = async () => {
     resources,
     lng: 'en',
     fallbackLng: 'en',
-    ns: ['common', 'settings'],
+    ns: ['common', 'settings', 'auth', 'profile'],
     defaultNS: 'common',
     interpolation: { escapeValue: false }
   });
