@@ -8,7 +8,7 @@ import authEn from '../locales/en/auth.json';
 import profileEn from '../locales/en/profile.json';
 
 export const DEFAULT_LOCALE = 'en' as const;
-export const SUPPORTED_LOCALES = ['en', 'es'] as const;
+export const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'de', 'zh', 'ja', 'vi'] as const;
 export type AppLocale = typeof SUPPORTED_LOCALES[number];
 
 const NAMESPACES = ['common', 'settings', 'auth', 'profile'] as const;
