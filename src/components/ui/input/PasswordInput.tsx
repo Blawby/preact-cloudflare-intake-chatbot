@@ -197,7 +197,13 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
         </div>
       )}
       
-      {displayDescription && (
+      {displayError && (
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert" aria-live="assertive">
+          {displayError}
+        </p>
+      )}
+      
+      {displayDescription && !displayError && (
         <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
         </p>

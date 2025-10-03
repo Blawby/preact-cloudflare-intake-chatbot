@@ -54,6 +54,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
   const generatedId = useUniqueId('checkbox');
   const checkboxId = id || generatedId;
   const descriptionId = `${checkboxId}-description`;
+  const errorId = `${checkboxId}-error`;
 
   // Create internal ref for indeterminate handling
   const inputRef = useRef<HTMLInputElement>(null);
@@ -120,7 +121,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
           disabled={disabled}
           required={required}
           className={checkboxClasses}
-          aria-describedby={description ? descriptionId : undefined}
+          aria-describedby={[description ? descriptionId : null, error ? errorId : null].filter(Boolean).join(' ') || undefined}
           aria-invalid={error ? 'true' : 'false'}
         />
       </div>
@@ -133,9 +134,15 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
           </label>
         )}
         
-        {displayDescription && (
+        {displayDescription && !error && (
           <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {displayDescription}
+          </p>
+        )}
+        
+        {error && (
+          <p id={errorId} className="text-xs text-red-600 mt-1" role="alert" aria-live="assertive">
+            {error}
           </p>
         )}
       </div>

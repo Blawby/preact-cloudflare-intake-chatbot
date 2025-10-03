@@ -35,8 +35,11 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   
   if (keysA.length !== keysB.length) return false;
   
+  // Use Set for O(1) lookup instead of O(n) includes
+  const keysBSet = new Set(keysB);
+  
   for (const key of keysA) {
-    if (!keysB.includes(key)) return false;
+    if (!keysBSet.has(key)) return false;
     if (!deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) {
       return false;
     }

@@ -113,9 +113,17 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
     
     // Normalize protocols into canonical pairs of {scheme, usesSlashes}
     const protocolMap = protocols.map(protocol => {
-      const cleanProtocol = protocol.replace(/[:/]/g, '');
-      const usesSlashes = protocol.includes('://');
-      return { scheme: cleanProtocol, usesSlashes };
+      // Handle different protocol formats
+      if (protocol.endsWith('://')) {
+        return { scheme: protocol.slice(0, -3), usesSlashes: true };
+      } else if (protocol.endsWith(':')) {
+        return { scheme: protocol.slice(0, -1), usesSlashes: false };
+      } else {
+        // Default to using slashes for common web protocols
+        const commonWebProtocols = ['http', 'https', 'ftp', 'ftps'];
+        const usesSlashes = commonWebProtocols.includes(protocol);
+        return { scheme: protocol, usesSlashes };
+      }
     });
     
     // Extract existing scheme and separator using regex
@@ -282,13 +290,19 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
         </div>
       )}
       
-      {showValidation && value && !isURLValid && (
+      {displayError && (
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert" aria-live="assertive">
+          {displayError}
+        </p>
+      )}
+      
+      {showValidation && value && !isURLValid && !displayError && (
         <p className="text-xs text-red-600 dark:text-red-400 mt-1">
           Please enter a valid URL
         </p>
       )}
       
-      {displayDescription && (
+      {displayDescription && !displayError && (
         <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
         </p>

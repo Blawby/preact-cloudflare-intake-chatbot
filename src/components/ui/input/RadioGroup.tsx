@@ -52,6 +52,7 @@ export const RadioGroup = ({
   
   // Generate unique instance ID to prevent ID collisions across multiple RadioGroup instances
   const instanceId = useUniqueId('radio-group-instance');
+  const errorId = `${instanceId}-error`;
   
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -61,7 +62,7 @@ export const RadioGroup = ({
   
   const displayLabel = label;
   const displayDescription = description;
-  const _displayError = error;
+  const displayError = error;
 
   const sizeClasses = {
     sm: 'w-3 h-3',
@@ -89,7 +90,12 @@ export const RadioGroup = ({
         </label>
       )}
       
-      <div className={cn(orientationClasses[orientation])}>
+      <div 
+        className={cn(orientationClasses[orientation])}
+        role="radiogroup"
+        aria-invalid={displayError ? 'true' : 'false'}
+        aria-describedby={displayError ? errorId : undefined}
+      >
         {options.map((option) => (
           <div key={option.value} className="flex items-start space-x-3">
             <div className="flex items-center h-5">
@@ -133,9 +139,15 @@ export const RadioGroup = ({
         ))}
       </div>
       
-      {displayDescription && (
+      {displayDescription && !displayError && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
+        </p>
+      )}
+      
+      {displayError && (
+        <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert" aria-live="assertive">
+          {displayError}
         </p>
       )}
     </div>

@@ -1,5 +1,7 @@
 import { forwardRef, useState, useCallback } from 'preact/compat';
 import { cn } from '../../../utils/cn';
+import { formatFileSize } from '../../../utils/mediaAggregation';
+import { useUniqueId } from '../../../hooks/useUniqueId';
 
 /**
  * FileInput Component
@@ -74,6 +76,11 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
   const displayLabel = label;
   const displayDescription = description;
 
+  // Generate stable unique IDs for accessibility
+  const generatedId = useUniqueId('file-input');
+  const inputId = generatedId;
+  const descriptionId = `${inputId}-description`;
+
 
   const variantClasses = {
     default: 'border-gray-300 dark:border-gray-600 focus:ring-accent-500 focus:border-accent-500',
@@ -114,13 +121,19 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
     }
   }, [onChange]);
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-  };
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (disabled) return;
+    
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      // Trigger file input click
+      const input = document.getElementById(inputId) as HTMLInputElement;
+      if (input) {
+        input.click();
+      }
+    }
+  }, [disabled, inputId]);
+
 
   const files = Array.isArray(value) ? value : value ? Array.from(value) : [];
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
@@ -128,13 +141,17 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
   return (
     <div className="w-full">
       {displayLabel && (
-        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
           {displayLabel}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
       
       <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-label={displayLabel || "File upload area"}
+        aria-disabled={disabled}
         className={cn(
           'relative border-2 border-dashed rounded-lg transition-colors',
           'hover:border-accent-400 dark:hover:border-accent-500',
@@ -146,15 +163,18 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onKeyDown={handleKeyDown}
       >
         <input
           ref={ref}
+          id={inputId}
           type="file"
           accept={accept}
           multiple={multiple}
           disabled={disabled}
           required={required}
           onChange={handleFileChange}
+          aria-describedby={displayDescription ? descriptionId : undefined}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
         />
         
@@ -218,7 +238,7 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
       )}
       
       {displayDescription && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p id={descriptionId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {displayDescription}
         </p>
       )}
