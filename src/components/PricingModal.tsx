@@ -283,8 +283,8 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       type="fullscreen"
       showCloseButton={false}
     >
-      <div className="h-full bg-dark-bg text-white flex flex-col overflow-y-auto">
-        {/* Header */}
+      <div className="h-screen lg:h-full bg-dark-bg text-white overflow-y-auto overscroll-contain">
+        {/* Header - Mobile scroll fix */}
         <div className="relative p-6 border-b border-dark-border">
           {/* Close Button */}
           <Button
@@ -329,8 +329,8 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mx-auto">
             {mainPlans.map((plan) => (
               <div
                 key={plan.id}
@@ -412,37 +412,39 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Enterprise Section */}
-        <div className="border-t border-dark-border p-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center">
-              <UserGroupIcon className="w-8 h-8 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-400 mb-2">Need more capabilities for your business?</p>
-              <button 
-                className="text-white underline hover:text-gray-300"
-                onClick={() => {
-                  // Redirect to enterprise page
-                  window.open('/enterprise', '_blank');
-                }}
-              >
-                See Blawby Enterprise
-              </button>
+          {/* Modal Footer */}
+          <div className="border-t border-dark-border px-6 py-2 mt-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Enterprise Section */}
+              <div className="flex items-center gap-2">
+                <UserGroupIcon className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-400">Need more capabilities?</span>
+                <button 
+                  className="text-sm text-white underline hover:text-gray-300 transition-colors"
+                  onClick={() => {
+                    // Redirect to enterprise page
+                    window.open('/enterprise', '_blank');
+                  }}
+                >
+                  See Blawby Enterprise
+                </button>
+              </div>
+              
+              {/* Language Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">Language:</span>
+                <SettingsDropdown
+                  label=""
+                  value={selectedCountry}
+                  options={countryOptions}
+                  onChange={handleCountryChange}
+                  className="py-0"
+                  direction="up"
+                />
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Country Toggle */}
-        <div className="absolute bottom-4 right-4">
-          <SettingsDropdown
-            label=""
-            value={selectedCountry}
-            options={countryOptions}
-            onChange={handleCountryChange}
-            className="py-0"
-            direction="up"
-          />
         </div>
       </div>
     </Modal>

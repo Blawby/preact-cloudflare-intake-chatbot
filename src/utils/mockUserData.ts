@@ -2,9 +2,9 @@
 // This provides consistent mock data for development until the real API is ready
 
 export type SubscriptionTier = 'free' | 'plus' | 'business';
-export type Language = 'en' | 'vi' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'pt' | 'it' | 'ru' | 'nl' | 'pl' | 'ar' | 'ko' | 'sv' | 'no' | 'fi' | 'tr' | 'pt-BR';
+export type Language = 'en' | 'es';
 
-// Comprehensive country-to-language mapping
+// Simplified country-to-language mapping (English and Spanish only)
 export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   // English-speaking countries
   'us': 'en',
@@ -51,9 +51,6 @@ export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   'mu': 'en',
   'na': 'en',
   
-  // Vietnamese
-  'vn': 'vi',
-  
   // Spanish-speaking countries
   'es': 'es',
   'mx': 'es',
@@ -77,132 +74,6 @@ export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   'pr': 'es',
   'gq': 'es',
   'ad': 'es',
-  
-  // French-speaking countries
-  'fr': 'fr',
-  'be': 'fr', // Wallonia
-  'lu': 'fr',
-  'mc': 'fr',
-  'sn': 'fr',
-  'ci': 'fr',
-  'ml': 'fr',
-  'bf': 'fr',
-  'ne': 'fr',
-  'td': 'fr',
-  'mg': 'fr',
-  'cm': 'fr',
-  'cd': 'fr',
-  'cg': 'fr',
-  'cf': 'fr',
-  'ga': 'fr',
-  'dj': 'fr',
-  'km': 'fr',
-  'vu': 'fr',
-  'nc': 'fr',
-  'pf': 'fr',
-  'wf': 'fr',
-  'yt': 'fr',
-  're': 'fr',
-  'gp': 'fr',
-  'mq': 'fr',
-  'gf': 'fr',
-  'pm': 'fr',
-  'bl': 'fr',
-  'mf': 'fr',
-  'ht': 'fr',
-  
-  // German-speaking countries
-  'de': 'de',
-  'at': 'de',
-  'ch': 'de', // German-speaking regions
-  'li': 'de',
-  
-  // Chinese-speaking countries/regions
-  'cn': 'zh',
-  'tw': 'zh',
-  'mo': 'zh',
-  
-  // Japanese
-  'jp': 'ja',
-  
-  // Portuguese-speaking countries
-  'pt': 'pt',
-  'br': 'pt-BR',
-  'ao': 'pt',
-  'mz': 'pt',
-  'gw': 'pt',
-  'cv': 'pt',
-  'st': 'pt',
-  'tl': 'pt',
-  
-  // Italian
-  'it': 'it',
-  'sm': 'it',
-  'va': 'it',
-  
-  // Russian
-  'ru': 'ru',
-  'by': 'ru',
-  'kz': 'ru',
-  'kg': 'ru',
-  'tj': 'ru',
-  'uz': 'ru',
-  'tm': 'ru',
-  'md': 'ru',
-  'ua': 'ru',
-  'am': 'ru',
-  'az': 'ru',
-  'ge': 'ru',
-  'mn': 'ru',
-  
-  // Dutch
-  'nl': 'nl',
-  'sr': 'nl',
-  'aw': 'nl',
-  'cw': 'nl',
-  'sx': 'nl',
-  'bq': 'nl',
-  
-  // Polish
-  'pl': 'pl',
-  
-  // Arabic-speaking countries
-  'sa': 'ar',
-  'ae': 'ar',
-  'eg': 'ar',
-  'iq': 'ar',
-  'jo': 'ar',
-  'lb': 'ar',
-  'sy': 'ar',
-  'ye': 'ar',
-  'om': 'ar',
-  'kw': 'ar',
-  'qa': 'ar',
-  'bh': 'ar',
-  'ly': 'ar',
-  'tn': 'ar',
-  'dz': 'ar',
-  'ma': 'ar',
-  'sd': 'ar',
-  'so': 'ar',
-  'mr': 'ar',
-  'ps': 'ar',
-  
-  // Korean
-  'kr': 'ko',
-  'kp': 'ko',
-  
-  // Swedish
-  'se': 'sv',
-  
-  // Norwegian
-  'no': 'no',
-  
-  // Finnish
-  'fi': 'fi',
-  
-  // Turkish
-  'tr': 'tr',
 };
 
 /**
@@ -336,9 +207,9 @@ const DEFAULT_PREFERENCES: MockUserPreferences = {
   theme: 'system',
   accentColor: 'default',
   fontSize: 'medium',
-  language: 'vi',
-  spokenLanguage: 'vi',
-  country: 'vn',
+  language: 'en',
+  spokenLanguage: 'en',
+  country: 'us',
   timezone: 'America/New_York',
   dateFormat: 'MM/DD/YYYY',
   timeFormat: '12-hour',

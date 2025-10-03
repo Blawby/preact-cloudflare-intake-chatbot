@@ -35,7 +35,7 @@
     },
     "step2": {
       "title": "What do you want to use Blawby AI for?",
-        "business": "Business Legal Needs",
+      "subtitle": "This helps us provide more relevant suggestions",
       "options": {
         "personal": "Personal Legal Issues",
         "business": "Business Legal Needs", 

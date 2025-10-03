@@ -102,11 +102,19 @@ function MainApp() {
 	// Check if we should show welcome modal (after onboarding completion)
 	useEffect(() => {
 		// Check if user just completed onboarding
-		const onboardingCompleted = localStorage.getItem('onboardingCompleted');
-		if (onboardingCompleted === 'true') {
-			setShowWelcomeModal(true);
-			// Clear the flag so it doesn't show again
-			localStorage.removeItem('onboardingCompleted');
+		try {
+			const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+			if (onboardingCompleted === 'true') {
+				setShowWelcomeModal(true);
+				// Don't remove the flag here - let the completion handler do it
+				// This prevents permanent loss if the modal fails to render
+			}
+		} catch (error) {
+			// Handle localStorage access failures (private browsing, etc.)
+			if (import.meta.env.DEV) {
+				// eslint-disable-next-line no-console
+				console.warn('Failed to check onboarding completion status:', error);
+			}
 		}
 	}, []);
 
@@ -280,10 +288,33 @@ function MainApp() {
 	// Handle welcome modal
 	const handleWelcomeComplete = () => {
 		setShowWelcomeModal(false);
+		
+		// Remove the onboarding completion flag now that the welcome modal has been shown
+		try {
+			localStorage.removeItem('onboardingCompleted');
+		} catch (error) {
+			// Handle localStorage access failures (private browsing, etc.)
+			if (import.meta.env.DEV) {
+				// eslint-disable-next-line no-console
+				console.warn('Failed to remove onboarding completion flag:', error);
+			}
+		}
 	};
 
 	const handleWelcomeClose = () => {
 		setShowWelcomeModal(false);
+		
+		// Remove the onboarding completion flag even if user closes without completing
+		// This prevents the welcome modal from showing again
+		try {
+			localStorage.removeItem('onboardingCompleted');
+		} catch (error) {
+			// Handle localStorage access failures (private browsing, etc.)
+			if (import.meta.env.DEV) {
+				// eslint-disable-next-line no-console
+				console.warn('Failed to remove onboarding completion flag:', error);
+			}
+		}
 	};
 
 

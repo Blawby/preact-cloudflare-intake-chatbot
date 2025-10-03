@@ -18,10 +18,15 @@ const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
   const handleComplete = async () => {
     setIsSubmitting(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    onComplete();
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      onComplete();
+    } finally {
+      // Ensure isSubmitting is always reset, whether the API call succeeds or throws
+      setIsSubmitting(false);
+    }
   };
 
   const tips = [

@@ -48,34 +48,42 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
   }, [isOpen]);
 
   const handleStepComplete = async (step: OnboardingStep, data: Partial<OnboardingData>) => {
-    setOnboardingData(prev => ({
-      ...prev,
+    // Compute merged snapshot locally to avoid stale state
+    const mergedData = {
+      ...onboardingData,
       ...data
-    }));
+    };
+    
+    setOnboardingData(mergedData);
 
     if (step === 'personal') {
       setCurrentStep('useCase');
     } else if (step === 'useCase') {
       // After use case step, complete onboarding and redirect to main app
-      await handleComplete();
+      await handleComplete(mergedData);
     }
   };
 
   const handleSkip = async (step: OnboardingStep) => {
-    setOnboardingData(prev => ({
-      ...prev,
-      skippedSteps: [...prev.skippedSteps, step]
-    }));
+    // Compute merged snapshot locally to avoid stale state
+    const mergedData = {
+      ...onboardingData,
+      skippedSteps: [...onboardingData.skippedSteps, step]
+    };
+    
+    setOnboardingData(mergedData);
 
     if (step === 'useCase') {
       // Skip use case step and complete onboarding
-      await handleComplete();
+      await handleComplete(mergedData);
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = async (data?: OnboardingData) => {
+    // Use provided data snapshot or fall back to current state
+    const sourceData = data || onboardingData;
     const completedData = {
-      ...onboardingData,
+      ...sourceData,
       completedAt: new Date().toISOString()
     };
 
@@ -88,7 +96,16 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
 
       // Cache the completion status in localStorage for quick access
       // This is just a cache, not the source of truth
-      localStorage.setItem('onboardingCompleted', 'true');
+      try {
+        localStorage.setItem('onboardingCompleted', 'true');
+      } catch (storageError) {
+        // Handle localStorage failures (private browsing, quota exceeded, etc.)
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn('Failed to cache onboarding completion in localStorage:', storageError);
+        }
+        // Continue execution - this is just a cache, not critical
+      }
 
       // Show success notification
       showSuccess(
