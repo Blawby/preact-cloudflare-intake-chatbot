@@ -273,8 +273,8 @@ const Message: FunctionComponent<MessageProps> = memo(({
 		} ${hasOnlyMedia ? 'p-0 m-0 bg-none' : ''}`} data-testid={isUser ? "user-message" : "ai-message"}>
 			{/* Agent handles welcome messages - no special logic needed */}
 			<div className="text-base leading-6 min-h-4">
-				{/* Show content if available */}
-				{content && (
+				{/* Show content if available and not loading */}
+				{content && !isLoading && (
 					<div className="prose prose-xs sm:prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-ul:leading-relaxed prose-ol:leading-relaxed">
 						{isClient && ReactMarkdown ? (
 							<ReactMarkdown>{content}</ReactMarkdown>
@@ -284,8 +284,8 @@ const Message: FunctionComponent<MessageProps> = memo(({
 					</div>
 				)}
 				
-				{/* Show AI thinking indicator only when loading and no content yet */}
-				{isLoading && !content && (
+				{/* Show AI thinking indicator for all loading states */}
+				{isLoading && (
 					<AIThinkingIndicator 
 						variant={aiState || 'thinking'} 
 						content={content || undefined}
