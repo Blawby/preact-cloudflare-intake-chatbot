@@ -165,7 +165,7 @@ export default defineConfig({
 		minify: 'terser',
 		terserOptions: {
 			compress: {
-				drop_console: process.env.NODE_ENV === 'production',
+				drop_console: false,
 				passes: 2,
 				drop_debugger: true,
 				// Keep console.error and console.warn in production for debugging

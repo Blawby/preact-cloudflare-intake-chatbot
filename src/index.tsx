@@ -521,26 +521,31 @@ if (typeof window !== 'undefined') {
 	// Hydration check for production monitoring
 	console.info('Hydration started');
 	
-	try {
-		initI18n()
-			.then(() => {
-				try {
-					hydrate(<AppWithProviders />, document.getElementById('app'));
-				} catch (hydrationError) {
-					console.error('Hydration failed:', hydrationError);
-				}
-			})
-			.catch((error) => {
-				console.error('Failed to initialize i18n:', error);
-				try {
-					hydrate(<AppWithProviders />, document.getElementById('app'));
-				} catch (hydrationError) {
-					console.error('Hydration failed:', hydrationError);
-				}
-			});
-	} catch (initError) {
-		console.error('Initialization failed:', initError);
-	}
+	// Initialize i18n and hydrate only on success
+	initI18n()
+		.then(() => {
+			try {
+				hydrate(<AppWithProviders />, document.getElementById('app'));
+			} catch (hydrationError) {
+				console.error('Hydration failed:', hydrationError);
+			}
+		})
+		.catch((error) => {
+			console.error('Failed to initialize i18n:', error);
+			// Render fallback error UI instead of attempting hydration
+			const appElement = document.getElementById('app');
+			if (appElement) {
+				appElement.innerHTML = `
+					<div style="display: flex; height: 100vh; align-items: center; justify-content: center; flex-direction: column; padding: 2rem; text-align: center;">
+						<h1 style="font-size: 1.5rem; margin-bottom: 1rem; color: #ef4444;">Application Error</h1>
+						<p style="color: #6b7280; margin-bottom: 1rem;">Failed to initialize the application. Please refresh the page to try again.</p>
+						<button onclick="window.location.reload()" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; cursor: pointer;">
+							Refresh Page
+						</button>
+					</div>
+				`;
+			}
+		});
 }
 
 
