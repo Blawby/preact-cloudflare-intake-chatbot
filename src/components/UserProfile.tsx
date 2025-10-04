@@ -71,18 +71,14 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
         }
       };
       
-      if (typeof window !== 'undefined') {
-        window.addEventListener('storage', handleStorageChange);
-        window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
-      }
+      window.addEventListener('storage', handleStorageChange);
+      window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
       
       return () => {
-        if (typeof window !== 'undefined') {
-          window.removeEventListener('resize', debouncedResizeHandler);
-          debouncedResizeHandler.cancel();
-          window.removeEventListener('storage', handleStorageChange);
-          window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
-        }
+        window.removeEventListener('resize', debouncedResizeHandler);
+        debouncedResizeHandler.cancel();
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
       };
     }
   }, []);

@@ -74,14 +74,16 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             setStartIndex(newStartIndex);
 
             // Maintain scroll position when loading more messages
-            requestAnimationFrame(() => {
-                if (listRef.current) {
-                    const newScrollTop = listRef.current.scrollHeight - element.scrollHeight;
-                    if (newScrollTop > 0) {
-                        listRef.current.scrollTop = newScrollTop;
+            if (typeof window !== 'undefined') {
+                requestAnimationFrame(() => {
+                    if (listRef.current) {
+                        const newScrollTop = listRef.current.scrollHeight - element.scrollHeight;
+                        if (newScrollTop > 0) {
+                            listRef.current.scrollTop = newScrollTop;
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }, [startIndex, checkIfScrolledToBottom]);
 

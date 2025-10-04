@@ -47,6 +47,8 @@ export const useTheme = () => {
           mediaQuery.removeEventListener('change', handleMediaChange);
         };
       }
+      // Explicit no-op cleanup when saved theme exists
+      return undefined;
     }
   }, []);
   

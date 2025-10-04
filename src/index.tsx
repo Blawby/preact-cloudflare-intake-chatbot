@@ -225,7 +225,7 @@ function MainApp() {
 	}, [previewFiles.length, clearPreviewFiles]);
 
 	const handleFocusInput = useCallback(() => {
-		if (typeof window !== 'undefined') {
+		if (typeof document !== 'undefined') {
 			const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
 			if (textarea) {
 				textarea.focus();
