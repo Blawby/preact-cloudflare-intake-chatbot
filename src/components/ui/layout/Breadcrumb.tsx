@@ -50,7 +50,9 @@ export const Breadcrumb: FunctionComponent<BreadcrumbProps> = ({
             } catch (error) {
               // Fallback to full page navigation if router navigation fails
               console.warn('Router navigation failed, falling back to full page navigation:', error);
-              window.location.assign(step.href);
+              if (typeof window !== 'undefined') {
+                window.location.assign(step.href);
+              }
             }
           }
         };

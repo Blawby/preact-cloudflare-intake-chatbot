@@ -40,12 +40,16 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
   };
 
   const handlePhoneIconCall = () => {
-    window.open(`tel:${lawyer.phone}`, '_self');
+    if (typeof window !== 'undefined') {
+      window.open(`tel:${lawyer.phone}`, '_self');
+    }
     onClose();
   };
 
   const handleEmail = () => {
-    window.open(`mailto:${lawyer.email}`, '_self');
+    if (typeof window !== 'undefined') {
+      window.open(`mailto:${lawyer.email}`, '_self');
+    }
     onClose();
   };
 
@@ -66,7 +70,9 @@ const ContactOptionsModal: FunctionComponent<ContactOptionsModalProps> = ({
       
       // Only allow http and https protocols
       if (url.protocol === 'http:' || url.protocol === 'https:') {
-        window.open(url.href, '_blank', 'noopener,noreferrer');
+        if (typeof window !== 'undefined') {
+          window.open(url.href, '_blank', 'noopener,noreferrer');
+        }
         onClose();
       } else {
         throw new Error('Invalid protocol');

@@ -23,7 +23,9 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const handleArrowTopRightOnSquareIcon = () => {
-    window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+    if (typeof window !== 'undefined') {
+      window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const handlePaymentClick = () => {

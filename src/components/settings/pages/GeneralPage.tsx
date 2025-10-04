@@ -90,21 +90,25 @@ export const GeneralPage = ({
     
     // Apply theme immediately if changed
     if (key === 'theme') {
-      if (value === 'dark') {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      } else if (value === 'light') {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      } else {
-        // System theme
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (prefersDark) {
+      if (typeof document !== 'undefined' && typeof localStorage !== 'undefined') {
+        if (value === 'dark') {
           document.documentElement.classList.add('dark');
-        } else {
+          localStorage.setItem('theme', 'dark');
+        } else if (value === 'light') {
           document.documentElement.classList.remove('dark');
+          localStorage.setItem('theme', 'light');
+        } else {
+          // System theme
+          if (typeof window !== 'undefined') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (prefersDark) {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
+          }
+          localStorage.removeItem('theme');
         }
-        localStorage.removeItem('theme');
       }
     }
     

@@ -60,7 +60,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         const lastScrollTop = (element as any).lastScrollTop || 0;
         const scrollDelta = Math.abs(currentScrollTop - lastScrollTop);
         
-        if (scrollDelta > 0) {
+        if (scrollDelta > 0 && typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('chat-scroll', {
                 detail: { scrollTop: currentScrollTop, scrollDelta }
             }));
@@ -74,14 +74,16 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             setStartIndex(newStartIndex);
 
             // Maintain scroll position when loading more messages
-            requestAnimationFrame(() => {
-                if (listRef.current) {
-                    const newScrollTop = listRef.current.scrollHeight - element.scrollHeight;
-                    if (newScrollTop > 0) {
-                        listRef.current.scrollTop = newScrollTop;
+            if (typeof window !== 'undefined') {
+                requestAnimationFrame(() => {
+                    if (listRef.current) {
+                        const newScrollTop = listRef.current.scrollHeight - element.scrollHeight;
+                        if (newScrollTop > 0) {
+                            listRef.current.scrollTop = newScrollTop;
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }, [startIndex, checkIfScrolledToBottom]);
 

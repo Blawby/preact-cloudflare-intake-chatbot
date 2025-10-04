@@ -9,6 +9,21 @@ import { Input, EmailInput, PasswordInput } from './ui/input';
 import { handleError } from '../utils/errorHandler';
 // No authentication required - authClient removed
 
+// Helper function to handle localStorage operations safely
+function safeLocalStorageOperation<T>(
+  operation: () => T,
+  fallback: T,
+  errorMessage?: string
+): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    return operation();
+  } catch (error) {
+    if (errorMessage) console.error(errorMessage, error);
+    return fallback;
+  }
+}
+
 interface AuthPageProps {
   mode?: 'signin' | 'signup';
   onSuccess?: () => void | Promise<void>;
@@ -31,10 +46,16 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
 
   // Check URL params for mode
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlMode = urlParams.get('mode');
-    if (urlMode === 'signin' || urlMode === 'signup') {
-      setIsSignUp(urlMode === 'signup');
+    if (typeof window !== 'undefined' && window.location) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlMode = urlParams.get('mode');
+        if (urlMode === 'signin' || urlMode === 'signup') {
+          setIsSignUp(urlMode === 'signup');
+        }
+      } catch (error) {
+        console.warn('Failed to parse URL parameters:', error);
+      }
     }
   }, []);
 
@@ -63,12 +84,16 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     // Always respect the configured redirectDelay
     const delay = redirectDelay;
     
-    if (delay > 0) {
-      setTimeout(() => {
+    const doRedirect = () => {
+      if (typeof window !== 'undefined') {
         window.location.href = '/';
-      }, delay);
+      }
+    };
+    
+    if (delay > 0) {
+      setTimeout(doRedirect, delay);
     } else {
-      window.location.href = '/';
+      doRedirect();
     }
   };
 
@@ -102,13 +127,11 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         };
         
         // Get existing users array or create new one
-        let existingUsers: Array<{id: string; name: string; email: string; password: string | null; image: string; teamId: string | null; role: string; phone: string | null; subscriptionTier: string}> = [];
-        try {
-          existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-        } catch (_error) {
-          // Failed to parse existing users from localStorage
-          existingUsers = [];
-        }
+        const existingUsers = safeLocalStorageOperation(
+          () => JSON.parse(localStorage.getItem('mockUsers') || '[]'),
+          [],
+          'Failed to parse existing users'
+        );
         
         // Check if user with this email already exists (case-insensitive)
         const emailExists = existingUsers.some(user => 
@@ -125,21 +148,33 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         // Add new user to the array
         existingUsers.push(mockUser);
         
-        // Store updated users array
-        try {
-          localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
-        } catch (_error) {
-          // Failed to store users in localStorage
+        // Store updated users array and dispatch events only in browser environment
+        const storeUsersSuccess = safeLocalStorageOperation(
+          () => {
+            localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+            return true;
+          },
+          false,
+          'Failed to store users in localStorage'
+        );
+        
+        if (!storeUsersSuccess) {
           setError(t('errors.storageError'));
           setLoading(false);
           return;
         }
         
         // Also store as single user for backward compatibility
-        try {
-          localStorage.setItem('mockUser', JSON.stringify(mockUser));
-        } catch (_error) {
-          // Failed to store user in localStorage
+        const storeUserSuccess = safeLocalStorageOperation(
+          () => {
+            localStorage.setItem('mockUser', JSON.stringify(mockUser));
+            return true;
+          },
+          false,
+          'Failed to store user in localStorage'
+        );
+        
+        if (!storeUserSuccess) {
           setError(t('errors.storageError'));
           setLoading(false);
           return;
@@ -149,7 +184,9 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         const { password: _password, ...userDataWithoutPassword } = mockUser;
         
         // Dispatch custom event to notify UserProfile component
-        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+        }
         
                     setMessage(t('messages.accountCreated'));
         
@@ -158,8 +195,11 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         setShowOnboarding(true);
       } else {
         // Simulate API call for sign-in
-        // Read mock users from localStorage as an array
-        const mockUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+        const mockUsers = safeLocalStorageOperation(
+          () => JSON.parse(localStorage.getItem('mockUsers') || '[]'),
+          [],
+          'Failed to parse users from localStorage'
+        );
         
         // Find user by email
         const user = mockUsers.find((u: {email: string; password: string}) => u.email === formData.email);
@@ -171,7 +211,9 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
             const { password: _password, ...userDataWithoutPassword } = user;
             
             // Dispatch custom event to notify UserProfile component
-            window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+            }
             
             setMessage(t('messages.signedIn'));
             
@@ -220,22 +262,36 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         };
         
         // Get existing users array or create new one
-        const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+        const existingUsers = safeLocalStorageOperation(
+          () => JSON.parse(localStorage.getItem('mockUsers') || '[]'),
+          [],
+          'Failed to parse existing users from localStorage'
+        );
         
         // Add new user to the array
         existingUsers.push(mockUser);
         
         // Store updated users array
-        localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+        safeLocalStorageOperation(
+          () => localStorage.setItem('mockUsers', JSON.stringify(existingUsers)),
+          undefined,
+          'Failed to store users in localStorage'
+        );
         
         // Also store as single user for backward compatibility
-        localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        safeLocalStorageOperation(
+          () => localStorage.setItem('mockUser', JSON.stringify(mockUser)),
+          undefined,
+          'Failed to store user in localStorage'
+        );
         
         // Create user data without password for auth event
         const { password: _password, ...userDataWithoutPassword } = mockUser;
         
         // Dispatch custom event to notify UserProfile component
-        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+        }
         
         setMessage(t('messages.googleSignedIn'));
         
@@ -258,23 +314,37 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         };
         
         // Get existing users array or create new one
-        const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+        const existingUsers = safeLocalStorageOperation(
+          () => JSON.parse(localStorage.getItem('mockUsers') || '[]'),
+          [],
+          'Failed to parse existing users from localStorage'
+        );
         
         // Check if this Google user already exists, if not add them
         const existingGoogleUser = existingUsers.find((u: {email: string}) => u.email === 'user@gmail.com');
         if (!existingGoogleUser) {
           existingUsers.push(existingMockUser);
-          localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+          safeLocalStorageOperation(
+            () => localStorage.setItem('mockUsers', JSON.stringify(existingUsers)),
+            undefined,
+            'Failed to store users in localStorage'
+          );
         }
         
         // Store the existing user data for backward compatibility
-        localStorage.setItem('mockUser', JSON.stringify(existingMockUser));
+        safeLocalStorageOperation(
+          () => localStorage.setItem('mockUser', JSON.stringify(existingMockUser)),
+          undefined,
+          'Failed to store user in localStorage'
+        );
         
         // Create user data without password for auth event
         const { password: _password, ...userDataWithoutPassword } = existingMockUser;
         
         // Dispatch custom event to notify UserProfile component
-        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+        }
         
         setMessage(t('messages.googleSignedIn'));
         
@@ -290,7 +360,9 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
 
 
   const handleBackToHome = () => {
-    window.location.href = '/';
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   const handleOnboardingComplete = async (data: OnboardingData) => {
@@ -312,7 +384,13 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       // Onboarding completed with redacted data
     }
     // Persist onboarding completion flag before redirecting
-    localStorage.setItem('onboardingCompleted', 'true');
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('onboardingCompleted', 'true');
+      } catch (error) {
+        console.error('Failed to store onboarding completion flag in localStorage:', error);
+      }
+    }
     // Close onboarding modal and redirect to main app
     setShowOnboarding(false);
     // Redirect to main app where the welcome modal will show, waiting for onSuccess if provided

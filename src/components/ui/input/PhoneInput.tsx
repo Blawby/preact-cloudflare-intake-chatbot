@@ -94,11 +94,15 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
     };
 
     if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('mousedown', handleClickOutside);
+      }
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('mousedown', handleClickOutside);
+      }
     };
   }, [isDropdownOpen]);
 
@@ -157,11 +161,15 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   // Add keyboard event listener
   useEffect(() => {
     if (isDropdownOpen) {
-      document.addEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('keydown', handleKeyDown);
+      }
     }
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('keydown', handleKeyDown);
+      }
     };
   }, [isDropdownOpen, handleKeyDown]);
   

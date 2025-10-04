@@ -41,7 +41,11 @@ export function TeamNotFound({ teamId, onRetry }: TeamNotFoundProps) {
           )}
           <Button 
             variant="secondary"
-            onClick={() => window.location.href = '/'}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/';
+              }
+            }}
           >
             Go to Home
           </Button>

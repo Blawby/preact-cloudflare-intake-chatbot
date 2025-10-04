@@ -77,7 +77,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     
-    if (isMobileSidebarOpen) {
+    if (isMobileSidebarOpen && typeof window !== 'undefined') {
       // Store the currently focused element
       previousActiveElement.current = document.activeElement as HTMLElement;
       
@@ -118,37 +118,43 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     };
 
     // Add document-level listener for Escape key
-    document.addEventListener('keydown', handleEscape);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keydown', handleEscape);
+    }
 
     // Cleanup listener when sidebar closes or component unmounts
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('keydown', handleEscape);
+      }
     };
   }, [isMobileSidebarOpen, onToggleMobileSidebar]);
 
   // Mobile detection with resize handling
   useLayoutEffect(() => {
-    // Function to check if mobile
-    const checkIsMobile = () => {
-      return window.innerWidth < 1024;
-    };
+    if (typeof window !== 'undefined') {
+      // Function to check if mobile
+      const checkIsMobile = () => {
+        return window.innerWidth < 1024;
+      };
 
-    // Set initial mobile state
-    setIsMobile(checkIsMobile());
-
-    // Create debounced resize handler for performance
-    const debouncedResizeHandler = debounce(() => {
+      // Set initial mobile state
       setIsMobile(checkIsMobile());
-    }, 100);
 
-    // Add resize listener
-    window.addEventListener('resize', debouncedResizeHandler);
+      // Create debounced resize handler for performance
+      const debouncedResizeHandler = debounce(() => {
+        setIsMobile(checkIsMobile());
+      }, 100);
 
-    // Cleanup function
-    return () => {
-      window.removeEventListener('resize', debouncedResizeHandler);
-      debouncedResizeHandler.cancel();
-    };
+      // Add resize listener
+      window.addEventListener('resize', debouncedResizeHandler);
+
+      // Cleanup function
+      return () => {
+        window.removeEventListener('resize', debouncedResizeHandler);
+        debouncedResizeHandler.cancel();
+      };
+    }
   }, []);
   
   // Tab switching handlers
@@ -346,7 +352,9 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       <MobileTopNav
         onOpenSidebar={() => onToggleMobileSidebar(true)}
         onPlusClick={() => {
-          window.location.hash = '#pricing';
+          if (typeof window !== 'undefined') {
+            window.location.hash = '#pricing';
+          }
         }}
         isVisible={isNavbarVisible}
       />

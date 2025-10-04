@@ -55,19 +55,23 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
       setIsModalOpen(true);
     } else {
       // For documents and other files, trigger download
-      const link = document.createElement('a');
-      link.href = media.url;
-      link.download = media.name;
-      link.click();
+      if (typeof document !== 'undefined') {
+        const link = document.createElement('a');
+        link.href = media.url;
+        link.download = media.name;
+        link.click();
+      }
     }
   };
 
   const handleDownload = (media: AggregatedMedia, e: Event) => {
     e.stopPropagation();
-    const link = document.createElement('a');
-    link.href = media.url;
-    link.download = media.name;
-    link.click();
+    if (typeof document !== 'undefined') {
+      const link = document.createElement('a');
+      link.href = media.url;
+      link.download = media.name;
+      link.click();
+    }
   };
 
   if (totalDocumentIcons === 0) {

@@ -96,15 +96,17 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
 
       // Cache the completion status in localStorage for quick access
       // This is just a cache, not the source of truth
-      try {
-        localStorage.setItem('onboardingCompleted', 'true');
-      } catch (storageError) {
-        // Handle localStorage failures (private browsing, quota exceeded, etc.)
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.warn('Failed to cache onboarding completion in localStorage:', storageError);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('onboardingCompleted', 'true');
+        } catch (storageError) {
+          // Handle localStorage failures (private browsing, quota exceeded, etc.)
+          if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
+            console.warn('Failed to cache onboarding completion in localStorage:', storageError);
+          }
+          // Continue execution - this is just a cache, not critical
         }
-        // Continue execution - this is just a cache, not critical
       }
 
       // Show success notification

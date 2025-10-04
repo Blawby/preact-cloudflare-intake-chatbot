@@ -406,10 +406,12 @@ const Message: FunctionComponent<MessageProps> = memo(({
 						file={file} 
 						onDocumentIconClick={(file) => {
 							// For documents and other files, trigger download
-							const link = globalThis.document.createElement('a');
-							link.href = file.url;
-							link.download = file.name;
-							link.click();
+							if (typeof globalThis.document !== 'undefined') {
+								const link = globalThis.document.createElement('a');
+								link.href = file.url;
+								link.download = file.name;
+								link.click();
+							}
 						}}
 					/>
 				))}

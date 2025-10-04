@@ -19,7 +19,9 @@ export function useNavigation() {
      * @param replace - Whether to replace the current history entry instead of adding a new one
      */
     navigate: (url: string, replace = false) => {
-      location.route(url, replace);
+      if (location && location.route) {
+        location.route(url, replace);
+      }
     },
 
     /**
@@ -28,23 +30,27 @@ export function useNavigation() {
      */
     navigateToAuth: (mode?: string) => {
       const url = mode ? `/auth?mode=${mode}` : '/auth';
-      location.route(url);
+      if (location && location.route) {
+        location.route(url);
+      }
     },
 
     /**
      * Navigate to the home page
      */
     navigateToHome: () => {
-      location.route('/');
+      if (location && location.route) {
+        location.route('/');
+      }
     },
 
     /**
      * Get current location information
      */
     getCurrentLocation: () => ({
-      url: location.url,
-      path: location.path,
-      query: location.query
+      url: location?.url || '',
+      path: location?.path || '/',
+      query: location?.query || {}
     })
   };
 }

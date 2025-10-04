@@ -1,4 +1,5 @@
 import { useLocation } from 'preact-iso';
+import { useEffect, useRef } from 'preact/hooks';
 import { GeneralPage } from './pages/GeneralPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { AccountPage } from './pages/AccountPage';
@@ -39,9 +40,22 @@ export const SettingsPage = ({
   const { navigate } = useNavigation();
   const location = useLocation();
   const { t } = useTranslation(['settings', 'common']);
+  const navigationTimeoutRef = useRef<number | null>(null);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current !== null) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Get current page from URL path
   const getCurrentPage = () => {
+    if (!location || !location.path) {
+      return 'navigation'; // Default to navigation during SSR
+    }
     const path = location.path;
     if (path === '/settings' || path === '/settings/') {
       return 'navigation'; // Show main navigation on mobile
@@ -66,18 +80,35 @@ export const SettingsPage = ({
     // Use the mock data service to properly clear all data
     mockUserDataService.resetToDefaults();
     
-    // Also clear the legacy mockUser key for backward compatibility
-    localStorage.removeItem('mockUser');
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+    // Clear localStorage and dispatch events only in browser environment
+    if (typeof window !== 'undefined') {
+      // Also clear the legacy mockUser key for backward compatibility
+      localStorage.removeItem('mockUser');
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+    }
     
     showSuccess(t('settings:navigation.signOut.toastTitle'), t('settings:navigation.signOut.toastBody'));
+    
+    // Close the settings modal first
     if (onClose) {
       onClose();
     }
-    // Refresh the page to update the UI
-    window.location.reload();
+    
+    // Navigate to root page after a short delay to allow modal to close
+    if (typeof window !== 'undefined') {
+      // Clear any existing timeout
+      if (navigationTimeoutRef.current !== null) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      // Set new timeout and store the ID
+      navigationTimeoutRef.current = window.setTimeout(() => {
+        navigate('/');
+        navigationTimeoutRef.current = null;
+      }, 100);
+    }
   };
 
 

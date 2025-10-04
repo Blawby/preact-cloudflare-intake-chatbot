@@ -18,21 +18,22 @@ export function SEOHead({
 }: SEOHeadProps) {
   
   useEffect(() => {
-    // Update document title
-    const title = pageTitle || 
-      (teamConfig?.name ? `${teamConfig.name} - AI Legal Assistant` : 'Blawby AI - Intelligent Legal Assistant & Chat Interface');
-    document.title = title;
+    if (typeof document !== 'undefined') {
+      // Update document title
+      const title = pageTitle || 
+        (teamConfig?.name ? `${teamConfig.name} - AI Legal Assistant` : 'Blawby AI - Intelligent Legal Assistant & Chat Interface');
+      document.title = title;
 
-    // Update meta tags dynamically
-    const updateMetaTag = (property: string, content: string) => {
-      let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.setAttribute('property', property);
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute('content', content);
-    };
+      // Update meta tags dynamically
+      const updateMetaTag = (property: string, content: string) => {
+        let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
+        if (!meta) {
+          meta = document.createElement('meta');
+          meta.setAttribute('property', property);
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', content);
+      };
 
     const updateMetaName = (name: string, content: string) => {
       let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
@@ -48,7 +49,7 @@ export function SEOHead({
     updateMetaTag('og:title', title);
     updateMetaTag('og:description', pageDescription || 
       (teamConfig?.description || 'Get instant legal guidance, document analysis, and matter creation with Blawby\'s AI-powered legal assistant. Available nationwide for legal professionals and individuals seeking legal information.'));
-    updateMetaTag('og:url', currentUrl || window.location.href);
+    updateMetaTag('og:url', currentUrl || (typeof window !== 'undefined' ? window.location.href : ''));
     updateMetaTag('og:image', pageImage || 
       (teamConfig?.profileImage || 'https://ai.blawby.com/team-profile-demo.png'));
     updateMetaTag('og:site_name', teamConfig?.name || 'Blawby AI');
@@ -71,8 +72,8 @@ export function SEOHead({
       canonical.setAttribute('rel', 'canonical');
       document.head.appendChild(canonical);
     }
-    canonical.setAttribute('href', currentUrl || window.location.href);
-
+    canonical.setAttribute('href', currentUrl || (typeof window !== 'undefined' ? window.location.href : ''));
+    }
   }, [teamConfig, pageTitle, pageDescription, pageImage, currentUrl]);
 
   return null; // This component doesn't render anything
