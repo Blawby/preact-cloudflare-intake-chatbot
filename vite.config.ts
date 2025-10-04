@@ -83,7 +83,7 @@ const criticalCssPlugin = (): Plugin => {
 };
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
 	plugins: [
 		preact({
 			prerender: {
@@ -169,7 +169,7 @@ export default defineConfig({
 				passes: 2,
 				drop_debugger: true,
 				// Keep console.error and console.warn in production for debugging
-				pure_funcs: process.env.NODE_ENV === 'production' 
+				pure_funcs: mode === 'production' 
 					? ['console.log', 'console.info', 'console.debug'] 
 					: [],
 			},
@@ -243,4 +243,4 @@ export default defineConfig({
 			}
 		}
 	}
-});
+}));

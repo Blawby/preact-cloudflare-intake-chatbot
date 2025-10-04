@@ -6,6 +6,7 @@
   "exclude": [
     "/assets/*",
     "/favicon.ico",
+    "/favicon.svg",
     "/robots.txt",
     "/sitemap.xml",
     "/manifest.webmanifest",
