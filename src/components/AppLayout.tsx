@@ -346,7 +346,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       <MobileTopNav
         onOpenSidebar={() => onToggleMobileSidebar(true)}
         onPlusClick={() => {
-          window.location.href = '/pricing/cart';
+          window.location.hash = '#pricing';
         }}
         isVisible={isNavbarVisible}
       />

@@ -127,8 +127,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
 
   const handleUpgrade = () => {
-    // Navigate to cart page
-    window.location.href = '/pricing/cart';
+    // Show pricing modal first
+    window.location.hash = '#pricing';
   };
 
   const handleProfileClick = () => {
@@ -148,7 +148,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   const handleUpgradeClick = () => {
     setShowDropdown(false);
-    window.location.href = '/pricing/cart';
+    window.location.hash = '#pricing';
   };
 
   const handleHelpClick = () => {

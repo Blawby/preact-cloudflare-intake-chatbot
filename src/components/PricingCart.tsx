@@ -10,7 +10,7 @@ import { useAnalytics } from '../hooks/useAnalytics';
 import { useToastContext } from '../contexts/ToastContext';
 
 import { useTranslation } from './ui/i18n/useTranslation';
-import { Breadcrumb } from './ui/layout';
+import { CheckoutLayout } from './ui/layout';
 import { PlanCard, PricingSummary } from './ui/cards';
 import { NumberInput } from './ui/input/NumberInput';
 import { Form } from './ui/form/Form';
@@ -29,7 +29,7 @@ interface PricingCartProps {
 
 type SessionErrorToast = 'network' | 'timeout' | 'unknown';
 
-type SessionNotice = 'expired' | 'offline';
+type _SessionNotice = 'expired' | 'offline';
 
 const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) => {
   const { navigate } = useNavigation();
@@ -64,8 +64,15 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
     planType,
     userCount,
     autoCreate: true,
-    debounceMs: 350
+    debounceMs: 100
   });
+
+  // Force refresh when plan type changes
+  useEffect(() => {
+    if (cartSession && (cartSession.planType !== planType || cartSession.userCount !== userCount)) {
+      refresh();
+    }
+  }, [planType, userCount, cartSession, refresh]);
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -93,7 +100,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
       const code = error.code as SessionErrorToast;
       showError(
         t(`pricing.session.toast.${code}Title`),
-        t(`pricing.session.toast.${code}Message`, { message: error.message ?? '' })
+        t(`pricing.session.toast.${code}Message`, { interpolation: { message: error.message ?? '' } })
       );
     }
   }, [error, showError, showInfo, t]);
@@ -102,25 +109,18 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
     () =>
       z.object({
         userCount: z
-          .number({ invalid_type_error: t('pricing.validation.userCountNumber') })
+          .number({ message: t('pricing.validation.userCountNumber') })
           .int(t('pricing.validation.userCountInteger'))
           .min(1, t('pricing.validation.userCountMin'))
-          .max(MAX_USER_COUNT, t('pricing.validation.userCountMax', { max: MAX_USER_COUNT }))
+          .max(MAX_USER_COUNT, t('pricing.validation.userCountMax', { interpolation: { max: MAX_USER_COUNT } }))
       }),
     [t]
   );
 
   const pricePerSeat = useMemo(() => {
     if (!pricingPlan) return '';
-    return t('pricing.summary.pricePerSeat', {
-      price: formatCurrency(pricingPlan.priceAmount, {
-        locale,
-        currency: currencyCode,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      })
-    });
-  }, [currencyCode, locale, pricingPlan, t]);
+    return `$${pricingPlan.priceAmount}/seat`;
+  }, [pricingPlan]);
 
   const lineItems = useMemo(() => {
     const subtotal = cartSession
@@ -138,22 +138,18 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
       : t('pricing.summary.placeholder');
 
     return [
-      { label: t('pricing.summary.subtotal'), value: subtotal },
-      { label: t('pricing.summary.discount'), value: discountValue },
-      { label: t('pricing.summary.total'), value: total, emphasis: true }
+      { id: 'subtotal', label: 'Subtotal', value: subtotal },
+      { id: 'discount', label: 'Discount', value: discountValue },
+      { id: 'total', label: 'Total due today', value: total, emphasis: true }
     ];
   }, [cartSession, currencyCode, locale, t]);
 
   const planDescription = useMemo(
-    () =>
-      t('pricing.summary.planDescription', {
-        count: userCount,
-        billingPeriod:
-          planType === 'annual'
-            ? t('pricing.summary.billingPeriodAnnual')
-            : t('pricing.summary.billingPeriodMonthly')
-      }),
-    [planType, t, userCount]
+    () => {
+      const billingText = planType === 'annual' ? ' x 12 months' : '';
+      return `${userCount} users${billingText}`;
+    },
+    [planType, userCount]
   );
 
   const summaryNotice = useMemo(() => {
@@ -246,15 +242,31 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   };
 
   const annualPrice = pricingPlan
-    ? formatCurrency(pricingPlan.priceAmount, {
+    ? `${currencyCode} ${formatCurrency(pricingPlan.priceAmount * 0.84, { // 16% off (100% - 16% = 84%)
         locale,
         currency: currencyCode,
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
-      })
+      })}`
     : '';
 
-  const monthlyPrice = annualPrice;
+  const annualOriginalPrice = pricingPlan
+    ? `${currencyCode} ${formatCurrency(pricingPlan.priceAmount, {
+        locale,
+        currency: currencyCode,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      })}`
+    : '';
+
+  const monthlyPrice = pricingPlan
+    ? `${currencyCode} ${formatCurrency(pricingPlan.priceAmount, {
+        locale,
+        currency: currencyCode,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      })}`
+    : '';
 
   const breadcrumbSteps = useMemo(
     () => [
@@ -305,40 +317,27 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   const initialFormData = useMemo(() => ({ userCount }), [userCount]);
 
   return (
-    <div className={`min-h-screen bg-gray-900 text-white ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex flex-col space-y-4 mb-6 sm:mb-8">
-          <Breadcrumb steps={breadcrumbSteps} ariaLabel={t('pricing.checkout.breadcrumbLabel')} />
-          <img src="/blawby-favicon-iframe.png" alt={t('pricing.logoAlt')} className="w-12 h-12" />
-        </div>
-
-        <Form
-          initialData={initialFormData}
-          schema={userCountSchema}
-          validateOnChange
-          onSubmit={handleProceedToCheckout}
-        >
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
-            <div className="space-y-8">
-              <section aria-labelledby="plan-selection-heading" className="space-y-6">
-                <div>
-                  <h2
-                    id="plan-selection-heading"
-                    ref={headingRef}
-                    tabIndex={-1}
-                    className="text-xl sm:text-2xl font-semibold text-white text-center md:text-left focus:outline-none"
-                  >
-                    {t('pricing.pickYourPlan')}
-                  </h2>
-                  <p className="mt-2 text-sm text-gray-400 text-center md:text-left">
-                    {t('pricing.planSelectionDescription')}
-                  </p>
-                </div>
-
+    <CheckoutLayout
+      className={className}
+      breadcrumbs={breadcrumbSteps}
+      breadcrumbAriaLabel={t('pricing.checkout.breadcrumbLabel')}
+      title={t('pricing.pickYourPlan')}
+      subtitle={t('pricing.planSelectionDescription')}
+    >
+      <Form
+        initialData={initialFormData}
+        schema={userCountSchema}
+        validateOnChange
+        onSubmit={handleProceedToCheckout}
+      >
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+          <div className="space-y-8">
+            <section className="space-y-6">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2" role="radiogroup" aria-labelledby="plan-selection-heading">
                   <PlanCard
                     title={t('pricing.annual')}
                     price={annualPrice}
+                    originalPrice={annualOriginalPrice}
                     period={t('pricing.perUserPerMonth')}
                     features={featuresAnnual}
                     isSelected={planType === 'annual'}
@@ -398,7 +397,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                             min={1}
                             max={MAX_USER_COUNT}
                             step={1}
-                            size="lg"
+                            size="md"
                             showControls
                             onChange={handleValueChange}
                             variant={fieldError ? 'error' : 'default'}
@@ -418,7 +417,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
             <div>
               <PricingSummary
                 heading={t('pricing.summary.heading')}
-                planName={pricingPlan ? t('pricing.planLabel', { plan: pricingPlan.name }) : ''}
+                planName={pricingPlan ? t('pricing.planLabel', { interpolation: { plan: pricingPlan.name } }) : ''}
                 planDescription={planDescription}
                 pricePerSeat={pricePerSeat}
                 lineItems={lineItems}
@@ -441,40 +440,39 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
             </div>
           </div>
         </Form>
-      </div>
 
-      <Modal
-        isOpen={showExpiryModal}
-        onClose={() => setShowExpiryModal(false)}
-        title={t('pricing.session.expiredModal.title')}
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-gray-300">{t('pricing.session.expiredModal.body')}</p>
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={() => {
-                setShowExpiryModal(false);
-                refresh();
-              }}
-              className="px-4 py-2 bg-accent-600 text-sm rounded-md hover:bg-accent-500"
-            >
-              {t('pricing.session.expiredModal.actions.refresh')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowExpiryModal(false);
-                navigate('/pricing/cart');
-              }}
-              className="px-4 py-2 text-sm text-gray-200 hover:text-white"
-            >
-              {t('pricing.session.expiredModal.actions.dismiss')}
-            </button>
+        <Modal
+          isOpen={showExpiryModal}
+          onClose={() => setShowExpiryModal(false)}
+          title={t('pricing.session.expiredModal.title')}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-300">{t('pricing.session.expiredModal.body')}</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExpiryModal(false);
+                  refresh();
+                }}
+                className="px-4 py-2 bg-accent-600 text-sm rounded-md hover:bg-accent-500"
+              >
+                {t('pricing.session.expiredModal.actions.refresh')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExpiryModal(false);
+                  navigate('/pricing/cart');
+                }}
+                className="px-4 py-2 text-sm text-gray-200 hover:text-white"
+              >
+                {t('pricing.session.expiredModal.actions.dismiss')}
+              </button>
+            </div>
           </div>
-        </div>
-      </Modal>
-    </div>
+        </Modal>
+    </CheckoutLayout>
   );
 };
 

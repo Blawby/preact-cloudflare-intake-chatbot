@@ -3,6 +3,7 @@ import { Button } from '../Button';
 import { LoadingSpinner } from '../layout/LoadingSpinner';
 
 export interface PricingLineItem {
+  id?: string;
   label: string;
   value: string;
   emphasis?: boolean;
@@ -12,8 +13,10 @@ export interface PricingLineItem {
 export interface PricingSummaryError {
   title: string;
   message?: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 export interface PricingSummaryNotice {
@@ -92,14 +95,14 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
             {error.message && (
               <p className="mt-2 text-sm text-red-200/90">{error.message}</p>
             )}
-            {error.actionLabel && error.onAction && (
+            {error.action && (
               <div className="mt-3">
                 <button
                   type="button"
-                  onClick={error.onAction}
+                  onClick={error.action.onClick}
                   className="text-sm text-red-200 underline hover:text-red-100"
                 >
-                  {error.actionLabel}
+                  {error.action.label}
                 </button>
               </div>
             )}
@@ -108,30 +111,52 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
       )}
 
       {!isLoading && !error && (
-        <div className="space-y-6" aria-live="polite">
+        <div className="space-y-4" aria-live="polite">
+          {/* Plan Details */}
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-white">{planName}</p>
-              <p className="text-sm text-gray-300 mt-1">{planDescription}</p>
+              <div className="text-sm text-white">
+                {planName}
+              </div>
+              <div className="text-sm text-gray-400">
+                {planDescription}
+              </div>
             </div>
             <div className="text-right">
-              <p className="text-sm font-medium text-white">{pricePerSeat}</p>
+              <div className="text-sm text-white">
+                {lineItems.find(item => item.label === 'Subtotal')?.value || '—'}
+              </div>
+              <div className="text-sm text-gray-400">
+                {pricePerSeat}
+              </div>
             </div>
           </div>
 
-          <div className="space-y-3">
-            {lineItems.map(({ label, value, emphasis, valueClassName }) => (
-              <div key={label} className="flex justify-between items-center text-sm">
-                <span className={emphasis ? 'text-white font-semibold' : 'text-gray-300'}>{label}</span>
-                <span
-                  className={emphasis
-                    ? 'text-white font-semibold'
-                    : valueClassName || 'text-gray-200'}
-                >
-                  {value}
-                </span>
-              </div>
-            ))}
+          {/* Divider */}
+          <div className="border-t border-gray-700" />
+
+          {/* Discount */}
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="text-sm text-white">Discount</div>
+              {planDescription.includes('12 months') && (
+                <div className="text-sm text-gray-400">Annual (-16%)</div>
+              )}
+            </div>
+            <div className="text-sm text-white">
+              {lineItems.find(item => item.label === 'Discount')?.value || '—'}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-700" />
+
+          {/* Total */}
+          <div className="flex justify-between items-center">
+            <div className="text-white font-bold text-lg">Today&apos;s total</div>
+            <div className="text-white font-bold text-lg">
+              {lineItems.find(item => item.label === 'Total due today')?.value || '—'}
+            </div>
           </div>
 
           <p className="text-xs text-gray-400">{billingNote}</p>
@@ -148,7 +173,7 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
               variant="primary"
               className="w-full"
               onClick={primaryAction.onClick}
-              disabled={primaryAction.disabled}
+              disabled={primaryAction.disabled || primaryAction.isLoading}
             >
               {primaryAction.isLoading ? (
                 <span className="flex items-center justify-center space-x-2">

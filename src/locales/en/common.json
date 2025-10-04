@@ -141,10 +141,10 @@
       "placeholder": "—"
     },
     "labels": {
-      "userCount": "Number of seats"
+      "userCount": "Number of users"
     },
     "descriptions": {
-      "userCount": "You can add or reassign seats whenever you need to."
+      "userCount": "You can add or reassign users whenever you need to."
     },
     "validation": {
       "userCountNumber": "Please enter a valid number of users",
@@ -181,7 +181,7 @@
         "refresh": "Refresh cart"
       },
       "notice": {
-        "expired": "This cart expired. Refresh to get current pricing.",
+        "expired": "This cart has expired. Refresh to get current pricing.",
         "offline": "Changes will resume once you're back online."
       },
       "toast": {

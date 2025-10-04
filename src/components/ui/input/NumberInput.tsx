@@ -77,7 +77,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
 
   const controlSizeClasses = {
     sm: 'w-6 h-6',
-    md: 'w-8 h-8',
+    md: 'w-9 h-9',
     lg: 'w-10 h-10'
   };
 
@@ -90,6 +90,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
   const inputClasses = cn(
     'w-full border rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white',
     'focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors',
+    'appearance-none', // Remove native number input styling
+    '[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none', // Hide WebKit spinners
     sizeClasses[size],
     showControls && 'pr-20',
     variantClasses[variant],
@@ -157,7 +159,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
         </label>
       )}
       
-      <div className="relative">
+      <div className="flex items-center gap-2">
         <input
           ref={ref}
           id={inputId}
@@ -177,34 +179,36 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
         />
         
         {showControls && (
-          <div className="absolute inset-y-0 right-0 flex flex-col">
-            <button
-              type="button"
-              onClick={handleIncrement}
-              disabled={disabled || !canIncrement}
-              className={cn(
-                'flex items-center justify-center border-l border-gray-300 dark:border-gray-600 rounded-r-lg',
-                'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-                controlSizeClasses[size],
-                'rounded-tr-lg'
-              )}
-            >
-              <PlusIcon className="w-3 h-3" />
-            </button>
+          <div className="flex gap-1">
             <button
               type="button"
               onClick={handleDecrement}
               disabled={disabled || !canDecrement}
               className={cn(
-                'flex items-center justify-center border-l border-t border-gray-300 dark:border-gray-600',
+                'flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-md',
                 'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
-                controlSizeClasses[size],
-                'rounded-br-lg'
+                'bg-white dark:bg-dark-input-bg',
+                controlSizeClasses[size]
               )}
+              aria-label="Decrease value"
             >
               <MinusIcon className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={handleIncrement}
+              disabled={disabled || !canIncrement}
+              className={cn(
+                'flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-md',
+                'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'bg-white dark:bg-dark-input-bg',
+                controlSizeClasses[size]
+              )}
+              aria-label="Increase value"
+            >
+              <PlusIcon className="w-3 h-3" />
             </button>
           </div>
         )}

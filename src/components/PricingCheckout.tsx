@@ -4,13 +4,14 @@ import { z } from 'zod';
 
 import { useNavigation } from '../utils/navigation';
 import { mockPaymentDataService } from '../utils/mockPaymentData';
+import { mockPricingDataService } from '../utils/mockPricingData';
 import { formatCurrency } from '../utils/intl';
 import { useCartSession } from '../hooks/useCartSession';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useToastContext } from '../contexts/ToastContext';
 
 import { useTranslation } from './ui/i18n/useTranslation';
-import { Breadcrumb } from './ui/layout';
+import { CheckoutLayout } from './ui/layout';
 import { PricingSummary } from './ui/cards';
 import { Form } from './ui/form/Form';
 import { FormField } from './ui/form/FormField';
@@ -29,6 +30,7 @@ const COUNTRY_OPTIONS = [
 ];
 
 interface CheckoutFormData {
+  [key: string]: unknown;
   fullName: string;
   email: string;
   company?: string;
@@ -45,19 +47,19 @@ interface CheckoutFormData {
 }
 
 const emptyCheckoutData: CheckoutFormData = {
-  fullName: '',
-  email: '',
-  company: '',
+  fullName: 'John Smith',
+  email: 'john.smith@example.com',
+  company: 'Acme Legal Firm',
   country: 'US',
-  addressLine1: '',
-  addressLine2: '',
-  city: '',
-  state: '',
-  zipCode: '',
-  cardNumber: '',
-  cardExpiry: '',
-  cardCvv: '',
-  agreeTerms: false
+  addressLine1: '123 Main Street',
+  addressLine2: 'Suite 200',
+  city: 'San Francisco',
+  state: 'CA',
+  zipCode: '94105',
+  cardNumber: '4242424242424242',
+  cardExpiry: '12/25',
+  cardCvv: '123',
+  agreeTerms: true
 };
 
 interface PricingCheckoutProps {
@@ -74,7 +76,6 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
 
   const initialSession = mockPaymentDataService.getActiveCartSession();
   const [checkoutData, setCheckoutData] = useState<CheckoutFormData | null>(null);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
 
@@ -125,7 +126,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
           .string()
           .regex(/^\d{3,4}$/u, t('pricing.checkout.validation.cardCvv')),
         agreeTerms: z.literal(true, {
-          errorMap: () => ({ message: t('pricing.checkout.validation.terms') })
+          message: t('pricing.checkout.validation.terms')
         })
       }),
     [t]
@@ -134,9 +135,9 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
   const summaryLineItems = useMemo(() => {
     if (!cartSession) {
       return [
-        { label: t('pricing.summary.subtotal'), value: t('pricing.summary.placeholder') },
-        { label: t('pricing.summary.discount'), value: t('pricing.summary.placeholder') },
-        { label: t('pricing.summary.total'), value: t('pricing.summary.placeholder'), emphasis: true }
+        { id: 'subtotal', label: t('pricing.summary.subtotal'), value: t('pricing.summary.placeholder') },
+        { id: 'discount', label: t('pricing.summary.discount'), value: t('pricing.summary.placeholder') },
+        { id: 'total', label: t('pricing.summary.total'), value: t('pricing.summary.placeholder'), emphasis: true }
       ];
     }
 
@@ -144,6 +145,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
 
     return [
       {
+        id: 'subtotal',
         label: t('pricing.summary.subtotal'),
         value: formatCurrency(cartSession.pricing.subtotal, {
           locale,
@@ -152,12 +154,14 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
         })
       },
       {
+        id: 'discount',
         label: t('pricing.summary.discount'),
         value: cartSession.pricing.discount > 0
           ? `-${formatCurrency(cartSession.pricing.discount, { locale, currency, maximumFractionDigits: 2 })}`
           : formatCurrency(cartSession.pricing.discount, { locale, currency, maximumFractionDigits: 2 })
       },
       {
+        id: 'total',
         label: t('pricing.summary.total'),
         value: formatCurrency(cartSession.pricing.total, { locale, currency, maximumFractionDigits: 2 }),
         emphasis: true
@@ -202,7 +206,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
 
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
-  const handleFormSubmit = (data: Record<string, unknown>) => {
+  const handleFormSubmit = async (data: Record<string, unknown>) => {
     if (!cartSession) {
       showError(
         t('pricing.checkout.errors.cartMissing.title'),
@@ -211,31 +215,20 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
       return;
     }
 
-    setCheckoutData(data as CheckoutFormData);
-    track('pricing_checkout_review_submitted', {
-      cartId: cartSession.cartId,
-      userCount: cartSession.userCount,
-      planType: cartSession.planType
-    });
-    setIsConfirmOpen(true);
-  };
-
-  const handleConfirmPurchase = async () => {
-    if (!checkoutData || !cartSession) return;
-
     setIsProcessing(true);
+    setCheckoutData(data as unknown as CheckoutFormData);
 
     try {
       const checkoutSession = mockPaymentDataService.createCheckoutSession(cartSession.cartId, {
-        email: checkoutData.email,
-        name: checkoutData.fullName,
-        company: checkoutData.company || undefined
+        email: (data as unknown as CheckoutFormData).email,
+        name: (data as unknown as CheckoutFormData).fullName,
+        company: (data as unknown as CheckoutFormData).company || undefined
       });
 
       const result = await mockPaymentDataService.processPayment(checkoutSession.sessionId, {
-        cardNumber: checkoutData.cardNumber,
-        expiryDate: checkoutData.cardExpiry,
-        cvv: checkoutData.cardCvv
+        cardNumber: (data as unknown as CheckoutFormData).cardNumber,
+        expiryDate: (data as unknown as CheckoutFormData).cardExpiry,
+        cvv: (data as unknown as CheckoutFormData).cardCvv
       });
 
       if (!result.success) {
@@ -258,9 +251,9 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
       });
     } finally {
       setIsProcessing(false);
-      setIsConfirmOpen(false);
     }
   };
+
 
   const breadcrumbSteps = useMemo(
     () => [
@@ -285,20 +278,13 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
   );
 
   return (
-    <div className={`min-h-screen bg-gray-900 text-white ${className}`}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        <Breadcrumb steps={breadcrumbSteps} ariaLabel={t('pricing.checkout.breadcrumbLabel')} />
-
-        <header className="space-y-1">
-          <h1
-            ref={headingRef}
-            tabIndex={-1}
-            className="text-3xl font-bold text-white focus:outline-none"
-          >
-            {t('pricing.checkout.pageTitle')}
-          </h1>
-          <p className="text-sm text-gray-300">{t('pricing.checkout.pageSubtitle')}</p>
-        </header>
+    <CheckoutLayout
+      className={className}
+      breadcrumbs={breadcrumbSteps}
+      breadcrumbAriaLabel={t('pricing.checkout.breadcrumbLabel')}
+      title={t('pricing.checkout.pageTitle')}
+      subtitle={t('pricing.checkout.pageSubtitle')}
+    >
 
         <Form
           initialData={emptyCheckoutData}
@@ -307,7 +293,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
           className="space-y-8"
           onSubmit={handleFormSubmit}
         >
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,360px)]">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
             <div className="space-y-8">
               <section className="space-y-4">
                 <h2 className="text-xl font-semibold">
@@ -472,91 +458,90 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
                 <h2 className="text-xl font-semibold">
                   {t('pricing.checkout.sections.payment')}
                 </h2>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField name="cardNumber">
-                    {({ value, error, onChange }) => (
-                      <FormItem className="sm:col-span-2">
-                        <Input
-                          id="card-number"
-                          value={(value as string) ?? ''}
-                          onChange={onChange}
-                          label={t('pricing.checkout.labels.cardNumber')}
-                          placeholder={t('pricing.checkout.placeholders.cardNumber')}
-                          required
-                          variant={error ? 'error' : 'default'}
-                          error={error?.message}
-                        />
-                      </FormItem>
-                    )}
-                  </FormField>
-                  <FormField name="cardExpiry">
-                    {({ value, error, onChange }) => (
-                      <FormItem>
-                        <Input
-                          id="card-expiry"
-                          value={(value as string) ?? ''}
-                          onChange={onChange}
-                          label={t('pricing.checkout.labels.cardExpiry')}
-                          placeholder={t('pricing.checkout.placeholders.cardExpiry')}
-                          required
-                          variant={error ? 'error' : 'default'}
-                          error={error?.message}
-                        />
-                      </FormItem>
-                    )}
-                  </FormField>
-                  <FormField name="cardCvv">
-                    {({ value, error, onChange }) => (
-                      <FormItem>
-                        <Input
-                          id="card-cvv"
-                          value={(value as string) ?? ''}
-                          onChange={onChange}
-                          label={t('pricing.checkout.labels.cardCvv')}
-                          placeholder={t('pricing.checkout.placeholders.cardCvv')}
-                          required
-                          variant={error ? 'error' : 'default'}
-                          error={error?.message}
-                        />
-                      </FormItem>
-                    )}
-                  </FormField>
+                
+                {/* Stripe Elements Placeholder */}
+                <div className="border border-gray-600 rounded-lg p-6 bg-gray-800/50">
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2 text-sm text-gray-400">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Stripe Elements Integration</span>
+                    </div>
+                    
+                    {/* Card Number Field Placeholder */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-300">
+                        {t('pricing.checkout.labels.cardNumber')}
+                      </label>
+                      <div className="h-10 bg-gray-700 border border-gray-600 rounded-md flex items-center px-3">
+                        <div className="flex space-x-1">
+                          <div className="w-8 h-1 bg-gray-500 rounded"></div>
+                          <div className="w-8 h-1 bg-gray-500 rounded"></div>
+                          <div className="w-8 h-1 bg-gray-500 rounded"></div>
+                          <div className="w-8 h-1 bg-gray-500 rounded"></div>
+                          <span className="text-gray-400 text-sm ml-2">•••• •••• •••• ••••</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Expiry and CVV Fields Placeholder */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-300">
+                          {t('pricing.checkout.labels.cardExpiry')}
+                        </label>
+                        <div className="h-10 bg-gray-700 border border-gray-600 rounded-md flex items-center px-3">
+                          <span className="text-gray-400 text-sm">MM/AA</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-300">
+                          {t('pricing.checkout.labels.cardCvv')}
+                        </label>
+                        <div className="h-10 bg-gray-700 border border-gray-600 rounded-md flex items-center px-3">
+                          <span className="text-gray-400 text-sm">•••</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Stripe Branding */}
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-600">
+                      <div className="flex items-center space-x-2 text-xs text-gray-400">
+                        <span>Powered by</span>
+                        <div className="font-semibold text-white">Stripe</div>
+                      </div>
+                      <div className="flex space-x-1">
+                        <div className="w-6 h-4 bg-gray-600 rounded-sm"></div>
+                        <div className="w-6 h-4 bg-gray-600 rounded-sm"></div>
+                        <div className="w-6 h-4 bg-gray-600 rounded-sm"></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
 
-              <FormField name="agreeTerms">
-                {({ value, error, onChange }) => (
-                  <FormItem>
-                    <Checkbox
-                      checked={Boolean(value)}
-                      onChange={onChange}
-                      label={t('pricing.checkout.labels.agreeTerms')}
-                      description={t('pricing.checkout.descriptions.agreeTerms')}
-                      error={error?.message}
-                      required
-                    />
-                  </FormItem>
-                )}
-              </FormField>
             </div>
 
             <div>
               <PricingSummary
                 heading={t('pricing.summary.heading')}
-                planName={cartSession ? t('pricing.planLabel', { plan: cartSession.planTier === 'business' ? t('pricing.checkout.planBusiness') : t('pricing.checkout.planPlus') }) : ''}
+                planName={cartSession ? t('pricing.planLabel', { interpolation: { plan: cartSession.planTier === 'business' ? t('pricing.checkout.planBusiness') : t('pricing.checkout.planPlus') } }) : ''}
                 planDescription={cartSession ? t('pricing.summary.planDescription', {
-                  count: cartSession.userCount,
-                  billingPeriod: cartSession.planType === 'annual'
-                    ? t('pricing.summary.billingPeriodAnnual')
-                    : t('pricing.summary.billingPeriodMonthly')
+                  interpolation: {
+                    count: cartSession.userCount,
+                    billingPeriod: cartSession.planType === 'annual'
+                      ? t('pricing.summary.billingPeriodAnnual')
+                      : t('pricing.summary.billingPeriodMonthly')
+                  }
                 }) : ''}
                 pricePerSeat={cartSession ? t('pricing.summary.pricePerSeat', {
-                  price: formatCurrency(mockPaymentDataService.getPricingPlan(cartSession.planTier)?.priceAmount ?? 0, {
-                    locale,
-                    currency: 'USD',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0
-                  })
+                  interpolation: {
+                    price: formatCurrency(mockPricingDataService.getPricingPlan(cartSession.planTier)?.priceAmount ?? 0, {
+                      locale,
+                      currency: 'USD',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0
+                    })
+                  }
                 }) : ''}
                 lineItems={summaryLineItems}
                 billingNote={cartSession ? (cartSession.planType === 'annual' ? t('pricing.summary.billingAnnual') : t('pricing.summary.billingMonthly')) : ''}
@@ -575,63 +560,30 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
                 error={summaryStatus.error ?? null}
                 notice={summaryStatus.notice ?? null}
               />
+              
+              {/* Terms Agreement - Right Side */}
+              <div className="mt-6">
+                <FormField name="agreeTerms">
+                  {({ value, error, onChange }) => (
+                    <FormItem>
+                      <Checkbox
+                        checked={Boolean(value)}
+                        onChange={onChange}
+                        label={t('pricing.checkout.labels.agreeTerms')}
+                        description={t('pricing.checkout.descriptions.agreeTerms')}
+                        error={error?.message}
+                        required
+                      />
+                    </FormItem>
+                  )}
+                </FormField>
+              </div>
             </div>
           </div>
 
           <button type="submit" ref={submitButtonRef} className="hidden" aria-hidden="true" />
         </Form>
-      </div>
-
-      <Modal
-        isOpen={isConfirmOpen}
-        onClose={() => setIsConfirmOpen(false)}
-        title={t('pricing.checkout.confirmation.title')}
-      >
-        <div className="space-y-4">
-          {checkoutData ? (
-            <>
-              <p className="text-sm text-gray-300">{t('pricing.checkout.confirmation.description')}</p>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">{t('pricing.checkout.labels.fullName')}</dt>
-                  <dd className="text-white">{checkoutData.fullName}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">{t('pricing.checkout.labels.email')}</dt>
-                  <dd className="text-white">{checkoutData.email}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">{t('pricing.checkout.labels.country')}</dt>
-                  <dd className="text-white">{checkoutData.country}</dd>
-                </div>
-              </dl>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setIsConfirmOpen(false)}
-                  className="px-4 py-2 text-sm text-gray-200 hover:text-white"
-                >
-                  {t('pricing.checkout.confirmation.actions.edit')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmPurchase}
-                  className="px-4 py-2 bg-accent-600 hover:bg-accent-500 rounded text-white text-sm flex items-center space-x-2"
-                  disabled={isProcessing}
-                >
-                  {isProcessing && <LoadingSpinner size="sm" ariaHidden />}
-                  <span>{t('pricing.checkout.confirmation.actions.confirm')}</span>
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-center py-6">
-              <LoadingSpinner size="md" ariaLabel={t('pricing.checkout.confirmation.loading')} />
-            </div>
-          )}
-        </div>
-      </Modal>
-    </div>
+    </CheckoutLayout>
   );
 };
 

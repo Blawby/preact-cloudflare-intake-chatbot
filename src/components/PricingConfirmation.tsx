@@ -3,12 +3,13 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { useNavigation } from '../utils/navigation';
 import { mockPaymentDataService, type CartSession } from '../utils/mockPaymentData';
+import { mockPricingDataService } from '../utils/mockPricingData';
 import { formatCurrency } from '../utils/intl';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useToastContext } from '../contexts/ToastContext';
 
 import { useTranslation } from './ui/i18n/useTranslation';
-import { Breadcrumb } from './ui/layout';
+import { CheckoutLayout } from './ui/layout';
 import { PricingSummary } from './ui/cards';
 import { LoadingSpinner } from './ui/layout/LoadingSpinner';
 
@@ -46,7 +47,7 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
     };
 
     processSubscription();
-  }, [cartSummary, showError, t]);
+  }, [cartSummary, showError, t, track]);
 
   const breadcrumbSteps = useMemo(
     () => [
@@ -74,9 +75,9 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
   const summaryLineItems = useMemo(() => {
     if (!cartSummary) {
       return [
-        { label: t('pricing.summary.subtotal'), value: t('pricing.summary.placeholder') },
-        { label: t('pricing.summary.discount'), value: t('pricing.summary.placeholder') },
-        { label: t('pricing.summary.total'), value: t('pricing.summary.placeholder'), emphasis: true }
+        { id: 'subtotal', label: t('pricing.summary.subtotal'), value: t('pricing.summary.placeholder') },
+        { id: 'discount', label: t('pricing.summary.discount'), value: t('pricing.summary.placeholder') },
+        { id: 'total', label: t('pricing.summary.total'), value: t('pricing.summary.placeholder'), emphasis: true }
       ];
     }
 
@@ -84,16 +85,19 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
 
     return [
       {
+        id: 'subtotal',
         label: t('pricing.summary.subtotal'),
         value: formatCurrency(cartSummary.pricing.subtotal, { locale, currency, maximumFractionDigits: 2 })
       },
       {
+        id: 'discount',
         label: t('pricing.summary.discount'),
         value: cartSummary.pricing.discount > 0
           ? `-${formatCurrency(cartSummary.pricing.discount, { locale, currency, maximumFractionDigits: 2 })}`
           : formatCurrency(cartSummary.pricing.discount, { locale, currency, maximumFractionDigits: 2 })
       },
       {
+        id: 'total',
         label: t('pricing.summary.total'),
         value: formatCurrency(cartSummary.pricing.total, { locale, currency, maximumFractionDigits: 2 }),
         emphasis: true
@@ -109,22 +113,13 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
   }, [cartSummary, track]);
 
   return (
-    <div className={`min-h-screen bg-gray-900 text-white ${className}`}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <Breadcrumb steps={breadcrumbSteps} ariaLabel={t('pricing.checkout.breadcrumbLabel')} />
-
-        <header className="space-y-2 text-center">
-          <h1
-            ref={headingRef}
-            tabIndex={-1}
-            className="text-3xl font-bold focus:outline-none"
-          >
-            {t('pricing.confirmation.title')}
-          </h1>
-          <p className="text-gray-300 max-w-2xl mx-auto">
-            {t('pricing.confirmation.subtitle')}
-          </p>
-        </header>
+    <CheckoutLayout
+      className={className}
+      breadcrumbs={breadcrumbSteps}
+      breadcrumbAriaLabel={t('pricing.checkout.breadcrumbLabel')}
+      title={t('pricing.confirmation.title')}
+      subtitle={t('pricing.confirmation.subtitle')}
+    >
 
         {isProcessing ? (
           <div className="flex flex-col items-center space-y-3 py-12">
@@ -140,20 +135,24 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
             ) : (
               <PricingSummary
                 heading={t('pricing.summary.heading')}
-                planName={cartSummary ? t('pricing.planLabel', { plan: cartSummary.planTier === 'business' ? t('pricing.checkout.planBusiness') : t('pricing.checkout.planPlus') }) : ''}
+                planName={cartSummary ? t('pricing.planLabel', { interpolation: { plan: cartSummary.planTier === 'business' ? t('pricing.checkout.planBusiness') : t('pricing.checkout.planPlus') } }) : ''}
                 planDescription={cartSummary ? t('pricing.summary.planDescription', {
-                  count: cartSummary.userCount,
-                  billingPeriod: cartSummary.planType === 'annual'
-                    ? t('pricing.summary.billingPeriodAnnual')
-                    : t('pricing.summary.billingPeriodMonthly')
+                  interpolation: {
+                    count: cartSummary.userCount,
+                    billingPeriod: cartSummary.planType === 'annual'
+                      ? t('pricing.summary.billingPeriodAnnual')
+                      : t('pricing.summary.billingPeriodMonthly')
+                  }
                 }) : ''}
                 pricePerSeat={cartSummary ? t('pricing.summary.pricePerSeat', {
-                  price: formatCurrency(mockPaymentDataService.getPricingPlan(cartSummary.planTier)?.priceAmount ?? 0, {
-                    locale,
-                    currency: 'USD',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0
-                  })
+                  interpolation: {
+                    price: formatCurrency(mockPricingDataService.getPricingPlan(cartSummary.planTier)?.priceAmount ?? 0, {
+                      locale,
+                      currency: 'USD',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0
+                    })
+                  }
                 }) : ''}
                 lineItems={summaryLineItems}
                 billingNote={cartSummary ? (cartSummary.planType === 'annual' ? t('pricing.summary.billingAnnual') : t('pricing.summary.billingMonthly')) : ''}
@@ -168,8 +167,7 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
             )}
           </div>
         )}
-      </div>
-    </div>
+    </CheckoutLayout>
   );
 };
 

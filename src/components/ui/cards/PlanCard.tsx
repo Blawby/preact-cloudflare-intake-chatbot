@@ -62,7 +62,7 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
     >
       {/* Discount Badge */}
       {hasDiscount && discountText && (
-        <div className="absolute -top-2 -left-2">
+        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
           <span className="bg-accent-500 text-white text-xs font-medium px-2 py-1 rounded">
             {discountText}
           </span>
