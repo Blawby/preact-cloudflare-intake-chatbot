@@ -76,6 +76,14 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
 
   const currentCountry = countries.find(c => c.code === selectedCountryCode) || countries[0];
   
+  const handleCountrySelect = useCallback((country: typeof countries[0]) => {
+    setSelectedCountryCode(country.code);
+    onCountryChange?.(country.code);
+    setIsDropdownOpen(false);
+    setFocusedIndex(-1);
+    buttonRef.current?.focus();
+  }, [onCountryChange]);
+  
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -134,7 +142,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
         setFocusedIndex(-1);
         break;
     }
-  }, [isDropdownOpen, focusedIndex]);
+  }, [isDropdownOpen, focusedIndex, handleCountrySelect]);
 
   // Focus management
   useEffect(() => {
@@ -217,14 +225,6 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
     onChange?.(formattedValue);
   }, [onChange, formatPhoneNumber]);
 
-  const handleCountrySelect = useCallback((country: typeof countries[0]) => {
-    setSelectedCountryCode(country.code);
-    onCountryChange?.(country.code);
-    setIsDropdownOpen(false);
-    setFocusedIndex(-1);
-    buttonRef.current?.focus();
-  }, [onCountryChange]);
-
   const inputClasses = cn(
     'w-full border rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white',
     'focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors',
@@ -285,7 +285,6 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
                         )}
                         role="menuitem"
                         tabIndex={-1}
-                        aria-selected={index === focusedIndex}
                       >
                         <span className="inline-flex items-center">
                           <span className="text-base mr-2">{country.emoji}</span>

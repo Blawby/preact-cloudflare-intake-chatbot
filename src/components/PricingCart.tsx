@@ -1,8 +1,8 @@
 import { FunctionComponent } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { Button } from './ui/Button';
 import PlanCard from './ui/cards/PlanCard';
-import { UserGroupIcon, CalendarIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+// Removed unused imports: UserGroupIcon, CalendarIcon, CurrencyDollarIcon
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService } from '../utils/mockPricingData';
 import { mockPaymentDataService, type CartSession, type PlanData } from '../utils/mockPaymentData';
@@ -30,11 +30,20 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   };
   
   // State for plan selection
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(getTierFromUrl());
+  const [selectedTier] = useState<SubscriptionTier>(getTierFromUrl());
   const [planType, setPlanType] = useState<'annual' | 'monthly'>('monthly');
   const [userCount, setUserCount] = useState(1);
   const [cartSession, setCartSession] = useState<CartSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // State for cart session creation
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  
+  // Refs for race condition protection
+  const requestIdRef = useRef(0);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get pricing plans
   const pricingPlans = mockPricingDataService.getPricingPlans();
@@ -42,18 +51,57 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
 
   // Create or update cart session when plan data changes
   useEffect(() => {
-    const planData: PlanData = {
-      planTier: selectedTier as 'plus' | 'business',
-      planType,
-      userCount
-    };
-
-    try {
-      const session = mockPaymentDataService.createCartSession(planData);
-      setCartSession(session);
-    } catch (error) {
-      console.error('Failed to create cart session:', error);
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
+
+    // Debounce the effect to prevent rapid consecutive calls
+    timeoutRef.current = setTimeout(() => {
+      const currentRequestId = ++requestIdRef.current;
+      
+      const planData: PlanData = {
+        planTier: selectedTier as 'plus' | 'business',
+        planType,
+        userCount
+      };
+
+      setIsCreatingSession(true);
+      setSessionError(null);
+
+      try {
+        const session = mockPaymentDataService.createCartSession(planData);
+        
+        // Only update state if this is still the latest request
+        if (currentRequestId === requestIdRef.current) {
+          setCartSession(session);
+          setSessionError(null);
+        }
+      } catch (error) {
+        // console.error('Failed to create cart session:', error);
+        
+        // Only update state if this is still the latest request
+        if (currentRequestId === requestIdRef.current) {
+          setCartSession(null);
+          setSessionError(error instanceof Error ? error.message : 'Failed to create cart session');
+        }
+      } finally {
+        // Only update loading state if this is still the latest request
+        if (currentRequestId === requestIdRef.current) {
+          setIsCreatingSession(false);
+        }
+      }
+    }, 300); // 300ms debounce delay
+
+    // Cleanup function
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
   }, [selectedTier, planType, userCount]);
 
   const handleUserCountChange = (delta: number) => {
@@ -64,10 +112,15 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   const handleProceedToCheckout = () => {
     if (!cartSession) return;
     
+    // Clear any existing navigation timeout
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+    }
+    
     setIsLoading(true);
     
     // Simulate navigation delay
-    setTimeout(() => {
+    navigationTimeoutRef.current = setTimeout(() => {
       navigate('/pricing/checkout');
       setIsLoading(false);
     }, 500);
@@ -82,11 +135,6 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
     }).format(amount);
   };
 
-  const getAnnualSavings = () => {
-    if (planType === 'monthly') return 0;
-    const monthlyTotal = cartSession?.pricing.subtotal || 0;
-    return monthlyTotal * 0.16; // 16% annual discount
-  };
 
   return (
     <div className={`min-h-screen bg-gray-900 text-white ${className}`}>
@@ -108,8 +156,8 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <PlanCard
                 title={t('pricing.annual')}
-                price="USD $40"
-                originalPrice="$40"
+                price={selectedPlan ? `${selectedPlan.currency} ${formatPrice(selectedPlan.priceAmount)}` : "USD $40"}
+                originalPrice={undefined}
                 period="per user/month"
                 features={[
                   t('pricing.billedAnnuallyFeature'),
@@ -124,7 +172,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
               
               <PlanCard
                 title={t('pricing.monthly')}
-                price="USD $40"
+                price={selectedPlan ? `${selectedPlan.currency} ${formatPrice(selectedPlan.priceAmount)}` : "USD $40"}
                 period="per user/month"
                 features={[
                   t('pricing.billedMonthlyFeature'),
@@ -143,7 +191,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
               </h3>
               <div className="flex items-center space-x-3">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => handleUserCountChange(-1)}
                   disabled={userCount <= 1}
@@ -156,7 +204,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                     type="number"
                     value={userCount}
                     onChange={(e) => {
-                      const value = Math.max(1, parseInt(e.target.value) || 1);
+                      const value = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1);
                       setUserCount(value);
                     }}
                     className="w-full h-10 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white text-center text-lg font-medium focus:outline-none focus:border-white"
@@ -164,7 +212,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                   />
                 </div>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => handleUserCountChange(1)}
                   className="w-10 h-10 p-0 border-gray-600 text-gray-300 hover:bg-gray-700 flex-shrink-0"
@@ -184,7 +232,53 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
               {t('pricing.summary')}
             </h2>
 
-            {cartSession && (
+            {/* Loading state */}
+            {isCreatingSession && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
+                  <span className="ml-3 text-white">Creating cart session...</span>
+                </div>
+              </div>
+            )}
+
+            {/* Error state */}
+            {sessionError && !isCreatingSession && (
+              <div className="space-y-4">
+                <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-400">
+                        Failed to create cart session
+                      </h3>
+                      <div className="mt-2 text-sm text-red-300">
+                        {sessionError}
+                      </div>
+                      <div className="mt-3">
+                        <button
+                          onClick={() => {
+                            setSessionError(null);
+                            // Trigger a new session creation by updating a dependency
+                            setUserCount(userCount);
+                          }}
+                          className="text-sm text-red-400 hover:text-red-300 underline"
+                        >
+                          Try again
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Success state - show cart session */}
+            {cartSession && !isCreatingSession && !sessionError && (
               <div className="space-y-4">
                 {/* Plan Details */}
                 <div className="flex justify-between items-start">
@@ -207,7 +301,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                 </div>
 
                 {/* Divider */}
-                <div className="border-t border-gray-700"></div>
+                <div className="border-t border-gray-700" />
 
                 {/* Discount */}
                 <div className="flex justify-between items-start">
@@ -223,7 +317,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                 </div>
 
                 {/* Divider */}
-                <div className="border-t border-gray-700"></div>
+                <div className="border-t border-gray-700" />
 
                 {/* Total */}
                 <div className="flex justify-between items-center">
@@ -244,7 +338,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                     variant="primary"
                     className="w-full"
                     onClick={handleProceedToCheckout}
-                    disabled={!cartSession || isLoading}
+                    disabled={!cartSession || isLoading || isCreatingSession}
                   >
                     {isLoading ? 'Processing...' : t('pricing.continueToBilling')}
                   </Button>
