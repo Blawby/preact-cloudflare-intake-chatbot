@@ -25,8 +25,8 @@
     "discount": "Discount",
     "annualDiscount": "Annual (-16%)",
     "todaysTotal": "Today's total",
-    "billedAnnually": "Billed annually starting Today",
-    "billedMonthly": "Billed monthly starting Today",
+    "billedAnnually": "Billed annually starting today",
+    "billedMonthly": "Billed monthly starting today",
     "continueToBilling": "Continue to billing",
     "cancel": "Cancel",
     "checkout": "Checkout",
@@ -34,7 +34,7 @@
     "backToCart": "← Back to Cart",
     "paymentSuccessful": "Payment Successful!",
     "goToDashboard": "Go to Dashboard",
-    "addMoreSeats": "Add more seats at any time. Minimum of 1 seat.",
+    "addMoreSeats": "Add more users at any time. Minimum 1 user.",
     "billedAnnuallyFeature": "Billed annually",
     "billedMonthlyFeature": "Billed monthly",
     "minimumUsers": "Minimum 1 user",
@@ -114,10 +114,16 @@
       }
     },
     "contactForm": {
+      "name": "Full Name",
+      "email": "Email Address",
+      "phone": "Phone Number",
       "location": "Location",
       "opposingParty": "Opposing Party (Optional)",
       "submit": "Submit Contact Information",
       "placeholders": {
+        "name": "Enter your full name",
+        "email": "Enter your email address",
+        "phone": "Enter your phone number",
         "location": "City, State (e.g., New York, NY)",
         "opposingParty": "Name of the other party involved (if any)"
       }

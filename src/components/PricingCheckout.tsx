@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useNavigation } from '../utils/navigation';
 import { useTranslation } from './ui/i18n/useTranslation';
+import { Button } from './ui/Button';
 
 interface PricingCheckoutProps {
   className?: string;
@@ -15,15 +16,25 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
       <div className="max-w-2xl mx-auto">
         <h1>{t('pricing.checkout')}</h1>
         
-        <div style="margin-top: 2rem;">
-          <button onClick={() => navigate('/pricing/confirmation')}>
+        <div style={{ marginTop: '2rem' }}>
+          <Button 
+            type="button"
+            variant="primary"
+            size="lg"
+            onClick={() => navigate('/pricing/confirmation')}
+            aria-label={t('pricing.pay')}
+            className="w-full"
+          >
             {t('pricing.pay')}
-          </button>
+          </Button>
           
-          <div style="margin-top: 1rem;">
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/pricing/cart'); }}>
+          <div style={{ marginTop: '1rem' }}>
+            <button 
+              onClick={() => navigate('/pricing/cart')}
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
               {t('pricing.backToCart')}
-            </a>
+            </button>
           </div>
         </div>
       </div>

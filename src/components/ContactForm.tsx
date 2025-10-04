@@ -181,8 +181,8 @@ export function ContactForm({
                   type="text"
                   value={value as string || ''}
                   onChange={onChange}
-                  label={t('forms.labels.name')}
-                  placeholder={t('forms.placeholders.name')}
+                  label={t('forms.contactForm.name')}
+                  placeholder={t('forms.contactForm.placeholders.name')}
                   required={validRequired.includes('name')}
                   error={error?.message}
                   variant={error ? 'error' : 'default'}
@@ -199,8 +199,8 @@ export function ContactForm({
                 <EmailInput
                   value={value as string || ''}
                   onChange={onChange}
-                  label={t('forms.labels.email')}
-                  placeholder={t('forms.placeholders.email')}
+                  label={t('forms.contactForm.email')}
+                  placeholder={t('forms.contactForm.placeholders.email')}
                   required={validRequired.includes('email')}
                   error={error?.message}
                   variant={error ? 'error' : 'default'}
@@ -218,8 +218,8 @@ export function ContactForm({
                 <PhoneInput
                   value={value as string || ''}
                   onChange={onChange}
-                  label={t('forms.labels.phone')}
-                  placeholder={t('forms.placeholders.phone')}
+                  label={t('forms.contactForm.phone')}
+                  placeholder={t('forms.contactForm.placeholders.phone')}
                   required={validRequired.includes('phone')}
                   error={error?.message}
                   variant={error ? 'error' : 'default'}

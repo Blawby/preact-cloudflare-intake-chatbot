@@ -34,6 +34,9 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
           : 'border-gray-700 hover:border-gray-600'
       } ${className}`}
       onClick={onClick}
+      role="radio"
+      aria-checked={isSelected}
+      aria-label={`${title} plan - ${price} ${period}. Features: ${features.join(', ')}`}
     >
       {/* Discount Badge */}
       {hasDiscount && discountText && (
@@ -53,7 +56,7 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
               <CheckIcon className="w-3 h-3 text-white" />
             </div>
           ) : (
-            <div className="w-3 h-3 rounded-full bg-transparent"></div>
+            <div className="w-3 h-3 rounded-full bg-transparent" />
           )}
         </div>
       </div>
@@ -71,8 +74,8 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
 
       {/* Features */}
       <ul className="text-sm text-gray-400 space-y-1">
-        {features.map((feature, index) => (
-          <li key={index}>• {feature}</li>
+        {features.map((feature) => (
+          <li key={feature}>• {feature}</li>
         ))}
       </ul>
     </button>

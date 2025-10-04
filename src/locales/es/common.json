@@ -112,6 +112,21 @@
       "validatedForm": {
         "title": "Ejemplo de Formulario Validado"
       }
+    },
+    "contactForm": {
+      "name": "Nombre Completo",
+      "email": "Dirección de Email",
+      "phone": "Número de Teléfono",
+      "location": "Ubicación",
+      "opposingParty": "Parte Contraria (Opcional)",
+      "submit": "Enviar Información de Contacto",
+      "placeholders": {
+        "name": "Ingresa tu nombre completo",
+        "email": "Ingresa tu dirección de email",
+        "phone": "Ingresa tu número de teléfono",
+        "location": "Ciudad, Estado (ej., Nueva York, NY)",
+        "opposingParty": "Nombre de la otra parte involucrada (si aplica)"
+      }
     }
   },
   "onboarding": {
