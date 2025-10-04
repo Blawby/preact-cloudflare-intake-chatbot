@@ -16,6 +16,33 @@
     "zh": "中文",
     "ja": "日本語"
   },
+  "pricing": {
+    "pickYourPlan": "Pick your plan",
+    "annual": "Annual",
+    "monthly": "Monthly",
+    "users": "Users",
+    "summary": "Summary",
+    "discount": "Discount",
+    "annualDiscount": "Annual (-16%)",
+    "todaysTotal": "Today's total",
+    "billedAnnually": "Billed annually starting Today",
+    "billedMonthly": "Billed monthly starting Today",
+    "continueToBilling": "Continue to billing",
+    "cancel": "Cancel",
+    "checkout": "Checkout",
+    "pay": "Pay",
+    "backToCart": "← Back to Cart",
+    "paymentSuccessful": "Payment Successful!",
+    "goToDashboard": "Go to Dashboard",
+    "addMoreSeats": "Add more seats at any time. Minimum of 1 seat.",
+    "billedAnnuallyFeature": "Billed annually",
+    "billedMonthlyFeature": "Billed monthly",
+    "minimumUsers": "Minimum 1 user",
+    "addAndReassignUsers": "Add and reassign users as needed",
+    "addOrRemoveUsers": "Add or remove users as needed",
+    "save16Percent": "Save 16%",
+    "youreSaving16Percent": "You're saving 16%"
+  },
   "forms": {
     "labels": {
       "name": "Full Name",

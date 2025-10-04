@@ -127,8 +127,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
 
   const handleUpgrade = () => {
-    // Navigate to #pricing hash to open the modal
-    window.location.hash = '#pricing';
+    // Navigate to cart page
+    window.location.href = '/pricing/cart';
   };
 
   const handleProfileClick = () => {
@@ -148,7 +148,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   const handleUpgradeClick = () => {
     setShowDropdown(false);
-    window.location.hash = '#pricing';
+    window.location.href = '/pricing/cart';
   };
 
   const handleHelpClick = () => {

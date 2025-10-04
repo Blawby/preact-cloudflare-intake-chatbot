@@ -1,11 +1,13 @@
 import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { Button } from './ui/Button';
+import PlanCard from './ui/cards/PlanCard';
 import { UserGroupIcon, CalendarIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService } from '../utils/mockPricingData';
 import { mockPaymentDataService, type CartSession, type PlanData } from '../utils/mockPaymentData';
 import { useNavigation } from '../utils/navigation';
+import { useTranslation } from './ui/i18n/useTranslation';
 
 interface PricingCartProps {
   className?: string;
@@ -13,11 +15,24 @@ interface PricingCartProps {
 
 const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) => {
   const { navigate } = useNavigation();
+  const { t } = useTranslation('common');
+  
+  // Get tier from URL parameters
+  const getTierFromUrl = (): SubscriptionTier => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tier = urlParams.get('tier') as SubscriptionTier;
+      if (tier && ['plus', 'business'].includes(tier)) {
+        return tier;
+      }
+    }
+    return 'plus'; // Default to plus
+  };
   
   // State for plan selection
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('plus');
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(getTierFromUrl());
   const [planType, setPlanType] = useState<'annual' | 'monthly'>('monthly');
-  const [userCount, setUserCount] = useState(2);
+  const [userCount, setUserCount] = useState(1);
   const [cartSession, setCartSession] = useState<CartSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -42,7 +57,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   }, [selectedTier, planType, userCount]);
 
   const handleUserCountChange = (delta: number) => {
-    const newCount = Math.max(2, userCount + delta);
+    const newCount = Math.max(1, userCount + delta);
     setUserCount(newCount);
   };
 
@@ -74,202 +89,176 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   };
 
   return (
-    <div className={`max-w-4xl mx-auto p-6 ${className}`}>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Choose Your Plan
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Select the plan that best fits your needs
-        </p>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Plan Selection */}
-        <div className="space-y-6">
-          {/* Plan Tier Selection */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Plan Type
-            </h2>
-            <div className="grid gap-4">
-              {pricingPlans.filter(plan => plan.id !== 'free').map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    selectedTier === plan.id
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                  onClick={() => setSelectedTier(plan.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {plan.name}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {plan.description}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {plan.price}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Billing Period Selection */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Billing Period
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                className={`p-4 border-2 rounded-lg text-center transition-all ${
-                  planType === 'monthly'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-                onClick={() => setPlanType('monthly')}
-              >
-                <div className="font-semibold text-gray-900 dark:text-white">Monthly</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Billed monthly</div>
-              </button>
-              <button
-                className={`p-4 border-2 rounded-lg text-center transition-all ${
-                  planType === 'annual'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-                onClick={() => setPlanType('annual')}
-              >
-                <div className="font-semibold text-gray-900 dark:text-white">Annual</div>
-                <div className="text-sm text-green-600 dark:text-green-400">Save 16%</div>
-              </button>
-            </div>
-          </div>
-
-          {/* User Count Selection */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Number of Users
-            </h2>
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleUserCountChange(-1)}
-                disabled={userCount <= 2}
-                icon={<span className="text-lg">−</span>}
-              />
-              <div className="flex items-center space-x-2">
-                <UserGroupIcon className="w-5 h-5 text-gray-500" />
-                <span className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {userCount}
-                </span>
-                <span className="text-gray-600 dark:text-gray-400">users</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleUserCountChange(1)}
-                icon={<span className="text-lg">+</span>}
-              />
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Minimum 2 users required
-            </p>
-          </div>
+    <div className={`min-h-screen bg-gray-900 text-white ${className}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Header - Logo only */}
+        <div className="mb-6 sm:mb-8">
+          <img src="/blawby-favicon-iframe.png" alt="Blawby Logo" className="w-12 h-12" />
         </div>
 
-        {/* Order Summary */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-            Order Summary
-          </h2>
-
-          {cartSession && (
-            <div className="space-y-4">
-              {/* Plan Details */}
-              <div className="flex justify-between items-center">
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {selectedPlan?.name} Plan
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {planType === 'annual' ? 'Annual billing' : 'Monthly billing'}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {formatPrice(cartSession.pricing.subtotal)}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    per {planType === 'annual' ? 'year' : 'month'}
-                  </div>
-                </div>
-              </div>
-
-              {/* User Count */}
-              <div className="flex justify-between items-center">
-                <div className="text-gray-600 dark:text-gray-400">
-                  {userCount} users
-                </div>
-                <div className="text-gray-900 dark:text-white">
-                  {formatPrice(cartSession.pricing.subtotal)}
-                </div>
-              </div>
-
-              {/* Annual Savings */}
-              {planType === 'annual' && (
-                <div className="flex justify-between items-center text-green-600 dark:text-green-400">
-                  <div className="flex items-center space-x-1">
-                    <CalendarIcon className="w-4 h-4" />
-                    <span>Annual savings</span>
-                  </div>
-                  <div className="font-medium">
-                    -{formatPrice(getAnnualSavings())}
-                  </div>
-                </div>
-              )}
-
-              {/* Divider */}
-              <div className="border-t border-gray-200 dark:border-gray-700"></div>
-
-              {/* Total */}
-              <div className="flex justify-between items-center text-lg font-semibold">
-                <div className="text-gray-900 dark:text-white">Total</div>
-                <div className="text-gray-900 dark:text-white">
-                  {formatPrice(cartSession.pricing.total)}
-                </div>
-              </div>
-
-              {/* Billing Note */}
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {planType === 'annual' 
-                  ? 'Billed annually, cancel anytime'
-                  : 'Billed monthly, cancel anytime'
-                }
-              </div>
-
-              {/* Proceed Button */}
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full mt-6"
-                onClick={handleProceedToCheckout}
-                disabled={!cartSession || isLoading}
-                icon={<CurrencyDollarIcon className="w-5 h-5" />}
-              >
-                {isLoading ? 'Processing...' : 'Proceed to Checkout'}
-              </Button>
+        {/* Main Content - Two Column Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Left Column - Pick your plan */}
+          <div className="space-y-6">
+            <h2 className="text-xl sm:text-2xl font-semibold text-white text-center">
+              {t('pricing.pickYourPlan')}
+            </h2>
+            
+            {/* Billing Period Selection - Responsive cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <PlanCard
+                title={t('pricing.annual')}
+                price="USD $40"
+                originalPrice="$40"
+                period="per user/month"
+                features={[
+                  t('pricing.billedAnnuallyFeature'),
+                  t('pricing.minimumUsers'), 
+                  t('pricing.addAndReassignUsers')
+                ]}
+                isSelected={planType === 'annual'}
+                hasDiscount={true}
+                discountText={planType === 'annual' ? t('pricing.youreSaving16Percent') : t('pricing.save16Percent')}
+                onClick={() => setPlanType('annual')}
+              />
+              
+              <PlanCard
+                title={t('pricing.monthly')}
+                price="USD $40"
+                period="per user/month"
+                features={[
+                  t('pricing.billedMonthlyFeature'),
+                  t('pricing.minimumUsers'),
+                  t('pricing.addOrRemoveUsers')
+                ]}
+                isSelected={planType === 'monthly'}
+                onClick={() => setPlanType('monthly')}
+              />
             </div>
-          )}
+
+            {/* Users Section - Below the plan cards */}
+            <div>
+              <h3 className="text-lg font-medium text-white mb-4">
+                {t('pricing.users')}
+              </h3>
+              <div className="flex items-center space-x-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUserCountChange(-1)}
+                  disabled={userCount <= 1}
+                  className="w-10 h-10 p-0 border-gray-600 text-gray-300 hover:bg-gray-700 disabled:opacity-50 flex-shrink-0"
+                >
+                  <span className="text-lg">−</span>
+                </Button>
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    value={userCount}
+                    onChange={(e) => {
+                      const value = Math.max(1, parseInt(e.target.value) || 1);
+                      setUserCount(value);
+                    }}
+                    className="w-full h-10 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white text-center text-lg font-medium focus:outline-none focus:border-white"
+                    min="1"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUserCountChange(1)}
+                  className="w-10 h-10 p-0 border-gray-600 text-gray-300 hover:bg-gray-700 flex-shrink-0"
+                >
+                  <span className="text-lg">+</span>
+                </Button>
+              </div>
+              <p className="text-sm text-gray-400 mt-2">
+                {t('pricing.addMoreSeats')}
+              </p>
+            </div>
+          </div>
+
+          {/* Right Column - Summary */}
+          <div>
+            <h2 className="text-lg font-medium text-white mb-6">
+              {t('pricing.summary')}
+            </h2>
+
+            {cartSession && (
+              <div className="space-y-4">
+                {/* Plan Details */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-sm text-white">
+                      {selectedPlan?.name} Plan
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {userCount} users{planType === 'annual' ? ' x 12 months' : ''}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-white">
+                      {formatPrice(cartSession.pricing.subtotal)}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      ${selectedPlan?.priceAmount}/seat
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-700"></div>
+
+                {/* Discount */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-sm text-white">{t('pricing.discount')}</div>
+                    {planType === 'annual' && (
+                      <div className="text-sm text-gray-400">{t('pricing.annualDiscount')}</div>
+                    )}
+                  </div>
+                  <div className="text-sm text-white">
+                    -{formatPrice(cartSession.pricing.discount)}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-700"></div>
+
+                {/* Total */}
+                <div className="flex justify-between items-center">
+                  <div className="text-white font-bold text-lg">{t('pricing.todaysTotal')}</div>
+                  <div className="text-white font-bold text-lg">
+                    USD {formatPrice(cartSession.pricing.total)}
+                  </div>
+                </div>
+
+                {/* Billing Note */}
+                <div className="text-sm text-gray-400">
+                  {planType === 'annual' ? t('pricing.billedAnnually') : t('pricing.billedMonthly')}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3 mt-6">
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={handleProceedToCheckout}
+                    disabled={!cartSession || isLoading}
+                  >
+                    {isLoading ? 'Processing...' : t('pricing.continueToBilling')}
+                  </Button>
+                  
+                  <button
+                    className="w-full text-center text-white hover:text-gray-300 transition-colors"
+                    onClick={() => window.history.back()}
+                  >
+                    {t('pricing.cancel')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
