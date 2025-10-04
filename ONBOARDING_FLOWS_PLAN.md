@@ -28,10 +28,10 @@ This document outlines the implementation plan for pricing/checkout onboarding f
 **Implementation**: Simple placeholder page that will integrate with Stripe Elements
 
 #### Features:
-- **Stripe Elements**: Pre-built, secure checkout components
-- **Payment Processing**: Handled by Stripe
-- **Form Validation**: Built into Stripe Elements
-- **Security**: PCI compliance handled by Stripe
+- **Simple Placeholder**: Basic page structure only
+- **Stripe Elements**: Will handle all payment details, customer info, and processing
+- **No Custom Forms**: Stripe Elements provides complete checkout experience
+- **Security**: PCI compliance handled entirely by Stripe
 
 #### Benefits of Stripe Elements:
 - **Security**: PCI DSS compliant out of the box
@@ -68,12 +68,13 @@ This document outlines the implementation plan for pricing/checkout onboarding f
 
 ### Phase 2: Basic Routing & UI
 1. Create routing structure (`/pricing/cart` and `/pricing/checkout`)
-2. Create simple placeholder pages with mock data integration
-3. Add basic navigation between routes
-4. Test routing functionality with mock data
+2. Create cart page with plan selection and user count controls
+3. Create simple checkout placeholder page (Stripe Elements will handle all payment details)
+4. Add basic navigation between routes
+5. Test routing functionality with mock data
 
 ### Phase 3: Stripe Elements Integration
-1. Replace mock payment processing with Stripe Elements
+1. Integrate Stripe Elements into checkout page
 2. Configure Stripe checkout sessions
 3. Handle payment success/failure redirects
 4. Test payment flow end-to-end
