@@ -206,8 +206,10 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
     const base = {
       title: t('pricing.session.errors.defaultTitle'),
       message: error.message,
-      actionLabel: t('pricing.session.actions.retry'),
-      onAction: retry
+      action: {
+        label: t('pricing.session.actions.retry'),
+        onClick: retry
+      }
     };
 
     switch (error.code) {
@@ -215,29 +217,37 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
         return {
           title: t('pricing.session.errors.offline.title'),
           message: t('pricing.session.errors.offline.message'),
-          actionLabel: t('pricing.session.actions.retry'),
-          onAction: retry
+          action: {
+            label: t('pricing.session.actions.retry'),
+            onClick: retry
+          }
         };
       case 'timeout':
         return {
           title: t('pricing.session.errors.timeout.title'),
           message: t('pricing.session.errors.timeout.message'),
-          actionLabel: t('pricing.session.actions.retry'),
-          onAction: retry
+          action: {
+            label: t('pricing.session.actions.retry'),
+            onClick: retry
+          }
         };
       case 'network':
         return {
           title: t('pricing.session.errors.network.title'),
           message: error.message ?? t('pricing.session.errors.network.message'),
-          actionLabel: t('pricing.session.actions.retry'),
-          onAction: retry
+          action: {
+            label: t('pricing.session.actions.retry'),
+            onClick: retry
+          }
         };
       case 'expired':
         return {
           title: t('pricing.session.errors.expired.title'),
           message: t('pricing.session.errors.expired.message'),
-          actionLabel: t('pricing.session.actions.refresh'),
-          onAction: refresh
+          action: {
+            label: t('pricing.session.actions.refresh'),
+            onClick: refresh
+          }
         };
       default:
         return {
