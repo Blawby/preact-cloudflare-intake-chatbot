@@ -54,15 +54,22 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   
   if (a instanceof Set && b instanceof Set) {
     if (a.size !== b.size) return false;
+    // Optimize for primitive-only sets: O(n) for primitives, O(n²) for objects
     for (const value of a) {
-      let found = false;
-      for (const bValue of b) {
-        if (deepEqual(value, bValue)) {
-          found = true;
-          break;
+      // For primitive values, use Set.has() for O(1) lookup
+      if (typeof value !== 'object' && typeof value !== 'function') {
+        if (!b.has(value)) return false;
+      } else {
+        // For objects/functions, fall back to deep comparison
+        let found = false;
+        for (const bValue of b) {
+          if (deepEqual(value, bValue)) {
+            found = true;
+            break;
+          }
         }
+        if (!found) return false;
       }
-      if (!found) return false;
     }
     return true;
   }

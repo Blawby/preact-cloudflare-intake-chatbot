@@ -64,6 +64,10 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
   const errorId = useUniqueId('url-error');
   const validationErrorId = useUniqueId('url-validation-error');
   
+  // URL validation and icon display logic
+  const isURLValid = value ? isValidURL(value) : false;
+  const showValidationIcon = showValidation && value.length > 0;
+  
   // Create aria-describedby string
   const ariaDescribedBy = [
     displayDescription ? descriptionId : null,
@@ -235,9 +239,6 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
     const normalizedValue = normalizeURL(inputValue);
     onChange?.(normalizedValue);
   }, [onChange, normalizeURL]);
-
-  const isURLValid = value ? isValidURL(value) : false;
-  const showValidationIcon = showValidation && value.length > 0;
 
   return (
     <div className="w-full">
