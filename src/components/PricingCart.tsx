@@ -47,18 +47,24 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   const monthlyCardRef = useRef<HTMLButtonElement | null>(null);
   const { track } = useAnalytics();
 
-  const getTierFromUrl = (): 'plus' | 'business' => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tier = params.get('tier');
-      if (tier === 'business') {
-        return 'business';
+  // Initialize with default value to avoid SSR/client hydration mismatch
+  const [selectedTier, setSelectedTier] = useState<'plus' | 'business'>('plus');
+  
+  // Parse URL parameters after hydration to avoid SSR mismatch
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location) {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tier = params.get('tier');
+        if (tier === 'business') {
+          setSelectedTier('business');
+        }
+      } catch (error) {
+        // Handle URL parsing errors gracefully
+        console.warn('Failed to parse URL parameters:', error);
       }
     }
-    return 'plus';
-  };
-
-  const [selectedTier] = useState<'plus' | 'business'>(getTierFromUrl());
+  }, []);
   const pricingPlan = mockPricingDataService.getPricingPlan(selectedTier) ?? mockPricingDataService.getPricingPlan('plus');
   const currencyCode = pricingPlan?.currency ?? 'USD';
 
