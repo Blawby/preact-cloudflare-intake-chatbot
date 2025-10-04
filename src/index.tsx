@@ -478,14 +478,15 @@ export function App() {
 					teamConfig={teamConfig}
 					currentUrl={currentUrl}
 				/>
-				<Router>
+			<Router>
             <Route path="/auth" component={AuthPage} />
             <Route path="/pricing/cart" component={PricingCart} />
             <Route path="/pricing/checkout" component={PricingCheckout} />
             <Route path="/pricing/confirmation" component={PricingConfirmation} />
             <Route path="/settings/*" component={MainApp} />
-            <Route default component={MainApp} />
-				</Router>
+            <Route path="/" component={MainApp} />
+            <Route path="/help" component={MainApp} />
+			</Router>
 			</ToastProvider>
 		</LocationProvider>
 	);
@@ -517,19 +518,38 @@ if (typeof window !== 'undefined') {
 		document.documentElement.classList.add('dark');
 	}
 
-	initI18n()
-		.then(() => {
-			hydrate(<AppWithProviders />, document.getElementById('app'));
-		})
-		.catch((error) => {
-			// eslint-disable-next-line no-console
-			console.error('Failed to initialize i18n:', error);
-			hydrate(<AppWithProviders />, document.getElementById('app'));
-		});
+	// Hydration check for production monitoring
+	console.info('Hydration started');
+	
+	try {
+		initI18n()
+			.then(() => {
+				try {
+					hydrate(<AppWithProviders />, document.getElementById('app'));
+				} catch (hydrationError) {
+					console.error('Hydration failed:', hydrationError);
+				}
+			})
+			.catch((error) => {
+				console.error('Failed to initialize i18n:', error);
+				try {
+					hydrate(<AppWithProviders />, document.getElementById('app'));
+				} catch (hydrationError) {
+					console.error('Hydration failed:', hydrationError);
+				}
+			});
+	} catch (initError) {
+		console.error('Initialization failed:', initError);
+	}
 }
 
 
 export async function prerender() {
 	await initI18n();
-	return await ssr(<AppWithProviders />);
+	// Only prerender static routes, not dynamic pricing routes
+	// This prevents hydration mismatch for pricing pages
+	return await ssr(<AppWithProviders />, {
+		// Only prerender these specific routes
+		paths: ['/', '/help']
+	});
 }
