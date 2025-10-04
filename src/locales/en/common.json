@@ -85,6 +85,15 @@
       "validatedForm": {
         "title": "Validated Form Example"
       }
+    },
+    "contactForm": {
+      "location": "Location",
+      "opposingParty": "Opposing Party (Optional)",
+      "submit": "Submit Contact Information",
+      "placeholders": {
+        "location": "City, State (e.g., New York, NY)",
+        "opposingParty": "Name of the other party involved (if any)"
+      }
     }
   },
   "onboarding": {

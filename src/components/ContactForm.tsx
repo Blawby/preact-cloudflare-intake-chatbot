@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useMemo } from 'preact/hooks';
+import { Form, FormField, FormItem } from './ui/form';
+import { Input } from './ui/input/Input';
+import { EmailInput } from './ui/input/EmailInput';
+import { PhoneInput } from './ui/input/PhoneInput';
+import { LocationInput } from './ui/input/LocationInput';
 import { Button } from './ui/Button';
-import { useTheme } from '../hooks/useTheme';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useTranslation } from './ui/i18n';
+import { schemas } from './ui/validation/schemas';
 
 // Constants for allowed field names
 export const ALLOWED_FIELDS = ['name', 'email', 'phone', 'location', 'opposingParty'] as const;
@@ -20,14 +25,6 @@ export interface ContactData {
   email: string;
   phone: string;
   location: string;
-  opposingParty?: string;
-}
-
-interface FormErrors {
-  name?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
   opposingParty?: string;
 }
 
@@ -149,157 +146,16 @@ export function ContactForm({
     initialValues?.opposingParty
   ]);
 
-  const { isDark } = useTheme();
-  const [formData, setFormData] = useState<ContactData>(() => ({
+  const { t } = useTranslation('common');
+
+  // Create initial data for form
+  const initialData = {
     name: normalizedInitialValues.name ?? '',
     email: normalizedInitialValues.email ?? '',
     phone: normalizedInitialValues.phone ?? '',
     location: normalizedInitialValues.location ?? '',
     opposingParty: normalizedInitialValues.opposingParty ?? ''
-  }));
-  
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
-
-  const validateField = (field: keyof ContactData, value: string): string | undefined => {
-    if (validRequired.includes(field as AllowedField) && !value.trim()) {
-      return `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
-    }
-
-    switch (field) {
-      case 'email':
-        if (value && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
-          return 'Please enter a valid email address';
-        }
-        break;
-      case 'phone':
-        if (value && !/^[\+]?[1-9][\d\s\-\(\)]{7,15}$/.test(value)) {
-          return 'Please enter a valid phone number';
-        }
-        break;
-    }
-    return undefined;
   };
-
-  const handleInputChange = (field: keyof ContactData, value: string): void => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (!isDirty) {
-      setIsDirty(true);
-    }
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-    
-    // Clear submission error when user starts typing
-    if (submissionError) {
-      setSubmissionError(null);
-    }
-  };
-
-  const validateAllFields = (): { errors: FormErrors; hasErrors: boolean } => {
-    const newErrors: FormErrors = {};
-    let hasErrors = false;
-
-    // Validate required fields
-    for (const field of validRequired) {
-      const error = validateField(field as keyof ContactData, formData[field as keyof ContactData]);
-      if (error) {
-        newErrors[field as keyof ContactData] = error;
-        hasErrors = true;
-      }
-    }
-
-    // Also validate non-required fields if they have values
-    for (const field of validFields) {
-      if (!validRequired.includes(field) && formData[field as keyof ContactData]) {
-        const error = validateField(field as keyof ContactData, formData[field as keyof ContactData]);
-        if (error) {
-          newErrors[field as keyof ContactData] = error;
-          hasErrors = true;
-        }
-      }
-    }
-
-    return { errors: newErrors, hasErrors };
-  };
-
-  const handleSubmit = async (e: Event): Promise<void> => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmissionError(null); // Clear any previous submission errors
-
-    try {
-      // Validate all fields
-      const { errors: validationErrors, hasErrors } = validateAllFields();
-
-      if (hasErrors) {
-        setErrors(validationErrors);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Submit the form
-      await onSubmit(formData);
-      
-      // If we get here, submission was successful
-      // Clear any previous errors
-      setErrors({});
-      setSubmissionError(null);
-    } catch (error) {
-      // Structured logging with contextual metadata (PII sanitized)
-      const logData = {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        formData: {
-          hasName: !!formData.name,
-          hasEmail: !!formData.email,
-          hasPhone: !!formData.phone,
-          hasLocation: !!formData.location,
-          hasOpposingParty: !!formData.opposingParty
-        },
-        fields: validFields,
-        required: validRequired,
-        timestamp: new Date().toISOString(),
-        component: 'ContactForm'
-      };
-      
-      console.error('[ContactForm] Error submitting contact form:', logData);
-      
-      // Set user-friendly error message
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred while submitting your information. Please try again.';
-      setSubmissionError(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isDirty) {
-      return;
-    }
-
-    setFormData(prev => {
-      let changed = false;
-      const updated: ContactData = { ...prev };
-
-      for (const field of validFields) {
-        const key = field as keyof ContactData;
-        const value = normalizedInitialValues[key];
-        if (typeof value === 'string' && value.trim() && !prev[key]) {
-          updated[key] = value;
-          changed = true;
-        }
-      }
-
-      return changed ? updated : prev;
-    });
-  }, [normalizedInitialValues, validFields, isDirty]);
 
   return (
     <div class="bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-6 shadow-sm" data-testid="contact-form">
@@ -309,141 +165,120 @@ export function ContactForm({
         </div>
       )}
       
-      {submissionError && (
-        <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md" data-testid="submission-error">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
-            </div>
-            <div class="ml-3">
-              <p class="text-sm text-red-800 dark:text-red-200">{submissionError}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} class="space-y-4">
+      <Form
+        initialData={initialData}
+        onSubmit={onSubmit}
+        schema={schemas.contact.contactForm}
+        className="space-y-4"
+        validateOnBlur={true}
+        requiredFields={validRequired}
+      >
         {validFields.includes('name') && (
-          <div>
-            <label for="contact-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Full Name {validRequired.includes('name') && <span class="text-red-500">*</span>}
-            </label>
-            <input
-              id="contact-name"
-              name="name"
-              type="text"
-              value={formData.name}
-              onInput={(e) => handleInputChange('name', (e.target as HTMLInputElement).value)}
-              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
-                errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`}
-              placeholder="Enter your full name"
-              disabled={isSubmitting}
-            />
-            {errors.name && (
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
-            )}
-          </div>
+          <FormItem>
+            <FormField name="name">
+              {({ value, error, onChange }) => (
+                <Input
+                  type="text"
+                  value={value as string || ''}
+                  onChange={onChange}
+                  label={t('forms.labels.name')}
+                  placeholder={t('forms.placeholders.name')}
+                  required={validRequired.includes('name')}
+                  error={error?.message}
+                  variant={error ? 'error' : 'default'}
+                />
+              )}
+            </FormField>
+          </FormItem>
         )}
 
         {validFields.includes('email') && (
-          <div>
-            <label for="contact-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Email Address {validRequired.includes('email') && <span class="text-red-500">*</span>}
-            </label>
-            <input
-              id="contact-email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onInput={(e) => handleInputChange('email', (e.target as HTMLInputElement).value)}
-              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
-                errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`}
-              placeholder="Enter your email address"
-              disabled={isSubmitting}
-            />
-            {errors.email && (
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
-            )}
-          </div>
+          <FormItem>
+            <FormField name="email">
+              {({ value, error, onChange }) => (
+                <EmailInput
+                  value={value as string || ''}
+                  onChange={onChange}
+                  label={t('forms.labels.email')}
+                  placeholder={t('forms.placeholders.email')}
+                  required={validRequired.includes('email')}
+                  error={error?.message}
+                  variant={error ? 'error' : 'default'}
+                  showValidation={true}
+                />
+              )}
+            </FormField>
+          </FormItem>
         )}
 
         {validFields.includes('phone') && (
-          <div>
-            <label for="contact-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Phone Number {validRequired.includes('phone') && <span class="text-red-500">*</span>}
-            </label>
-            <input
-              id="contact-phone"
-              name="phone"
-              type="tel"
-              value={formData.phone}
-              onInput={(e) => handleInputChange('phone', (e.target as HTMLInputElement).value)}
-              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
-                errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`}
-              placeholder="Enter your phone number"
-              disabled={isSubmitting}
-            />
-            {errors.phone && (
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{errors.phone}</p>
-            )}
-          </div>
+          <FormItem>
+            <FormField name="phone">
+              {({ value, error, onChange }) => (
+                <PhoneInput
+                  value={value as string || ''}
+                  onChange={onChange}
+                  label={t('forms.labels.phone')}
+                  placeholder={t('forms.placeholders.phone')}
+                  required={validRequired.includes('phone')}
+                  error={error?.message}
+                  variant={error ? 'error' : 'default'}
+                  format={true}
+                  showCountryCode={true}
+                  countryCode="+1"
+                />
+              )}
+            </FormField>
+          </FormItem>
         )}
 
         {validFields.includes('location') && (
-          <div>
-            <label for="contact-location" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Location {validRequired.includes('location') && <span class="text-red-500">*</span>}
-            </label>
-            <input
-              id="contact-location"
-              name="location"
-              type="text"
-              value={formData.location}
-              onInput={(e) => handleInputChange('location', (e.target as HTMLInputElement).value)}
-              class={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
-                errors.location ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`}
-              placeholder="Enter your city and state"
-              disabled={isSubmitting}
-            />
-            {errors.location && (
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{errors.location}</p>
-            )}
-          </div>
+          <FormItem>
+            <FormField name="location">
+              {({ value, error, onChange }) => (
+                <LocationInput
+                  value={value as string || ''}
+                  onChange={onChange}
+                  label={t('forms.contactForm.location')}
+                  placeholder={t('forms.contactForm.placeholders.location')}
+                  required={validRequired.includes('location')}
+                  error={error?.message}
+                  variant={error ? 'error' : 'default'}
+                />
+              )}
+            </FormField>
+          </FormItem>
         )}
 
         {validFields.includes('opposingParty') && (
-          <div>
-            <label for="contact-opposing-party" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Opposing Party (Optional)
-            </label>
-            <input
-              id="contact-opposing-party"
-              name="opposingParty"
-              type="text"
-              value={formData.opposingParty || ''}
-              onInput={(e) => handleInputChange('opposingParty', (e.target as HTMLInputElement).value)}
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
-              placeholder="Name of the other party involved (if any)"
-              disabled={isSubmitting}
-            />
-          </div>
+          <FormItem>
+            <FormField name="opposingParty">
+              {({ value, error, onChange }) => (
+                <Input
+                  type="text"
+                  value={value as string || ''}
+                  onChange={onChange}
+                  label={t('forms.contactForm.opposingParty')}
+                  placeholder={t('forms.contactForm.placeholders.opposingParty')}
+                  required={false}
+                  error={error?.message}
+                  variant={error ? 'error' : 'default'}
+                />
+              )}
+            </FormField>
+          </FormItem>
         )}
 
         <div class="pt-4">
           <Button
             type="submit"
-            disabled={isSubmitting}
             data-testid="contact-form-submit"
             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Contact Information'}
+            {t('forms.contactForm.submit')}
           </Button>
         </div>
-      </form>
+      </Form>
     </div>
   );
 }

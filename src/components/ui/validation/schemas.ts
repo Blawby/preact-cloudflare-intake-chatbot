@@ -117,10 +117,25 @@ export const settingsSchemas = {
   }),
 };
 
+// Contact form schemas
+export const contactSchemas = {
+  contactForm: z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: commonSchemas.email,
+    phone: commonSchemas.phone,
+    location: z.string().optional().refine(
+      (val) => val === undefined || val === '' || val.length >= 2,
+      'Location must be at least 2 characters'
+    ),
+    opposingParty: z.string().optional(),
+  }),
+};
+
 // Export all schemas
 export const schemas = {
   common: commonSchemas,
   auth: authSchemas,
   onboarding: onboardingSchemas,
   settings: settingsSchemas,
+  contact: contactSchemas,
 };
