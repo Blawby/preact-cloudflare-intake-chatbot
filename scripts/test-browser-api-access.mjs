@@ -47,31 +47,57 @@ const UNGUARDED_PATTERNS = [
 
 let hasErrors = false;
 
+/**
+ * Detects guard patterns in text content
+ * @param {string} text - The text to analyze
+ * @returns {boolean} - True if any guard pattern is found
+ */
+function hasGuardInText(text) {
+  // typeof checks (both !== 'undefined' and === 'undefined')
+  if (text.includes('typeof window') && text.includes('undefined')) return true;
+  if (text.includes('typeof document') && text.includes('undefined')) return true;
+  if (text.includes('typeof globalThis.window') && text.includes('undefined')) return true;
+  if (text.includes('typeof globalThis.document') && text.includes('undefined')) return true;
+  
+  // Optional chaining patterns (window?.foo, document?.bar, globalThis.window?.foo)
+  if (/\b(window|document|globalThis\.window|globalThis\.document)\?\./.test(text)) return true;
+  
+  // Truthy checks (if (window), window && ..., if (globalThis.window))
+  if (/\bif\s*\(\s*(window|document|globalThis\.window|globalThis\.document)\b/.test(text)) return true;
+  if (/\b(window|document|globalThis\.window|globalThis\.document)\s*&&/.test(text)) return true;
+  
+  // Nullish coalescing (window ?? ..., globalThis.window ?? ...)
+  if (/\b(window|document|globalThis\.window|globalThis\.document)\s*\?\?/.test(text)) return true;
+  
+  // Existence checks (window in globalThis, 'window' in globalThis)
+  if (/\b(window|document)\s+in\s+globalThis/.test(text)) return true;
+  if (/['"]window['"]\s+in\s+globalThis/.test(text)) return true;
+  if (/['"]document['"]\s+in\s+globalThis/.test(text)) return true;
+  
+  // Try-catch patterns
+  if (/\btry\s*\{/.test(text) && /\bcatch\s*\(/.test(text)) return true;
+  
+  return false;
+}
+
 function isGuarded(content, matchIndex) {
   // Get the text before the match
   const beforeMatch = content.substring(0, matchIndex);
   
-  // Check if there's a window guard in the recent context
+  // Check if there's a guard in the recent context (up to 30 lines back)
   const lines = beforeMatch.split('\n');
   const currentLine = lines.length - 1;
   
-  // Look back up to 30 lines for a window guard
+  // Look back up to 30 lines for a guard
   for (let i = Math.max(0, currentLine - 30); i < currentLine; i++) {
-    const line = lines[i];
-    if (line.includes('typeof window') && line.includes('undefined')) {
-      return true;
-    }
-    if (line.includes('typeof document') && line.includes('undefined')) {
+    if (hasGuardInText(lines[i])) {
       return true;
     }
   }
   
-  // Check for ternary operators with guards
+  // Check current line for guards
   const lineContent = lines[currentLine] || '';
-  if (lineContent.includes('typeof window') && lineContent.includes('undefined')) {
-    return true;
-  }
-  if (lineContent.includes('typeof document') && lineContent.includes('undefined')) {
+  if (hasGuardInText(lineContent)) {
     return true;
   }
   
@@ -89,10 +115,7 @@ function isGuarded(content, matchIndex) {
   const startIndex = Math.max(functionStart, classStart, constStart, letStart, varStart, useEffectStart, useLayoutEffectStart, useCallbackStart, useMemoStart);
   if (startIndex > 0) {
     const functionContent = beforeMatch.substring(startIndex);
-    if (functionContent.includes('typeof window') && functionContent.includes('undefined')) {
-      return true;
-    }
-    if (functionContent.includes('typeof document') && functionContent.includes('undefined')) {
+    if (hasGuardInText(functionContent)) {
       return true;
     }
   }
@@ -101,10 +124,7 @@ function isGuarded(content, matchIndex) {
   const ifStart = beforeMatch.lastIndexOf('if (');
   if (ifStart > 0) {
     const ifContent = beforeMatch.substring(ifStart);
-    if (ifContent.includes('typeof window') && ifContent.includes('undefined')) {
-      return true;
-    }
-    if (ifContent.includes('typeof document') && ifContent.includes('undefined')) {
+    if (hasGuardInText(ifContent)) {
       return true;
     }
   }
@@ -113,10 +133,7 @@ function isGuarded(content, matchIndex) {
   const nestedIfStart = beforeMatch.lastIndexOf('if (typeof');
   if (nestedIfStart > 0) {
     const nestedIfContent = beforeMatch.substring(nestedIfStart);
-    if (nestedIfContent.includes('typeof window') && nestedIfContent.includes('undefined')) {
-      return true;
-    }
-    if (nestedIfContent.includes('typeof document') && nestedIfContent.includes('undefined')) {
+    if (hasGuardInText(nestedIfContent)) {
       return true;
     }
   }
@@ -125,10 +142,7 @@ function isGuarded(content, matchIndex) {
   const useEffectGuardStart = beforeMatch.lastIndexOf('useEffect(');
   if (useEffectGuardStart > 0) {
     const useEffectContent = beforeMatch.substring(useEffectGuardStart);
-    if (useEffectContent.includes('typeof window') && useEffectContent.includes('undefined')) {
-      return true;
-    }
-    if (useEffectContent.includes('typeof document') && useEffectContent.includes('undefined')) {
+    if (hasGuardInText(useEffectContent)) {
       return true;
     }
   }
@@ -137,10 +151,7 @@ function isGuarded(content, matchIndex) {
   const returnStart = beforeMatch.lastIndexOf('return () => {');
   if (returnStart > 0) {
     const returnContent = beforeMatch.substring(returnStart);
-    if (returnContent.includes('typeof window') && returnContent.includes('undefined')) {
-      return true;
-    }
-    if (returnContent.includes('typeof document') && returnContent.includes('undefined')) {
+    if (hasGuardInText(returnContent)) {
       return true;
     }
   }

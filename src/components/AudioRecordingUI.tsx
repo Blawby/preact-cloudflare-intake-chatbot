@@ -91,17 +91,19 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
             if (typeof window !== 'undefined') {
                 const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
                 audioContextRef.current = new AudioContext();
+                
+                // Create analyzer node only when audio context is available
+                if (audioContextRef.current) {
+                    analyserRef.current = audioContextRef.current.createAnalyser();
+                    analyserRef.current.fftSize = 256; // Fast Fourier Transform size
+                    const bufferLength = analyserRef.current.frequencyBinCount;
+                    dataArrayRef.current = new Uint8Array(bufferLength);
+                    
+                    // Connect microphone stream to analyzer
+                    const source = audioContextRef.current.createMediaStreamSource(mediaStream);
+                    source.connect(analyserRef.current);
+                }
             }
-            
-            // Create analyzer node
-            analyserRef.current = audioContextRef.current.createAnalyser();
-            analyserRef.current.fftSize = 256; // Fast Fourier Transform size
-            const bufferLength = analyserRef.current.frequencyBinCount;
-            dataArrayRef.current = new Uint8Array(bufferLength);
-            
-            // Connect microphone stream to analyzer
-            const source = audioContextRef.current.createMediaStreamSource(mediaStream);
-            source.connect(analyserRef.current);
             
             // Start visualization
             visualizeAudio();

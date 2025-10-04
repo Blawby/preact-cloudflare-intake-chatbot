@@ -1,4 +1,5 @@
 import { useLocation } from 'preact-iso';
+import { useEffect, useRef } from 'preact/hooks';
 import { GeneralPage } from './pages/GeneralPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { AccountPage } from './pages/AccountPage';
@@ -39,6 +40,16 @@ export const SettingsPage = ({
   const { navigate } = useNavigation();
   const location = useLocation();
   const { t } = useTranslation(['settings', 'common']);
+  const navigationTimeoutRef = useRef<number | null>(null);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current !== null) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Get current page from URL path
   const getCurrentPage = () => {
@@ -87,8 +98,15 @@ export const SettingsPage = ({
     
     // Navigate to root page after a short delay to allow modal to close
     if (typeof window !== 'undefined') {
-      setTimeout(() => {
+      // Clear any existing timeout
+      if (navigationTimeoutRef.current !== null) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      // Set new timeout and store the ID
+      navigationTimeoutRef.current = window.setTimeout(() => {
         navigate('/');
+        navigationTimeoutRef.current = null;
       }, 100);
     }
   };

@@ -170,9 +170,7 @@ export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
         window.removeEventListener('chat-scroll', scrollHandler);
       }
       if (debounceTimeout.current) {
-        if (typeof window !== 'undefined') {
-          clearTimeout(debounceTimeout.current);
-        }
+        clearTimeout(debounceTimeout.current);
       }
     };
   }, [handleScrollEvent]);

@@ -173,34 +173,41 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       } else {
         // Simulate API call for sign-in
         if (typeof window !== 'undefined') {
-          // Read mock users from localStorage as an array
-          const mockUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-          
-          // Find user by email
-          const user = mockUsers.find((u: {email: string; password: string}) => u.email === formData.email);
-          
-          if (user) {
-            // Validate password (in production, this would be a secure hash comparison)
-            if (user.password === formData.password) {
-              // Create user data without password for auth event
-              const { password: _password, ...userDataWithoutPassword } = user;
-              
-              // Dispatch custom event to notify UserProfile component
-              window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
-              
-              setMessage(t('messages.signedIn'));
-              
-              // Redirect to home page after successful sign in, waiting for onSuccess if provided
-              await handleRedirect();
+          try {
+            // Read mock users from localStorage as an array
+            const mockUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+            
+            // Find user by email
+            const user = mockUsers.find((u: {email: string; password: string}) => u.email === formData.email);
+            
+            if (user) {
+              // Validate password (in production, this would be a secure hash comparison)
+              if (user.password === formData.password) {
+                // Create user data without password for auth event
+                const { password: _password, ...userDataWithoutPassword } = user;
+                
+                // Dispatch custom event to notify UserProfile component
+                window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+                
+                setMessage(t('messages.signedIn'));
+                
+                // Redirect to home page after successful sign in, waiting for onSuccess if provided
+                await handleRedirect();
+              } else {
+                // Password mismatch - use generic error to avoid user enumeration
+                setError(t('errors.invalidCredentials'));
+                setLoading(false);
+                return;
+              }
             } else {
-              // Password mismatch - use generic error to avoid user enumeration
+              // User not found - use generic error to avoid user enumeration
               setError(t('errors.invalidCredentials'));
               setLoading(false);
               return;
             }
-          } else {
-            // User not found - use generic error to avoid user enumeration
-            setError(t('errors.invalidCredentials'));
+          } catch (_error) {
+            // Failed to parse users from localStorage
+            setError(t('errors.storageError'));
             setLoading(false);
             return;
           }
@@ -242,16 +249,32 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         
         // Get existing users array or create new one
         if (typeof window !== 'undefined') {
-          const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+          let existingUsers = [];
+          
+          try {
+            existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+          } catch (error) {
+            console.error('Failed to parse existing users from localStorage:', error);
+            // Fall back to empty array on JSON.parse failure
+            existingUsers = [];
+          }
           
           // Add new user to the array
           existingUsers.push(mockUser);
           
           // Store updated users array
-          localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+          try {
+            localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+          } catch (error) {
+            console.error('Failed to store users in localStorage:', error);
+          }
           
           // Also store as single user for backward compatibility
-          localStorage.setItem('mockUser', JSON.stringify(mockUser));
+          try {
+            localStorage.setItem('mockUser', JSON.stringify(mockUser));
+          } catch (error) {
+            console.error('Failed to store user in localStorage:', error);
+          }
           
           // Create user data without password for auth event
           const { password: _password, ...userDataWithoutPassword } = mockUser;
@@ -282,17 +305,33 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         
         // Get existing users array or create new one
         if (typeof window !== 'undefined') {
-          const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+          let existingUsers = [];
+          
+          try {
+            existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+          } catch (error) {
+            console.error('Failed to parse existing users from localStorage:', error);
+            // Fall back to empty array on JSON.parse failure
+            existingUsers = [];
+          }
           
           // Check if this Google user already exists, if not add them
           const existingGoogleUser = existingUsers.find((u: {email: string}) => u.email === 'user@gmail.com');
           if (!existingGoogleUser) {
             existingUsers.push(existingMockUser);
-            localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+            try {
+              localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+            } catch (error) {
+              console.error('Failed to store users in localStorage:', error);
+            }
           }
           
           // Store the existing user data for backward compatibility
-          localStorage.setItem('mockUser', JSON.stringify(existingMockUser));
+          try {
+            localStorage.setItem('mockUser', JSON.stringify(existingMockUser));
+          } catch (error) {
+            console.error('Failed to store user in localStorage:', error);
+          }
           
           // Create user data without password for auth event
           const { password: _password, ...userDataWithoutPassword } = existingMockUser;
@@ -340,7 +379,11 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     }
     // Persist onboarding completion flag before redirecting
     if (typeof window !== 'undefined') {
-      localStorage.setItem('onboardingCompleted', 'true');
+      try {
+        localStorage.setItem('onboardingCompleted', 'true');
+      } catch (error) {
+        console.error('Failed to store onboarding completion flag in localStorage:', error);
+      }
     }
     // Close onboarding modal and redirect to main app
     setShowOnboarding(false);

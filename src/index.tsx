@@ -181,19 +181,19 @@ function MainApp() {
 				try {
 					const userData = JSON.parse(mockUser);
 					setCurrentUserTier(userData.subscriptionTier || 'free');
-				} catch (_error) {
-					// Ignore parsing errors
+				} catch (error) {
+					// Log parsing errors in development for debugging
+					if (process.env.NODE_ENV === 'development') {
+						console.error('Failed to parse mockUser from localStorage:', error, 'Raw mockUser value:', mockUser);
+					}
+					// Ignore parsing errors in production
 				}
 			}
 
-			if (typeof window !== 'undefined') {
-				window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
-			}
+			window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
 			
 			return () => {
-				if (typeof window !== 'undefined') {
-					window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
-				}
+				window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
 			};
 		}
 	}, []);
