@@ -17,31 +17,208 @@
     "ja": "日本語"
   },
   "pricing": {
-    "pickYourPlan": "Elige tu plan",
-    "annual": "Anual",
-    "monthly": "Mensual",
-    "users": "Usuarios",
-    "summary": "Resumen",
-    "discount": "Descuento",
-    "annualDiscount": "Anual (-16%)",
-    "todaysTotal": "Total de hoy",
-    "billedAnnually": "Facturado anualmente a partir de hoy",
-    "billedMonthly": "Facturado mensualmente a partir de hoy",
-    "continueToBilling": "Continuar con la facturación",
-    "cancel": "Cancelar",
-    "checkout": "Pago",
-    "pay": "Pagar",
-    "backToCart": "← Volver al carrito",
-    "paymentSuccessful": "¡Pago exitoso!",
-    "goToDashboard": "Ir al panel",
-    "addMoreSeats": "Agregar más asientos en cualquier momento. Mínimo de 1 asiento.",
-    "billedAnnuallyFeature": "Facturado anualmente",
-    "billedMonthlyFeature": "Facturado mensualmente",
-    "minimumUsers": "Mínimo 1 usuario",
-    "addAndReassignUsers": "Agregar y reasignar usuarios según sea necesario",
-    "addOrRemoveUsers": "Agregar o quitar usuarios según sea necesario",
-    "save16Percent": "Ahorra 16%",
-    "youreSaving16Percent": "Estás ahorrando 16%"
+    "pickYourPlan": "Pick your plan",
+    "planSelectionDescription": "Choose the billing cadence that fits your team. You can change seats at any time.",
+    "annual": "Annual",
+    "monthly": "Monthly",
+    "perUserPerMonth": "per user/month",
+    "planLabel": "{{plan}} Plan",
+    "save16Percent": "Save 16%",
+    "youreSaving16Percent": "You're saving 16%",
+    "billedAnnuallyFeature": "Billed annually",
+    "billedMonthlyFeature": "Billed monthly",
+    "minimumUsers": "Minimum 1 user",
+    "addAndReassignUsers": "Add and reassign users as needed",
+    "addOrRemoveUsers": "Add or remove users as needed",
+    "addMoreSeats": "Add more users at any time. Minimum 1 user.",
+    "billedAnnually": "Billed annually starting today",
+    "billedMonthly": "Billed monthly starting today",
+    "checkout": {
+      "breadcrumbLabel": "Checkout progress",
+      "sections": {
+        "contact": "Contact information",
+        "billing": "Billing address",
+        "payment": "Payment details"
+      },
+      "labels": {
+        "fullName": "Full name",
+        "email": "Work email",
+        "company": "Company (optional)",
+        "country": "Country or region",
+        "addressLine1": "Street address",
+        "addressLine2": "Apartment, suite, etc. (optional)",
+        "city": "City",
+        "state": "State / Province",
+        "zipCode": "ZIP / Postal code",
+        "cardNumber": "Card number",
+        "cardExpiry": "Expiration (MM/YY)",
+        "cardCvv": "Security code",
+        "agreeTerms": "I agree to the Terms of Service and Privacy Policy"
+      },
+      "placeholders": {
+        "fullName": "Jane Doe",
+        "email": "jane@firm.com",
+        "company": "Blawby Legal",
+        "country": "Select your country",
+        "addressLine1": "123 Legal Ave",
+        "addressLine2": "Suite 200",
+        "city": "City",
+        "state": "State / Region",
+        "zipCode": "Postal code",
+        "cardNumber": "1234 1234 1234 1234",
+        "cardExpiry": "MM/YY",
+        "cardCvv": "CVC"
+      },
+      "descriptions": {
+        "agreeTerms": "We use your email to send invoices and onboarding updates."
+      },
+      "actions": {
+        "submit": "Review & pay",
+        "processing": "Processing payment…",
+        "returnToCart": "Back to cart"
+      },
+      "validation": {
+        "fullName": "Please enter your full name",
+        "email": "Enter a valid work email",
+        "country": "Select your country or region",
+        "addressLine1": "Street address is required",
+        "city": "City is required",
+        "state": "State or province is required",
+        "zipCode": "ZIP or postal code is required",
+        "cardNumber": "Enter a valid card number",
+        "cardExpiry": "Use the MM/YY format",
+        "cardCvv": "Enter the 3- or 4-digit security code",
+        "terms": "You must accept the terms to continue"
+      },
+      "errors": {
+        "cartMissing": {
+          "title": "Your cart is empty",
+          "message": "Select a plan before checking out."
+        }
+      },
+      "actionsSecondary": {
+        "refreshCart": "Refresh cart"
+      },
+      "toast": {
+        "successTitle": "Payment processed",
+        "successMessage": "We emailed your receipt and onboarding steps.",
+        "errorTitle": "Payment failed"
+      },
+      "confirmation": {
+        "title": "Confirm your purchase",
+        "description": "Review the details below before placing your order.",
+        "actions": {
+          "edit": "Edit details",
+          "confirm": "Confirm and pay"
+        },
+        "loading": "Preparing confirmation…"
+      },
+      "planBusiness": "Business",
+      "planPlus": "Plus",
+      "pageTitle": "Checkout",
+      "pageSubtitle": "Secure your subscription in a few steps."
+    },
+    "completePurchase": "Complete your purchase",
+    "pay": "Pay",
+    "backToCart": "← Back to Cart",
+    "paymentSuccessful": "Payment Successful!",
+    "goToDashboard": "Go to Dashboard",
+    "continueToBilling": "Continue to billing",
+    "cancel": "Cancel",
+    "processing": "Processing...",
+    "logoAlt": "Blawby logo",
+    "summary": {
+      "heading": "Summary",
+      "pricePerSeat": "{{price}} per user/month",
+      "planDescription": "{{count}} seats • {{billingPeriod}}",
+      "billingPeriodAnnual": "12-month billing",
+      "billingPeriodMonthly": "Monthly billing",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "total": "Total due today",
+      "billingAnnual": "Billed annually starting today",
+      "billingMonthly": "Billed monthly starting today",
+      "placeholder": "—"
+    },
+    "labels": {
+      "userCount": "Number of seats"
+    },
+    "descriptions": {
+      "userCount": "You can add or reassign seats whenever you need to."
+    },
+    "validation": {
+      "userCountNumber": "Please enter a valid number of users",
+      "userCountInteger": "User count must be a whole number",
+      "userCountMin": "You need at least 1 user",
+      "userCountMax": "You can purchase up to {{max}} users in this flow"
+    },
+    "session": {
+      "errors": {
+        "defaultTitle": "We couldn't update your cart",
+        "offline": {
+          "title": "You're offline",
+          "message": "Reconnect to the internet and try again."
+        },
+        "timeout": {
+          "title": "This is taking longer than expected",
+          "message": "Please try again—your selections have been saved."
+        },
+        "network": {
+          "title": "We couldn't reach the server",
+          "message": "Please retry in a moment."
+        },
+        "expired": {
+          "title": "Your cart session expired",
+          "message": "Refresh the cart to keep going."
+        },
+        "unknown": {
+          "title": "Something unexpected happened",
+          "message": "Please try again."
+        }
+      },
+      "actions": {
+        "retry": "Try again",
+        "refresh": "Refresh cart"
+      },
+      "notice": {
+        "expired": "This cart expired. Refresh to get current pricing.",
+        "offline": "Changes will resume once you're back online."
+      },
+      "toast": {
+        "offlineTitle": "You're offline",
+        "offlineMessage": "Reconnect to update your cart.",
+        "networkTitle": "Cart update failed",
+        "networkMessage": "{{message}}",
+        "timeoutTitle": "Request timed out",
+        "timeoutMessage": "Please try again.",
+        "unknownTitle": "Something went wrong",
+        "unknownMessage": "{{message}}"
+      },
+      "expiredModal": {
+        "title": "Your cart expired",
+        "body": "Refresh to get the latest pricing and secure your seats.",
+        "actions": {
+          "refresh": "Refresh cart",
+          "dismiss": "Dismiss"
+        }
+      }
+    },
+    "breadcrumb": {
+      "cart": "Cart",
+      "checkout": "Checkout",
+      "confirmation": "Confirmation"
+    },
+    "confirmation": {
+      "title": "Thanks for your purchase",
+      "subtitle": "Your workspace is updating. We’ll send onboarding instructions to your email.",
+      "processing": "Wrapping up your subscription…",
+      "actions": {
+        "goToDashboard": "Go to dashboard"
+      },
+      "toast": {
+        "errorTitle": "We couldn’t finalize your subscription"
+      }
+    }
   },
   "forms": {
     "labels": {

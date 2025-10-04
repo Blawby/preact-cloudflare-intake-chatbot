@@ -1,7 +1,8 @@
 import { FunctionComponent } from 'preact';
+import { KeyboardEvent } from 'preact/compat';
 import { CheckIcon } from '@heroicons/react/24/outline';
 
-interface PlanCardProps {
+export interface PlanCardProps {
   title: string;
   price: string;
   originalPrice?: string;
@@ -12,6 +13,9 @@ interface PlanCardProps {
   discountText?: string;
   onClick: () => void;
   className?: string;
+  onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 const PlanCard: FunctionComponent<PlanCardProps> = ({
@@ -24,8 +28,21 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
   hasDiscount = false,
   discountText,
   onClick,
-  className = ''
+  className = '',
+  onKeyDown,
+  onFocus,
+  onBlur
 }) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+      return;
+    }
+
+    onKeyDown?.(event);
+  };
+
   return (
     <button
       type="button"
@@ -35,9 +52,13 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
           : 'border-gray-700 hover:border-gray-600'
       } ${className}`}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
+      onFocus={onFocus}
+      onBlur={onBlur}
       role="radio"
       aria-checked={isSelected}
       aria-label={`${title} plan - ${price} ${period}. Features: ${features.join(', ')}`}
+      tabIndex={isSelected ? 0 : -1}
     >
       {/* Discount Badge */}
       {hasDiscount && discountText && (

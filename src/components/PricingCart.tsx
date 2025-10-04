@@ -1,361 +1,479 @@
 import { FunctionComponent } from 'preact';
-import { useState, useEffect, useRef } from 'preact/hooks';
-import { Button } from './ui/Button';
-import PlanCard from './ui/cards/PlanCard';
-// Removed unused imports: UserGroupIcon, CalendarIcon, CurrencyDollarIcon
-import { type SubscriptionTier } from '../utils/mockUserData';
-import { mockPricingDataService } from '../utils/mockPricingData';
-import { mockPaymentDataService, type CartSession, type PlanData } from '../utils/mockPaymentData';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { z } from 'zod';
+
 import { useNavigation } from '../utils/navigation';
+import { mockPricingDataService } from '../utils/mockPricingData';
+import { formatCurrency } from '../utils/intl';
+import { useCartSession } from '../hooks/useCartSession';
+import { useAnalytics } from '../hooks/useAnalytics';
+import { useToastContext } from '../contexts/ToastContext';
+
 import { useTranslation } from './ui/i18n/useTranslation';
+import { Breadcrumb } from './ui/layout';
+import { PlanCard, PricingSummary } from './ui/cards';
+import { NumberInput } from './ui/input/NumberInput';
+import { Form } from './ui/form/Form';
+import { FormField } from './ui/form/FormField';
+import { FormItem } from './ui/form/FormItem';
+import { FormLabel } from './ui/form/FormLabel';
+import { FormControl } from './ui/form/FormControl';
+import { FormMessage } from './ui/form/FormMessage';
+import Modal from './Modal';
+
+const MAX_USER_COUNT = 500;
 
 interface PricingCartProps {
   className?: string;
 }
 
+type SessionErrorToast = 'network' | 'timeout' | 'unknown';
+
+type SessionNotice = 'expired' | 'offline';
+
 const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) => {
   const { navigate } = useNavigation();
-  const { t } = useTranslation('common');
-  
-  // Get tier from URL parameters
-  const getTierFromUrl = (): SubscriptionTier => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tier = urlParams.get('tier') as SubscriptionTier;
-      if (tier && ['plus', 'business'].includes(tier)) {
-        return tier;
-      }
-    }
-    return 'plus'; // Default to plus
-  };
-  
-  // State for plan selection
-  const [selectedTier] = useState<SubscriptionTier>(getTierFromUrl());
+  const { t, i18n } = useTranslation('common');
+  const { showError, showInfo } = useToastContext();
+
+  const locale = i18n.language || 'en';
   const [planType, setPlanType] = useState<'annual' | 'monthly'>('monthly');
-  const [userCount, setUserCount] = useState(1);
-  const [cartSession, setCartSession] = useState<CartSession | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // State for cart session creation
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
-  const [sessionError, setSessionError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  
-  // Refs for race condition protection
-  const requestIdRef = useRef(0);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [userCount, setUserCount] = useState<number>(1);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [showExpiryModal, setShowExpiryModal] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const { track } = useAnalytics();
 
-  // Get pricing plans
-  const pricingPlans = mockPricingDataService.getPricingPlans();
-  const selectedPlan = pricingPlans.find(plan => plan.id === selectedTier);
+  const getTierFromUrl = (): 'plus' | 'business' => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tier = params.get('tier');
+      if (tier === 'business') {
+        return 'business';
+      }
+    }
+    return 'plus';
+  };
 
-  // Create or update cart session when plan data changes
+  const [selectedTier] = useState<'plus' | 'business'>(getTierFromUrl());
+  const pricingPlan = mockPricingDataService.getPricingPlan(selectedTier) ?? mockPricingDataService.getPricingPlan('plus');
+  const currencyCode = pricingPlan?.currency ?? 'USD';
+
+  const { cartSession, status, error, isExpired, isOffline, retry, refresh } = useCartSession({
+    planTier: selectedTier,
+    planType,
+    userCount,
+    autoCreate: true,
+    debounceMs: 350
+  });
+
   useEffect(() => {
-    // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
+    headingRef.current?.focus();
+  }, []);
+
+  const lastErrorCodeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!error) {
+      lastErrorCodeRef.current = null;
+      return;
     }
 
-    // Debounce the effect to prevent rapid consecutive calls
-    timeoutRef.current = setTimeout(() => {
-      const currentRequestId = ++requestIdRef.current;
-      
-      const planData: PlanData = {
-        planTier: selectedTier as 'plus' | 'business',
-        planType,
-        userCount
+    if (lastErrorCodeRef.current === error.code) {
+      return;
+    }
+    lastErrorCodeRef.current = error.code;
+
+    if (error.code === 'offline') {
+      showInfo(t('pricing.session.toast.offlineTitle'), t('pricing.session.toast.offlineMessage'));
+      return;
+    }
+
+    if (['network', 'timeout', 'unknown'].includes(error.code)) {
+      const code = error.code as SessionErrorToast;
+      showError(
+        t(`pricing.session.toast.${code}Title`),
+        t(`pricing.session.toast.${code}Message`, { message: error.message ?? '' })
+      );
+    }
+  }, [error, showError, showInfo, t]);
+
+  const userCountSchema = useMemo(
+    () =>
+      z.object({
+        userCount: z
+          .number({ invalid_type_error: t('pricing.validation.userCountNumber') })
+          .int(t('pricing.validation.userCountInteger'))
+          .min(1, t('pricing.validation.userCountMin'))
+          .max(MAX_USER_COUNT, t('pricing.validation.userCountMax', { max: MAX_USER_COUNT }))
+      }),
+    [t]
+  );
+
+  const pricePerSeat = useMemo(() => {
+    if (!pricingPlan) return '';
+    return t('pricing.summary.pricePerSeat', {
+      price: formatCurrency(pricingPlan.priceAmount, {
+        locale,
+        currency: currencyCode,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      })
+    });
+  }, [currencyCode, locale, pricingPlan, t]);
+
+  const lineItems = useMemo(() => {
+    const subtotal = cartSession
+      ? formatCurrency(cartSession.pricing.subtotal, { locale, currency: currencyCode, maximumFractionDigits: 2 })
+      : t('pricing.summary.placeholder');
+
+    const discountValue = cartSession
+      ? cartSession.pricing.discount > 0
+        ? `-${formatCurrency(cartSession.pricing.discount, { locale, currency: currencyCode, maximumFractionDigits: 2 })}`
+        : formatCurrency(cartSession.pricing.discount, { locale, currency: currencyCode, maximumFractionDigits: 2 })
+      : t('pricing.summary.placeholder');
+
+    const total = cartSession
+      ? formatCurrency(cartSession.pricing.total, { locale, currency: currencyCode, maximumFractionDigits: 2 })
+      : t('pricing.summary.placeholder');
+
+    return [
+      { label: t('pricing.summary.subtotal'), value: subtotal },
+      { label: t('pricing.summary.discount'), value: discountValue },
+      { label: t('pricing.summary.total'), value: total, emphasis: true }
+    ];
+  }, [cartSession, currencyCode, locale, t]);
+
+  const planDescription = useMemo(
+    () =>
+      t('pricing.summary.planDescription', {
+        count: userCount,
+        billingPeriod:
+          planType === 'annual'
+            ? t('pricing.summary.billingPeriodAnnual')
+            : t('pricing.summary.billingPeriodMonthly')
+      }),
+    [planType, t, userCount]
+  );
+
+  const summaryNotice = useMemo(() => {
+    if (isExpired) {
+      return {
+        type: 'warning' as const,
+        message: t('pricing.session.notice.expired')
       };
+    }
 
-      setIsCreatingSession(true);
-      setSessionError(null);
+    if (isOffline) {
+      return {
+        type: 'info' as const,
+        message: t('pricing.session.notice.offline')
+      };
+    }
 
-      try {
-        const session = mockPaymentDataService.createCartSession(planData);
-        
-        // Only update state if this is still the latest request
-        if (currentRequestId === requestIdRef.current) {
-          setCartSession(session);
-          setSessionError(null);
-        }
-      } catch (error) {
-        // console.error('Failed to create cart session:', error);
-        
-        // Only update state if this is still the latest request
-        if (currentRequestId === requestIdRef.current) {
-          setCartSession(null);
-          setSessionError(error instanceof Error ? error.message : 'Failed to create cart session');
-        }
-      } finally {
-        // Only update loading state if this is still the latest request
-        if (currentRequestId === requestIdRef.current) {
-          setIsCreatingSession(false);
-        }
-      }
-    }, 300); // 300ms debounce delay
+    return null;
+  }, [isExpired, isOffline, t]);
 
-    // Cleanup function
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
+  const summaryError = useMemo(() => {
+    if (!error) return null;
+
+    const base = {
+      title: t('pricing.session.errors.defaultTitle'),
+      message: error.message,
+      actionLabel: t('pricing.session.actions.retry'),
+      onAction: retry
     };
-  }, [selectedTier, planType, userCount, retryCount]);
 
-  const handleUserCountChange = (delta: number) => {
-    const newCount = Math.max(1, userCount + delta);
-    setUserCount(newCount);
-  };
+    switch (error.code) {
+      case 'offline':
+        return {
+          title: t('pricing.session.errors.offline.title'),
+          message: t('pricing.session.errors.offline.message'),
+          actionLabel: t('pricing.session.actions.retry'),
+          onAction: retry
+        };
+      case 'timeout':
+        return {
+          title: t('pricing.session.errors.timeout.title'),
+          message: t('pricing.session.errors.timeout.message'),
+          actionLabel: t('pricing.session.actions.retry'),
+          onAction: retry
+        };
+      case 'network':
+        return {
+          title: t('pricing.session.errors.network.title'),
+          message: error.message ?? t('pricing.session.errors.network.message'),
+          actionLabel: t('pricing.session.actions.retry'),
+          onAction: retry
+        };
+      case 'expired':
+        return {
+          title: t('pricing.session.errors.expired.title'),
+          message: t('pricing.session.errors.expired.message'),
+          actionLabel: t('pricing.session.actions.refresh'),
+          onAction: refresh
+        };
+      default:
+        return {
+          ...base,
+          title: t('pricing.session.errors.unknown.title'),
+          message: error.message ?? t('pricing.session.errors.unknown.message')
+        };
+    }
+  }, [error, refresh, retry, t]);
+
+  const billingNote = planType === 'annual'
+    ? t('pricing.summary.billingAnnual')
+    : t('pricing.summary.billingMonthly');
 
   const handleProceedToCheckout = () => {
-    if (!cartSession) return;
-    
-    // Clear any existing navigation timeout
-    if (navigationTimeoutRef.current) {
-      clearTimeout(navigationTimeoutRef.current);
+    if (!cartSession || status !== 'success' || isExpired) {
+      return;
     }
-    
-    setIsLoading(true);
-    
-    // Simulate navigation delay
-    navigationTimeoutRef.current = setTimeout(() => {
-      navigate('/pricing/checkout');
-      setIsLoading(false);
-    }, 500);
+    setIsNavigating(true);
+    track('pricing_cart_checkout_clicked', {
+      planType,
+      userCount,
+      cartId: cartSession.cartId
+    });
+    navigate('/pricing/checkout');
   };
 
-  const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
+  const handleCancel = () => {
+    if (typeof window !== 'undefined') {
+      window.history.back();
+    }
   };
 
+  const annualPrice = pricingPlan
+    ? formatCurrency(pricingPlan.priceAmount, {
+        locale,
+        currency: currencyCode,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      })
+    : '';
+
+  const monthlyPrice = annualPrice;
+
+  const breadcrumbSteps = useMemo(
+    () => [
+      {
+        id: 'cart',
+        label: t('pricing.breadcrumb.cart'),
+        status: 'current' as const
+      },
+      {
+        id: 'checkout',
+        label: t('pricing.breadcrumb.checkout'),
+        href: '/pricing/checkout',
+        status: 'upcoming' as const
+      },
+      {
+        id: 'confirmation',
+        label: t('pricing.breadcrumb.confirmation'),
+        status: 'upcoming' as const
+      }
+    ],
+    [t]
+  );
+
+  useEffect(() => {
+    if (isExpired) {
+      setShowExpiryModal(true);
+    }
+  }, [isExpired]);
+
+  useEffect(() => {
+    if (!isExpired) {
+      setShowExpiryModal(false);
+    }
+  }, [isExpired]);
+
+  const featuresAnnual = [
+    t('pricing.billedAnnuallyFeature'),
+    t('pricing.minimumUsers'),
+    t('pricing.addAndReassignUsers')
+  ];
+
+  const featuresMonthly = [
+    t('pricing.billedMonthlyFeature'),
+    t('pricing.minimumUsers'),
+    t('pricing.addOrRemoveUsers')
+  ];
+
+  const initialFormData = useMemo(() => ({ userCount }), [userCount]);
 
   return (
     <div className={`min-h-screen bg-gray-900 text-white ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Header - Logo only */}
-        <div className="mb-6 sm:mb-8">
-          <img src="/blawby-favicon-iframe.png" alt="Blawby Logo" className="w-12 h-12" />
+        <div className="flex flex-col space-y-4 mb-6 sm:mb-8">
+          <Breadcrumb steps={breadcrumbSteps} ariaLabel={t('pricing.checkout.breadcrumbLabel')} />
+          <img src="/blawby-favicon-iframe.png" alt={t('pricing.logoAlt')} className="w-12 h-12" />
         </div>
 
-        {/* Main Content - Two Column Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left Column - Pick your plan */}
-          <div className="space-y-6">
-            <h2 className="text-xl sm:text-2xl font-semibold text-white text-center">
-              {t('pricing.pickYourPlan')}
-            </h2>
-            
-            {/* Billing Period Selection - Responsive cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <PlanCard
-                title={t('pricing.annual')}
-                price={selectedPlan ? formatPrice(selectedPlan.priceAmount) : formatPrice(40)}
-                originalPrice={undefined}
-                period="per user/month"
-                features={[
-                  t('pricing.billedAnnuallyFeature'),
-                  t('pricing.minimumUsers'), 
-                  t('pricing.addAndReassignUsers')
-                ]}
-                isSelected={planType === 'annual'}
-                hasDiscount={true}
-                discountText={planType === 'annual' ? t('pricing.youreSaving16Percent') : t('pricing.save16Percent')}
-                onClick={() => setPlanType('annual')}
-              />
-              
-              <PlanCard
-                title={t('pricing.monthly')}
-                price={selectedPlan ? formatPrice(selectedPlan.priceAmount) : formatPrice(40)}
-                period="per user/month"
-                features={[
-                  t('pricing.billedMonthlyFeature'),
-                  t('pricing.minimumUsers'),
-                  t('pricing.addOrRemoveUsers')
-                ]}
-                isSelected={planType === 'monthly'}
-                onClick={() => setPlanType('monthly')}
-              />
-            </div>
+        <Form
+          initialData={initialFormData}
+          schema={userCountSchema}
+          validateOnChange
+          onSubmit={handleProceedToCheckout}
+        >
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+            <div className="space-y-8">
+              <section aria-labelledby="plan-selection-heading" className="space-y-6">
+                <div>
+                  <h2
+                    id="plan-selection-heading"
+                    ref={headingRef}
+                    tabIndex={-1}
+                    className="text-xl sm:text-2xl font-semibold text-white text-center md:text-left focus:outline-none"
+                  >
+                    {t('pricing.pickYourPlan')}
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-400 text-center md:text-left">
+                    {t('pricing.planSelectionDescription')}
+                  </p>
+                </div>
 
-            {/* Users Section - Below the plan cards */}
-            <div>
-              <h3 className="text-lg font-medium text-white mb-4">
-                {t('pricing.users')}
-              </h3>
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleUserCountChange(-1)}
-                  disabled={userCount <= 1}
-                  className="w-10 h-10 p-0 border-gray-600 text-gray-300 hover:bg-gray-700 disabled:opacity-50 flex-shrink-0"
-                >
-                  <span className="text-lg">−</span>
-                </Button>
-                <div className="flex-1">
-                  <input
-                    type="number"
-                    value={userCount}
-                    onChange={(e) => {
-                      const value = Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1);
-                      setUserCount(value);
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2" role="radiogroup" aria-labelledby="plan-selection-heading">
+                  <PlanCard
+                    title={t('pricing.annual')}
+                    price={annualPrice}
+                    period={t('pricing.perUserPerMonth')}
+                    features={featuresAnnual}
+                    isSelected={planType === 'annual'}
+                    hasDiscount
+                    discountText={t('pricing.save16Percent')}
+                    onClick={() => {
+                      setPlanType('annual');
+                      track('pricing_cart_plan_type_selected', { planType: 'annual' });
                     }}
-                    className="w-full h-10 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white text-center text-lg font-medium focus:outline-none focus:border-white"
-                    min="1"
+                  />
+
+                  <PlanCard
+                    title={t('pricing.monthly')}
+                    price={monthlyPrice}
+                    period={t('pricing.perUserPerMonth')}
+                    features={featuresMonthly}
+                    isSelected={planType === 'monthly'}
+                    onClick={() => {
+                      setPlanType('monthly');
+                      track('pricing_cart_plan_type_selected', { planType: 'monthly' });
+                    }}
                   />
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleUserCountChange(1)}
-                  className="w-10 h-10 p-0 border-gray-600 text-gray-300 hover:bg-gray-700 flex-shrink-0"
-                >
-                  <span className="text-lg">+</span>
-                </Button>
-              </div>
-              <p className="text-sm text-gray-400 mt-2">
-                {t('pricing.addMoreSeats')}
-              </p>
+              </section>
+
+              <section aria-labelledby="user-count-heading" className="space-y-4">
+                <h3 id="user-count-heading" className="text-lg font-medium text-white">
+                  {t('pricing.labels.userCount')}
+                </h3>
+                <p className="text-sm text-gray-400">{t('pricing.descriptions.userCount')}</p>
+
+                <FormField name="userCount">
+                  {({ value, error: fieldError, onChange }) => {
+                    const numericValue = typeof value === 'number' ? value : userCount;
+
+                    const handleValueChange = (nextValue: number | undefined) => {
+                      if (typeof nextValue !== 'number') {
+                        onChange(undefined);
+                        return;
+                      }
+
+                      const clamped = Math.max(1, Math.min(MAX_USER_COUNT, Math.round(nextValue)));
+                      onChange(clamped);
+                      setUserCount(clamped);
+                      track('pricing_cart_user_count_changed', { userCount: clamped });
+                    };
+
+                    return (
+                      <FormItem>
+                        <FormLabel htmlFor="user-count-input" required>
+                          {t('pricing.labels.userCount')}
+                        </FormLabel>
+                        <FormControl>
+                          <NumberInput
+                            id="user-count-input"
+                            value={numericValue}
+                            min={1}
+                            max={MAX_USER_COUNT}
+                            step={1}
+                            size="lg"
+                            showControls
+                            onChange={handleValueChange}
+                            variant={fieldError ? 'error' : 'default'}
+                            error={fieldError?.message}
+                          />
+                        </FormControl>
+                        <FormMessage>
+                          {fieldError?.message}
+                        </FormMessage>
+                      </FormItem>
+                    );
+                  }}
+                </FormField>
+              </section>
+            </div>
+
+            <div>
+              <PricingSummary
+                heading={t('pricing.summary.heading')}
+                planName={pricingPlan ? t('pricing.planLabel', { plan: pricingPlan.name }) : ''}
+                planDescription={planDescription}
+                pricePerSeat={pricePerSeat}
+                lineItems={lineItems}
+                billingNote={billingNote}
+                primaryAction={{
+                  label: t('pricing.continueToBilling'),
+                  loadingLabel: t('pricing.processing'),
+                  onClick: handleProceedToCheckout,
+                  disabled: !cartSession || status !== 'success' || isExpired || isNavigating,
+                  isLoading: isNavigating
+                }}
+                secondaryAction={{
+                  label: t('pricing.cancel'),
+                  onClick: handleCancel
+                }}
+                isLoading={status === 'loading'}
+                error={summaryError}
+                notice={summaryNotice}
+              />
             </div>
           </div>
+        </Form>
+      </div>
 
-          {/* Right Column - Summary */}
-          <div>
-            <h2 className="text-lg font-medium text-white mb-6">
-              {t('pricing.summary')}
-            </h2>
-
-            {/* Loading state */}
-            {isCreatingSession && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
-                  <span className="ml-3 text-white">Creating cart session...</span>
-                </div>
-              </div>
-            )}
-
-            {/* Error state */}
-            {sessionError && !isCreatingSession && (
-              <div className="space-y-4">
-                <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-400">
-                        Failed to create cart session
-                      </h3>
-                      <div className="mt-2 text-sm text-red-300">
-                        {sessionError}
-                      </div>
-                      <div className="mt-3">
-                        <button
-                          onClick={() => {
-                            setSessionError(null);
-                            // Trigger a new session creation by incrementing retry counter
-                            setRetryCount(prev => prev + 1);
-                          }}
-                          className="text-sm text-red-400 hover:text-red-300 underline"
-                        >
-                          Try again
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Success state - show cart session */}
-            {cartSession && !isCreatingSession && !sessionError && (
-              <div className="space-y-4">
-                {/* Plan Details */}
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-sm text-white">
-                      {selectedPlan?.name} Plan
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      {userCount} users{planType === 'annual' ? ' x 12 months' : ''}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-white">
-                      {formatPrice(cartSession.pricing.subtotal)}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      ${selectedPlan?.priceAmount}/seat
-                    </div>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-gray-700" />
-
-                {/* Discount */}
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-sm text-white">{t('pricing.discount')}</div>
-                    {planType === 'annual' && (
-                      <div className="text-sm text-gray-400">{t('pricing.annualDiscount')}</div>
-                    )}
-                  </div>
-                  <div className="text-sm text-white">
-                    -{formatPrice(cartSession.pricing.discount)}
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-gray-700" />
-
-                {/* Total */}
-                <div className="flex justify-between items-center">
-                  <div className="text-white font-bold text-lg">{t('pricing.todaysTotal')}</div>
-                  <div className="text-white font-bold text-lg">
-                    {formatPrice(cartSession.pricing.total)}
-                  </div>
-                </div>
-
-                {/* Billing Note */}
-                <div className="text-sm text-gray-400">
-                  {planType === 'annual' ? t('pricing.billedAnnually') : t('pricing.billedMonthly')}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-3 mt-6">
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    onClick={handleProceedToCheckout}
-                    disabled={!cartSession || isLoading || isCreatingSession}
-                  >
-                    {isLoading ? 'Processing...' : t('pricing.continueToBilling')}
-                  </Button>
-                  
-                  <button
-                    className="w-full text-center text-white hover:text-gray-300 transition-colors"
-                    onClick={() => window.history.back()}
-                  >
-                    {t('pricing.cancel')}
-                  </button>
-                </div>
-              </div>
-            )}
+      <Modal
+        isOpen={showExpiryModal}
+        onClose={() => setShowExpiryModal(false)}
+        title={t('pricing.session.expiredModal.title')}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-300">{t('pricing.session.expiredModal.body')}</p>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => {
+                setShowExpiryModal(false);
+                refresh();
+              }}
+              className="px-4 py-2 bg-accent-600 text-sm rounded-md hover:bg-accent-500"
+            >
+              {t('pricing.session.expiredModal.actions.refresh')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowExpiryModal(false);
+                navigate('/pricing/cart');
+              }}
+              className="px-4 py-2 text-sm text-gray-200 hover:text-white"
+            >
+              {t('pricing.session.expiredModal.actions.dismiss')}
+            </button>
           </div>
         </div>
-      </div>
+      </Modal>
     </div>
   );
 };

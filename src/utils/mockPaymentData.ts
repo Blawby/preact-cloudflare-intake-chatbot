@@ -71,6 +71,10 @@ class MockPaymentDataService {
     return typeof window !== 'undefined' && window.localStorage ? window.localStorage : null;
   }
 
+  private isExpired(dateIso: string): boolean {
+    return new Date(dateIso).getTime() <= Date.now();
+  }
+
   // Generate unique IDs
   private generateId(): string {
     return `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -151,6 +155,25 @@ class MockPaymentDataService {
     return null;
   }
 
+  getActiveCartSession(): CartSession | null {
+    const storage = this.getStorage();
+    if (!storage) return null;
+
+    try {
+      const stored = storage.getItem(STORAGE_KEYS.CART_SESSION);
+      if (stored) {
+        const cartSession = JSON.parse(stored) as CartSession;
+        if (!this.isExpired(cartSession.expiresAt)) {
+          return cartSession;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse active cart session:', error);
+    }
+
+    return null;
+  }
+
   updateCartSession(cartId: string, updates: Partial<PlanData>): CartSession | null {
     const existingCart = this.getCartSession(cartId);
     if (!existingCart) {
@@ -181,6 +204,13 @@ class MockPaymentDataService {
     }
 
     return updatedCart;
+  }
+
+  clearCartSession(): void {
+    const storage = this.getStorage();
+    if (!storage) return;
+
+    storage.removeItem(STORAGE_KEYS.CART_SESSION);
   }
 
   // Checkout Session Methods
@@ -336,23 +366,7 @@ class MockPaymentDataService {
 
   // Get current active cart (for UI state management)
   getCurrentCart(): CartSession | null {
-    const storage = this.getStorage();
-    if (!storage) return null;
-
-    try {
-      const stored = storage.getItem(STORAGE_KEYS.CART_SESSION);
-      if (stored) {
-        const cartSession = JSON.parse(stored) as CartSession;
-        // Check if cart is not expired
-        if (new Date(cartSession.expiresAt) > new Date()) {
-          return cartSession;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to parse current cart:', error);
-    }
-
-    return null;
+    return this.getActiveCartSession();
   }
 
   // Validate cart session exists and is not expired
