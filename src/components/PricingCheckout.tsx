@@ -14,7 +14,14 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
   return (
     <div className={`min-h-screen bg-gray-900 text-white p-8 ${className}`}>
       <div className="max-w-2xl mx-auto">
-        <h1>{t('pricing.checkout')}</h1>
+        <header className="mb-8">
+          <h2 className="text-3xl font-bold text-white mb-2">
+            {t('pricing.checkout')}
+          </h2>
+          <p className="text-gray-400 text-lg">
+            Complete your purchase
+          </p>
+        </header>
         
         <div style={{ marginTop: '2rem' }}>
           <Button 
