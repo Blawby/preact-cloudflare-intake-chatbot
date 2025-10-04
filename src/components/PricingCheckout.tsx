@@ -178,8 +178,10 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
         error: {
           title: t('pricing.checkout.errors.cartMissing.title'),
           message: t('pricing.checkout.errors.cartMissing.message'),
-          actionLabel: t('pricing.checkout.actions.returnToCart'),
-          onAction: () => navigate('/pricing/cart')
+          action: {
+            label: t('pricing.checkout.actions.returnToCart'),
+            onClick: () => navigate('/pricing/cart')
+          }
         }
       };
     }
@@ -198,8 +200,10 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
         error: {
           title: t('pricing.session.errors.defaultTitle'),
           message: error.message,
-          actionLabel: t('pricing.session.actions.refresh'),
-          onAction: refresh
+          action: {
+            label: t('pricing.session.actions.refresh'),
+            onClick: refresh
+          }
         }
       };
     }
