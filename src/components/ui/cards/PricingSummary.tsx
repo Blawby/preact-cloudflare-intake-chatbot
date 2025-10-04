@@ -31,6 +31,7 @@ export interface PricingSummaryProps {
   pricePerSeat: string;
   lineItems: PricingLineItem[];
   billingNote: string;
+  isAnnual?: boolean;
   primaryAction: {
     label: string;
     onClick: () => void;
@@ -61,6 +62,7 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
   pricePerSeat,
   lineItems,
   billingNote,
+  isAnnual = false,
   primaryAction,
   secondaryAction,
   isLoading = false,
@@ -139,7 +141,7 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
           <div className="flex justify-between items-start">
             <div>
               <div className="text-sm text-white">Discount</div>
-              {planDescription.includes('12 months') && (
+              {isAnnual && (
                 <div className="text-sm text-gray-400">Annual (-16%)</div>
               )}
             </div>

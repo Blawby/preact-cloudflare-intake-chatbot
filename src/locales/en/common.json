@@ -16,6 +16,11 @@
     "zh": "中文",
     "ja": "日本語"
   },
+  "common": {
+    "subtotal": "Subtotal",
+    "discount": "Discount", 
+    "totalDueToday": "Total due today"
+  },
   "pricing": {
     "pickYourPlan": "Pick your plan",
     "planSelectionDescription": "Choose the billing cadence that fits your team. You can change seats at any time.",

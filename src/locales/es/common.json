@@ -16,6 +16,11 @@
     "zh": "中文",
     "ja": "日本語"
   },
+  "common": {
+    "subtotal": "Subtotal",
+    "discount": "Descuento", 
+    "totalDueToday": "Total a pagar hoy"
+  },
   "pricing": {
     "pickYourPlan": "Elige tu plan",
     "planSelectionDescription": "Elige la frecuencia de facturación que se adapte a tu equipo. Puedes cambiar los asientos en cualquier momento.",

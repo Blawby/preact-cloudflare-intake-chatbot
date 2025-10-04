@@ -1,12 +1,5 @@
 import { FunctionComponent, ReactNode } from 'preact';
-import { Breadcrumb } from './Breadcrumb';
-
-export interface BreadcrumbStep {
-  id: string;
-  label: string;
-  href?: string;
-  status: 'completed' | 'current' | 'upcoming';
-}
+import { Breadcrumb, BreadcrumbStep } from './Breadcrumb';
 
 export interface CheckoutLayoutProps {
   className?: string;

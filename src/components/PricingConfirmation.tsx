@@ -34,6 +34,8 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
       try {
         if (cartSummary) {
           await mockPaymentDataService.updateUserSubscription(cartSummary.planTier);
+          // Only clear sessions after successful subscription update
+          mockPaymentDataService.clearAllSessions();
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update subscription';
@@ -41,7 +43,6 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
         showError(t('pricing.confirmation.toast.errorTitle'), message);
         track('pricing_confirmation_error', { message });
       } finally {
-        mockPaymentDataService.clearAllSessions();
         setIsProcessing(false);
       }
     };
@@ -156,6 +157,7 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
                 }) : ''}
                 lineItems={summaryLineItems}
                 billingNote={cartSummary ? (cartSummary.planType === 'annual' ? t('pricing.summary.billingAnnual') : t('pricing.summary.billingMonthly')) : ''}
+                isAnnual={cartSummary?.planType === 'annual'}
                 primaryAction={{
                   label: t('pricing.confirmation.actions.goToDashboard'),
                   onClick: () => navigate('/'),
