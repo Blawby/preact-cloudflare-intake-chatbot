@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/favicon.ico",
+    "/favicon.svg",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/manifest.webmanifest",
+    "/sw.js",
+    "/registerSW.js",
+    "/blawby-favicon-iframe.png",
+    "/team-profile-demo.png",
+    "/vite.svg"
+  ]
+}

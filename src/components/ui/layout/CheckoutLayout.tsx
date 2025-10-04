@@ -1,4 +1,4 @@
-import { FunctionComponent, ReactNode } from 'preact';
+import { FunctionComponent, ComponentChildren } from 'preact';
 import { Breadcrumb, BreadcrumbStep } from './Breadcrumb';
 
 export interface CheckoutLayoutProps {
@@ -7,7 +7,7 @@ export interface CheckoutLayoutProps {
   breadcrumbAriaLabel: string;
   title: string;
   subtitle?: string;
-  children: ReactNode;
+  children: ComponentChildren;
 }
 
 const CheckoutLayout: FunctionComponent<CheckoutLayoutProps> = ({
@@ -21,7 +21,7 @@ const CheckoutLayout: FunctionComponent<CheckoutLayoutProps> = ({
   return (
     <div className={`min-h-screen bg-gray-900 text-white ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex justify-start mb-6 sm:mb-8">
+        <div className="flex justify-start mb-6 sm:mb-8 min-h-0">
           <Breadcrumb steps={breadcrumbs} ariaLabel={breadcrumbAriaLabel} />
         </div>
 

@@ -83,7 +83,7 @@ const criticalCssPlugin = (): Plugin => {
 };
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
 	plugins: [
 		preact({
 			prerender: {
@@ -165,10 +165,13 @@ export default defineConfig({
 		minify: 'terser',
 		terserOptions: {
 			compress: {
-				drop_console: true,
+				drop_console: false,
 				passes: 2,
 				drop_debugger: true,
-				pure_funcs: ['console.log', 'console.info', 'console.debug'],
+				// Keep console.error and console.warn in production for debugging
+				pure_funcs: mode === 'production' 
+					? ['console.log', 'console.info', 'console.debug'] 
+					: [],
 			},
 			format: {
 				comments: false
@@ -240,4 +243,4 @@ export default defineConfig({
 			}
 		}
 	}
-});
+}));

@@ -58,13 +58,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     }
   }
   
-  const baseClasses = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border';
+  const baseClasses = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed border';
   
   const variantClasses: Record<ButtonVariant, string> = {
-    primary: 'bg-accent-500 text-gray-900 hover:bg-accent-600 focus:ring-accent-500 border-accent-500',
-    secondary: 'bg-transparent text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-gray-200 dark:focus:ring-gray-700',
-    ghost: 'bg-transparent text-gray-900 dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-dark-hover focus:ring-gray-200 dark:focus:ring-gray-700',
-    icon: 'bg-transparent text-gray-900 dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-dark-hover focus:ring-gray-200 dark:focus:ring-gray-700',
+    primary: 'bg-accent-500 text-gray-900 hover:bg-accent-600 focus:ring-accent-500 border-accent-500 disabled:bg-gray-300 disabled:text-gray-500 disabled:border-gray-300 dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600',
+    secondary: 'bg-transparent text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-gray-200 dark:focus:ring-gray-700 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200 dark:disabled:bg-gray-800 dark:disabled:text-gray-400 dark:disabled:border-gray-700',
+    ghost: 'bg-transparent text-gray-900 dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-dark-hover focus:ring-gray-200 dark:focus:ring-gray-700 disabled:bg-gray-100 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-400',
+    icon: 'bg-transparent text-gray-900 dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-dark-hover focus:ring-gray-200 dark:focus:ring-gray-700 disabled:bg-gray-100 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-400',
   };
   
   const sizeClasses = {

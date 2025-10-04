@@ -478,14 +478,15 @@ export function App() {
 					teamConfig={teamConfig}
 					currentUrl={currentUrl}
 				/>
-				<Router>
+			<Router>
             <Route path="/auth" component={AuthPage} />
             <Route path="/pricing/cart" component={PricingCart} />
             <Route path="/pricing/checkout" component={PricingCheckout} />
             <Route path="/pricing/confirmation" component={PricingConfirmation} />
             <Route path="/settings/*" component={MainApp} />
-            <Route default component={MainApp} />
-				</Router>
+            <Route path="/" component={MainApp} />
+            <Route path="/help" component={MainApp} />
+			</Router>
 			</ToastProvider>
 		</LocationProvider>
 	);
@@ -517,19 +518,43 @@ if (typeof window !== 'undefined') {
 		document.documentElement.classList.add('dark');
 	}
 
+	// Hydration check for production monitoring
+	console.info('Hydration started');
+	
+	// Initialize i18n and hydrate only on success
 	initI18n()
 		.then(() => {
-			hydrate(<AppWithProviders />, document.getElementById('app'));
+			try {
+				hydrate(<AppWithProviders />, document.getElementById('app'));
+			} catch (hydrationError) {
+				console.error('Hydration failed:', hydrationError);
+			}
 		})
 		.catch((error) => {
-			// eslint-disable-next-line no-console
 			console.error('Failed to initialize i18n:', error);
-			hydrate(<AppWithProviders />, document.getElementById('app'));
+			// Render fallback error UI instead of attempting hydration
+			const appElement = document.getElementById('app');
+			if (appElement) {
+				appElement.innerHTML = `
+					<div style="display: flex; height: 100vh; align-items: center; justify-content: center; flex-direction: column; padding: 2rem; text-align: center;">
+						<h1 style="font-size: 1.5rem; margin-bottom: 1rem; color: #ef4444;">Application Error</h1>
+						<p style="color: #6b7280; margin-bottom: 1rem;">Failed to initialize the application. Please refresh the page to try again.</p>
+						<button onclick="window.location.reload()" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; cursor: pointer;">
+							Refresh Page
+						</button>
+					</div>
+				`;
+			}
 		});
 }
 
 
 export async function prerender() {
 	await initI18n();
-	return await ssr(<AppWithProviders />);
+	// Only prerender static routes, not dynamic pricing routes
+	// This prevents hydration mismatch for pricing pages
+	return await ssr(<AppWithProviders />, {
+		// Only prerender these specific routes
+		paths: ['/', '/help']
+	});
 }
