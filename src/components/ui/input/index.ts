@@ -11,6 +11,7 @@ export { EmailInput } from './EmailInput';
 export { PhoneInput } from './PhoneInput';
 export { NumberInput } from './NumberInput';
 export { URLInput } from './URLInput';
+export { LocationInput } from './LocationInput';
 
 export type { SwitchProps } from './Switch';
 export type { SelectProps, SelectOption } from './Select';
@@ -25,3 +26,4 @@ export type { EmailInputProps } from './EmailInput';
 export type { PhoneInputProps } from './PhoneInput';
 export type { NumberInputProps } from './NumberInput';
 export type { URLInputProps } from './URLInput';
+export type { LocationInputProps } from './LocationInput';

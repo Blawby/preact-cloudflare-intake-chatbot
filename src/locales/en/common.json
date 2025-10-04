@@ -85,6 +85,22 @@
       "validatedForm": {
         "title": "Validated Form Example"
       }
+    },
+    "contactForm": {
+      "name": "Full Name",
+      "email": "Email Address",
+      "phone": "Phone Number", 
+      "location": "Location",
+      "opposingParty": "Opposing Party (Optional)",
+      "submit": "Submit Contact Information",
+      "submitting": "Submitting...",
+      "placeholders": {
+        "name": "Enter your full name",
+        "email": "Enter your email address",
+        "phone": "Enter your phone number",
+        "location": "City, State (e.g., New York, NY)",
+        "opposingParty": "Name of the other party involved (if any)"
+      }
     }
   },
   "onboarding": {
