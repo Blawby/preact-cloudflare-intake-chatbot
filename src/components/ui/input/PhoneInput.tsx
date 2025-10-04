@@ -68,8 +68,13 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   
-  // Find current country
-  const currentCountry = countries.find(c => c.code === countryCode) || countries[0];
+  const [selectedCountryCode, setSelectedCountryCode] = useState(countryCode);
+
+  useEffect(() => {
+    setSelectedCountryCode(countryCode);
+  }, [countryCode]);
+
+  const currentCountry = countries.find(c => c.code === selectedCountryCode) || countries[0];
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -213,6 +218,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   }, [onChange, formatPhoneNumber]);
 
   const handleCountrySelect = useCallback((country: typeof countries[0]) => {
+    setSelectedCountryCode(country.code);
     onCountryChange?.(country.code);
     setIsDropdownOpen(false);
     setFocusedIndex(-1);

@@ -123,7 +123,10 @@ export const contactSchemas = {
     name: z.string().min(2, 'Name must be at least 2 characters'),
     email: commonSchemas.email,
     phone: commonSchemas.phone,
-    location: z.string().min(2, 'Location must be at least 2 characters'),
+    location: z.string().optional().refine(
+      (val) => val === undefined || val === '' || val.length >= 2,
+      'Location must be at least 2 characters'
+    ),
     opposingParty: z.string().optional(),
   }),
 };
