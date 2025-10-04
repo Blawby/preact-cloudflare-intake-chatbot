@@ -93,7 +93,6 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
     'appearance-none', // Remove native number input styling
     '[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none', // Hide WebKit spinners
     sizeClasses[size],
-    showControls ? '' : '',
     variantClasses[variant],
     disabled && 'opacity-50 cursor-not-allowed',
     className

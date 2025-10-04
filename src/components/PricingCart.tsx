@@ -43,6 +43,8 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   const [isNavigating, setIsNavigating] = useState(false);
   const [showExpiryModal, setShowExpiryModal] = useState(false);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const annualCardRef = useRef<HTMLButtonElement | null>(null);
+  const monthlyCardRef = useRef<HTMLButtonElement | null>(null);
   const { track } = useAnalytics();
 
   const getTierFromUrl = (): 'plus' | 'business' => {
@@ -253,23 +255,23 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
     const { key } = event;
     if (key === 'ArrowLeft' || key === 'ArrowUp') {
       event.preventDefault();
-      setPlanType(planType === 'annual' ? 'monthly' : 'annual');
       const newPlanType = planType === 'annual' ? 'monthly' : 'annual';
+      setPlanType(newPlanType);
       track('pricing_cart_plan_type_selected', { planType: newPlanType });
       // Focus the newly selected card
       setTimeout(() => {
-        const selectedCard = document.querySelector(`[role="radio"][aria-checked="true"]`) as HTMLElement;
-        selectedCard?.focus();
+        const targetRef = newPlanType === 'annual' ? annualCardRef : monthlyCardRef;
+        targetRef.current?.focus();
       }, 0);
     } else if (key === 'ArrowRight' || key === 'ArrowDown') {
       event.preventDefault();
-      setPlanType(planType === 'monthly' ? 'annual' : 'monthly');
       const newPlanType = planType === 'monthly' ? 'annual' : 'monthly';
+      setPlanType(newPlanType);
       track('pricing_cart_plan_type_selected', { planType: newPlanType });
       // Focus the newly selected card
       setTimeout(() => {
-        const selectedCard = document.querySelector(`[role="radio"][aria-checked="true"]`) as HTMLElement;
-        selectedCard?.focus();
+        const targetRef = newPlanType === 'annual' ? annualCardRef : monthlyCardRef;
+        targetRef.current?.focus();
       }, 0);
     }
   };
@@ -368,6 +370,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
             <section className="space-y-6">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2" role="radiogroup" aria-labelledby="plan-selection-heading" tabIndex={0} onKeyDown={handlePlanSelectionKeyDown}>
                   <PlanCard
+                    ref={annualCardRef}
                     title={t('pricing.annual')}
                     price={annualPrice}
                     originalPrice={annualOriginalPrice}
@@ -383,6 +386,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                   />
 
                   <PlanCard
+                    ref={monthlyCardRef}
                     title={t('pricing.monthly')}
                     price={monthlyPrice}
                     period={t('pricing.perUserPerMonth')}

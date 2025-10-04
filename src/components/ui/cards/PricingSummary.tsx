@@ -2,8 +2,20 @@ import { FunctionComponent } from 'preact';
 import { Button } from '../Button';
 import { LoadingSpinner } from '../layout/LoadingSpinner';
 
+// Constants for line item IDs to avoid fragile label-based lookups
+const LINE_ITEM_IDS = {
+  SUBTOTAL: 'subtotal',
+  DISCOUNT: 'discount',
+  TOTAL_DUE_TODAY: 'total-due-today'
+} as const;
+
+// Helper function to get line item value by stable ID
+const getLineItemValue = (lineItems: PricingLineItem[], id: string): string => {
+  return lineItems.find(item => item.id === id)?.value || '—';
+};
+
 export interface PricingLineItem {
-  id?: string;
+  id: string;
   label: string;
   value: string;
   emphasis?: boolean;
@@ -73,6 +85,34 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
     ? primaryAction.loadingLabel
     : primaryAction.label;
 
+  // Compute discount percentage from actual values
+  const computeDiscountPercentage = (): number | null => {
+    const subtotalItem = lineItems.find(item => item.id === LINE_ITEM_IDS.SUBTOTAL);
+    const discountItem = lineItems.find(item => item.id === LINE_ITEM_IDS.DISCOUNT);
+    
+    if (!subtotalItem?.value || !discountItem?.value) {
+      return null;
+    }
+
+    // Extract numeric values from formatted currency strings
+    const extractNumericValue = (value: string): number => {
+      // Remove currency symbols, commas, and parse the number
+      const cleanValue = value.replace(/[^0-9.-]/g, '');
+      return parseFloat(cleanValue) || 0;
+    };
+
+    const subtotal = extractNumericValue(subtotalItem.value);
+    const discount = Math.abs(extractNumericValue(discountItem.value)); // Use absolute value for discount
+    
+    if (subtotal === 0) {
+      return null;
+    }
+
+    return Math.round((discount / subtotal) * 100);
+  };
+
+  const discountPercentage = computeDiscountPercentage();
+
   return (
     <section aria-labelledby="pricing-summary-heading" className="bg-gray-900 text-white">
       <header className="mb-6">
@@ -126,7 +166,7 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
             </div>
             <div className="text-right">
               <div className="text-sm text-white">
-                {lineItems.find(item => item.label === 'Subtotal')?.value || '—'}
+                {getLineItemValue(lineItems, LINE_ITEM_IDS.SUBTOTAL)}
               </div>
               <div className="text-sm text-gray-400">
                 {pricePerSeat}
@@ -141,12 +181,12 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
           <div className="flex justify-between items-start">
             <div>
               <div className="text-sm text-white">Discount</div>
-              {isAnnual && (
-                <div className="text-sm text-gray-400">Annual (-16%)</div>
+              {isAnnual && discountPercentage !== null && (
+                <div className="text-sm text-gray-400">Annual (-{discountPercentage}%)</div>
               )}
             </div>
             <div className="text-sm text-white">
-              {lineItems.find(item => item.label === 'Discount')?.value || '—'}
+              {getLineItemValue(lineItems, LINE_ITEM_IDS.DISCOUNT)}
             </div>
           </div>
 
@@ -157,7 +197,7 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
           <div className="flex justify-between items-center">
             <div className="text-white font-bold text-lg">Today&apos;s total</div>
             <div className="text-white font-bold text-lg">
-              {lineItems.find(item => item.label === 'Total due today')?.value || '—'}
+              {getLineItemValue(lineItems, LINE_ITEM_IDS.TOTAL_DUE_TODAY)}
             </div>
           </div>
 

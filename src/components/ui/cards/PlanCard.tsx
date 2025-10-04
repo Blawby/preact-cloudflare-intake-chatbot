@@ -1,5 +1,5 @@
 import { FunctionComponent } from 'preact';
-import { KeyboardEvent } from 'preact/compat';
+import { KeyboardEvent, forwardRef } from 'preact/compat';
 import { CheckIcon } from '@heroicons/react/24/outline';
 
 export interface PlanCardProps {
@@ -18,7 +18,7 @@ export interface PlanCardProps {
   onBlur?: () => void;
 }
 
-const PlanCard: FunctionComponent<PlanCardProps> = ({
+const PlanCard = forwardRef<HTMLButtonElement, PlanCardProps>(({
   title,
   price,
   originalPrice,
@@ -32,7 +32,7 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
   onKeyDown,
   onFocus,
   onBlur
-}) => {
+}, ref) => {
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -45,6 +45,7 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
 
   return (
     <button
+      ref={ref}
       type="button"
       className={`p-6 border rounded-lg text-left transition-all relative ${
         isSelected
@@ -102,6 +103,8 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
       </ul>
     </button>
   );
-};
+});
+
+PlanCard.displayName = 'PlanCard';
 
 export default PlanCard;

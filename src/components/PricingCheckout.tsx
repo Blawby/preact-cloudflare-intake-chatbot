@@ -50,7 +50,7 @@ const emptyCheckoutData: CheckoutFormData = {
   fullName: '',
   email: '',
   company: '',
-  country: '',
+  country: 'US',
   addressLine1: '',
   addressLine2: '',
   city: '',
@@ -361,7 +361,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
                       <FormItem>
                         <Select
                           label={t('pricing.checkout.labels.country')}
-                          value={(value as string) ?? 'US'}
+                          value={value as string}
                           onChange={(val) => onChange(val)}
                           options={COUNTRY_OPTIONS}
                           placeholder={t('pricing.checkout.placeholders.country')}
