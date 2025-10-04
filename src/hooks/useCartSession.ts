@@ -158,13 +158,15 @@ export const useCartSession = ({
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      setIsExpired(true);
-    }, delay);
+    if (typeof window !== 'undefined') {
+      const timer = window.setTimeout(() => {
+        setIsExpired(true);
+      }, delay);
 
-    return () => {
-      window.clearTimeout(timer);
-    };
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }
   }, [cartSession]);
 
   const runSessionRequest = useCallback(

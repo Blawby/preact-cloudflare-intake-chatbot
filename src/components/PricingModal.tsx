@@ -425,7 +425,9 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                   className="text-sm text-white underline hover:text-gray-300 transition-colors"
                   onClick={() => {
                     // Redirect to enterprise page
-                    window.open('/enterprise', '_blank');
+                    if (typeof window !== 'undefined') {
+                      window.open('/enterprise', '_blank');
+                    }
                   }}
                 >
                   See Blawby Enterprise

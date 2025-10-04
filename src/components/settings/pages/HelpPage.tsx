@@ -10,7 +10,9 @@ export const HelpPage = ({ className = '' }: HelpPageProps) => {
   const { t } = useTranslation('settings');
 
   const handleExternalLink = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const handleReportBug = () => {

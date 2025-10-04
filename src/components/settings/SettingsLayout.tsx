@@ -60,21 +60,25 @@ export const SettingsLayout = ({
     };
 
     // Prevent body scroll when overlay is open
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    document.body.classList.add('modal-open');
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      document.body.classList.add('modal-open');
 
-    document.addEventListener('keydown', handleEscapeKey);
-    document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscapeKey);
+      document.addEventListener('mousedown', handleClickOutside);
+    }
 
     return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.removeEventListener('mousedown', handleClickOutside);
-      
-      // Restore body scroll
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-      document.body.classList.remove('modal-open');
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('keydown', handleEscapeKey);
+        document.removeEventListener('mousedown', handleClickOutside);
+        
+        // Restore body scroll
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+        document.body.classList.remove('modal-open');
+      }
     };
   }, [showSettings, handleClose]);
 

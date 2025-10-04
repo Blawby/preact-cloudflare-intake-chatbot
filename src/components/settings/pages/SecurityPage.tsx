@@ -68,8 +68,14 @@ export const SecurityPage = ({
       loadSettings();
     };
 
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+      }
+    };
   }, [loadSettings]);
 
   const handleToggleChange = (key: string, value: boolean) => {

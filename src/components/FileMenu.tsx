@@ -54,22 +54,30 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
     if (!isBrowser) return;
 
     if (isOpen) {
-      document.addEventListener('click', handleClickOutside);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('click', handleClickOutside);
+      }
       
       // Replace setTimeout with requestAnimationFrame for more reliable focus scheduling
-      focusAnimationFrameRef.current = requestAnimationFrame(() => {
-        // Use a second requestAnimationFrame for extra reliability on slow devices
+      if (typeof window !== 'undefined') {
         focusAnimationFrameRef.current = requestAnimationFrame(() => {
-          firstMenuItemRef.current?.focus?.();
+          // Use a second requestAnimationFrame for extra reliability on slow devices
+          focusAnimationFrameRef.current = requestAnimationFrame(() => {
+            firstMenuItemRef.current?.focus?.();
+          });
         });
-      });
+      }
     }
     
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('click', handleClickOutside);
+      }
       // Clean up any scheduled animation frame if component unmounts
       if (focusAnimationFrameRef.current !== null) {
-        cancelAnimationFrame(focusAnimationFrameRef.current);
+        if (typeof window !== 'undefined') {
+          cancelAnimationFrame(focusAnimationFrameRef.current);
+        }
         focusAnimationFrameRef.current = null;
       }
     };
@@ -88,18 +96,26 @@ const FileMenu: FunctionComponent<FileMenuProps> = ({
         const first = items[0] as HTMLButtonElement;
         const last = items[items.length - 1] as HTMLButtonElement;
 
-        if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
+        if (typeof document !== 'undefined') {
+          if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
         }
       }
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keydown', onKey);
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('keydown', onKey);
+      }
+    };
   }, [isOpen, isBrowser]);
 
   const filterDisallowedFiles = (files: File[]) => {

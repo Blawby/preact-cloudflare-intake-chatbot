@@ -55,9 +55,13 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
             }
         };
 
-        document.addEventListener('keydown', handleKeyDown);
+        if (typeof document !== 'undefined') {
+            document.addEventListener('keydown', handleKeyDown);
+        }
         return () => {
-            document.removeEventListener('keydown', handleKeyDown);
+            if (typeof document !== 'undefined') {
+                document.removeEventListener('keydown', handleKeyDown);
+            }
         };
     }, [isRecording, isBrowser, onCancel, onConfirm]);
 
@@ -65,9 +69,11 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
     useEffect(() => {
         if (!isBrowser || !isRecording) return;
 
-        timerRef.current = window.setInterval(() => {
-            setRecordingTime(prev => prev + 1);
-        }, 1000);
+        if (typeof window !== 'undefined') {
+            timerRef.current = window.setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+        }
         
         return () => {
             if (timerRef.current) {
@@ -82,18 +88,22 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
 
         try {
             // Initialize Audio Context
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            audioContextRef.current = new AudioContext();
-            
-            // Create analyzer node
-            analyserRef.current = audioContextRef.current.createAnalyser();
-            analyserRef.current.fftSize = 256; // Fast Fourier Transform size
-            const bufferLength = analyserRef.current.frequencyBinCount;
-            dataArrayRef.current = new Uint8Array(bufferLength);
-            
-            // Connect microphone stream to analyzer
-            const source = audioContextRef.current.createMediaStreamSource(mediaStream);
-            source.connect(analyserRef.current);
+            if (typeof window !== 'undefined') {
+                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                audioContextRef.current = new AudioContext();
+                
+                // Create analyzer node only when audio context is available
+                if (audioContextRef.current) {
+                    analyserRef.current = audioContextRef.current.createAnalyser();
+                    analyserRef.current.fftSize = 256; // Fast Fourier Transform size
+                    const bufferLength = analyserRef.current.frequencyBinCount;
+                    dataArrayRef.current = new Uint8Array(bufferLength);
+                    
+                    // Connect microphone stream to analyzer
+                    const source = audioContextRef.current.createMediaStreamSource(mediaStream);
+                    source.connect(analyserRef.current);
+                }
+            }
             
             // Start visualization
             visualizeAudio();
@@ -131,7 +141,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
         const barGap = 2;
         const barCount = Math.floor(canvas.width / (barWidth + barGap));
         const radius = 2; // Radius for rounded corners
-        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color');
+        const accentColor = typeof document !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--accent-color') : '#3b82f6';
         
         ctx.fillStyle = accentColor || '#0ea5e9';
         
@@ -219,7 +229,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
         const barHeightMultiplier = 30;
         const baseHeight = canvas.height / 4;
         const radius = 2; // Radius for rounded corners
-        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color');
+        const accentColor = typeof document !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--accent-color') : '#3b82f6';
         
         ctx.fillStyle = accentColor || '#0ea5e9';
         

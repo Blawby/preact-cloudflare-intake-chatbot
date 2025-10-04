@@ -26,6 +26,17 @@ import { debounce } from './utils/debounce';
 import './index.css';
 import { i18n, initI18n } from './i18n';
 
+// Error UI HTML template for hydration failures
+const ERROR_UI_HTML = `
+	<div style="display: flex; height: 100vh; align-items: center; justify-content: center; flex-direction: column; padding: 2rem; text-align: center;">
+		<h1 style="font-size: 1.5rem; margin-bottom: 1rem; color: #ef4444;">Application Error</h1>
+		<p style="color: #6b7280; margin-bottom: 1rem;">Failed to initialize the application. Please refresh the page to try again.</p>
+		<button onclick="window.location.reload()" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; cursor: pointer;">
+			Refresh Page
+		</button>
+	</div>
+`;
+
 
 
 // Main application component (non-auth pages)
@@ -102,23 +113,40 @@ function MainApp() {
 			const isSettingsRoute = location.path.startsWith('/settings');
 			setShowSettingsModal(isSettingsRoute);
 		}
-	}, [location?.path]);
+	}, [location]);
+
+	// Listen for custom settings open event
+	useEffect(() => {
+		if (typeof window !== 'undefined') {
+			const handleOpenSettings = () => {
+				setShowSettingsModal(true);
+			};
+			
+			window.addEventListener('openSettings', handleOpenSettings);
+			
+			return () => {
+				window.removeEventListener('openSettings', handleOpenSettings);
+			};
+		}
+	}, []);
 
 	// Check if we should show welcome modal (after onboarding completion)
 	useEffect(() => {
-		// Check if user just completed onboarding
-		try {
-			const onboardingCompleted = localStorage.getItem('onboardingCompleted');
-			if (onboardingCompleted === 'true') {
-				setShowWelcomeModal(true);
-				// Don't remove the flag here - let the completion handler do it
-				// This prevents permanent loss if the modal fails to render
-			}
-		} catch (error) {
-			// Handle localStorage access failures (private browsing, etc.)
-			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
-				console.warn('Failed to check onboarding completion status:', error);
+		if (typeof window !== 'undefined') {
+			// Check if user just completed onboarding
+			try {
+				const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+				if (onboardingCompleted === 'true') {
+					setShowWelcomeModal(true);
+					// Don't remove the flag here - let the completion handler do it
+					// This prevents permanent loss if the modal fails to render
+				}
+			} catch (error) {
+				// Handle localStorage access failures (private browsing, etc.)
+				if (import.meta.env.DEV) {
+					// eslint-disable-next-line no-console
+					console.warn('Failed to check onboarding completion status:', error);
+				}
 			}
 		}
 	}, []);
@@ -148,31 +176,45 @@ function MainApp() {
 
 	// Listen for user tier changes
 	useEffect(() => {
-		const handleAuthStateChange = (e: CustomEvent) => {
-			if (e.detail && e.detail.subscriptionTier) {
-				setCurrentUserTier(e.detail.subscriptionTier);
-			} else {
-				// Fallback to 'free' when detail is missing or subscriptionTier is falsy
-				setCurrentUserTier('free');
-			}
-		};
+		if (typeof window !== 'undefined') {
+			const handleAuthStateChange = (e: CustomEvent) => {
+				if (e.detail && e.detail.subscriptionTier) {
+					setCurrentUserTier(e.detail.subscriptionTier);
+				} else {
+					// Fallback to 'free' when detail is missing or subscriptionTier is falsy
+					setCurrentUserTier('free');
+				}
+			};
 
-		// Check current user tier from localStorage
-		const mockUser = localStorage.getItem('mockUser');
-		if (mockUser) {
-			try {
-				const userData = JSON.parse(mockUser);
-				setCurrentUserTier(userData.subscriptionTier || 'free');
-			} catch (_error) {
-				// Ignore parsing errors
+			// Check current user tier from localStorage
+			const mockUser = localStorage.getItem('mockUser');
+			if (mockUser) {
+				try {
+					const userData = JSON.parse(mockUser);
+					// Validate that parsed data is an object with expected structure
+					if (typeof userData === 'object' && userData !== null && 'subscriptionTier' in userData) {
+						setCurrentUserTier(userData.subscriptionTier || 'free');
+					} else {
+						// Invalid shape - treat as parse error
+						if (import.meta.env.DEV) {
+							console.error('Invalid mockUser shape from localStorage:', userData, 'Raw mockUser value:', mockUser);
+						}
+					}
+				} catch (error) {
+					// Log parsing errors in development for debugging
+					if (import.meta.env.DEV) {
+						console.error('Failed to parse mockUser from localStorage:', error, 'Raw mockUser value:', mockUser);
+					}
+					// Ignore parsing errors in production
+				}
 			}
+
+			window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
+			
+			return () => {
+				window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
+			};
 		}
-
-		window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
-		
-		return () => {
-			window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
-		};
 	}, []);
 
 	const isSessionReady = Boolean(sessionId);
@@ -202,10 +244,12 @@ function MainApp() {
 	}, [previewFiles.length, clearPreviewFiles]);
 
 	const handleFocusInput = useCallback(() => {
+		if (typeof document !== 'undefined') {
 			const textarea = document.querySelector('.message-input') as HTMLTextAreaElement;
 			if (textarea) {
-			textarea.focus();
+				textarea.focus();
 			}
+		}
 	}, []);
 
 	// Setup global event handlers
@@ -226,7 +270,7 @@ function MainApp() {
 
 	// Setup scroll behavior
 	useEffect(() => {
-		if (typeof document === 'undefined') return;
+		if (typeof document === 'undefined' || typeof window === 'undefined') return;
 		
 		const messageList = document.querySelector('.message-list');
 		if (!messageList) return;
@@ -261,27 +305,29 @@ function MainApp() {
 
 	// Mobile detection with resize handling
 	useLayoutEffect(() => {
-		// Function to check if mobile
-		const checkIsMobile = () => {
-			return window.innerWidth < 1024;
-		};
+		if (typeof window !== 'undefined') {
+			// Function to check if mobile
+			const checkIsMobile = () => {
+				return window.innerWidth < 1024;
+			};
 
-		// Set initial mobile state
-		setIsMobile(checkIsMobile());
-
-		// Create debounced resize handler for performance
-		const debouncedResizeHandler = debounce(() => {
+			// Set initial mobile state
 			setIsMobile(checkIsMobile());
-		}, 100);
 
-		// Add resize listener
-		window.addEventListener('resize', debouncedResizeHandler);
+			// Create debounced resize handler for performance
+			const debouncedResizeHandler = debounce(() => {
+				setIsMobile(checkIsMobile());
+			}, 100);
 
-		// Cleanup function
-		return () => {
-			window.removeEventListener('resize', debouncedResizeHandler);
-			debouncedResizeHandler.cancel();
-		};
+			// Add resize listener
+			window.addEventListener('resize', debouncedResizeHandler);
+
+			// Cleanup function
+			return () => {
+				window.removeEventListener('resize', debouncedResizeHandler);
+				debouncedResizeHandler.cancel();
+			};
+		}
 	}, []);
 
 	// Handle feedback submission
@@ -297,13 +343,15 @@ function MainApp() {
 		setShowWelcomeModal(false);
 		
 		// Remove the onboarding completion flag now that the welcome modal has been shown
-		try {
-			localStorage.removeItem('onboardingCompleted');
-		} catch (error) {
-			// Handle localStorage access failures (private browsing, etc.)
-			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
-				console.warn('Failed to remove onboarding completion flag:', error);
+		if (typeof window !== 'undefined') {
+			try {
+				localStorage.removeItem('onboardingCompleted');
+			} catch (error) {
+				// Handle localStorage access failures (private browsing, etc.)
+				if (import.meta.env.DEV) {
+					// eslint-disable-next-line no-console
+					console.warn('Failed to remove onboarding completion flag:', error);
+				}
 			}
 		}
 	};
@@ -313,13 +361,15 @@ function MainApp() {
 		
 		// Remove the onboarding completion flag even if user closes without completing
 		// This prevents the welcome modal from showing again
-		try {
-			localStorage.removeItem('onboardingCompleted');
-		} catch (error) {
-			// Handle localStorage access failures (private browsing, etc.)
-			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
-				console.warn('Failed to remove onboarding completion flag:', error);
+		if (typeof window !== 'undefined') {
+			try {
+				localStorage.removeItem('onboardingCompleted');
+			} catch (error) {
+				// Handle localStorage access failures (private browsing, etc.)
+				if (import.meta.env.DEV) {
+					// eslint-disable-next-line no-console
+					console.warn('Failed to remove onboarding completion flag:', error);
+				}
 			}
 		}
 	};
@@ -527,6 +577,7 @@ if (typeof window !== 'undefined') {
 	}
 
 	// Hydration check for production monitoring
+	// eslint-disable-next-line no-console
 	console.info('Hydration started');
 	
 	// Initialize i18n and hydrate only on success
@@ -535,23 +586,19 @@ if (typeof window !== 'undefined') {
 			try {
 				hydrate(<AppWithProviders />, document.getElementById('app'));
 			} catch (hydrationError) {
+				// eslint-disable-next-line no-console
 				console.error('Hydration failed:', hydrationError);
 			}
 		})
 		.catch((error) => {
+			// eslint-disable-next-line no-console
 			console.error('Failed to initialize i18n:', error);
 			// Render fallback error UI instead of attempting hydration
-			const appElement = document.getElementById('app');
-			if (appElement) {
-				appElement.innerHTML = `
-					<div style="display: flex; height: 100vh; align-items: center; justify-content: center; flex-direction: column; padding: 2rem; text-align: center;">
-						<h1 style="font-size: 1.5rem; margin-bottom: 1rem; color: #ef4444;">Application Error</h1>
-						<p style="color: #6b7280; margin-bottom: 1rem;">Failed to initialize the application. Please refresh the page to try again.</p>
-						<button onclick="window.location.reload()" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; cursor: pointer;">
-							Refresh Page
-						</button>
-					</div>
-				`;
+			if (typeof document !== 'undefined') {
+				const appElement = document.getElementById('app');
+				if (appElement) {
+					appElement.innerHTML = ERROR_UI_HTML;
+				}
 			}
 		});
 }
@@ -560,14 +607,5 @@ if (typeof window !== 'undefined') {
 export async function prerender() {
 	await initI18n();
 	// Prerender all public routes including pricing pages for SEO
-	return await ssr(<AppWithProviders />, {
-		// Prerender all public routes
-		paths: [
-			'/', 
-			'/help',
-			'/pricing/cart',
-			'/pricing/checkout', 
-			'/pricing/confirmation'
-		]
-	});
+	return await ssr(<AppWithProviders />);
 }

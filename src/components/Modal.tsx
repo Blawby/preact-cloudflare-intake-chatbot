@@ -35,7 +35,9 @@ const Modal: FunctionComponent<ModalProps> = ({
     useEffect(() => {
         setIsBrowser(true);
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
+            if (typeof window !== 'undefined') {
+                setIsMobile(window.innerWidth < 768);
+            }
         };
         checkMobile();
         
@@ -59,14 +61,16 @@ const Modal: FunctionComponent<ModalProps> = ({
             }
         };
 
-        if (isOpen) {
+        if (isOpen && typeof document !== 'undefined') {
             document.addEventListener('keydown', handleEscape);
             document.body.style.overflow = 'hidden';
         }
 
         return () => {
-            document.removeEventListener('keydown', handleEscape);
-            document.body.style.overflow = '';
+            if (typeof document !== 'undefined') {
+                document.removeEventListener('keydown', handleEscape);
+                document.body.style.overflow = '';
+            }
         };
     }, [isOpen, onClose, isBrowser]);
 
@@ -160,7 +164,7 @@ const Modal: FunctionComponent<ModalProps> = ({
         </AnimatePresence>
     );
 
-    return createPortal(modalContent, document.body);
+    return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
 
 export default Modal; 

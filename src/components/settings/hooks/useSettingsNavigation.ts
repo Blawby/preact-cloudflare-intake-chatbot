@@ -57,7 +57,7 @@ export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
 
   const goBack = useCallback(() => {
     // Try to use browser history back navigation first
-    if (window.history.length > 1) {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
       window.history.back();
       return;
     }

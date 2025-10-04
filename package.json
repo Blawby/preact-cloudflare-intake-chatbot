@@ -24,6 +24,7 @@
 		"test:coverage": "vitest --coverage",
 		"test:i18n": "node ./scripts/test-i18n.mjs",
 		"test:conversation": "./test-conversation-flow.sh",
+		"test:ssr": "node ./scripts/test-browser-api-access.mjs",
 		"deploy": "wrangler deploy",
 		"deploy:preview": "wrangler deploy --env preview"
 	},

@@ -88,10 +88,14 @@ export const AccountPage = ({
       loadAccountData();
     };
 
-    window.addEventListener('authStateChanged', handleAuthStateChange);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('authStateChanged', handleAuthStateChange);
+    }
     
     return () => {
-      window.removeEventListener('authStateChanged', handleAuthStateChange);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('authStateChanged', handleAuthStateChange);
+      }
     };
   }, []);
 
@@ -174,7 +178,9 @@ export const AccountPage = ({
       );
       
       // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+      }
       
       // Close the settings modal first
       if (_onClose) {

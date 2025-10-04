@@ -49,7 +49,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterS
   useLayoutEffect(() => {
     // Function to check if mobile
     const checkIsMobile = () => {
-      return window.innerWidth < 1024;
+      return typeof window !== 'undefined' ? window.innerWidth < 1024 : false;
     };
 
     // Set initial mobile state
