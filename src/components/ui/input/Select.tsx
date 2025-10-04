@@ -81,8 +81,14 @@ export const Select = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('mousedown', handleClickOutside);
+      }
+    };
   }, []);
 
   // Keyboard navigation
@@ -139,8 +145,14 @@ export const Select = ({
   // Handle keyboard events
   useEffect(() => {
     if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('keydown', handleKeyDown);
+      }
+      return () => {
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('keydown', handleKeyDown);
+        }
+      };
     }
   }, [isOpen, focusedIndex, handleKeyDown]);
 

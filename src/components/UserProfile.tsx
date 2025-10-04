@@ -29,53 +29,62 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   const [loading, setLoading] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { navigateToAuth, navigate } = useNavigation();
 
+  // Handle SSR hydration properly
   useEffect(() => {
+    setIsClient(true);
     checkAuthStatus();
     
-    // Mobile detection with debouncing
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    
-    checkMobile();
-    
-    // Create debounced resize handler for performance
-    const debouncedResizeHandler = debounce(checkMobile, 100);
-    window.addEventListener('resize', debouncedResizeHandler);
-    
-    // Listen for storage changes (when user logs in/out in another tab)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'mockUser') {
-        checkAuthStatus();
+    if (typeof window !== 'undefined') {
+      // Mobile detection with debouncing
+      const checkMobile = () => {
+        setIsMobile(window.innerWidth < 1024);
+      };
+      
+      checkMobile();
+      
+      // Create debounced resize handler for performance
+      const debouncedResizeHandler = debounce(checkMobile, 100);
+      window.addEventListener('resize', debouncedResizeHandler);
+      
+      // Listen for storage changes (when user logs in/out in another tab)
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'mockUser') {
+          checkAuthStatus();
+        }
+      };
+      
+      // Listen for custom auth state changes (same tab)
+      const handleAuthStateChange = (e: CustomEvent) => {
+        if (e.detail) {
+          const userWithTier = {
+            ...e.detail,
+            subscriptionTier: e.detail.subscriptionTier || 'free'
+          };
+          setUser(userWithTier);
+        } else {
+          // User logged out, clear the user state
+          setUser(null);
+        }
+      };
+      
+      if (typeof window !== 'undefined') {
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
       }
-    };
-    
-    // Listen for custom auth state changes (same tab)
-    const handleAuthStateChange = (e: CustomEvent) => {
-      if (e.detail) {
-        const userWithTier = {
-          ...e.detail,
-          subscriptionTier: e.detail.subscriptionTier || 'free'
-        };
-        setUser(userWithTier);
-      } else {
-        // User logged out, clear the user state
-        setUser(null);
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
-    
-    return () => {
-      window.removeEventListener('resize', debouncedResizeHandler);
-      debouncedResizeHandler.cancel();
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
-    };
+      
+      return () => {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('resize', debouncedResizeHandler);
+          debouncedResizeHandler.cancel();
+          window.removeEventListener('storage', handleStorageChange);
+          window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
+        }
+      };
+    }
   }, []);
 
   // Handle dropdown close when clicking outside
@@ -86,34 +95,43 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       }
     };
 
-    if (showDropdown) {
+    if (showDropdown && typeof window !== 'undefined') {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      if (typeof window !== 'undefined') {
+        document.removeEventListener('mousedown', handleClickOutside);
+      }
     };
   }, [showDropdown]);
 
 
   const checkAuthStatus = async () => {
-    // Check if user is "logged in" - only consider signed in if mockUser exists in localStorage
-    const mockUser = localStorage.getItem('mockUser');
-    if (mockUser) {
-      try {
-        const userData = JSON.parse(mockUser);
-        // Ensure subscription tier is set (default to 'free' if not present)
-        const userWithTier = {
-          ...userData,
-          subscriptionTier: userData.subscriptionTier || 'free'
-        };
-        setUser(userWithTier);
-      } catch (_error) {
-        localStorage.removeItem('mockUser');
+    if (typeof window !== 'undefined') {
+      // Check if user is "logged in" - only consider signed in if mockUser exists in localStorage
+      const mockUser = localStorage.getItem('mockUser');
+      if (mockUser) {
+        try {
+          const userData = JSON.parse(mockUser);
+          // Ensure subscription tier is set (default to 'free' if not present)
+          const userWithTier = {
+            ...userData,
+            subscriptionTier: userData.subscriptionTier || 'free'
+          };
+          setUser(userWithTier);
+        } catch (_error) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('mockUser');
+          }
+          setUser(null);
+        }
+      } else {
+        // No mockUser in localStorage means user is signed out
         setUser(null);
       }
     } else {
-      // No mockUser in localStorage means user is signed out
+      // In non-browser environment, assume user is signed out
       setUser(null);
     }
     setLoading(false);
@@ -135,8 +153,10 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   const handleProfileClick = () => {
     if (isMobile) {
-      // On mobile, directly navigate to settings (skip dropdown)
-      navigate('/settings');
+      // On mobile, directly open settings (skip dropdown)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('openSettings'));
+      }
     } else {
       // On desktop, show dropdown
       setShowDropdown(!showDropdown);
@@ -145,7 +165,10 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   const handleSettingsClick = () => {
     setShowDropdown(false);
-    navigate('/settings');
+    // Use direct state management instead of navigation
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('openSettings'));
+    }
   };
 
   const handleUpgradeClick = () => {
@@ -166,7 +189,9 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     mockUserDataService.resetToDefaults();
     
     // Also clear the legacy mockUser key for backward compatibility
-    localStorage.removeItem('mockUser');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('mockUser');
+    }
     
     // Dispatch custom event to notify other components and refresh the page
     if (typeof window !== 'undefined') {
@@ -253,7 +278,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     );
   };
 
-  if (loading) {
+  // During SSR or before client hydration, show loading state
+  if (!isClient || loading) {
     return (
       <div className={`flex items-center ${isCollapsed ? 'justify-center py-2' : 'gap-3 px-3 py-2'}`}>
         <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />

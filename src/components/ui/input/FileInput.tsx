@@ -127,9 +127,11 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(({
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       // Trigger file input click
-      const input = document.getElementById(inputId) as HTMLInputElement;
-      if (input) {
-        input.click();
+      if (typeof document !== 'undefined') {
+        const input = document.getElementById(inputId) as HTMLInputElement;
+        if (input) {
+          input.click();
+        }
       }
     }
   }, [disabled, inputId]);

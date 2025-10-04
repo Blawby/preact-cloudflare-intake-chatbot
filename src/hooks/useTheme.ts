@@ -13,38 +13,40 @@ export const useTheme = () => {
     // Mark as hydrated after first render
     setIsHydrated(true);
     
-    // Safely read localStorage to determine if a saved theme exists
-    let savedTheme: string | null = null;
-    try {
-      savedTheme = localStorage.getItem('theme');
-    } catch (error) {
-      console.warn('Failed to read theme from localStorage:', error);
-    }
-    
-    // Create matchMedia query object for system preference
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    // Compute initial shouldBeDark using savedTheme if present, otherwise use media query
-    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && mediaQuery.matches);
-    
-    // Set state and document class accordingly
-    setIsDark(shouldBeDark);
-    document.documentElement.classList.toggle('dark', shouldBeDark);
-    
-    // If no saved theme, attach a 'change' listener to the media query
-    if (!savedTheme) {
-      const handleMediaChange = (e: MediaQueryListEvent) => {
-        setIsDark(e.matches);
-        document.documentElement.classList.toggle('dark', e.matches);
-      };
+    if (typeof window !== 'undefined') {
+      // Safely read localStorage to determine if a saved theme exists
+      let savedTheme: string | null = null;
+      try {
+        savedTheme = localStorage.getItem('theme');
+      } catch (error) {
+        console.warn('Failed to read theme from localStorage:', error);
+      }
       
-      // Add listener for system theme changes
-      mediaQuery.addEventListener('change', handleMediaChange);
+      // Create matchMedia query object for system preference
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       
-      // Return cleanup function that removes the listener
-      return () => {
-        mediaQuery.removeEventListener('change', handleMediaChange);
-      };
+      // Compute initial shouldBeDark using savedTheme if present, otherwise use media query
+      const shouldBeDark = savedTheme === 'dark' || (!savedTheme && mediaQuery.matches);
+      
+      // Set state and document class accordingly
+      setIsDark(shouldBeDark);
+      document.documentElement.classList.toggle('dark', shouldBeDark);
+    
+      // If no saved theme, attach a 'change' listener to the media query
+      if (!savedTheme) {
+        const handleMediaChange = (e: MediaQueryListEvent) => {
+          setIsDark(e.matches);
+          document.documentElement.classList.toggle('dark', e.matches);
+        };
+        
+        // Add listener for system theme changes
+        mediaQuery.addEventListener('change', handleMediaChange);
+        
+        // Return cleanup function that removes the listener
+        return () => {
+          mediaQuery.removeEventListener('change', handleMediaChange);
+        };
+      }
     }
   }, []);
   

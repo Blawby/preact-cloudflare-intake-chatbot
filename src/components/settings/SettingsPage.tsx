@@ -69,19 +69,27 @@ export const SettingsPage = ({
     // Use the mock data service to properly clear all data
     mockUserDataService.resetToDefaults();
     
-    // Also clear the legacy mockUser key for backward compatibility
-    localStorage.removeItem('mockUser');
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+    // Clear localStorage and dispatch events only in browser environment
+    if (typeof window !== 'undefined') {
+      // Also clear the legacy mockUser key for backward compatibility
+      localStorage.removeItem('mockUser');
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+    }
     
     showSuccess(t('settings:navigation.signOut.toastTitle'), t('settings:navigation.signOut.toastBody'));
+    
+    // Close the settings modal first
     if (onClose) {
       onClose();
     }
-    // Refresh the page to update the UI
+    
+    // Navigate to root page after a short delay to allow modal to close
     if (typeof window !== 'undefined') {
-      window.location.reload();
+      setTimeout(() => {
+        navigate('/');
+      }, 100);
     }
   };
 

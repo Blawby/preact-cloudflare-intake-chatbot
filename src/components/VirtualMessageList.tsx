@@ -60,7 +60,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
         const lastScrollTop = (element as any).lastScrollTop || 0;
         const scrollDelta = Math.abs(currentScrollTop - lastScrollTop);
         
-        if (scrollDelta > 0) {
+        if (scrollDelta > 0 && typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('chat-scroll', {
                 detail: { scrollTop: currentScrollTop, scrollDelta }
             }));

@@ -73,6 +73,7 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
 
       // Check if we're on the root domain with no parameters - redirect to Blawby AI
       if (hostname === 'ai.blawby.com' &&
+        typeof window !== 'undefined' &&
         window.location.pathname === '/' &&
         !teamIdParam) {
         // Redirect to Blawby AI

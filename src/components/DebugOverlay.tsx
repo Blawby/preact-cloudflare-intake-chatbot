@@ -43,7 +43,10 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
 
   const getWindowProperty = useCallback((key: string): unknown => {
     try {
-      return (window as unknown as Record<string, unknown>)[key];
+      if (typeof window !== 'undefined') {
+        return (window as unknown as Record<string, unknown>)[key];
+      }
+      return undefined;
     } catch (accessError) {
       logMessage(`window-${key}`, 'warn', `Failed to access window.${key}`, accessError);
       return undefined;
@@ -146,11 +149,15 @@ export const DebugOverlay: FunctionComponent<DebugOverlayProps> = ({ isVisible =
     const handleDebugUpdate = () => updateFromGlobals(false);
     window.addEventListener(DEBUG_UPDATE_EVENT, handleDebugUpdate);
 
-    const fallbackInterval = window.setInterval(handleDebugUpdate, FALLBACK_POLL_INTERVAL_MS);
+    const fallbackInterval = typeof window !== 'undefined' ? window.setInterval(handleDebugUpdate, FALLBACK_POLL_INTERVAL_MS) : null;
 
     return () => {
-      window.removeEventListener(DEBUG_UPDATE_EVENT, handleDebugUpdate);
-      window.clearInterval(fallbackInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(DEBUG_UPDATE_EVENT, handleDebugUpdate);
+        if (fallbackInterval) {
+          window.clearInterval(fallbackInterval);
+        }
+      }
     };
   }, [shouldRender, updateFromGlobals]);
 

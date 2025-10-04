@@ -161,12 +161,18 @@ export const useNavbarScroll = (options: UseNavbarScrollOptions = {}) => {
       handleScrollEvent(event as CustomEvent<ChatScrollDetail>);
     };
 
-    window.addEventListener('chat-scroll', scrollHandler);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('chat-scroll', scrollHandler);
+    }
     
     return () => {
-      window.removeEventListener('chat-scroll', scrollHandler);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('chat-scroll', scrollHandler);
+      }
       if (debounceTimeout.current) {
-        clearTimeout(debounceTimeout.current);
+        if (typeof window !== 'undefined') {
+          clearTimeout(debounceTimeout.current);
+        }
       }
     };
   }, [handleScrollEvent]);

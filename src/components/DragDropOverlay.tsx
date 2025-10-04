@@ -24,8 +24,14 @@ const DragDropOverlay: FunctionComponent<DragDropOverlayProps> = ({ isVisible, o
 
   useEffect(() => {
     if (isVisible) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('keydown', handleKeyDown);
+      }
+      return () => {
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('keydown', handleKeyDown);
+        }
+      };
     }
   }, [isVisible, onClose]);
 
