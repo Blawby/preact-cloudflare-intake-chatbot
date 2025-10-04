@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../layout/LoadingSpinner';
 const LINE_ITEM_IDS = {
   SUBTOTAL: 'subtotal',
   DISCOUNT: 'discount',
-  TOTAL_DUE_TODAY: 'total-due-today'
+  TOTAL_DUE_TODAY: 'total'
 } as const;
 
 // Helper function to get line item value by stable ID
@@ -18,6 +18,7 @@ export interface PricingLineItem {
   id: string;
   label: string;
   value: string;
+  numericValue?: number;
   emphasis?: boolean;
   valueClassName?: string;
 }
@@ -90,19 +91,33 @@ export const PricingSummary: FunctionComponent<PricingSummaryProps> = ({
     const subtotalItem = lineItems.find(item => item.id === LINE_ITEM_IDS.SUBTOTAL);
     const discountItem = lineItems.find(item => item.id === LINE_ITEM_IDS.DISCOUNT);
     
-    if (!subtotalItem?.value || !discountItem?.value) {
+    if (!subtotalItem || !discountItem) {
       return null;
     }
 
-    // Extract numeric values from formatted currency strings
-    const extractNumericValue = (value: string): number => {
-      // Remove currency symbols, commas, and parse the number
-      const cleanValue = value.replace(/[^0-9.-]/g, '');
-      return parseFloat(cleanValue) || 0;
-    };
+    // Prefer numeric values when available
+    let subtotal: number;
+    let discount: number;
 
-    const subtotal = extractNumericValue(subtotalItem.value);
-    const discount = Math.abs(extractNumericValue(discountItem.value)); // Use absolute value for discount
+    if (subtotalItem.numericValue !== undefined && discountItem.numericValue !== undefined) {
+      subtotal = subtotalItem.numericValue;
+      discount = Math.abs(discountItem.numericValue);
+    } else {
+      // Fallback to parsing formatted currency strings
+      const extractNumericValue = (value: string): number => {
+        // Normalize the string by removing currency symbols and grouping separators
+        // Handle different locale decimal separators
+        const normalized = value
+          .replace(/[^\d.,-]/g, '') // Remove currency symbols
+          .replace(/,/g, '') // Remove grouping separators
+          .replace(/-/g, ''); // Remove negative signs (we'll handle sign separately)
+        
+        return parseFloat(normalized) || 0;
+      };
+
+      subtotal = extractNumericValue(subtotalItem.value);
+      discount = Math.abs(extractNumericValue(discountItem.value));
+    }
     
     if (subtotal === 0) {
       return null;

@@ -122,8 +122,12 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
 
   const pricePerSeat = useMemo(() => {
     if (!pricingPlan) return '';
-    return `$${pricingPlan.priceAmount}/seat`;
-  }, [pricingPlan]);
+    const formattedPrice = formatCurrency(pricingPlan.priceAmount, { 
+      locale, 
+      currency: pricingPlan.currency 
+    });
+    return t('pricing.summary.pricePerSeat', { price: formattedPrice });
+  }, [pricingPlan, locale, t]);
 
   const lineItems = useMemo(() => {
     const subtotal = cartSession
@@ -141,9 +145,25 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
       : t('pricing.summary.placeholder');
 
     return [
-      { id: 'subtotal', label: t('common.subtotal'), value: subtotal },
-      { id: 'discount', label: t('common.discount'), value: discountValue },
-      { id: 'total', label: t('common.totalDueToday'), value: total, emphasis: true }
+      { 
+        id: 'subtotal', 
+        label: t('common.subtotal'), 
+        value: subtotal,
+        numericValue: cartSession?.pricing.subtotal
+      },
+      { 
+        id: 'discount', 
+        label: t('common.discount'), 
+        value: discountValue,
+        numericValue: cartSession?.pricing.discount
+      },
+      { 
+        id: 'total', 
+        label: t('common.totalDueToday'), 
+        value: total, 
+        emphasis: true,
+        numericValue: cartSession?.pricing.total
+      }
     ];
   }, [cartSession, currencyCode, locale, t]);
 

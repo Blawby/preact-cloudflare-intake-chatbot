@@ -58,6 +58,7 @@
         "cardNumber": "Número de tarjeta",
         "cardExpiry": "Vencimiento (MM/AA)",
         "cardCvv": "Código de seguridad",
+        "stripeIntegration": "Integración de Stripe Elements",
         "agreeTerms": "Acepto los Términos de Servicio y la Política de Privacidad"
       },
       "placeholders": {
@@ -117,6 +118,10 @@
           "confirm": "Confirmar y pagar"
         },
         "loading": "Preparando confirmación…"
+      },
+      "branding": {
+        "poweredBy": "Desarrollado por",
+        "stripe": "Stripe"
       },
       "planBusiness": "Empresarial",
       "planPlus": "Plus",

@@ -58,6 +58,7 @@
         "cardNumber": "Card number",
         "cardExpiry": "Expiration (MM/YY)",
         "cardCvv": "Security code",
+        "stripeIntegration": "Stripe Elements Integration",
         "agreeTerms": "I agree to the Terms of Service and Privacy Policy"
       },
       "placeholders": {
@@ -117,6 +118,10 @@
           "confirm": "Confirm and pay"
         },
         "loading": "Preparing confirmation…"
+      },
+      "branding": {
+        "poweredBy": "Powered by",
+        "stripe": "Stripe"
       },
       "planBusiness": "Business",
       "planPlus": "Plus",
