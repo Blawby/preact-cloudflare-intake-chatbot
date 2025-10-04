@@ -128,7 +128,9 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   const handleUpgrade = () => {
     // Show pricing modal first
-    window.location.hash = '#pricing';
+    if (typeof window !== 'undefined') {
+      window.location.hash = '#pricing';
+    }
   };
 
   const handleProfileClick = () => {
@@ -148,7 +150,9 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   const handleUpgradeClick = () => {
     setShowDropdown(false);
-    window.location.hash = '#pricing';
+    if (typeof window !== 'undefined') {
+      window.location.hash = '#pricing';
+    }
   };
 
   const handleHelpClick = () => {
@@ -168,7 +172,9 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
     
     // Refresh the page to update the UI
-    window.location.reload();
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   };
 
 

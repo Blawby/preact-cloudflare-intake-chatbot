@@ -20,7 +20,7 @@ export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
   const { navigate } = useNavigation();
   
   // Derive currentPath from the actual router state
-  const currentPath = location.path;
+  const currentPath = location?.path || '/';
 
   const navigateToSettings = useCallback((path: string = '/settings') => {
     navigate(path);
@@ -63,7 +63,7 @@ export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
     }
     
     // Fallback: compute parent path when history is insufficient
-    const currentPath = location.path;
+    const currentPath = location?.path || '/';
     const pathSegments = currentPath.split('/').filter(Boolean);
     
     // Remove the last path segment to get parent path
@@ -74,7 +74,7 @@ export const useSettingsNavigation = (): UseSettingsNavigationReturn => {
       // If we're at root level, navigate to home
       navigate('/');
     }
-  }, [location.path, navigate]);
+  }, [location?.path, navigate]);
 
   return {
     currentPath,

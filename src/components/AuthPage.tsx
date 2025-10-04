@@ -31,10 +31,16 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
 
   // Check URL params for mode
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlMode = urlParams.get('mode');
-    if (urlMode === 'signin' || urlMode === 'signup') {
-      setIsSignUp(urlMode === 'signup');
+    if (typeof window !== 'undefined' && window.location) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlMode = urlParams.get('mode');
+        if (urlMode === 'signin' || urlMode === 'signup') {
+          setIsSignUp(urlMode === 'signup');
+        }
+      } catch (error) {
+        console.warn('Failed to parse URL parameters:', error);
+      }
     }
   }, []);
 
@@ -65,10 +71,14 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     
     if (delay > 0) {
       setTimeout(() => {
-        window.location.href = '/';
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
       }, delay);
     } else {
-      window.location.href = '/';
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     }
   };
 
@@ -290,7 +300,9 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
 
 
   const handleBackToHome = () => {
-    window.location.href = '/';
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   const handleOnboardingComplete = async (data: OnboardingData) => {
