@@ -151,20 +151,23 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
           locale,
           currency,
           maximumFractionDigits: 2
-        })
+        }),
+        numericValue: cartSession.pricing.subtotal
       },
       {
         id: 'discount',
         label: t('pricing.summary.discount'),
         value: cartSession.pricing.discount > 0
           ? `-${formatCurrency(cartSession.pricing.discount, { locale, currency, maximumFractionDigits: 2 })}`
-          : formatCurrency(cartSession.pricing.discount, { locale, currency, maximumFractionDigits: 2 })
+          : formatCurrency(cartSession.pricing.discount, { locale, currency, maximumFractionDigits: 2 }),
+        numericValue: cartSession.pricing.discount
       },
       {
         id: 'total',
         label: t('pricing.summary.total'),
         value: formatCurrency(cartSession.pricing.total, { locale, currency, maximumFractionDigits: 2 }),
-        emphasis: true
+        emphasis: true,
+        numericValue: cartSession.pricing.total
       }
     ];
   }, [cartSession, locale, t]);
@@ -464,7 +467,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2 text-sm text-gray-400">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span>Stripe Elements Integration</span>
+                      <span>{t('pricing.checkout.labels.stripeIntegration')}</span>
                     </div>
                     
                     {/* Card Number Field Placeholder */}
@@ -490,7 +493,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
                           {t('pricing.checkout.labels.cardExpiry')}
                         </label>
                         <div className="h-10 bg-gray-700 border border-gray-600 rounded-md flex items-center px-3">
-                          <span className="text-gray-400 text-sm">MM/AA</span>
+                          <span className="text-gray-400 text-sm">{t('pricing.checkout.placeholders.cardExpiry')}</span>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -498,7 +501,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
                           {t('pricing.checkout.labels.cardCvv')}
                         </label>
                         <div className="h-10 bg-gray-700 border border-gray-600 rounded-md flex items-center px-3">
-                          <span className="text-gray-400 text-sm">•••</span>
+                          <span className="text-gray-400 text-sm">{t('pricing.checkout.placeholders.cardCvv')}</span>
                         </div>
                       </div>
                     </div>
@@ -506,8 +509,8 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
                     {/* Stripe Branding */}
                     <div className="flex items-center justify-between pt-2 border-t border-gray-600">
                       <div className="flex items-center space-x-2 text-xs text-gray-400">
-                        <span>Powered by</span>
-                        <div className="font-semibold text-white">Stripe</div>
+                        <span>{t('pricing.checkout.branding.poweredBy')}</span>
+                        <div className="font-semibold text-white">{t('pricing.checkout.branding.stripe')}</div>
                       </div>
                       <div className="flex space-x-1">
                         <div className="w-6 h-4 bg-gray-600 rounded-sm"></div>

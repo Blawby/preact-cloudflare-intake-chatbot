@@ -88,20 +88,23 @@ const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ clas
       {
         id: 'subtotal',
         label: t('pricing.summary.subtotal'),
-        value: formatCurrency(cartSummary.pricing.subtotal, { locale, currency, maximumFractionDigits: 2 })
+        value: formatCurrency(cartSummary.pricing.subtotal, { locale, currency, maximumFractionDigits: 2 }),
+        numericValue: cartSummary.pricing.subtotal
       },
       {
         id: 'discount',
         label: t('pricing.summary.discount'),
         value: cartSummary.pricing.discount > 0
           ? `-${formatCurrency(cartSummary.pricing.discount, { locale, currency, maximumFractionDigits: 2 })}`
-          : formatCurrency(cartSummary.pricing.discount, { locale, currency, maximumFractionDigits: 2 })
+          : formatCurrency(cartSummary.pricing.discount, { locale, currency, maximumFractionDigits: 2 }),
+        numericValue: cartSummary.pricing.discount
       },
       {
         id: 'total',
         label: t('pricing.summary.total'),
         value: formatCurrency(cartSummary.pricing.total, { locale, currency, maximumFractionDigits: 2 }),
-        emphasis: true
+        emphasis: true,
+        numericValue: cartSummary.pricing.total
       }
     ];
   }, [cartSummary, locale, t]);
