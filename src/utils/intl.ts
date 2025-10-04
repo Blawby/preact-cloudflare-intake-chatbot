@@ -10,8 +10,8 @@ export const formatCurrency = (
   {
     locale,
     currency = 'USD',
-    minimumFractionDigits = 0,
-    maximumFractionDigits = 0
+    minimumFractionDigits,
+    maximumFractionDigits
   }: FormatCurrencyOptions = {}
 ): string => {
   if (Number.isNaN(value)) {
@@ -20,12 +20,19 @@ export const formatCurrency = (
 
   const resolvedLocale = locale || (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
 
-  return new Intl.NumberFormat(resolvedLocale, {
+  const options: Intl.NumberFormatOptions = {
     style: 'currency',
-    currency,
-    minimumFractionDigits,
-    maximumFractionDigits
-  }).format(value);
+    currency
+  };
+
+  if (minimumFractionDigits !== undefined) {
+    options.minimumFractionDigits = minimumFractionDigits;
+  }
+  if (maximumFractionDigits !== undefined) {
+    options.maximumFractionDigits = maximumFractionDigits;
+  }
+
+  return new Intl.NumberFormat(resolvedLocale, options).format(value);
 };
 
 export interface FormatNumberOptions {

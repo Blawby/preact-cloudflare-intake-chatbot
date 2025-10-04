@@ -215,8 +215,8 @@ const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'plus',
     name: 'Plus',
-    price: '$20 USD / month',
-    priceAmount: 20,
+    price: '$40 USD / month',
+    priceAmount: 40,
     currency: 'USD',
     billingPeriod: 'month',
     description: 'Enhanced legal AI capabilities for professionals',
