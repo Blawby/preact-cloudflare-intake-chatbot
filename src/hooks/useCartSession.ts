@@ -62,7 +62,7 @@ export const useCartSession = ({
   const [cartSession, setCartSession] = useState<CartSession | null>(initialSession);
   const [status, setStatus] = useState<CartSessionStatus>(initialSession ? 'success' : 'idle');
   const [error, setError] = useState<CartSessionError | null>(null);
-  const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+  const [isOffline, setIsOffline] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(initialSession ? Date.now() : null);
   const [attemptCount, setAttemptCount] = useState(0);
   const [isExpired, setIsExpired] = useState<boolean>(isSessionExpired(initialSession));
@@ -100,6 +100,12 @@ export const useCartSession = ({
 
   useEffect(() => {
     isMountedRef.current = true;
+    
+    // Initialize offline state after hydration to avoid SSR mismatch
+    if (typeof navigator !== 'undefined') {
+      setIsOffline(!navigator.onLine);
+    }
+    
     return () => {
       isMountedRef.current = false;
       if (debounceRef.current) {
