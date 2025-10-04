@@ -42,6 +42,9 @@ export const SettingsPage = ({
   
   // Get current page from URL path
   const getCurrentPage = () => {
+    if (!location || !location.path) {
+      return 'navigation'; // Default to navigation during SSR
+    }
     const path = location.path;
     if (path === '/settings' || path === '/settings/') {
       return 'navigation'; // Show main navigation on mobile
@@ -77,7 +80,9 @@ export const SettingsPage = ({
       onClose();
     }
     // Refresh the page to update the UI
-    window.location.reload();
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   };
 
 

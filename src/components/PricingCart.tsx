@@ -48,11 +48,16 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   const { track } = useAnalytics();
 
   const getTierFromUrl = (): 'plus' | 'business' => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tier = params.get('tier');
-      if (tier === 'business') {
-        return 'business';
+    if (typeof window !== 'undefined' && window.location) {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tier = params.get('tier');
+        if (tier === 'business') {
+          return 'business';
+        }
+      } catch (error) {
+        // Handle URL parsing errors gracefully
+        console.warn('Failed to parse URL parameters:', error);
       }
     }
     return 'plus';

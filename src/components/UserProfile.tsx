@@ -128,7 +128,9 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   const handleUpgrade = () => {
     // Show pricing modal first
-    window.location.hash = '#pricing';
+    if (typeof window !== 'undefined') {
+      window.location.hash = '#pricing';
+    }
   };
 
   const handleProfileClick = () => {
@@ -148,7 +150,9 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
   const handleUpgradeClick = () => {
     setShowDropdown(false);
-    window.location.hash = '#pricing';
+    if (typeof window !== 'undefined') {
+      window.location.hash = '#pricing';
+    }
   };
 
   const handleHelpClick = () => {
@@ -164,11 +168,11 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     // Also clear the legacy mockUser key for backward compatibility
     localStorage.removeItem('mockUser');
     
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
-    
-    // Refresh the page to update the UI
-    window.location.reload();
+    // Dispatch custom event to notify other components and refresh the page
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+      window.location.reload();
+    }
   };
 
 

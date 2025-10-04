@@ -98,9 +98,11 @@ function MainApp() {
 
 	// Handle settings modal based on URL
 	useEffect(() => {
-		const isSettingsRoute = location.path.startsWith('/settings');
-		setShowSettingsModal(isSettingsRoute);
-	}, [location.path]);
+		if (location && location.path) {
+			const isSettingsRoute = location.path.startsWith('/settings');
+			setShowSettingsModal(isSettingsRoute);
+		}
+	}, [location?.path]);
 
 	// Check if we should show welcome modal (after onboarding completion)
 	useEffect(() => {
@@ -126,6 +128,8 @@ function MainApp() {
 	const [currentUserTier, setCurrentUserTier] = useState<'free' | 'plus' | 'business'>('free');
 	
 	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		
 		const handleHashChange = () => {
 			const hash = window.location.hash;
 			setShowPricingModal(hash === '#pricing');
@@ -428,12 +432,16 @@ function MainApp() {
 				isOpen={showPricingModal}
 				onClose={() => {
 					setShowPricingModal(false);
-					window.location.hash = '';
+					if (typeof window !== 'undefined') {
+						window.location.hash = '';
+					}
 				}}
 				currentTier={currentUserTier}
 				onUpgrade={(tier) => {
 					// Navigate to cart page with pre-selected tier
-					window.location.hash = '';
+					if (typeof window !== 'undefined') {
+						window.location.hash = '';
+					}
 					setShowPricingModal(false);
 					
 					// Navigate to cart page with tier parameter using SPA router
@@ -467,7 +475,7 @@ export function App() {
 	const location = useLocation();
 	
 	// Create reactive currentUrl that updates on navigation
-	const currentUrl = typeof window !== 'undefined' 
+	const currentUrl = typeof window !== 'undefined' && location
 		? `${window.location.origin}${location.url}`
 		: undefined;
 
@@ -551,10 +559,15 @@ if (typeof window !== 'undefined') {
 
 export async function prerender() {
 	await initI18n();
-	// Only prerender static routes, not dynamic pricing routes
-	// This prevents hydration mismatch for pricing pages
+	// Prerender all public routes including pricing pages for SEO
 	return await ssr(<AppWithProviders />, {
-		// Only prerender these specific routes
-		paths: ['/', '/help']
+		// Prerender all public routes
+		paths: [
+			'/', 
+			'/help',
+			'/pricing/cart',
+			'/pricing/checkout', 
+			'/pricing/confirmation'
+		]
 	});
 }
