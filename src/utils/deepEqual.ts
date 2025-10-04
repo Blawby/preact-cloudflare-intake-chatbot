@@ -70,7 +70,9 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   // Handle TypedArrays
   if (a instanceof ArrayBuffer && b instanceof ArrayBuffer) {
     if (a.byteLength !== b.byteLength) return false;
-    return new Uint8Array(a).every((byte, index) => byte === new Uint8Array(b)[index]);
+    const ua = new Uint8Array(a);
+    const ub = new Uint8Array(b);
+    return ua.every((byte, index) => byte === ub[index]);
   }
   
   // Check if both are TypedArrays (but not ArrayBuffer)
