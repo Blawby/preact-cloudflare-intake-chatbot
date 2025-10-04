@@ -39,6 +39,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   // State for cart session creation
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Refs for race condition protection
   const requestIdRef = useRef(0);
@@ -102,7 +103,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
         clearTimeout(navigationTimeoutRef.current);
       }
     };
-  }, [selectedTier, planType, userCount]);
+  }, [selectedTier, planType, userCount, retryCount]);
 
   const handleUserCountChange = (delta: number) => {
     const newCount = Math.max(1, userCount + delta);
@@ -156,7 +157,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <PlanCard
                 title={t('pricing.annual')}
-                price={selectedPlan ? `${selectedPlan.currency} ${formatPrice(selectedPlan.priceAmount)}` : "USD $40"}
+                price={selectedPlan ? formatPrice(selectedPlan.priceAmount) : formatPrice(40)}
                 originalPrice={undefined}
                 period="per user/month"
                 features={[
@@ -172,7 +173,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
               
               <PlanCard
                 title={t('pricing.monthly')}
-                price={selectedPlan ? `${selectedPlan.currency} ${formatPrice(selectedPlan.priceAmount)}` : "USD $40"}
+                price={selectedPlan ? formatPrice(selectedPlan.priceAmount) : formatPrice(40)}
                 period="per user/month"
                 features={[
                   t('pricing.billedMonthlyFeature'),
@@ -263,8 +264,8 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                         <button
                           onClick={() => {
                             setSessionError(null);
-                            // Trigger a new session creation by updating a dependency
-                            setUserCount(userCount);
+                            // Trigger a new session creation by incrementing retry counter
+                            setRetryCount(prev => prev + 1);
                           }}
                           className="text-sm text-red-400 hover:text-red-300 underline"
                         >
@@ -323,7 +324,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                 <div className="flex justify-between items-center">
                   <div className="text-white font-bold text-lg">{t('pricing.todaysTotal')}</div>
                   <div className="text-white font-bold text-lg">
-                    USD {formatPrice(cartSession.pricing.total)}
+                    {formatPrice(cartSession.pricing.total)}
                   </div>
                 </div>
 

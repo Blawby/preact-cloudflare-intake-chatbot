@@ -28,6 +28,7 @@ const PlanCard: FunctionComponent<PlanCardProps> = ({
 }) => {
   return (
     <button
+      type="button"
       className={`p-6 border rounded-lg text-left transition-all relative ${
         isSelected
           ? 'border-white bg-gray-800'

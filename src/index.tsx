@@ -436,8 +436,8 @@ function MainApp() {
 					window.location.hash = '';
 					setShowPricingModal(false);
 					
-					// Navigate to cart page with tier parameter
-					window.location.href = `/pricing/cart?tier=${tier}`;
+					// Navigate to cart page with tier parameter using SPA router
+					navigate(`/pricing/cart?tier=${tier}`);
 				}}
 			/>
 
