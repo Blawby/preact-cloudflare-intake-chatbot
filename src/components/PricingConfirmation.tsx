@@ -1,8 +1,16 @@
 import { FunctionComponent } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+
 import { useNavigation } from '../utils/navigation';
-import { mockPaymentDataService } from '../utils/mockPaymentData';
+import { mockPaymentDataService, type CartSession } from '../utils/mockPaymentData';
+import { formatCurrency } from '../utils/intl';
+import { useAnalytics } from '../hooks/useAnalytics';
+import { useToastContext } from '../contexts/ToastContext';
+
 import { useTranslation } from './ui/i18n/useTranslation';
+import { Breadcrumb } from './ui/layout';
+import { PricingSummary } from './ui/cards';
+import { LoadingSpinner } from './ui/layout/LoadingSpinner';
 
 interface PricingConfirmationProps {
   className?: string;
@@ -10,63 +18,154 @@ interface PricingConfirmationProps {
 
 const PricingConfirmation: FunctionComponent<PricingConfirmationProps> = ({ className = '' }) => {
   const { navigate } = useNavigation();
-  const { t } = useTranslation('common');
-  const [isProcessing, setIsProcessing] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { track } = useAnalytics();
+  const { showError } = useToastContext();
+  const { t, i18n } = useTranslation('common');
 
-  // Update user subscription on page load
+  const locale = i18n.language || 'en';
+  const [cartSummary] = useState<CartSession | null>(() => mockPaymentDataService.getCurrentCart());
+  const [isProcessing, setIsProcessing] = useState(true);
+  const [hasError, setHasError] = useState<string | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+
   useEffect(() => {
     const processSubscription = async () => {
       try {
-        const currentCart = mockPaymentDataService.getCurrentCart();
-        if (currentCart) {
-          await mockPaymentDataService.updateUserSubscription(currentCart.planTier);
-          mockPaymentDataService.clearAllSessions();
+        if (cartSummary) {
+          await mockPaymentDataService.updateUserSubscription(cartSummary.planTier);
         }
-      } catch (_err) {
-        // console.error('Failed to update subscription:', _err);
-        setError('Failed to update subscription. Please try again.');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to update subscription';
+        setHasError(message);
+        showError(t('pricing.confirmation.toast.errorTitle'), message);
+        track('pricing_confirmation_error', { message });
       } finally {
+        mockPaymentDataService.clearAllSessions();
         setIsProcessing(false);
       }
     };
+
     processSubscription();
-  }, []);
+  }, [cartSummary, showError, t]);
+
+  const breadcrumbSteps = useMemo(
+    () => [
+      {
+        id: 'cart',
+        label: t('pricing.breadcrumb.cart'),
+        href: '/pricing/cart',
+        status: 'completed' as const
+      },
+      {
+        id: 'checkout',
+        label: t('pricing.breadcrumb.checkout'),
+        href: '/pricing/checkout',
+        status: 'completed' as const
+      },
+      {
+        id: 'confirmation',
+        label: t('pricing.breadcrumb.confirmation'),
+        status: 'current' as const
+      }
+    ],
+    [t]
+  );
+
+  const summaryLineItems = useMemo(() => {
+    if (!cartSummary) {
+      return [
+        { label: t('pricing.summary.subtotal'), value: t('pricing.summary.placeholder') },
+        { label: t('pricing.summary.discount'), value: t('pricing.summary.placeholder') },
+        { label: t('pricing.summary.total'), value: t('pricing.summary.placeholder'), emphasis: true }
+      ];
+    }
+
+    const currency = 'USD';
+
+    return [
+      {
+        label: t('pricing.summary.subtotal'),
+        value: formatCurrency(cartSummary.pricing.subtotal, { locale, currency, maximumFractionDigits: 2 })
+      },
+      {
+        label: t('pricing.summary.discount'),
+        value: cartSummary.pricing.discount > 0
+          ? `-${formatCurrency(cartSummary.pricing.discount, { locale, currency, maximumFractionDigits: 2 })}`
+          : formatCurrency(cartSummary.pricing.discount, { locale, currency, maximumFractionDigits: 2 })
+      },
+      {
+        label: t('pricing.summary.total'),
+        value: formatCurrency(cartSummary.pricing.total, { locale, currency, maximumFractionDigits: 2 }),
+        emphasis: true
+      }
+    ];
+  }, [cartSummary, locale, t]);
+
+  useEffect(() => {
+    headingRef.current?.focus();
+    track('pricing_confirmation_viewed', {
+      hasSummary: Boolean(cartSummary)
+    });
+  }, [cartSummary, track]);
 
   return (
-    <div className={`min-h-screen bg-gray-900 text-white p-8 ${className}`}>
-      <div className="max-w-2xl mx-auto">
-        <h1>{t('pricing.paymentSuccessful')}</h1>
-        
-        {isProcessing && (
-          <div className="mt-8">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
-              <p className="mt-2 text-gray-300">Processing your subscription...</p>
-            </div>
+    <div className={`min-h-screen bg-gray-900 text-white ${className}`}>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <Breadcrumb steps={breadcrumbSteps} ariaLabel={t('pricing.checkout.breadcrumbLabel')} />
+
+        <header className="space-y-2 text-center">
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-3xl font-bold focus:outline-none"
+          >
+            {t('pricing.confirmation.title')}
+          </h1>
+          <p className="text-gray-300 max-w-2xl mx-auto">
+            {t('pricing.confirmation.subtitle')}
+          </p>
+        </header>
+
+        {isProcessing ? (
+          <div className="flex flex-col items-center space-y-3 py-12">
+            <LoadingSpinner size="lg" ariaLabel={t('pricing.confirmation.processing')} />
+            <p className="text-sm text-gray-300">{t('pricing.confirmation.processing')}</p>
           </div>
-        )}
-        
-        {error && (
-          <div className="mt-8 p-4 bg-red-600 rounded-lg">
-            <p className="text-white">{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="mt-2 px-4 py-2 bg-red-700 hover:bg-red-800 rounded text-white"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
-        
-        {!isProcessing && !error && (
-          <div className="mt-8">
-            <button 
-              onClick={() => navigate('/')}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
-            >
-              {t('pricing.goToDashboard')}
-            </button>
+        ) : (
+          <div className="space-y-8">
+            {hasError ? (
+              <div className="rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200">
+                {hasError}
+              </div>
+            ) : (
+              <PricingSummary
+                heading={t('pricing.summary.heading')}
+                planName={cartSummary ? t('pricing.planLabel', { plan: cartSummary.planTier === 'business' ? t('pricing.checkout.planBusiness') : t('pricing.checkout.planPlus') }) : ''}
+                planDescription={cartSummary ? t('pricing.summary.planDescription', {
+                  count: cartSummary.userCount,
+                  billingPeriod: cartSummary.planType === 'annual'
+                    ? t('pricing.summary.billingPeriodAnnual')
+                    : t('pricing.summary.billingPeriodMonthly')
+                }) : ''}
+                pricePerSeat={cartSummary ? t('pricing.summary.pricePerSeat', {
+                  price: formatCurrency(mockPaymentDataService.getPricingPlan(cartSummary.planTier)?.priceAmount ?? 0, {
+                    locale,
+                    currency: 'USD',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                  })
+                }) : ''}
+                lineItems={summaryLineItems}
+                billingNote={cartSummary ? (cartSummary.planType === 'annual' ? t('pricing.summary.billingAnnual') : t('pricing.summary.billingMonthly')) : ''}
+                primaryAction={{
+                  label: t('pricing.confirmation.actions.goToDashboard'),
+                  onClick: () => navigate('/'),
+                  disabled: false,
+                  isLoading: false
+                }}
+                isLoading={false}
+              />
+            )}
           </div>
         )}
       </div>
