@@ -7,7 +7,6 @@ import { LocationInput } from './ui/input/LocationInput';
 import { Button } from './ui/Button';
 import { useTranslation } from './ui/i18n';
 import { schemas } from './ui/validation/schemas';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 // Constants for allowed field names
 export const ALLOWED_FIELDS = ['name', 'email', 'phone', 'location', 'opposingParty'] as const;
@@ -182,8 +181,8 @@ export function ContactForm({
                   type="text"
                   value={value as string || ''}
                   onChange={onChange}
-                  label={t('forms.contactForm.name')}
-                  placeholder={t('forms.contactForm.placeholders.name')}
+                  label={t('forms.labels.name')}
+                  placeholder={t('forms.placeholders.name')}
                   required={validRequired.includes('name')}
                   error={error?.message}
                   variant={error ? 'error' : 'default'}
@@ -200,8 +199,8 @@ export function ContactForm({
                 <EmailInput
                   value={value as string || ''}
                   onChange={onChange}
-                  label={t('forms.contactForm.email')}
-                  placeholder={t('forms.contactForm.placeholders.email')}
+                  label={t('forms.labels.email')}
+                  placeholder={t('forms.placeholders.email')}
                   required={validRequired.includes('email')}
                   error={error?.message}
                   variant={error ? 'error' : 'default'}
@@ -219,18 +218,14 @@ export function ContactForm({
                 <PhoneInput
                   value={value as string || ''}
                   onChange={onChange}
-                  label={t('forms.contactForm.phone')}
-                  placeholder={t('forms.contactForm.placeholders.phone')}
+                  label={t('forms.labels.phone')}
+                  placeholder={t('forms.placeholders.phone')}
                   required={validRequired.includes('phone')}
                   error={error?.message}
                   variant={error ? 'error' : 'default'}
                   format={true}
                   showCountryCode={true}
                   countryCode="+1"
-                  onCountryChange={(code) => {
-                    // You can handle country changes here if needed
-                    console.log('Country changed to:', code);
-                  }}
                 />
               )}
             </FormField>

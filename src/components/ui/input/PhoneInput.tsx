@@ -63,7 +63,10 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   namespace: _namespace = 'common'
 }, ref) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   
   // Find current country
   const currentCountry = countries.find(c => c.code === countryCode) || countries[0];
@@ -73,6 +76,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
+        setFocusedIndex(-1);
       }
     };
 
@@ -84,6 +88,69 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isDropdownOpen]);
+
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isDropdownOpen) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setIsDropdownOpen(true);
+        setFocusedIndex(0);
+        return;
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        setIsDropdownOpen(false);
+        setFocusedIndex(-1);
+        buttonRef.current?.focus();
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusedIndex(prev => (prev + 1) % countries.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusedIndex(prev => prev <= 0 ? countries.length - 1 : prev - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < countries.length) {
+          handleCountrySelect(countries[focusedIndex]);
+        }
+        break;
+      case 'Tab':
+        // Allow default tab behavior but close dropdown
+        setIsDropdownOpen(false);
+        setFocusedIndex(-1);
+        break;
+    }
+  }, [isDropdownOpen, focusedIndex]);
+
+  // Focus management
+  useEffect(() => {
+    if (isDropdownOpen && listRef.current) {
+      const focusedItem = listRef.current.children[focusedIndex] as HTMLElement;
+      if (focusedItem) {
+        focusedItem.focus();
+      }
+    }
+  }, [isDropdownOpen, focusedIndex]);
+
+  // Add keyboard event listener
+  useEffect(() => {
+    if (isDropdownOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDropdownOpen, handleKeyDown]);
   
   // TODO: Add i18n support when useTranslation hook is available
   // const { t } = useTranslation(namespace);
@@ -148,6 +215,8 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
   const handleCountrySelect = useCallback((country: typeof countries[0]) => {
     onCountryChange?.(country.code);
     setIsDropdownOpen(false);
+    setFocusedIndex(-1);
+    buttonRef.current?.focus();
   }, [onCountryChange]);
 
   const inputClasses = cn(
@@ -173,9 +242,13 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
         {showCountryCode && (
           <div className="relative" ref={dropdownRef}>
             <button
+              ref={buttonRef}
               type="button"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={disabled}
+              aria-expanded={isDropdownOpen}
+              aria-haspopup="menu"
+              aria-label={`Select country code. Current: ${currentCountry.name} (${currentCountry.code})`}
               className={cn(
                 "inline-flex items-center border border-gray-300 dark:border-gray-600 rounded-l-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 transition-colors",
                 sizeClasses[size],
@@ -189,14 +262,24 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
             
             {isDropdownOpen && (
               <div className="absolute z-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg w-52 top-full left-0 mt-1">
-                <ul className="py-1 text-sm">
-                  {countries.map((country) => (
+                <ul 
+                  ref={listRef}
+                  role="menu"
+                  aria-label="Country selection"
+                  className="py-1 text-sm"
+                >
+                  {countries.map((country, index) => (
                     <li key={country.code}>
                       <button
                         type="button"
                         onClick={() => handleCountrySelect(country)}
-                        className="inline-flex w-full px-3 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700"
+                        className={cn(
+                          "inline-flex w-full px-3 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700",
+                          index === focusedIndex && "bg-gray-100 dark:bg-gray-700"
+                        )}
                         role="menuitem"
+                        tabIndex={-1}
+                        aria-selected={index === focusedIndex}
                       >
                         <span className="inline-flex items-center">
                           <span className="text-base mr-2">{country.emoji}</span>

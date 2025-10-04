@@ -7,6 +7,7 @@ import { ChatMessageUI } from '../../worker/types';
 import { FileAttachment } from '../../worker/types';
 import { ContactData } from './ContactForm';
 import { createKeyPressHandler } from '../utils/keyboard';
+import { safeLog } from '../utils/errorHandler';
 
 interface ChatContainerProps {
   messages: ChatMessageUI[];
@@ -170,7 +171,7 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <ContactForm
               onSubmit={(data) => {
-                console.log('Contact form submitted:', data);
+                safeLog('info', 'Contact form submitted', data, { component: 'ChatContainer' });
                 if (onContactFormSubmit) {
                   onContactFormSubmit(data);
                 }
