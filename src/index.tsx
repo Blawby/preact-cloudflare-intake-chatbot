@@ -20,6 +20,7 @@ import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
 import PricingCart from './components/PricingCart';
 import PricingCheckout from './components/PricingCheckout';
+import PricingConfirmation from './components/PricingConfirmation';
 import WelcomeModal from './components/onboarding/WelcomeModal';
 import { debounce } from './utils/debounce';
 import './index.css';
@@ -431,50 +432,12 @@ function MainApp() {
 				}}
 				currentTier={currentUserTier}
 				onUpgrade={(tier) => {
-					// Update user's subscription tier
-					const mockUser = localStorage.getItem('mockUser');
-					if (mockUser) {
-						try {
-							const userData = JSON.parse(mockUser);
-							userData.subscriptionTier = tier;
-							localStorage.setItem('mockUser', JSON.stringify(userData));
-							
-							// Dispatch event to notify other components
-							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
-						} catch (_error) {
-							// eslint-disable-next-line no-console
-							console.error('Failed to parse mockUser data:', _error);
-							// Create a fresh user object with the new subscription tier
-							const freshUserData = {
-								subscriptionTier: tier,
-								// Add other default user properties as needed
-							};
-							localStorage.setItem('mockUser', JSON.stringify(freshUserData));
-							
-							// Dispatch event with the fresh user data
-							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: freshUserData }));
-						}
-					} else {
-						// No existing user - create a fallback user record for first-time users
-						const fallbackUserData = {
-							id: `fallback-user-${Date.now()}`,
-							name: 'New User',
-							email: 'user@example.com',
-							image: null,
-							teamId: null,
-							role: 'user',
-							phone: null,
-							subscriptionTier: tier
-						};
-						localStorage.setItem('mockUser', JSON.stringify(fallbackUserData));
-						
-						// Dispatch event with the fallback user data
-						window.dispatchEvent(new CustomEvent('authStateChanged', { detail: fallbackUserData }));
-					}
-					
-					// Always ensure these cleanup operations run
-					setShowPricingModal(false);
+					// Navigate to cart page with pre-selected tier
 					window.location.hash = '';
+					setShowPricingModal(false);
+					
+					// Navigate to cart page with tier parameter
+					window.location.href = `/pricing/cart?tier=${tier}`;
 				}}
 			/>
 
@@ -516,11 +479,12 @@ export function App() {
 					currentUrl={currentUrl}
 				/>
 				<Router>
-					<Route path="/auth" component={AuthPage} />
-					<Route path="/pricing/cart" component={PricingCart} />
-					<Route path="/pricing/checkout" component={PricingCheckout} />
-					<Route path="/settings/*" component={MainApp} />
-					<Route default component={MainApp} />
+            <Route path="/auth" component={AuthPage} />
+            <Route path="/pricing/cart" component={PricingCart} />
+            <Route path="/pricing/checkout" component={PricingCheckout} />
+            <Route path="/pricing/confirmation" component={PricingConfirmation} />
+            <Route path="/settings/*" component={MainApp} />
+            <Route default component={MainApp} />
 				</Router>
 			</ToastProvider>
 		</LocationProvider>

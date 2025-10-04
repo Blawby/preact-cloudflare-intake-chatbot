@@ -88,7 +88,10 @@ class MockPaymentDataService {
 
     // Calculate base price per user per month
     const basePricePerUser = pricingPlan.priceAmount;
-    const subtotal = basePricePerUser * userCount;
+    
+    // For annual plans, calculate for 12 months, for monthly just 1 month
+    const months = planType === 'annual' ? 12 : 1;
+    const subtotal = basePricePerUser * userCount * months;
 
     // Apply annual discount (16% off for annual plans)
     const discount = planType === 'annual' ? subtotal * 0.16 : 0;
@@ -356,6 +359,25 @@ class MockPaymentDataService {
   validateCartSession(cartId: string): boolean {
     const cart = this.getCartSession(cartId);
     return cart !== null;
+  }
+
+  // Update user subscription after successful payment
+  updateUserSubscription(planTier: 'plus' | 'business'): void {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const mockUser = localStorage.getItem('mockUser');
+      if (mockUser) {
+        const userData = JSON.parse(mockUser);
+        userData.subscriptionTier = planTier;
+        localStorage.setItem('mockUser', JSON.stringify(userData));
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
+      }
+    } catch (error) {
+      console.error('Failed to update user subscription:', error);
+    }
   }
 }
 

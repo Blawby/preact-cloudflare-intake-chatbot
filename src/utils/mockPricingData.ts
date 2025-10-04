@@ -245,8 +245,8 @@ const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'business',
     name: 'Business',
-    price: '$25 USD / month',
-    priceAmount: 25,
+    price: '$40 USD / month',
+    priceAmount: 40,
     currency: 'USD',
     billingPeriod: 'month',
     description: 'Secure, collaborative workspace for teams',
