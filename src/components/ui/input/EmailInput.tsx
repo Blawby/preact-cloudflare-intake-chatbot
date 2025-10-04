@@ -95,6 +95,9 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
 
   const isEmailValid = value ? isValidEmail(value) : false;
   const showValidationIcon = showValidation && (value?.length ?? 0) > 0;
+  
+  // Combined invalid state: displayError OR (showValidation && value && !isEmailValid)
+  const isInvalid = displayError || (showValidation && value && !isEmailValid);
 
   // Build aria-describedby attribute
   const describedByIds = [];
@@ -131,7 +134,7 @@ export const EmailInput = forwardRef<HTMLInputElement, EmailInputProps>(({
           placeholder={displayPlaceholder}
           disabled={disabled}
           required={required}
-          aria-invalid={showValidation && value && !isEmailValid ? 'true' : 'false'}
+          aria-invalid={isInvalid ? 'true' : 'false'}
           aria-required={required}
           aria-describedby={ariaDescribedBy}
           className={inputClasses}

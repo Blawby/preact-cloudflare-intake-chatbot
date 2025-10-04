@@ -39,7 +39,7 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
   error,
   showValidation = false,
   showPreview = false,
-  protocols = ['http:', 'https:'],
+  protocols = ['http://', 'https://'],
   _labelKey,
   _descriptionKey,
   _placeholderKey,
@@ -62,11 +62,13 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
   const inputId = useUniqueId('url-input');
   const descriptionId = useUniqueId('url-description');
   const errorId = useUniqueId('url-error');
+  const validationErrorId = useUniqueId('url-validation-error');
   
   // Create aria-describedby string
   const ariaDescribedBy = [
     displayDescription ? descriptionId : null,
-    displayError ? errorId : null
+    displayError ? errorId : null,
+    showValidation && value && !isURLValid && !displayError ? validationErrorId : null
   ].filter(Boolean).join(' ');
 
   const sizeClasses = {
@@ -102,7 +104,17 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
     
     try {
       const urlObj = new URL(url);
-      return protocols.includes(urlObj.protocol);
+      // Normalize protocols to match URL.protocol format (e.g., "http:", "https:")
+      const normalizedProtocols = protocols.map(protocol => {
+        if (protocol.endsWith('://')) {
+          return protocol.slice(0, -3) + ':';
+        } else if (protocol.endsWith(':')) {
+          return protocol;
+        } else {
+          return protocol + ':';
+        }
+      });
+      return normalizedProtocols.includes(urlObj.protocol);
     } catch {
       return false;
     }
@@ -266,19 +278,37 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
         )}
       </div>
       
-      {showPreview && isURLValid && (
-        <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Preview:</p>
-          <a
-            href={value}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-accent-600 dark:text-accent-400 hover:underline"
-          >
-            {value}
-          </a>
-        </div>
-      )}
+      {showPreview && isURLValid && (() => {
+        // Check if URL protocol is safe for clickable preview
+        let isSafeProtocol = false;
+        try {
+          const urlObj = new URL(value);
+          const protocol = urlObj.protocol.toLowerCase();
+          isSafeProtocol = protocol === 'http:' || protocol === 'https:';
+        } catch {
+          isSafeProtocol = false;
+        }
+        
+        return (
+          <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Preview:</p>
+            {isSafeProtocol ? (
+              <a
+                href={value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-accent-600 dark:text-accent-400 hover:underline"
+              >
+                {value}
+              </a>
+            ) : (
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {value}
+              </span>
+            )}
+          </div>
+        );
+      })()}
       
       {displayError && (
         <p id={errorId} className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert" aria-live="assertive">
@@ -287,8 +317,8 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
       )}
       
       {showValidation && value && !isURLValid && !displayError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-          Please enter a valid URL
+        <p id={validationErrorId} className="text-xs text-red-600 dark:text-red-400 mt-1">
+          Please enter a valid URL.
         </p>
       )}
       
