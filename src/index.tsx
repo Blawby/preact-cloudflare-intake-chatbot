@@ -567,15 +567,6 @@ function AppWithProviders() {
 }
 
 if (typeof window !== 'undefined') {
-	// Initialize theme from localStorage with fallback to system preference
-	const savedTheme = localStorage.getItem('theme');
-	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-	const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-
-	if (shouldBeDark) {
-		document.documentElement.classList.add('dark');
-	}
-
 	// Hydration check for production monitoring
 	// eslint-disable-next-line no-console
 	console.info('Hydration started');
