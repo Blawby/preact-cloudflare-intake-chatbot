@@ -18,6 +18,8 @@ import { ChatMessageUI } from '../worker/types';
 import { SettingsLayout } from './components/settings/SettingsLayout';
 import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
+import PricingCart from './components/PricingCart';
+import PricingCheckout from './components/PricingCheckout';
 import WelcomeModal from './components/onboarding/WelcomeModal';
 import { debounce } from './utils/debounce';
 import './index.css';
@@ -515,6 +517,8 @@ export function App() {
 				/>
 				<Router>
 					<Route path="/auth" component={AuthPage} />
+					<Route path="/pricing/cart" component={PricingCart} />
+					<Route path="/pricing/checkout" component={PricingCheckout} />
 					<Route path="/settings/*" component={MainApp} />
 					<Route default component={MainApp} />
 				</Router>
