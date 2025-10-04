@@ -69,16 +69,16 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     // Always respect the configured redirectDelay
     const delay = redirectDelay;
     
-    if (delay > 0) {
-      setTimeout(() => {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/';
-        }
-      }, delay);
-    } else {
+    const doRedirect = () => {
       if (typeof window !== 'undefined') {
         window.location.href = '/';
       }
+    };
+    
+    if (delay > 0) {
+      setTimeout(doRedirect, delay);
+    } else {
+      doRedirect();
     }
   };
 

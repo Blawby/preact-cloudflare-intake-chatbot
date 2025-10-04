@@ -168,11 +168,9 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     // Also clear the legacy mockUser key for backward compatibility
     localStorage.removeItem('mockUser');
     
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
-    
-    // Refresh the page to update the UI
+    // Dispatch custom event to notify other components and refresh the page
     if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
       window.location.reload();
     }
   };
