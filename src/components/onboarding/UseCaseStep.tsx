@@ -10,6 +10,8 @@ import {
   EllipsisHorizontalIcon,
   CheckIcon
 } from '@heroicons/react/24/outline';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '../ui/form';
+import { Textarea } from '../ui/input';
 
 interface UseCaseData {
   primaryUseCase: 'personal' | 'business' | 'research' | 'documents' | 'other';
@@ -56,9 +58,7 @@ const UseCaseStep = ({ data, onComplete, onSkip }: UseCaseStepProps) => {
   const [additionalInfo, setAdditionalInfo] = useState(data.additionalInfo || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     
     // Simulate API call delay
@@ -96,7 +96,7 @@ const UseCaseStep = ({ data, onComplete, onSkip }: UseCaseStepProps) => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
         <div className="bg-white dark:bg-dark-card-bg py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <Form onSubmit={handleSubmit} className="space-y-6">
             {/* Use Case Options */}
             <div role="radiogroup" aria-labelledby="use-case-title" className="space-y-3">
               {useCaseOptions.map((option) => {
@@ -143,20 +143,23 @@ const UseCaseStep = ({ data, onComplete, onSkip }: UseCaseStepProps) => {
 
             {/* Additional Info for "Other" option */}
             {selectedUseCase === 'other' && (
-              <div>
-                <label htmlFor="additionalInfo" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {t('onboarding.step2.otherPlaceholder')}
-                </label>
-                <textarea
-                  id="additionalInfo"
-                  name="additionalInfo"
-                  rows={3}
-                  value={additionalInfo}
-                  onInput={(e) => setAdditionalInfo((e.target as HTMLTextAreaElement).value)}
-                  className="input-base"
-                  placeholder={t('onboarding.step2.otherPlaceholder')}
-                />
-              </div>
+              <FormField name="additionalInfo">
+                {({ value, error, onChange }) => (
+                  <FormItem>
+                    <FormLabel>{t('onboarding.step2.otherPlaceholder')}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={3}
+                        value={(value as string) || ''}
+                        onChange={(value) => onChange(value)}
+                        placeholder={t('onboarding.step2.otherPlaceholder')}
+                        error={error?.message}
+                      />
+                    </FormControl>
+                    {error && <FormMessage>{error.message}</FormMessage>}
+                  </FormItem>
+                )}
+              </FormField>
             )}
 
             {/* Action Buttons */}
@@ -189,7 +192,7 @@ const UseCaseStep = ({ data, onComplete, onSkip }: UseCaseStepProps) => {
                 {t('onboarding.step2.skip')}
               </button>
             </div>
-          </form>
+          </Form>
         </div>
       </div>
     </div>

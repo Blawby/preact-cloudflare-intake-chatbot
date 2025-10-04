@@ -2,7 +2,10 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { useTranslation, Trans } from 'react-i18next';
 import { Button } from '../ui/Button';
 import { Logo } from '../ui/Logo';
-import { UserIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { UserIcon } from '@heroicons/react/24/outline';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '../ui/form';
+import { Input, DatePicker } from '../ui/input';
+import { Checkbox } from '../ui/input';
 
 interface PersonalInfoData {
   fullName: string;
@@ -17,10 +20,8 @@ interface PersonalInfoStepProps {
   onBack: () => void;
 }
 
-const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoStepProps) => {
+const PersonalInfoStep = ({ data: _data, onComplete, onBack }: PersonalInfoStepProps) => {
   const { t } = useTranslation('common');
-  const [formData, setFormData] = useState<PersonalInfoData>(data);
-  const [errors, setErrors] = useState<Partial<Record<keyof PersonalInfoData, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const mountedRef = useRef<boolean>(true);
 
@@ -31,71 +32,22 @@ const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoSte
     };
   }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof PersonalInfoData, string>> = {};
-
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = t('onboarding.step1.required');
-    }
-
-    if (!formData.agreedToTerms) {
-      newErrors.agreedToTerms = t('onboarding.step1.required');
-    }
-
-    // Validate birthday format if provided
-    if (formData.birthday && formData.birthday.trim()) {
-      const birthdayRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
-      if (!birthdayRegex.test(formData.birthday)) {
-        newErrors.birthday = t('validation.invalidDate');
-      } else {
-        // Parse the date components and validate semantic correctness
-        const [monthStr, dayStr, yearStr] = formData.birthday.split('/');
-        const month = parseInt(monthStr, 10);
-        const day = parseInt(dayStr, 10);
-        const year = parseInt(yearStr, 10);
-        
-        // Create a Date object and verify it matches the parsed values
-        const date = new Date(year, month - 1, day);
-        if (date.getFullYear() !== year || 
-            date.getMonth() !== month - 1 || 
-            date.getDate() !== day) {
-          newErrors.birthday = t('validation.invalidDate');
-        }
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
+  const handleSubmit = async (formData: PersonalInfoData) => {
+    if (isSubmitting) return;
     
-    if (!validateForm()) {
-      return;
-    }
-
     setIsSubmitting(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    onComplete(formData);
-    
-    // Only update state if component is still mounted
-    if (mountedRef.current) {
-      setIsSubmitting(false);
+    try {
+      await onComplete(formData);
+    } catch (error) {
+      console.error('Error submitting personal info:', error);
+    } finally {
+      if (mountedRef.current) {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  const handleInputChange = (field: keyof PersonalInfoData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  };
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -115,88 +67,84 @@ const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoSte
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-dark-card-bg py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <Form onSubmit={handleSubmit} initialData={_data}>
             <div className="space-y-4">
               {/* Full Name */}
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t('onboarding.step1.fullName')}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="fullName"
-                    name="fullName"
-                    type="text"
-                    required
-                    value={formData.fullName}
-                    onInput={(e) => handleInputChange('fullName', (e.target as HTMLInputElement).value)}
-                    className={`input-base input-with-icon relative block ${
-                      errors.fullName ? 'error' : ''
-                    }`}
-                    placeholder={t('onboarding.step1.fullNamePlaceholder')}
-                  />
-                  <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-                {errors.fullName && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.fullName}</p>
+              <FormField name="fullName">
+                {({ value, error, onChange }) => (
+                  <FormItem>
+                    <FormLabel>{t('onboarding.step1.fullName')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        required
+                        value={(value as string) || ''}
+                        onChange={(value) => onChange(value)}
+                        placeholder={t('onboarding.step1.fullNamePlaceholder')}
+                        icon={<UserIcon className="h-5 w-5 text-gray-400" />}
+                        error={error?.message}
+                      />
+                    </FormControl>
+                    {error && (
+                      <FormMessage>{error.message}</FormMessage>
+                    )}
+                  </FormItem>
                 )}
-              </div>
+              </FormField>
 
               {/* Birthday */}
-              <div>
-                <label htmlFor="birthday" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t('onboarding.step1.birthday')}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="birthday"
-                    name="birthday"
-                    type="text"
-                    value={formData.birthday || ''}
-                    onInput={(e) => handleInputChange('birthday', (e.target as HTMLInputElement).value)}
-                    className={`input-base input-with-icon relative block ${
-                      errors.birthday ? 'error' : ''
-                    }`}
-                    placeholder={t('onboarding.step1.birthdayPlaceholder')}
-                  />
-                  <CalendarIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-                {errors.birthday && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.birthday}</p>
+              <FormField name="birthday">
+                {({ value, error, onChange }) => (
+                  <FormItem>
+                    <FormLabel>{t('onboarding.step1.birthday')}</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        value={(value as string) || ''}
+                        onChange={(date) => onChange(date as string)}
+                        placeholder={t('onboarding.step1.birthdayPlaceholder')}
+                        format="date"
+                        max={new Date().toISOString().split('T')[0]} // Prevent future dates
+                        error={error?.message}
+                      />
+                    </FormControl>
+                    {error && (
+                      <FormMessage>{error.message}</FormMessage>
+                    )}
+                  </FormItem>
                 )}
-              </div>
+              </FormField>
             </div>
 
             {/* Terms Agreement */}
-            <div className="flex items-start">
-              <div className="flex items-center h-5">
-                <input
-                  id="agreedToTerms"
-                  name="agreedToTerms"
-                  type="checkbox"
-                  checked={formData.agreedToTerms}
-                  onChange={(e) => handleInputChange('agreedToTerms', (e.target as HTMLInputElement).checked)}
-                  className="focus:ring-accent-500 h-4 w-4 text-accent-600 border-gray-300 dark:border-gray-600 rounded"
-                />
-              </div>
-              <div className="ml-3 text-sm">
-                <label htmlFor="agreedToTerms" className="text-gray-700 dark:text-gray-300">
-                  <Trans
-                    i18nKey="onboarding.step1.termsAgreement"
-                    components={{
-                      termsLink: <a href="/terms" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Terms of Service">Terms</a>,
-                      privacyLink: <a href="/privacy" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Privacy Policy">Privacy Policy</a>
-                    }}
-                  />
-                </label>
-                {errors.agreedToTerms && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.agreedToTerms}</p>
-                )}
-              </div>
-            </div>
+            <FormField name="agreedToTerms">
+              {({ value, error, onChange }) => (
+                <FormItem>
+                  <FormControl>
+                    <Checkbox
+                      id="agreedToTerms"
+                      checked={(value as boolean) || false}
+                      onChange={(checked) => onChange(checked)}
+                      label={
+                        <Trans
+                          i18nKey="onboarding.step1.termsAgreement"
+                          components={{
+                            termsLink: <a href="/terms" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Terms of Service">Terms</a>,
+                            privacyLink: <a href="/privacy" className="text-accent-600 dark:text-accent-400 hover:text-accent-500 dark:hover:text-accent-300 underline" aria-label="Privacy Policy">Privacy Policy</a>
+                          }}
+                        />
+                      }
+                      error={error?.message}
+                    />
+                  </FormControl>
+                  {error && (
+                    <FormMessage>{error.message}</FormMessage>
+                  )}
+                </FormItem>
+              )}
+            </FormField>
 
-            {/* Submit Button */}
-            <div>
+            {/* Action Buttons */}
+            <div className="space-y-3">
               <Button
                 type="submit"
                 disabled={isSubmitting}
@@ -210,8 +158,18 @@ const PersonalInfoStep = ({ data, onComplete, onBack: _onBack }: PersonalInfoSte
                   t('onboarding.step1.continue')
                 )}
               </Button>
+              
+              <Button
+                type="button"
+                onClick={onBack}
+                variant="secondary"
+                size="lg"
+                className="w-full"
+              >
+                {t('onboarding.step1.back')}
+              </Button>
             </div>
-          </form>
+          </Form>
         </div>
       </div>
     </div>

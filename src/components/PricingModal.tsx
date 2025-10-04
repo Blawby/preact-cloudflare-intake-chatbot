@@ -3,7 +3,7 @@ import { useState, useEffect } from 'preact/hooks';
 import Modal from './Modal';
 import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
-import { SettingsDropdown } from './settings/components/SettingsDropdown';
+import { Select } from './ui/input/Select';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
@@ -435,12 +435,10 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
               {/* Country/Region Selector */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-400">Country/Region:</span>
-                <SettingsDropdown
-                  label=""
+                <Select
                   value={selectedCountry}
                   options={countryOptions}
                   onChange={handleCountryChange}
-                  className="py-0"
                   direction="up"
                 />
               </div>

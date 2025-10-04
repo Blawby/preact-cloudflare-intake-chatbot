@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
-import { SettingsToggle } from '../components/SettingsToggle';
+import { Switch } from '../../ui/input/Switch';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
@@ -341,7 +341,7 @@ export const SecurityPage = ({
           {/* Multi-factor authentication Section */}
           <div className="flex items-center justify-between py-3">
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 id="mfa-toggle-label" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {t('settings:security.mfa.title')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -349,10 +349,10 @@ export const SecurityPage = ({
               </p>
             </div>
             <div className="ml-4">
-              <SettingsToggle
-                label=""
+              <Switch
                 value={settings.twoFactorEnabled}
                 onChange={(value) => handleToggleChange('twoFactorEnabled', value)}
+                aria-labelledby="mfa-toggle-label"
               />
             </div>
           </div>

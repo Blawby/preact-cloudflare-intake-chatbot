@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useTranslation } from 'react-i18next';
-import { UserIcon, LockClosedIcon, EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { UserIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import OnboardingModal from './onboarding/OnboardingModal';
 import { OnboardingData } from '../utils/mockUserData';
 import { Logo } from './ui/Logo';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from './ui/form';
+import { Input, EmailInput, PasswordInput } from './ui/input';
+import { handleError } from '../utils/errorHandler';
 // No authentication required - authClient removed
 
 interface AuthPageProps {
@@ -41,7 +44,15 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       try {
         await onSuccess();
       } catch (error) {
-        console.error('onSuccess callback failed:', error);
+        // onSuccess callback failed - use production-safe error handling
+        handleError(error, {
+          component: 'AuthPage',
+          action: 'onSuccess-callback',
+          mode
+        }, {
+          component: 'AuthPage',
+          action: 'handleRedirect'
+        });
         // Continue with redirect even if onSuccess fails
       }
     }
@@ -61,8 +72,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     }
   };
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
     setError('');
     setMessage('');
@@ -83,6 +93,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
           id: userId,
           name: formData.name || formData.email.split('@')[0] || t('defaults.demoUserName'),
           email: formData.email,
+          password: formData.password, // Store password for validation (in production, this would be hashed)
           image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
           teamId: null,
           role: 'user',
@@ -90,58 +101,93 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
           subscriptionTier: 'free' // Default to free tier
         };
         
-        // Store new user data (this simulates API response)
-        localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        // Get existing users array or create new one
+        let existingUsers: Array<{id: string; name: string; email: string; password: string | null; image: string; teamId: string | null; role: string; phone: string | null; subscriptionTier: string}> = [];
+        try {
+          existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+        } catch (_error) {
+          // Failed to parse existing users from localStorage
+          existingUsers = [];
+        }
+        
+        // Check if user with this email already exists (case-insensitive)
+        const emailExists = existingUsers.some(user => 
+          user.email && user.email.toLowerCase() === mockUser.email.toLowerCase()
+        );
+        
+        if (emailExists) {
+          // Account already exists, set error
+          setError(t('errors.accountExists'));
+          setLoading(false);
+          return;
+        }
+        
+        // Add new user to the array
+        existingUsers.push(mockUser);
+        
+        // Store updated users array
+        try {
+          localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+        } catch (_error) {
+          // Failed to store users in localStorage
+          setError(t('errors.storageError'));
+          setLoading(false);
+          return;
+        }
+        
+        // Also store as single user for backward compatibility
+        try {
+          localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        } catch (_error) {
+          // Failed to store user in localStorage
+          setError(t('errors.storageError'));
+          setLoading(false);
+          return;
+        }
+        
+        // Create user data without password for auth event
+        const { password: _password, ...userDataWithoutPassword } = mockUser;
         
         // Dispatch custom event to notify UserProfile component
-        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
         
                     setMessage(t('messages.accountCreated'));
         
         // Always show onboarding for new sign-ups
-        console.log('New user registration, showing onboarding modal');
+        // New user registration, showing onboarding modal
         setShowOnboarding(true);
       } else {
         // Simulate API call for sign-in
-        // Check if user exists (simulate API lookup)
-        const existingUser = localStorage.getItem('mockUser');
+        // Read mock users from localStorage as an array
+        const mockUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
         
-        if (existingUser) {
-          // User exists - sign them in
-          const userData = JSON.parse(existingUser);
-          userData.email = formData.email; // Update email if different
-          
-          // Dispatch custom event to notify UserProfile component
-          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
-          
-                      setMessage(t('messages.signedIn'));
-          
-          // Redirect to home page after successful sign in, waiting for onSuccess if provided
-          await handleRedirect();
+        // Find user by email
+        const user = mockUsers.find((u: {email: string; password: string}) => u.email === formData.email);
+        
+        if (user) {
+          // Validate password (in production, this would be a secure hash comparison)
+          if (user.password === formData.password) {
+            // Create user data without password for auth event
+            const { password: _password, ...userDataWithoutPassword } = user;
+            
+            // Dispatch custom event to notify UserProfile component
+            window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+            
+            setMessage(t('messages.signedIn'));
+            
+            // Redirect to home page after successful sign in, waiting for onSuccess if provided
+            await handleRedirect();
+          } else {
+            // Password mismatch - use generic error to avoid user enumeration
+            setError(t('errors.invalidCredentials'));
+            setLoading(false);
+            return;
+          }
         } else {
-          // User doesn't exist - create new user (like some APIs do)
-          const userId = `mock-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          const mockUser = {
-            id: userId,
-            name: formData.email.split('@')[0] || t('defaults.demoUserName'),
-            email: formData.email,
-            image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
-            teamId: null,
-            role: 'user',
-            phone: null,
-            subscriptionTier: 'free'
-          };
-          
-          localStorage.setItem('mockUser', JSON.stringify(mockUser));
-          
-          // Dispatch custom event to notify UserProfile component
-          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
-          
-                      setMessage(t('messages.accountCreatedAndSignedIn'));
-          
-          // Show onboarding for new users created via sign-in
-          setShowOnboarding(true);
+          // User not found - use generic error to avoid user enumeration
+          setError(t('errors.invalidCredentials'));
+          setLoading(false);
+          return;
         }
       }
     } catch (err) {
@@ -157,40 +203,82 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     setMessage('');
 
     try {
-      // Check if this is a new Google user
-      const existingUser = localStorage.getItem('mockUser');
-      const isNewUser = !existingUser;
-      
-      // Generate unique ID for new users
-      const userId = isNewUser ? `mock-user-google-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : 'mock-user-google-123';
-      
-      // No actual authentication - just simulate success
-      // Store mock user data in localStorage
-      const mockUser = {
-        id: userId,
-        name: t('defaults.googleUserName'),
-        email: 'user@gmail.com',
-        image: 'https://i.pravatar.cc/300?u=google-user',
-        teamId: null,
-        role: 'user',
-        phone: null,
-        subscriptionTier: 'free' // Default to free tier
-      };
-      localStorage.setItem('mockUser', JSON.stringify(mockUser));
-      
-      // Dispatch custom event to notify UserProfile component
-      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: mockUser }));
-      
-      setMessage(t('messages.googleSignedIn'));
-      
-      // Only show onboarding modal for new Google users
-      if (isNewUser) {
-        console.log('New Google user detected, showing onboarding modal');
+      if (isSignUp) {
+        // Sign-up mode: Create new Google user and show onboarding
+        const userId = `mock-user-google-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        const mockUser = {
+          id: userId,
+          name: t('defaults.googleUserName'),
+          email: 'user@gmail.com',
+          password: null, // Google users don't have passwords
+          image: 'https://i.pravatar.cc/300?u=google-user',
+          teamId: null,
+          role: 'user',
+          phone: null,
+          subscriptionTier: 'free'
+        };
+        
+        // Get existing users array or create new one
+        const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+        
+        // Add new user to the array
+        existingUsers.push(mockUser);
+        
+        // Store updated users array
+        localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+        
+        // Also store as single user for backward compatibility
+        localStorage.setItem('mockUser', JSON.stringify(mockUser));
+        
+        // Create user data without password for auth event
+        const { password: _password, ...userDataWithoutPassword } = mockUser;
+        
+        // Dispatch custom event to notify UserProfile component
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+        
+        setMessage(t('messages.googleSignedIn'));
+        
+        // Always show onboarding for new sign-ups
         setLoading(false);
         setShowOnboarding(true);
       } else {
-        console.log('Existing Google user, skipping onboarding');
-        // Redirect existing users, waiting for onSuccess if provided
+        // Sign-in mode: Use existing mock user (simulate existing user)
+        // Create a mock existing Google user for sign-in
+        const existingMockUser = {
+          id: 'mock-user-google-existing',
+          name: t('defaults.googleUserName'),
+          email: 'user@gmail.com',
+          password: null, // Google users don't have passwords
+          image: 'https://i.pravatar.cc/300?u=google-user',
+          teamId: null,
+          role: 'user',
+          phone: null,
+          subscriptionTier: 'free'
+        };
+        
+        // Get existing users array or create new one
+        const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+        
+        // Check if this Google user already exists, if not add them
+        const existingGoogleUser = existingUsers.find((u: {email: string}) => u.email === 'user@gmail.com');
+        if (!existingGoogleUser) {
+          existingUsers.push(existingMockUser);
+          localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
+        }
+        
+        // Store the existing user data for backward compatibility
+        localStorage.setItem('mockUser', JSON.stringify(existingMockUser));
+        
+        // Create user data without password for auth event
+        const { password: _password, ...userDataWithoutPassword } = existingMockUser;
+        
+        // Dispatch custom event to notify UserProfile component
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
+        
+        setMessage(t('messages.googleSignedIn'));
+        
+        // Sign-in should NOT show onboarding - redirect to main app
         setLoading(false);
         await handleRedirect();
       }
@@ -200,9 +288,6 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
 
   const handleBackToHome = () => {
     window.location.href = '/';
@@ -211,7 +296,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
   const handleOnboardingComplete = async (data: OnboardingData) => {
     // Development-only debug log with redacted sensitive data
     if (import.meta.env.DEV) {
-      const redactedData = {
+      const _redactedData = {
         personalInfo: {
           fullName: data.personalInfo.fullName ? '[REDACTED]' : undefined,
           birthday: data.personalInfo.birthday ? '[REDACTED]' : undefined,
@@ -224,7 +309,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
         completedAt: data.completedAt,
         skippedSteps: data.skippedSteps
       };
-      console.log('Onboarding completed:', redactedData);
+      // Onboarding completed with redacted data
     }
     // Persist onboarding completion flag before redirecting
     localStorage.setItem('onboardingCompleted', 'true');
@@ -297,89 +382,99 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
             </div>
           </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <Form onSubmit={handleSubmit}>
             <div className="space-y-4">
               {isSignUp && (
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t('signup.fullName')}
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required={isSignUp}
-                      value={formData.name}
-                      onInput={(e) => handleInputChange('name', (e.target as HTMLInputElement).value)}
-                      className="input-base input-with-icon relative block"
-                      placeholder={t('signup.fullNamePlaceholder')}
-                    />
-                    <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
+                <FormField name="name">
+                  {({ error, onChange }) => (
+                    <FormItem>
+                      <FormLabel htmlFor="signup-fullname">{t('signup.fullName')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          id="signup-fullname"
+                          type="text"
+                          required={isSignUp}
+                          value={formData.name}
+                          onChange={(value) => {
+                            onChange(value);
+                            setFormData(prev => ({ ...prev, name: String(value) }));
+                          }}
+                          placeholder={t('signup.fullNamePlaceholder')}
+                          icon={<UserIcon className="h-5 w-5 text-gray-400" />}
+                          error={error?.message}
+                        />
+                      </FormControl>
+                      {error && <FormMessage>{error.message}</FormMessage>}
+                    </FormItem>
+                  )}
+                </FormField>
               )}
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t(isSignUp ? 'signup.email' : 'signin.email')}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onInput={(e) => handleInputChange('email', (e.target as HTMLInputElement).value)}
-                    className="input-base input-with-icon relative block"
-                    placeholder={t(isSignUp ? 'signup.emailPlaceholder' : 'signin.emailPlaceholder')}
-                  />
-                  <EnvelopeIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-              </div>
+              <FormField name="email">
+                {({ error, onChange }) => (
+                  <FormItem>
+                    <FormControl>
+                      <EmailInput
+                        label={t(isSignUp ? 'signup.email' : 'signin.email')}
+                        required
+                        value={formData.email}
+                        onChange={(value) => {
+                          onChange(value);
+                          setFormData(prev => ({ ...prev, email: String(value) }));
+                        }}
+                        placeholder={t(isSignUp ? 'signup.emailPlaceholder' : 'signin.emailPlaceholder')}
+                        error={error?.message}
+                      />
+                    </FormControl>
+                    {error && <FormMessage>{error.message}</FormMessage>}
+                  </FormItem>
+                )}
+              </FormField>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t(isSignUp ? 'signup.password' : 'signin.password')}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                    required
-                    value={formData.password}
-                    onInput={(e) => handleInputChange('password', (e.target as HTMLInputElement).value)}
-                    className="input-base input-with-icon relative block"
-                    placeholder={t(isSignUp ? 'signup.passwordPlaceholder' : 'signin.passwordPlaceholder')}
-                  />
-                  <LockClosedIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-              </div>
+              <FormField name="password">
+                {({ error, onChange }) => (
+                  <FormItem>
+                    <FormControl>
+                      <PasswordInput
+                        id="password-field"
+                        label={t(isSignUp ? 'signup.password' : 'signin.password')}
+                        required
+                        value={formData.password}
+                        onChange={(value) => {
+                          onChange(value);
+                          setFormData(prev => ({ ...prev, password: String(value) }));
+                        }}
+                        placeholder={t(isSignUp ? 'signup.passwordPlaceholder' : 'signin.passwordPlaceholder')}
+                        error={error?.message}
+                      />
+                    </FormControl>
+                    {error && <FormMessage>{error.message}</FormMessage>}
+                  </FormItem>
+                )}
+              </FormField>
 
               {isSignUp && (
-                <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t('signup.confirmPassword')}
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      autoComplete="new-password"
-                      required={isSignUp}
-                      value={formData.confirmPassword}
-                      onInput={(e) => handleInputChange('confirmPassword', (e.target as HTMLInputElement).value)}
-                      className="input-base input-with-icon relative block"
-                      placeholder={t('signup.confirmPasswordPlaceholder')}
-                    />
-                    <LockClosedIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
+                <FormField name="confirmPassword">
+                  {({ error, onChange }) => (
+                    <FormItem>
+                      <FormControl>
+                        <PasswordInput
+                          id="confirm-password-field"
+                          label={t('signup.confirmPassword')}
+                          required={isSignUp}
+                          value={formData.confirmPassword}
+                          onChange={(value) => {
+                            onChange(value);
+                            setFormData(prev => ({ ...prev, confirmPassword: String(value) }));
+                          }}
+                          placeholder={t('signup.confirmPasswordPlaceholder')}
+                          error={error?.message}
+                        />
+                      </FormControl>
+                      {error && <FormMessage>{error.message}</FormMessage>}
+                    </FormItem>
+                  )}
+                </FormField>
               )}
             </div>
 
@@ -423,7 +518,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
                 {isSignUp ? `${t('signup.hasAccount')} ${t('signup.signInLink')}` : `${t('signin.noAccount')} ${t('signin.signUpLink')}`}
               </button>
             </div>
-          </form>
+          </Form>
         </div>
       </div>
 

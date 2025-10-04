@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'preact/hooks';
 import { useTranslation } from 'react-i18next';
-import { SettingsDropdown } from '../components/SettingsDropdown';
+import { FormLabel, SectionDivider } from '../../ui';
+import { Select } from '../../ui/input';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { mockUserDataService, type Language } from '../../../utils/mockUserData';
 import { DEFAULT_LOCALE, detectBestLocale, setLocale, SUPPORTED_LOCALES } from '../../../i18n';
@@ -12,7 +13,7 @@ export interface GeneralPageProps {
 }
 
 export const GeneralPage = ({
-  isMobile = false,
+  isMobile: _isMobile = false,
   onClose: _onClose,
   className = ''
 }: GeneralPageProps) => {
@@ -132,57 +133,85 @@ export const GeneralPage = ({
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-0">
-          <SettingsDropdown
-            label={t('settings:general.theme.label')}
-            value={settings.theme}
-            options={[
-              { value: 'light', label: t('settings:general.theme.options.light') },
-              { value: 'dark', label: t('settings:general.theme.options.dark') },
-              { value: 'system', label: t('settings:general.theme.options.system') }
-            ]}
-            onChange={(value) => handleSettingChange('theme', value)}
-          />
+          <div className="flex items-center justify-between py-3">
+            <div className="flex-1 min-w-0">
+              <FormLabel>{t('settings:general.theme.label')}</FormLabel>
+            </div>
+            <div className="ml-4">
+              <Select
+                value={settings.theme}
+                options={[
+                  { value: 'light', label: t('settings:general.theme.options.light') },
+                  { value: 'dark', label: t('settings:general.theme.options.dark') },
+                  { value: 'system', label: t('settings:general.theme.options.system') }
+                ]}
+                onChange={(value) => handleSettingChange('theme', value)}
+              />
+            </div>
+          </div>
           
-          <div className="border-t border-gray-200 dark:border-dark-border" />
+          <SectionDivider />
           
-          <SettingsDropdown
-            label={t('settings:general.accent.label')}
-            value={settings.accentColor}
-            options={[
-              { value: 'default', label: t('settings:general.accent.options.default') },
-              { value: 'blue', label: t('settings:general.accent.options.blue') },
-              { value: 'green', label: t('settings:general.accent.options.green') },
-              { value: 'purple', label: t('settings:general.accent.options.purple') },
-              { value: 'red', label: t('settings:general.accent.options.red') }
-            ]}
-            onChange={(value) => handleSettingChange('accentColor', value)}
-          />
+          <div className="flex items-center justify-between py-3">
+            <div className="flex-1 min-w-0">
+              <FormLabel>{t('settings:general.accent.label')}</FormLabel>
+            </div>
+            <div className="ml-4">
+              <Select
+                value={settings.accentColor}
+                options={[
+                  { value: 'default', label: t('settings:general.accent.options.default') },
+                  { value: 'blue', label: t('settings:general.accent.options.blue') },
+                  { value: 'green', label: t('settings:general.accent.options.green') },
+                  { value: 'purple', label: t('settings:general.accent.options.purple') },
+                  { value: 'red', label: t('settings:general.accent.options.red') }
+                ]}
+                onChange={(value) => handleSettingChange('accentColor', value)}
+              />
+            </div>
+          </div>
           
-          <div className="border-t border-gray-200 dark:border-dark-border" />
+          <SectionDivider />
           
-          <SettingsDropdown
-            label={t('settings:general.language.label')}
-            value={settings.language}
-            options={languageOptions}
-            onChange={(value) => handleSettingChange('language', value)}
-            description={t('settings:general.language.description')}
-          />
+          <div className="flex items-center justify-between py-3">
+            <div className="flex-1 min-w-0">
+              <FormLabel>{t('settings:general.language.label')}</FormLabel>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {t('settings:general.language.description')}
+              </p>
+            </div>
+            <div className="ml-4">
+              <Select
+                value={settings.language}
+                options={languageOptions}
+                onChange={(value) => handleSettingChange('language', value)}
+              />
+            </div>
+          </div>
           
-          <div className="border-t border-gray-200 dark:border-dark-border" />
+          <SectionDivider />
           
-          <SettingsDropdown
-            label={t('settings:general.spokenLanguage.label')}
-            value={settings.spokenLanguage}
-            options={[
-              { value: 'auto-detect', label: t('common:language.auto') },
-              ...SUPPORTED_LOCALES.map(locale => ({
-                value: locale,
-                label: t(`common:language.${locale}`)
-              }))
-            ]}
-            onChange={(value) => handleSettingChange('spokenLanguage', value)}
-            description={t('settings:general.spokenLanguage.description')}
-          />
+          <div className="flex items-center justify-between py-3">
+            <div className="flex-1 min-w-0">
+              <FormLabel>{t('settings:general.spokenLanguage.label')}</FormLabel>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {t('settings:general.spokenLanguage.description')}
+              </p>
+            </div>
+            <div className="ml-4">
+              <Select
+                value={settings.spokenLanguage}
+                options={[
+                  { value: 'auto-detect', label: t('common:language.auto') },
+                  ...SUPPORTED_LOCALES.map(locale => ({
+                    value: locale,
+                    label: t(`common:language.${locale}`)
+                  }))
+                ]}
+                onChange={(value) => handleSettingChange('spokenLanguage', value)}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

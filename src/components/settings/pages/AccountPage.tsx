@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { Button } from '../../ui/Button';
-import { SettingsDropdown } from '../components/SettingsDropdown';
+import { Select, FormLabel, FormControl, SectionDivider } from '../../ui';
+import { FormItem } from '../../ui/form';
 import Modal from '../../Modal';
 import { 
   EnvelopeIcon,
@@ -437,18 +438,24 @@ export const AccountPage = ({
             </h3>
             
             {/* Domain Selector */}
-            <SettingsDropdown
-              label={t('settings:account.links.domainLabel')}
-              value={selectedDomain}
-              options={[
-                { value: DOMAIN_SELECT_VALUE, label: t('settings:account.links.selectOption') },
-                { value: 'whynot.earth', label: 'whynot.earth' },
-                { value: 'example.com', label: 'example.com' },
-                ...customDomainOptions,
-                { value: 'verify-new', label: `+ ${t('settings:account.links.verifyNew')}` }
-              ]}
-              onChange={handleDomainChange}
-            />
+            <FormItem>
+              <div className="flex-1 min-w-0">
+                <FormLabel>{t('settings:account.links.domainLabel')}</FormLabel>
+              </div>
+              <div className="ml-4">
+                <Select
+                  value={selectedDomain}
+                  options={[
+                    { value: DOMAIN_SELECT_VALUE, label: t('settings:account.links.selectOption') },
+                    { value: 'whynot.earth', label: 'whynot.earth' },
+                    { value: 'example.com', label: 'example.com' },
+                    ...customDomainOptions,
+                    { value: 'verify-new', label: `+ ${t('settings:account.links.verifyNew')}` }
+                  ]}
+                  onChange={handleDomainChange}
+                />
+              </div>
+            </FormItem>
 
             {/* LinkedIn */}
             <div className="flex items-center justify-between py-3">

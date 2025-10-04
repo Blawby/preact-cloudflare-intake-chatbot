@@ -37,16 +37,16 @@ export default function TeamProfile({
 			</div>
 
 			{/* Team Name with Verified Badge */}
-			<div className="flex items-center justify-center gap-2">
-				<h3 className="text-base sm:text-lg lg:text-xl font-semibold text-center m-0 text-gray-900 dark:text-white leading-tight">{name}</h3>
+			<div className="flex items-center justify-center gap-2 w-full">
+				<h3 className="text-base sm:text-lg lg:text-xl font-semibold text-center m-0 text-gray-900 dark:text-white leading-tight truncate min-w-0" title={name}>{name}</h3>
 				{showVerified && variant === 'welcome' && (
 					<CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white flex-shrink-0" aria-label="Verified" title="Verified" />
 				)}
 			</div>
 
 			{/* Team Slug */}
-			<div className="text-center">
-				<span className="text-sm sm:text-base lg:text-lg font-medium text-[#d4af37]">@{teamId}</span>
+			<div className="text-center w-full">
+				<span className="text-sm sm:text-base lg:text-lg font-medium text-[#d4af37] truncate block" title={`@${teamId}`}>@{teamId}</span>
 			</div>
 
 			{/* Team Description - Only show for welcome variant */}

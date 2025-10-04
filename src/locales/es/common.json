@@ -16,6 +16,77 @@
     "zh": "中文",
     "ja": "日本語"
   },
+  "forms": {
+    "labels": {
+      "name": "Nombre Completo",
+      "email": "Dirección de Email",
+      "phone": "Número de Teléfono",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar Contraseña",
+      "birthday": "Cumpleaños",
+      "terms": "Términos y Condiciones",
+      "privacy": "Política de Privacidad",
+      "search": "Buscar",
+      "select": "Seleccionar una opción",
+      "upload": "Subir Archivo",
+      "message": "Mensaje",
+      "subject": "Asunto"
+    },
+    "placeholders": {
+      "name": "Ingresa tu nombre completo",
+      "email": "Ingresa tu dirección de email",
+      "phone": "Ingresa tu número de teléfono",
+      "password": "Ingresa tu contraseña",
+      "confirmPassword": "Confirma tu contraseña",
+      "birthday": "Selecciona tu cumpleaños",
+      "search": "Buscar...",
+      "select": "Seleccionar una opción",
+      "message": "Ingresa tu mensaje",
+      "subject": "Ingresa el asunto"
+    },
+    "descriptions": {
+      "optional": "Opcional",
+      "required": "Requerido",
+      "passwordHelp": "Debe tener al menos 8 caracteres",
+      "phoneHelp": "Incluye código de país para números internacionales",
+      "fileHelp": "Formatos soportados: PDF, DOC, DOCX"
+    },
+    "validation": {
+      "required": "Este campo es requerido",
+      "email": "Por favor ingresa una dirección de email válida",
+      "phone": "Por favor ingresa un número de teléfono válido",
+      "password": "La contraseña debe tener al menos 8 caracteres",
+      "confirmPassword": "Las contraseñas no coinciden",
+      "date": "Por favor ingresa una fecha válida (DD/MM/AAAA)",
+      "futureDate": "La fecha no puede ser en el futuro",
+      "fileType": "Por favor selecciona un tipo de archivo válido",
+      "fileSize": "El tamaño del archivo debe ser menor a 10MB",
+      "termsRequired": "Debes aceptar los términos"
+    },
+    "accessibility": {
+      "togglePassword": "Alternar visibilidad de contraseña",
+      "clearSearch": "Limpiar búsqueda",
+      "selectOption": "Seleccionar opción",
+      "removeOption": "Remover opción",
+      "uploadFile": "Subir archivo",
+      "removeFile": "Remover archivo",
+      "calendarOpen": "Abrir calendario",
+      "calendarClose": "Cerrar calendario"
+    },
+    "actions": {
+      "submit": "Enviar",
+      "submitting": "Enviando...",
+      "reset": "Reiniciar",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "saving": "Guardando..."
+    },
+    "examples": {
+      "validatedForm": {
+        "title": "Ejemplo de Formulario Validado"
+      }
+    }
+  },
   "onboarding": {
     "title": "Bienvenido a Blawby AI",
     "subtitle": "Vamos a configurarte",
