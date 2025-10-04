@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { KeyboardEvent } from 'preact/compat';
 import { z } from 'zod';
 
 import { useNavigation } from '../utils/navigation';
@@ -138,18 +139,25 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
       : t('pricing.summary.placeholder');
 
     return [
-      { id: 'subtotal', label: 'Subtotal', value: subtotal },
-      { id: 'discount', label: 'Discount', value: discountValue },
-      { id: 'total', label: 'Total due today', value: total, emphasis: true }
+      { id: 'subtotal', label: t('common.subtotal'), value: subtotal },
+      { id: 'discount', label: t('common.discount'), value: discountValue },
+      { id: 'total', label: t('common.totalDueToday'), value: total, emphasis: true }
     ];
   }, [cartSession, currencyCode, locale, t]);
 
   const planDescription = useMemo(
     () => {
-      const billingText = planType === 'annual' ? ' x 12 months' : '';
-      return `${userCount} users${billingText}`;
+      const billingPeriod = planType === 'annual' 
+        ? t('pricing.summary.billingPeriodAnnual')
+        : t('pricing.summary.billingPeriodMonthly');
+      return t('pricing.summary.planDescription', {
+        interpolation: {
+          count: userCount,
+          billingPeriod
+        }
+      });
     },
-    [planType, userCount]
+    [planType, userCount, t]
   );
 
   const summaryNotice = useMemo(() => {
@@ -238,6 +246,31 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
   const handleCancel = () => {
     if (typeof window !== 'undefined') {
       window.history.back();
+    }
+  };
+
+  const handlePlanSelectionKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const { key } = event;
+    if (key === 'ArrowLeft' || key === 'ArrowUp') {
+      event.preventDefault();
+      setPlanType(planType === 'annual' ? 'monthly' : 'annual');
+      const newPlanType = planType === 'annual' ? 'monthly' : 'annual';
+      track('pricing_cart_plan_type_selected', { planType: newPlanType });
+      // Focus the newly selected card
+      setTimeout(() => {
+        const selectedCard = document.querySelector(`[role="radio"][aria-checked="true"]`) as HTMLElement;
+        selectedCard?.focus();
+      }, 0);
+    } else if (key === 'ArrowRight' || key === 'ArrowDown') {
+      event.preventDefault();
+      setPlanType(planType === 'monthly' ? 'annual' : 'monthly');
+      const newPlanType = planType === 'monthly' ? 'annual' : 'monthly';
+      track('pricing_cart_plan_type_selected', { planType: newPlanType });
+      // Focus the newly selected card
+      setTimeout(() => {
+        const selectedCard = document.querySelector(`[role="radio"][aria-checked="true"]`) as HTMLElement;
+        selectedCard?.focus();
+      }, 0);
     }
   };
 
@@ -333,7 +366,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
           <div className="space-y-8">
             <section className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2" role="radiogroup" aria-labelledby="plan-selection-heading">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2" role="radiogroup" aria-labelledby="plan-selection-heading" tabIndex={0} onKeyDown={handlePlanSelectionKeyDown}>
                   <PlanCard
                     title={t('pricing.annual')}
                     price={annualPrice}
@@ -422,6 +455,7 @@ const PricingCart: FunctionComponent<PricingCartProps> = ({ className = '' }) =>
                 pricePerSeat={pricePerSeat}
                 lineItems={lineItems}
                 billingNote={billingNote}
+                isAnnual={planType === 'annual'}
                 primaryAction={{
                   label: t('pricing.continueToBilling'),
                   loadingLabel: t('pricing.processing'),

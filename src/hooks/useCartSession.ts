@@ -269,6 +269,12 @@ export const useCartSession = ({
 
         if (sessionError instanceof RetryError) {
           const cause = sessionError.cause;
+          if (cause instanceof Error && cause.message === 'Session expired') {
+            mockPaymentDataService.clearCartSession();
+            setCartSessionSafely(null);
+            setErrorSafely({ code: 'expired' });
+            return;
+          }
           const message = cause instanceof Error ? cause.message : undefined;
           setErrorSafely({ code: 'network', message });
           return;

@@ -47,19 +47,19 @@ interface CheckoutFormData {
 }
 
 const emptyCheckoutData: CheckoutFormData = {
-  fullName: 'John Smith',
-  email: 'john.smith@example.com',
-  company: 'Acme Legal Firm',
-  country: 'US',
-  addressLine1: '123 Main Street',
-  addressLine2: 'Suite 200',
-  city: 'San Francisco',
-  state: 'CA',
-  zipCode: '94105',
-  cardNumber: '4242424242424242',
-  cardExpiry: '12/25',
-  cardCvv: '123',
-  agreeTerms: true
+  fullName: '',
+  email: '',
+  company: '',
+  country: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  state: '',
+  zipCode: '',
+  cardNumber: '',
+  cardExpiry: '',
+  cardCvv: '',
+  agreeTerms: false
 };
 
 interface PricingCheckoutProps {
@@ -545,6 +545,7 @@ const PricingCheckout: FunctionComponent<PricingCheckoutProps> = ({ className = 
                 }) : ''}
                 lineItems={summaryLineItems}
                 billingNote={cartSession ? (cartSession.planType === 'annual' ? t('pricing.summary.billingAnnual') : t('pricing.summary.billingMonthly')) : ''}
+                isAnnual={cartSession?.planType === 'annual'}
                 primaryAction={{
                   label: t('pricing.checkout.actions.submit'),
                   loadingLabel: t('pricing.checkout.actions.processing'),

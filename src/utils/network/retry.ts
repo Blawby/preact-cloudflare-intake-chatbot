@@ -102,7 +102,7 @@ export const retryWithBackoff = async <T,>(
 
       const exponentialDelay = Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1));
       const delay = jitter
-        ? Math.floor(Math.random() * (exponentialDelay - baseDelayMs + 1)) + baseDelayMs
+        ? Math.floor(Math.random() * (exponentialDelay - Math.min(baseDelayMs, exponentialDelay) + 1)) + Math.min(baseDelayMs, exponentialDelay)
         : exponentialDelay;
 
       await wait(delay, signal);
