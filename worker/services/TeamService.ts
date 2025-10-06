@@ -1,4 +1,6 @@
 import { Env } from '../types.js';
+import { ValidationService } from './ValidationService.js';
+import { ValidationError } from '../utils/validationErrors.js';
 
 export type TeamVoiceProvider = 'cloudflare' | 'elevenlabs' | 'custom';
 
@@ -11,7 +13,9 @@ export interface TeamVoiceConfig {
 }
 
 export interface TeamConfig {
+  aiProvider?: string;
   aiModel?: string;
+  aiModelFallback?: string[];
   consultationFee?: number;
   requiresPayment?: boolean;
   ownerEmail?: string;
@@ -41,6 +45,114 @@ export interface TeamConfig {
   };
 }
 
+const LEGACY_AI_PROVIDER = 'legacy-llama';
+const DEFAULT_LLAMA_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
+
+const DEFAULT_AVAILABLE_SERVICES = [
+  'Family Law',
+  'Employment Law',
+  'Business Law',
+  'Intellectual Property',
+  'Personal Injury',
+  'Criminal Law',
+  'Civil Law',
+  'Tenant Rights Law',
+  'Probate and Estate Planning',
+  'Special Education and IEP Advocacy',
+  'Small Business and Nonprofits',
+  'Contract Review',
+  'General Consultation'
+] as const;
+
+function normalizeProvider(input?: string | null): string {
+  if (!input) {
+    return LEGACY_AI_PROVIDER;
+  }
+  const trimmed = input.trim();
+  return trimmed.length > 0 ? trimmed : LEGACY_AI_PROVIDER;
+}
+
+function sanitizeModel(model?: string | null): string | undefined {
+  if (!model) {
+    return undefined;
+  }
+  const trimmed = model.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function sanitizeFallbackList(value: unknown): string[] {
+  if (!value) {
+    return [];
+  }
+
+  const values = Array.isArray(value)
+    ? value.filter(item => typeof item === 'string')
+    : typeof value === 'string'
+      ? value.split(',')
+      : [];
+
+  return Array.from(new Set(values.map(v => v.trim()).filter(v => v.length > 0)));
+}
+
+function buildFallbackList(baseModel: string, preferred?: string[], useDefaults: boolean = true): string[] {
+  const normalized = sanitizeFallbackList(preferred);
+  
+  // If preferred was explicitly provided but is empty, return empty array
+  if (preferred !== undefined && normalized.length === 0) {
+    return [];
+  }
+  
+  // If normalized is empty and defaults are allowed, return DEFAULT_LLAMA_MODEL filtered against baseModel
+  if (!normalized.length && useDefaults) {
+    return [DEFAULT_LLAMA_MODEL].filter(model => model !== baseModel);
+  }
+  
+  // If normalized is empty and defaults are disabled, return empty array
+  if (!normalized.length && !useDefaults) {
+    return [];
+  }
+
+  const unique = new Set<string>();
+  normalized.forEach(model => {
+    if (model !== baseModel) {
+      unique.add(model);
+    }
+  });
+
+  if (!unique.size && baseModel !== DEFAULT_LLAMA_MODEL && useDefaults) {
+    unique.add(DEFAULT_LLAMA_MODEL);
+  }
+
+  return Array.from(unique);
+}
+
+export function buildDefaultTeamConfig(env: Env): TeamConfig {
+  const defaultProvider = normalizeProvider(env.AI_PROVIDER_DEFAULT);
+  const defaultModel = sanitizeModel(env.AI_MODEL_DEFAULT) ?? DEFAULT_LLAMA_MODEL;
+  const fallbackFromEnv = sanitizeFallbackList(env.AI_MODEL_FALLBACK);
+  const fallbackList = buildFallbackList(defaultModel, fallbackFromEnv);
+
+  return {
+    aiProvider: defaultProvider,
+    aiModel: defaultModel,
+    aiModelFallback: fallbackList,
+    consultationFee: 0,
+    requiresPayment: false,
+    ownerEmail: undefined,
+    availableServices: [...DEFAULT_AVAILABLE_SERVICES],
+    jurisdiction: {
+      type: 'national',
+      description: 'Available nationwide',
+      supportedStates: ['all'],
+      supportedCountries: ['US']
+    },
+    voice: {
+      enabled: false,
+      provider: 'cloudflare'
+    }
+  };
+}
+
 export interface Team {
   id: string;
   slug: string;
@@ -56,35 +168,42 @@ export class TeamService {
 
   constructor(private env: Env) {}
 
+  private getDefaultConfig(): TeamConfig {
+    return buildDefaultTeamConfig(this.env);
+  }
+
   /**
    * Resolves environment variable placeholders in team configuration
    * This allows storing sensitive data like API keys as environment variable references
    * Supports generic ${VAR_NAME} pattern matching
    */
-  private resolveEnvironmentVariables(config: any): any {
-    if (typeof config !== 'object' || config === null) {
+  private resolveEnvironmentVariables<T>(config: T): T {
+    if (config === null || typeof config !== 'object') {
       return config;
     }
 
-    const resolved = { ...config };
-    
-    // Recursively resolve nested objects and handle string substitutions
-    for (const [key, value] of Object.entries(resolved)) {
-      if (typeof value === 'object' && value !== null) {
-        resolved[key] = this.resolveEnvironmentVariables(value);
-      } else if (typeof value === 'string') {
-        resolved[key] = this.resolveStringVariables(value);
-      }
+    if (Array.isArray(config)) {
+      return config.map(item => this.resolveEnvironmentVariables(item)) as unknown as T;
     }
 
-    return resolved;
+    const resolvedEntries = Object.entries(config as Record<string, unknown>).map(([key, value]) => {
+      if (value && typeof value === 'object') {
+        return [key, this.resolveEnvironmentVariables(value)];
+      }
+      if (typeof value === 'string') {
+        return [key, this.resolveStringVariables(value)];
+      }
+      return [key, value];
+    });
+
+    return Object.fromEntries(resolvedEntries) as T;
   }
 
   /**
    * Safely decodes team config from database as plain JSON
    * Team configs are stored as plain JSON text in the database
    */
-  private decodeTeamConfig(configString: string): any {
+  private decodeTeamConfig(configString: string): unknown {
     try {
       return JSON.parse(configString);
     } catch (jsonError) {
@@ -93,7 +212,7 @@ export class TeamService {
         error: jsonError 
       });
       // Return a safe default config if JSON parsing fails
-      return { aiModel: 'llama', requiresPayment: false };
+      return buildDefaultTeamConfig(this.env);
     }
   }
 
@@ -106,7 +225,7 @@ export class TeamService {
     // Handle ${VAR_NAME} pattern
     const envVarRegex = /\$\{([^}]+)\}/g;
     let result = value.replace(envVarRegex, (match, varName) => {
-      const envValue = (this.env as any)[varName];
+      const envValue = this.getEnvValue(varName);
       console.log(`🔍 Resolving ${varName}: ${envValue !== undefined ? 'FOUND' : 'NOT FOUND'}`);
       return envValue !== undefined ? envValue : match;
     });
@@ -114,7 +233,7 @@ export class TeamService {
     // Handle direct environment variable names (without ${} wrapper)
     // Only replace if the value looks like an environment variable name
     if (result.match(/^[A-Z_]+$/)) {
-      const envValue = (this.env as any)[result];
+      const envValue = this.getEnvValue(result);
       console.log(`🔍 Resolving direct ${result}: ${envValue !== undefined ? 'FOUND' : 'NOT FOUND'}`);
       if (envValue !== undefined) {
         return envValue;
@@ -122,6 +241,10 @@ export class TeamService {
     }
     
     return result;
+  }
+
+  private getEnvValue(key: string): string | undefined {
+    return (this.env as unknown as Record<string, unknown>)[key] as string | undefined;
   }
 
   /**
@@ -152,8 +275,9 @@ export class TeamService {
    * @param config The team configuration to normalize
    * @returns Normalized team configuration with array fields
    */
-  private normalizeConfigArrays(config: any): TeamConfig {
-    const normalized: Partial<TeamConfig> & { voice?: unknown } = { ...config };
+  private normalizeConfigArrays(config: unknown): TeamConfig {
+    const base = (config ?? {}) as Record<string, unknown>;
+    const normalized: Partial<TeamConfig> & { voice?: unknown } = { ...base };
 
     // Normalize availableServices
     if (normalized.availableServices && !Array.isArray(normalized.availableServices)) {
@@ -168,6 +292,10 @@ export class TeamService {
       if (normalized.jurisdiction.supportedCountries && !Array.isArray(normalized.jurisdiction.supportedCountries)) {
         normalized.jurisdiction.supportedCountries = Object.values(normalized.jurisdiction.supportedCountries);
       }
+    }
+
+    if (normalized.aiModelFallback !== undefined) {
+      normalized.aiModelFallback = sanitizeFallbackList(normalized.aiModelFallback);
     }
 
     normalized.voice = this.normalizeVoiceConfig(normalized.voice);
@@ -239,7 +367,7 @@ export class TeamService {
       if (teamRow) {
         const rawConfig = this.decodeTeamConfig(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-        const normalizedConfig = this.normalizeConfigArrays(resolvedConfig);
+        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false);
         
         const team: Team = {
           id: teamRow.id as string,
@@ -270,51 +398,48 @@ export class TeamService {
 
   /**
    * Validates and normalizes team configuration to ensure all required properties are present
+   * @param strictValidation - if true, applies strict validation including placeholder email checks
    */
-  private validateAndNormalizeConfig(config: TeamConfig | null | undefined): TeamConfig {
-    // Handle null/undefined config by coercing to empty object
-    if (!config) {
-      config = {};
+  private validateAndNormalizeConfig(config: TeamConfig | null | undefined, strictValidation: boolean = false): TeamConfig {
+    const defaultConfig = this.getDefaultConfig();
+    const sourceConfig = (config ?? {}) as TeamConfig;
+
+    const aiProvider = normalizeProvider(sourceConfig.aiProvider ?? defaultConfig.aiProvider);
+    const aiModel = sanitizeModel(sourceConfig.aiModel) ?? defaultConfig.aiModel ?? DEFAULT_LLAMA_MODEL;
+    const providedFallback = sourceConfig.aiModelFallback !== undefined
+      ? sanitizeFallbackList(sourceConfig.aiModelFallback)
+      : undefined;
+    const fallbackList = buildFallbackList(aiModel, providedFallback ?? defaultConfig.aiModelFallback ?? []);
+
+    // Validate ownerEmail if provided
+    let ownerEmail = sourceConfig.ownerEmail ?? defaultConfig.ownerEmail;
+    if (ownerEmail && strictValidation) {
+      // Check for placeholder emails and reject them
+      const placeholderEmails = ['default@example.com', 'test@example.com', 'admin@example.com', 'owner@example.com'];
+      if (placeholderEmails.includes(ownerEmail.toLowerCase())) {
+        throw new ValidationError(`Invalid ownerEmail: placeholder email '${ownerEmail}' is not allowed. Please provide a real email address.`);
+      }
+      
+      // Validate email format
+      if (!ValidationService.validateEmail(ownerEmail)) {
+        throw new ValidationError(`Invalid ownerEmail format: '${ownerEmail}' is not a valid email address.`);
+      }
     }
 
-    const defaultConfig: TeamConfig = {
-      aiModel: 'llama',
-      consultationFee: 0,
-      requiresPayment: false,
-      ownerEmail: 'default@example.com',
-      availableServices: [
-        'Family Law',
-        'Employment Law',
-        'Business Law',
-        'Intellectual Property',
-        'Personal Injury',
-        'Criminal Law',
-        'Civil Law',
-        'Tenant Rights Law',
-        'Probate and Estate Planning',
-        'Special Education and IEP Advocacy',
-        'Small Business and Nonprofits',
-        'Contract Review',
-        'General Consultation'
-      ],
+    const merged: TeamConfig = {
+      ...defaultConfig,
+      ...sourceConfig,
+      aiProvider,
+      aiModel,
+      aiModelFallback: fallbackList,
+      ownerEmail,
       jurisdiction: {
-        type: 'national',
-        description: 'Available nationwide',
-        supportedStates: ['all'],
-        supportedCountries: ['US']
+        ...defaultConfig.jurisdiction,
+        ...(sourceConfig.jurisdiction || {})
       }
     };
 
-    // Merge provided config with defaults, ensuring all required properties are present
-    // Use optional chaining to safely access config.jurisdiction
-    return {
-      ...defaultConfig,
-      ...config,
-      jurisdiction: {
-        ...defaultConfig.jurisdiction,
-        ...(config.jurisdiction || {})
-      }
-    };
+    return this.normalizeConfigArrays(merged);
   }
 
   async createTeam(teamData: Omit<Team, 'id' | 'createdAt' | 'updatedAt'>): Promise<Team> {
@@ -322,7 +447,7 @@ export class TeamService {
     const now = new Date().toISOString();
     
     // Validate and normalize the team configuration
-    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config);
+    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config, true);
     
     const team: Team = {
       ...teamData,
@@ -371,12 +496,12 @@ export class TeamService {
     }
 
     // Extract only mutable fields from updates, excluding immutable fields
-    const { id, createdAt, ...mutableUpdates } = updates;
+    const { id: _ignoreId, createdAt: _ignoreCreatedAt, ...mutableUpdates } = updates;
 
     // Validate and normalize the team configuration if it's being updated
     let normalizedConfig = existingTeam.config;
     if (mutableUpdates.config) {
-      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config);
+      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config, true);
     }
     
     const updatedTeam: Team = {
@@ -447,14 +572,20 @@ export class TeamService {
       'SELECT id, slug, name, config, created_at, updated_at FROM teams ORDER BY created_at DESC'
     ).all();
 
-    return teams.results.map(row => ({
-      id: row.id as string,
-      slug: row.slug as string,
-      name: row.name as string,
-      config: this.decodeTeamConfig(row.config as string),
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string
-    }));
+    return teams.results.map(row => {
+      const rawConfig = this.decodeTeamConfig(row.config as string);
+      const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
+      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false);
+      
+      return {
+        id: row.id as string,
+        slug: row.slug as string,
+        name: row.name as string,
+        config: normalizedConfig,
+        createdAt: row.created_at as string,
+        updatedAt: row.updated_at as string
+      };
+    });
   }
 
   async validateTeamAccess(teamId: string, apiToken: string): Promise<boolean> {

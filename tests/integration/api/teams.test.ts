@@ -10,7 +10,7 @@ async function createTestTeam() {
       aiModel: 'llama',
       consultationFee: 150,
       requiresPayment: true,
-      ownerEmail: 'test@example.com',
+      ownerEmail: 'test@realcompany.com',
       availableServices: ['Family Law', 'Business Law'],
       jurisdiction: {
         type: 'state',
@@ -178,7 +178,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
           aiModel: 'llama',
           consultationFee: 150,
           requiresPayment: true,
-          ownerEmail: 'test@example.com',
+          ownerEmail: 'test@realcompany.com',
           availableServices: ['Family Law', 'Business Law'],
           jurisdiction: {
             type: 'state',

@@ -146,9 +146,11 @@ export interface AIModelLogEntry extends LegalIntakeLogEntry {
   operation: LegalIntakeOperation.AI_MODEL_CALL | LegalIntakeOperation.AI_MODEL_RESPONSE;
   metadata: {
     model?: string;
+    provider?: string;
     tokenCount?: number;
     responseLength?: number;
     processingTime?: number;
+    fallback?: string[];
   };
 }
 
@@ -389,7 +391,9 @@ export class LegalIntakeLogger {
     model?: string,
     tokenCount?: number,
     responseLength?: number,
-    processingTime?: number
+    processingTime?: number,
+    provider?: string,
+    fallback?: string[]
   ): void {
     const logEntry: AIModelLogEntry = {
       correlationId,
@@ -401,9 +405,11 @@ export class LegalIntakeLogger {
       message: `AI model ${operation.split('_').pop()}`,
       metadata: {
         model,
+        provider,
         tokenCount,
         responseLength,
-        processingTime
+        processingTime,
+        fallback
       }
     };
 

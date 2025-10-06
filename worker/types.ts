@@ -23,6 +23,12 @@ export interface Env {
   IDEMPOTENCY_SALT?: string;
   PAYMENT_IDEMPOTENCY_SECRET?: string;
   LAWYER_SEARCH_API_KEY?: string;
+  // AI provider defaults / feature flags
+  AI_PROVIDER_DEFAULT?: string;
+  AI_MODEL_DEFAULT?: string;
+  AI_MODEL_FALLBACK?: string[];  // Align with Team.config.aiModelFallback type
+  ENABLE_WORKERS_AI?: boolean;   // Use boolean for feature flags
+  ENABLE_GATEWAY_OPENAI?: boolean;
   
   // Environment flags
   NODE_ENV?: string;
@@ -87,10 +93,12 @@ export interface Team {
   id: string;
   name: string;
   config: {
+    aiProvider?: string;
     aiModel: string;
+    aiModelFallback?: string[];
     consultationFee: number;
     requiresPayment: boolean;
-    ownerEmail: string;
+    ownerEmail?: string;
     availableServices: string[];
     serviceQuestions: Record<string, string[]>;
     domain: string;

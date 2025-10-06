@@ -90,6 +90,11 @@ export const businessScopeValidator: PipelineMiddleware = {
       }
     }
 
+    // Allow contact-collection flows to proceed without blocking on service availability
+    if (context.userIntent === 'lawyer_contact' || context.conversationPhase === 'contact_collection') {
+      return { context };
+    }
+
     // Check for general legal requests when no specific matter is established
     if (isGeneralLegalRequest(latestMessage.content) && context.establishedMatters.length === 0) {
       const response = getGeneralLegalResponse(availableServices, teamConfig);

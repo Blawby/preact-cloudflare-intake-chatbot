@@ -1,38 +1,8 @@
-// Import TeamConfig from TeamService instead of defining it here
-import { TeamConfig } from './TeamService.js';
+// Import TeamConfig helpers from TeamService instead of defining it here
+import { TeamConfig, buildDefaultTeamConfig } from './TeamService.js';
 import { Logger } from '../utils/logger.js';
 import type { Env } from '../types.js';
 import type { Ai } from '@cloudflare/workers-types';
-
-// Default team configuration - centralized for maintainability
-const DEFAULT_TEAM_CONFIG: TeamConfig = {
-  aiModel: 'llama',
-  requiresPayment: false,
-  consultationFee: 0,
-  ownerEmail: 'default@example.com',
-  paymentLink: null,
-  availableServices: [
-    'Family Law',
-    'Employment Law',
-    'Business Law',
-    'Intellectual Property',
-    'Personal Injury',
-    'Criminal Law',
-    'Civil Law',
-    'Tenant Rights Law',
-    'Probate and Estate Planning',
-    'Special Education and IEP Advocacy',
-    'Small Business and Nonprofits',
-    'Contract Review',
-    'General Consultation'
-  ],
-  jurisdiction: {
-    type: 'national',
-    description: 'Available nationwide',
-    supportedStates: ['all'],
-    supportedCountries: ['US']
-  }
-};
 
 // Optimized AI Service with caching and timeouts
 export class AIService {
@@ -47,7 +17,10 @@ export class AIService {
     });
   }
   
-  async runLLM(messages: any[], model: string = '@cf/meta/llama-3.1-8b-instruct') {
+  async runLLM(
+    messages: Array<Record<string, unknown>>,
+    model: string = '@cf/meta/llama-3.1-8b-instruct'
+  ) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
@@ -92,9 +65,8 @@ export class AIService {
     } catch (error) {
       Logger.warn('Failed to fetch team config:', error);
     }
-    
     Logger.info('Returning default team config');
-    return DEFAULT_TEAM_CONFIG;
+    return buildDefaultTeamConfig(this.env);
   }
 
   // Clear cache for a specific team or all teams

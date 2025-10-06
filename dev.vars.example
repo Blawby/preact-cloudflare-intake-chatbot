@@ -9,6 +9,13 @@ NODE_ENV=development
 # Debug Configuration
 VITE_DEBUG_OVERLAY=false
 
+# AI Provider Defaults
+AI_PROVIDER_DEFAULT=workers-ai
+AI_MODEL_DEFAULT=@cf/openai/gpt-oss-20b
+AI_MODEL_FALLBACK=@cf/meta/llama-3.1-8b-instruct
+ENABLE_WORKERS_AI=true
+ENABLE_GATEWAY_OPENAI=false
+
 # API Keys and Tokens (SENSITIVE)
 BLAWBY_API_TOKEN=your_blawby_api_token_here
 LAWYER_SEARCH_API_KEY=your_lawyer_search_api_key_here

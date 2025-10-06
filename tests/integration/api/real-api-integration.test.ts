@@ -279,14 +279,14 @@ describe('Real API Integration Tests', () => {
         - Total: $1,250
         
         PAYMENT OPTIONS:
-        - Online portal: www.downtownproperties.com
+        - Online portal: www.example.com
         - Mail: PO Box 123, Charlotte, NC 28201
         - In person: 456 Business Ave, Charlotte, NC
         
         CONTACT:
         Property Manager: John Davis
         Phone: (704) 555-0123
-        Email: john.davis@downtownproperties.com
+        Email: john.davis@example.com
       `;
       
       const legalBlob = new Blob([legalContent], { type: 'text/plain' });

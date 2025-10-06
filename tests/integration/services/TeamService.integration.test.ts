@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
+import { ApiResponse } from '../../../worker/types.js';
+import { Team } from '../../../worker/services/TeamService.js';
 
 describe('TeamService Integration - Real API', () => {
   beforeAll(async () => {
@@ -22,14 +24,14 @@ describe('TeamService Integration - Real API', () => {
       const response = await fetch(`${WORKER_URL}/api/teams`);
       
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<Team[]>;
       
       expect(result.success).toBe(true);
       expect(Array.isArray(result.data)).toBe(true);
-      expect(result.data.length).toBeGreaterThan(0);
+      expect(result.data!.length).toBeGreaterThan(0);
       
       // Verify team structure
-      const team = result.data[0];
+      const team = result.data![0];
       expect(team).toHaveProperty('id');
       expect(team).toHaveProperty('slug');
       expect(team).toHaveProperty('name');
@@ -41,13 +43,13 @@ describe('TeamService Integration - Real API', () => {
     it('should return team by ID', async () => {
       // First get all teams to find a valid ID
       const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
-      const teamsData = await teamsResponse.json();
-      const validTeamId = teamsData.data[0].id;
+      const teamsData = await teamsResponse.json() as ApiResponse<Team[]>;
+      const validTeamId = teamsData.data![0].id;
       
       const response = await fetch(`${WORKER_URL}/api/teams/${validTeamId}`);
       
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<Team>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('id', validTeamId);
@@ -59,13 +61,13 @@ describe('TeamService Integration - Real API', () => {
     it('should return team by slug', async () => {
       // First get all teams to find a valid slug
       const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
-      const teamsData = await teamsResponse.json();
-      const validTeamSlug = teamsData.data[0].slug;
+      const teamsData = await teamsResponse.json() as ApiResponse<Team[]>;
+      const validTeamSlug = teamsData.data![0].slug;
       
       const response = await fetch(`${WORKER_URL}/api/teams/${validTeamSlug}`);
       
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<Team>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('slug', validTeamSlug);
@@ -78,7 +80,7 @@ describe('TeamService Integration - Real API', () => {
       const response = await fetch(`${WORKER_URL}/api/teams/non-existent-team`);
       
       expect(response.status).toBe(404);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse;
       expect(result.success).toBe(false);
     });
   });
@@ -92,7 +94,7 @@ describe('TeamService Integration - Real API', () => {
                 aiModel: 'llama',
                 consultationFee: 0,
                 requiresPayment: false,
-          ownerEmail: 'test@example.com',
+          ownerEmail: 'test@realcompany.com',
           availableServices: ['Test Service'],
                 jurisdiction: {
                   type: 'national',
@@ -117,7 +119,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(201);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<Team>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('id');
@@ -141,7 +143,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(400);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse;
       expect(result.success).toBe(false);
     });
   });
@@ -156,7 +158,7 @@ describe('TeamService Integration - Real API', () => {
           aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
-          ownerEmail: 'update@example.com',
+          ownerEmail: 'update@realcompany.com',
           availableServices: ['Update Service'],
           jurisdiction: {
             type: 'national',
@@ -180,8 +182,8 @@ describe('TeamService Integration - Real API', () => {
         body: JSON.stringify(newTeam)
       });
 
-      const createdTeam = await createResponse.json();
-      const teamId = createdTeam.data.id;
+      const createdTeam = await createResponse.json() as ApiResponse<Team>;
+      const teamId = createdTeam.data!.id;
 
       // Update the team
       const updatedTeam = {
@@ -202,7 +204,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(updateResponse.status).toBe(200);
-      const result = await updateResponse.json();
+      const result = await updateResponse.json() as ApiResponse<Team>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('name', 'Updated Team Name');
@@ -224,7 +226,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(404);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse;
       expect(result.success).toBe(false);
     });
   });
@@ -241,7 +243,7 @@ describe('TeamService Integration - Real API', () => {
           aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
-          ownerEmail: 'delete@example.com',
+          ownerEmail: 'delete@realcompany.com',
           availableServices: ['Delete Service'],
           jurisdiction: {
             type: 'national',
@@ -266,14 +268,14 @@ describe('TeamService Integration - Real API', () => {
       });
 
       console.log('Create response status:', createResponse.status);
-      const createdTeam = await createResponse.json();
+      const createdTeam = await createResponse.json() as ApiResponse<Team>;
       console.log('Created team response:', JSON.stringify(createdTeam, null, 2));
       
       if (!createdTeam.success) {
         throw new Error(`Team creation failed: ${JSON.stringify(createdTeam)}`);
       }
       
-      const teamId = createdTeam.data.id;
+      const teamId = createdTeam.data!.id;
 
       // Delete the team
       console.log('Attempting to delete team with ID:', teamId);
@@ -282,7 +284,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       console.log('Delete response status:', deleteResponse.status);
-      const deleteResult = await deleteResponse.json();
+      const deleteResult = await deleteResponse.json() as ApiResponse;
       console.log('Delete response:', JSON.stringify(deleteResult, null, 2));
 
       expect(deleteResponse.status).toBe(200);
@@ -299,7 +301,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(404);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse;
       expect(result.success).toBe(false);
     });
   });
@@ -307,8 +309,8 @@ describe('TeamService Integration - Real API', () => {
   describe('Team configuration validation', () => {
     it('should validate team configuration structure', async () => {
       const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
-      const teamsData = await teamsResponse.json();
-      const team = teamsData.data[0];
+      const teamsData = await teamsResponse.json() as ApiResponse<Team[]>;
+      const team = teamsData.data![0];
 
       // Verify config has required fields
       expect(team.config).toHaveProperty('aiModel');
@@ -321,10 +323,10 @@ describe('TeamService Integration - Real API', () => {
 
     it('should handle teams with different configurations', async () => {
       const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
-      const teamsData = await teamsResponse.json();
+      const teamsData = await teamsResponse.json() as ApiResponse<Team[]>;
 
       // Test that different teams can have different configurations
-      const teams = teamsData.data;
+      const teams = teamsData.data!;
       expect(teams.length).toBeGreaterThan(0);
 
       // Each team should have a unique ID
@@ -349,7 +351,7 @@ describe('TeamService Integration - Real API', () => {
           aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
-          ownerEmail: 'apitoken@example.com',
+          ownerEmail: 'apitoken@realcompany.com',
           availableServices: ['API Token Testing'],
           jurisdiction: {
             type: 'national',
@@ -372,8 +374,8 @@ describe('TeamService Integration - Real API', () => {
         body: JSON.stringify(newTeam)
       });
 
-      const createdTeam = await createResponse.json();
-      testTeamId = createdTeam.data.id;
+      const createdTeam = await createResponse.json() as ApiResponse<Team>;
+      testTeamId = createdTeam.data!.id;
     });
 
     afterAll(async () => {
@@ -399,15 +401,15 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(201);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<{ token: string; tokenId: string }>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('token');
       expect(result.data).toHaveProperty('tokenId');
-      expect(result.data.token).toBeTruthy();
-      expect(result.data.tokenId).toBeTruthy();
+      expect(result.data!.token).toBeTruthy();
+      expect(result.data!.tokenId).toBeTruthy();
 
-      createdToken = result.data;
+      createdToken = result.data!;
     });
 
     it('should validate API token successfully', async () => {
@@ -424,7 +426,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<{ valid: boolean }>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('valid', true);
@@ -440,7 +442,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<{ valid: boolean }>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('valid', false);
@@ -450,13 +452,13 @@ describe('TeamService Integration - Real API', () => {
       const response = await fetch(`${WORKER_URL}/api/teams/${testTeamId}/tokens`);
 
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<Array<{ id: string; tokenName: string; permissions: string[]; createdAt: string; active: boolean }>>;
       
       expect(result.success).toBe(true);
       expect(Array.isArray(result.data)).toBe(true);
-      expect(result.data.length).toBeGreaterThan(0);
+      expect(result.data!.length).toBeGreaterThan(0);
       
-      const token = result.data[0];
+      const token = result.data![0];
       expect(token).toHaveProperty('id');
       expect(token).toHaveProperty('tokenName');
       expect(token).toHaveProperty('permissions');
@@ -474,7 +476,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('success', true);
@@ -490,7 +492,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<{ valid: boolean }>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('valid', true);
@@ -506,7 +508,7 @@ describe('TeamService Integration - Real API', () => {
       });
 
       expect(response.status).toBe(200);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<{ valid: boolean }>;
       
       expect(result.success).toBe(true);
       expect(result.data).toHaveProperty('valid', false);
@@ -521,7 +523,7 @@ describe('TeamService Integration - Real API', () => {
         body: JSON.stringify({})
       });
 
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<{ success: boolean }>;
       
       expect(response.status).toBe(200);
       expect(result.success).toBe(true);

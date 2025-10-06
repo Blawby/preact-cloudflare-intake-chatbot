@@ -1,5 +1,5 @@
 import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../types.js';
-import { TeamService, type Team } from '../../services/TeamService.js';
+import { TeamService, type Team, buildDefaultTeamConfig } from '../../services/TeamService.js';
 import { ConversationContextManager } from '../../middleware/conversationContextManager.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
@@ -18,11 +18,32 @@ import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js'
 // CONSTANTS
 // ============================================================================
 
-const AI_MODEL_CONFIG = {
-  model: '@cf/meta/llama-3.1-8b-instruct',
+const DEFAULT_AI_PROVIDER = 'legacy-llama';
+const DEFAULT_LEGACY_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+
+const BASE_AI_EXECUTION = {
   maxTokens: 500,
   temperature: 0.1
 } as const;
+
+interface AIExecutionOverrides {
+  provider?: string;
+  model?: string;
+}
+
+interface AIExecutionPlan {
+  readonly provider: string;
+  readonly model: string;
+  readonly fallback: string[];
+  readonly maxTokens: number;
+  readonly temperature: number;
+}
+
+interface AIExecutionResult<T = unknown> {
+  readonly model: string;
+  readonly provider: string;
+  readonly result: T;
+}
 
 const MATTER_TYPES = [
   'Family Law', 'Employment Law', 'Landlord/Tenant', 'Personal Injury',
@@ -48,12 +69,287 @@ const CACHE_CONFIG = {
 
 const PUBLIC_TEAM_IDS = new Set(['blawby-ai']);
 
+function resolveAIExecutionPlan(
+  env: Env,
+  team: Team | null,
+  overrides?: AIExecutionOverrides
+): AIExecutionPlan {
+  const defaults = buildDefaultTeamConfig(env);
+
+  const providerCandidate = [
+    overrides?.provider,
+    team?.config?.aiProvider,
+    defaults.aiProvider,
+    DEFAULT_AI_PROVIDER
+  ].find(value => typeof value === 'string' && value.trim().length > 0);
+  
+  const provider = (typeof providerCandidate === 'string' ? providerCandidate.trim() : '') || DEFAULT_AI_PROVIDER;
+
+  const modelCandidate = [
+    overrides?.model,
+    team?.config?.aiModel,
+    defaults.aiModel,
+    DEFAULT_LEGACY_MODEL
+  ].find(value => typeof value === 'string' && value.trim().length > 0);
+  
+  const model = (typeof modelCandidate === 'string' ? modelCandidate.trim() : '') || DEFAULT_LEGACY_MODEL;
+
+  const fallbackCandidates: string[] = [];
+  const teamFallback = team?.config?.aiModelFallback;
+  if (Array.isArray(teamFallback)) {
+    fallbackCandidates.push(...teamFallback);
+  }
+  if (Array.isArray(defaults.aiModelFallback)) {
+    fallbackCandidates.push(...defaults.aiModelFallback);
+  }
+  fallbackCandidates.push(DEFAULT_LEGACY_MODEL);
+
+  const fallback = Array.from(new Set(
+    fallbackCandidates
+      .map(candidate => (typeof candidate === 'string' ? candidate.trim() : ''))
+      .filter(candidate => candidate.length > 0 && candidate !== model)
+  ));
+
+  return {
+    provider,
+    model,
+    fallback,
+    maxTokens: BASE_AI_EXECUTION.maxTokens,
+    temperature: BASE_AI_EXECUTION.temperature
+  };
+}
+
+function deriveProviderForModel(model: string, preferredProvider: string): string {
+  if (model.startsWith('@cf/openai/')) {
+    return 'workers-ai';
+  }
+  if (model.startsWith('@cf/gateway/') || model.startsWith('openai:')) {
+    return 'gateway-openai';
+  }
+  if (model.startsWith('@cf/meta/llama') || model.includes('llama')) {
+    return 'legacy-llama';
+  }
+  return preferredProvider;
+}
+
+function mapToolsForProvider(tools: ToolDefinition[], provider: string): unknown {
+  if (!tools || tools.length === 0) {
+    return [];
+  }
+
+  if (provider === 'workers-ai' || provider === 'gateway-openai') {
+    return tools.map(tool => ({
+      type: 'function',
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }
+    }));
+  }
+
+  return tools;
+}
+
+function buildProviderPayload(
+  basePayload: {
+    messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+    tools: ToolDefinition[];
+    max_tokens: number;
+    temperature: number;
+    stream: boolean;
+  },
+  provider: string
+): Record<string, unknown> {
+  const { messages, tools, max_tokens, temperature, stream } = basePayload;
+  if (provider === 'workers-ai' || provider === 'gateway-openai') {
+    return {
+      messages,
+      tools: mapToolsForProvider(tools, provider),
+      tool_choice: 'auto',
+      stream,
+      stream_options: { include_usage: true },
+      max_tokens,
+      temperature
+    };
+  }
+
+  return {
+    messages,
+    tools: mapToolsForProvider(tools, provider),
+    stream,
+    max_tokens,
+    temperature
+  };
+}
+
+async function executeModelWithFallback<T>(
+  env: Env,
+  basePayload: {
+    messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+    tools: ToolDefinition[];
+    max_tokens: number;
+    temperature: number;
+    stream: boolean;
+  },
+  executionPlan: AIExecutionPlan
+): Promise<AIExecutionResult<T>> {
+  const candidates = [executionPlan.model, ...executionPlan.fallback];
+  let lastError: unknown;
+
+  const runModel = env.AI.run.bind(env.AI) as (model: string, payload: Record<string, unknown>) => Promise<unknown>;
+
+  for (const candidate of candidates) {
+    const providerForModel = deriveProviderForModel(candidate, executionPlan.provider);
+    const payloadForProvider = buildProviderPayload(basePayload, providerForModel);
+
+    try {
+      const result = await withAIRetry(
+        () => runModel(candidate, payloadForProvider) as Promise<T>,
+        { attempts: 4, baseDelay: 400, operationName: `Legal Intake AI Call (${candidate})` }
+      );
+
+      return { model: candidate, provider: providerForModel, result };
+    } catch (error) {
+      lastError = error;
+      Logger.warn('AI execution failed, trying fallback', {
+        model: candidate,
+        provider: providerForModel,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  throw (lastError instanceof Error ? lastError : new Error('AI execution failed for all models'));
+}
+
+function shouldShowContactFormPreemptively(
+  context: ConversationContext,
+  team: Team | null,
+  messages: readonly AgentMessage[]
+): boolean {
+  const nameValue = context.contactInfo?.name?.trim() ?? '';
+  const emailValue = context.contactInfo?.email?.trim() ?? '';
+  const phoneValue = context.contactInfo?.phone?.trim() ?? '';
+  const locationValue = context.contactInfo?.location?.trim() ?? '';
+
+  const hasName = nameValue.length > 0 && !hasPlaceholderValue(nameValue);
+  const emailUsable = emailValue.length > 0
+    && !ValidationService.hasPlaceholderValues(undefined, emailValue)
+    && !hasPlaceholderValue(emailValue);
+  const phoneUsable = phoneValue.length > 0
+    && !ValidationService.hasPlaceholderValues(phoneValue)
+    && !hasPlaceholderValue(phoneValue);
+  const hasReachableContact = emailUsable || phoneUsable;
+
+  const requiresLocation = team?.config?.jurisdiction?.type === 'state';
+  const hasValidLocation = !requiresLocation
+    || (locationValue.length > 0 && !hasPlaceholderValue(locationValue) && ValidationService.validateLocation(locationValue));
+
+  // Always check for lawyer requests first, regardless of contact info
+  const lastUserEntry = [...messages].reverse().find(msg => msg.role === 'user' || (msg as { isUser?: boolean }).isUser);
+  const lastUserMessage = lastUserEntry?.content?.toLowerCase() ?? '';
+
+  if (lastUserMessage) {
+    const userRequestingMatter = /(create\s+(?:a\s+)?matter|create\s+it\s+now|open\s+(?:a\s+)?case|file\s+(?:a\s+)?case|speak\s+to\s+lawyer|talk\s+to\s+lawyer|skip\s+intake|(?:i\s+)?need\s+a\s+lawyer(?:\s+asap)?)/i;
+    if (userRequestingMatter.test(lastUserMessage)) {
+      return true;
+    }
+
+    // Also trigger for general lawyer requests even without specific legal issue
+    const generalLawyerRequest = /(need\s+(?:a\s+)?lawyer|want\s+(?:a\s+)?lawyer|looking\s+for\s+(?:a\s+)?lawyer|find\s+(?:a\s+)?lawyer|get\s+(?:a\s+)?lawyer)/i;
+    if (generalLawyerRequest.test(lastUserMessage)) {
+      return true;
+    }
+
+    const trimmed = lastUserMessage.trim();
+    if (trimmed === 'contact' || trimmed === 'contact you' || trimmed === 'contact me') {
+      return true;
+    }
+  }
+
+  const missingRequiredInfo = !hasName || !hasReachableContact || !hasValidLocation;
+  if (!missingRequiredInfo) {
+    return false;
+  }
+
+  const shouldEscalate = context.state === ConversationState.READY_TO_CREATE_MATTER
+    || context.state === ConversationState.SHOWING_CONTACT_FORM
+    || context.isSensitiveMatter
+    || context.shouldCreateMatter
+    || context.isQualifiedLead;
+
+  if (shouldEscalate) {
+    return true;
+  }
+
+
+  return false;
+}
+
+function shouldFallbackToContactForm(
+  context: ConversationContext,
+  messages: readonly AgentMessage[],
+  observedToolCalls: ToolCall[],
+  finalResponse: string,
+  team: Team | null
+): boolean {
+  if (observedToolCalls.length > 0) {
+    return false;
+  }
+
+  if (context.state === ConversationState.SHOWING_CONTACT_FORM) {
+    return false;
+  }
+
+  if (shouldShowContactFormPreemptively(context, team, messages)) {
+    return true;
+  }
+
+  const lastUserEntry = [...messages].reverse().find(msg => msg.role === 'user' || (msg as { isUser?: boolean }).isUser);
+  const lastUserMessage = lastUserEntry?.content?.toLowerCase() ?? '';
+  if (!lastUserMessage) {
+    return false;
+  }
+
+  const userRequestingMatter = /(create\s+(?:a\s+)?matter|create\s+it\s+now|open\s+(?:a\s+)?case|file\s+(?:a\s+)?case|speak\s+to\s+lawyer|talk\s+to\s+lawyer|skip\s+intake|need\s+a\s+lawyer)/i;
+  if (!userRequestingMatter.test(lastUserMessage)) {
+    const trimmed = lastUserMessage.trim();
+    if (trimmed !== 'contact' && trimmed !== 'contact you' && trimmed !== 'contact me') {
+      return false;
+    }
+  }
+
+  const emailValue = context.contactInfo?.email?.trim() ?? '';
+  const phoneValue = context.contactInfo?.phone?.trim() ?? '';
+  const emailInvalid = !(emailValue.length > 0)
+    || ValidationService.hasPlaceholderValues(undefined, emailValue)
+    || hasPlaceholderValue(emailValue);
+  const phoneInvalid = !(phoneValue.length > 0)
+    || ValidationService.hasPlaceholderValues(phoneValue)
+    || hasPlaceholderValue(phoneValue);
+
+  const missingName = !context.contactInfo?.name || hasPlaceholderValue(context.contactInfo?.name ?? '');
+  const missingEmailOrPhone = emailInvalid && phoneInvalid;
+  if (!missingName && !missingEmailOrPhone) {
+    return false;
+  }
+
+  if (finalResponse.toLowerCase().includes('contact form')) {
+    return false;
+  }
+
+  return true;
+}
+
 // Pattern compilation - done once
 const PATTERNS = {
   email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
   phone: /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
   name: /(?:my name is|i'm|i am|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/gi,
   nameField: /name\s*[:=]\s*([A-Za-z][A-Za-z\s'-]{1,50})/gi,
+  location: /(?:i'm from|i live in|located in|based in|from)\s+([A-Za-z\s,]+(?:,\s*[A-Z]{2})?)/gi,
+  locationField: /(?:location|city|address)\s*[:=]\s*([A-Za-z\s,]+(?:,\s*[A-Z]{2})?)/gi,
   opposingParty: /(?:opposing|against|versus|vs\.?)\s+((?:[A-Z][a-z]+\s*){1,3})/gi,
   toolCallLegacy: /^TOOL_CALL:\s*(\w+)/i,
   toolCallJson: /^\s*\{\s*"name"\s*:\s*"(\w+)"/
@@ -111,7 +407,7 @@ const URGENCY_KEYWORDS = {
   low: ['eventually', 'when possible', 'no rush']
 } as const;
 
-const PLACEHOLDER_PATTERNS = /client|user|placeholder|example|test|xxx|n\/a|tbd/i;
+const PLACEHOLDER_PATTERNS = /client|user|placeholder|example|test|xxx|n\/a|tbd|default/i;
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -214,6 +510,7 @@ export interface ConversationContext {
     name: string | null;
     email: string | null;
     phone: string | null;
+    location: string | null;
   };
 }
 
@@ -278,6 +575,7 @@ interface ExtractedContactInfo {
   name: string | null;
   email: string | null;
   phone: string | null;
+  location: string | null;
 }
 
 export interface ToolCall {
@@ -440,7 +738,21 @@ class ContextDetector {
       }
     }
     
-    return { name, email, phone };
+    let location: string | null = null;
+    
+    const locationIntroMatch = [...text.matchAll(PATTERNS.location)];
+    if (locationIntroMatch.length > 0) {
+      location = locationIntroMatch[0][1].trim();
+    }
+    
+    if (!location) {
+      const locationFieldMatch = [...text.matchAll(PATTERNS.locationField)];
+      if (locationFieldMatch.length > 0) {
+        location = locationFieldMatch[0][1].trim();
+      }
+    }
+    
+    return { name, email, phone, location };
   }
 
   static calculateUrgency(lowerText: string): 'high' | 'medium' | 'low' | null {
@@ -1816,7 +2128,8 @@ export async function runLegalIntakeAgentStream(
   sessionId?: string,
   cloudflareLocation?: CloudflareLocation,
   controller?: ReadableStreamDefaultController<Uint8Array>,
-  attachments: readonly FileAttachment[] = []
+  attachments: readonly FileAttachment[] = [],
+  executionOverrides: AIExecutionOverrides = {}
 ): Promise<AgentResponse | void> {
   Logger.initialize({ DEBUG: env.DEBUG, NODE_ENV: env.NODE_ENV });
   
@@ -1827,6 +2140,8 @@ export async function runLegalIntakeAgentStream(
     await sse.emit({ type: 'connected' });
 
     const team = teamId ? await teamCache.get(teamId, env) : null;
+    const executionPlan = resolveAIExecutionPlan(env, team, executionOverrides);
+    const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
 
     LegalIntakeLogger.logAgentStart(
       correlationId,
@@ -1880,6 +2195,12 @@ export async function runLegalIntakeAgentStream(
     const context = ContextDetector.detectContext(conversationText);
 
     // Get available tools and build prompt
+    if (shouldShowContactFormPreemptively(context, team, messages)) {
+      await executor.execute({ name: 'show_contact_form', arguments: {} });
+      // Note: The show_contact_form tool already provides its own message, so we don't need to add another one
+      return;
+    }
+
     const availableTools = getAvailableTools(context.state, context);
     const systemPrompt = PromptBuilder.build(context, team, teamId);
 
@@ -1902,24 +2223,34 @@ export async function runLegalIntakeAgentStream(
       sessionId,
       teamId,
       LegalIntakeOperation.AI_MODEL_CALL,
-      AI_MODEL_CONFIG.model
+      executionPlan.model,
+      undefined,
+      undefined,
+      undefined,
+      executionPlan.provider,
+      executionPlan.fallback
     );
 
-    const aiResult = await withAIRetry(
-      () => (env.AI.run as any)(AI_MODEL_CONFIG.model, {
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...buildPromptMessages(messages)
-        ],
-        tools: availableTools,
-        max_tokens: AI_MODEL_CONFIG.maxTokens,
-        temperature: AI_MODEL_CONFIG.temperature,
-        stream: true
-      }),
-      { attempts: 4, baseDelay: 400, operationName: 'Legal Intake AI Call' }
-    ) as ReadableStream<Uint8Array>;
+    const aiPayload = {
+      messages: [
+        { role: 'system' as const, content: systemPrompt },
+        ...buildPromptMessages(messages)
+      ],
+      tools: availableTools,
+      max_tokens: executionPlan.maxTokens,
+      temperature: executionPlan.temperature,
+      stream: true
+    };
 
-    const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
+    const aiExecution = await executeModelWithFallback<ReadableStream<Uint8Array> | Response | Record<string, unknown>>(
+      env,
+      aiPayload,
+      executionPlan
+    );
+
+    const aiResult = aiExecution.result;
+    const activeModel = aiExecution.model;
+    const activeProvider = aiExecution.provider;
 
     let finalResponse = '';
     let streamToolCalls: ToolCall[] = [];
@@ -1960,22 +2291,40 @@ export async function runLegalIntakeAgentStream(
       sessionId,
       teamId,
       LegalIntakeOperation.AI_MODEL_RESPONSE,
-      AI_MODEL_CONFIG.model,
+      activeModel,
       undefined,
       finalResponse.length,
-      processingTime
+      processingTime,
+      activeProvider,
+      executionPlan.fallback
     );
 
     const effectiveToolCalls = streamToolCalls.length > 0 ? streamToolCalls : (hasToolCalls(aiResult) ? aiResult.tool_calls : []);
-
-    if (effectiveToolCalls && effectiveToolCalls.length > 0) {
+    
+    // If tool calls were made during streaming, don't run fallback logic
+    if (streamToolCalls.length > 0) {
       await executor.execute(effectiveToolCalls[0]);
     } else {
-      const detectedToolCall = ToolCallDetector.detect(finalResponse);
-      if (detectedToolCall) {
-        await executor.execute(detectedToolCall);
+      const fallbackToContactForm = shouldFallbackToContactForm(
+        context,
+        messages,
+        effectiveToolCalls,
+        finalResponse,
+        team
+      );
+
+      if (fallbackToContactForm) {
+        await executor.execute({ name: 'show_contact_form', arguments: {} });
+        // Note: The show_contact_form tool already provides its own message, so we don't need to add another one
+      } else if (effectiveToolCalls.length > 0) {
+        await executor.execute(effectiveToolCalls[0]);
       } else {
-        await sse.final(finalResponse);
+        const detectedToolCall = ToolCallDetector.detect(finalResponse);
+        if (detectedToolCall) {
+          await executor.execute(detectedToolCall);
+        } else {
+          await sse.final(finalResponse);
+        }
       }
     }
   } catch (error) {
