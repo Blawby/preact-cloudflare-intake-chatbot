@@ -1,0 +1,19 @@
+{
+  "menu": {
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "upgrade": "Passer à un forfait supérieur",
+    "upgradeShort": "Mettre à niveau",
+    "help": "Obtenir de l'aide",
+    "signOut": "Se déconnecter",
+    "signIn": "Se connecter"
+  },
+  "status": {
+    "signingOut": "Déconnexion...",
+    "loading": "Chargement..."
+  },
+  "aria": {
+    "userProfile": "Profil utilisateur pour {{name}}",
+    "signInButton": "Se connecter à votre compte"
+  }
+}
