@@ -184,7 +184,12 @@ make_request() {
         -d "$payload" 2>/dev/null); then
         local curl_status=$?
         echo -e "${RED}❌ Request failed (curl exit status $curl_status)${NC}"
-        response=''
+        echo -e "${RED}   Test: $test_name${NC}"
+        echo -e "${RED}   URL: $BASE_URL/api/agent/stream${NC}"
+        echo -e "${RED}   Team: $team_id | Session: $session_id${NC}"
+        # Clean up any temporary variables
+        unset response payload
+        exit 1
     fi
     
     echo "$response" > "$log_file"

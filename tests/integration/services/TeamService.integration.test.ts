@@ -92,7 +92,7 @@ describe('TeamService Integration - Real API', () => {
                 aiModel: 'llama',
                 consultationFee: 0,
                 requiresPayment: false,
-          ownerEmail: 'test@example.com',
+          ownerEmail: 'test@realcompany.com',
           availableServices: ['Test Service'],
                 jurisdiction: {
                   type: 'national',
@@ -156,7 +156,7 @@ describe('TeamService Integration - Real API', () => {
           aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
-          ownerEmail: 'update@example.com',
+          ownerEmail: 'update@realcompany.com',
           availableServices: ['Update Service'],
           jurisdiction: {
             type: 'national',
@@ -241,7 +241,7 @@ describe('TeamService Integration - Real API', () => {
           aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
-          ownerEmail: 'delete@example.com',
+          ownerEmail: 'delete@realcompany.com',
           availableServices: ['Delete Service'],
           jurisdiction: {
             type: 'national',
@@ -349,7 +349,7 @@ describe('TeamService Integration - Real API', () => {
           aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
-          ownerEmail: 'apitoken@example.com',
+          ownerEmail: 'apitoken@realcompany.com',
           availableServices: ['API Token Testing'],
           jurisdiction: {
             type: 'national',

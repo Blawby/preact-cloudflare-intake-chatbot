@@ -228,22 +228,52 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
     );
   }
 
-  const team = await teamService.createTeam({
-    slug: body.slug,
-    name: body.name,
-    config: body.config
-  });
+  try {
+    const team = await teamService.createTeam({
+      slug: body.slug,
+      name: body.name,
+      config: body.config
+    });
 
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      data: team 
-    }), 
-    { 
-      status: 201,
-      headers: { 'Content-Type': 'application/json' } 
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        data: team 
+      }), 
+      { 
+        status: 201,
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    // Handle validation errors specifically
+    if (errorMessage.includes('Invalid ownerEmail')) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: errorMessage 
+        }), 
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
     }
-  );
+    
+    // Handle other errors
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Failed to create team' 
+      }), 
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  }
 }
 
 async function updateTeam(teamService: TeamService, teamId: string, request: Request): Promise<Response> {
@@ -256,30 +286,60 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
     });
   }
   
-  const updatedTeam = await teamService.updateTeam(teamId, body);
-  
-  if (!updatedTeam) {
+  try {
+    const updatedTeam = await teamService.updateTeam(teamId, body);
+    
+    if (!updatedTeam) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Team not found' 
+        }), 
+        { 
+          status: 404, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        data: updatedTeam 
+      }), 
+      { 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    // Handle validation errors specifically
+    if (errorMessage.includes('Invalid ownerEmail')) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: errorMessage 
+        }), 
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Handle other errors
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Team not found' 
+        error: 'Failed to update team' 
       }), 
       { 
-        status: 404, 
+        status: 500,
         headers: { 'Content-Type': 'application/json' } 
       }
     );
   }
-
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      data: updatedTeam 
-    }), 
-    { 
-      headers: { 'Content-Type': 'application/json' } 
-    }
-  );
 }
 
 async function deleteTeam(teamService: TeamService, teamId: string): Promise<Response> {

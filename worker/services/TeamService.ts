@@ -1,4 +1,5 @@
 import { Env } from '../types.js';
+import { ValidationService } from './ValidationService.js';
 
 export type TeamVoiceProvider = 'cloudflare' | 'elevenlabs' | 'custom';
 
@@ -44,7 +45,7 @@ export interface TeamConfig {
 }
 
 const LEGACY_AI_PROVIDER = 'legacy-llama';
-const DEFAULT_LLAMA_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const DEFAULT_LLAMA_MODEL = '@cf/meta/llama-4-scout';
 
 const DEFAULT_AVAILABLE_SERVICES = [
   'Family Law',
@@ -84,7 +85,7 @@ function sanitizeFallbackList(value: unknown): string[] {
   }
 
   const values = Array.isArray(value)
-    ? value.map(item => (typeof item === 'string' ? item : String(item)))
+    ? value.filter(item => typeof item === 'string')
     : typeof value === 'string'
       ? value.split(',')
       : [];
@@ -92,10 +93,22 @@ function sanitizeFallbackList(value: unknown): string[] {
   return Array.from(new Set(values.map(v => v.trim()).filter(v => v.length > 0)));
 }
 
-function buildFallbackList(baseModel: string, preferred?: string[]): string[] {
+function buildFallbackList(baseModel: string, preferred?: string[], useDefaults: boolean = true): string[] {
   const normalized = sanitizeFallbackList(preferred);
-  if (!normalized.length) {
+  
+  // If preferred was explicitly provided but is empty, return empty array
+  if (preferred !== undefined && normalized.length === 0) {
+    return [];
+  }
+  
+  // If normalized is empty and defaults are allowed, return DEFAULT_LLAMA_MODEL filtered against baseModel
+  if (!normalized.length && useDefaults) {
     return [DEFAULT_LLAMA_MODEL].filter(model => model !== baseModel);
+  }
+  
+  // If normalized is empty and defaults are disabled, return empty array
+  if (!normalized.length && !useDefaults) {
+    return [];
   }
 
   const unique = new Set<string>();
@@ -105,7 +118,7 @@ function buildFallbackList(baseModel: string, preferred?: string[]): string[] {
     }
   });
 
-  if (!unique.size && baseModel !== DEFAULT_LLAMA_MODEL) {
+  if (!unique.size && baseModel !== DEFAULT_LLAMA_MODEL && useDefaults) {
     unique.add(DEFAULT_LLAMA_MODEL);
   }
 
@@ -124,7 +137,7 @@ export function buildDefaultTeamConfig(env: Env): TeamConfig {
     aiModelFallback: fallbackList,
     consultationFee: 0,
     requiresPayment: false,
-    ownerEmail: 'default@example.com',
+    ownerEmail: undefined,
     availableServices: [...DEFAULT_AVAILABLE_SERVICES],
     jurisdiction: {
       type: 'national',
@@ -230,7 +243,7 @@ export class TeamService {
   }
 
   private getEnvValue(key: string): string | undefined {
-    return (this.env as Record<string, unknown>)[key] as string | undefined;
+    return (this.env as unknown as Record<string, unknown>)[key] as string | undefined;
   }
 
   /**
@@ -353,7 +366,7 @@ export class TeamService {
       if (teamRow) {
         const rawConfig = this.decodeTeamConfig(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig);
+        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig);
         
         const team: Team = {
           id: teamRow.id as string,
@@ -396,12 +409,28 @@ export class TeamService {
       : undefined;
     const fallbackList = buildFallbackList(aiModel, providedFallback ?? defaultConfig.aiModelFallback ?? []);
 
+    // Validate ownerEmail if provided
+    let ownerEmail = sourceConfig.ownerEmail ?? defaultConfig.ownerEmail;
+    if (ownerEmail) {
+      // Check for placeholder emails and reject them
+      const placeholderEmails = ['default@example.com', 'test@example.com', 'admin@example.com', 'owner@example.com'];
+      if (placeholderEmails.includes(ownerEmail.toLowerCase())) {
+        throw new Error(`Invalid ownerEmail: placeholder email '${ownerEmail}' is not allowed. Please provide a real email address.`);
+      }
+      
+      // Validate email format
+      if (!ValidationService.validateEmail(ownerEmail)) {
+        throw new Error(`Invalid ownerEmail format: '${ownerEmail}' is not a valid email address.`);
+      }
+    }
+
     const merged: TeamConfig = {
       ...defaultConfig,
       ...sourceConfig,
       aiProvider,
       aiModel,
       aiModelFallback: fallbackList,
+      ownerEmail,
       jurisdiction: {
         ...defaultConfig.jurisdiction,
         ...(sourceConfig.jurisdiction || {})
@@ -541,14 +570,20 @@ export class TeamService {
       'SELECT id, slug, name, config, created_at, updated_at FROM teams ORDER BY created_at DESC'
     ).all();
 
-    return teams.results.map(row => ({
-      id: row.id as string,
-      slug: row.slug as string,
-      name: row.name as string,
-      config: this.decodeTeamConfig(row.config as string),
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string
-    }));
+    return teams.results.map(row => {
+      const rawConfig = this.decodeTeamConfig(row.config as string);
+      const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
+      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig);
+      
+      return {
+        id: row.id as string,
+        slug: row.slug as string,
+        name: row.name as string,
+        config: normalizedConfig,
+        createdAt: row.created_at as string,
+        updatedAt: row.updated_at as string
+      };
+    });
   }
 
   async validateTeamAccess(teamId: string, apiToken: string): Promise<boolean> {

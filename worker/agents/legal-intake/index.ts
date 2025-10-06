@@ -76,19 +76,23 @@ function resolveAIExecutionPlan(
 ): AIExecutionPlan {
   const defaults = buildDefaultTeamConfig(env);
 
-  const provider = [
+  const providerCandidate = [
     overrides?.provider,
     team?.config?.aiProvider,
     defaults.aiProvider,
     DEFAULT_AI_PROVIDER
-  ].find(value => typeof value === 'string' && value.trim().length > 0)!.trim();
+  ].find(value => typeof value === 'string' && value.trim().length > 0);
+  
+  const provider = (typeof providerCandidate === 'string' ? providerCandidate.trim() : '') || DEFAULT_AI_PROVIDER;
 
-  const model = [
+  const modelCandidate = [
     overrides?.model,
     team?.config?.aiModel,
     defaults.aiModel,
     DEFAULT_LEGACY_MODEL
-  ].find(value => typeof value === 'string' && value.trim().length > 0)!.trim();
+  ].find(value => typeof value === 'string' && value.trim().length > 0);
+  
+  const model = (typeof modelCandidate === 'string' ? modelCandidate.trim() : '') || DEFAULT_LEGACY_MODEL;
 
   const fallbackCandidates: string[] = [];
   const teamFallback = team?.config?.aiModelFallback;
@@ -344,6 +348,8 @@ const PATTERNS = {
   phone: /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
   name: /(?:my name is|i'm|i am|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/gi,
   nameField: /name\s*[:=]\s*([A-Za-z][A-Za-z\s'-]{1,50})/gi,
+  location: /(?:i'm from|i live in|located in|based in|from)\s+([A-Za-z\s,]+(?:,\s*[A-Z]{2})?)/gi,
+  locationField: /(?:location|city|address)\s*[:=]\s*([A-Za-z\s,]+(?:,\s*[A-Z]{2})?)/gi,
   opposingParty: /(?:opposing|against|versus|vs\.?)\s+((?:[A-Z][a-z]+\s*){1,3})/gi,
   toolCallLegacy: /^TOOL_CALL:\s*(\w+)/i,
   toolCallJson: /^\s*\{\s*"name"\s*:\s*"(\w+)"/
@@ -504,6 +510,7 @@ export interface ConversationContext {
     name: string | null;
     email: string | null;
     phone: string | null;
+    location: string | null;
   };
 }
 
@@ -568,6 +575,7 @@ interface ExtractedContactInfo {
   name: string | null;
   email: string | null;
   phone: string | null;
+  location: string | null;
 }
 
 export interface ToolCall {
@@ -730,7 +738,21 @@ class ContextDetector {
       }
     }
     
-    return { name, email, phone };
+    let location: string | null = null;
+    
+    const locationIntroMatch = [...text.matchAll(PATTERNS.location)];
+    if (locationIntroMatch.length > 0) {
+      location = locationIntroMatch[0][1].trim();
+    }
+    
+    if (!location) {
+      const locationFieldMatch = [...text.matchAll(PATTERNS.locationField)];
+      if (locationFieldMatch.length > 0) {
+        location = locationFieldMatch[0][1].trim();
+      }
+    }
+    
+    return { name, email, phone, location };
   }
 
   static calculateUrgency(lowerText: string): 'high' | 'medium' | 'low' | null {
@@ -2175,10 +2197,7 @@ export async function runLegalIntakeAgentStream(
     // Get available tools and build prompt
     if (shouldShowContactFormPreemptively(context, team, messages)) {
       await executor.execute({ name: 'show_contact_form', arguments: {} });
-      const contactPrompt = team?.config?.introMessage
-        ? `I'd be happy to connect you with the ${team.name} legal team once we have your details. Please submit the contact form so we can follow up.`
-        : `I'd be happy to help you with your legal matter. Please submit the contact form so we can follow up.`;
-      await sse.text(contactPrompt);
+      // Note: The show_contact_form tool already provides its own message, so we don't need to add another one
       return;
     }
 
@@ -2214,7 +2233,7 @@ export async function runLegalIntakeAgentStream(
 
     const aiPayload = {
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system' as const, content: systemPrompt },
         ...buildPromptMessages(messages)
       ],
       tools: availableTools,
@@ -2281,28 +2300,31 @@ export async function runLegalIntakeAgentStream(
     );
 
     const effectiveToolCalls = streamToolCalls.length > 0 ? streamToolCalls : (hasToolCalls(aiResult) ? aiResult.tool_calls : []);
-    const fallbackToContactForm = shouldFallbackToContactForm(
-      context,
-      messages,
-      effectiveToolCalls ?? [],
-      finalResponse,
-      team
-    );
-
-    if (fallbackToContactForm) {
-      await executor.execute({ name: 'show_contact_form', arguments: {} });
-      const contactPrompt = team?.config?.introMessage
-        ? `I'd be happy to connect you with the ${team.name} legal team once we have your details. Please submit the contact form so we can follow up.`
-        : `I'd be happy to help you with your legal matter. Please submit the contact form so we can follow up.`;
-      await sse.text(contactPrompt);
-    } else if (effectiveToolCalls && effectiveToolCalls.length > 0) {
+    
+    // If tool calls were made during streaming, don't run fallback logic
+    if (streamToolCalls.length > 0) {
       await executor.execute(effectiveToolCalls[0]);
     } else {
-      const detectedToolCall = ToolCallDetector.detect(finalResponse);
-      if (detectedToolCall) {
-        await executor.execute(detectedToolCall);
+      const fallbackToContactForm = shouldFallbackToContactForm(
+        context,
+        messages,
+        effectiveToolCalls ?? [],
+        finalResponse,
+        team
+      );
+
+      if (fallbackToContactForm) {
+        await executor.execute({ name: 'show_contact_form', arguments: {} });
+        // Note: The show_contact_form tool already provides its own message, so we don't need to add another one
+      } else if (effectiveToolCalls && effectiveToolCalls.length > 0) {
+        await executor.execute(effectiveToolCalls[0]);
       } else {
-        await sse.final(finalResponse);
+        const detectedToolCall = ToolCallDetector.detect(finalResponse);
+        if (detectedToolCall) {
+          await executor.execute(detectedToolCall);
+        } else {
+          await sse.final(finalResponse);
+        }
       }
     }
   } catch (error) {
