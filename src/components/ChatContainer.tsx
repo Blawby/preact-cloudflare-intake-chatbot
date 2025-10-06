@@ -2,12 +2,10 @@ import { FunctionComponent } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import VirtualMessageList from './VirtualMessageList';
 import MessageComposer from './MessageComposer';
-import { ContactForm } from './ContactForm';
 import { ChatMessageUI } from '../../worker/types';
 import { FileAttachment } from '../../worker/types';
 import { ContactData } from './ContactForm';
 import { createKeyPressHandler } from '../utils/keyboard';
-import { safeLog } from '../utils/errorHandler';
 
 interface ChatContainerProps {
   messages: ChatMessageUI[];
@@ -22,7 +20,7 @@ interface ChatContainerProps {
   onOpenSidebar?: () => void;
   sessionId?: string;
   teamId?: string;
-  onFeedbackSubmit?: (feedback: any) => void;
+  onFeedbackSubmit?: (feedback: unknown) => void;
 
   // File handling props
   previewFiles: FileAttachment[];
@@ -62,17 +60,8 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   clearInput
 }) => {
   const [inputValue, setInputValue] = useState('');
-  const [showContactForm, setShowContactForm] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleInputChange = (e: Event) => {
-    const target = e.currentTarget as HTMLTextAreaElement;
-    setInputValue(target.value);
-
-    // Simple approach: reset height then set to scrollHeight
-    target.style.height = '24px'; // Reset to default height first
-    target.style.height = `${Math.max(24, target.scrollHeight)}px`;
-  };
 
   // Simple resize handler for window size changes
   useEffect(() => {
@@ -136,8 +125,8 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   const baseKeyHandler = createKeyPressHandler(handleSubmit);
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    // @ts-ignore - isComposing is not in TypeScript's KeyboardEvent but exists at runtime
-    if ((e as any).isComposing || e.repeat) {
+    // isComposing is not in TypeScript's KeyboardEvent but exists at runtime
+    if ((e as KeyboardEvent & { isComposing?: boolean }).isComposing || e.repeat) {
       return;
     }
     baseKeyHandler(e);
@@ -155,34 +144,6 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           teamId={teamId}
           onFeedbackSubmit={onFeedbackSubmit}
         />
-        
-        {/* Contact Form Toggle Button */}
-        <div className="flex justify-center p-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setShowContactForm(!showContactForm)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors duration-200 text-sm font-medium"
-          >
-            {showContactForm ? 'Hide Contact Form' : 'Show Contact Form'}
-          </button>
-        </div>
-        
-        {/* Contact Form */}
-        {showContactForm && (
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <ContactForm
-              onSubmit={(data) => {
-                safeLog('info', 'Contact form submitted', data, { component: 'ChatContainer' });
-                if (onContactFormSubmit) {
-                  onContactFormSubmit(data);
-                }
-                setShowContactForm(false);
-              }}
-              fields={['name', 'email', 'phone', 'location', 'opposingParty']}
-              required={['name', 'email', 'phone']}
-              message="Please provide your contact information to get started."
-            />
-          </div>
-        )}
         
         <MessageComposer
           inputValue={inputValue}
