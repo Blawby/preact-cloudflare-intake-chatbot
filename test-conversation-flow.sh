@@ -1,13 +1,100 @@
 #!/bin/bash
-# Blawby AI Chatbot - Conversation Flow Test Suite (Updated for Refactored Code)
+# Blawby AI Chatbot - Conversation Flow Test Suite (Workers AI aware)
 
-set -e
+set -euo pipefail
+
+###############################################
+# Argument parsing
+###############################################
+
+print_usage() {
+    cat <<'USAGE'
+Usage: ./test-conversation-flow.sh [options]
+
+Options:
+  -u, --base-url URL        Target worker URL (default: http://localhost:8787)
+  -p, --provider NAME       Override AI provider identifier (metadata + request hint)
+  -m, --model NAME          Override AI model identifier (metadata + request hint)
+  -t, --tag LABEL           Optional label to distinguish log directories
+  -h, --help                Show this help message
+USAGE
+}
 
 BASE_URL="http://localhost:8787"
-SESSION_PREFIX="convtest-$(date +%s)"
-LOG_DIR="test-logs-$(date +%Y%m%d-%H%M%S)"
+AI_PROVIDER=""
+AI_MODEL=""
+RUN_TAG=""
 
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -u|--base-url)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --base-url requires a value" >&2
+                exit 1
+            fi
+            BASE_URL="$2"
+            shift 2
+            ;;
+        -p|--provider)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --provider requires a value" >&2
+                exit 1
+            fi
+            AI_PROVIDER="$2"
+            shift 2
+            ;;
+        -m|--model)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --model requires a value" >&2
+                exit 1
+            fi
+            AI_MODEL="$2"
+            shift 2
+            ;;
+        -t|--tag)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --tag requires a value" >&2
+                exit 1
+            fi
+            RUN_TAG="$2"
+            shift 2
+            ;;
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            print_usage >&2
+            exit 1
+            ;;
+    esac
+done
+
+slugify() {
+    echo "$1" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-' | sed 's/^-*//;s/-*$//'
+}
+
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+LOG_SUFFIX=""
+
+if [[ -n "$RUN_TAG" ]]; then
+    LOG_SUFFIX+="-$(slugify "$RUN_TAG")"
+fi
+if [[ -n "$AI_PROVIDER" ]]; then
+    LOG_SUFFIX+="-provider-$(slugify "$AI_PROVIDER")"
+fi
+if [[ -n "$AI_MODEL" ]]; then
+    LOG_SUFFIX+="-model-$(slugify "$AI_MODEL")"
+fi
+
+LOG_DIR="test-logs-${TIMESTAMP}${LOG_SUFFIX}"
+SESSION_PREFIX="convtest-${TIMESTAMP}"
+
+###############################################
 # Colors
+###############################################
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -20,7 +107,24 @@ TESTS_FAILED=0
 CRITICAL_FAILURES=0
 
 mkdir -p "test-results/production-readiness/$LOG_DIR"
-echo -e "${BLUE}📁 Logging responses to: test-results/production-readiness/$LOG_DIR${NC}"
+
+RUN_INFO_PATH="test-results/production-readiness/$LOG_DIR/run-info.txt"
+{
+    echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "base_url=$BASE_URL"
+    echo "ai_provider=${AI_PROVIDER:-default}"
+    echo "ai_model=${AI_MODEL:-default}"
+    if [[ -n "$RUN_TAG" ]]; then
+        echo "tag=$(slugify "$RUN_TAG")"
+    fi
+} > "$RUN_INFO_PATH"
+
+echo -e "${BLUE}⚙️  Test Configuration${NC}"
+echo -e "  Base URL:     $BASE_URL"
+echo -e "  AI Provider:  ${AI_PROVIDER:-default}" \
+        "\n  AI Model:     ${AI_MODEL:-default}" \
+        "\n  Log Directory: test-results/production-readiness/$LOG_DIR"
+echo ""
 
 ###############################################
 # Helpers
@@ -39,24 +143,44 @@ print_result() {
     fi
 }
 
+build_payload() {
+    local team_id=$1
+    local session_id=$2
+    local messages_json=$3
+
+    local payload="{\"messages\": $messages_json,\"teamId\": \"$team_id\",\"sessionId\": \"$session_id\""
+
+    if [[ -n "$AI_PROVIDER" ]]; then
+        payload+=" ,\"aiProvider\": \"$AI_PROVIDER\""
+    fi
+    if [[ -n "$AI_MODEL" ]]; then
+        payload+=" ,\"aiModel\": \"$AI_MODEL\""
+    fi
+
+    payload+=" }"
+    echo "$payload"
+}
+
 make_request() {
     local team_id=$1
     local session_id=$2
     local messages_json=$3
     local test_name=$4
-    local log_file="test-results/production-readiness/$LOG_DIR/${test_name//[^a-zA-Z0-9]/-}.json"
+    local log_file="test-results/production-readiness/$LOG_DIR/$(echo "$test_name" | tr -cs 'A-Za-z0-9' '-').json"
     
     echo -e "${YELLOW}📤 Request: $test_name${NC}"
     echo -e "${YELLOW}   Team: $team_id | Session: $session_id${NC}"
-    
+    if [[ -n "$AI_PROVIDER" || -n "$AI_MODEL" ]]; then
+        echo -e "${YELLOW}   Overrides: provider=${AI_PROVIDER:-default} model=${AI_MODEL:-default}${NC}"
+    fi
+
+    local payload
+    payload=$(build_payload "$team_id" "$session_id" "$messages_json")
+
     local response=$(curl -s --max-time 30 "$BASE_URL/api/agent/stream" \
         -X POST \
         -H "Content-Type: application/json" \
-        -d "{
-            \"messages\": $messages_json,
-            \"teamId\": \"$team_id\",
-            \"sessionId\": \"$session_id\"
-        }" 2>/dev/null)
+        -d "$payload" 2>/dev/null)
     
     echo "$response" > "$log_file"
     echo -e "${YELLOW}📥 Response logged to: $log_file${NC}"
@@ -77,11 +201,10 @@ make_request() {
 # New helper: Check for placeholder detection
 check_no_placeholders() {
     local resp=$1
-    # The refactored code should prevent placeholder values from reaching create_matter
     if echo "$resp" | grep -qi 'client name\|client location\|user name\|placeholder'; then
-        return 1  # Found placeholders - bad
+        return 1
     else
-        return 0  # No placeholders - good
+        return 0
     fi
 }
 
@@ -95,7 +218,6 @@ scenario_greeting() {
         '[{"role":"user","content":"Hi, I need legal help"}]' \
         "Initial Greeting")
     
-    # Refactored code should provide conversational response via SSEController.text()
     if echo "$resp" | grep -q '"type":"text"' && \
        echo "$resp" | grep -qi "what.*legal.*issue\|tell.*me.*about\|kind.*of.*law" && \
        ! echo "$resp" | grep -q '"type":"contact_form"'; then
@@ -111,7 +233,6 @@ scenario_multi_turn() {
         '[{"role":"user","content":"I was fired from my job"},{"role":"assistant","content":"I understand, can you tell me more?"},{"role":"user","content":"My boss accused me unfairly"}]' \
         "Multi-turn Conversation")
     
-    # ContextDetector should properly identify employment law context
     if echo "$resp" | grep -qi "fired\|employment" && \
        ! echo "$resp" | grep -qi "spam"; then
         print_result true "Multi-turn context maintained (Employment Law detected)"
@@ -126,7 +247,6 @@ scenario_case_draft_public() {
         '[{"role":"user","content":"I need help building a case draft for my divorce"}]' \
         "Public Mode Case Draft")
     
-    # Public mode (isPublicMode returns true) should help organize info
     if echo "$resp" | grep -q '"type":"text"' && \
        echo "$resp" | grep -qi "case.*draft\|organize.*information\|pdf\|document" && \
        ! echo "$resp" | grep -q '"type":"contact_form"'; then
@@ -142,8 +262,6 @@ scenario_case_build_team() {
         '[{"role":"user","content":"I need help with employment law, I was fired"}]' \
         "Team Mode Case Build")
     
-    # ContextDetector should identify Employment Law, state should be QUALIFYING_LEAD
-    # getAvailableTools should NOT include contact form yet (not qualified)
     if echo "$resp" | grep -qi "tell.*me.*more\|when.*were.*fired\|reason.*given\|documentation" && \
        ! echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "Team mode properly gathering info (QUALIFYING_LEAD state)"
@@ -158,8 +276,6 @@ scenario_sensitive_matter() {
         '[{"role":"user","content":"My partner was arrested yesterday, I need urgent help"}]' \
         "Sensitive Matter Escalation")
     
-    # ContextDetector should flag isSensitiveMatter=true and isQualifiedLead=true
-    # This should trigger contact form (state: QUALIFYING_LEAD with qualified=true)
     if echo "$resp" | grep -q '"type":"contact_form"' || \
        echo "$resp" | grep -q '"type":"tool_call".*"name":"show_contact_form"'; then
         print_result true "Sensitive matter escalated to contact form"
@@ -171,24 +287,20 @@ scenario_sensitive_matter() {
 scenario_skip_to_lawyer() {
     echo -e "${BLUE}🧪 Skip to Lawyer Flow${NC}"
     
-    # Public mode
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-skippublic" \
         '[{"role":"user","content":"Skip intake, I need a family lawyer"}]' \
         "Skip to Lawyer Public")
     
-    # isPublicMode(teamId) returns true for blawby-ai
     if echo "$resp" | grep -qi "lawyer.*search\|find.*attorney\|legal.*directory"; then
         print_result true "Public skip routed to lawyer search"
     else
         print_result false "Public skip failed"
     fi
     
-    # Team mode
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-skipteam" \
         '[{"role":"user","content":"skip intake"}]' \
         "Skip to Lawyer Team")
     
-    # Team mode should show contact form when skipping
     if echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "Team skip showed contact form"
     else
@@ -202,7 +314,6 @@ scenario_urgent_mid_conversation() {
         '[{"role":"user","content":"I was driving the school bus and an accident happened."},{"role":"assistant","content":"I am so sorry to hear that. Can you share more details?"},{"role":"user","content":"The dog ran into the street and the police were called."},{"role":"assistant","content":"Thank you for letting me know. Were there any injuries?"},{"role":"user","content":"They are here now, I need a lawyer ASAP."}]' \
         "Urgent Lawyer Escalation")
     
-    # ContextDetector should detect urgency="high" and qualified lead
     if echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "Urgent escalation triggered contact form"
     else
@@ -216,8 +327,6 @@ scenario_general_inquiry() {
         '[{"role":"user","content":"What services do you offer?"}]' \
         "General Inquiry")
     
-    # ContextDetector.isGeneralInquiry should be true
-    # Should get text response, no contact form
     if echo "$resp" | grep -q '"type":"text"' && \
        echo "$resp" | grep -qi "services\|legal.*help\|assistance" && \
        ! echo "$resp" | grep -q '"type":"contact_form"'; then
@@ -233,7 +342,6 @@ scenario_context_persistence() {
         '[{"role":"user","content":"I need help with a landlord issue"},{"role":"assistant","content":"Is this about eviction?"},{"role":"user","content":"Yes"}]' \
         "Context Persistence")
     
-    # ContextDetector should identify Landlord/Tenant category
     if echo "$resp" | grep -qi "eviction\|landlord.*issue\|tenant.*rights"; then
         print_result true "Context persisted (Landlord/Tenant detected)"
     else
@@ -247,7 +355,6 @@ scenario_document_gathering() {
         '[{"role":"user","content":"I am preparing for divorce and have financial statements"}]' \
         "Document Gathering")
     
-    # Should detect Family Law and mention documents
     if echo "$resp" | grep -qi "document\|financial.*statement\|upload\|analyze"; then
         print_result true "Document gathering engaged"
     else
@@ -264,8 +371,6 @@ scenario_contact_form_prefill() {
         "$initial_messages" \
         "Team Contact Prefill")
     
-    # ContextDetector.extractContactInfo should find all contact details
-    # handleShowContactForm should populate initialValues
     if echo "$resp" | grep -q '"type":"contact_form"' && \
        echo "$resp" | grep -q '"initialValues"' && \
        echo "$resp" | grep -q 'Jane Doe\|jane.doe@example.com'; then
@@ -274,7 +379,6 @@ scenario_contact_form_prefill() {
         print_result false "Contact form missing initial values"
     fi
     
-    # Test matter creation with PDF
     local pdf_session="$SESSION_PREFIX-prefill-pdf"
     local pdf_messages='[{"role":"user","content":"Hi, I was just fired from my job yesterday and need urgent legal help."},{"role":"assistant","content":"I am sorry to hear that. Could you share your contact information?"},{"role":"user","content":"Name: Jane Doe\\nEmail: jane.doe@example.com\\nPhone: 919-555-1234\\nLocation: Raleigh, NC\\nOpposing Party: ACME Corp"}]'
     
@@ -282,21 +386,18 @@ scenario_contact_form_prefill() {
         "$pdf_messages" \
         "Team Case Summary PDF")
     
-    # handleCreateMatter should return case_summary_pdf
     if echo "$resp" | grep -q '"case_summary_pdf"'; then
         print_result true "Matter creation includes PDF metadata"
     else
         print_result false "PDF metadata missing"
     fi
     
-    # Should emit tool_result event from ToolExecutor
     if echo "$resp" | grep -q '"type":"tool_result"'; then
         print_result true "Tool result event properly emitted"
     else
         print_result false "Missing tool_result event"
     fi
     
-    # Should NOT show raw JSON in response
     if echo "$resp" | grep -qi '"text":"{\\"name\\"' || \
        echo "$resp" | grep -qi '"response":"{\\"name\\"'; then
         print_result false "Raw JSON still visible in response"
@@ -327,8 +428,6 @@ scenario_tool_call_display_bug() {
         "$messages" \
         "Tool Call Display Bug")
     
-    # ToolCallDetector should detect and ToolExecutor should execute
-    # Should NOT show raw tool call JSON to user
     if echo "$resp" | grep -q '"type":"text".*"name":"create_matter"' || \
        echo "$resp" | grep -q '"response":".*TOOL_CALL.*create_matter'; then
         print_result false "CRITICAL: Raw JSON tool calls displayed to user"
@@ -336,7 +435,6 @@ scenario_tool_call_display_bug() {
         print_result true "Tool calls properly executed (not displayed as JSON)"
     fi
     
-    # Should emit proper tool_call and tool_result events
     if echo "$resp" | grep -q '"type":"tool_call"' && \
        echo "$resp" | grep -q '"type":"tool_result"'; then
         print_result true "Tool events properly structured"
@@ -344,7 +442,6 @@ scenario_tool_call_display_bug() {
         print_result false "Tool events missing or malformed"
     fi
     
-    # Should handle lawyer request properly
     if echo "$resp" | grep -q '"type":"contact_form"' || \
        (echo "$resp" | grep -q '"type":"tool_result"' && \
         echo "$resp" | grep -qi 'matter.*created\|case_summary_pdf'); then
@@ -376,14 +473,12 @@ scenario_contact_form_detection_bug() {
         "$messages" \
         "Contact Form Detection Bug")
     
-    # When user agrees ("yea"), should show contact form
     if echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "Contact form shown when user agrees"
     else
         print_result false "CRITICAL: No contact form when user agreed"
     fi
     
-    # Should NOT proceed to payment/matter creation without full contact info
     if echo "$resp" | grep -q '"type":"payment"\|"matter_created"' && \
        ! echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result false "CRITICAL: Proceeding without proper contact form"
@@ -391,8 +486,6 @@ scenario_contact_form_detection_bug() {
         print_result true "System requires contact form first"
     fi
     
-    # Validation should work correctly
-    # The refactored ValidationService should properly validate email/phone
     if echo "$resp" | grep -qi "valid email.*already.*provided\|valid phone.*already.*provided"; then
         print_result false "CRITICAL: Validation failing on valid input"
     else
@@ -414,8 +507,6 @@ scenario_placeholder_prevention() {
         "$messages" \
         "Placeholder Prevention")
     
-    # ToolExecutor.hasPlaceholders() should detect missing info
-    # Should redirect to contact_form instead of create_matter with placeholders
     if echo "$resp" | grep -q '"type":"matter"' && \
        ! check_no_placeholders "$resp"; then
         print_result false "CRITICAL: Placeholder values used in matter creation"
