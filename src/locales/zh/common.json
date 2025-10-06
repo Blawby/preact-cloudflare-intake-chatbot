@@ -16,9 +16,6 @@
     "zh": "中文",
     "ja": "日本語"
   },
-  "validation": {
-    "invalidDate": "请输入有效日期 (YYYY-MM-DD)"
-  },
   "onboarding": {
     "title": "欢迎使用 Blawby AI",
     "subtitle": "让我们开始设置",

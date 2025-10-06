@@ -16,9 +16,6 @@
     "zh": "中文",
     "ja": "日本語"
   },
-  "validation": {
-    "invalidDate": "有効な日付を入力してください (YYYY/MM/DD)"
-  },
   "onboarding": {
     "title": "Blawby AI へようこそ",
     "subtitle": "セットアップを始めましょう",

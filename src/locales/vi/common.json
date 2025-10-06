@@ -16,9 +16,6 @@
     "zh": "中文",
     "ja": "日本語"
   },
-  "validation": {
-    "invalidDate": "Vui lòng nhập ngày hợp lệ (DD/MM/YYYY)"
-  },
   "onboarding": {
     "title": "Chào mừng đến với Blawby AI",
     "subtitle": "Hãy bắt đầu thiết lập",

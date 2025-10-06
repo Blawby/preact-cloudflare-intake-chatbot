@@ -16,9 +16,6 @@
     "zh": "中文",
     "ja": "日本語"
   },
-  "validation": {
-    "invalidDate": "Veuillez entrer une date valide (JJ/MM/AAAA)"
-  },
   "onboarding": {
     "title": "Bienvenue sur Blawby AI",
     "subtitle": "Configurons votre compte",
