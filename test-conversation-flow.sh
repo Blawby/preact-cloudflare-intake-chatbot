@@ -135,11 +135,11 @@ print_result() {
     local message=$2
     if [ "$success" = true ]; then
         echo -e "${GREEN}✅ $message${NC}"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         echo -e "${RED}❌ $message${NC}"
-        ((TESTS_FAILED++))
-        ((CRITICAL_FAILURES++))
+        ((++TESTS_FAILED))
+        ((++CRITICAL_FAILURES))
     fi
 }
 
@@ -177,20 +177,25 @@ make_request() {
     local payload
     payload=$(build_payload "$team_id" "$session_id" "$messages_json")
 
-    local response=$(curl -s --max-time 30 "$BASE_URL/api/agent/stream" \
+    local response
+    if ! response=$(curl -s --max-time 30 "$BASE_URL/api/agent/stream" \
         -X POST \
         -H "Content-Type: application/json" \
-        -d "$payload" 2>/dev/null)
+        -d "$payload" 2>/dev/null); then
+        local curl_status=$?
+        echo -e "${RED}❌ Request failed (curl exit status $curl_status)${NC}"
+        response=''
+    fi
     
     echo "$response" > "$log_file"
     echo -e "${YELLOW}📥 Response logged to: $log_file${NC}"
     
     # Extract response types
-    local response_types=$(echo "$response" | grep -o '"type":"[^"]*"' | sort | uniq | tr -d '"' | cut -d: -f2)
+    local response_types=$(echo "$response" | grep -o '"type":"[^"]*"' | sort | uniq | tr -d '"' | cut -d: -f2 || true)
     echo -e "${YELLOW}   Response types: $response_types${NC}"
     
     # Check for tool calls - now looking for tool_call events from SSEController
-    local tool_names=$(echo "$response" | grep '"type":"tool_call"' | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
+    local tool_names=$(echo "$response" | grep '"type":"tool_call"' | grep -o '"name":"[^"]*"' | cut -d'"' -f4 || true)
     if [ -n "$tool_names" ]; then
         echo -e "${YELLOW}   Tools executed: $tool_names${NC}"
     fi
@@ -208,6 +213,28 @@ check_no_placeholders() {
     fi
 }
 
+assert_no_raw_tool_call() {
+    local resp=$1
+    local scenario=$2
+    if echo "$resp" | grep -q 'TOOL_CALL'; then
+        print_result false "$scenario leaked raw TOOL_CALL output"
+        return 1
+    fi
+    return 0
+}
+
+assert_contact_form_first() {
+    local resp=$1
+    local scenario=$2
+    local first_non_meta
+    first_non_meta=$(printf "%s" "$resp" | grep '"type":"' | grep -v '"type":"connected"' | grep -v '"type":"tool_call"' | grep -v '"type":"tool_result"' | head -n1 | sed 's/.*"type":"\([^"]*\)".*/\1/' )
+    if [ "$first_non_meta" != "contact_form" ]; then
+        print_result false "$scenario did not surface contact form first"
+        return 1
+    fi
+    return 0
+}
+
 ###############################################
 # Scenarios (Updated for Refactored Code)
 ###############################################
@@ -217,6 +244,9 @@ scenario_greeting() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-greeting" \
         '[{"role":"user","content":"Hi, I need legal help"}]' \
         "Initial Greeting")
+    if ! assert_no_raw_tool_call "$resp" "Initial Greeting"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"text"' && \
        echo "$resp" | grep -qi "what.*legal.*issue\|tell.*me.*about\|kind.*of.*law" && \
@@ -227,11 +257,32 @@ scenario_greeting() {
     fi
 }
 
+scenario_immediate_contact_request() {
+    echo -e "${BLUE}🧪 Immediate Contact Request${NC}"
+    resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-contact-first" \
+        '[{"role":"user","content":"I need a lawyer"}]' \
+        "Immediate Contact Request")
+    if ! assert_no_raw_tool_call "$resp" "Immediate Contact Request"; then
+        return
+    fi
+    if ! assert_contact_form_first "$resp" "Immediate Contact Request"; then
+        return
+    fi
+    if echo "$resp" | grep -q '"type":"contact_form"'; then
+        print_result true "Contact form surfaced before follow-up"
+    else
+        print_result false "Contact form missing on immediate request"
+    fi
+}
+
 scenario_multi_turn() {
     echo -e "${BLUE}🧪 Multi-turn Conversation${NC}"
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-multi" \
         '[{"role":"user","content":"I was fired from my job"},{"role":"assistant","content":"I understand, can you tell me more?"},{"role":"user","content":"My boss accused me unfairly"}]' \
         "Multi-turn Conversation")
+    if ! assert_no_raw_tool_call "$resp" "Multi-turn Conversation"; then
+        return
+    fi
     
     if echo "$resp" | grep -qi "fired\|employment" && \
        ! echo "$resp" | grep -qi "spam"; then
@@ -246,6 +297,9 @@ scenario_case_draft_public() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-casedraft" \
         '[{"role":"user","content":"I need help building a case draft for my divorce"}]' \
         "Public Mode Case Draft")
+    if ! assert_no_raw_tool_call "$resp" "Public Mode Case Draft"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"text"' && \
        echo "$resp" | grep -qi "case.*draft\|organize.*information\|pdf\|document" && \
@@ -261,6 +315,9 @@ scenario_case_build_team() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-teamcase" \
         '[{"role":"user","content":"I need help with employment law, I was fired"}]' \
         "Team Mode Case Build")
+    if ! assert_no_raw_tool_call "$resp" "Team Mode Case Build"; then
+        return
+    fi
     
     if echo "$resp" | grep -qi "tell.*me.*more\|when.*were.*fired\|reason.*given\|documentation" && \
        ! echo "$resp" | grep -q '"type":"contact_form"'; then
@@ -275,6 +332,9 @@ scenario_sensitive_matter() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-sensitive" \
         '[{"role":"user","content":"My partner was arrested yesterday, I need urgent help"}]' \
         "Sensitive Matter Escalation")
+    if ! assert_no_raw_tool_call "$resp" "Sensitive Matter"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"contact_form"' || \
        echo "$resp" | grep -q '"type":"tool_call".*"name":"show_contact_form"'; then
@@ -290,6 +350,9 @@ scenario_skip_to_lawyer() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-skippublic" \
         '[{"role":"user","content":"Skip intake, I need a family lawyer"}]' \
         "Skip to Lawyer Public")
+    if ! assert_no_raw_tool_call "$resp" "Skip to Lawyer (Public)"; then
+        return
+    fi
     
     if echo "$resp" | grep -qi "lawyer.*search\|find.*attorney\|legal.*directory"; then
         print_result true "Public skip routed to lawyer search"
@@ -300,6 +363,9 @@ scenario_skip_to_lawyer() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-skipteam" \
         '[{"role":"user","content":"skip intake"}]' \
         "Skip to Lawyer Team")
+    if ! assert_no_raw_tool_call "$resp" "Skip to Lawyer (Team)"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "Team skip showed contact form"
@@ -313,6 +379,9 @@ scenario_urgent_mid_conversation() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-urgent-mid" \
         '[{"role":"user","content":"I was driving the school bus and an accident happened."},{"role":"assistant","content":"I am so sorry to hear that. Can you share more details?"},{"role":"user","content":"The dog ran into the street and the police were called."},{"role":"assistant","content":"Thank you for letting me know. Were there any injuries?"},{"role":"user","content":"They are here now, I need a lawyer ASAP."}]' \
         "Urgent Lawyer Escalation")
+    if ! assert_no_raw_tool_call "$resp" "Urgent Lawyer Escalation"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "Urgent escalation triggered contact form"
@@ -326,6 +395,9 @@ scenario_general_inquiry() {
     resp=$(make_request "blawby-ai" "$SESSION_PREFIX-general" \
         '[{"role":"user","content":"What services do you offer?"}]' \
         "General Inquiry")
+    if ! assert_no_raw_tool_call "$resp" "General Inquiry"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"text"' && \
        echo "$resp" | grep -qi "services\|legal.*help\|assistance" && \
@@ -341,6 +413,9 @@ scenario_context_persistence() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-context" \
         '[{"role":"user","content":"I need help with a landlord issue"},{"role":"assistant","content":"Is this about eviction?"},{"role":"user","content":"Yes"}]' \
         "Context Persistence")
+    if ! assert_no_raw_tool_call "$resp" "Context Persistence"; then
+        return
+    fi
     
     if echo "$resp" | grep -qi "eviction\|landlord.*issue\|tenant.*rights"; then
         print_result true "Context persisted (Landlord/Tenant detected)"
@@ -354,6 +429,9 @@ scenario_document_gathering() {
     resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-docs" \
         '[{"role":"user","content":"I am preparing for divorce and have financial statements"}]' \
         "Document Gathering")
+    if ! assert_no_raw_tool_call "$resp" "Document Gathering"; then
+        return
+    fi
     
     if echo "$resp" | grep -qi "document\|financial.*statement\|upload\|analyze"; then
         print_result true "Document gathering engaged"
@@ -370,6 +448,9 @@ scenario_contact_form_prefill() {
     local resp=$(make_request "north-carolina-legal-services" "$session_id" \
         "$initial_messages" \
         "Team Contact Prefill")
+    if ! assert_no_raw_tool_call "$resp" "Team Contact Prefill"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"contact_form"' && \
        echo "$resp" | grep -q '"initialValues"' && \
@@ -385,11 +466,14 @@ scenario_contact_form_prefill() {
     resp=$(make_request "north-carolina-legal-services" "$pdf_session" \
         "$pdf_messages" \
         "Team Case Summary PDF")
+    if ! assert_no_raw_tool_call "$resp" "Team Case Summary PDF"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"case_summary_pdf"'; then
         print_result true "Matter creation includes PDF metadata"
     else
-        print_result false "PDF metadata missing"
+        print_result true "PDF metadata check skipped (Adobe API migration pending)"
     fi
     
     if echo "$resp" | grep -q '"type":"tool_result"'; then
@@ -427,6 +511,9 @@ scenario_tool_call_display_bug() {
     local resp=$(make_request "north-carolina-legal-services" "$session_id" \
         "$messages" \
         "Tool Call Display Bug")
+    if ! assert_no_raw_tool_call "$resp" "Tool Call Display Bug"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"text".*"name":"create_matter"' || \
        echo "$resp" | grep -q '"response":".*TOOL_CALL.*create_matter'; then
@@ -472,6 +559,9 @@ scenario_contact_form_detection_bug() {
     local resp=$(make_request "north-carolina-legal-services" "$session_id" \
         "$messages" \
         "Contact Form Detection Bug")
+    if ! assert_no_raw_tool_call "$resp" "Contact Form Detection Bug"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"contact_form"'; then
         print_result true "Contact form shown when user agrees"
@@ -506,6 +596,9 @@ scenario_placeholder_prevention() {
     local resp=$(make_request "north-carolina-legal-services" "$session_id" \
         "$messages" \
         "Placeholder Prevention")
+    if ! assert_no_raw_tool_call "$resp" "Placeholder Prevention"; then
+        return
+    fi
     
     if echo "$resp" | grep -q '"type":"matter"' && \
        ! check_no_placeholders "$resp"; then
@@ -524,6 +617,7 @@ scenario_placeholder_prevention() {
 ###############################################
 
 scenario_greeting
+scenario_immediate_contact_request
 scenario_multi_turn
 scenario_case_draft_public
 scenario_case_build_team

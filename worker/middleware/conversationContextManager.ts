@@ -177,13 +177,14 @@ export class ConversationContextManager {
     updated.messageCount = messages.length;
     updated.lastUpdated = Date.now();
 
-    // Build conversation history from all messages
+    // Build conversation history for both roles
     const conversationText = messages.map(msg => msg.content).join(' ');
     const userMessages = messages.filter(msg => msg.role === 'user' || msg.isUser);
+    const userConversationText = userMessages.map(msg => msg.content).join(' ');
     const _latestUserMessage = userMessages[userMessages.length - 1];
 
     // Extract legal matter types from full conversation
-    const legalMatterTypes = this.extractLegalMatterTypes(conversationText);
+    const legalMatterTypes = this.extractLegalMatterTypes(userConversationText);
     legalMatterTypes.forEach(matter => {
       if (!updated.establishedMatters.includes(matter)) {
         updated.establishedMatters.push(matter);
@@ -191,7 +192,7 @@ export class ConversationContextManager {
     });
 
     // Update user intent based on full conversation context
-    updated.userIntent = this.determineUserIntent(conversationText, updated);
+    updated.userIntent = this.determineUserIntent(userConversationText, updated);
 
     // Update conversation phase using full conversation context
     updated.conversationPhase = this.determineConversationPhase(updated, conversationText);

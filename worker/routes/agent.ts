@@ -25,6 +25,8 @@ interface RouteBody {
   }>;
   teamId?: string;
   sessionId?: string;
+  aiProvider?: string;
+  aiModel?: string;
   attachments?: Array<{
     id?: string;
     name: string;
@@ -60,7 +62,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     }
     
     const body = rawBody as RouteBody;
-    const { messages, teamId, sessionId, attachments = [] } = body;
+    const { messages, teamId, sessionId, attachments = [], aiProvider, aiModel } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw HttpErrors.badRequest('No message content provided');
@@ -99,6 +101,13 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       throw HttpErrors.badRequest('teamId is required for agent interactions');
     }
 
+    const providerOverride = typeof aiProvider === 'string' && aiProvider.trim().length > 0
+      ? aiProvider.trim()
+      : undefined;
+    const modelOverride = typeof aiModel === 'string' && aiModel.trim().length > 0
+      ? aiModel.trim()
+      : undefined;
+
     const sessionResolution = await SessionService.resolveSession(env, {
       request,
       sessionId: trimmedSessionId,
@@ -132,13 +141,16 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
           }
         : undefined;
 
+      const messageRecord = latestMessage as { id?: unknown };
+      const messageId = typeof messageRecord.id === 'string' ? messageRecord.id : undefined;
+
       await SessionService.persistMessage(env, {
         sessionId: resolvedSessionId,
         teamId: resolvedTeamId,
         role: 'user',
         content: latestMessage.content,
         metadata,
-        messageId: typeof (latestMessage as any).id === 'string' ? (latestMessage as any).id : undefined
+        messageId
       });
     } catch (persistError) {
       console.warn('Failed to persist chat message to D1', persistError);
@@ -179,9 +191,9 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       [
         createLoggingMiddleware(),
         contentPolicyFilter,
+        skipToLawyerMiddleware,
         businessScopeValidator,
         fileAnalysisMiddleware, // Handle file analysis early in pipeline
-        skipToLawyerMiddleware, // Move skip middleware before jurisdiction validator
         jurisdictionValidator,
         caseDraftMiddleware,
         documentChecklistMiddleware,
@@ -352,7 +364,11 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
             resolvedSessionId,
             cloudflareLocation,
             controller,
-            fileAttachments
+            fileAttachments,
+            {
+              provider: providerOverride,
+              model: modelOverride
+            }
           );
           
         } catch (error) {
@@ -428,15 +444,24 @@ function isValidRouteBody(obj: unknown): obj is RouteBody {
   if (body.teamId !== undefined && typeof body.teamId !== 'string') return false;
   if (body.sessionId !== undefined && typeof body.sessionId !== 'string') return false;
 
+  if (body.aiProvider !== undefined && typeof body.aiProvider !== 'string') return false;
+  if (body.aiModel !== undefined && typeof body.aiModel !== 'string') return false;
+
   if (body.attachments !== undefined) {
     if (!Array.isArray(body.attachments)) return false;
-    for (const att of body.attachments as any[]) {
-      if (!att || typeof att !== 'object') return false;
-      const nameOk = typeof att.name === 'string' && att.name.length > 0;
-      const typeOk = typeof att.type === 'string' && att.type.length > 0;
-      const sizeOk = typeof att.size === 'number' && att.size >= 0 && Number.isFinite(att.size);
-      const urlOk = typeof att.url === 'string' && (
-        /^(https?):\/\//i.test(att.url) || (att.url.startsWith('/') && !att.url.startsWith('//'))
+    for (const item of body.attachments) {
+      if (!item || typeof item !== 'object') return false;
+      const att = item as Record<string, unknown>;
+      const name = att.name;
+      const type = att.type;
+      const size = att.size;
+      const url = att.url;
+
+      const nameOk = typeof name === 'string' && name.length > 0;
+      const typeOk = typeof type === 'string' && type.length > 0;
+      const sizeOk = typeof size === 'number' && size >= 0 && Number.isFinite(size);
+      const urlOk = typeof url === 'string' && (
+        /^(https?):\/\//i.test(url) || (url.startsWith('/') && !url.startsWith('//'))
       );
       if (!(nameOk && typeOk && sizeOk && urlOk)) return false;
     }
