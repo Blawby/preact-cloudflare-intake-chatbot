@@ -2308,7 +2308,7 @@ export async function runLegalIntakeAgentStream(
       const fallbackToContactForm = shouldFallbackToContactForm(
         context,
         messages,
-        effectiveToolCalls ?? [],
+        effectiveToolCalls,
         finalResponse,
         team
       );
@@ -2316,7 +2316,7 @@ export async function runLegalIntakeAgentStream(
       if (fallbackToContactForm) {
         await executor.execute({ name: 'show_contact_form', arguments: {} });
         // Note: The show_contact_form tool already provides its own message, so we don't need to add another one
-      } else if (effectiveToolCalls && effectiveToolCalls.length > 0) {
+      } else if (effectiveToolCalls.length > 0) {
         await executor.execute(effectiveToolCalls[0]);
       } else {
         const detectedToolCall = ToolCallDetector.detect(finalResponse);

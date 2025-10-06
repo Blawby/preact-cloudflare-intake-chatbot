@@ -1,5 +1,6 @@
 import { Env } from '../types.js';
 import { ValidationService } from './ValidationService.js';
+import { ValidationError } from '../utils/validationErrors.js';
 
 export type TeamVoiceProvider = 'cloudflare' | 'elevenlabs' | 'custom';
 
@@ -45,7 +46,7 @@ export interface TeamConfig {
 }
 
 const LEGACY_AI_PROVIDER = 'legacy-llama';
-const DEFAULT_LLAMA_MODEL = '@cf/meta/llama-4-scout';
+const DEFAULT_LLAMA_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
 
 const DEFAULT_AVAILABLE_SERVICES = [
   'Family Law',
@@ -366,7 +367,7 @@ export class TeamService {
       if (teamRow) {
         const rawConfig = this.decodeTeamConfig(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig);
+        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false);
         
         const team: Team = {
           id: teamRow.id as string,
@@ -397,8 +398,9 @@ export class TeamService {
 
   /**
    * Validates and normalizes team configuration to ensure all required properties are present
+   * @param strictValidation - if true, applies strict validation including placeholder email checks
    */
-  private validateAndNormalizeConfig(config: TeamConfig | null | undefined): TeamConfig {
+  private validateAndNormalizeConfig(config: TeamConfig | null | undefined, strictValidation: boolean = false): TeamConfig {
     const defaultConfig = this.getDefaultConfig();
     const sourceConfig = (config ?? {}) as TeamConfig;
 
@@ -411,16 +413,16 @@ export class TeamService {
 
     // Validate ownerEmail if provided
     let ownerEmail = sourceConfig.ownerEmail ?? defaultConfig.ownerEmail;
-    if (ownerEmail) {
+    if (ownerEmail && strictValidation) {
       // Check for placeholder emails and reject them
       const placeholderEmails = ['default@example.com', 'test@example.com', 'admin@example.com', 'owner@example.com'];
       if (placeholderEmails.includes(ownerEmail.toLowerCase())) {
-        throw new Error(`Invalid ownerEmail: placeholder email '${ownerEmail}' is not allowed. Please provide a real email address.`);
+        throw new ValidationError(`Invalid ownerEmail: placeholder email '${ownerEmail}' is not allowed. Please provide a real email address.`);
       }
       
       // Validate email format
       if (!ValidationService.validateEmail(ownerEmail)) {
-        throw new Error(`Invalid ownerEmail format: '${ownerEmail}' is not a valid email address.`);
+        throw new ValidationError(`Invalid ownerEmail format: '${ownerEmail}' is not a valid email address.`);
       }
     }
 
@@ -445,7 +447,7 @@ export class TeamService {
     const now = new Date().toISOString();
     
     // Validate and normalize the team configuration
-    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config);
+    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config, true);
     
     const team: Team = {
       ...teamData,
@@ -499,7 +501,7 @@ export class TeamService {
     // Validate and normalize the team configuration if it's being updated
     let normalizedConfig = existingTeam.config;
     if (mutableUpdates.config) {
-      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config);
+      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config, true);
     }
     
     const updatedTeam: Team = {
@@ -573,7 +575,7 @@ export class TeamService {
     return teams.results.map(row => {
       const rawConfig = this.decodeTeamConfig(row.config as string);
       const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig);
+      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false);
       
       return {
         id: row.id as string,

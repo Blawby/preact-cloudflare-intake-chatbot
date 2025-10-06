@@ -1,5 +1,54 @@
 import { TeamService, TeamConfig } from '../services/TeamService.js';
 import { Env } from '../types.js';
+import { ValidationError } from '../utils/validationErrors.js';
+
+/**
+ * Helper function to create standardized error responses
+ */
+function createErrorResponse(
+  error: unknown, 
+  operation: string,
+  defaultMessage: string = 'An error occurred'
+): Response {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+  
+  // Handle validation errors specifically
+  if (error instanceof ValidationError) {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: errorMessage 
+      }), 
+      { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+  
+  // Log full error details for debugging while returning generic message to client
+  console.error(`${operation} error:`, {
+    error: error instanceof Error ? {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    } : error,
+    operation,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Handle other errors with generic client message
+  return new Response(
+    JSON.stringify({ 
+      success: false, 
+      error: defaultMessage 
+    }), 
+    { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' } 
+    }
+  );
+}
 
 export async function handleTeams(request: Request, env: Env): Promise<Response> {
 
@@ -246,33 +295,7 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
       }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
-    // Handle validation errors specifically
-    if (errorMessage.includes('Invalid ownerEmail')) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: errorMessage 
-        }), 
-        { 
-          status: 400,
-          headers: { 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-    
-    // Handle other errors
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: 'Failed to create team' 
-      }), 
-      { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' } 
-      }
-    );
+    return createErrorResponse(error, 'createTeam', 'Failed to create team');
   }
 }
 
@@ -312,33 +335,7 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
       }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
-    // Handle validation errors specifically
-    if (errorMessage.includes('Invalid ownerEmail')) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: errorMessage 
-        }), 
-        { 
-          status: 400,
-          headers: { 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-    
-    // Handle other errors
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: 'Failed to update team' 
-      }), 
-      { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' } 
-      }
-    );
+    return createErrorResponse(error, 'updateTeam', 'Failed to update team');
   }
 }
 
