@@ -57,61 +57,61 @@ export interface PricingComparison {
   };
 }
 
-// Feature definitions for comparison tables
+// Feature definitions for comparison tables with translation keys
 const FEATURE_DEFINITIONS = {
   aiAccess: {
-    name: 'AI Access',
-    description: 'Access to our legal AI models',
+    name: 'pricing:features.aiAccess.name',
+    description: 'pricing:features.aiAccess.description',
     icon: BoltIcon,
     tiers: {
-      free: 'Blawby AI-1 (Limited)',
-      plus: 'Blawby AI-1 (Enhanced)',
-      business: 'Blawby AI-1 (Unlimited)'
+      free: 'pricing:features.aiAccess.tiers.free',
+      plus: 'pricing:features.aiAccess.tiers.plus',
+      business: 'pricing:features.aiAccess.tiers.business'
     }
   },
   documentAnalysis: {
-    name: 'Document Analysis',
-    description: 'Upload and analyze legal documents',
+    name: 'pricing:features.documentAnalysis.name',
+    description: 'pricing:features.documentAnalysis.description',
     icon: DocumentIcon,
     tiers: {
-      free: 'Limited',
-      plus: 'Enhanced',
-      business: 'Unlimited'
+      free: 'pricing:features.documentAnalysis.tiers.free',
+      plus: 'pricing:features.documentAnalysis.tiers.plus',
+      business: 'pricing:features.documentAnalysis.tiers.business'
     }
   },
   casePreparation: {
-    name: 'Case PDF Preparation',
-    description: 'AI-powered case document preparation',
+    name: 'pricing:features.casePreparation.name',
+    description: 'pricing:features.casePreparation.description',
     icon: PhotoIcon,
     tiers: {
-      free: 'Limited',
-      plus: 'Enhanced',
-      business: 'Unlimited'
+      free: 'pricing:features.casePreparation.tiers.free',
+      plus: 'pricing:features.casePreparation.tiers.plus',
+      business: 'pricing:features.casePreparation.tiers.business'
     }
   },
   memoryContext: {
-    name: 'Memory & Context',
-    description: 'Conversation memory and context',
+    name: 'pricing:features.memoryContext.name',
+    description: 'pricing:features.memoryContext.description',
     icon: LinkIcon,
     tiers: {
-      free: 'Limited',
-      plus: 'Enhanced',
-      business: 'Unlimited'
+      free: 'pricing:features.memoryContext.tiers.free',
+      plus: 'pricing:features.memoryContext.tiers.plus',
+      business: 'pricing:features.memoryContext.tiers.business'
     }
   },
   lawyerSearch: {
-    name: 'Lawyer Search',
-    description: 'Find and connect with qualified lawyers',
+    name: 'pricing:features.lawyerSearch.name',
+    description: 'pricing:features.lawyerSearch.description',
     icon: MagnifyingGlassIcon,
     tiers: {
-      free: 'Limited',
-      plus: 'Enhanced',
-      business: 'Unlimited'
+      free: 'pricing:features.lawyerSearch.tiers.free',
+      plus: 'pricing:features.lawyerSearch.tiers.plus',
+      business: 'pricing:features.lawyerSearch.tiers.business'
     }
   },
   teamCollaboration: {
-    name: 'Team Collaboration',
-    description: 'Shared projects and team features',
+    name: 'pricing:features.teamCollaboration.name',
+    description: 'pricing:features.teamCollaboration.description',
     icon: UserGroupIcon,
     tiers: {
       free: false,
@@ -120,8 +120,8 @@ const FEATURE_DEFINITIONS = {
     }
   },
   security: {
-    name: 'Advanced Security',
-    description: 'SSO, MFA, and enterprise security',
+    name: 'pricing:features.security.name',
+    description: 'pricing:features.security.description',
     icon: LockClosedIcon,
     tiers: {
       free: false,
@@ -130,8 +130,8 @@ const FEATURE_DEFINITIONS = {
     }
   },
   privacy: {
-    name: 'Privacy Protection',
-    description: 'Data never used for training',
+    name: 'pricing:features.privacy.name',
+    description: 'pricing:features.privacy.description',
     icon: EyeSlashIcon,
     tiers: {
       free: false,
@@ -140,8 +140,8 @@ const FEATURE_DEFINITIONS = {
     }
   },
   integrations: {
-    name: 'Integrations',
-    description: 'SharePoint and other tools',
+    name: 'pricing:features.integrations.name',
+    description: 'pricing:features.integrations.description',
     icon: ShareIcon,
     tiers: {
       free: false,
@@ -150,8 +150,8 @@ const FEATURE_DEFINITIONS = {
     }
   },
   billing: {
-    name: 'Simplified Billing',
-    description: 'User management and billing',
+    name: 'pricing:features.billing.name',
+    description: 'pricing:features.billing.description',
     icon: CurrencyDollarIcon,
     tiers: {
       free: false,
@@ -160,8 +160,8 @@ const FEATURE_DEFINITIONS = {
     }
   },
   transcription: {
-    name: 'Voice Transcription',
-    description: 'Meeting and voice transcription',
+    name: 'pricing:features.transcription.name',
+    description: 'pricing:features.transcription.description',
     icon: MicrophoneIcon,
     tiers: {
       free: false,
@@ -170,8 +170,8 @@ const FEATURE_DEFINITIONS = {
     }
   },
   agents: {
-    name: 'AI Agents',
-    description: 'Coding and research agents',
+    name: 'pricing:features.agents.name',
+    description: 'pricing:features.agents.description',
     icon: Cog6ToothIcon,
     tiers: {
       free: false,
@@ -181,99 +181,99 @@ const FEATURE_DEFINITIONS = {
   }
 };
 
-// Pricing plans data
+// Pricing plans data with translation keys
 const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'free',
-    name: 'Free',
-    price: '$0 USD / month',
+    name: 'pricing:plans.free.name',
+    price: '$0 USD / month', // Will be formatted dynamically
     priceAmount: 0,
     currency: 'USD',
     billingPeriod: 'month',
-    description: 'Legal AI assistance for everyday needs',
+    description: 'pricing:plans.free.description',
     features: [
-      { icon: BoltIcon, text: 'Access to Blawby AI-1', description: 'Limited access to our legal AI model' },
-      { icon: DocumentIcon, text: 'Limited document analysis', description: 'Upload and analyze basic legal documents' },
-      { icon: PhotoIcon, text: 'Limited case PDF preparation', description: 'Basic case document preparation' },
-      { icon: LinkIcon, text: 'Limited memory and context', description: 'Basic conversation memory' },
-      { icon: MagnifyingGlassIcon, text: 'Limited lawyer search', description: 'Basic lawyer search capabilities' }
+      { icon: BoltIcon, text: 'pricing:features.aiAccess.text.free', description: 'pricing:features.aiAccess.detail.free' },
+      { icon: DocumentIcon, text: 'pricing:features.documentAnalysis.text.free', description: 'pricing:features.documentAnalysis.detail.free' },
+      { icon: PhotoIcon, text: 'pricing:features.casePreparation.text.free', description: 'pricing:features.casePreparation.detail.free' },
+      { icon: LinkIcon, text: 'pricing:features.memoryContext.text.free', description: 'pricing:features.memoryContext.detail.free' },
+      { icon: MagnifyingGlassIcon, text: 'pricing:features.lawyerSearch.text.free', description: 'pricing:features.lawyerSearch.detail.free' }
     ],
-    buttonText: 'Your current plan',
+    buttonText: 'pricing:plans.free.buttonText',
     limitations: [
-      'Limited to 20 messages per day',
-      'Basic document analysis support',
-      'Standard response times',
-      'No team collaboration features'
+      'pricing:limitations.free.messagesPerDay',
+      'pricing:limitations.free.documentSupport',
+      'pricing:limitations.free.responseTime',
+      'pricing:limitations.free.noTeam'
     ],
     benefits: [
-      'Perfect for personal legal needs',
-      'No credit card required',
-      'Full access to core legal AI features',
-      'Community support'
+      'pricing:benefits.free.personal',
+      'pricing:benefits.free.noCard',
+      'pricing:benefits.free.fullAccess',
+      'pricing:benefits.free.support'
     ]
   },
   {
     id: 'plus',
-    name: 'Plus',
-    price: '$20 USD / month',
+    name: 'pricing:plans.plus.name',
+    price: '$20 USD / month', // Will be formatted dynamically
     priceAmount: 20,
     currency: 'USD',
     billingPeriod: 'month',
-    description: 'Enhanced legal AI capabilities for professionals',
+    description: 'pricing:plans.plus.description',
     features: [
-      { icon: PlusIcon, text: 'Everything in Free, with higher limits', description: 'All free features with increased usage' },
-      { icon: CpuChipIcon, text: 'Enhanced access to Blawby AI-1', description: 'Priority access to our legal AI model' },
-      { icon: VideoCameraIcon, text: 'Enhanced document analysis', description: 'Faster and more accurate legal document processing' },
-      { icon: LinkIcon, text: 'Extended memory and context', description: 'Longer conversation memory' },
-      { icon: MagnifyingGlassIcon, text: 'Enhanced lawyer search', description: 'Advanced lawyer matching capabilities' }
+      { icon: PlusIcon, text: 'pricing:features.plusIncludes.text', description: 'pricing:features.plusIncludes.detail' },
+      { icon: CpuChipIcon, text: 'pricing:features.aiAccess.text.plus', description: 'pricing:features.aiAccess.detail.plus' },
+      { icon: VideoCameraIcon, text: 'pricing:features.documentAnalysis.text.plus', description: 'pricing:features.documentAnalysis.detail.plus' },
+      { icon: LinkIcon, text: 'pricing:features.memoryContext.text.plus', description: 'pricing:features.memoryContext.detail.plus' },
+      { icon: MagnifyingGlassIcon, text: 'pricing:features.lawyerSearch.text.plus', description: 'pricing:features.lawyerSearch.detail.plus' }
     ],
-    buttonText: 'Get Plus',
+    buttonText: 'pricing:plans.plus.buttonText',
     popular: true,
     isRecommended: true,
     limitations: [
-      'Limited to 200 messages per day',
-      'No team collaboration features',
-      'Standard support response times'
+      'pricing:limitations.plus.messagesPerDay',
+      'pricing:limitations.plus.noTeam',
+      'pricing:limitations.plus.standardSupport'
     ],
     benefits: [
-      '5x higher usage limits',
-      'Priority AI model access',
-      'Enhanced legal features',
-      'Email support'
+      'pricing:benefits.plus.higherLimits',
+      'pricing:benefits.plus.priorityAccess',
+      'pricing:benefits.plus.enhanced',
+      'pricing:benefits.plus.support'
     ]
   },
   {
     id: 'business',
-    name: 'Business',
-    price: '$25 USD / month',
+    name: 'pricing:plans.business.name',
+    price: '$25 USD / month', // Will be formatted dynamically
     priceAmount: 25,
     currency: 'USD',
     billingPeriod: 'month',
-    description: 'Secure, collaborative workspace for teams',
+    description: 'pricing:plans.business.description',
     features: [
-      { icon: PlusIcon, text: 'Everything in Plus, with even higher limits', description: 'All Plus features with unlimited usage' },
-      { icon: CpuChipIcon, text: 'Unlimited access to our best model for work', description: 'Unlimited access to advanced AI models' },
-      { icon: VideoCameraIcon, text: 'Advanced document analysis & case preparation', description: 'Full legal document processing capabilities' },
-      { icon: LockClosedIcon, text: 'Advanced security with SSO, MFA, & more', description: 'Enterprise-grade security features' },
-      { icon: EyeSlashIcon, text: 'Privacy built in; data never used for training', description: 'Complete data privacy protection' },
-      { icon: UserGroupIcon, text: 'Tools for teams like shared projects & workflows', description: 'Team collaboration and project management' },
-      { icon: ShareIcon, text: 'Integration with Quickbooks & other tools', description: 'Connect with your existing workflow' },
-      { icon: CurrencyDollarIcon, text: 'Simplified billing and user management', description: 'Easy team and billing management' },
-      { icon: MicrophoneIcon, text: 'Voice transcription and analysis', description: 'Voice transcription and legal analysis' },
-      { icon: Cog6ToothIcon, text: 'Legal research and lawyer search agents', description: 'Specialized AI agents for legal research and lawyer matching' }
+      { icon: PlusIcon, text: 'pricing:features.businessIncludes.text', description: 'pricing:features.businessIncludes.detail' },
+      { icon: CpuChipIcon, text: 'pricing:features.aiAccess.text.business', description: 'pricing:features.aiAccess.detail.business' },
+      { icon: VideoCameraIcon, text: 'pricing:features.documentAnalysis.text.business', description: 'pricing:features.documentAnalysis.detail.business' },
+      { icon: LockClosedIcon, text: 'pricing:features.security.text', description: 'pricing:features.security.detail' },
+      { icon: EyeSlashIcon, text: 'pricing:features.privacy.text', description: 'pricing:features.privacy.detail' },
+      { icon: UserGroupIcon, text: 'pricing:features.teamCollaboration.text', description: 'pricing:features.teamCollaboration.detail' },
+      { icon: ShareIcon, text: 'pricing:features.integrations.text', description: 'pricing:features.integrations.detail' },
+      { icon: CurrencyDollarIcon, text: 'pricing:features.billing.text', description: 'pricing:features.billing.detail' },
+      { icon: MicrophoneIcon, text: 'pricing:features.transcription.text', description: 'pricing:features.transcription.detail' },
+      { icon: Cog6ToothIcon, text: 'pricing:features.agents.text', description: 'pricing:features.agents.detail' }
     ],
-    buttonText: 'Get Business',
+    buttonText: 'pricing:plans.business.buttonText',
     isRecommended: true,
     limitations: [
-      'Requires 2+ users',
-      'Annual billing recommended'
+      'pricing:limitations.business.minUsers',
+      'pricing:limitations.business.annualBilling'
     ],
     benefits: [
-      'Unlimited usage',
-      'Team collaboration',
-      'Enterprise security',
-      'Priority support',
-      'Custom integrations'
+      'pricing:benefits.business.unlimited',
+      'pricing:benefits.business.team',
+      'pricing:benefits.business.security',
+      'pricing:benefits.business.prioritySupport',
+      'pricing:benefits.business.customIntegrations'
     ]
   }
 ];

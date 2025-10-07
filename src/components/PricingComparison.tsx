@@ -1,6 +1,8 @@
 import { FunctionComponent } from 'preact';
+import { useTranslation } from 'react-i18next';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
 import { type SubscriptionTier } from '../utils/mockUserData';
+import { formatCurrency } from '../utils/currencyFormatter';
 
 interface PricingComparisonProps {
   currentTier?: SubscriptionTier;
@@ -15,9 +17,29 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
   showAllPlans = true,
   className = ''
 }) => {
-  const plans = showAllPlans 
+  const { t, i18n } = useTranslation('pricing');
+  
+  const rawPlans = showAllPlans 
     ? mockPricingDataService.getPricingPlans()
     : mockPricingDataService.getUpgradePath(currentTier);
+    
+  // Translate plans
+  const plans = rawPlans.map(plan => ({
+    ...plan,
+    name: t(plan.name),
+    description: t(plan.description),
+    buttonText: t(plan.buttonText),
+    price: formatCurrency(plan.priceAmount, plan.currency, i18n.language) + ' ' + 
+           plan.currency.toUpperCase() + ' ' + 
+           t(`billing.per${plan.billingPeriod === 'month' ? 'Month' : 'Year'}`),
+    features: plan.features.map(f => ({
+      ...f,
+      text: t(f.text),
+      description: f.description ? t(f.description) : undefined
+    })),
+    benefits: plan.benefits?.map(b => t(b)),
+    limitations: plan.limitations?.map(l => t(l))
+  }));
 
   return (
     <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${className}`}>
@@ -34,7 +56,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
           {plan.isRecommended && (
             <div className="absolute -top-3 left-6">
               <span className="bg-accent-500 text-gray-900 text-xs font-medium px-3 py-1 rounded-full">
-                RECOMMENDED
+                {t('modal.recommended').toUpperCase()}
               </span>
             </div>
           )}
@@ -43,7 +65,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
           {plan.popular && (
             <div className="absolute -top-3 right-6">
               <span className="bg-blue-500 text-white text-xs font-medium px-3 py-1 rounded-full">
-                POPULAR
+                {t('modal.popular').toUpperCase()}
               </span>
             </div>
           )}
@@ -72,7 +94,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
                 : 'bg-transparent border border-dark-border text-white hover:bg-dark-hover'
             }`}
           >
-            {plan.id === currentTier ? 'Your current plan' : plan.buttonText}
+            {plan.id === currentTier ? t('plans.free.buttonText') : plan.buttonText}
           </button>
 
           {/* Features List */}

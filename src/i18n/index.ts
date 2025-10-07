@@ -6,12 +6,13 @@ import commonEn from '../locales/en/common.json';
 import settingsEn from '../locales/en/settings.json';
 import authEn from '../locales/en/auth.json';
 import profileEn from '../locales/en/profile.json';
+import pricingEn from '../locales/en/pricing.json';
 
 export const DEFAULT_LOCALE = 'en' as const;
 export const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'de', 'zh', 'ja', 'vi'] as const;
 export type AppLocale = typeof SUPPORTED_LOCALES[number];
 
-const NAMESPACES = ['common', 'settings', 'auth', 'profile'] as const;
+const NAMESPACES = ['common', 'settings', 'auth', 'profile', 'pricing'] as const;
 
 const STORAGE_KEY = 'blawby_locale';
 let initialized = false;
@@ -21,7 +22,8 @@ const staticResources = {
     common: commonEn,
     settings: settingsEn,
     auth: authEn,
-    profile: profileEn
+    profile: profileEn,
+    pricing: pricingEn
   }
 };
 

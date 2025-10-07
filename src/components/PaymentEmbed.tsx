@@ -1,4 +1,5 @@
 import { FunctionComponent, useState, useEffect, useRef } from 'preact/compat';
+import { useTranslation } from 'react-i18next';
 import { ArrowTopRightOnSquareIcon, CreditCardIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 import Modal from './Modal';
@@ -20,6 +21,7 @@ const PaymentEmbed: FunctionComponent<PaymentEmbedProps> = ({
   onPaymentComplete,
   onClose
 }) => {
+  const { t } = useTranslation('common');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const handleArrowTopRightOnSquareIcon = () => {

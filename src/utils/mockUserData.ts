@@ -2,9 +2,10 @@
 // This provides consistent mock data for development until the real API is ready
 
 export type SubscriptionTier = 'free' | 'plus' | 'business';
-export type Language = 'en' | 'es';
+export type Language = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'vi';
 
-// Simplified country-to-language mapping (English and Spanish only)
+// Country-to-language mapping for all supported locales
+// Supports: English, Spanish, French, German, Chinese, Japanese, Vietnamese
 export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   // English-speaking countries
   'us': 'en',
@@ -50,6 +51,19 @@ export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   'sc': 'en',
   'mu': 'en',
   'na': 'en',
+  'ki': 'en',
+  'pw': 'en',
+  'fm': 'en',
+  'mh': 'en',
+  'nr': 'en',
+  'pg': 'en',
+  'sb': 'en',
+  'to': 'en',
+  'tv': 'en',
+  'vu': 'en',
+  'ws': 'en',
+  'fj': 'en',
+  'ss': 'en',
   
   // Spanish-speaking countries
   'es': 'es',
@@ -74,6 +88,51 @@ export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   'pr': 'es',
   'gq': 'es',
   'ad': 'es',
+  
+  // French-speaking countries
+  'fr': 'fr',
+  'be': 'fr', // Belgium (also speaks Dutch/German)
+  'ch': 'fr', // Switzerland (also speaks German/Italian)
+  'lu': 'fr', // Luxembourg (also speaks German)
+  'mc': 'fr', // Monaco
+  'dz': 'fr', // Algeria
+  'ma': 'fr', // Morocco
+  'tn': 'fr', // Tunisia
+  'sn': 'fr', // Senegal
+  'ci': 'fr', // Côte d'Ivoire
+  'ml': 'fr', // Mali
+  'bf': 'fr', // Burkina Faso
+  'ne': 'fr', // Niger
+  'td': 'fr', // Chad
+  'mg': 'fr', // Madagascar
+  'cm': 'fr', // Cameroon
+  'cg': 'fr', // Congo
+  'cd': 'fr', // Democratic Republic of Congo
+  'ga': 'fr', // Gabon
+  'gn': 'fr', // Guinea
+  'ht': 'fr', // Haiti
+  'bj': 'fr', // Benin
+  'rw': 'fr', // Rwanda
+  'bi': 'fr', // Burundi
+  'tg': 'fr', // Togo
+  'cf': 'fr', // Central African Republic
+  
+  // German-speaking countries
+  'de': 'de',
+  'at': 'de', // Austria
+  'li': 'de', // Liechtenstein
+  
+  // Chinese-speaking countries/regions
+  'cn': 'zh',
+  'tw': 'zh',
+  'hk': 'zh', // Also speaks English
+  'sg': 'zh', // Also speaks English, Malay, Tamil
+  
+  // Japanese-speaking countries
+  'jp': 'ja',
+  
+  // Vietnamese-speaking countries
+  'vn': 'vi',
 };
 
 /**
