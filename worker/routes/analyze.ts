@@ -1,7 +1,19 @@
 import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
-import { withAIRetry } from '../utils/retry.js';
+import { AdobeDocumentService, type AdobeExtractSuccess } from '../services/AdobeDocumentService.js';
+import { 
+  log, 
+  generateRequestId, 
+  logRequestStart, 
+  logRequestComplete, 
+  logAdobeStep, 
+  logAIProcessing, 
+  logJSONParsing, 
+  logError, 
+  logMetrics, 
+  logWarning 
+} from '../utils/logging.js';
 
 interface AnalysisResult {
   summary: string;
@@ -16,12 +28,6 @@ interface AnalysisResult {
   error?: string;
 }
 
-interface AIOptions {
-  prompt?: string;
-  image?: Uint8Array;
-  max_tokens?: number;
-  signal?: AbortSignal;
-}
 
 // Helper function to create fallback response
 function createFallbackResponse(aiResponse: string): AnalysisResult {
@@ -34,68 +40,236 @@ function createFallbackResponse(aiResponse: string): AnalysisResult {
   };
 }
 
-// Helper function to parse AI response with multiple fallback strategies
-function parseAIResponse(aiResponse: string): AnalysisResult {
-  if (!aiResponse || typeof aiResponse !== 'string') {
-    return createFallbackResponse('No response received');
+
+async function attemptAdobeExtract(
+  file: File,
+  question: string,
+  env: Env
+): Promise<AnalysisResult | null> {
+  const adobeService = new AdobeDocumentService(env);
+  const eligibleTypes = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]);
+
+  console.log('Adobe extract attempt:', {
+    fileType: file.type,
+    isEligibleType: eligibleTypes.has(file.type),
+    isEnabled: adobeService.isEnabled(),
+    enableFlag: env.ENABLE_ADOBE_EXTRACT,
+    adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+    adobeClientSecret: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET'
+  });
+
+  console.log('Adobe service isEnabled() result:', adobeService.isEnabled());
+  console.log('ENABLE_ADOBE_EXTRACT value:', env.ENABLE_ADOBE_EXTRACT);
+  console.log('ADOBE_CLIENT_ID value:', env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET');
+
+  if (!eligibleTypes.has(file.type)) {
+    console.log('Adobe extract skipped: not eligible type');
+    return null;
+  }
+  
+  if (!adobeService.isEnabled()) {
+    console.log('Adobe extract skipped: not enabled');
+    return null;
   }
 
-  // Strategy 1: Direct JSON parse
   try {
-    const parsed = JSON.parse(aiResponse.trim());
-    if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
-      return parsed;
-    }
-  } catch (_error) {
-    // Continue to next strategy
-  }
-
-  // Strategy 2: Extract substring between first '{' and last '}'
-  try {
-    const firstBrace = aiResponse.indexOf('{');
-    const lastBrace = aiResponse.lastIndexOf('}');
+    console.log('Starting Adobe extraction for:', file.name);
+    const buffer = await file.arrayBuffer();
+    console.log('File buffer size:', buffer.byteLength);
     
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      const jsonSubstring = aiResponse.substring(firstBrace, lastBrace + 1);
-      const parsed = JSON.parse(jsonSubstring);
-      if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
-        return parsed;
+    const extractResult = await adobeService.extractFromBuffer(file.name, file.type, buffer);
+    console.log('Adobe extraction result:', {
+      success: extractResult.success,
+      hasDetails: !!extractResult.details,
+      error: extractResult.error,
+      warnings: extractResult.warnings
+    });
+
+    if (!extractResult.success || !extractResult.details) {
+      console.log('Adobe extraction failed, returning null');
+      return null;
+    }
+
+    console.log('Adobe extraction successful, proceeding to summarize');
+    return await summarizeAdobeExtract(extractResult.details, question, env);
+  } catch (error) {
+    console.warn('Adobe extract failed, using fallback analysis path', {
+      fileName: file.name,
+      fileType: file.type,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return null;
+  }
+}
+
+async function summarizeAdobeExtract(
+  extract: AdobeExtractSuccess,
+  question: string,
+  env: Env
+): Promise<AnalysisResult> {
+  const rawText = extract.text ?? '';
+  const truncatedText = rawText.length > 20000
+    ? `${rawText.slice(0, 20000)}...`
+    : rawText;
+
+  const structuredPayload = JSON.stringify({
+    tables: extract.tables ?? [],
+    elements: extract.elements ?? []
+  }).slice(0, 6000);
+
+  const systemPrompt = [
+    'You are a legal intake analyst receiving structured output from Adobe PDF Services.',
+    'Use the provided document text and structured data to answer the intake question.',
+    'Return STRICT JSON: { "summary": string, "key_facts": string[], "entities": { "people": string[], "orgs": string[], "dates": string[] }, "action_items": string[], "confidence": number }',
+    'Highlight parties, obligations, important dates, dollar amounts, and recommended next steps.'
+  ].join('\n');
+
+  const userPrompt = [
+    `Intake question: ${question}`,
+    truncatedText ? `Extracted text:\n${truncatedText}` : '',
+    structuredPayload ? `Structured data:\n${structuredPayload}` : ''
+  ].filter(Boolean).join('\n\n');
+
+  // Use the same pattern as other AI endpoints
+  const res = await env.AI.run('@cf/openai/gpt-oss-20b', {
+    input: `${systemPrompt}\n\n${userPrompt}`,
+    max_tokens: 800,
+    temperature: 0.1
+  });
+
+  console.log('🔍 AI Response structure:', JSON.stringify(res, null, 2));
+  const result = safeJson(res.response ?? res);
+  console.log('🔍 safeJson result:', JSON.stringify(result, null, 2));
+  return result;
+}
+
+// Helper function to safely parse JSON responses with hardened truncation handling
+function safeJson(response: any): AnalysisResult {
+  console.log(
+    "[safeJson] typeof input:",
+    typeof response,
+    "| keys:",
+    Object.keys(response || {}),
+    "| snippet:",
+    typeof response === "string"
+      ? response.slice(0, 200)
+      : JSON.stringify(response).slice(0, 200)
+  );
+  
+  try {
+    // Handle structured AI output - look for the actual JSON in the response
+    if (response?.output && Array.isArray(response.output)) {
+      // Find the message with the actual content (prefer message type over reasoning type)
+      const message = response.output.find((msg: any) => 
+        msg.content && Array.isArray(msg.content) && msg.type === 'message'
+      ) || response.output.find((msg: any) => 
+        msg.content && Array.isArray(msg.content)
+      );
+      
+      if (message && message.content) {
+        // Find the output_text content (the actual response)
+        const outputTextContent = message.content.find((content: any) => 
+          content.type === 'output_text' && content.text
+        );
+        
+        if (outputTextContent && outputTextContent.text) {
+          console.log('🔍 Found output_text content:', outputTextContent.text.substring(0, 200) + '...');
+          
+          // Extract and clean the JSON text
+          let text = outputTextContent.text.trim();
+          
+          // Remove quotes if wrapped
+          if (text.startsWith('"') && text.endsWith('"')) {
+            text = text.slice(1, -1);
+          }
+          
+          // Apply the hardened JSON extraction logic
+          return extractValidJson(text);
+        }
       }
     }
-  } catch (_error) {
-    // Continue to next strategy
-  }
 
-  // Strategy 3: Fix common escaped characters and try again
-  try {
-    const fixedResponse = aiResponse
-      .replace(/\\_/g, '_')  // Fix escaped underscores
-      .replace(/\\"/g, '"')  // Fix escaped quotes
-      .replace(/\\\\/g, '\\'); // Fix double escaped backslashes
-    
-    const parsed = JSON.parse(fixedResponse);
-    if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
-      return parsed;
+    // Handle direct string input
+    if (typeof response === "string") {
+      return extractValidJson(response);
     }
-  } catch (_error) {
-    // Continue to next strategy
-  }
 
-  // Strategy 4: Regex match for JSON object
+    // Handle object with nested output_text
+    if (response?.result?.output_text) {
+      return extractValidJson(response.result.output_text);
+    }
+    if (response?.output_text) {
+      return extractValidJson(response.output_text);
+    }
+
+    // Handle already-parsed object
+    if (typeof response === "object" && response.summary) {
+      return response;
+    }
+
+    // Fallback
+    console.warn("[safeJson] Unexpected format:", response);
+    return response ?? null;
+  } catch (err) {
+    console.error("[safeJson] Parse error:", err);
+    return {
+      summary: "Analysis completed but response format was unexpected",
+      key_facts: ["Document processed successfully"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: [],
+      confidence: 0.5
+    };
+  }
+}
+
+// Hardened JSON extraction that handles truncated/concatenated responses
+function extractValidJson(input: string): AnalysisResult {
   try {
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
+    // Normalize to string
+    let text = typeof input === "string" ? input : JSON.stringify(input);
+    
+    // Pre-clean: remove junk before first { and after last }
+    text = text
+      .replace(/^[^\{]+/, "")       // remove junk before first {
+      .replace(/}[^}]*$/, "}");     // remove junk after last }
+
+    // Find first full balanced JSON object
+    const firstBrace = text.indexOf("{");
+    const lastBrace = text.lastIndexOf("}");
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      throw new Error("No JSON object boundaries found");
+    }
+
+    const jsonCandidate = text.slice(firstBrace, lastBrace + 1);
+
+    try {
+      const parsed = JSON.parse(jsonCandidate);
+      if (parsed && typeof parsed === "object" && parsed.summary) {
+        console.log("✅ safeJson: valid JSON parsed");
         return parsed;
       }
+    } catch (innerErr) {
+      // fallback: trim to before any trailing garbage after a closing brace
+      const trimmed = jsonCandidate.replace(/}[^}]*$/, "}");
+      console.warn("⚠️ Retrying JSON parse after trim");
+      return JSON.parse(trimmed);
     }
-  } catch (_error) {
-    // Continue to fallback
+  } catch (err) {
+    console.error("✘ safeJson final fallback:", err.message);
   }
 
-  // Fallback: Create structured response from text
-  return createFallbackResponse(aiResponse);
+  // Final fallback — return structured failure
+  return {
+    summary: "Document analysis completed but JSON parsing failed",
+    key_facts: ["Document processed successfully"],
+    entities: { people: [], orgs: [], dates: [] },
+    action_items: ["Review document format and retry analysis"],
+    confidence: 0.3,
+  };
 }
 
 
@@ -111,6 +285,8 @@ const ALLOWED_ANALYSIS_MIME_TYPES = [
   'image/heic',
   'image/heif',
   'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'text/plain'
 ];
 
@@ -141,198 +317,27 @@ export async function analyzeWithCloudflareAI(
   question: string,
   env: Env
 ): Promise<AnalysisResult> {
-  // Configurable timeout with fallbacks
-  const isImage = file.type.startsWith('image/');
-  const defaultTimeoutMs = isImage ? 60000 : 30000; // 60s for images, 30s for others
-  const timeoutMs = (env as any).ANALYSIS_TIMEOUT_MS
-    ? parseInt((env as any).ANALYSIS_TIMEOUT_MS, 10)
-    : defaultTimeoutMs;
-  
-  if (isNaN(timeoutMs) || timeoutMs <= 0) {
-    throw new Error(
-      `Invalid ANALYSIS_TIMEOUT_MS configuration: ${(env as any).ANALYSIS_TIMEOUT_MS}`
-    );
+  // Only use Adobe extraction - no Cloudflare AI fallbacks
+  const adobeAnalysis = await attemptAdobeExtract(file, question, env);
+  if (adobeAnalysis) {
+    return adobeAnalysis;
   }
   
-  // Generate request identifier for better logging
-  const requestId = `analysis-${Date.now()}-${Math.random()
-    .toString(36)
-    .substr(2, 9)}`;
-  
-  const controller = new AbortController();
-  const timeout = setTimeout(() => {
-    console.warn(
-      `[${requestId}] Analysis timeout triggered after ${timeoutMs}ms for ${file.name} (${file.type}, ${file.size} bytes)`
-    );
-    controller.abort();
-  }, timeoutMs);
-  
-  console.log(
-    `[${requestId}] Starting analysis: ${file.name} (${file.type}, ${file.size} bytes) with ${timeoutMs}ms timeout`
-  );
-
-  try {
-    // Prepare model input based on file type
-    let prompt: string;
-    let modelName: string;
-    let aiOptions: AIOptions;
-    
-    if (file.type.startsWith('image/')) {
-      // Use vision model for images only (following official Cloudflare docs)
-      modelName = '@cf/llava-hf/llava-1.5-7b-hf';
-      console.log('Using vision model for image analysis:', modelName);
-      
-      // Convert image file to Uint8Array for vision model (following official docs)
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        
-        prompt = `${question}\n\nPlease analyze this image and return a JSON response with the following structure. IMPORTANT: Do not include the JSON structure template in your response - only provide the actual analysis results:
-
-{
-  "summary": "Brief summary of what you see",
-  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
-  "entities": {
-    "people": ["Person names found"],
-    "orgs": ["Organization names found"],
-    "dates": ["Dates found"]
-  },
-  "action_items": ["Action 1", "Action 2"],
-  "confidence": 0.85
-}`;
-        
-        aiOptions = {
-          image: uint8Array, // Pass binary directly to avoid unnecessary copy
-          prompt: prompt,
-          max_tokens: 512
-        };
-        console.log('Converted image to vision format, size:', uint8Array.length);
-        
-        // Add signal for timeout handling
-        if (controller.signal) {
-          aiOptions.signal = controller.signal;
-        }
-      } catch (conversionError) {
-        console.warn('Failed to convert image for vision analysis:', conversionError);
-        // Fallback to text model
-        modelName = '@cf/meta/llama-3.1-8b-instruct';
-        prompt = `${question}\n\nPlease analyze this image and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
-
-{
-  "summary": "Brief summary of what you see",
-  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
-  "entities": {
-    "people": ["Person names found"],
-    "orgs": ["Organization names found"],
-    "dates": ["Dates found"]
-  },
-  "action_items": ["Action 1", "Action 2"],
-  "confidence": 0.85
-}`;
-        aiOptions = { prompt: prompt };
-      }
-  } else if (file.type === 'application/pdf') {
-    // PDF analysis not implemented in this PR
-    return {
-      summary: "PDF analysis is not yet available. Please upload text files or images for analysis.",
-      key_facts: [
-        "PDF analysis feature is coming soon",
-        "Currently supports text files and images"
-      ],
-      entities: {
-        people: [],
-        orgs: [],
-        dates: []
-      },
-      action_items: [
-        "Try uploading a text file (.txt) instead",
-        "Upload individual page images for analysis",
-        "PDF analysis will be available in a future update"
-      ],
-      confidence: 0.0,
-      error: "PDF analysis not implemented"
-    };
-    } else {
-      // For text files, use text model
-      modelName = '@cf/meta/llama-3.1-8b-instruct';
-      let textContent = '';
-      
-      try {
-        textContent = await file.text();
-      } catch (error) {
-        console.warn('Failed to extract text from file:', error);
-        textContent = '[Unable to extract text content from file]';
-      }
-      
-      console.log('Extracted text content length:', textContent.length);
-      console.log('Text content preview:', textContent.substring(0, 200));
-      
-      prompt = `${question}\n\nDocument content:\n${textContent}\n\nPlease analyze this document and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
-
-{
-  "summary": "Brief summary of the document",
-  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
-  "entities": {
-    "people": ["Person names found"],
-    "orgs": ["Organization names found"],
-    "dates": ["Dates found"]
-  },
-  "action_items": ["Action 1", "Action 2"],
-  "confidence": 0.85
-}`;
-      
-      aiOptions = { prompt: prompt };
-    }
-    
-    const result = await withAIRetry(() => env.AI.run(modelName as any, aiOptions));
-    console.log('Raw AI result object:', result);
-    
-    // Handle different response formats for different models
-    let aiResponse = (result as any).response;
-    if (!aiResponse && (result as any).description) {
-      // Vision models return description instead of response
-      aiResponse = (result as any).description;
-      console.log('Using description field from vision model response');
-    }
-    
-    console.log('AI response type:', typeof aiResponse);
-    console.log('AI response length:', aiResponse?.length || 0);
-    
-    if (!aiResponse) {
-      console.error('No response from AI model:', result);
-      throw new Error('No content in Cloudflare AI response');
-    }
-
-    // Parse AI response using helper function
-    console.log(`[${requestId}] Raw AI response:`, aiResponse);
-    const parsed = parseAIResponse(aiResponse);
-    console.log(`[${requestId}] Parsed response:`, parsed);
-
-    // No cleanup needed - we're using direct file data
-
-    return parsed;
-
-  } catch (error) {
-    clearTimeout(timeout);
-    
-    if (error.name === 'AbortError') {
-      console.warn(`[${requestId}] Analysis timed out after ${timeoutMs}ms for ${file.name} (${file.type}, ${file.size} bytes)`);
-      const fileType = file.type.startsWith('image/') ? 'image' : 'document';
-      return {
-        summary: `Timed out analyzing ${fileType}. The ${fileType} may be too complex or the AI service is experiencing high load.`,
-        key_facts: [`${fileType.charAt(0).toUpperCase() + fileType.slice(1)} analysis timed out`],
-        entities: { people: [], orgs: [], dates: [] },
-        action_items: ["Try uploading a smaller or simpler file", "Contact support if the issue persists"],
-        confidence: 0
-      };
-    }
-    
-    console.error(`[${requestId}] Analysis error for ${file.name}:`, error);
-    throw error;
-  }
+  // Adobe extraction failed - return service down message
+  return {
+    summary: "Document analysis service is currently unavailable. Please try again later or contact support if the issue persists.",
+    key_facts: ["Document analysis service temporarily unavailable"],
+    entities: { people: [], orgs: [], dates: [] },
+    action_items: ["Try uploading the document again in a few minutes", "Contact support if the issue persists"],
+    confidence: 0.0,
+    error: "Adobe document extraction service unavailable"
+  };
 }
 
 export async function handleAnalyze(request: Request, env: Env): Promise<Response> {
+  const startTime = Date.now();
+  const requestId = generateRequestId();
+  
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
@@ -340,6 +345,7 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
   // Rate limiting for analysis endpoint
   const clientId = getClientId(request);
   if (!(await rateLimit(env, clientId, 30, 60))) { // 30 requests per minute
+    logWarning(requestId, 'rate_limit.exceeded', 'Rate limit exceeded', { clientId });
     return new Response(JSON.stringify({
       success: false,
       error: 'Rate limit exceeded. Please try again later.',
@@ -351,17 +357,14 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
   }
 
   try {
+    logRequestStart(requestId, request.method, new URL(request.url).pathname);
+    
     // Debug: Log environment variables
     console.log('Environment variables check:', {
       CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID ? 'SET' : 'NOT SET',
       CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN ? 'SET' : 'NOT SET', 
       CLOUDFLARE_PUBLIC_URL: env.CLOUDFLARE_PUBLIC_URL ? 'SET' : 'NOT SET'
     });
-    
-    // Check if Cloudflare AI is configured
-    if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_API_TOKEN || !env.CLOUDFLARE_PUBLIC_URL) {
-      throw HttpErrors.internalServerError('Cloudflare AI not configured. Please set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and CLOUDFLARE_PUBLIC_URL');
-    }
 
     // Parse form data
     const formData = await request.formData();
@@ -382,7 +385,9 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
-      question: question
+      question: question,
+      ENABLE_ADOBE_EXTRACT: env.ENABLE_ADOBE_EXTRACT,
+      ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET'
     });
 
     // Perform analysis

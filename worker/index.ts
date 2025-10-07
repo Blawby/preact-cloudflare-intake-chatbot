@@ -1,5 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
+// Removed shim - trying to identify the actual caller
+
 import {
   handleHealth,
   handleRoot,
@@ -113,7 +115,7 @@ export const handleRequest = withCORS(handleRequestInternal, getCorsConfig);
 
 export default { 
   fetch: handleRequest,
-  queue: docProcessor
+  queue: docProcessor.queue
 };
 
 // Export Durable Object classes (none currently)

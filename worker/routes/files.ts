@@ -150,7 +150,7 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
         teamId,
         teamId,
         `Team ${teamId}`,
-        JSON.stringify({ aiModel: 'llama', requiresPayment: false })
+        JSON.stringify({ aiModel: '@cf/openai/gpt-oss-20b', requiresPayment: false })
       ).run();
       console.log('Team created in database:', teamId);
     }

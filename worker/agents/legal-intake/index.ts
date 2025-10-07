@@ -13,13 +13,14 @@ import { createValidationError, createSuccessResponse } from '../../utils/respon
 import { chunkResponseText } from '../../utils/streaming.js';
 import { createSuccessResult, createErrorResult, ValidationError } from './errors.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
+import { analyzeFile } from '../../utils/fileAnalysisUtils.js';
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-const DEFAULT_AI_PROVIDER = 'legacy-llama';
-const DEFAULT_LEGACY_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const DEFAULT_AI_PROVIDER = 'workers-ai';
+const DEFAULT_LEGACY_MODEL = '@cf/openai/gpt-oss-20b';
 
 const BASE_AI_EXECUTION = {
   maxTokens: 500,
@@ -530,6 +531,22 @@ export interface RequestLawyerReviewParams {
 }
 
 
+// AnalyzeDocumentParams interface removed - using direct analyze endpoint instead
+
+type DocumentAnalysis = {
+  summary?: string;
+  key_facts?: string[];
+  entities?: {
+    people?: string[];
+    orgs?: string[];
+    dates?: string[];
+  };
+  action_items?: string[];
+  confidence?: number;
+  error?: string;
+};
+
+
 export interface CreatePaymentInvoiceParams {
   readonly invoice_id: string;
   readonly amount: number;
@@ -637,6 +654,9 @@ const requestLawyerReview: ToolDefinition = {
     additionalProperties: false
   }
 };
+
+
+// analyzeDocument tool removed - using direct analyze endpoint instead
 
 
 const createPaymentInvoice: ToolDefinition = {
@@ -1887,6 +1907,52 @@ async function handleRequestLawyerReview(
 }
 
 
+// handleAnalyzeDocument function removed - using direct analyze endpoint instead
+
+function formatDocumentAnalysisMessage(fileId: string, analysis: DocumentAnalysis): string {
+  const sections: string[] = [];
+
+  const displayName = fileId.length > 120 ? `${fileId.slice(0, 60)}…${fileId.slice(-20)}` : fileId;
+  sections.push(`Here’s what I found in **${displayName}**.`);
+
+  if (analysis.summary) {
+    sections.push(`**Summary:** ${analysis.summary}`);
+  }
+
+  if (Array.isArray(analysis.key_facts) && analysis.key_facts.length > 0) {
+    const facts = analysis.key_facts.slice(0, 5).map(fact => `• ${fact}`).join('\n');
+    sections.push(`**Key Facts:**\n${facts}`);
+  }
+
+  const people = analysis.entities?.people ?? [];
+  const orgs = analysis.entities?.orgs ?? [];
+  const dates = analysis.entities?.dates ?? [];
+
+  if (people.length || orgs.length || dates.length) {
+    const entityLines: string[] = [];
+    if (people.length) entityLines.push(`• People: ${people.join(', ')}`);
+    if (orgs.length) entityLines.push(`• Organizations: ${orgs.join(', ')}`);
+    if (dates.length) entityLines.push(`• Dates: ${dates.join(', ')}`);
+    sections.push(`**Entities:**\n${entityLines.join('\n')}`);
+  }
+
+  if (Array.isArray(analysis.action_items) && analysis.action_items.length > 0) {
+    const actions = analysis.action_items.slice(0, 5).map(item => `• ${item}`).join('\n');
+    sections.push(`**Recommended Next Steps:**\n${actions}`);
+  }
+
+  if (typeof analysis.confidence === 'number') {
+    const confidencePct = Math.round(Math.max(0, Math.min(analysis.confidence, 1)) * 100);
+    sections.push(`Confidence: ${confidencePct}%`);
+  }
+
+  if (sections.length === 1) {
+    sections.push('The document was analyzed but no additional structured insights were detected.');
+  }
+
+  return sections.join('\n\n');
+}
+
 async function handleCreatePaymentInvoice(
   parameters: Record<string, unknown>,
   env: Env,
@@ -2078,22 +2144,23 @@ const TOOL_HANDLERS = {
 // ============================================================================
 
 function getAvailableTools(state: ConversationState, context: ConversationContext): ToolDefinition[] {
-  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice];
-  
+  const hasAttachments = Array.isArray(context.currentAttachments) && context.currentAttachments.length > 0;
+  const analysisTools = hasAttachments ? [] : []; // [analyzeDocument] commented out
+
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:
-      return [];
+      return analysisTools;
     case ConversationState.QUALIFYING_LEAD:
-      return context.isQualifiedLead ? [showContactForm] : [];
+      return context.isQualifiedLead ? [...analysisTools, showContactForm] : analysisTools;
     case ConversationState.SHOWING_CONTACT_FORM:
-      return [showContactForm];
+      return [...analysisTools, showContactForm];
     case ConversationState.READY_TO_CREATE_MATTER:
     case ConversationState.CREATING_MATTER:
-      return [createMatter, showContactForm];
+      return [...analysisTools, createMatter, showContactForm];
     case ConversationState.COMPLETED:
-      return allTools;
+      return [...analysisTools, createMatter, showContactForm, requestLawyerReview, createPaymentInvoice];
     default:
-      return [];
+      return analysisTools;
   }
 }
 
@@ -2372,5 +2439,6 @@ export {
   showContactForm,
   requestLawyerReview,
   createPaymentInvoice,
+  formatDocumentAnalysisMessage,
   TOOL_HANDLERS
 };

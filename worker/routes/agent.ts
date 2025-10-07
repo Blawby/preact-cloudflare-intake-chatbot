@@ -67,15 +67,50 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw HttpErrors.badRequest('No message content provided');
     }
+    
+    const normalizedMessages = messages.map(message => {
+      const rawRole = typeof message.role === 'string' ? message.role.trim().toLowerCase() : '';
+      const normalizedRole = rawRole === 'user'
+        ? 'user'
+        : rawRole === 'system'
+          ? 'system'
+          : 'assistant';
 
-    const latestMessage = messages[messages.length - 1];
+      const content = typeof message.content === 'string' ? message.content : '';
+
+      return {
+        ...message,
+        role: normalizedRole,
+        content
+      };
+    });
+
+    let latestMessage = normalizedMessages[normalizedMessages.length - 1];
+
     if (!latestMessage?.content) {
-      throw HttpErrors.badRequest('No message content provided');
+      if (attachments.length > 0) {
+        latestMessage = {
+          ...latestMessage,
+          content: latestMessage?.content?.trim().length
+            ? latestMessage.content
+            : 'User uploaded new documents for review.'
+        };
+        normalizedMessages[normalizedMessages.length - 1] = latestMessage;
+      } else {
+        throw HttpErrors.badRequest('No message content provided');
+      }
     }
 
-    // Ensure the latest message is from a user
     if (latestMessage.role !== 'user') {
-      throw HttpErrors.badRequest('Latest message must be from user');
+      if (attachments.length > 0) {
+        latestMessage = {
+          ...latestMessage,
+          role: 'user'
+        };
+        normalizedMessages[normalizedMessages.length - 1] = latestMessage;
+      } else {
+        throw HttpErrors.badRequest('Latest message must be from user');
+      }
     }
 
     const trimmedSessionId = typeof sessionId === 'string' && sessionId.trim().length > 0
@@ -176,7 +211,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const context = await ConversationContextManager.load(resolvedSessionId, resolvedTeamId, env);
 
     // Update context with the full conversation before running pipeline
-    const updatedContext = ConversationContextManager.updateContext(context, messages);
+    const updatedContext = ConversationContextManager.updateContext(context, normalizedMessages);
     
     // Add current attachments to context for middleware processing
     if (attachments && attachments.length > 0) {
@@ -185,7 +220,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
 
     // Run through pipeline with full conversation history
     const pipelineResult = await runPipeline(
-      messages,
+      normalizedMessages,
       updatedContext,
       teamConfig,
       [
@@ -326,7 +361,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
           controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
           
           // Convert messages to the format expected by the AI agent
-          const formattedMessages = messages.map(msg => ({
+        const formattedMessages = normalizedMessages.map(msg => ({
             role: msg.role,
             content: msg.content
           }));

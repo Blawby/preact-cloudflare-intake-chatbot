@@ -38,7 +38,16 @@ LAWYER_SEARCH_API_URL = "https://search.blawby.com"
 # LAWYER_SEARCH_API_KEY should be set via: wrangler secret put LAWYER_SEARCH_API_KEY
 
 # PDF Generation Configuration
-# PDF generation is handled locally using pdf-lib - no external API needed
+# Adobe PDF Services API for HTML-to-PDF conversion and document extraction
+# Set via: wrangler secret put ADOBE_CLIENT_ID
+# Set via: wrangler secret put ADOBE_CLIENT_SECRET
+# Set via: wrangler secret put ADOBE_TECHNICAL_ACCOUNT_ID
+# Set via: wrangler secret put ADOBE_TECHNICAL_ACCOUNT_EMAIL
+# Set via: wrangler secret put ADOBE_ORGANIZATION_ID
+ENABLE_ADOBE_EXTRACT = "true"
+ADOBE_IMS_BASE_URL = "https://ims-na1.adobelogin.com"
+ADOBE_PDF_SERVICES_BASE_URL = "https://pdf-services.adobe.io"
+ADOBE_SCOPE = "openid,AdobeID,DCAPI"
 
 # Cloudflare AI Configuration
 CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
@@ -51,11 +60,17 @@ CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
 NODE_ENV = "development"
 DEBUG = "false"
 VITE_DEBUG_OVERLAY = "false"
+LOG_LEVEL = "debug"
 
 # Authentication removed - frontend-only application
 
 # AI Model Configuration (used in worker/agents/legal-intake/index.ts)
 AI_MODEL = "llama-3.1-8b-instant"
+AI_PROVIDER_DEFAULT = "workers-ai"
+AI_MODEL_DEFAULT = "@cf/openai/gpt-oss-20b"
+AI_MODEL_FALLBACK = "@cf/openai/gpt-oss-20b"
+ENABLE_WORKERS_AI = "true"
+ENABLE_GATEWAY_OPENAI = "false"
 
 # Analysis Configuration (used in worker/routes/analyze.ts)
 ANALYSIS_TIMEOUT_MS = "60000"
@@ -80,6 +95,37 @@ queue = "doc-events"
 
 # Durable Objects migrations removed - no longer using Durable Objects
 
+# Development environment
+[env.dev]
+name = "blawby-ai-chatbot-dev"
+ai = { binding = "AI" }
+kv_namespaces = [
+  { binding = "CHAT_SESSIONS", id = "e7bbadb101d44a828fb3ef34528b3540" }
+]
+d1_databases = [
+  { binding = "DB", database_name = "blawby-ai-chatbot", database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf" }
+]
+[[env.dev.queues.producers]]
+queue = "doc-events"
+binding = "DOC_EVENTS"
+[[env.dev.r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "blawby-ai-files"
+
+# Development environment variables
+[env.dev.vars]
+NODE_ENV = "development"
+LOG_LEVEL = "debug"
+ENABLE_ADOBE_EXTRACT = "true"
+ADOBE_IMS_BASE_URL = "https://ims-na1.adobelogin.com"
+ADOBE_PDF_SERVICES_BASE_URL = "https://pdf-services.adobe.io"
+ADOBE_SCOPE = "openid,AdobeID,DCAPI"
+AI_PROVIDER_DEFAULT = "workers-ai"
+AI_MODEL_DEFAULT = "@cf/openai/gpt-oss-20b"
+AI_MODEL_FALLBACK = "@cf/openai/gpt-oss-20b"
+ENABLE_WORKERS_AI = "true"
+ENABLE_GATEWAY_OPENAI = "false"
+
 # Domain configuration for ai.blawby.com
 [env.production]
 name = "blawby-ai-chatbot"
@@ -93,6 +139,16 @@ d1_databases = [
 # Production environment variables
 [env.production.vars]
 NODE_ENV = "production"
+LOG_LEVEL = "warn"
+ENABLE_ADOBE_EXTRACT = "true"
+ADOBE_IMS_BASE_URL = "https://ims-na1.adobelogin.com"
+ADOBE_PDF_SERVICES_BASE_URL = "https://pdf-services.adobe.io"
+ADOBE_SCOPE = "openid,AdobeID,DCAPI"
+AI_PROVIDER_DEFAULT = "workers-ai"
+AI_MODEL_DEFAULT = "@cf/openai/gpt-oss-20b"
+AI_MODEL_FALLBACK = "@cf/openai/gpt-oss-20b"
+ENABLE_WORKERS_AI = "true"
+ENABLE_GATEWAY_OPENAI = "false"
 # Updated to use modern nested producers syntax
 [[env.production.queues.producers]]
 queue = "doc-events"

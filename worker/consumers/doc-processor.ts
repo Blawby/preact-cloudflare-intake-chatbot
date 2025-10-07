@@ -1,11 +1,20 @@
 import type { Ai, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 // Removed custom PDF text extraction - using Cloudflare AI directly
 import { withAIRetry } from '../utils/retry.js';
+import { AdobeDocumentService, type AdobeExtractSuccess } from '../services/AdobeDocumentService.js';
 
 export interface Env {
   AI: Ai;
   FILES_BUCKET: R2Bucket;
   CHAT_SESSIONS: KVNamespace;
+  ADOBE_CLIENT_ID?: string;
+  ADOBE_CLIENT_SECRET?: string;
+  ADOBE_TECHNICAL_ACCOUNT_ID?: string;
+  ADOBE_TECHNICAL_ACCOUNT_EMAIL?: string;
+  ADOBE_ORGANIZATION_ID?: string;
+  ADOBE_IMS_BASE_URL?: string;
+  ADOBE_PDF_SERVICES_BASE_URL?: string;
+  ENABLE_ADOBE_EXTRACT?: string | boolean;
 }
 
 interface DocumentEvent {
@@ -18,6 +27,7 @@ interface DocumentEvent {
 
 export default {
   async queue(batch: MessageBatch<DocumentEvent>, env: Env) {
+    const adobeService = new AdobeDocumentService(env);
     for (const msg of batch.messages) {
       try {
         const { key, teamId, sessionId, mime } = msg.body;
@@ -27,20 +37,35 @@ export default {
           msg.retry(); 
           continue; 
         }
-        
         const buf = await obj.arrayBuffer();
 
-                let analysis: any;
-                if (mime === "application/pdf") {
-                  // Skip PDF processing for now - let the analyze endpoint handle it
-                  console.log('Skipping PDF processing in queue - will be handled by analyze endpoint');
-                  continue;
-                } else if (mime.startsWith("image/")) {
-                  analysis = await analyzeImage(env, new Uint8Array(buf));
-                } else {
-                  const text = new TextDecoder().decode(buf);
-                  analysis = await summarizeLegal(env, text);
-                }
+        let analysis: any;
+        const adobeEligible = isAdobeEligibleMime(mime);
+
+        if (adobeEligible && adobeService.isEnabled()) {
+          const adobeResult = await adobeService.extractFromBuffer(
+            key.split('/').pop() ?? key,
+            mime,
+            buf
+          );
+          if (adobeResult.success && adobeResult.details) {
+            analysis = await summarizeAdobeResult(env, adobeResult.details);
+          } else {
+            console.warn('Adobe extract returned no data, falling back to legacy summarizer', {
+              key,
+              mime
+            });
+          }
+        }
+
+        if (!analysis) {
+          if (mime.startsWith('image/')) {
+            analysis = await analyzeImage(env, new Uint8Array(buf));
+          } else {
+            const text = new TextDecoder().decode(buf);
+            analysis = await summarizeLegal(env, text);
+          }
+        }
 
         // Store analysis preview in KV for quick access
         await env.CHAT_SESSIONS.put(
@@ -71,6 +96,9 @@ export default {
   }
 }
 
+const MAX_TEXT_CHARS = 20000;
+const MAX_STRUCTURED_CHARS = 6000;
+
 async function summarizeLegal(env: Env, text: string) {
   const prompt = [
     "You are a legal intake summarizer. Output JSON with fields:",
@@ -78,10 +106,11 @@ async function summarizeLegal(env: Env, text: string) {
     "Use only the given text; if unsure, say so."
   ].join("\n");
   
+  const truncated = text.length > MAX_TEXT_CHARS ? `${text.slice(0, MAX_TEXT_CHARS)}...` : text;
   const res = await withAIRetry(() => env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
     messages: [
       { role: "system", content: prompt },
-      { role: "user", content: text.slice(0, 60000) } // keep under token cap
+      { role: "user", content: truncated }
     ],
     max_tokens: 800
   }));
@@ -96,6 +125,47 @@ async function analyzeImage(env: Env, bytes: Uint8Array) {
     max_tokens: 512
   }));
   
+  return safeJson(res.response ?? res);
+}
+
+function isAdobeEligibleMime(mime: string): boolean {
+  return mime === 'application/pdf'
+    || mime === 'application/msword'
+    || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+}
+
+async function summarizeAdobeResult(env: Env, extract: AdobeExtractSuccess) {
+  const text = extract.text ?? '';
+  const structured = JSON.stringify({
+    tables: extract.tables ?? [],
+    elements: extract.elements ?? []
+  });
+
+  const truncatedText = text.length > MAX_TEXT_CHARS ? `${text.slice(0, MAX_TEXT_CHARS)}...` : text;
+  const truncatedStructured = structured.length > MAX_STRUCTURED_CHARS
+    ? `${structured.slice(0, MAX_STRUCTURED_CHARS)}...`
+    : structured;
+
+  const basePrompt = [
+    "You are a legal intake summarizer. Output JSON with fields:",
+    "summary, key_facts[], entities{people[],orgs[],dates[]}, action_items[], confidence(0-1).",
+    "Prioritize parties, deadlines, dollar amounts, obligations, and recommended next steps.",
+    "Use the structured cues provided by Adobe Extract when available."
+  ].join("\n");
+
+  const userContent = [
+    truncatedText,
+    truncatedStructured ? `Structured data:\n${truncatedStructured}` : ''
+  ].filter(Boolean).join('\n\n');
+
+  const res = await withAIRetry(() => env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+    messages: [
+      { role: "system", content: basePrompt },
+      { role: "user", content: userContent }
+    ],
+    max_tokens: 800
+  }));
+
   return safeJson(res.response ?? res);
 }
 

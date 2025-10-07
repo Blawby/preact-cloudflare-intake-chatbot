@@ -45,8 +45,18 @@ export interface TeamConfig {
   };
 }
 
-const LEGACY_AI_PROVIDER = 'legacy-llama';
-const DEFAULT_LLAMA_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
+const LEGACY_AI_PROVIDER = 'workers-ai';
+const DEFAULT_GPT_MODEL = '@cf/openai/gpt-oss-20b';
+
+const MODEL_ALIASES: Record<string, string> = {
+  llama: DEFAULT_GPT_MODEL,
+  'llama-3': DEFAULT_GPT_MODEL,
+  'llama-3.1': DEFAULT_GPT_MODEL,
+  'llama-3-8b': DEFAULT_GPT_MODEL,
+  'llama-3.1-8b': DEFAULT_GPT_MODEL,
+  llama3: DEFAULT_GPT_MODEL,
+  'llama3.1': DEFAULT_GPT_MODEL
+};
 
 const DEFAULT_AVAILABLE_SERVICES = [
   'Family Law',
@@ -77,7 +87,16 @@ function sanitizeModel(model?: string | null): string | undefined {
     return undefined;
   }
   const trimmed = model.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+  if (!trimmed.length) {
+    return undefined;
+  }
+
+  const normalized = trimmed.toLowerCase();
+  if (MODEL_ALIASES[normalized]) {
+    return MODEL_ALIASES[normalized];
+  }
+
+  return trimmed;
 }
 
 function sanitizeFallbackList(value: unknown): string[] {
@@ -102,9 +121,9 @@ function buildFallbackList(baseModel: string, preferred?: string[], useDefaults:
     return [];
   }
   
-  // If normalized is empty and defaults are allowed, return DEFAULT_LLAMA_MODEL filtered against baseModel
+  // If normalized is empty and defaults are allowed, return DEFAULT_GPT_MODEL filtered against baseModel
   if (!normalized.length && useDefaults) {
-    return [DEFAULT_LLAMA_MODEL].filter(model => model !== baseModel);
+    return [DEFAULT_GPT_MODEL].filter(model => model !== baseModel);
   }
   
   // If normalized is empty and defaults are disabled, return empty array
@@ -119,8 +138,8 @@ function buildFallbackList(baseModel: string, preferred?: string[], useDefaults:
     }
   });
 
-  if (!unique.size && baseModel !== DEFAULT_LLAMA_MODEL && useDefaults) {
-    unique.add(DEFAULT_LLAMA_MODEL);
+  if (!unique.size && baseModel !== DEFAULT_GPT_MODEL && useDefaults) {
+    unique.add(DEFAULT_GPT_MODEL);
   }
 
   return Array.from(unique);
@@ -128,7 +147,7 @@ function buildFallbackList(baseModel: string, preferred?: string[], useDefaults:
 
 export function buildDefaultTeamConfig(env: Env): TeamConfig {
   const defaultProvider = normalizeProvider(env.AI_PROVIDER_DEFAULT);
-  const defaultModel = sanitizeModel(env.AI_MODEL_DEFAULT) ?? DEFAULT_LLAMA_MODEL;
+  const defaultModel = sanitizeModel(env.AI_MODEL_DEFAULT) ?? DEFAULT_GPT_MODEL;
   const fallbackFromEnv = sanitizeFallbackList(env.AI_MODEL_FALLBACK);
   const fallbackList = buildFallbackList(defaultModel, fallbackFromEnv);
 
@@ -405,7 +424,7 @@ export class TeamService {
     const sourceConfig = (config ?? {}) as TeamConfig;
 
     const aiProvider = normalizeProvider(sourceConfig.aiProvider ?? defaultConfig.aiProvider);
-    const aiModel = sanitizeModel(sourceConfig.aiModel) ?? defaultConfig.aiModel ?? DEFAULT_LLAMA_MODEL;
+    const aiModel = sanitizeModel(sourceConfig.aiModel) ?? defaultConfig.aiModel ?? DEFAULT_GPT_MODEL;
     const providedFallback = sourceConfig.aiModelFallback !== undefined
       ? sanitizeFallbackList(sourceConfig.aiModelFallback)
       : undefined;
