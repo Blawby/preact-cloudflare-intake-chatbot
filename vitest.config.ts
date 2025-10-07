@@ -12,7 +12,8 @@ export default defineConfig({
     fileParallelism: false, // Force single-file execution to prevent file-level parallelism
     include: [
       'tests/**/*.{test,spec}.{js,ts,jsx,tsx}',
-      'src/__tests__/**/*.{test,spec}.{js,ts,jsx,tsx}'
+      'src/__tests__/**/*.{test,spec}.{js,ts,jsx,tsx}',
+      'src/**/__tests__/**/*.{test,spec}.{js,ts,jsx,tsx}'
     ],
     exclude: [
       'node_modules/**',

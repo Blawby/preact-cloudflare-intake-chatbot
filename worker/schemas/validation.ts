@@ -11,7 +11,7 @@ export const chatMessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
   content: z.string().min(1),
   timestamp: timestampSchema,
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.unknown()).optional()
 });
 
 export const chatRequestSchema = z.object({
@@ -36,14 +36,14 @@ export const matterCreationSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().min(1),
   status: z.enum(['draft', 'active', 'closed']).default('draft'),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.unknown()).optional()
 });
 
 export const matterUpdateSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().min(1).optional(),
   status: z.enum(['draft', 'active', 'closed']).optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.unknown()).optional()
 });
 
 // Team schemas
@@ -94,7 +94,7 @@ export const fileUploadSchema = z.object({
   filename: z.string().min(1),
   contentType: z.string().min(1),
   size: z.number().int().positive(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.unknown()).optional()
 });
 
 // Feedback schemas
@@ -114,7 +114,7 @@ export const sessionSchema = z.object({
   messages: z.array(chatMessageSchema),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.unknown()).optional()
 });
 
 // Export schemas

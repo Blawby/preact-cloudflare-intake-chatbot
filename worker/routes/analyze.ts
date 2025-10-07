@@ -2,6 +2,7 @@ import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
 import { AdobeDocumentService, type AdobeExtractSuccess } from '../services/AdobeDocumentService.js';
+import { type AnalysisResult } from '../services/SessionService.js';
 import { 
   log, 
   generateRequestId, 
@@ -11,18 +12,6 @@ import {
   logWarning 
 } from '../utils/logging.js';
 
-interface AnalysisResult {
-  summary: string;
-  key_facts: string[];
-  entities: {
-    people: string[];
-    orgs: string[];
-    dates: string[];
-  };
-  action_items: string[];
-  confidence: number;
-  error?: string;
-}
 
 
 // Helper function to create fallback response

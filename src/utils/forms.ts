@@ -43,7 +43,7 @@ export async function submitContactForm(
       try {
         const teamsResponse = await fetch(getTeamsEndpoint());
         if (teamsResponse.ok) {
-          const teamsJson = await teamsResponse.json() as { data: Array<{ slug?: string; id?: string }> };
+          const teamsJson = await teamsResponse.json() as { data: Array<{ slug?: string; id?: string; name?: string; config?: { requiresPayment?: boolean; consultationFee?: number; paymentLink?: string } }> };
           teamConfig = teamsJson.data.find((team) => team.slug === teamId || team.id === teamId);
         }
       } catch (error) {

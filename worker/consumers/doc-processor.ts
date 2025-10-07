@@ -2,7 +2,7 @@
 // Removed custom PDF text extraction - using Cloudflare AI directly
 import { withAIRetry } from '../utils/retry.js';
 import { AdobeDocumentService, type AdobeExtractSuccess } from '../services/AdobeDocumentService.js';
-import { SessionService } from '../services/SessionService.js';
+import { SessionService, type AnalysisResult } from '../services/SessionService.js';
 import type { Env } from '../types.js';
 
 interface DocumentEvent {
@@ -25,18 +25,6 @@ interface AutoAnalysisEvent {
   };
 }
 
-interface AnalysisResult {
-  summary: string;
-  key_facts: string[];
-  entities: {
-    people: string[];
-    orgs: string[];
-    dates: string[];
-  };
-  action_items: string[];
-  confidence: number;
-  error?: string;
-}
 
 export default {
   async queue(batch: MessageBatch<DocumentEvent | AutoAnalysisEvent>, env: Env) {
@@ -61,58 +49,33 @@ export default {
           const obj = await env.FILES_BUCKET.get(file.key);
           if (!obj) {
             await SessionService.sendAnalysisStatus(env, sessionId, teamId, "❌ Document not found for analysis");
+            
+            // Send analysis complete with failure payload
+            const failureAnalysis: AnalysisResult = {
+              summary: "Document not found for analysis",
+              entities: { people: [], orgs: [], dates: [] },
+              key_facts: [],
+              action_items: [],
+              confidence: 0,
+              error: "Document not found for analysis"
+            };
+            
+            await SessionService.sendAnalysisComplete(env, sessionId, teamId, failureAnalysis);
             continue;
           }
           
           const buf = await obj.arrayBuffer();
-          let analysis: AnalysisResult;
-          const adobeEligible = isAdobeEligibleMime(file.mime);
-
-          if (adobeEligible && adobeService.isEnabled()) {
-            console.log('🔧 Adobe analysis starting', { key: file.key });
-            await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Extracting document content...");
-            
-            const adobeResult = await adobeService.extractFromBuffer(
-              file.key.split('/').pop() ?? file.key,
-              file.mime,
-              buf
-            );
-            if (adobeResult.success && adobeResult.details) {
-              await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Summarizing document...");
-              analysis = await summarizeAdobeResult(env, adobeResult.details);
-            } else {
-              console.warn('Adobe extract returned no data, falling back to legacy summarizer', {
-                key: file.key,
-                mime: file.mime
-              });
-            }
-          }
-
-          if (!analysis) {
-            if (file.mime.startsWith('image/')) {
-              await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Analyzing image content...");
-              analysis = await analyzeImage(env, new Uint8Array(buf));
-            } else if (file.mime === 'application/pdf') {
-              // Skip text decoding for PDFs - Adobe extraction failed and we can't decode binary PDF data
-              console.warn('Adobe extraction failed for PDF, skipping text-based analysis', {
-                key: file.key,
-                mime: file.mime
-              });
-              await SessionService.sendAnalysisStatus(env, sessionId, teamId, "❌ Unable to analyze PDF document");
-              analysis = {
-                summary: "PDF document could not be analyzed. Adobe extraction failed and text-based analysis is not available for binary PDF files.",
-                entities: { people: [], orgs: [], dates: [] },
-                key_facts: [],
-                action_items: [],
-                confidence: 0,
-                error: "Adobe extraction failed for PDF"
-              };
-            } else {
-              await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Processing document text...");
-              const text = new TextDecoder().decode(buf);
-              analysis = await summarizeLegal(env, text);
-            }
-          }
+          
+          console.log('🔧 Document analysis starting', { key: file.key });
+          const analysis = await performDocumentAnalysis(
+            env,
+            adobeService,
+            file.key,
+            file.mime,
+            buf,
+            sessionId,
+            teamId
+          );
 
           // Store analysis preview in KV for quick access
           await env.CHAT_SESSIONS.put(
@@ -129,7 +92,7 @@ export default {
           );
           
           // Send final analysis result
-          await SessionService.sendAnalysisComplete(env, sessionId, teamId, analysis as unknown as Record<string, unknown>);
+          await SessionService.sendAnalysisComplete(env, sessionId, teamId, analysis);
           
           console.log('✅ Auto-analysis completed successfully:', { 
             key: file.key, 
@@ -151,33 +114,13 @@ export default {
         }
         const buf = await obj.arrayBuffer();
 
-        let analysis: AnalysisResult;
-        const adobeEligible = isAdobeEligibleMime(mime);
-
-        if (adobeEligible && adobeService.isEnabled()) {
-          const adobeResult = await adobeService.extractFromBuffer(
-            key.split('/').pop() ?? key,
-            mime,
-            buf
-          );
-          if (adobeResult.success && adobeResult.details) {
-            analysis = await summarizeAdobeResult(env, adobeResult.details);
-          } else {
-            console.warn('Adobe extract returned no data, falling back to legacy summarizer', {
-              key,
-              mime
-            });
-          }
-        }
-
-        if (!analysis) {
-          if (mime.startsWith('image/')) {
-            analysis = await analyzeImage(env, new Uint8Array(buf));
-          } else {
-            const text = new TextDecoder().decode(buf);
-            analysis = await summarizeLegal(env, text);
-          }
-        }
+        const analysis = await performDocumentAnalysis(
+          env,
+          adobeService,
+          key,
+          mime,
+          buf
+        );
 
         // Store analysis preview in KV for quick access
         await env.CHAT_SESSIONS.put(
@@ -210,6 +153,72 @@ export default {
 
 const MAX_TEXT_CHARS = 20000;
 const MAX_STRUCTURED_CHARS = 6000;
+
+async function performDocumentAnalysis(
+  env: Env,
+  adobeService: AdobeDocumentService,
+  key: string,
+  mime: string,
+  buf: ArrayBuffer,
+  sessionId?: string,
+  teamId?: string
+): Promise<AnalysisResult> {
+  let analysis: AnalysisResult | undefined;
+  const adobeEligible = isAdobeEligibleMime(mime);
+
+  if (adobeEligible && adobeService.isEnabled()) {
+    if (sessionId && teamId) {
+      await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Extracting document content...");
+    }
+    
+    const adobeResult = await adobeService.extractFromBuffer(
+      key.split('/').pop() ?? key,
+      mime,
+      buf
+    );
+    
+    if (adobeResult.success && adobeResult.details) {
+      if (sessionId && teamId) {
+        await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Summarizing document...");
+      }
+      analysis = await summarizeAdobeResult(env, adobeResult.details);
+    } else {
+      console.warn('Adobe extract returned no data, falling back to legacy summarizer', {
+        key,
+        mime
+      });
+    }
+  }
+
+  if (!analysis) {
+    if (mime.startsWith('image/')) {
+      if (sessionId && teamId) {
+        await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Analyzing image content...");
+      }
+      analysis = await analyzeImage(env, new Uint8Array(buf));
+    } else if (mime === 'application/pdf') {
+      if (sessionId && teamId) {
+        await SessionService.sendAnalysisStatus(env, sessionId, teamId, "❌ Unable to analyze PDF document");
+      }
+      analysis = {
+        summary: "PDF document could not be analyzed. Adobe extraction failed and text-based analysis is not available for binary PDF files.",
+        entities: { people: [], orgs: [], dates: [] },
+        key_facts: [],
+        action_items: [],
+        confidence: 0,
+        error: "Adobe extraction failed for PDF"
+      };
+    } else {
+      if (sessionId && teamId) {
+        await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Processing document text...");
+      }
+      const text = new TextDecoder().decode(buf);
+      analysis = await summarizeLegal(env, text);
+    }
+  }
+
+  return analysis;
+}
 
 async function summarizeLegal(env: Env, text: string) {
   const prompt = [

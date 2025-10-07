@@ -15,6 +15,15 @@ const mockConsoleError = vi.fn();
 const mockConsoleWarn = vi.fn();
 const mockConsoleLog = vi.fn();
 
+// Type for mocked window with Sentry
+type MockWindow = {
+  window?: {
+    Sentry?: {
+      captureException: ReturnType<typeof vi.fn>;
+    };
+  };
+};
+
 describe('errorHandler', () => {
   beforeEach(() => {
     // Mock console methods
@@ -23,7 +32,7 @@ describe('errorHandler', () => {
     vi.spyOn(console, 'log').mockImplementation(mockConsoleLog);
     
     // Mock window.Sentry
-    (global as { window?: { Sentry?: { captureException: () => void } } }).window = {
+    (global as MockWindow).window = {
       Sentry: {
         captureException: vi.fn()
       }
@@ -42,7 +51,7 @@ describe('errorHandler', () => {
 
       handleError(error, context, { component: 'TestComponent' });
 
-      expect((global as { window?: { Sentry?: { captureException: () => void } } }).window?.Sentry?.captureException).toHaveBeenCalledWith(
+      expect((global as MockWindow).window?.Sentry?.captureException).toHaveBeenCalledWith(
         error,
         {
           tags: {
@@ -69,7 +78,7 @@ describe('errorHandler', () => {
 
       handleError(error, context, { component: 'TestComponent' });
 
-      expect((global as { window?: { Sentry?: { captureException: () => void } } }).window?.Sentry?.captureException).toHaveBeenCalledWith(
+      expect((global as MockWindow).window?.Sentry?.captureException).toHaveBeenCalledWith(
         error,
         expect.objectContaining({
           extra: expect.objectContaining({
@@ -127,7 +136,7 @@ describe('errorHandler', () => {
 
       handleError(error, context, { component: 'TestComponent' });
 
-      expect((global as { window?: { Sentry?: { captureException: () => void } } }).window?.Sentry?.captureException).toHaveBeenCalledWith(
+      expect((global as MockWindow).window?.Sentry?.captureException).toHaveBeenCalledWith(
         error,
         expect.objectContaining({
           extra: expect.objectContaining({
@@ -139,7 +148,7 @@ describe('errorHandler', () => {
 
     it('should fall back to console logging if Sentry fails', async () => {
       // Mock Sentry to throw an error
-      (global as { window?: { Sentry?: { captureException: () => void } } }).window?.Sentry?.captureException.mockImplementation(() => {
+      (global as MockWindow).window?.Sentry?.captureException.mockImplementation(() => {
         throw new Error('Sentry failed');
       });
 

@@ -117,11 +117,9 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
     fileType: file.type
   });
 
-  // Store file in R2 bucket using a stream to avoid buffering the entire file in memory
-  const body = typeof (file as { stream?: () => ReadableStream }).stream === 'function'
-    ? (file as { stream: () => ReadableStream }).stream()
-    : await file.arrayBuffer();
-  await env.FILES_BUCKET.put(storageKey, body as ArrayBuffer, {
+  // Store file in R2 bucket. Use ArrayBuffer for broad compatibility with types
+  const body: ArrayBuffer = await file.arrayBuffer();
+  await env.FILES_BUCKET.put(storageKey, body, {
     httpMetadata: {
       // …existing metadata…
       contentType: file.type,
@@ -316,25 +314,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         url
       });
 
-      // Queue auto-analysis for uploaded document
-      await env.DOC_EVENTS.send({
-        type: "analyze_uploaded_document",
-        sessionId: resolvedSessionId,
-        teamId: resolvedTeamId,
-        file: {
-          key: storageKey,
-          name: file.name,
-          mime: file.type,
-          size: file.size
-        }
-      });
-
-      Logger.info('📤 Queued auto-analysis for uploaded file', { 
-        sessionId: resolvedSessionId, 
-        teamId: resolvedTeamId, 
-        key: storageKey, 
-        mime: file.type 
-      });
+      // Auto-analysis enqueue is handled inside storeFile to avoid double-processing
 
       // Inline processing for local development (bypass queue)
       try {

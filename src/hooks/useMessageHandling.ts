@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
-import { ChatMessageUI } from '../../worker/types';
+import { ChatMessageUI, FileAttachment } from '../../worker/types';
 import { ContactData } from '../components/ContactForm';
 
 // Tool name to user-friendly message mapping
@@ -16,7 +16,7 @@ declare global {
     __DEBUG_AI_MESSAGES__?: (messages: ChatMessageUI[]) => void;
     __DEBUG_SSE_EVENTS__?: (data: unknown) => void;
     __DEBUG_SEND_MESSAGE__?: (message: string, attachments: FileAttachment[]) => void;
-    __DEBUG_CONTACT_FORM__?: (contactData: ContactData, message: string) => void;
+    __DEBUG_CONTACT_FORM__?: (contactData: ContactData | Record<string, boolean>, message: string) => void;
     __toolCalls?: unknown[];
     __conversationState?: unknown;
   }

@@ -1,4 +1,18 @@
 import type { Env } from '../types.js';
+import { Logger } from '../utils/logger.js';
+
+export interface AnalysisResult {
+  summary: string;
+  key_facts: string[];
+  entities: {
+    people: string[];
+    orgs: string[];
+    dates: string[];
+  };
+  action_items: string[];
+  confidence: number;
+  error?: string;
+}
 
 export interface SessionRecord {
   id: string;
@@ -390,16 +404,26 @@ export class SessionService {
         content: message,
         metadata: { type: 'analysis_status' }
       });
-      console.log(`📊 Analysis Status [${sessionId}]: ${message}`);
+      
+      // Log sanitized message (first 100 chars + ellipses if longer)
+      const sanitizedMessage = message.length > 100 ? `${message.substring(0, 100)}...` : message;
+      console.log(`📊 Analysis Status [${sessionId}]: ${sanitizedMessage}`);
     } catch (error) {
-      console.error('Failed to send analysis status:', error);
+      console.error(`Failed to send analysis status for session ${sessionId}, team ${teamId}:`, error);
+      throw new Error(`Failed to send analysis status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Send analysis complete message to user
    */
-  static async sendAnalysisComplete(env: Env, sessionId: string, teamId: string, analysis: Record<string, unknown>): Promise<void> {
+  static async sendAnalysisComplete(env: Env, sessionId: string, teamId: string, analysis: AnalysisResult): Promise<void> {
+    // Initialize Logger with environment variables for Cloudflare Workers compatibility
+    Logger.initialize({
+      DEBUG: env.DEBUG,
+      NODE_ENV: env.NODE_ENV
+    });
+
     try {
       const formattedContent = `## 📄 Document Analysis Complete
 
@@ -429,13 +453,53 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
         }
       });
       
-      console.log(`✅ Analysis Complete [${sessionId}]:`, {
-        summary: analysis.summary?.substring(0, 100) + '...',
+      // Log success with sanitized data (no PII)
+      Logger.info(`Analysis complete notification sent successfully`, {
+        sessionId,
+        teamId,
         confidence: analysis.confidence,
-        keyFactsCount: analysis.key_facts?.length || 0
+        keyFactsCount: analysis.key_facts?.length || 0,
+        hasSummary: !!analysis.summary,
+        hasEntities: !!(analysis.entities?.people?.length || analysis.entities?.orgs?.length || analysis.entities?.dates?.length),
+        hasActionItems: !!analysis.action_items?.length
+      });
+
+      // Dev-only detailed logging with PII protection
+      Logger.debug(`Analysis complete detailed info`, {
+        sessionId,
+        teamId,
+        summaryPreview: analysis.summary ? analysis.summary.substring(0, 100) + '...' : undefined,
+        confidence: analysis.confidence,
+        keyFactsCount: analysis.key_facts?.length || 0,
+        entitiesCount: {
+          people: analysis.entities?.people?.length || 0,
+          orgs: analysis.entities?.orgs?.length || 0,
+          dates: analysis.entities?.dates?.length || 0
+        },
+        actionItemsCount: analysis.action_items?.length || 0
       });
     } catch (error) {
-      console.error('Failed to send analysis complete:', error);
+      // Log sanitized error message with context but no sensitive payloads
+      Logger.error(`Failed to send analysis complete notification`, {
+        sessionId,
+        teamId,
+        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+
+      // Dev-only detailed error logging with PII protection
+      Logger.debug(`Analysis complete error details`, {
+        sessionId,
+        teamId,
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : String(error)
+      });
+
+      // Rethrow the error so callers can handle failures upstream
+      throw error;
     }
   }
 
