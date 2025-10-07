@@ -216,8 +216,6 @@
   "billing": {
     "monthly": "月",
     "yearly": "年",
-    "perMonth": "/ 月",
-    "perYear": "/ 年",
     "billedMonthly": "按月计费",
     "billedAnnually": "按年计费",
     "currency": {

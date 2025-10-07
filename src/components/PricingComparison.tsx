@@ -32,7 +32,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
     // Separate price components instead of concatenated string
     priceAmount: formatCurrency(plan.priceAmount, plan.currency, i18n.language),
     currencyCode: plan.currency.toUpperCase(),
-    billingPeriodLabel: t(`billing.per${plan.billingPeriod === 'month' ? 'Month' : 'Year'}`),
+    billingPeriodLabel: t(`billing.${plan.billingPeriod === 'month' ? 'monthly' : 'yearly'}`),
     features: plan.features.map(f => ({
       ...f,
       text: t(f.text),
@@ -77,7 +77,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
             <div className="text-3xl font-bold mb-2 text-white">
               {plan.priceAmount}
               <span className="text-lg font-normal text-gray-300 ml-1">
-                {plan.currencyCode} {plan.billingPeriodLabel}
+                {plan.currencyCode} / {plan.billingPeriodLabel}
               </span>
             </div>
             <p className="text-gray-300">{plan.description}</p>

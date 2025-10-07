@@ -291,14 +291,14 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
         // Translate all text fields
         name: t(plan.name),
         description: t(plan.description),
-        buttonText: isCurrent ? t('pricing:plans.free.buttonText') : t(plan.buttonText),
+        buttonText: isCurrent ? t('pricing:modal.currentPlan') : t(plan.buttonText),
         price: formatCurrency(plan.priceAmount, plan.currency, i18n.language) +
                " " +
                plan.currency.toUpperCase() +
-               " " +
+               " / " +
                t(
-                 `pricing:billing.per${
-                   plan.billingPeriod === "month" ? "Month" : "Year"
+                 `pricing:billing.${
+                   plan.billingPeriod === "month" ? "monthly" : "yearly"
                  }`
                ),
         features: plan.features.map((f) => ({

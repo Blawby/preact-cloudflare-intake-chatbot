@@ -211,8 +211,8 @@ describe("Pricing Internationalization", () => {
         'plans.plus.description',
         'plans.business.name',
         'plans.business.description',
-        'billing.perMonth',
-        'billing.perYear',
+        'billing.monthly',
+        'billing.yearly',
         'plans.free.buttonText',
       ];
 

@@ -216,8 +216,6 @@
   "billing": {
     "monthly": "month",
     "yearly": "year",
-    "perMonth": "/ month",
-    "perYear": "/ year",
     "billedMonthly": "Billed monthly",
     "billedAnnually": "Billed annually",
     "currency": {

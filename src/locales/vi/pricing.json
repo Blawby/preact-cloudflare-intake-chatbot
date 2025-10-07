@@ -216,8 +216,6 @@
   "billing": {
     "monthly": "tháng",
     "yearly": "năm",
-    "perMonth": "/ tháng",
-    "perYear": "/ năm",
     "billedMonthly": "Thanh toán hàng tháng",
     "billedAnnually": "Thanh toán hàng năm",
     "currency": {
