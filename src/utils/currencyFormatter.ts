@@ -2,6 +2,27 @@
 // Locale-aware currency formatting for pricing displays
 
 /**
+ * Validates and sanitizes a currency code
+ * @param currency - The currency code to validate
+ * @returns Valid currency code or 'USD' as fallback
+ */
+function sanitizeCurrency(currency: string | null | undefined): string {
+  if (!currency || typeof currency !== 'string') {
+    return 'USD';
+  }
+  
+  const sanitized = currency.toUpperCase().trim();
+  
+  // Must be exactly 3 alphabetic characters (ISO 4217 format)
+  if (!/^[A-Z]{3}$/.test(sanitized)) {
+    console.warn(`Invalid currency code: ${currency}, defaulting to USD`);
+    return 'USD';
+  }
+  
+  return sanitized;
+}
+
+/**
  * Format a price amount using Intl.NumberFormat for locale-aware currency display
  * @param amount - The numeric amount to format
  * @param currency - The ISO currency code (e.g., 'USD', 'EUR', 'GBP')
@@ -13,22 +34,24 @@ export function formatCurrency(
   currency: string = "USD",
   locale: string = "en"
 ): string {
+  const sanitizedCurrency = sanitizeCurrency(currency);
+  
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: currency,
+      currency: sanitizedCurrency,
       minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
       maximumFractionDigits: 2,
     }).format(amount);
   } catch (error) {
-    // Fallback to en-US if locale is not supported
+    // Fallback to en-US with sanitized USD if locale is not supported
     console.warn(
       `Currency formatting failed for locale ${locale}, falling back to en-US`,
       error
     );
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: currency,
+      currency: "USD",
       minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
       maximumFractionDigits: 2,
     }).format(amount);
@@ -45,10 +68,12 @@ export function getCurrencySymbol(
   currency: string = "USD",
   locale: string = "en"
 ): string {
+  const sanitizedCurrency = sanitizeCurrency(currency);
+  
   try {
     const formatter = new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: currency,
+      currency: sanitizedCurrency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     });
@@ -56,13 +81,13 @@ export function getCurrencySymbol(
     // Extract symbol using formatToParts
     const parts = formatter.formatToParts(0);
     const symbolPart = parts.find((p) => p.type === "currency");
-    return symbolPart?.value ?? currency;
+    return symbolPart?.value ?? sanitizedCurrency;
   } catch (error) {
     console.warn(
-      `Currency symbol retrieval failed for ${currency} in locale ${locale}`,
+      `Currency symbol retrieval failed for ${sanitizedCurrency} in locale ${locale}`,
       error
     );
-    return currency;
+    return sanitizedCurrency;
   }
 }
 /**
@@ -99,8 +124,9 @@ export function buildPriceDisplay(
   locale: string,
   t: (key: string) => string
 ): string {
-  const formattedAmount = formatCurrency(amount, currency, locale);
-  const currencyCode = currency.toUpperCase();
+  const sanitizedCurrency = sanitizeCurrency(currency);
+  const formattedAmount = formatCurrency(amount, sanitizedCurrency, locale);
+  const currencyCode = sanitizedCurrency.toUpperCase();
   const period = t(
     `pricing:billing.${billingPeriod === "month" ? "monthly" : "yearly"}`
   );

@@ -34,7 +34,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   const [selectedTab, setSelectedTab] = useState<"personal" | "business">(
     "business"
   );
-  const [selectedCountry, setSelectedCountry] = useState("vn");
+  const [selectedCountry, setSelectedCountry] = useState("us");
 
   // Country options - clean list without language prefixes
   // Language is automatically detected via getLanguageForCountry() mapping

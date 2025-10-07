@@ -200,6 +200,7 @@ describe("Pricing Internationalization", () => {
     });
   });
 
+  describe("Translation Completeness", () => {
     it('should have complete translations for all supported languages', async () => {
       const languages = ['en', 'de', 'es', 'fr', 'ja', 'vi', 'zh'];
       const requiredKeys = [
@@ -210,8 +211,8 @@ describe("Pricing Internationalization", () => {
         'plans.plus.description',
         'plans.business.name',
         'plans.business.description',
-        'billing.monthly',
-        'billing.yearly',
+        'billing.perMonth',
+        'billing.perYear',
         'plans.free.buttonText',
       ];
 
@@ -225,7 +226,7 @@ describe("Pricing Internationalization", () => {
           expect(translation).not.toBe(key);
         });
       }
-    });    });
+    });
 
     it("should not have missing translation keys", async () => {
       const languages = ["en", "de", "es", "fr", "ja", "vi", "zh"];
@@ -239,7 +240,6 @@ describe("Pricing Internationalization", () => {
         expect(Object.keys(resources || {}).length).toBeGreaterThan(0);
       }
     });
-  });
 
     it('should have pricing tiers defined', () => {
       // Import and verify pricing data structure
@@ -262,7 +262,7 @@ describe("Pricing Internationalization", () => {
       tierIds.forEach(id => {
         expect(t(`plans.${id}.name`)).toBeTruthy();
       });
-    });    });
+    });
   });
 
   describe("Error Handling", () => {

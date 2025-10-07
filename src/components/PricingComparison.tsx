@@ -23,15 +23,16 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
     ? mockPricingDataService.getPricingPlans()
     : mockPricingDataService.getUpgradePath(currentTier);
     
-  // Translate plans
+  // Translate plans with separate price components
   const plans = rawPlans.map(plan => ({
     ...plan,
     name: t(plan.name),
     description: t(plan.description),
     buttonText: t(plan.buttonText),
-    price: formatCurrency(plan.priceAmount, plan.currency, i18n.language) + ' ' + 
-           plan.currency.toUpperCase() + ' ' + 
-           t(`billing.per${plan.billingPeriod === 'month' ? 'Month' : 'Year'}`),
+    // Separate price components instead of concatenated string
+    priceAmount: formatCurrency(plan.priceAmount, plan.currency, i18n.language),
+    currencyCode: plan.currency.toUpperCase(),
+    billingPeriodLabel: t(`billing.per${plan.billingPeriod === 'month' ? 'Month' : 'Year'}`),
     features: plan.features.map(f => ({
       ...f,
       text: t(f.text),
@@ -74,9 +75,9 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
           <div className="mb-6">
             <h3 className="text-2xl font-bold mb-2 text-white">{plan.name}</h3>
             <div className="text-3xl font-bold mb-2 text-white">
-              {plan.price.split(' ')[0]}
+              {plan.priceAmount}
               <span className="text-lg font-normal text-gray-300 ml-1">
-                {plan.price.split(' ').slice(1).join(' ')}
+                {plan.currencyCode} {plan.billingPeriodLabel}
               </span>
             </div>
             <p className="text-gray-300">{plan.description}</p>
@@ -94,7 +95,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
                 : 'bg-transparent border border-dark-border text-white hover:bg-dark-hover'
             }`}
           >
-            {plan.id === currentTier ? t('plans.free.buttonText') : plan.buttonText}
+            {plan.id === currentTier ? t('modal.currentPlan') : plan.buttonText}
           </button>
 
           {/* Features List */}
