@@ -9,7 +9,11 @@ import profileEn from '../locales/en/profile.json';
 import pricingEn from '../locales/en/pricing.json';
 
 export const DEFAULT_LOCALE = 'en' as const;
-export const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'de', 'zh', 'ja', 'vi'] as const;
+export const SUPPORTED_LOCALES = [
+  'en', 'es', 'fr', 'de', 'zh', 'ja', 'vi',  // Existing languages
+  'pt', 'ar', 'ru', 'it', 'ko', 'nl', 'pl',  // Phase 1-2: High/Medium priority
+  'tr', 'th', 'id', 'hi', 'uk'               // Phase 3: Expansion
+] as const;
 export type AppLocale = typeof SUPPORTED_LOCALES[number];
 
 const NAMESPACES = ['common', 'settings', 'auth', 'profile', 'pricing'] as const;

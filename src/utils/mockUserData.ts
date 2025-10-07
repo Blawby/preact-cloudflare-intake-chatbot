@@ -2,10 +2,14 @@
 // This provides consistent mock data for development until the real API is ready
 
 export type SubscriptionTier = 'free' | 'plus' | 'business';
-export type Language = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'vi';
+export type Language = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'vi' | 
+                       'pt' | 'ar' | 'ru' | 'it' | 'ko' | 'nl' | 'pl' | 
+                       'tr' | 'th' | 'id' | 'hi' | 'uk';
 
 // Country-to-language mapping for all supported locales
-// Supports: English, Spanish, French, German, Chinese, Japanese, Vietnamese
+// Supports: English, Spanish, French, German, Chinese, Japanese, Vietnamese,
+// Portuguese, Arabic, Russian, Italian, Korean, Dutch, Polish,
+// Turkish, Thai, Indonesian, Hindi, Ukrainian
 export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   // English-speaking countries
   'us': 'en',
@@ -133,6 +137,78 @@ export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   
   // Vietnamese-speaking countries
   'vn': 'vi',
+  
+  // Portuguese-speaking countries
+  'pt': 'pt', // Portugal
+  'br': 'pt', // Brazil
+  'ao': 'pt', // Angola
+  'mz': 'pt', // Mozambique
+  'cv': 'pt', // Cape Verde
+  'gw': 'pt', // Guinea-Bissau
+  'st': 'pt', // São Tomé and Príncipe
+  'tl': 'pt', // Timor-Leste
+  
+  // Arabic-speaking countries
+  'sa': 'ar', // Saudi Arabia
+  'ae': 'ar', // United Arab Emirates
+  'eg': 'ar', // Egypt
+  'iq': 'ar', // Iraq
+  'jo': 'ar', // Jordan
+  'lb': 'ar', // Lebanon
+  'sy': 'ar', // Syria
+  'ye': 'ar', // Yemen
+  'qa': 'ar', // Qatar
+  'bh': 'ar', // Bahrain
+  'kw': 'ar', // Kuwait
+  'om': 'ar', // Oman
+  'ly': 'ar', // Libya
+  'sd': 'ar', // Sudan
+  'so': 'ar', // Somalia
+  'dj': 'ar', // Djibouti
+  'km': 'ar', // Comoros
+  'mr': 'ar', // Mauritania
+  // Note: dz, ma, tn keep 'fr' as primary (also speak Arabic)
+  
+  // Russian-speaking countries
+  'ru': 'ru', // Russia
+  'by': 'ru', // Belarus
+  'kz': 'ru', // Kazakhstan
+  'kg': 'ru', // Kyrgyzstan
+  'tj': 'ru', // Tajikistan
+  'md': 'ru', // Moldova
+  'tm': 'ru', // Turkmenistan
+  'uz': 'ru', // Uzbekistan
+  
+  // Italian-speaking countries
+  'it': 'it', // Italy
+  'sm': 'it', // San Marino
+  'va': 'it', // Vatican City
+  
+  // Korean-speaking countries
+  'kr': 'ko', // South Korea
+  'kp': 'ko', // North Korea
+  
+  // Turkish-speaking countries
+  'tr': 'tr', // Turkey
+  
+  // Dutch-speaking countries
+  'nl': 'nl', // Netherlands
+  'sr': 'nl', // Suriname
+  
+  // Polish-speaking countries
+  'pl': 'pl', // Poland
+  
+  // Indonesian-speaking countries
+  'id': 'id', // Indonesia
+  
+  // Thai-speaking countries
+  'th': 'th', // Thailand
+  
+  // Hindi-speaking countries (India defaults to English, Hindi optional)
+  // 'in': 'hi', // Uncomment to make Hindi default for India
+  
+  // Ukrainian-speaking countries
+  'ua': 'uk', // Ukraine
 };
 
 /**

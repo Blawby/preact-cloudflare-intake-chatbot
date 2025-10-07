@@ -23,7 +23,11 @@ describe("Pricing Internationalization", () => {
     });
 
     it("should support all required languages", () => {
-      const supportedLanguages = ["en", "de", "es", "fr", "ja", "vi", "zh"];
+      const supportedLanguages = [
+        "en", "es", "fr", "de", "zh", "ja", "vi",  // Original languages
+        "pt", "ar", "ru", "it", "ko", "nl", "pl",  // Phase 1-2
+        "tr", "th", "id", "hi", "uk"               // Phase 3
+      ];
       supportedLanguages.forEach((lang) => {
         expect(i18n.options.supportedLngs).toContain(lang);
       });
@@ -45,7 +49,11 @@ describe("Pricing Internationalization", () => {
     });
 
     it("should support all target languages", async () => {
-      const languages = ["en", "de", "es", "fr", "ja", "vi", "zh"];
+      const languages = [
+        "en", "es", "fr", "de", "zh", "ja", "vi",
+        "pt", "ar", "ru", "it", "ko", "nl", "pl",
+        "tr", "th", "id", "hi", "uk"
+      ];
 
       for (const lang of languages) {
         await changeLanguage(lang);
@@ -203,7 +211,11 @@ describe("Pricing Internationalization", () => {
 
   describe("Translation Completeness", () => {
     it('should have complete translations for all supported languages', async () => {
-      const languages = ['en', 'de', 'es', 'fr', 'ja', 'vi', 'zh'];
+      const languages = [
+        'en', 'es', 'fr', 'de', 'zh', 'ja', 'vi',
+        'pt', 'ar', 'ru', 'it', 'ko', 'nl', 'pl',
+        'tr', 'th', 'id', 'hi', 'uk'
+      ];
       const requiredKeys = [
         'modal.title',
         'modal.currentPlan',
@@ -235,7 +247,11 @@ describe("Pricing Internationalization", () => {
     });
 
     it("should not have missing translation keys", async () => {
-      const languages = ["en", "de", "es", "fr", "ja", "vi", "zh"];
+      const languages = [
+        "en", "es", "fr", "de", "zh", "ja", "vi",
+        "pt", "ar", "ru", "it", "ko", "nl", "pl",
+        "tr", "th", "id", "hi", "uk"
+      ];
 
       for (const lang of languages) {
         await i18n.loadNamespaces("pricing");
