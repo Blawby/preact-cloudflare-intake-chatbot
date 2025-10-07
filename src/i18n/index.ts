@@ -16,6 +16,16 @@ export const SUPPORTED_LOCALES = [
 ] as const;
 export type AppLocale = typeof SUPPORTED_LOCALES[number];
 
+// RTL (Right-to-Left) languages
+export const RTL_LOCALES: ReadonlySet<AppLocale> = new Set(['ar'] as const);
+
+/**
+ * Check if a locale uses RTL (Right-to-Left) text direction
+ */
+export const isRTLLocale = (locale: AppLocale): boolean => {
+  return RTL_LOCALES.has(locale);
+};
+
 const NAMESPACES = ['common', 'settings', 'auth', 'profile', 'pricing'] as const;
 
 const STORAGE_KEY = 'blawby_locale';
@@ -100,6 +110,14 @@ export const initI18n = async () => {
 
   await loadLocaleResources(normalizeLocale(i18next.language));
 
+  // Set initial HTML dir and lang attributes
+  if (typeof window !== 'undefined') {
+    const currentLocale = normalizeLocale(i18next.language);
+    const isRTL = isRTLLocale(currentLocale);
+    document.documentElement.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', currentLocale);
+  }
+
   initialized = true;
   return i18next;
 };
@@ -108,8 +126,15 @@ export const setLocale = async (nextLocale: string) => {
   const target = normalizeLocale(nextLocale);
   await loadLocaleResources(target);
   await i18next.changeLanguage(target);
+  
+  // Update text direction based on locale
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(STORAGE_KEY, target);
+    
+    // Set HTML dir attribute for RTL support
+    const isRTL = isRTLLocale(target);
+    document.documentElement.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', target);
   }
 };
 
