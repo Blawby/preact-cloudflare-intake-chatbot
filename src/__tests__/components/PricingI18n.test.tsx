@@ -55,8 +55,8 @@ describe("Pricing Internationalization", () => {
 
     it("should fall back to English for unsupported language", async () => {
       await changeLanguage("xx" as any);
-      // Should fall back to English
-      expect(["en", "xx"]).toContain(i18n.language);
+      // Should fall back to English (including regional variants like en-US, en-GB)
+      expect(i18n.language).toMatch(/^en(-|$)/);
     });
   });
 
