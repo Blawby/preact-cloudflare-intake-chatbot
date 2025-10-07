@@ -1943,7 +1943,7 @@ function formatDocumentAnalysisMessage(fileId: string, analysis: DocumentAnalysi
 
   if (typeof analysis.confidence === 'number') {
     const confidencePct = Math.round(Math.max(0, Math.min(analysis.confidence, 1)) * 100);
-    sections.push(`Confidence: ${confidencePct}%`);
+    // Confidence level removed from user display
   }
 
   if (sections.length === 1) {

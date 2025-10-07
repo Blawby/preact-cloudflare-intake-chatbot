@@ -263,7 +263,7 @@ function generateAnalysisResponse(analysisResults: AnalysisResult[]): string {
       });
     }
 
-    response += `\n**Confidence Level:** ${Math.round(result.confidence * 100)}%\n\n`;
+    // Confidence level removed from user display
   }
 
   response += "Based on this analysis, I can help you:\n";
