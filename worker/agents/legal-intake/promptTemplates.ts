@@ -329,7 +329,7 @@ export function buildContextSection(
 
   // Build context with only legal information
   const contextItems = [
-    `- Has Legal Issue: ${Boolean(context?.hasLegalIssue && sanitizedLegalIssueType) ? 'YES' : 'NO'} ${sanitizedLegalIssueType ? `(${sanitizedLegalIssueType})` : ''}`,
+    `- Has Legal Issue: ${context?.hasLegalIssue && sanitizedLegalIssueType ? 'YES' : 'NO'} ${sanitizedLegalIssueType ? `(${sanitizedLegalIssueType})` : ''}`,
     `- Has Description: ${sanitizedDescription ? 'YES' : 'NO'}`,
     `- Is Sensitive Matter: ${context?.isSensitiveMatter ? 'YES' : 'NO'}`,
     `- Is General Inquiry: ${context?.isGeneralInquiry ? 'YES' : 'NO'}`,

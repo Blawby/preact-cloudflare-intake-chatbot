@@ -6,12 +6,8 @@ import {
   log, 
   generateRequestId, 
   logRequestStart, 
-  logRequestComplete, 
-  logAdobeStep, 
   logAIProcessing, 
-  logJSONParsing, 
   logError, 
-  logMetrics, 
   logWarning 
 } from '../utils/logging.js';
 
@@ -30,7 +26,7 @@ interface AnalysisResult {
 
 
 // Helper function to create fallback response
-function createFallbackResponse(aiResponse: string): AnalysisResult {
+function _createFallbackResponse(aiResponse: string): AnalysisResult {
   return {
     summary: aiResponse.substring(0, 200) + (aiResponse.length > 200 ? '...' : ''),
     key_facts: [aiResponse],
@@ -44,7 +40,8 @@ function createFallbackResponse(aiResponse: string): AnalysisResult {
 async function attemptAdobeExtract(
   file: File,
   question: string,
-  env: Env
+  env: Env,
+  requestId: string
 ): Promise<AnalysisResult | null> {
   const adobeService = new AdobeDocumentService(env);
   const eligibleTypes = new Set([
@@ -53,7 +50,8 @@ async function attemptAdobeExtract(
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ]);
 
-  console.log('Adobe extract attempt:', {
+  log('info', 'adobe_extract_attempt', {
+    request_id: requestId,
     fileType: file.type,
     isEligibleType: eligibleTypes.has(file.type),
     isEnabled: adobeService.isEnabled(),
@@ -62,27 +60,31 @@ async function attemptAdobeExtract(
     adobeClientSecret: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET'
   });
 
-  console.log('Adobe service isEnabled() result:', adobeService.isEnabled());
-  console.log('ENABLE_ADOBE_EXTRACT value:', env.ENABLE_ADOBE_EXTRACT);
-  console.log('ADOBE_CLIENT_ID value:', env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET');
+  log('info', 'adobe_service_check', {
+    request_id: requestId,
+    isEnabled: adobeService.isEnabled(),
+    enableFlag: env.ENABLE_ADOBE_EXTRACT,
+    adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET'
+  });
 
   if (!eligibleTypes.has(file.type)) {
-    console.log('Adobe extract skipped: not eligible type');
+    log('info', 'adobe_extract_skipped', { request_id: requestId, reason: 'not_eligible_type', fileType: file.type });
     return null;
   }
   
   if (!adobeService.isEnabled()) {
-    console.log('Adobe extract skipped: not enabled');
+    log('info', 'adobe_extract_skipped', { request_id: requestId, reason: 'not_enabled', isEnabled: adobeService.isEnabled() });
     return null;
   }
 
   try {
-    console.log('Starting Adobe extraction for:', file.name);
+    log('info', 'adobe_extraction_start', { request_id: requestId, fileName: file.name, fileType: file.type });
     const buffer = await file.arrayBuffer();
-    console.log('File buffer size:', buffer.byteLength);
+    log('info', 'adobe_file_buffer', { request_id: requestId, fileName: file.name, bufferSize: buffer.byteLength });
     
     const extractResult = await adobeService.extractFromBuffer(file.name, file.type, buffer);
-    console.log('Adobe extraction result:', {
+    log('info', 'adobe_extraction_result', {
+      request_id: requestId,
       success: extractResult.success,
       hasDetails: !!extractResult.details,
       error: extractResult.error,
@@ -90,14 +92,14 @@ async function attemptAdobeExtract(
     });
 
     if (!extractResult.success || !extractResult.details) {
-      console.log('Adobe extraction failed, returning null');
+      log('warn', 'adobe_extraction_failed', { request_id: requestId, reason: 'no_success_or_details' });
       return null;
     }
 
-    console.log('Adobe extraction successful, proceeding to summarize');
-    return await summarizeAdobeExtract(extractResult.details, question, env);
+    log('info', 'adobe_extraction_success', { request_id: requestId, fileName: file.name });
+    return await summarizeAdobeExtract(extractResult.details, question, env, requestId);
   } catch (error) {
-    console.warn('Adobe extract failed, using fallback analysis path', {
+    logWarning(requestId, 'adobe_extract_failed', 'Adobe extract failed, using fallback analysis path', {
       fileName: file.name,
       fileType: file.type,
       error: error instanceof Error ? error.message : String(error)
@@ -109,7 +111,8 @@ async function attemptAdobeExtract(
 async function summarizeAdobeExtract(
   extract: AdobeExtractSuccess,
   question: string,
-  env: Env
+  env: Env,
+  requestId: string
 ): Promise<AnalysisResult> {
   const rawText = extract.text ?? '';
   const truncatedText = rawText.length > 20000
@@ -134,61 +137,66 @@ async function summarizeAdobeExtract(
     structuredPayload ? `Structured data:\n${structuredPayload}` : ''
   ].filter(Boolean).join('\n\n');
 
-  // Use the same pattern as other AI endpoints
-  const res = await env.AI.run('@cf/openai/gpt-oss-20b', {
-    input: `${systemPrompt}\n\n${userPrompt}`,
+  // Use the correct format for Cloudflare AI
+  const res = await (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run('@cf/openai/gpt-oss-20b', {
+    prompt: `${systemPrompt}\n\n${userPrompt}`,
     max_tokens: 800,
     temperature: 0.1
   });
 
-  console.log('🔍 AI Response structure:', JSON.stringify(res, null, 2));
-  const result = safeJson(res.response ?? res);
-  console.log('🔍 safeJson result:', JSON.stringify(result, null, 2));
+  logAIProcessing(requestId, 'response', { response: res });
+  const result = safeJson(res as Record<string, unknown>);
+  logAIProcessing(requestId, 'safe_json', { result });
   return result;
 }
 
 // Helper function to safely parse JSON responses with hardened truncation handling
-function safeJson(response: any): AnalysisResult {
-  console.log(
-    "[safeJson] typeof input:",
-    typeof response,
-    "| keys:",
-    Object.keys(response || {}),
-    "| snippet:",
-    typeof response === "string"
+function safeJson(response: unknown): AnalysisResult {
+  log('debug', 'safe_json_debug', {
+    phase: 'safeJson',
+    inputType: typeof response,
+    keys: typeof response === 'object' && response !== null ? Object.keys(response) : [],
+    snippet: typeof response === "string"
       ? response.slice(0, 200)
-      : JSON.stringify(response).slice(0, 200)
-  );
+      : JSON.stringify(response || {}).slice(0, 200)
+  });
   
   try {
     // Handle structured AI output - look for the actual JSON in the response
-    if (response?.output && Array.isArray(response.output)) {
+    if (response && typeof response === 'object' && 'output' in response && Array.isArray((response as Record<string, unknown>).output)) {
+      const output = (response as Record<string, unknown>).output as unknown[];
       // Find the message with the actual content (prefer message type over reasoning type)
-      const message = response.output.find((msg: any) => 
-        msg.content && Array.isArray(msg.content) && msg.type === 'message'
-      ) || response.output.find((msg: any) => 
-        msg.content && Array.isArray(msg.content)
+      const message = output.find((msg: unknown) => 
+        (msg as Record<string, unknown>).content && Array.isArray((msg as Record<string, unknown>).content) && (msg as Record<string, unknown>).type === 'message'
+      ) || output.find((msg: unknown) => 
+        (msg as Record<string, unknown>).content && Array.isArray((msg as Record<string, unknown>).content)
       );
       
-      if (message && message.content) {
-        // Find the output_text content (the actual response)
-        const outputTextContent = message.content.find((content: any) => 
-          content.type === 'output_text' && content.text
-        );
+      if (message && typeof message === 'object' && message !== null && 'content' in message) {
+        const messageContent = (message as Record<string, unknown>).content;
+        if (Array.isArray(messageContent)) {
+          // Find the output_text content (the actual response)
+          const outputTextContent = messageContent.find((content: unknown) => 
+            (content as Record<string, unknown>).type === 'output_text' && (content as Record<string, unknown>).text
+          );
         
-        if (outputTextContent && outputTextContent.text) {
-          console.log('🔍 Found output_text content:', outputTextContent.text.substring(0, 200) + '...');
-          
-          // Extract and clean the JSON text
-          let text = outputTextContent.text.trim();
-          
-          // Remove quotes if wrapped
-          if (text.startsWith('"') && text.endsWith('"')) {
-            text = text.slice(1, -1);
+          if (outputTextContent && typeof outputTextContent === 'object' && outputTextContent !== null && 'text' in outputTextContent) {
+            log('debug', 'safe_json_found_output', {
+              phase: 'safeJson',
+              snippet: (outputTextContent.text as string).substring(0, 200) + '...'
+            });
+            
+            // Extract and clean the JSON text
+            let text = (outputTextContent.text as string).trim();
+            
+            // Remove quotes if wrapped
+            if (text.startsWith('"') && text.endsWith('"')) {
+              text = text.slice(1, -1);
+            }
+            
+            // Apply the hardened JSON extraction logic
+            return extractValidJson(text);
           }
-          
-          // Apply the hardened JSON extraction logic
-          return extractValidJson(text);
         }
       }
     }
@@ -199,23 +207,30 @@ function safeJson(response: any): AnalysisResult {
     }
 
     // Handle object with nested output_text
-    if (response?.result?.output_text) {
-      return extractValidJson(response.result.output_text);
+    if (response && typeof response === 'object' && 'result' in response && 
+        response.result && typeof response.result === 'object' && 'output_text' in response.result) {
+      return extractValidJson((response.result as Record<string, unknown>).output_text as string);
     }
-    if (response?.output_text) {
-      return extractValidJson(response.output_text);
+    if (response && typeof response === 'object' && 'output_text' in response) {
+      return extractValidJson((response as Record<string, unknown>).output_text as string);
     }
 
     // Handle already-parsed object
-    if (typeof response === "object" && response.summary) {
-      return response;
+    if (typeof response === "object" && response && 'summary' in response) {
+      return response as unknown as AnalysisResult;
     }
 
     // Fallback
-    console.warn("[safeJson] Unexpected format:", response);
-    return response ?? null;
+    logWarning('', 'safe_json_unexpected_format', 'Unexpected format in safeJson', { response });
+    return {
+      summary: "Analysis completed but response format was unexpected",
+      key_facts: ["Document processed successfully"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: [],
+      confidence: 0.3
+    };
   } catch (err) {
-    console.error("[safeJson] Parse error:", err);
+    logError('', 'safe_json_parse_error', err as Error, { response });
     return {
       summary: "Analysis completed but response format was unexpected",
       key_facts: ["Document processed successfully"],
@@ -234,7 +249,7 @@ function extractValidJson(input: string): AnalysisResult {
     
     // Pre-clean: remove junk before first { and after last }
     text = text
-      .replace(/^[^\{]+/, "")       // remove junk before first {
+      .replace(/^[^{]+/, "")       // remove junk before first {
       .replace(/}[^}]*$/, "}");     // remove junk after last }
 
     // Find first full balanced JSON object
@@ -249,17 +264,18 @@ function extractValidJson(input: string): AnalysisResult {
     try {
       const parsed = JSON.parse(jsonCandidate);
       if (parsed && typeof parsed === "object" && parsed.summary) {
-        console.log("✅ safeJson: valid JSON parsed");
+        log('debug', 'safe_json_valid_parsed', { phase: 'extractValidJson' });
         return parsed;
       }
-    } catch (innerErr) {
+    } catch (_innerErr) {
       // fallback: trim to before any trailing garbage after a closing brace
       const trimmed = jsonCandidate.replace(/}[^}]*$/, "}");
-      console.warn("⚠️ Retrying JSON parse after trim");
+      logWarning('', 'safe_json_retry_parse', 'Retrying JSON parse after trim', { phase: 'extractValidJson' });
       return JSON.parse(trimmed);
     }
   } catch (err) {
-    console.error("✘ safeJson final fallback:", err.message);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logError('', 'safe_json_final_fallback', new Error(errorMessage), { phase: 'extractValidJson' });
   }
 
   // Final fallback — return structured failure
@@ -315,10 +331,11 @@ function validateAnalysisFile(file: File): { isValid: boolean; error?: string } 
 export async function analyzeWithCloudflareAI(
   file: File,
   question: string,
-  env: Env
+  env: Env,
+  requestId: string
 ): Promise<AnalysisResult> {
   // Only use Adobe extraction - no Cloudflare AI fallbacks
-  const adobeAnalysis = await attemptAdobeExtract(file, question, env);
+  const adobeAnalysis = await attemptAdobeExtract(file, question, env, requestId);
   if (adobeAnalysis) {
     return adobeAnalysis;
   }
@@ -335,7 +352,7 @@ export async function analyzeWithCloudflareAI(
 }
 
 export async function handleAnalyze(request: Request, env: Env): Promise<Response> {
-  const startTime = Date.now();
+  const _startTime = Date.now();
   const requestId = generateRequestId();
   
   if (request.method !== 'POST') {
@@ -360,7 +377,8 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
     logRequestStart(requestId, request.method, new URL(request.url).pathname);
     
     // Debug: Log environment variables
-    console.log('Environment variables check:', {
+    log('info', 'environment_check', {
+      request_id: requestId,
       CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID ? 'SET' : 'NOT SET',
       CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN ? 'SET' : 'NOT SET', 
       CLOUDFLARE_PUBLIC_URL: env.CLOUDFLARE_PUBLIC_URL ? 'SET' : 'NOT SET'
@@ -381,7 +399,8 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
       throw HttpErrors.badRequest(fileValidation.error!);
     }
 
-    console.log('Starting file analysis:', {
+    log('info', 'file_analysis_start', {
+      request_id: requestId,
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
@@ -391,9 +410,10 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
     });
 
     // Perform analysis
-    const analysis = await analyzeWithCloudflareAI(file, question, env);
+    const analysis = await analyzeWithCloudflareAI(file, question, env, requestId);
 
-    console.log('Analysis completed successfully:', {
+    log('info', 'analysis_completed', {
+      request_id: requestId,
       fileName: file.name,
       confidence: analysis.confidence,
       summaryLength: analysis.summary?.length || 0,
@@ -415,7 +435,7 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
     });
 
   } catch (error) {
-    console.error('Analysis error:', error);
+    logError(requestId, 'analysis_error', error as Error, {});
     return handleError(error);
   }
 }

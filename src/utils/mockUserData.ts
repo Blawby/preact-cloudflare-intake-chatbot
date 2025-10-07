@@ -732,19 +732,19 @@ export const mockUserDataService = new MockUserDataService();
 
 // Development helper - expose to window for easy testing
 if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).mockUserDataService = mockUserDataService;
+   
+  (window as { mockUserDataService?: MockUserDataService }).mockUserDataService = mockUserDataService;
   
   // Helper function to easily test different subscription tiers
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).setSubscriptionTier = (tier: SubscriptionTier) => {
+   
+  (window as { setSubscriptionTier?: (tier: SubscriptionTier) => void }).setSubscriptionTier = (tier: SubscriptionTier) => {
     try {
       const updatedProfile = mockUserDataService.setSubscriptionTier(tier);
       window.dispatchEvent(new CustomEvent('authStateChanged', { detail: updatedProfile }));
-      // eslint-disable-next-line no-console
+       
       console.log(`Subscription tier changed to: ${tier}`);
     } catch (_error) {
-      // eslint-disable-next-line no-console
+       
       console.log('No user logged in. Please sign in first.');
     }
   };

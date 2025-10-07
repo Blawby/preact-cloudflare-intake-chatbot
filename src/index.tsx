@@ -46,7 +46,7 @@ function MainApp() {
 	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
 		onError: (error) => {
 			// Handle team config error
-			// eslint-disable-next-line no-console
+			 
 			console.error('Team config error:', error);
 		}
 	});
@@ -61,7 +61,7 @@ function MainApp() {
 		sessionId,
 		onError: (error) => {
 			// Handle message handling error
-			// eslint-disable-next-line no-console
+			 
 			console.error('Message handling error:', error);
 		}
 	});
@@ -80,7 +80,7 @@ function MainApp() {
 		sessionId,
 		onError: (error) => {
 			// Handle file upload error
-			// eslint-disable-next-line no-console
+			 
 			console.error('File upload error:', error);
 		}
 	});
@@ -88,7 +88,7 @@ function MainApp() {
 	useEffect(() => {
 		if (sessionError) {
 			// Handle session initialization error
-			// eslint-disable-next-line no-console
+			 
 			console.error('Session initialization error:', sessionError);
 		}
 	}, [sessionError]);
@@ -112,7 +112,7 @@ function MainApp() {
 		} catch (error) {
 			// Handle localStorage access failures (private browsing, etc.)
 			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
+				 
 				console.warn('Failed to check onboarding completion status:', error);
 			}
 		}
@@ -280,7 +280,7 @@ function MainApp() {
 	// Handle feedback submission
 	const handleFeedbackSubmit = useCallback((feedback: Record<string, unknown>) => {
 		// Handle feedback submission
-		// eslint-disable-next-line no-console
+		 
 		console.log('Feedback submitted:', feedback);
 		// Could show a toast notification here
 	}, []);
@@ -295,7 +295,7 @@ function MainApp() {
 		} catch (error) {
 			// Handle localStorage access failures (private browsing, etc.)
 			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
+				 
 				console.warn('Failed to remove onboarding completion flag:', error);
 			}
 		}
@@ -311,7 +311,7 @@ function MainApp() {
 		} catch (error) {
 			// Handle localStorage access failures (private browsing, etc.)
 			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
+				 
 				console.warn('Failed to remove onboarding completion flag:', error);
 			}
 		}
@@ -337,7 +337,7 @@ function MainApp() {
 			
 		} catch (error) {
 			// Handle media upload error
-			// eslint-disable-next-line no-console
+			 
 			console.error('Failed to upload captured media:', error);
 			// Show error message to user
 			sendMessage("I'm sorry, I couldn't upload the recorded media. Please try again.", []);
@@ -440,7 +440,7 @@ function MainApp() {
 							// Dispatch event to notify other components
 							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
 						} catch (_error) {
-							// eslint-disable-next-line no-console
+							 
 							console.error('Failed to parse mockUser data:', _error);
 							// Create a fresh user object with the new subscription tier
 							const freshUserData = {
@@ -493,7 +493,7 @@ export function App() {
 	const { teamConfig } = useTeamConfig({
 		onError: (error) => {
 			// Handle team config error
-			// eslint-disable-next-line no-console
+			 
 			console.error('Team config error:', error);
 		}
 	});
@@ -554,7 +554,7 @@ if (typeof window !== 'undefined') {
 			hydrate(<AppWithProviders />, document.getElementById('app'));
 		})
 		.catch((error) => {
-			// eslint-disable-next-line no-console
+			 
 			console.error('Failed to initialize i18n:', error);
 			hydrate(<AppWithProviders />, document.getElementById('app'));
 		});

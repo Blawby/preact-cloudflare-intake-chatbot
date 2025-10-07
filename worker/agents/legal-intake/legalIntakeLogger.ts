@@ -54,7 +54,7 @@ export interface LegalIntakeLogEntry {
   teamId?: string;
   userId?: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   duration?: number; // in milliseconds
   error?: {
     code: string;
@@ -137,8 +137,8 @@ export interface ToolCallLogEntry extends LegalIntakeLogEntry {
   operation: LegalIntakeOperation.TOOL_CALL_START | LegalIntakeOperation.TOOL_CALL_SUCCESS | LegalIntakeOperation.TOOL_CALL_FAILED;
   metadata: {
     toolName: string;
-    parameters?: Record<string, any>;
-    result?: any;
+    parameters?: Record<string, unknown>;
+    result?: unknown;
   };
 }
 
@@ -159,7 +159,7 @@ export interface SecurityEventLogEntry extends LegalIntakeLogEntry {
   metadata: {
     eventType: 'injection_attempt' | 'pii_detected' | 'validation_failed' | 'suspicious_input';
     severity: 'low' | 'medium' | 'high' | 'critical';
-    details: Record<string, any>;
+    details: Record<string, unknown>;
   };
 }
 
@@ -246,7 +246,7 @@ export class LegalIntakeLogger {
     sessionId: string | undefined,
     teamId: string | undefined,
     error: Error,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): void {
     const logEntry: LegalIntakeLogEntry = {
       correlationId,
@@ -353,8 +353,8 @@ export class LegalIntakeLogger {
     teamId: string | undefined,
     operation: LegalIntakeOperation.TOOL_CALL_START | LegalIntakeOperation.TOOL_CALL_SUCCESS | LegalIntakeOperation.TOOL_CALL_FAILED,
     toolName: string,
-    parameters?: Record<string, any>,
-    result?: any,
+    parameters?: Record<string, unknown>,
+    result?: unknown,
     error?: Error
   ): void {
     const logEntry: ToolCallLogEntry = {
@@ -425,7 +425,7 @@ export class LegalIntakeLogger {
     teamId: string | undefined,
     eventType: 'injection_attempt' | 'pii_detected' | 'validation_failed' | 'suspicious_input',
     severity: 'low' | 'medium' | 'high' | 'critical',
-    details: Record<string, any>
+    details: Record<string, unknown>
   ): void {
     const logEntry: SecurityEventLogEntry = {
       correlationId,
@@ -454,7 +454,7 @@ export class LegalIntakeLogger {
     teamId: string | undefined,
     operation: string,
     duration: number,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): void {
     const logEntry: LegalIntakeLogEntry = {
       correlationId,
@@ -487,7 +487,7 @@ export class LegalIntakeLogger {
       // Add additional metadata for log aggregation
       service: 'legal-intake',
       version: '1.0.0',
-      environment: (typeof process !== 'undefined' && process.env && process.env.NODE_ENV) || 'development'
+      environment: 'development' // Environment should be injected via Logger.initialize()
     };
 
     // Use appropriate Logger method based on level

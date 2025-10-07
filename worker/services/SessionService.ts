@@ -378,6 +378,67 @@ export class SessionService {
     ).run();
   }
 
+  /**
+   * Send analysis status message to user
+   */
+  static async sendAnalysisStatus(env: Env, sessionId: string, teamId: string, message: string): Promise<void> {
+    try {
+      await this.persistMessage(env, {
+        sessionId,
+        teamId,
+        role: 'assistant',
+        content: message,
+        metadata: { type: 'analysis_status' }
+      });
+      console.log(`📊 Analysis Status [${sessionId}]: ${message}`);
+    } catch (error) {
+      console.error('Failed to send analysis status:', error);
+    }
+  }
+
+  /**
+   * Send analysis complete message to user
+   */
+  static async sendAnalysisComplete(env: Env, sessionId: string, teamId: string, analysis: Record<string, unknown>): Promise<void> {
+    try {
+      const formattedContent = `## 📄 Document Analysis Complete
+
+**Summary:** ${analysis.summary || 'No summary available'}
+
+**Key Facts:**
+${analysis.key_facts?.map((fact: string) => `• ${fact}`).join('\n') || 'No key facts identified'}
+
+**Entities Found:**
+- **People:** ${analysis.entities?.people?.join(', ') || 'None identified'}
+- **Organizations:** ${analysis.entities?.orgs?.join(', ') || 'None identified'}  
+- **Dates:** ${analysis.entities?.dates?.join(', ') || 'None identified'}
+
+**Action Items:**
+${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No specific action items'}
+
+**Confidence:** ${Math.round((analysis.confidence || 0) * 100)}%`;
+
+      await this.persistMessage(env, {
+        sessionId,
+        teamId,
+        role: 'assistant',
+        content: formattedContent,
+        metadata: { 
+          type: 'analysis_result',
+          analysis: analysis
+        }
+      });
+      
+      console.log(`✅ Analysis Complete [${sessionId}]:`, {
+        summary: analysis.summary?.substring(0, 100) + '...',
+        confidence: analysis.confidence,
+        keyFactsCount: analysis.key_facts?.length || 0
+      });
+    } catch (error) {
+      console.error('Failed to send analysis complete:', error);
+    }
+  }
+
   private static createEphemeralSession(
     teamId: string,
     options: { sessionId?: string | null; sessionToken?: string }

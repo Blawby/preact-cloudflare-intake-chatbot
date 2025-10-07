@@ -86,7 +86,7 @@ export default [
         caughtErrorsIgnorePattern: '^_',
         ignoreRestSiblings: true 
       }],
-      '@typescript-eslint/no-explicit-any': 'off', // Allow any in development
+      '@typescript-eslint/no-explicit-any': 'error', // Enforce no explicit any
       '@typescript-eslint/no-non-null-assertion': 'warn', // TODO: consider stricter null safety later
 
       // React/JSX + hooks + a11y
@@ -94,12 +94,12 @@ export default [
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.configs.recommended.rules,
       // Relax some accessibility rules for development
-      'jsx-a11y/click-events-have-key-events': 'warn',
-      'jsx-a11y/no-static-element-interactions': 'warn',
-      'jsx-a11y/media-has-caption': 'warn',
+      'jsx-a11y/click-events-have-key-events': 'error',
+      'jsx-a11y/no-static-element-interactions': 'error',
+      'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-autofocus': 'warn',
       'jsx-a11y/role-supports-aria-props': 'warn',
-      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'warn',
+      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'react/jsx-uses-react': 'off',
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off', // using TS instead
@@ -165,7 +165,6 @@ export default [
         Buffer: 'readonly',
         ReadableStreamDefaultController: 'readonly',
         ExecutionContext: 'readonly', // TODO: validate Worker typing approach
-        process: 'readonly', // TODO: replace with CF-safe env vars if possible
         MessageBatch: 'readonly',
         BodyInit: 'readonly'
       }
@@ -179,7 +178,7 @@ export default [
         caughtErrorsIgnorePattern: '^_',
         ignoreRestSiblings: true 
       }],
-      '@typescript-eslint/no-explicit-any': 'off', // Allow any in development
+      '@typescript-eslint/no-explicit-any': 'error', // Enforce no explicit any
       'no-console': 'off', // keep console logging for Workers (debugging/forensics)
       'no-unused-vars': 'off'
     }
@@ -213,7 +212,7 @@ export default [
         caughtErrorsIgnorePattern: '^_',
         ignoreRestSiblings: true 
       }],
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'error',
       'no-console': 'off', // console useful in scripts
       'no-unused-vars': 'off'
     }
@@ -244,15 +243,15 @@ export default [
         caughtErrorsIgnorePattern: '^_',
         ignoreRestSiblings: true 
       }],
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'error',
       'no-console': 'off',
       'no-unused-vars': 'off'
     }
   },
 
-  // Tests (Vitest / Jest style globals)
+  // Frontend tests (browser environment + vitest)
   {
-    files: ['**/*.{test,spec}.{ts,tsx,js,jsx}', 'tests/**/*.{ts,tsx,js,jsx}'],
+    files: ['src/**/*.{test,spec}.{ts,tsx,js,jsx}', 'tests/unit/**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -272,8 +271,7 @@ export default [
         afterAll: 'readonly',
         vi: 'readonly',
         vitest: 'readonly',
-        // Browser/Node globals for tests
-        global: 'readonly',
+        // Browser globals for frontend tests
         window: 'readonly',
         document: 'readonly',
         console: 'readonly',
@@ -287,32 +285,16 @@ export default [
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly',
         crypto: 'readonly',
         TextEncoder: 'readonly',
         TextDecoder: 'readonly',
         AbortController: 'readonly',
         AbortSignal: 'readonly',
-        // Worker globals
-        Request: 'readonly',
-        Response: 'readonly',
-        Headers: 'readonly',
-        ReadableStream: 'readonly',
-        WritableStream: 'readonly',
-        TransformStream: 'readonly',
-        addEventListener: 'readonly',
-        removeEventListener: 'readonly',
-        dispatchEvent: 'readonly',
-        atob: 'readonly',
-        btoa: 'readonly',
-        // Service Worker globals
-        self: 'readonly',
-        event: 'readonly',
-        // Cloudflare Workers globals
-        ExecutionContext: 'readonly',
-        MessageBatch: 'readonly',
-        BodyInit: 'readonly'
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        navigator: 'readonly',
+        location: 'readonly',
+        history: 'readonly'
       }
     },
     plugins: {
@@ -329,7 +311,7 @@ export default [
         caughtErrorsIgnorePattern: '^_',
         ignoreRestSiblings: true 
       }],
-      '@typescript-eslint/no-explicit-any': 'off', // TODO: re-enable once tests are typed
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-non-null-assertion': 'off', // tests often assert non-null
       '@typescript-eslint/no-require-imports': 'off', // allow require in tests
       'no-console': 'off', // console useful in tests
@@ -348,6 +330,142 @@ export default [
         version: 'detect',
         pragma: 'h'
       }
+    }
+  },
+
+  // Worker tests (Cloudflare Workers environment + vitest)
+  {
+    files: ['worker/**/*.{test,spec}.{ts,js}', 'tests/integration/**/*.{ts,js}'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module'
+      },
+      globals: {
+        // Test framework globals
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        vi: 'readonly',
+        vitest: 'readonly',
+        // Worker/Cloudflare globals for worker tests
+        Request: 'readonly',
+        Response: 'readonly',
+        Headers: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        File: 'readonly',
+        ReadableStream: 'readonly',
+        WritableStream: 'readonly',
+        TransformStream: 'readonly',
+        crypto: 'readonly',
+        fetch: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        addEventListener: 'readonly',
+        removeEventListener: 'readonly',
+        dispatchEvent: 'readonly',
+        atob: 'readonly',
+        btoa: 'readonly',
+        TextEncoder: 'readonly',
+        TextDecoder: 'readonly',
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        // Cloudflare Workers globals
+        ExecutionContext: 'readonly',
+        MessageBatch: 'readonly',
+        BodyInit: 'readonly',
+        // Service Worker globals
+        self: 'readonly',
+        event: 'readonly'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': typescript
+    },
+    rules: {
+      ...typescript.configs.recommended.rules,
+      '@typescript-eslint/no-unused-vars': ['warn', { 
+        argsIgnorePattern: '^_', 
+        varsIgnorePattern: '^_', 
+        caughtErrorsIgnorePattern: '^_',
+        ignoreRestSiblings: true 
+      }],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'off', // tests often assert non-null
+      '@typescript-eslint/no-require-imports': 'off', // allow require in tests
+      'no-console': 'off', // console useful in tests
+      'no-unused-vars': 'off', // handled by TS rule
+      'no-undef': 'off'
+    }
+  },
+
+  // Node.js tests (Node environment + vitest)
+  {
+    files: ['scripts/**/*.{test,spec}.{ts,js,mjs}'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module'
+      },
+      globals: {
+        // Test framework globals
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        vi: 'readonly',
+        vitest: 'readonly',
+        // Node.js globals for Node tests
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+        URL: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': typescript
+    },
+    rules: {
+      ...typescript.configs.recommended.rules,
+      '@typescript-eslint/no-unused-vars': ['warn', { 
+        argsIgnorePattern: '^_', 
+        varsIgnorePattern: '^_', 
+        caughtErrorsIgnorePattern: '^_',
+        ignoreRestSiblings: true 
+      }],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'off', // tests often assert non-null
+      '@typescript-eslint/no-require-imports': 'off', // allow require in tests
+      'no-console': 'off', // console useful in tests
+      'no-unused-vars': 'off', // handled by TS rule
+      'no-undef': 'off'
     }
   }
 ];

@@ -73,7 +73,7 @@ export const GeneralPage = ({
         t('settings:general.language.toastBody')
       );
     } catch (error) {
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to apply locale change', error);
     }
   }, [showSuccess, t]);

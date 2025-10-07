@@ -4,6 +4,28 @@ import { z } from 'zod';
 import { SessionService } from '../services/SessionService.js';
 import { ActivityService } from '../services/ActivityService';
 import { Logger } from '../utils/logger';
+import type { MessageBatch } from '@cloudflare/workers-types';
+
+// Types for document processing
+interface DocumentEvent {
+  key: string;
+  teamId: string;
+  sessionId: string;
+  mime: string;
+  size: number;
+}
+
+interface AutoAnalysisEvent {
+  type: "analyze_uploaded_document";
+  sessionId: string;
+  teamId: string;
+  file: {
+    key: string;
+    name: string;
+    mime: string;
+    size: number;
+  };
+}
 
 // File upload validation schema
 const fileUploadValidationSchema = z.object({
@@ -75,7 +97,7 @@ function validateFile(file: File): { isValid: boolean; error?: string } {
   return { isValid: true };
 }
 
-async function storeFile(file: File, teamId: string, sessionId: string, env: Env): Promise<{ fileId: string; url: string }> {
+async function storeFile(file: File, teamId: string, sessionId: string, env: Env): Promise<{ fileId: string; url: string; storageKey: string }> {
   if (!env.FILES_BUCKET) {
     throw HttpErrors.internalServerError('File storage is not configured');
   }
@@ -96,10 +118,10 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
   });
 
   // Store file in R2 bucket using a stream to avoid buffering the entire file in memory
-  const body = typeof (file as any).stream === 'function'
-    ? (file as any).stream()
+  const body = typeof (file as { stream?: () => ReadableStream }).stream === 'function'
+    ? (file as { stream: () => ReadableStream }).stream()
     : await file.arrayBuffer();
-  await env.FILES_BUCKET.put(storageKey, body, {
+  await env.FILES_BUCKET.put(storageKey, body as ArrayBuffer, {
     httpMetadata: {
       // …existing metadata…
       contentType: file.type,
@@ -230,7 +252,7 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
 
   Logger.info('File upload completed:', { fileId, url, storageKey });
 
-  return { fileId, url };
+  return { fileId, url, storageKey };
 }
 
 export async function handleFiles(request: Request, env: Env): Promise<Response> {
@@ -282,7 +304,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       const resolvedSessionId = sessionResolution.session.id;
 
       // Store file
-      const { fileId, url } = await storeFile(file, resolvedTeamId, resolvedSessionId, env);
+      const { fileId, url, storageKey } = await storeFile(file, resolvedTeamId, resolvedSessionId, env);
 
       Logger.info('File upload successful:', {
         fileId,
@@ -293,6 +315,63 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         sessionId: resolvedSessionId,
         url
       });
+
+      // Queue auto-analysis for uploaded document
+      await env.DOC_EVENTS.send({
+        type: "analyze_uploaded_document",
+        sessionId: resolvedSessionId,
+        teamId: resolvedTeamId,
+        file: {
+          key: storageKey,
+          name: file.name,
+          mime: file.type,
+          size: file.size
+        }
+      });
+
+      Logger.info('📤 Queued auto-analysis for uploaded file', { 
+        sessionId: resolvedSessionId, 
+        teamId: resolvedTeamId, 
+        key: storageKey, 
+        mime: file.type 
+      });
+
+      // Inline processing for local development (bypass queue)
+      try {
+        const { default: docProcessor } = await import('../consumers/doc-processor.js');
+        const mockBatch: MessageBatch<DocumentEvent | AutoAnalysisEvent> = {
+          messages: [{
+            id: 'inline-process',
+            body: {
+              type: "analyze_uploaded_document",
+              sessionId: resolvedSessionId,
+              teamId: resolvedTeamId,
+              file: {
+                key: storageKey,
+                name: file.name,
+                mime: file.type,
+                size: file.size
+              }
+            },
+            timestamp: new Date(),
+            attempts: 0,
+            retry: () => {},
+            ack: () => {}
+          }],
+          queue: '',
+          retryAll: () => {},
+          ackAll: () => {}
+        };
+        
+        // Process inline (don't await to avoid blocking the response)
+        docProcessor.queue(mockBatch, env).catch(error => {
+          console.error('Inline processing failed:', error);
+        });
+        
+        Logger.info('🚀 Started inline auto-analysis processing');
+      } catch (inlineError) {
+        Logger.warn('Failed to start inline processing:', inlineError);
+      }
 
       const responseBody = {
         success: true,

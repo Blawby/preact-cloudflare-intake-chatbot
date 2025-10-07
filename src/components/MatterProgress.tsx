@@ -16,7 +16,7 @@ interface MatterProgressData {
   nextActions: string[];
   missing?: string[];
   completed: boolean;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 interface MatterProgressProps {
@@ -128,7 +128,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
           {loading && !progressData && (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
               <span className="ml-3 text-gray-600">Loading progress...</span>
             </div>
           )}
@@ -165,7 +165,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
                     <div 
                       className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${getProgressPercentage()}%` }}
-                    ></div>
+                     />
                   </div>
                 </div>
               </div>

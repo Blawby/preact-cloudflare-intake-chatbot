@@ -96,12 +96,12 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
   }
   
   // Check for urgency if not specified (optional property)
-  if (!(matterData as any).urgency || (matterData as any).urgency === 'unknown') {
+  if (!(matterData as Record<string, unknown>).urgency || (matterData as Record<string, unknown>).urgency === 'unknown') {
     missingInfo.push('Matter urgency level');
   }
   
   // Check for jurisdiction if not specified (optional property)
-  if (!(matterData as any).jurisdiction) {
+  if (!(matterData as Record<string, unknown>).jurisdiction) {
     missingInfo.push('Jurisdiction information');
   }
   

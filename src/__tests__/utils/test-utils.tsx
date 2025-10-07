@@ -15,7 +15,7 @@ const customRender = (
 };
 
 // Mock API responses
-export const mockApiResponse = (data: any, status = 200) => {
+export const mockApiResponse = (data: unknown, status = 200) => {
   return Promise.resolve({
     ok: status >= 200 && status < 300,
     status,

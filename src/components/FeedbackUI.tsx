@@ -97,8 +97,8 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
 
   if (hasSubmitted) {
     return (
-      <div class="feedback-ui submitted">
-        <div class="feedback-thanks">
+      <div className="feedback-ui submitted">
+        <div className="feedback-thanks">
           <CheckIcon className="w-4 h-4" />
           Thank you for your feedback!
         </div>
@@ -107,12 +107,12 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
   }
 
   return (
-    <div class="feedback-ui">
-      <div class="feedback-actions">
+    <div className="feedback-ui">
+      <div className="feedback-actions">
         {/* Thumbs up/down buttons */}
-        <div class="feedback-thumbs">
+        <div className="feedback-thumbs">
           <button
-            class={`feedback-btn ${feedback.thumbsUp === true ? 'active' : ''}`}
+            className={`feedback-btn ${feedback.thumbsUp === true ? 'active' : ''}`}
             onClick={handleThumbsUp}
             disabled={isSubmitting}
             aria-label="This response was helpful"
@@ -121,7 +121,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
             <HandThumbUpIcon className="w-4 h-4" />
           </button>
           <button
-            class={`feedback-btn ${feedback.thumbsUp === false ? 'active' : ''}`}
+            className={`feedback-btn ${feedback.thumbsUp === false ? 'active' : ''}`}
             onClick={handleThumbsDown}
             disabled={isSubmitting}
             aria-label="This response was not helpful"
@@ -132,11 +132,11 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
         </div>
 
         {/* Star rating */}
-        <div class="feedback-rating">
+        <div className="feedback-rating">
           {[1, 2, 3, 4, 5].map(star => (
             <button
               key={star}
-              class={`feedback-star ${feedback.rating && feedback.rating >= star ? 'active' : ''}`}
+              className={`feedback-star ${feedback.rating && feedback.rating >= star ? 'active' : ''}`}
               onClick={() => handleRating(star)}
               disabled={isSubmitting}
               aria-label={`Rate ${star} out of 5 stars`}
@@ -150,7 +150,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
         {/* Expand button for comments */}
         {!isExpanded && (
           <button
-            class="feedback-expand-btn"
+            className="feedback-expand-btn"
             onClick={() => setIsExpanded(true)}
             disabled={isSubmitting}
             aria-label="Add detailed feedback"
@@ -163,25 +163,25 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
 
       {/* Expanded comment area */}
       {isExpanded && (
-        <div class="feedback-expanded">
+        <div className="feedback-expanded">
           <textarea
-            class="feedback-comment"
+            className="feedback-comment"
             placeholder="What could be improved? (optional)"
             value={feedback.comments || ''}
             onInput={handleCommentChange}
             rows={3}
             disabled={isSubmitting}
           />
-          <div class="feedback-submit-actions">
+          <div className="feedback-submit-actions">
             <button
-              class="feedback-submit-btn"
+              className="feedback-submit-btn"
               onClick={handleSubmitComment}
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
             </button>
             <button
-              class="feedback-cancel-btn"
+              className="feedback-cancel-btn"
               onClick={() => setIsExpanded(false)}
               disabled={isSubmitting}
             >

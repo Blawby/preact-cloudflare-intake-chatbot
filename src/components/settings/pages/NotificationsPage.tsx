@@ -27,7 +27,7 @@ export const NotificationsPage = ({
         const notificationSettings = mockUserDataService.getNotificationSettings();
         setSettings(notificationSettings);
       } catch (error) {
-        // eslint-disable-next-line no-console
+         
         console.error('Failed to load notification settings:', error);
       } finally {
         setLoading(false);

@@ -93,7 +93,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     const makeIconDecorative = (iconElement: ComponentChildren) => {
       if (typeof iconElement === 'object' && iconElement !== null && 'type' in iconElement) {
         // If it's a Preact element, clone it with decorative attributes
-        return cloneElement(iconElement as any, { 
+        return cloneElement(iconElement as JSX.Element, { 
           'aria-hidden': 'true', 
           focusable: 'false' 
         });

@@ -107,7 +107,7 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
   // POST /api/pdf/generate - Generate new PDF
   if (path === '/api/pdf/generate' && request.method === 'POST') {
     try {
-      let body: any;
+      let body: Record<string, unknown>;
       try {
         body = await parseJsonBody(request);
         if (!body || typeof body !== 'object') {

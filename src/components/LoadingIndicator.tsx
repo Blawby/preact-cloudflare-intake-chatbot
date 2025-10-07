@@ -9,9 +9,9 @@ const LoadingIndicator = memo(() => {
         aria-live="polite"
         aria-label="Loading"
       >
-        <div className="dot"></div>
-        <div className="dot"></div>
-        <div className="dot"></div>
+        <div className="dot" />
+        <div className="dot" />
+        <div className="dot" />
       </div>
     </div>
   );

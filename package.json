@@ -13,7 +13,7 @@
 		"preview": "vite preview",
 		"lint": "eslint src/ worker/ scripts/ --ext .ts,.tsx,.js,.jsx,.mjs --max-warnings 50",
 		"lint:fix": "eslint . --fix",
-		"lint:check": "eslint . --max-warnings 250",
+		"lint:check": "eslint . --max-warnings 0",
 		"lint:src": "eslint src/ --ext .ts,.tsx,.js,.jsx --max-warnings 20",
 		"type-check": "tsc --noEmit --skipLibCheck",
 		"lint:i18n": "node ./scripts/check-i18n.mjs",

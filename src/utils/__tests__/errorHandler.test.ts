@@ -5,6 +5,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleError, handleAsyncError, safeLog } from '../errorHandler';
 
+// Mock the environment utility
+vi.mock('../environment', () => ({
+  isProduction: vi.fn(() => false)
+}));
+
 // Mock console methods
 const mockConsoleError = vi.fn();
 const mockConsoleWarn = vi.fn();
@@ -18,7 +23,7 @@ describe('errorHandler', () => {
     vi.spyOn(console, 'log').mockImplementation(mockConsoleLog);
     
     // Mock window.Sentry
-    (global as any).window = {
+    (global as { window?: { Sentry?: { captureException: () => void } } }).window = {
       Sentry: {
         captureException: vi.fn()
       }
@@ -27,7 +32,7 @@ describe('errorHandler', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete (global as any).window;
+    delete (global as { window?: unknown }).window;
   });
 
   describe('handleError', () => {
@@ -37,7 +42,7 @@ describe('errorHandler', () => {
 
       handleError(error, context, { component: 'TestComponent' });
 
-      expect((global as any).window.Sentry.captureException).toHaveBeenCalledWith(
+      expect((global as { window?: { Sentry?: { captureException: () => void } } }).window?.Sentry?.captureException).toHaveBeenCalledWith(
         error,
         {
           tags: {
@@ -64,7 +69,7 @@ describe('errorHandler', () => {
 
       handleError(error, context, { component: 'TestComponent' });
 
-      expect((global as any).window.Sentry.captureException).toHaveBeenCalledWith(
+      expect((global as { window?: { Sentry?: { captureException: () => void } } }).window?.Sentry?.captureException).toHaveBeenCalledWith(
         error,
         expect.objectContaining({
           extra: expect.objectContaining({
@@ -78,10 +83,10 @@ describe('errorHandler', () => {
       );
     });
 
-    it('should log to console in development mode', () => {
-      // Mock NODE_ENV to be development
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+    it('should log to console in development mode', async () => {
+      // Mock isProduction to return false (development mode)
+      const { isProduction } = await import('../environment');
+      vi.mocked(isProduction).mockReturnValue(false);
 
       const error = new Error('Test error');
       const context = { component: 'TestComponent' };
@@ -98,15 +103,12 @@ describe('errorHandler', () => {
           timestamp: expect.any(String)
         })
       );
-
-      // Restore original NODE_ENV
-      process.env.NODE_ENV = originalEnv;
     });
 
-    it('should log minimal information to console in production mode', () => {
-      // Mock NODE_ENV to be production
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+    it('should log minimal information to console in production mode', async () => {
+      // Mock isProduction to return true (production mode)
+      const { isProduction } = await import('../environment');
+      vi.mocked(isProduction).mockReturnValue(true);
 
       const error = new Error('Test error');
       const context = { component: 'TestComponent' };
@@ -117,9 +119,6 @@ describe('errorHandler', () => {
       const loggedOutput = mockConsoleError.mock.calls[0][0];
       expect(loggedOutput).toContain('Test error');
       expect(loggedOutput).toContain('TestComponent');
-
-      // Restore original NODE_ENV
-      process.env.NODE_ENV = originalEnv;
     });
 
     it('should handle non-Error objects', () => {
@@ -128,7 +127,7 @@ describe('errorHandler', () => {
 
       handleError(error, context, { component: 'TestComponent' });
 
-      expect((global as any).window.Sentry.captureException).toHaveBeenCalledWith(
+      expect((global as { window?: { Sentry?: { captureException: () => void } } }).window?.Sentry?.captureException).toHaveBeenCalledWith(
         error,
         expect.objectContaining({
           extra: expect.objectContaining({
@@ -138,14 +137,15 @@ describe('errorHandler', () => {
       );
     });
 
-    it('should fall back to console logging if Sentry fails', () => {
+    it('should fall back to console logging if Sentry fails', async () => {
       // Mock Sentry to throw an error
-      (global as any).window.Sentry.captureException.mockImplementation(() => {
+      (global as { window?: { Sentry?: { captureException: () => void } } }).window?.Sentry?.captureException.mockImplementation(() => {
         throw new Error('Sentry failed');
       });
 
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      // Mock isProduction to return false (development mode)
+      const { isProduction } = await import('../environment');
+      vi.mocked(isProduction).mockReturnValue(false);
 
       const error = new Error('Test error');
       const context = { component: 'TestComponent' };
@@ -156,9 +156,6 @@ describe('errorHandler', () => {
         '[ErrorHandler] Sentry capture failed:',
         expect.any(Error)
       );
-
-      // Restore original NODE_ENV
-      process.env.NODE_ENV = originalEnv;
     });
   });
 
@@ -188,37 +185,34 @@ describe('errorHandler', () => {
   });
 
   describe('safeLog', () => {
-    it('should log in development mode', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+    it('should log in development mode', async () => {
+      // Mock isProduction to return false (development mode)
+      const { isProduction } = await import('../environment');
+      vi.mocked(isProduction).mockReturnValue(false);
 
       safeLog('log', 'Test message', { data: 'test' }, { component: 'TestComponent' });
 
       expect(mockConsoleLog).toHaveBeenCalledWith('[TestComponent] Test message', { data: 'test' });
-
-      process.env.NODE_ENV = originalEnv;
     });
 
-    it('should not log in production mode', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+    it('should not log in production mode', async () => {
+      // Mock isProduction to return true (production mode)
+      const { isProduction } = await import('../environment');
+      vi.mocked(isProduction).mockReturnValue(true);
 
       safeLog('log', 'Test message', { data: 'test' }, { component: 'TestComponent' });
 
       expect(mockConsoleLog).not.toHaveBeenCalled();
-
-      process.env.NODE_ENV = originalEnv;
     });
 
-    it('should log in production when force option is true', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+    it('should log in production when force option is true', async () => {
+      // Mock isProduction to return true (production mode)
+      const { isProduction } = await import('../environment');
+      vi.mocked(isProduction).mockReturnValue(true);
 
       safeLog('log', 'Test message', { data: 'test' }, { component: 'TestComponent', force: true });
 
       expect(mockConsoleLog).toHaveBeenCalledWith('[TestComponent] Test message', { data: 'test' });
-
-      process.env.NODE_ENV = originalEnv;
     });
   });
 });

@@ -57,12 +57,13 @@ jobs:
         
     - name: Smoke test after deployment
       run: |
+        set -euo pipefail
         echo "Running smoke test on deployed worker..."
         # Wait for deployment to propagate
         sleep 30
         
         # Test health endpoint
-        curl -f "${{ secrets.CLOUDFLARE_PUBLIC_URL }}/health" || echo "Health check failed"
+        curl -f "${{ secrets.CLOUDFLARE_PUBLIC_URL }}/health"
         
         # Test analyze endpoint with small PDF (if available)
         if [ -f "test-document.pdf" ]; then
@@ -70,7 +71,7 @@ jobs:
             -F "file=@test-document.pdf" \
             -F "question=Test analysis" \
             -H "X-Request-ID: smoke-test-$(date +%s)" \
-            --max-time 120 || echo "Analyze endpoint test failed"
+            --max-time 120
         else
           echo "No test document available, skipping analyze test"
         fi

@@ -49,7 +49,7 @@ export const SecurityPage = ({
       setSettings(securitySettings);
     } catch (error) {
       // Failed to load security settings
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to load security settings:', error);
       setError(error instanceof Error ? error.message : t('settings:security.loadError'));
     } finally {

@@ -23,11 +23,11 @@ async function uploadFileToBackend(file: File, teamId: string, sessionId: string
     });
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({})) as any;
+      const error = await response.json().catch(() => ({})) as { error?: string };
       throw new Error(error?.error || 'File upload failed');
     }
     
-    const result = await response.json() as any;
+    const result = await response.json() as { data: unknown };
     return result.data;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
@@ -68,8 +68,8 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
             type: uploaded.fileType,
             url: uploaded.url,
           } as FileAttachment;
-        } catch (err: any) {
-          const error = `Failed to upload file: ${file.name}\n${err.message}`;
+        } catch (err: unknown) {
+          const error = `Failed to upload file: ${file.name}\n${err instanceof Error ? err.message : 'Unknown error'}`;
           console.error(error);
           onError?.(error);
           return null; // Return null for failed uploads
@@ -81,6 +81,11 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
       
       if (successfulUploads.length > 0) {
         setPreviewFiles(prev => [...prev, ...successfulUploads]);
+        
+        // Trigger auto-analysis status detection
+        // The backend will automatically start analysis and send status messages
+        // The frontend will receive these through the existing message stream
+        console.log('📄 Files uploaded successfully, auto-analysis will begin automatically');
       }
     } catch (error) {
       console.error('Upload batch failed:', error);
@@ -112,8 +117,8 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
             type: uploaded.fileType,
             url: uploaded.url,
           } as FileAttachment;
-        } catch (err: any) {
-          const error = `Failed to upload file: ${file.name}\n${err.message}`;
+        } catch (err: unknown) {
+          const error = `Failed to upload file: ${file.name}\n${err instanceof Error ? err.message : 'Unknown error'}`;
           console.error(error);
           onError?.(error);
           return null; // Return null for failed uploads
@@ -125,6 +130,11 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
       
       if (successfulUploads.length > 0) {
         setPreviewFiles(prev => [...prev, ...successfulUploads]);
+        
+        // Trigger auto-analysis status detection
+        // The backend will automatically start analysis and send status messages
+        // The frontend will receive these through the existing message stream
+        console.log('📄 Files uploaded successfully, auto-analysis will begin automatically');
       }
       
       return successfulUploads;

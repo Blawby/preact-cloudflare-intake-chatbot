@@ -4,7 +4,7 @@ const getTeamsEndpoint = () => '/api/teams';
 import { ChatMessageUI } from '../../worker/types';
 
 // Utility function to format form data for submission
-export function formatFormData(formData: any, teamId: string) {
+export function formatFormData(formData: Record<string, unknown>, teamId: string) {
   return {
     ...formData,
     teamId,
@@ -14,7 +14,7 @@ export function formatFormData(formData: any, teamId: string) {
 
 // Submit contact form to API
 export async function submitContactForm(
-  formData: any, 
+  formData: Record<string, unknown>, 
   teamId: string, 
   onLoadingMessage: (messageId: string) => void,
   onUpdateMessage: (messageId: string, content: string, isLoading: boolean) => void,
@@ -43,8 +43,8 @@ export async function submitContactForm(
       try {
         const teamsResponse = await fetch(getTeamsEndpoint());
         if (teamsResponse.ok) {
-          const teamsJson = await teamsResponse.json() as any;
-          teamConfig = teamsJson.data.find((team: any) => team.slug === teamId || team.id === teamId);
+          const teamsJson = await teamsResponse.json() as { data: Array<{ slug?: string; id?: string }> };
+          teamConfig = teamsJson.data.find((team) => team.slug === teamId || team.id === teamId);
         }
       } catch (error) {
         console.warn('Failed to fetch team config:', error);

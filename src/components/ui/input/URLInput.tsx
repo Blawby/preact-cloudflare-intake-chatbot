@@ -111,11 +111,11 @@ export const URLInput = forwardRef<HTMLInputElement, URLInputProps>(({
       // Normalize protocols to match URL.protocol format (e.g., "http:", "https:")
       const normalizedProtocols = protocols.map(protocol => {
         if (protocol.endsWith('://')) {
-          return protocol.slice(0, -3) + ':';
+          return `${protocol.slice(0, -3)  }:`;
         } else if (protocol.endsWith(':')) {
           return protocol;
         } else {
-          return protocol + ':';
+          return `${protocol  }:`;
         }
       });
       return normalizedProtocols.includes(urlObj.protocol);

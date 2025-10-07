@@ -6,7 +6,7 @@
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'metric';
 
 export interface LogData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface LogEntry {
@@ -14,7 +14,7 @@ export interface LogEntry {
   level: LogLevel;
   stage: string;
   request_id?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -25,10 +25,10 @@ export interface LogEntry {
  */
 export function log(level: LogLevel, stage: string, data: LogData = {}): void {
   const entry: LogEntry = {
+    ...data,
     ts: new Date().toISOString(),
     level,
-    stage,
-    ...data
+    stage
   };
   
   console.log(JSON.stringify(entry));

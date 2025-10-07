@@ -29,7 +29,7 @@ export class PaymentServiceFactory {
   /**
    * Creates the appropriate payment service based on environment configuration
    */
-  static createPaymentService(env: any): PaymentService | MockPaymentService {
+  static createPaymentService(env: Record<string, unknown>): PaymentService | MockPaymentService {
     const hasApiToken = env.BLAWBY_API_TOKEN && env.BLAWBY_API_TOKEN !== 'your_resend_api_key_here';
     
     if (hasApiToken) {
@@ -43,9 +43,9 @@ export class PaymentServiceFactory {
    * Processes payment with fallback logic
    */
   static async processPayment(
-    env: any, 
+    env: Record<string, unknown>, 
     paymentRequest: PaymentRequest, 
-    teamConfig: any
+    teamConfig: Record<string, unknown>
   ): Promise<{ invoiceUrl: string | null; paymentId: string | null }> {
     const requiresPayment = teamConfig?.config?.requiresPayment || false;
     const consultationFee = teamConfig?.config?.consultationFee || 0;

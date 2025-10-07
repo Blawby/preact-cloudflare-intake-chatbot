@@ -82,7 +82,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
 
         try {
             // Initialize Audio Context
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContext = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
             audioContextRef.current = new AudioContext();
             
             // Create analyzer node

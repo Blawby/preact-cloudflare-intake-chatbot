@@ -102,8 +102,8 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
       const response = await fetch(getTeamsEndpoint(), { signal: controller.signal });
 
       if (response.ok) {
-        const teamsResponse = await response.json() as any;
-        const team = teamsResponse.data.find((t: any) => t.slug === currentTeamId || t.id === currentTeamId);
+        const teamsResponse = await response.json() as { data: Array<{ slug?: string; id?: string; name?: string; config?: Record<string, unknown> }> };
+        const team = teamsResponse.data.find((t) => t.slug === currentTeamId || t.id === currentTeamId);
 
         // Only add to fetched set after successful fetch
         fetchedTeamIds.current.add(currentTeamId);

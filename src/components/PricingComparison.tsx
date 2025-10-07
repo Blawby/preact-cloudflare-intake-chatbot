@@ -97,7 +97,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
               <ul className="space-y-1">
                 {plan.benefits.map((benefit, index) => (
                   <li key={index} className="text-xs text-gray-400 flex items-center gap-2">
-                    <span className="w-1 h-1 bg-accent-500 rounded-full"></span>
+                    <span className="w-1 h-1 bg-accent-500 rounded-full" />
                     {benefit}
                   </li>
                 ))}
@@ -112,7 +112,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
               <ul className="space-y-1">
                 {plan.limitations.map((limitation, index) => (
                   <li key={index} className="text-xs text-gray-500 flex items-center gap-2">
-                    <span className="w-1 h-1 bg-gray-500 rounded-full"></span>
+                    <span className="w-1 h-1 bg-gray-500 rounded-full" />
                     {limitation}
                   </li>
                 ))}

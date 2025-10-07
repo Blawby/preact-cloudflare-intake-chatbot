@@ -60,10 +60,10 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Helper function to safely assign refs
-  const assignRef = (node: HTMLInputElement | null, targetRef: RefObject<HTMLInputElement | null>, forwardedRef?: any) => {
+  const assignRef = (node: HTMLInputElement | null, targetRef: RefObject<HTMLInputElement | null>, forwardedRef?: unknown) => {
     // Update the target ref
     if (targetRef) {
-      (targetRef as any).current = node;
+      (targetRef as RefObject<HTMLInputElement | null>).current = node;
     }
     
     // Handle forwarded ref (function or object)

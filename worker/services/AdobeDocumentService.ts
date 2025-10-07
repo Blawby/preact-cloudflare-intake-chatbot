@@ -51,6 +51,12 @@ interface AdobeJobStatus {
   download_url?: string;
   downloadURL?: string;
   download_uri?: string;
+  resource?: {
+    downloadUri?: string;
+  };
+  content?: {
+    downloadUri?: string;
+  };
   error?: {
     code?: string;
     message?: string;
@@ -200,7 +206,7 @@ export class AdobeDocumentService {
     const expiresIn = typeof data.expires_in === 'number' ? data.expires_in * 1000 : 3600 * 1000;
     return {
       accessToken: data.access_token,
-      expiresAt: Date.now() + Math.max(expiresIn - FIVE_MINUTES_MS, FIVE_MINUTES_MS)
+      expiresAt: Date.now() + Math.max(expiresIn - FIVE_MINUTES_MS, 0)
     };
   }
 
@@ -266,22 +272,21 @@ export class AdobeDocumentService {
   private async startExtractJob(
     assetId: string,
     config: AdobeConfig,
-    accessToken: string,
-    params: Record<string, unknown> = DEFAULT_EXTRACT_PARAMS
+    accessToken: string
   ): Promise<string> {
     const payload = {
       assetID: assetId,
-      elementsToExtract: ["text", "tables"]
+      ...DEFAULT_EXTRACT_PARAMS
     };
 
-    console.log('🧩 Adobe Step 4: Starting extract job with payload', JSON.stringify(payload, null, 2));
+    Logger.debug('Adobe Step 4: Starting extract job', { payload });
 
     const response = await fetch(`${config.pdfBase}/operation/extractpdf`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'x-api-key': config.clientId,
-        'x-request-id': `extract-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        'x-request-id': `extract-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -329,7 +334,7 @@ export class AdobeDocumentService {
       }
 
       const contentType = response.headers.get('content-type') ?? '';
-      if (contentType.includes('application/zip')) {
+      if (contentType.toLowerCase().includes('application/zip')) {
         const buffer = await response.arrayBuffer();
         return { type: 'buffer', buffer };
       }
@@ -343,8 +348,8 @@ export class AdobeDocumentService {
           jobStatus.download_uri ||
           jobStatus.downloadURL ||
           jobStatus.download_url ||
-          (jobStatus as any).resource?.downloadUri ||
-          (jobStatus as any).content?.downloadUri;
+          jobStatus.resource?.downloadUri ||
+          jobStatus.content?.downloadUri;
 
         console.log('Found download URI:', downloadUri);
 

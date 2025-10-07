@@ -40,27 +40,27 @@ const MatterCanvas: FunctionalComponent<MatterCanvasProps> = ({
   });
 
   return (
-    <div class="matter-canvas">
-      <div class="matter-canvas-content">
-        <pre class="matter-canvas-markdown">
+    <div className="matter-canvas">
+      <div className="matter-canvas-content">
+        <pre className="matter-canvas-markdown">
           {markdownContent}
         </pre>
         
         {/* Show missing information */}
         {missingInfo.length > 0 && (
-          <div class="missing-info-section">
-            <div class="missing-info-header">
+          <div className="missing-info-section">
+            <div className="missing-info-header">
               <ExclamationTriangleIcon className="w-4 h-4" />
               <span>Missing Information</span>
             </div>
-            <div class="missing-info-list">
+            <div className="missing-info-list">
               <p>To strengthen your matter, consider providing:</p>
               <ul>
                 {missingInfo.map((info, index) => (
                   <li key={index}>{info}</li>
                 ))}
               </ul>
-              <p class="missing-info-note">
+              <p className="missing-info-note">
                 You can provide this information by continuing our conversation. 
                 The more details you share, the better we can assist you.
               </p>

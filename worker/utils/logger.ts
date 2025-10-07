@@ -21,35 +21,35 @@ export class Logger {
   }
 
   private static isDebugEnabled(): boolean {
-    // Use injected environment variables if available, otherwise fallback to process.env (for Node.js environments)
-    const debug = this.env?.DEBUG || (typeof process !== 'undefined' && process.env?.DEBUG);
-    const nodeEnv = this.env?.NODE_ENV || (typeof process !== 'undefined' && process.env?.NODE_ENV);
+    // Use injected environment variables (Cloudflare Workers don't have process.env)
+    const debug = this.env?.DEBUG;
+    const nodeEnv = this.env?.NODE_ENV;
     
     return debug === 'true' || nodeEnv === 'development';
   }
 
-  static debug(message: string, data?: any): void {
+  static debug(message: string, data?: unknown): void {
     if (this.isDebugEnabled()) {
       console.log(`[DEBUG] ${message}`, data);
     }
   }
 
-  static info(message: string, data?: any): void {
+  static info(message: string, data?: unknown): void {
     console.log(`[INFO] ${message}`, data);
   }
 
-  static warn(message: string, data?: any): void {
+  static warn(message: string, data?: unknown): void {
     console.warn(`[WARN] ${message}`, data);
   }
 
-  static error(message: string, error?: any): void {
+  static error(message: string, error?: unknown): void {
     console.error(`[ERROR] ${message}`, error);
   }
 
   /**
    * Safely logs team configuration data by redacting sensitive information
    */
-  static logTeamConfig(team: any, includeConfig: boolean = false): void {
+  static logTeamConfig(team: Record<string, unknown>, includeConfig: boolean = false): void {
     if (!team) {
       this.warn('logTeamConfig called with null/undefined team');
       return;
@@ -66,7 +66,7 @@ export class Logger {
     if (includeConfig && this.isDebugEnabled()) {
       // Create a sanitized version of the config
       const sanitizedConfig = this.sanitizeConfig(team.config);
-      (safeTeamData as any).config = sanitizedConfig;
+      (safeTeamData as Record<string, unknown>).config = sanitizedConfig;
     }
 
     this.info('Team data:', safeTeamData);
@@ -75,7 +75,7 @@ export class Logger {
   /**
    * Sanitizes configuration data to remove sensitive information
    */
-  private static sanitizeConfig(config: any): any {
+  private static sanitizeConfig(config: Record<string, unknown>): Record<string, unknown> {
     if (!config) return config;
 
     const sanitized = { ...config };

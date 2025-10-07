@@ -155,4 +155,4 @@ queue = "doc-events"
 binding = "DOC_EVENTS"
 [[env.production.r2_buckets]]
 binding = "FILES_BUCKET"
-bucket_name = "blawby-ai-files" 
+bucket_name = "blawby-ai-files"

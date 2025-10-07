@@ -9,10 +9,16 @@ const TOOL_LOADING_MESSAGES: Record<string, string> = {
   'request_lawyer_review': 'Requesting lawyer review...',
   'create_payment_invoice': 'Creating payment invoice...'
 };
-// Global interface for window API base override
+// Global interface for window API base override and debug properties
 declare global {
   interface Window {
     __API_BASE__?: string;
+    __DEBUG_AI_MESSAGES__?: (messages: ChatMessageUI[]) => void;
+    __DEBUG_SSE_EVENTS__?: (data: unknown) => void;
+    __DEBUG_SEND_MESSAGE__?: (message: string, attachments: FileAttachment[]) => void;
+    __DEBUG_CONTACT_FORM__?: (contactData: ContactData, message: string) => void;
+    __toolCalls?: unknown[];
+    __conversationState?: unknown;
   }
 }
 
@@ -58,10 +64,10 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   // Debug hooks for test environment (development only)
   useEffect(() => {
     if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined') {
-      (window as any).__DEBUG_AI_MESSAGES__ = (messages: any[]) => {
+      window.__DEBUG_AI_MESSAGES__ = (messages: ChatMessageUI[]) => {
         console.log('[TEST] Current messages:', messages.map((m) => ({ role: m.role, isUser: m.isUser, id: m.id })));
       };
-      (window as any).__DEBUG_AI_MESSAGES__(messages);
+      window.__DEBUG_AI_MESSAGES__?.(messages);
     }
   }, [messages]);
 
@@ -72,8 +78,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
         msg.id === messageId && !msg.isUser ? { ...msg, ...updates } as ChatMessageUI : msg
       );
       // Debug hook for test environment
-      if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_AI_MESSAGES__) {
-        (window as any).__DEBUG_AI_MESSAGES__(updated);
+      if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && window.__DEBUG_AI_MESSAGES__) {
+        window.__DEBUG_AI_MESSAGES__(updated);
       }
       return updated;
     });
@@ -100,7 +106,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
   const sendMessageWithStreaming = useCallback(async (
     messageHistory: ChatMessageHistoryEntry[], 
     placeholderId: string,
-    attachments: any[] = []
+    attachments: FileAttachment[] = []
   ) => {
     // Abort any existing request
     if (abortControllerRef.current) {
@@ -186,7 +192,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                 }
                 
                 // Debug hook for test environment (development only) - sanitized
-                if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SSE_EVENTS__) {
+                if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && window.__DEBUG_SSE_EVENTS__) {
                   // Only log safe properties to avoid sensitive data exposure
                   const sanitizedData = {
                     type: data.type,
@@ -195,7 +201,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                     hasToolName: !!(data.toolName || data.name),
                     hasResult: !!data.result
                   };
-                  (window as any).__DEBUG_SSE_EVENTS__(sanitizedData);
+                  window.__DEBUG_SSE_EVENTS__(sanitizedData);
                 }
                 
                 // Validate that we have a type property
@@ -249,8 +255,8 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                       
                       // Log tool call for test monitoring (sanitized - only safe properties)
                       if (typeof window !== 'undefined') {
-                        if (!(window as any).__toolCalls) {
-                          (window as any).__toolCalls = [];
+                        if (!window.__toolCalls) {
+                          window.__toolCalls = [];
                         }
                         
                         // Only log safe, non-sensitive properties
@@ -260,7 +266,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
                           type: 'tool_call'
                         };
                         
-                        (window as any).__toolCalls.push(sanitizedToolCall);
+                        window.__toolCalls.push(sanitizedToolCall);
                       }
                     } catch (error) {
                       console.warn('Error processing tool call:', error instanceof Error ? error.message : 'Unknown error');
@@ -364,7 +370,7 @@ ${matterData.opposing_party ? `- Opposing Party: ${matterData.opposing_party}` :
                     
                     // Log conversation state if available
                     if (data.conversationState && typeof window !== 'undefined') {
-                      (window as any).__conversationState = data.conversationState;
+                      window.__conversationState = data.conversationState;
                     }
                     break;
                     
@@ -431,10 +437,10 @@ ${matterData.opposing_party ? `- Opposing Party: ${matterData.opposing_party}` :
   }, [teamId, sessionId, onError, updateAIMessage]);
 
   // Main message sending function
-  const sendMessage = useCallback(async (message: string, attachments: any[] = []) => {
+  const sendMessage = useCallback(async (message: string, attachments: FileAttachment[] = []) => {
     // Debug hook for test environment (development only)
-    if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && (window as any).__DEBUG_SEND_MESSAGE__) {
-      (window as any).__DEBUG_SEND_MESSAGE__(message, attachments);
+    if (import.meta.env.MODE !== 'production' && typeof window !== 'undefined' && window.__DEBUG_SEND_MESSAGE__) {
+      window.__DEBUG_SEND_MESSAGE__(message, attachments);
     }
     
     const effectiveTeamId = (teamId ?? '').trim();
@@ -508,7 +514,7 @@ Phone: ${contactData.phone}
 Location: ${contactData.location}${contactData.opposingParty ? `\nOpposing Party: ${contactData.opposingParty}` : ''}`;
 
       // Debug hook for test environment (development only, PII-safe)
-      if (import.meta.env.MODE === 'development' && typeof window !== 'undefined' && (window as any).__DEBUG_CONTACT_FORM__) {
+      if (import.meta.env.MODE === 'development' && typeof window !== 'undefined' && window.__DEBUG_CONTACT_FORM__) {
         // Create sanitized payload with presence flags instead of raw PII
         const sanitizedContactData = {
           nameProvided: !!contactData.name,
@@ -525,7 +531,7 @@ Email: ${contactData.email ? '[PROVIDED]' : '[NOT PROVIDED]'}
 Phone: ${contactData.phone ? '[PROVIDED]' : '[NOT PROVIDED]'}
 Location: ${contactData.location ? '[PROVIDED]' : '[NOT PROVIDED]'}${contactData.opposingParty ? '\nOpposing Party: [PROVIDED]' : ''}`;
         
-        (window as any).__DEBUG_CONTACT_FORM__(sanitizedContactData, redactedContactMessage);
+        window.__DEBUG_CONTACT_FORM__(sanitizedContactData, redactedContactMessage);
       }
 
       // Send the contact information as a user message

@@ -31,7 +31,7 @@ export async function createMatterRecord(
       SELECT COUNT(*) as count FROM matters 
       WHERE team_id = ? AND strftime('%Y', created_at) = ?
     `).bind(teamId, year.toString()).first();
-    const count = (matterNumberResult as any)?.count || 0;
+    const count = (matterNumberResult as { count?: number })?.count || 0;
     const matterNumber = `MAT-${year}-${(count + 1).toString().padStart(3, '0')}`;
     await env.DB.prepare(`
       INSERT INTO matters (

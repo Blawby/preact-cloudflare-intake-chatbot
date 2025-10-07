@@ -5,14 +5,14 @@ import { Logger } from '../../utils/logger.js';
  */
 export abstract class LegalIntakeError extends Error {
   public readonly errorCode: string;
-  public readonly context: Record<string, any>;
+  public readonly context: Record<string, unknown>;
   public readonly timestamp: string;
   public readonly isRetryable: boolean;
 
   constructor(
     message: string,
     errorCode: string,
-    context: Record<string, any> = {},
+    context: Record<string, unknown> = {},
     isRetryable: boolean = false
   ) {
     super(message);
@@ -49,7 +49,7 @@ export abstract class LegalIntakeError extends Error {
 export class ConversationStateError extends LegalIntakeError {
   constructor(
     message: string,
-    context: Record<string, any> = {},
+    context: Record<string, unknown> = {},
     isRetryable: boolean = true
   ) {
     super(message, 'CONVERSATION_STATE_ERROR', context, isRetryable);
@@ -66,7 +66,7 @@ export class ConversationStateError extends LegalIntakeError {
 export class AIServiceError extends LegalIntakeError {
   constructor(
     message: string,
-    context: Record<string, any> = {},
+    context: Record<string, unknown> = {},
     isRetryable: boolean = true
   ) {
     super(message, 'AI_SERVICE_ERROR', context, isRetryable);
@@ -83,7 +83,7 @@ export class AIServiceError extends LegalIntakeError {
 export class BusinessLogicError extends LegalIntakeError {
   constructor(
     message: string,
-    context: Record<string, any> = {},
+    context: Record<string, unknown> = {},
     isRetryable: boolean = false
   ) {
     super(message, 'BUSINESS_LOGIC_ERROR', context, isRetryable);
@@ -100,7 +100,7 @@ export class BusinessLogicError extends LegalIntakeError {
 export class MatterCreationError extends LegalIntakeError {
   constructor(
     message: string,
-    context: Record<string, any> = {},
+    context: Record<string, unknown> = {},
     isRetryable: boolean = true
   ) {
     super(message, 'MATTER_CREATION_ERROR', context, isRetryable);
@@ -117,7 +117,7 @@ export class MatterCreationError extends LegalIntakeError {
 export class ValidationError extends LegalIntakeError {
   constructor(
     message: string,
-    context: Record<string, any> = {},
+    context: Record<string, unknown> = {},
     isRetryable: boolean = false
   ) {
     super(message, 'VALIDATION_ERROR', context, isRetryable);
@@ -135,7 +135,7 @@ export class ExternalServiceError extends LegalIntakeError {
   constructor(
     serviceName: string,
     message: string,
-    context: Record<string, any> = {},
+    context: Record<string, unknown> = {},
     isRetryable: boolean = true
   ) {
     super(
@@ -157,7 +157,7 @@ export class ExternalServiceError extends LegalIntakeError {
 export class ConfigurationError extends LegalIntakeError {
   constructor(
     message: string,
-    context: Record<string, any> = {},
+    context: Record<string, unknown> = {},
     isRetryable: boolean = false
   ) {
     super(message, 'CONFIGURATION_ERROR', context, isRetryable);
@@ -184,8 +184,8 @@ export type ErrorResult<T> = {
  */
 export async function withErrorHandling<T>(
   operation: () => Promise<T>,
-  errorContext: Record<string, any> = {},
-  errorType: new (message: string, context: Record<string, any>, isRetryable: boolean) => LegalIntakeError = ConversationStateError
+  errorContext: Record<string, unknown> = {},
+  errorType: new (message: string, context: Record<string, unknown>, isRetryable: boolean) => LegalIntakeError = ConversationStateError
 ): Promise<ErrorResult<T>> {
   try {
     const result = await operation();
@@ -221,8 +221,8 @@ export async function withErrorHandling<T>(
  */
 export function withErrorHandlingSync<T>(
   operation: () => T,
-  errorContext: Record<string, any> = {},
-  errorType: new (message: string, context: Record<string, any>, isRetryable: boolean) => LegalIntakeError = ValidationError
+  errorContext: Record<string, unknown> = {},
+  errorType: new (message: string, context: Record<string, unknown>, isRetryable: boolean) => LegalIntakeError = ValidationError
 ): ErrorResult<T> {
   try {
     const result = operation();

@@ -59,7 +59,7 @@ export const AccountPage = ({
       setEmailSettings(emailData);
       setCurrentTier(profile.subscriptionTier);
     } catch (error) {
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to load account data:', error);
       setError(error instanceof Error ? error.message : String(error));
     } finally {

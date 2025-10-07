@@ -3,7 +3,7 @@ import { createAnalysisErrorResponse } from './responseUtils.js';
 /**
  * Analyzes files using the vision API
  */
-export async function analyzeFile(env: any, fileId: string, question?: string): Promise<any> {
+export async function analyzeFile(env: Record<string, unknown>, fileId: string, question?: string): Promise<Record<string, unknown>> {
   console.log('=== ANALYZE FILE FUNCTION CALLED ===');
   console.log('File ID:', fileId);
   console.log('Question:', question);
@@ -112,7 +112,7 @@ export async function analyzeFile(env: any, fileId: string, question?: string): 
 /**
  * Finds file path in R2 storage by file ID
  */
-async function findFilePathInR2(env: any, fileId: string): Promise<string | null> {
+async function findFilePathInR2(env: Record<string, unknown>, fileId: string): Promise<string | null> {
   console.log('No file path from database, attempting to construct from file ID');
   
   // Handle the actual file ID format with UUID

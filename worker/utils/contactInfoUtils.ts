@@ -164,9 +164,8 @@ export function logContactInfoDetection(
   correlationId?: string
 ): void {
   // Only log in development environment
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'development') {
-    return;
-  }
+  // Note: Environment should be injected via Logger.initialize() in Worker context
+  // For now, always log in Worker context since we don't have process.env
 
   // Parameter validation with graceful handling
   if (typeof conversationText !== 'string') {

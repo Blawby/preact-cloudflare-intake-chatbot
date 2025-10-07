@@ -199,7 +199,7 @@ const DocumentChecklist: FunctionComponent<DocumentChecklistProps> = ({
                 {/* Pending Status */}
                 {doc.status === 'pending' && (
                   <div className="flex items-center gap-2 mt-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500" />
                     <span className="text-sm text-yellow-600 dark:text-yellow-400">
                       Processing document...
                     </span>

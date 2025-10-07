@@ -13,7 +13,6 @@ import { createValidationError, createSuccessResponse } from '../../utils/respon
 import { chunkResponseText } from '../../utils/streaming.js';
 import { createSuccessResult, createErrorResult, ValidationError } from './errors.js';
 import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js';
-import { analyzeFile } from '../../utils/fileAnalysisUtils.js';
 
 // ============================================================================
 // CONSTANTS
@@ -1742,9 +1741,9 @@ async function handleCreateMatter(
   }
 
   const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(
-    env, 
+    env as unknown as Record<string, unknown>, 
     paymentRequest, 
-    team
+    team as unknown as Record<string, unknown>
   );
 
   const orchestrationResult = await ContactIntakeOrchestrator.finalizeSubmission({
@@ -1887,7 +1886,7 @@ async function handleRequestLawyerReview(
 
   await notificationService.sendLawyerReviewNotification({
     type: 'lawyer_review',
-    teamConfig: team,
+    teamConfig: team as unknown as Record<string, unknown>,
     matterInfo: {
       type: matter_type as string,
       urgency: urgency as string,
@@ -1942,7 +1941,7 @@ function formatDocumentAnalysisMessage(fileId: string, analysis: DocumentAnalysi
   }
 
   if (typeof analysis.confidence === 'number') {
-    const confidencePct = Math.round(Math.max(0, Math.min(analysis.confidence, 1)) * 100);
+    const _confidencePct = Math.round(Math.max(0, Math.min(analysis.confidence, 1)) * 100);
     // Confidence level removed from user display
   }
 
@@ -1980,7 +1979,7 @@ async function handleCreatePaymentInvoice(
   };
 
   try {
-    const paymentService = PaymentServiceFactory.createPaymentService(env);
+    const paymentService = PaymentServiceFactory.createPaymentService(env as unknown as Record<string, unknown>);
 
     const paymentRequest = {
       customerInfo: {
@@ -2143,9 +2142,16 @@ const TOOL_HANDLERS = {
 // MAIN AGENT ORCHESTRATOR
 // ============================================================================
 
-function getAvailableTools(state: ConversationState, context: ConversationContext): ToolDefinition[] {
-  const hasAttachments = Array.isArray(context.currentAttachments) && context.currentAttachments.length > 0;
-  const analysisTools = hasAttachments ? [] : []; // [analyzeDocument] commented out
+function getAvailableTools(state: ConversationState, context: ConversationContext, attachments: readonly FileAttachment[] = []): ToolDefinition[] {
+  const _hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+  
+  // Document analysis is now handled automatically by fileAnalysisMiddleware in the pipeline
+  // when attachments are detected, so no analysis tools are needed in the agent
+  // The analyzeDocument tool was removed because analysis happens automatically via:
+  // 1. fileAnalysisMiddleware processes attachments during pipeline execution
+  // 2. doc-processor consumer handles auto-analysis events for uploaded files
+  // 3. Analysis results are stored in context and available to the agent
+  const analysisTools: ToolDefinition[] = [];
 
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:
@@ -2268,7 +2274,7 @@ export async function runLegalIntakeAgentStream(
       return;
     }
 
-    const availableTools = getAvailableTools(context.state, context);
+    const availableTools = getAvailableTools(context.state, context, attachments);
     const systemPrompt = PromptBuilder.build(context, team, teamId);
 
     Logger.info('Conversation State:', {

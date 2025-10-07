@@ -22,16 +22,16 @@ import Modal from './Modal';
 import MediaContent from './MediaContent';
 
 interface MediaSidebarProps {
-  messages: any[];
+  messages: unknown[];
 }
 
 const iconMap = {
-  PhotoIcon: PhotoIcon,
-  VideoCameraIcon: VideoCameraIcon,
-  MusicalNoteIcon: MusicalNoteIcon,
-  DocumentIcon: DocumentIcon,
-  DocumentTextIcon: DocumentTextIcon,
-  TableCellsIcon: TableCellsIcon
+  PhotoIcon,
+  VideoCameraIcon,
+  MusicalNoteIcon,
+  DocumentIcon,
+  DocumentTextIcon,
+  TableCellsIcon
 };
 
 const categoryLabels = {

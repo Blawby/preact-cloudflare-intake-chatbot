@@ -3,7 +3,7 @@ import type { Env } from '../types.js';
 
 export interface NotificationRequest {
   type: 'lawyer_review' | 'matter_created' | 'payment_required';
-  teamConfig: any;
+  teamConfig: Record<string, unknown>;
   matterInfo?: {
     type: string;
     urgency?: string;

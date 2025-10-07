@@ -1,4 +1,4 @@
-import { FunctionComponent } from 'preact';
+import { FunctionComponent, ComponentType } from 'preact';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
 import {
   ChatBubbleOvalLeftEllipsisIcon,
@@ -27,7 +27,7 @@ interface ActivityTimelineProps {
 }
 
 // Event type to icon mapping
-const EVENT_ICONS: Record<string, any> = {
+const EVENT_ICONS: Record<string, ComponentType> = {
   // Matter Events
   matter_created: ClockIcon,
   matter_status_changed: ChatBubbleOvalLeftEllipsisIcon,
