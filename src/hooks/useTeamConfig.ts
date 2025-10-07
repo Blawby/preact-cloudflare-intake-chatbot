@@ -144,9 +144,6 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
           const teamsResponse = TeamsResponseSchema.parse(rawResponse);
           const team = teamsResponse.data.find((t) => t.slug === currentTeamId || t.id === currentTeamId);
 
-          // Only add to fetched set after successful fetch
-          fetchedTeamIds.current.add(currentTeamId);
-
           if (team?.config) {
             const parsedConfig = TeamConfigSchema.safeParse(team.config);
             const cfg = parsedConfig.success ? parsedConfig.data : {};
@@ -176,6 +173,9 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
             };
             setTeamConfig(config);
             setTeamNotFound(false);
+            
+            // Only add to fetched set after successful config processing
+            fetchedTeamIds.current.add(currentTeamId);
           } else {
             setTeamNotFound(true);
           }

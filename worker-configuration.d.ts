@@ -7,27 +7,27 @@ declare namespace Cloudflare {
 	}
 	interface Env {
 		CHAT_SESSIONS: KVNamespace;
-		BLAWBY_API_URL: "https://staging.blawby.com";
-		BLAWBY_TEAM_ULID: "01jq70jnstyfzevc6423czh50e";
-		LAWYER_SEARCH_API_URL: "https://search.blawby.com";
-		ENABLE_ADOBE_EXTRACT: "true";
-		ADOBE_IMS_BASE_URL: "https://ims-na1.adobelogin.com";
-		ADOBE_PDF_SERVICES_BASE_URL: "https://pdf-services.adobe.io";
-		ADOBE_SCOPE: "openid,AdobeID,DCAPI";
-		CLOUDFLARE_PUBLIC_URL: "https://blawby-ai-chatbot.paulchrisluke.workers.dev";
+		BLAWBY_API_URL: string;
+		BLAWBY_TEAM_ULID: string;
+		LAWYER_SEARCH_API_URL: string;
+		ENABLE_ADOBE_EXTRACT: "true" | "false";
+		ADOBE_IMS_BASE_URL: string;
+		ADOBE_PDF_SERVICES_BASE_URL: string;
+		ADOBE_SCOPE: string;
+		CLOUDFLARE_PUBLIC_URL: string;
 		NODE_ENV: "development" | "production";
-		DEBUG: "false";
-		VITE_DEBUG_OVERLAY: "false";
+		DEBUG: "true" | "false";
+		VITE_DEBUG_OVERLAY: "true" | "false";
 		LOG_LEVEL: "debug" | "warn";
-		AI_MODEL: "llama-3.1-8b-instant";
-		AI_PROVIDER_DEFAULT: "workers-ai";
-		AI_MODEL_DEFAULT: "@cf/openai/gpt-oss-20b";
-		AI_MODEL_FALLBACK: "@cf/openai/gpt-oss-20b";
-		ENABLE_WORKERS_AI: "true";
-		ENABLE_GATEWAY_OPENAI: "false";
-		ANALYSIS_TIMEOUT_MS: "60000";
-		RATE_LIMIT_REQUESTS_PER_MINUTE: "60";
-		RATE_LIMIT_BURST_SIZE: "10";
+		AI_MODEL: string;
+		AI_PROVIDER_DEFAULT: string;
+		AI_MODEL_DEFAULT: string;
+		AI_MODEL_FALLBACK: string;
+		ENABLE_WORKERS_AI: "true" | "false";
+		ENABLE_GATEWAY_OPENAI: "true" | "false";
+		ANALYSIS_TIMEOUT_MS: string;
+		RATE_LIMIT_REQUESTS_PER_MINUTE: string;
+		RATE_LIMIT_BURST_SIZE: string;
 		BLAWBY_API_TOKEN: string;
 		LAWYER_SEARCH_API_KEY: string;
 		CLOUDFLARE_API_TOKEN: string;
@@ -2702,13 +2702,13 @@ type AiMultimodalEmbeddingsInput = {
     image: string;
     text: string[];
 };
-type AiIMultimodalEmbeddingsOutput = {
+type AiMultimodalEmbeddingsOutput = {
     data: number[][];
     shape: number[];
 };
 declare abstract class BaseAiMultimodalEmbeddings {
-    inputs: AiImageTextToTextInput;
-    postProcessedOutputs: AiImageTextToTextOutput;
+    inputs: AiMultimodalEmbeddingsInput;
+    postProcessedOutputs: AiMultimodalEmbeddingsOutput;
 }
 type AiObjectDetectionInput = {
     image: number[];
@@ -2859,7 +2859,7 @@ type UsageTags = {
 };
 type AiTextGenerationOutput = {
     response?: string;
-    tool_calls?: AiTextGenerationToolLegacyOutput[] & AiTextGenerationToolOutput[];
+    tool_calls?: (AiTextGenerationToolLegacyOutput | AiTextGenerationToolOutput)[];
     usage?: UsageTags;
 };
 declare abstract class BaseAiTextGeneration {
