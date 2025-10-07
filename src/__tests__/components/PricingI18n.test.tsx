@@ -98,7 +98,8 @@ describe("Pricing Internationalization", () => {
 
       expect(t("billing.monthly")).toBeTruthy();
       expect(t("billing.yearly")).toBeTruthy();
-      expect(t("billing.per_month")).toBeTruthy();
+      expect(t("billing.billedMonthly")).toBeTruthy();
+      expect(t("billing.billedAnnually")).toBeTruthy();
     });
 
     it("should have CTA button translations", () => {
@@ -205,15 +206,20 @@ describe("Pricing Internationalization", () => {
       const languages = ['en', 'de', 'es', 'fr', 'ja', 'vi', 'zh'];
       const requiredKeys = [
         'modal.title',
+        'modal.currentPlan',
         'plans.free.name',
         'plans.free.description',
+        'plans.free.buttonText',
         'plans.plus.name',
         'plans.plus.description',
+        'plans.plus.buttonText',
         'plans.business.name',
         'plans.business.description',
+        'plans.business.buttonText',
         'billing.monthly',
         'billing.yearly',
-        'plans.free.buttonText',
+        'billing.billedMonthly',
+        'billing.billedAnnually',
       ];
 
       for (const lang of languages) {
