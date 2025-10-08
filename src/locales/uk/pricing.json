@@ -1,231 +1,231 @@
 {
   "plans": {
     "free": {
-      "name": "Free",
-      "description": "Legal AI assistance for everyday needs",
-      "buttonText": "Your current plan"
+      "name": "Безкоштовно",
+      "description": "Юридична допомога AI для повсякденних потреб",
+      "buttonText": "Ваш поточний план"
     },
     "plus": {
       "name": "Plus",
-      "description": "Enhanced legal AI capabilities for professionals",
-      "buttonText": "Get Plus"
+      "description": "Розширені можливості юридичного AI для професіоналів",
+      "buttonText": "Отримати Plus"
     },
     "business": {
       "name": "Business",
-      "description": "Secure, collaborative workspace for teams",
-      "buttonText": "Get Business"
+      "description": "Безпечний, колаборативний робочий простір для команд",
+      "buttonText": "Отримати Business"
     }
   },
   "features": {
     "aiAccess": {
-      "name": "AI Access",
-      "description": "Access to our legal AI models",
+      "name": "Доступ до AI",
+      "description": "Доступ до наших юридичних моделей AI",
       "tiers": {
-        "free": "Blawby AI-1 (Limited)",
-        "plus": "Blawby AI-1 (Enhanced)",
-        "business": "Blawby AI-1 (Unlimited)"
+        "free": "Blawby AI-1 (Обмежений)",
+        "plus": "Blawby AI-1 (Розширений)",
+        "business": "Blawby AI-1 (Необмежений)"
       },
       "text": {
-        "free": "Access to Blawby AI-1",
-        "plus": "Enhanced access to Blawby AI-1",
-        "business": "Unlimited access to our best model for work"
+        "free": "Доступ до Blawby AI-1",
+        "plus": "Розширений доступ до Blawby AI-1",
+        "business": "Необмежений доступ до нашої найкращої моделі для роботи"
       },
       "detail": {
-        "free": "Limited access to our legal AI model",
-        "plus": "Priority access to our legal AI model",
-        "business": "Unlimited access to advanced AI models"
+        "free": "Обмежений доступ до нашої юридичної моделі AI",
+        "plus": "Пріоритетний доступ до нашої юридичної моделі AI",
+        "business": "Необмежений доступ до розширених моделей AI"
       }
     },
     "documentAnalysis": {
-      "name": "Document Analysis",
-      "description": "Upload and analyze legal documents",
+      "name": "Аналіз документів",
+      "description": "Завантажуйте та аналізуйте юридичні документи",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "Обмежений",
+        "plus": "Розширений",
+        "business": "Необмежений"
       },
       "text": {
-        "free": "Limited document analysis",
-        "plus": "Enhanced document analysis",
-        "business": "Advanced document analysis & case preparation"
+        "free": "Обмежений аналіз документів",
+        "plus": "Розширений аналіз документів",
+        "business": "Розширений аналіз документів та підготовка справ"
       },
       "detail": {
-        "free": "Upload and analyze basic legal documents",
-        "plus": "Faster and more accurate legal document processing",
-        "business": "Full legal document processing capabilities"
+        "free": "Завантаження та аналіз основних юридичних документів",
+        "plus": "Швидша та точніша обробка юридичних документів",
+        "business": "Повні можливості обробки юридичних документів"
       }
     },
     "casePreparation": {
-      "name": "Case PDF Preparation",
-      "description": "AI-powered case document preparation",
+      "name": "Підготовка PDF справ",
+      "description": "Підготовка документів справ на основі AI",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "Обмежена",
+        "plus": "Розширена",
+        "business": "Необмежена"
       },
       "text": {
-        "free": "Limited case PDF preparation",
-        "plus": "Enhanced case PDF preparation",
-        "business": "Advanced case PDF preparation"
+        "free": "Обмежена підготовка PDF справ",
+        "plus": "Розширена підготовка PDF справ",
+        "business": "Розширена підготовка PDF справ"
       },
       "detail": {
-        "free": "Basic case document preparation",
-        "plus": "Advanced case document preparation",
-        "business": "Full case document preparation capabilities"
+        "free": "Базова підготовка документів справ",
+        "plus": "Розширена підготовка документів справ",
+        "business": "Повні можливості підготовки документів справ"
       }
     },
     "memoryContext": {
-      "name": "Memory & Context",
-      "description": "Conversation memory and context",
+      "name": "Пам'ять та контекст",
+      "description": "Пам'ять розмов та контекст",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "Обмежені",
+        "plus": "Розширені",
+        "business": "Необмежені"
       },
       "text": {
-        "free": "Limited memory and context",
-        "plus": "Extended memory and context",
-        "business": "Unlimited memory and context"
+        "free": "Обмежена пам'ять та контекст",
+        "plus": "Розширена пам'ять та контекст",
+        "business": "Необмежена пам'ять та контекст"
       },
       "detail": {
-        "free": "Basic conversation memory",
-        "plus": "Longer conversation memory",
-        "business": "Unlimited conversation history"
+        "free": "Базова пам'ять розмов",
+        "plus": "Довша пам'ять розмов",
+        "business": "Необмежена історія розмов"
       }
     },
     "lawyerSearch": {
-      "name": "Lawyer Search",
-      "description": "Find and connect with qualified lawyers",
+      "name": "Пошук адвоката",
+      "description": "Знайдіть та зв'яжіться з кваліфікованими адвокатами",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "Обмежений",
+        "plus": "Розширений",
+        "business": "Необмежений"
       },
       "text": {
-        "free": "Limited lawyer search",
-        "plus": "Enhanced lawyer search",
-        "business": "Advanced lawyer search"
+        "free": "Обмежений пошук адвокатів",
+        "plus": "Розширений пошук адвокатів",
+        "business": "Розширений пошук адвокатів"
       },
       "detail": {
-        "free": "Basic lawyer search capabilities",
-        "plus": "Advanced lawyer matching capabilities",
-        "business": "Full lawyer matching and research capabilities"
+        "free": "Базові можливості пошуку адвокатів",
+        "plus": "Розширені можливості підбору адвокатів",
+        "business": "Повні можливості підбору та дослідження адвокатів"
       }
     },
     "teamCollaboration": {
-      "name": "Team Collaboration",
-      "description": "Shared projects and team features",
-      "text": "Tools for teams like shared projects & workflows",
-      "detail": "Team collaboration and project management"
+      "name": "Командна співпраця",
+      "description": "Спільні проекти та командні функції",
+      "text": "Інструменти для команд, такі як спільні проекти та робочі процеси",
+      "detail": "Командна співпраця та управління проектами"
     },
     "security": {
-      "name": "Advanced Security",
-      "description": "SSO, MFA, and enterprise security",
-      "text": "Advanced security with SSO, MFA, & more",
-      "detail": "Enterprise-grade security features"
+      "name": "Розширена безпека",
+      "description": "SSO, MFA та корпоративна безпека",
+      "text": "Розширена безпека з SSO, MFA та іншим",
+      "detail": "Функції безпеки корпоративного рівня"
     },
     "privacy": {
-      "name": "Privacy Protection",
-      "description": "Data never used for training",
-      "text": "Privacy built in; data never used for training",
-      "detail": "Complete data privacy protection"
+      "name": "Захист конфіденційності",
+      "description": "Дані ніколи не використовуються для навчання",
+      "text": "Вбудована конфіденційність; дані ніколи не використовуються для навчання",
+      "detail": "Повний захист конфіденційності даних"
     },
     "integrations": {
-      "name": "Integrations",
-      "description": "SharePoint and other tools",
-      "text": "Integration with Quickbooks & other tools",
-      "detail": "Connect with your existing workflow"
+      "name": "Інтеграції",
+      "description": "SharePoint та інші інструменти",
+      "text": "Інтеграція з Quickbooks та іншими інструментами",
+      "detail": "Підключіться до існуючого робочого процесу"
     },
     "billing": {
-      "name": "Simplified Billing",
-      "description": "User management and billing",
-      "text": "Simplified billing and user management",
-      "detail": "Easy team and billing management"
+      "name": "Спрощений біллінг",
+      "description": "Управління користувачами та біллінг",
+      "text": "Спрощений біллінг та управління користувачами",
+      "detail": "Легке управління командою та біллінгом"
     },
     "transcription": {
-      "name": "Voice Transcription",
-      "description": "Meeting and voice transcription",
-      "text": "Voice transcription and analysis",
-      "detail": "Voice transcription and legal analysis"
+      "name": "Транскрипція голосу",
+      "description": "Транскрипція зустрічей та голосу",
+      "text": "Транскрипція та аналіз голосу",
+      "detail": "Транскрипція голосу та юридичний аналіз"
     },
     "agents": {
-      "name": "AI Agents",
-      "description": "Coding and research agents",
-      "text": "Legal research and lawyer search agents",
-      "detail": "Specialized AI agents for legal research and lawyer matching"
+      "name": "AI-агенти",
+      "description": "Агенти для кодування та досліджень",
+      "text": "Агенти для юридичних досліджень та пошуку адвокатів",
+      "detail": "Спеціалізовані AI-агенти для юридичних досліджень та підбору адвокатів"
     },
     "plusIncludes": {
-      "text": "Everything in Free, with higher limits",
-      "detail": "All free features with increased usage"
+      "text": "Все з Безкоштовного, з вищими лімітами",
+      "detail": "Всі безкоштовні функції зі збільшеним використанням"
     },
     "businessIncludes": {
-      "text": "Everything in Plus, with even higher limits",
-      "detail": "All Plus features with unlimited usage"
+      "text": "Все з Plus, з ще вищими лімітами",
+      "detail": "Всі функції Plus з необмеженим використанням"
     }
   },
   "limitations": {
     "free": {
-      "messagesPerDay": "Limited to 20 messages per day",
-      "documentSupport": "Basic document analysis support",
-      "responseTime": "Standard response times",
-      "noTeam": "No team collaboration features"
+      "messagesPerDay": "Обмежено до 20 повідомлень на день",
+      "documentSupport": "Базова підтримка аналізу документів",
+      "responseTime": "Стандартний час відповіді",
+      "noTeam": "Без функцій командної співпраці"
     },
     "plus": {
-      "messagesPerDay": "Limited to 200 messages per day",
-      "noTeam": "No team collaboration features",
-      "standardSupport": "Standard support response times"
+      "messagesPerDay": "Обмежено до 200 повідомлень на день",
+      "noTeam": "Без функцій командної співпраці",
+      "standardSupport": "Стандартний час відповіді підтримки"
     },
     "business": {
-      "minUsers": "Requires 2+ users",
-      "annualBilling": "Annual billing recommended"
+      "minUsers": "Потрібно 2+ користувачів",
+      "annualBilling": "Рекомендується річний біллінг"
     }
   },
   "benefits": {
     "free": {
-      "personal": "Perfect for personal legal needs",
-      "noCard": "No credit card required",
-      "fullAccess": "Full access to core legal AI features",
-      "support": "Community support"
+      "personal": "Ідеально для особистих юридичних потреб",
+      "noCard": "Кредитна картка не потрібна",
+      "fullAccess": "Повний доступ до основних функцій юридичного AI",
+      "support": "Підтримка спільноти"
     },
     "plus": {
-      "higherLimits": "5x higher usage limits",
-      "priorityAccess": "Priority AI model access",
-      "enhanced": "Enhanced legal features",
-      "support": "Email support"
+      "higherLimits": "В 5 разів вищі ліміти використання",
+      "priorityAccess": "Пріоритетний доступ до моделі AI",
+      "enhanced": "Розширені юридичні функції",
+      "support": "Підтримка електронною поштою"
     },
     "business": {
-      "unlimited": "Unlimited usage",
-      "team": "Team collaboration",
-      "security": "Enterprise security",
-      "prioritySupport": "Priority support",
-      "customIntegrations": "Custom integrations"
+      "unlimited": "Необмежене використання",
+      "team": "Командна співпраця",
+      "security": "Корпоративна безпека",
+      "prioritySupport": "Пріоритетна підтримка",
+      "customIntegrations": "Користувацькі інтеграції"
     }
   },
   "modal": {
-    "title": "Upgrade your plan",
+    "title": "Оновіть свій план",
     "tabs": {
-      "personal": "Personal",
-      "business": "Business"
+      "personal": "Особистий",
+      "business": "Бізнес"
     },
-    "countryLabel": "Select your country",
-    "currentPlan": "Current Plan",
-    "recommended": "Recommended",
-    "popular": "Most Popular",
-    "close": "Close"
+    "countryLabel": "Виберіть свою країну",
+    "currentPlan": "Поточний план",
+    "recommended": "Рекомендовано",
+    "popular": "Найпопулярніший",
+    "close": "Закрити"
   },
   "billing": {
-    "monthly": "month",
-    "yearly": "year",
-    "billedMonthly": "Billed monthly",
-    "billedAnnually": "Billed annually",
+    "monthly": "місяць",
+    "yearly": "рік",
+    "billedMonthly": "Щомісячна оплата",
+    "billedAnnually": "Щорічна оплата",
     "currency": {
       "usd": "USD"
     }
   },
   "comparison": {
-    "title": "Compare Plans",
-    "feature": "Feature",
-    "included": "Included",
-    "notIncluded": "Not included"
+    "title": "Порівняти плани",
+    "feature": "Функція",
+    "included": "Включено",
+    "notIncluded": "Не включено"
   }
 }

@@ -1,149 +1,161 @@
 {
   "app": {
-    "loading": "Loading…"
+    "loading": "Carregando…"
   },
   "notifications": {
-    "settingsSavedTitle": "Settings saved",
-    "settingsSavedBody": "Your preferences have been updated."
+    "settingsSavedTitle": "Configurações salvas",
+    "settingsSavedBody": "Suas preferências foram atualizadas."
   },
   "language": {
-    "auto": "Auto-detect",
+    "auto": "Detectar automaticamente",
     "en": "English",
     "vi": "Tiếng Việt",
     "es": "Español",
     "fr": "Français",
     "de": "Deutsch",
     "zh": "中文",
-    "ja": "日本語"
+    "ja": "日本語",
+    "pt": "Português",
+    "ar": "العربية",
+    "ru": "Русский",
+    "it": "Italiano",
+    "ko": "한국어",
+    "nl": "Nederlands",
+    "pl": "Polski",
+    "tr": "Türkçe",
+    "th": "ไทย",
+    "id": "Bahasa Indonesia",
+    "hi": "हिन्दी",
+    "uk": "Українська"
   },
   "forms": {
     "labels": {
-      "name": "Full Name",
-      "email": "Email Address",
-      "phone": "Phone Number",
-      "password": "Password",
-      "confirmPassword": "Confirm Password",
-      "birthday": "Birthday",
-      "terms": "Terms and Conditions",
-      "privacy": "Privacy Policy",
-      "search": "Search",
-      "select": "Select an option",
-      "upload": "Upload File",
-      "message": "Message",
-      "subject": "Subject"
+      "name": "Nome Completo",
+      "email": "Endereço de E-mail",
+      "phone": "Número de Telefone",
+      "password": "Senha",
+      "confirmPassword": "Confirmar Senha",
+      "birthday": "Data de Nascimento",
+      "terms": "Termos e Condições",
+      "privacy": "Política de Privacidade",
+      "search": "Pesquisar",
+      "select": "Selecione uma opção",
+      "upload": "Enviar Arquivo",
+      "message": "Mensagem",
+      "subject": "Assunto"
     },
     "placeholders": {
-      "name": "Enter your full name",
-      "email": "Enter your email address",
-      "phone": "Enter your phone number",
-      "password": "Enter your password",
-      "confirmPassword": "Confirm your password",
-      "birthday": "Select your birthday",
-      "search": "Search...",
-      "select": "Select an option",
-      "message": "Enter your message",
-      "subject": "Enter your subject"
+      "name": "Digite seu nome completo",
+      "email": "Digite seu endereço de e-mail",
+      "phone": "Digite seu número de telefone",
+      "password": "Digite sua senha",
+      "confirmPassword": "Confirme sua senha",
+      "birthday": "Selecione sua data de nascimento",
+      "search": "Pesquisar...",
+      "select": "Selecione uma opção",
+      "message": "Digite sua mensagem",
+      "subject": "Digite o assunto"
     },
     "descriptions": {
-      "optional": "Optional",
-      "required": "Required",
-      "passwordHelp": "Must be at least 8 characters long",
-      "phoneHelp": "Include country code for international numbers",
-      "fileHelp": "Supported formats: PDF, DOC, DOCX"
+      "optional": "Opcional",
+      "required": "Obrigatório",
+      "passwordHelp": "Deve ter pelo menos 8 caracteres",
+      "phoneHelp": "Inclua o código do país para números internacionais",
+      "fileHelp": "Formatos suportados: PDF, DOC, DOCX"
     },
     "validation": {
-      "required": "This field is required",
-      "email": "Please enter a valid email address",
-      "phone": "Please enter a valid phone number",
-      "password": "Password must be at least 8 characters",
-      "confirmPassword": "Passwords do not match",
-      "date": "Please enter a valid date (MM/DD/YYYY)",
-      "futureDate": "Date cannot be in the future",
-      "fileType": "Please select a valid file type",
-      "fileSize": "File size must be less than 10MB",
-      "termsRequired": "You must agree to the terms"
+      "required": "Este campo é obrigatório",
+      "email": "Por favor, digite um endereço de e-mail válido",
+      "phone": "Por favor, digite um número de telefone válido",
+      "password": "A senha deve ter pelo menos 8 caracteres",
+      "confirmPassword": "As senhas não coincidem",
+      "date": "Por favor, digite uma data válida (DD/MM/AAAA)",
+      "futureDate": "A data não pode estar no futuro",
+      "fileType": "Por favor, selecione um tipo de arquivo válido",
+      "fileSize": "O tamanho do arquivo deve ser menor que 10MB",
+      "termsRequired": "Você deve concordar com os termos"
     },
     "accessibility": {
-      "togglePassword": "Toggle password visibility",
-      "clearSearch": "Clear search",
-      "selectOption": "Select option",
-      "removeOption": "Remove option",
-      "uploadFile": "Upload file",
-      "removeFile": "Remove file",
-      "calendarOpen": "Open calendar",
-      "calendarClose": "Close calendar"
+      "togglePassword": "Alternar visibilidade da senha",
+      "clearSearch": "Limpar pesquisa",
+      "selectOption": "Selecionar opção",
+      "removeOption": "Remover opção",
+      "uploadFile": "Enviar arquivo",
+      "removeFile": "Remover arquivo",
+      "calendarOpen": "Abrir calendário",
+      "calendarClose": "Fechar calendário"
     },
     "actions": {
-      "submit": "Submit",
-      "submitting": "Submitting...",
-      "reset": "Reset",
-      "cancel": "Cancel",
-      "save": "Save",
-      "saving": "Saving..."
+      "submit": "Enviar",
+      "submitting": "Enviando...",
+      "reset": "Redefinir",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "saving": "Salvando..."
     },
     "examples": {
       "validatedForm": {
-        "title": "Validated Form Example"
+        "title": "Exemplo de Formulário Validado"
       }
     },
     "contactForm": {
-      "location": "Location",
-      "opposingParty": "Opposing Party (Optional)",
-      "submit": "Submit Contact Information",
+      "location": "Localização",
+      "opposingParty": "Parte Adversária (Opcional)",
+      "submit": "Enviar Informações de Contato",
       "placeholders": {
-        "location": "City, State (e.g., New York, NY)",
-        "opposingParty": "Name of the other party involved (if any)"
+        "location": "Cidade, Estado (ex: São Paulo, SP)",
+        "opposingParty": "Nome da outra parte envolvida (se houver)"
       }
     }
   },
   "onboarding": {
-    "title": "Welcome to Blawby AI",
-    "subtitle": "Let's get you set up",
+    "title": "Bem-vindo ao Blawby AI",
+    "subtitle": "Vamos configurar sua conta",
     "step1": {
-      "title": "Tell us about you",
-      "subtitle": "Help us personalize your experience",
-      "fullName": "Full name",
-      "fullNamePlaceholder": "Enter your full name",
-      "birthday": "Birthday",
-      "birthdayPlaceholder": "MM/DD/YYYY",
-      "termsAgreement": "By clicking \"Continue\", you agree to our <termsLink>Terms</termsLink> and have read our <privacyLink>Privacy Policy</privacyLink>.",
-      "continue": "Continue",
-      "back": "Back",
-      "required": "This field is required"
+      "title": "Conte-nos sobre você",
+      "subtitle": "Ajude-nos a personalizar sua experiência",
+      "fullName": "Nome completo",
+      "fullNamePlaceholder": "Digite seu nome completo",
+      "birthday": "Data de nascimento",
+      "birthdayPlaceholder": "DD/MM/AAAA",
+      "termsAgreement": "Ao clicar em \"Continuar\", você concorda com nossos <termsLink>Termos</termsLink> e leu nossa <privacyLink>Política de Privacidade</privacyLink>.",
+      "continue": "Continuar",
+      "back": "Voltar",
+      "required": "Este campo é obrigatório"
     },
     "step2": {
-      "title": "What do you want to use Blawby AI for?",
-      "subtitle": "This helps us provide more relevant suggestions",
+      "title": "Para que você quer usar o Blawby AI?",
+      "subtitle": "Isso nos ajuda a fornecer sugestões mais relevantes",
       "options": {
-        "personal": "Personal Legal Issues",
-        "business": "Business Legal Needs", 
-        "research": "Legal Research",
-        "documents": "Document Review",
-        "other": "Other"
+        "personal": "Questões Jurídicas Pessoais",
+        "business": "Necessidades Jurídicas Empresariais",
+        "research": "Pesquisa Jurídica",
+        "documents": "Revisão de Documentos",
+        "other": "Outro"
       },
-      "otherPlaceholder": "Tell us more...",
-      "next": "Next",
-      "skip": "Skip"
+      "otherPlaceholder": "Conte-nos mais...",
+      "next": "Próximo",
+      "skip": "Pular"
     },
     "welcome": {
       "title": "Blawby AI",
-      "subtitle": "Tips for getting started",
+      "subtitle": "Dicas para começar",
       "tips": {
         "askAway": {
-          "title": "Ask away",
-          "description": "Blawby AI can answer legal questions, help you understand legal concepts, review documents, and much more."
+          "title": "Pergunte à vontade",
+          "description": "O Blawby AI pode responder perguntas jurídicas, ajudá-lo a entender conceitos legais, revisar documentos e muito mais."
         },
         "privacy": {
-          "title": "Don't share sensitive info",
-          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our <helpCenterLink>Help Center</helpCenterLink>."
+          "title": "Não compartilhe informações sensíveis",
+          "description": "O histórico de conversas pode ser revisado ou usado para melhorar nossos serviços. Saiba mais sobre suas opções em nossa <helpCenterLink>Central de Ajuda</helpCenterLink>."
         },
         "accuracy": {
-          "title": "Check your facts",
-          "description": "While we have safeguards, Blawby AI may give you inaccurate information. It's not intended to give legal advice."
+          "title": "Verifique seus fatos",
+          "description": "Embora tenhamos salvaguardas, o Blawby AI pode fornecer informações imprecisas. Não se destina a fornecer aconselhamento jurídico."
         }
       },
-      "helpCenter": "Help Center",
-      "letsGo": "Okay, let's go"
+      "helpCenter": "Central de Ajuda",
+      "letsGo": "Ok, vamos lá"
     }
   }
 }

@@ -1,19 +1,19 @@
 {
   "menu": {
-    "profile": "Profile",
-    "settings": "Settings",
-    "upgrade": "Upgrade plan",
-    "upgradeShort": "Upgrade",
-    "help": "Get help",
-    "signOut": "Sign out",
-    "signIn": "Sign In"
+    "profile": "Профіль",
+    "settings": "Налаштування",
+    "upgrade": "Оновити план",
+    "upgradeShort": "Оновити",
+    "help": "Отримати допомогу",
+    "signOut": "Вийти",
+    "signIn": "Увійти"
   },
   "status": {
-    "signingOut": "Signing Out...",
-    "loading": "Loading..."
+    "signingOut": "Вихід...",
+    "loading": "Завантаження..."
   },
   "aria": {
-    "userProfile": "User profile for {{name}}",
-    "signInButton": "Sign in to your account"
+    "userProfile": "Профіль користувача для {{name}}",
+    "signInButton": "Увійти в обліковий запис"
   }
 }

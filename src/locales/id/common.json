@@ -1,149 +1,161 @@
 {
   "app": {
-    "loading": "Loading…"
+    "loading": "Memuat…"
   },
   "notifications": {
-    "settingsSavedTitle": "Settings saved",
-    "settingsSavedBody": "Your preferences have been updated."
+    "settingsSavedTitle": "Pengaturan disimpan",
+    "settingsSavedBody": "Preferensi Anda telah diperbarui."
   },
   "language": {
-    "auto": "Auto-detect",
+    "auto": "Deteksi Otomatis",
     "en": "English",
     "vi": "Tiếng Việt",
     "es": "Español",
     "fr": "Français",
     "de": "Deutsch",
     "zh": "中文",
-    "ja": "日本語"
+    "ja": "日本語",
+    "pt": "Português",
+    "ar": "العربية",
+    "ru": "Русский",
+    "it": "Italiano",
+    "ko": "한국어",
+    "nl": "Nederlands",
+    "pl": "Polski",
+    "tr": "Türkçe",
+    "th": "ไทย",
+    "id": "Bahasa Indonesia",
+    "hi": "हिन्दी",
+    "uk": "Українська"
   },
   "forms": {
     "labels": {
-      "name": "Full Name",
-      "email": "Email Address",
-      "phone": "Phone Number",
-      "password": "Password",
-      "confirmPassword": "Confirm Password",
-      "birthday": "Birthday",
-      "terms": "Terms and Conditions",
-      "privacy": "Privacy Policy",
-      "search": "Search",
-      "select": "Select an option",
-      "upload": "Upload File",
-      "message": "Message",
-      "subject": "Subject"
+      "name": "Nama Lengkap",
+      "email": "Alamat Email",
+      "phone": "Nomor Telepon",
+      "password": "Kata Sandi",
+      "confirmPassword": "Konfirmasi Kata Sandi",
+      "birthday": "Tanggal Lahir",
+      "terms": "Syarat dan Ketentuan",
+      "privacy": "Kebijakan Privasi",
+      "search": "Cari",
+      "select": "Pilih opsi",
+      "upload": "Unggah File",
+      "message": "Pesan",
+      "subject": "Subjek"
     },
     "placeholders": {
-      "name": "Enter your full name",
-      "email": "Enter your email address",
-      "phone": "Enter your phone number",
-      "password": "Enter your password",
-      "confirmPassword": "Confirm your password",
-      "birthday": "Select your birthday",
-      "search": "Search...",
-      "select": "Select an option",
-      "message": "Enter your message",
-      "subject": "Enter your subject"
+      "name": "Masukkan nama lengkap Anda",
+      "email": "Masukkan alamat email Anda",
+      "phone": "Masukkan nomor telepon Anda",
+      "password": "Masukkan kata sandi Anda",
+      "confirmPassword": "Konfirmasi kata sandi Anda",
+      "birthday": "Pilih tanggal lahir Anda",
+      "search": "Cari...",
+      "select": "Pilih opsi",
+      "message": "Masukkan pesan Anda",
+      "subject": "Masukkan subjek Anda"
     },
     "descriptions": {
-      "optional": "Optional",
-      "required": "Required",
-      "passwordHelp": "Must be at least 8 characters long",
-      "phoneHelp": "Include country code for international numbers",
-      "fileHelp": "Supported formats: PDF, DOC, DOCX"
+      "optional": "Opsional",
+      "required": "Wajib",
+      "passwordHelp": "Harus minimal 8 karakter",
+      "phoneHelp": "Sertakan kode negara untuk nomor internasional",
+      "fileHelp": "Format yang didukung: PDF, DOC, DOCX"
     },
     "validation": {
-      "required": "This field is required",
-      "email": "Please enter a valid email address",
-      "phone": "Please enter a valid phone number",
-      "password": "Password must be at least 8 characters",
-      "confirmPassword": "Passwords do not match",
-      "date": "Please enter a valid date (MM/DD/YYYY)",
-      "futureDate": "Date cannot be in the future",
-      "fileType": "Please select a valid file type",
-      "fileSize": "File size must be less than 10MB",
-      "termsRequired": "You must agree to the terms"
+      "required": "Bidang ini wajib diisi",
+      "email": "Masukkan alamat email yang valid",
+      "phone": "Masukkan nomor telepon yang valid",
+      "password": "Kata sandi harus minimal 8 karakter",
+      "confirmPassword": "Kata sandi tidak cocok",
+      "date": "Masukkan tanggal yang valid (DD/MM/YYYY)",
+      "futureDate": "Tanggal tidak boleh di masa depan",
+      "fileType": "Pilih jenis file yang valid",
+      "fileSize": "Ukuran file harus kurang dari 10MB",
+      "termsRequired": "Anda harus menyetujui syarat dan ketentuan"
     },
     "accessibility": {
-      "togglePassword": "Toggle password visibility",
-      "clearSearch": "Clear search",
-      "selectOption": "Select option",
-      "removeOption": "Remove option",
-      "uploadFile": "Upload file",
-      "removeFile": "Remove file",
-      "calendarOpen": "Open calendar",
-      "calendarClose": "Close calendar"
+      "togglePassword": "Tampilkan/sembunyikan kata sandi",
+      "clearSearch": "Hapus pencarian",
+      "selectOption": "Pilih opsi",
+      "removeOption": "Hapus opsi",
+      "uploadFile": "Unggah file",
+      "removeFile": "Hapus file",
+      "calendarOpen": "Buka kalender",
+      "calendarClose": "Tutup kalender"
     },
     "actions": {
-      "submit": "Submit",
-      "submitting": "Submitting...",
-      "reset": "Reset",
-      "cancel": "Cancel",
-      "save": "Save",
-      "saving": "Saving..."
+      "submit": "Kirim",
+      "submitting": "Mengirim...",
+      "reset": "Atur Ulang",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "saving": "Menyimpan..."
     },
     "examples": {
       "validatedForm": {
-        "title": "Validated Form Example"
+        "title": "Contoh Formulir Tervalidasi"
       }
     },
     "contactForm": {
-      "location": "Location",
-      "opposingParty": "Opposing Party (Optional)",
-      "submit": "Submit Contact Information",
+      "location": "Lokasi",
+      "opposingParty": "Pihak Lawan (Opsional)",
+      "submit": "Kirim Informasi Kontak",
       "placeholders": {
-        "location": "City, State (e.g., New York, NY)",
-        "opposingParty": "Name of the other party involved (if any)"
+        "location": "Kota, Provinsi (contoh: Jakarta, DKI)",
+        "opposingParty": "Nama pihak lain yang terlibat (jika ada)"
       }
     }
   },
   "onboarding": {
-    "title": "Welcome to Blawby AI",
-    "subtitle": "Let's get you set up",
+    "title": "Selamat datang di Blawby AI",
+    "subtitle": "Mari kita siapkan akun Anda",
     "step1": {
-      "title": "Tell us about you",
-      "subtitle": "Help us personalize your experience",
-      "fullName": "Full name",
-      "fullNamePlaceholder": "Enter your full name",
-      "birthday": "Birthday",
-      "birthdayPlaceholder": "MM/DD/YYYY",
-      "termsAgreement": "By clicking \"Continue\", you agree to our <termsLink>Terms</termsLink> and have read our <privacyLink>Privacy Policy</privacyLink>.",
-      "continue": "Continue",
-      "back": "Back",
-      "required": "This field is required"
+      "title": "Ceritakan tentang Anda",
+      "subtitle": "Bantu kami mempersonalisasi pengalaman Anda",
+      "fullName": "Nama lengkap",
+      "fullNamePlaceholder": "Masukkan nama lengkap Anda",
+      "birthday": "Tanggal lahir",
+      "birthdayPlaceholder": "DD/MM/YYYY",
+      "termsAgreement": "Dengan mengklik \"Lanjutkan\", Anda menyetujui <termsLink>Ketentuan</termsLink> kami dan telah membaca <privacyLink>Kebijakan Privasi</privacyLink> kami.",
+      "continue": "Lanjutkan",
+      "back": "Kembali",
+      "required": "Bidang ini wajib diisi"
     },
     "step2": {
-      "title": "What do you want to use Blawby AI for?",
-      "subtitle": "This helps us provide more relevant suggestions",
+      "title": "Untuk apa Anda ingin menggunakan Blawby AI?",
+      "subtitle": "Ini membantu kami memberikan saran yang lebih relevan",
       "options": {
-        "personal": "Personal Legal Issues",
-        "business": "Business Legal Needs", 
-        "research": "Legal Research",
-        "documents": "Document Review",
-        "other": "Other"
+        "personal": "Masalah Hukum Pribadi",
+        "business": "Kebutuhan Hukum Bisnis",
+        "research": "Riset Hukum",
+        "documents": "Peninjauan Dokumen",
+        "other": "Lainnya"
       },
-      "otherPlaceholder": "Tell us more...",
-      "next": "Next",
-      "skip": "Skip"
+      "otherPlaceholder": "Ceritakan lebih lanjut...",
+      "next": "Selanjutnya",
+      "skip": "Lewati"
     },
     "welcome": {
       "title": "Blawby AI",
-      "subtitle": "Tips for getting started",
+      "subtitle": "Tips untuk memulai",
       "tips": {
         "askAway": {
-          "title": "Ask away",
-          "description": "Blawby AI can answer legal questions, help you understand legal concepts, review documents, and much more."
+          "title": "Tanyakan apa saja",
+          "description": "Blawby AI dapat menjawab pertanyaan hukum, membantu Anda memahami konsep hukum, meninjau dokumen, dan banyak lagi."
         },
         "privacy": {
-          "title": "Don't share sensitive info",
-          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our <helpCenterLink>Help Center</helpCenterLink>."
+          "title": "Jangan bagikan info sensitif",
+          "description": "Riwayat obrolan mungkin ditinjau atau digunakan untuk meningkatkan layanan kami. Pelajari lebih lanjut tentang pilihan Anda di <helpCenterLink>Pusat Bantuan</helpCenterLink> kami."
         },
         "accuracy": {
-          "title": "Check your facts",
-          "description": "While we have safeguards, Blawby AI may give you inaccurate information. It's not intended to give legal advice."
+          "title": "Periksa fakta Anda",
+          "description": "Meskipun kami memiliki pengamanan, Blawby AI mungkin memberikan informasi yang tidak akurat. Ini tidak dimaksudkan untuk memberikan nasihat hukum."
         }
       },
-      "helpCenter": "Help Center",
-      "letsGo": "Okay, let's go"
+      "helpCenter": "Pusat Bantuan",
+      "letsGo": "Oke, ayo mulai"
     }
   }
 }

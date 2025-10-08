@@ -1,231 +1,231 @@
 {
   "plans": {
     "free": {
-      "name": "Free",
-      "description": "Legal AI assistance for everyday needs",
-      "buttonText": "Your current plan"
+      "name": "مجاني",
+      "description": "مساعدة قانونية بالذكاء الاصطناعي للاحتياجات اليومية",
+      "buttonText": "خطتك الحالية"
     },
     "plus": {
       "name": "Plus",
-      "description": "Enhanced legal AI capabilities for professionals",
-      "buttonText": "Get Plus"
+      "description": "قدرات قانونية محسّنة بالذكاء الاصطناعي للمحترفين",
+      "buttonText": "احصل على Plus"
     },
     "business": {
       "name": "Business",
-      "description": "Secure, collaborative workspace for teams",
-      "buttonText": "Get Business"
+      "description": "مساحة عمل آمنة وتعاونية للفرق",
+      "buttonText": "احصل على Business"
     }
   },
   "features": {
     "aiAccess": {
-      "name": "AI Access",
-      "description": "Access to our legal AI models",
+      "name": "الوصول إلى الذكاء الاصطناعي",
+      "description": "الوصول إلى نماذج الذكاء الاصطناعي القانونية",
       "tiers": {
-        "free": "Blawby AI-1 (Limited)",
-        "plus": "Blawby AI-1 (Enhanced)",
-        "business": "Blawby AI-1 (Unlimited)"
+        "free": "Blawby AI-1 (محدود)",
+        "plus": "Blawby AI-1 (محسّن)",
+        "business": "Blawby AI-1 (غير محدود)"
       },
       "text": {
-        "free": "Access to Blawby AI-1",
-        "plus": "Enhanced access to Blawby AI-1",
-        "business": "Unlimited access to our best model for work"
+        "free": "الوصول إلى Blawby AI-1",
+        "plus": "وصول محسّن إلى Blawby AI-1",
+        "business": "وصول غير محدود لأفضل نموذج لدينا للعمل"
       },
       "detail": {
-        "free": "Limited access to our legal AI model",
-        "plus": "Priority access to our legal AI model",
-        "business": "Unlimited access to advanced AI models"
+        "free": "وصول محدود لنموذج الذكاء الاصطناعي القانوني",
+        "plus": "وصول ذو أولوية لنموذج الذكاء الاصطناعي القانوني",
+        "business": "وصول غير محدود لنماذج ذكاء اصطناعي متقدمة"
       }
     },
     "documentAnalysis": {
-      "name": "Document Analysis",
-      "description": "Upload and analyze legal documents",
+      "name": "تحليل المستندات",
+      "description": "تحميل وتحليل المستندات القانونية",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "محدود",
+        "plus": "محسّن",
+        "business": "غير محدود"
       },
       "text": {
-        "free": "Limited document analysis",
-        "plus": "Enhanced document analysis",
-        "business": "Advanced document analysis & case preparation"
+        "free": "تحليل مستندات محدود",
+        "plus": "تحليل مستندات محسّن",
+        "business": "تحليل متقدم للمستندات وإعداد القضايا"
       },
       "detail": {
-        "free": "Upload and analyze basic legal documents",
-        "plus": "Faster and more accurate legal document processing",
-        "business": "Full legal document processing capabilities"
+        "free": "تحميل وتحليل المستندات القانونية الأساسية",
+        "plus": "معالجة أسرع وأدق للمستندات القانونية",
+        "business": "قدرات معالجة كاملة للمستندات القانونية"
       }
     },
     "casePreparation": {
-      "name": "Case PDF Preparation",
-      "description": "AI-powered case document preparation",
+      "name": "إعداد ملفات PDF للقضايا",
+      "description": "إعداد مستندات القضايا بمساعدة الذكاء الاصطناعي",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "محدود",
+        "plus": "محسّن",
+        "business": "غير محدود"
       },
       "text": {
-        "free": "Limited case PDF preparation",
-        "plus": "Enhanced case PDF preparation",
-        "business": "Advanced case PDF preparation"
+        "free": "إعداد محدود لملفات PDF للقضايا",
+        "plus": "إعداد محسّن لملفات PDF للقضايا",
+        "business": "إعداد متقدم لملفات PDF للقضايا"
       },
       "detail": {
-        "free": "Basic case document preparation",
-        "plus": "Advanced case document preparation",
-        "business": "Full case document preparation capabilities"
+        "free": "إعداد أساسي لمستندات القضايا",
+        "plus": "إعداد متقدم لمستندات القضايا",
+        "business": "قدرات إعداد كاملة لمستندات القضايا"
       }
     },
     "memoryContext": {
-      "name": "Memory & Context",
-      "description": "Conversation memory and context",
+      "name": "الذاكرة والسياق",
+      "description": "ذاكرة وسياق المحادثات",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "محدود",
+        "plus": "محسّن",
+        "business": "غير محدود"
       },
       "text": {
-        "free": "Limited memory and context",
-        "plus": "Extended memory and context",
-        "business": "Unlimited memory and context"
+        "free": "ذاكرة وسياق محدودان",
+        "plus": "ذاكرة وسياق ممتدان",
+        "business": "ذاكرة وسياق غير محدودين"
       },
       "detail": {
-        "free": "Basic conversation memory",
-        "plus": "Longer conversation memory",
-        "business": "Unlimited conversation history"
+        "free": "ذاكرة أساسية للمحادثات",
+        "plus": "ذاكرة أطول للمحادثات",
+        "business": "سجل محادثات غير محدود"
       }
     },
     "lawyerSearch": {
-      "name": "Lawyer Search",
-      "description": "Find and connect with qualified lawyers",
+      "name": "البحث عن محامين",
+      "description": "ابحث عن محامين مؤهلين وتواصل معهم",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "محدود",
+        "plus": "محسّن",
+        "business": "غير محدود"
       },
       "text": {
-        "free": "Limited lawyer search",
-        "plus": "Enhanced lawyer search",
-        "business": "Advanced lawyer search"
+        "free": "بحث محدود عن محامين",
+        "plus": "بحث محسّن عن محامين",
+        "business": "بحث متقدم عن محامين"
       },
       "detail": {
-        "free": "Basic lawyer search capabilities",
-        "plus": "Advanced lawyer matching capabilities",
-        "business": "Full lawyer matching and research capabilities"
+        "free": "قدرات بحث أساسية عن محامين",
+        "plus": "قدرات مطابقة متقدمة للمحامين",
+        "business": "قدرات كاملة للمطابقة والبحث عن محامين"
       }
     },
     "teamCollaboration": {
-      "name": "Team Collaboration",
-      "description": "Shared projects and team features",
-      "text": "Tools for teams like shared projects & workflows",
-      "detail": "Team collaboration and project management"
+      "name": "التعاون الجماعي",
+      "description": "مشاريع مشتركة وميزات فريق",
+      "text": "أدوات للفرق مثل المشاريع وسير العمل المشترك",
+      "detail": "التعاون الجماعي وإدارة المشاريع"
     },
     "security": {
-      "name": "Advanced Security",
-      "description": "SSO, MFA, and enterprise security",
-      "text": "Advanced security with SSO, MFA, & more",
-      "detail": "Enterprise-grade security features"
+      "name": "أمان متقدم",
+      "description": "SSO وMFA وأمان المؤسسات",
+      "text": "أمان متقدم مع SSO وMFA والمزيد",
+      "detail": "ميزات أمان على مستوى المؤسسات"
     },
     "privacy": {
-      "name": "Privacy Protection",
-      "description": "Data never used for training",
-      "text": "Privacy built in; data never used for training",
-      "detail": "Complete data privacy protection"
+      "name": "حماية الخصوصية",
+      "description": "البيانات لا تُستخدم أبداً للتدريب",
+      "text": "خصوصية مدمجة؛ البيانات لا تُستخدم أبداً للتدريب",
+      "detail": "حماية كاملة لخصوصية البيانات"
     },
     "integrations": {
-      "name": "Integrations",
-      "description": "SharePoint and other tools",
-      "text": "Integration with Quickbooks & other tools",
-      "detail": "Connect with your existing workflow"
+      "name": "التكاملات",
+      "description": "SharePoint وأدوات أخرى",
+      "text": "التكامل مع Quickbooks وأدوات أخرى",
+      "detail": "اتصل بسير عملك الحالي"
     },
     "billing": {
-      "name": "Simplified Billing",
-      "description": "User management and billing",
-      "text": "Simplified billing and user management",
-      "detail": "Easy team and billing management"
+      "name": "فوترة مبسطة",
+      "description": "إدارة المستخدمين والفوترة",
+      "text": "فوترة مبسطة وإدارة المستخدمين",
+      "detail": "إدارة سهلة للفريق والفوترة"
     },
     "transcription": {
-      "name": "Voice Transcription",
-      "description": "Meeting and voice transcription",
-      "text": "Voice transcription and analysis",
-      "detail": "Voice transcription and legal analysis"
+      "name": "تحويل الصوت إلى نص",
+      "description": "تحويل الاجتماعات والصوت إلى نص",
+      "text": "تحويل الصوت إلى نص وتحليله",
+      "detail": "تحويل صوتي إلى نص وتحليل قانوني"
     },
     "agents": {
-      "name": "AI Agents",
-      "description": "Coding and research agents",
-      "text": "Legal research and lawyer search agents",
-      "detail": "Specialized AI agents for legal research and lawyer matching"
+      "name": "وكلاء الذكاء الاصطناعي",
+      "description": "وكلاء الترميز والبحث",
+      "text": "وكلاء البحث القانوني والبحث عن محامين",
+      "detail": "وكلاء ذكاء اصطناعي متخصصون للبحث القانوني ومطابقة المحامين"
     },
     "plusIncludes": {
-      "text": "Everything in Free, with higher limits",
-      "detail": "All free features with increased usage"
+      "text": "كل شيء في المجاني، مع حدود أعلى",
+      "detail": "جميع الميزات المجانية مع زيادة الاستخدام"
     },
     "businessIncludes": {
-      "text": "Everything in Plus, with even higher limits",
-      "detail": "All Plus features with unlimited usage"
+      "text": "كل شيء في Plus، مع حدود أعلى",
+      "detail": "جميع ميزات Plus مع استخدام غير محدود"
     }
   },
   "limitations": {
     "free": {
-      "messagesPerDay": "Limited to 20 messages per day",
-      "documentSupport": "Basic document analysis support",
-      "responseTime": "Standard response times",
-      "noTeam": "No team collaboration features"
+      "messagesPerDay": "محدود بـ 20 رسالة في اليوم",
+      "documentSupport": "دعم أساسي لتحليل المستندات",
+      "responseTime": "أوقات استجابة قياسية",
+      "noTeam": "لا توجد ميزات تعاون جماعي"
     },
     "plus": {
-      "messagesPerDay": "Limited to 200 messages per day",
-      "noTeam": "No team collaboration features",
-      "standardSupport": "Standard support response times"
+      "messagesPerDay": "محدود بـ 200 رسالة في اليوم",
+      "noTeam": "لا توجد ميزات تعاون جماعي",
+      "standardSupport": "أوقات استجابة دعم قياسية"
     },
     "business": {
-      "minUsers": "Requires 2+ users",
-      "annualBilling": "Annual billing recommended"
+      "minUsers": "يتطلب 2+ مستخدمين",
+      "annualBilling": "الفوترة السنوية موصى بها"
     }
   },
   "benefits": {
     "free": {
-      "personal": "Perfect for personal legal needs",
-      "noCard": "No credit card required",
-      "fullAccess": "Full access to core legal AI features",
-      "support": "Community support"
+      "personal": "مثالي للاحتياجات القانونية الشخصية",
+      "noCard": "لا حاجة لبطاقة ائتمان",
+      "fullAccess": "وصول كامل للميزات الأساسية للذكاء الاصطناعي القانوني",
+      "support": "دعم المجتمع"
     },
     "plus": {
-      "higherLimits": "5x higher usage limits",
-      "priorityAccess": "Priority AI model access",
-      "enhanced": "Enhanced legal features",
-      "support": "Email support"
+      "higherLimits": "حدود استخدام أعلى 5 أضعاف",
+      "priorityAccess": "وصول ذو أولوية لنموذج الذكاء الاصطناعي",
+      "enhanced": "ميزات قانونية محسّنة",
+      "support": "دعم عبر البريد الإلكتروني"
     },
     "business": {
-      "unlimited": "Unlimited usage",
-      "team": "Team collaboration",
-      "security": "Enterprise security",
-      "prioritySupport": "Priority support",
-      "customIntegrations": "Custom integrations"
+      "unlimited": "استخدام غير محدود",
+      "team": "تعاون جماعي",
+      "security": "أمان المؤسسات",
+      "prioritySupport": "دعم ذو أولوية",
+      "customIntegrations": "تكاملات مخصصة"
     }
   },
   "modal": {
-    "title": "Upgrade your plan",
+    "title": "قم بترقية خطتك",
     "tabs": {
-      "personal": "Personal",
+      "personal": "شخصي",
       "business": "Business"
     },
-    "countryLabel": "Select your country",
-    "currentPlan": "Current Plan",
-    "recommended": "Recommended",
-    "popular": "Most Popular",
-    "close": "Close"
+    "countryLabel": "اختر بلدك",
+    "currentPlan": "الخطة الحالية",
+    "recommended": "موصى به",
+    "popular": "الأكثر شعبية",
+    "close": "إغلاق"
   },
   "billing": {
-    "monthly": "month",
-    "yearly": "year",
-    "billedMonthly": "Billed monthly",
-    "billedAnnually": "Billed annually",
+    "monthly": "شهر",
+    "yearly": "سنة",
+    "billedMonthly": "يتم إصدار الفاتورة شهرياً",
+    "billedAnnually": "يتم إصدار الفاتورة سنوياً",
     "currency": {
       "usd": "USD"
     }
   },
   "comparison": {
-    "title": "Compare Plans",
-    "feature": "Feature",
-    "included": "Included",
-    "notIncluded": "Not included"
+    "title": "مقارنة الخطط",
+    "feature": "الميزة",
+    "included": "مضمّن",
+    "notIncluded": "غير مضمّن"
   }
 }

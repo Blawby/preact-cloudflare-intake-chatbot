@@ -1,355 +1,355 @@
 {
   "navigation": {
-    "close": "Close settings",
-    "backToSettings": "Back to settings",
+    "close": "Fechar configurações",
+    "backToSettings": "Voltar para configurações",
     "items": {
-      "general": "General",
-      "notifications": "Notifications",
-      "account": "Account",
-      "security": "Security",
-      "help": "Help",
-      "signOut": "Sign Out"
+      "general": "Geral",
+      "notifications": "Notificações",
+      "account": "Conta",
+      "security": "Segurança",
+      "help": "Ajuda",
+      "signOut": "Sair"
     },
     "signOut": {
-      "toastTitle": "Signed out successfully",
-      "toastBody": "You have been signed out"
+      "toastTitle": "Desconectado com sucesso",
+      "toastBody": "Você foi desconectado"
     }
   },
   "general": {
-    "title": "General",
+    "title": "Geral",
     "theme": {
-      "label": "Theme",
+      "label": "Tema",
       "options": {
-        "light": "Light",
-        "dark": "Dark",
-        "system": "System"
+        "light": "Claro",
+        "dark": "Escuro",
+        "system": "Sistema"
       }
     },
     "accent": {
-      "label": "Accent color",
+      "label": "Cor de destaque",
       "options": {
-        "default": "Default",
-        "blue": "Blue",
-        "green": "Green",
-        "purple": "Purple",
-        "red": "Red"
+        "default": "Padrão",
+        "blue": "Azul",
+        "green": "Verde",
+        "purple": "Roxo",
+        "red": "Vermelho"
       }
     },
     "language": {
-      "label": "Language",
-      "description": "Select the language used for the interface.",
-      "toastTitle": "Language updated",
-      "toastBody": "Your language preference has been applied."
+      "label": "Idioma",
+      "description": "Selecione o idioma usado para a interface.",
+      "toastTitle": "Idioma atualizado",
+      "toastBody": "Sua preferência de idioma foi aplicada."
     },
     "spokenLanguage": {
-      "label": "Spoken language",
-      "description": "For best results, select the language you mainly speak. If it's not listed, auto-detection may still work."
+      "label": "Idioma falado",
+      "description": "Para melhores resultados, selecione o idioma que você fala principalmente. Se não estiver listado, a detecção automática ainda pode funcionar."
     }
   },
   "account": {
-    "title": "Account",
-    "loadingError": "Failed to load account data",
-    "retry": "Retry",
+    "title": "Conta",
+    "loadingError": "Falha ao carregar dados da conta",
+    "retry": "Tentar novamente",
     "plan": {
-      "currentPlanLabel": "Current Plan: {{tier}}",
+      "currentPlanLabel": "Plano Atual: {{tier}}",
       "tiers": {
-        "free": "Free",
+        "free": "Gratuito",
         "plus": "Plus",
         "business": "Business"
       },
       "descriptions": {
-        "free": "Basic features with limited usage",
-        "plus": "Enhanced features with higher limits",
-        "business": "Full features with unlimited usage"
+        "free": "Recursos básicos com uso limitado",
+        "plus": "Recursos aprimorados com limites mais altos",
+        "business": "Recursos completos com uso ilimitado"
       },
       "sections": {
-        "free": "Get ChatGPT Plus",
-        "plus": "Get ChatGPT Business",
-        "business": "Current Plan",
-        "default": "Current Plan"
+        "free": "Obter ChatGPT Plus",
+        "plus": "Obter ChatGPT Business",
+        "business": "Plano Atual",
+        "default": "Plano Atual"
       },
-      "upgradeButton": "Upgrade to {{plan}}",
-      "currentButton": "Current plan",
+      "upgradeButton": "Fazer upgrade para {{plan}}",
+      "currentButton": "Plano atual",
       "toasts": {
         "upgrade": {
           "title": "Upgrade",
-          "body": "Redirecting to upgrade page..."
+          "body": "Redirecionando para a página de upgrade..."
         },
         "upgradeWithPlan": {
           "title": "Upgrade",
-          "body": "Redirecting to upgrade to {{plan}}..."
+          "body": "Redirecionando para fazer upgrade para {{plan}}..."
         },
         "highest": {
-          "title": "Account",
-          "body": "You are already on the highest tier!"
+          "title": "Conta",
+          "body": "Você já está no plano mais alto!"
         }
       }
     },
     "links": {
       "title": "Links",
-      "domainLabel": "Select a domain",
-      "selectOption": "Select a domain",
-      "verifyNew": "Verify new domain",
-      "addButton": "Add",
+      "domainLabel": "Selecione um domínio",
+      "selectOption": "Selecione um domínio",
+      "verifyNew": "Verificar novo domínio",
+      "addButton": "Adicionar",
       "invalidDomainToast": {
-        "title": "Invalid domain"
+        "title": "Domínio inválido"
       },
       "addDomainToast": {
-        "title": "Domain added",
-        "body": "Domain {{domain}} has been added and is pending verification."
+        "title": "Domínio adicionado",
+        "body": "O domínio {{domain}} foi adicionado e está pendente de verificação."
       },
       "linkedinToast": {
         "title": "LinkedIn",
-        "body": "Redirecting to LinkedIn connection..."
+        "body": "Redirecionando para conexão com LinkedIn..."
       },
       "githubToast": {
         "title": "GitHub",
-        "body": "Redirecting to GitHub connection..."
+        "body": "Redirecionando para conexão com GitHub..."
       },
       "verifiedToast": {
-        "title": "Domain Verified",
-        "body": "Domain {{domain}} has been successfully verified!"
+        "title": "Domínio Verificado",
+        "body": "O domínio {{domain}} foi verificado com sucesso!"
       },
-      "domainPlaceholder": "example.com"
+      "domainPlaceholder": "exemplo.com"
     },
     "domainErrors": {
-      "empty": "Domain cannot be empty",
-      "spaces": "Domain cannot have leading or trailing spaces",
-      "format": "Please enter a valid domain format (e.g., example.com)",
-      "duplicate": "This domain has already been added"
+      "empty": "O domínio não pode estar vazio",
+      "spaces": "O domínio não pode ter espaços no início ou no final",
+      "format": "Por favor, digite um formato de domínio válido (ex: exemplo.com)",
+      "duplicate": "Este domínio já foi adicionado"
     },
     "email": {
-      "title": "Email",
+      "title": "E-mail",
       "addressFallback": "chris@whynot.earth",
-      "receiveFeedback": "Receive feedback emails"
+      "receiveFeedback": "Receber e-mails de feedback"
     },
     "delete": {
-      "sectionTitle": "Delete account",
-      "button": "Delete",
-      "modalTitle": "Delete Account",
-      "heading": "Are you sure you want to delete your account?",
-      "description": "This action cannot be undone. All your data, conversations, and settings will be permanently deleted.",
-      "listIntro": "This will permanently delete:",
+      "sectionTitle": "Excluir conta",
+      "button": "Excluir",
+      "modalTitle": "Excluir Conta",
+      "heading": "Tem certeza de que deseja excluir sua conta?",
+      "description": "Esta ação não pode ser desfeita. Todos os seus dados, conversas e configurações serão permanentemente excluídos.",
+      "listIntro": "Isto excluirá permanentemente:",
       "listItems": [
-        "All your conversations and chat history",
-        "Your account settings and preferences",
-        "Any uploaded files and documents",
-        "Your subscription and billing information"
+        "Todas as suas conversas e histórico de chat",
+        "Suas configurações e preferências de conta",
+        "Quaisquer arquivos e documentos enviados",
+        "Suas informações de assinatura e cobrança"
       ],
-      "confirmLabel": "To confirm, type your email address:",
-      "inputPlaceholder": "Type your email address here",
-      "errorMismatch": "Please type your email address exactly as shown to confirm deletion.",
-      "errorFailed": "Failed to delete account. Please try again.",
-      "toastFailedTitle": "Account deletion failed",
-      "toastFailedBody": "There was an error deleting your account. Please try again.",
-      "toastSuccessTitle": "Account deleted",
-      "toastSuccessBody": "Your account has been permanently deleted.",
-      "cancel": "Cancel",
-      "confirmButton": "Delete Account"
+      "confirmLabel": "Para confirmar, digite seu endereço de e-mail:",
+      "inputPlaceholder": "Digite seu endereço de e-mail aqui",
+      "errorMismatch": "Por favor, digite seu endereço de e-mail exatamente como mostrado para confirmar a exclusão.",
+      "errorFailed": "Falha ao excluir a conta. Por favor, tente novamente.",
+      "toastFailedTitle": "Falha na exclusão da conta",
+      "toastFailedBody": "Houve um erro ao excluir sua conta. Por favor, tente novamente.",
+      "toastSuccessTitle": "Conta excluída",
+      "toastSuccessBody": "Sua conta foi permanentemente excluída.",
+      "cancel": "Cancelar",
+      "confirmButton": "Excluir Conta"
     },
     "domainModal": {
-      "title": "Add New Domain",
-      "label": "Domain",
-      "cancel": "Cancel",
-      "submit": "Add Domain"
+      "title": "Adicionar Novo Domínio",
+      "label": "Domínio",
+      "cancel": "Cancelar",
+      "submit": "Adicionar Domínio"
     }
   },
   "notifications": {
-    "title": "Notifications",
-    "loadError": "Failed to load notification settings",
-    "toastBody": "Your notification preferences have been updated",
+    "title": "Notificações",
+    "loadError": "Falha ao carregar configurações de notificação",
+    "toastBody": "Suas preferências de notificação foram atualizadas",
     "sections": {
       "responses": {
-        "title": "Responses",
-        "description": "Get notified when ChatGPT responds to requests that take time, like research or image generation."
+        "title": "Respostas",
+        "description": "Seja notificado quando o ChatGPT responder a solicitações que levam tempo, como pesquisa ou geração de imagens."
       },
       "tasks": {
-        "title": "Tasks",
-        "description": "Get notified when tasks you've created have updates.",
-        "manage": "Manage tasks"
+        "title": "Tarefas",
+        "description": "Seja notificado quando as tarefas que você criou tiverem atualizações.",
+        "manage": "Gerenciar tarefas"
       },
       "messaging": {
-        "title": "Messaging",
+        "title": "Mensagens",
         "description": "Calpico"
       }
     },
     "channels": {
       "push": "Push",
-      "email": "Email",
-      "none": "None"
+      "email": "E-mail",
+      "none": "Nenhum"
     }
   },
   "security": {
-    "title": "Security",
-    "loadError": "Failed to load security settings",
-    "fallback": "Failed to load security settings",
+    "title": "Segurança",
+    "loadError": "Falha ao carregar configurações de segurança",
+    "fallback": "Falha ao carregar configurações de segurança",
     "toasts": {
-      "settingsUpdated": "Your security settings have been updated"
+      "settingsUpdated": "Suas configurações de segurança foram atualizadas"
     },
     "password": {
-      "sectionTitle": "Password",
-      "description": "Change your account password or reset it if you've forgotten it.",
-      "changeButton": "Change password",
-      "cancelButton": "Cancel",
-      "resetButton": "Reset password",
+      "sectionTitle": "Senha",
+      "description": "Altere a senha da sua conta ou redefina-a se você a esqueceu.",
+      "changeButton": "Alterar senha",
+      "cancelButton": "Cancelar",
+      "resetButton": "Redefinir senha",
       "fields": {
         "current": {
-          "label": "Current Password",
-          "placeholder": "Enter current password"
+          "label": "Senha Atual",
+          "placeholder": "Digite a senha atual"
         },
         "new": {
-          "label": "New Password",
-          "placeholder": "Enter new password"
+          "label": "Nova Senha",
+          "placeholder": "Digite a nova senha"
         },
         "confirm": {
-          "label": "Confirm New Password",
-          "placeholder": "Confirm new password"
+          "label": "Confirmar Nova Senha",
+          "placeholder": "Confirme a nova senha"
         }
       },
-      "submit": "Change Password",
+      "submit": "Alterar Senha",
       "errors": {
         "missing": {
-          "title": "Missing fields",
-          "body": "Please fill in all password fields"
+          "title": "Campos faltando",
+          "body": "Por favor, preencha todos os campos de senha"
         },
         "mismatch": {
-          "title": "Password mismatch",
-          "body": "New password and confirmation do not match"
+          "title": "Senhas não coincidem",
+          "body": "A nova senha e a confirmação não coincidem"
         },
         "weak": {
-          "title": "Weak password",
-          "body": "Password must be at least 8 characters long"
+          "title": "Senha fraca",
+          "body": "A senha deve ter pelo menos 8 caracteres"
         },
         "failed": {
-          "title": "Failed to change password",
-          "body": "Please try again"
+          "title": "Falha ao alterar a senha",
+          "body": "Por favor, tente novamente"
         }
       },
       "success": {
-        "title": "Password changed",
-        "body": "Your password has been updated successfully"
+        "title": "Senha alterada",
+        "body": "Sua senha foi atualizada com sucesso"
       },
       "reset": {
-        "title": "Reset email sent",
-        "body": "Check your email for password reset instructions"
+        "title": "E-mail de redefinição enviado",
+        "body": "Verifique seu e-mail para obter instruções de redefinição de senha"
       }
     },
     "mfa": {
-      "title": "Multi-factor authentication",
-      "description": "Require an extra security challenge when logging in. If you are unable to pass this challenge, you will have the option to recover your account via email.",
+      "title": "Autenticação multifator",
+      "description": "Exija um desafio de segurança extra ao fazer login. Se você não conseguir passar por este desafio, terá a opção de recuperar sua conta por e-mail.",
       "toastEnabled": {
-        "title": "MFA enabled",
-        "body": "Multi-factor authentication has been successfully enabled"
+        "title": "MFA ativado",
+        "body": "A autenticação multifator foi ativada com sucesso"
       },
       "disable": {
-        "modalTitle": "Disable Multi-Factor Authentication",
-        "heading": "Are you sure you want to disable MFA?",
-        "description": "Disabling multi-factor authentication will make your account less secure. You will no longer be required to provide a second authentication factor when signing in.",
-        "cancel": "Cancel",
-        "confirm": "Disable MFA",
-        "toastTitle": "MFA disabled",
-        "toastBody": "Multi-factor authentication has been disabled"
+        "modalTitle": "Desativar Autenticação Multifator",
+        "heading": "Tem certeza de que deseja desativar a MFA?",
+        "description": "Desativar a autenticação multifator tornará sua conta menos segura. Você não precisará mais fornecer um segundo fator de autenticação ao fazer login.",
+        "cancel": "Cancelar",
+        "confirm": "Desativar MFA",
+        "toastTitle": "MFA desativado",
+        "toastBody": "A autenticação multifator foi desativada"
       }
     },
     "trustedDevices": {
-      "title": "Trusted Devices",
-      "description": "When you sign in on another device, it will be added here and can automatically receive device prompts for signing in."
+      "title": "Dispositivos Confiáveis",
+      "description": "Quando você fizer login em outro dispositivo, ele será adicionado aqui e poderá receber automaticamente solicitações de dispositivo para fazer login."
     },
     "logout": {
       "current": {
-        "title": "Log out of this device",
-        "button": "Log out",
-        "toastTitle": "Logged out",
-        "toastBody": "You have been logged out of this device"
+        "title": "Sair deste dispositivo",
+        "button": "Sair",
+        "toastTitle": "Desconectado",
+        "toastBody": "Você foi desconectado deste dispositivo"
       },
       "all": {
-        "title": "Log out of all devices",
-        "description": "Log out of all active sessions across all devices, including your current session. It may take up to 30 minutes for other devices to be logged out.",
-        "button": "Log out all",
-        "toastTitle": "Logged out",
-        "toastBody": "You have been logged out of all devices"
+        "title": "Sair de todos os dispositivos",
+        "description": "Saia de todas as sessões ativas em todos os dispositivos, incluindo sua sessão atual. Pode levar até 30 minutos para que outros dispositivos sejam desconectados.",
+        "button": "Sair de todos",
+        "toastTitle": "Desconectado",
+        "toastBody": "Você foi desconectado de todos os dispositivos"
       }
     }
   },
   "mfa": {
-    "back": "← Back to Security",
-    "title": "Secure your account",
-    "instructions": "Scan the QR Code below using your preferred authenticator app and then enter the provided one-time code below.",
-    "qrLabel": "QR Code",
-    "troubleScanning": "Trouble scanning?",
-    "then": "Then",
-    "codeLabel": "Enter your one-time code*",
+    "back": "← Voltar para Segurança",
+    "title": "Proteja sua conta",
+    "instructions": "Escaneie o código QR abaixo usando seu aplicativo autenticador preferido e insira o código único fornecido abaixo.",
+    "qrLabel": "Código QR",
+    "troubleScanning": "Problemas ao escanear?",
+    "then": "Então",
+    "codeLabel": "Insira seu código único*",
     "codePlaceholder": "000000",
-    "verifyButton": "Continue",
-    "verifying": "Verifying...",
+    "verifyButton": "Continuar",
+    "verifying": "Verificando...",
     "errors": {
       "codeRequired": {
-        "title": "Code required",
-        "body": "Please enter the verification code from your authenticator app"
+        "title": "Código obrigatório",
+        "body": "Por favor, insira o código de verificação do seu aplicativo autenticador"
       },
       "codeInvalid": {
-        "title": "Invalid code",
-        "body": "Please enter a valid 6-digit code"
+        "title": "Código inválido",
+        "body": "Por favor, insira um código de 6 dígitos válido"
       },
       "verifyFailed": {
-        "title": "Verification failed",
-        "body": "Invalid code. Please try again."
+        "title": "Falha na verificação",
+        "body": "Código inválido. Por favor, tente novamente."
       },
       "clipboardUnsupported": {
-        "title": "Clipboard not supported",
-        "body": "Your browser does not support copying to clipboard. Please manually copy the code."
+        "title": "Área de transferência não suportada",
+        "body": "Seu navegador não suporta cópia para a área de transferência. Por favor, copie o código manualmente."
       },
       "copyFailed": {
-        "title": "Copy failed",
-        "body": "Failed to copy code to clipboard: {{message}}",
-        "unknown": "Unknown error"
+        "title": "Falha ao copiar",
+        "body": "Falha ao copiar o código para a área de transferência: {{message}}",
+        "unknown": "Erro desconhecido"
       }
     },
     "copied": {
-      "title": "Copied",
-      "body": "Manual code copied to clipboard"
+      "title": "Copiado",
+      "body": "Código manual copiado para a área de transferência"
     },
     "footer": {
-      "terms": "Terms of Use",
-      "privacy": "Privacy Policy"
+      "terms": "Termos de Uso",
+      "privacy": "Política de Privacidade"
     }
   },
   "help": {
-    "title": "Help",
+    "title": "Ajuda",
     "sections": {
       "helpCenter": {
-        "title": "Help Center",
-        "description": "Get help and find answers to common questions",
-        "cta": "Visit",
-        "ariaLabel": "Visit Blawby help — opens in a new tab"
+        "title": "Central de Ajuda",
+        "description": "Obtenha ajuda e encontre respostas para perguntas comuns",
+        "cta": "Visitar",
+        "ariaLabel": "Visitar ajuda do Blawby — abre em uma nova aba"
       },
       "releaseNotes": {
-        "title": "Release Notes",
-        "description": "See what's new in the latest updates",
-        "cta": "View",
-        "ariaLabel": "View release notes — opens in a new tab"
+        "title": "Notas de Versão",
+        "description": "Veja o que há de novo nas atualizações mais recentes",
+        "cta": "Ver",
+        "ariaLabel": "Ver notas de versão — abre em uma nova aba"
       },
       "terms": {
-        "title": "Terms & Policies",
-        "description": "Read our terms of service and privacy policy",
-        "cta": "Read",
-        "ariaLabel": "Read terms and policies — opens in a new tab"
+        "title": "Termos e Políticas",
+        "description": "Leia nossos termos de serviço e política de privacidade",
+        "cta": "Ler",
+        "ariaLabel": "Ler termos e políticas — abre em uma nova aba"
       },
       "bug": {
-        "title": "Report Bug",
-        "description": "Help us improve by reporting issues",
-        "cta": "Report"
+        "title": "Relatar Bug",
+        "description": "Ajude-nos a melhorar relatando problemas",
+        "cta": "Relatar"
       },
       "downloads": {
-        "title": "Download Apps",
-        "description": "Get our mobile and desktop applications",
-        "cta": "Download",
-        "ariaLabel": "Download Blawby apps — opens in a new tab"
+        "title": "Baixar Aplicativos",
+        "description": "Obtenha nossos aplicativos móveis e de desktop",
+        "cta": "Baixar",
+        "ariaLabel": "Baixar aplicativos Blawby — abre em uma nova aba"
       },
       "shortcuts": {
-        "title": "Keyboard Shortcuts",
-        "description": "Learn keyboard shortcuts to work faster",
-        "cta": "View"
+        "title": "Atalhos de Teclado",
+        "description": "Aprenda atalhos de teclado para trabalhar mais rápido",
+        "cta": "Ver"
       }
     }
   }

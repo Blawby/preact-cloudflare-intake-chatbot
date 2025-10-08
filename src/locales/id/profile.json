@@ -1,19 +1,19 @@
 {
   "menu": {
-    "profile": "Profile",
-    "settings": "Settings",
-    "upgrade": "Upgrade plan",
-    "upgradeShort": "Upgrade",
-    "help": "Get help",
-    "signOut": "Sign out",
-    "signIn": "Sign In"
+    "profile": "Profil",
+    "settings": "Pengaturan",
+    "upgrade": "Tingkatkan paket",
+    "upgradeShort": "Tingkatkan",
+    "help": "Dapatkan bantuan",
+    "signOut": "Keluar",
+    "signIn": "Masuk"
   },
   "status": {
-    "signingOut": "Signing Out...",
-    "loading": "Loading..."
+    "signingOut": "Keluar...",
+    "loading": "Memuat..."
   },
   "aria": {
-    "userProfile": "User profile for {{name}}",
-    "signInButton": "Sign in to your account"
+    "userProfile": "Profil pengguna untuk {{name}}",
+    "signInButton": "Masuk ke akun Anda"
   }
 }

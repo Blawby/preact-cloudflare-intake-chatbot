@@ -1,149 +1,161 @@
 {
   "app": {
-    "loading": "Loading…"
+    "loading": "Laden…"
   },
   "notifications": {
-    "settingsSavedTitle": "Settings saved",
-    "settingsSavedBody": "Your preferences have been updated."
+    "settingsSavedTitle": "Instellingen opgeslagen",
+    "settingsSavedBody": "Uw voorkeuren zijn bijgewerkt."
   },
   "language": {
-    "auto": "Auto-detect",
+    "auto": "Automatisch detecteren",
     "en": "English",
     "vi": "Tiếng Việt",
     "es": "Español",
     "fr": "Français",
     "de": "Deutsch",
     "zh": "中文",
-    "ja": "日本語"
+    "ja": "日本語",
+    "pt": "Português",
+    "ar": "العربية",
+    "ru": "Русский",
+    "it": "Italiano",
+    "ko": "한국어",
+    "nl": "Nederlands",
+    "pl": "Polski",
+    "tr": "Türkçe",
+    "th": "ไทย",
+    "id": "Bahasa Indonesia",
+    "hi": "हिन्दी",
+    "uk": "Українська"
   },
   "forms": {
     "labels": {
-      "name": "Full Name",
-      "email": "Email Address",
-      "phone": "Phone Number",
-      "password": "Password",
-      "confirmPassword": "Confirm Password",
-      "birthday": "Birthday",
-      "terms": "Terms and Conditions",
-      "privacy": "Privacy Policy",
-      "search": "Search",
-      "select": "Select an option",
-      "upload": "Upload File",
-      "message": "Message",
-      "subject": "Subject"
+      "name": "Volledige naam",
+      "email": "E-mailadres",
+      "phone": "Telefoonnummer",
+      "password": "Wachtwoord",
+      "confirmPassword": "Bevestig wachtwoord",
+      "birthday": "Geboortedatum",
+      "terms": "Servicevoorwaarden",
+      "privacy": "Privacybeleid",
+      "search": "Zoeken",
+      "select": "Selecteer een optie",
+      "upload": "Bestand uploaden",
+      "message": "Bericht",
+      "subject": "Onderwerp"
     },
     "placeholders": {
-      "name": "Enter your full name",
-      "email": "Enter your email address",
-      "phone": "Enter your phone number",
-      "password": "Enter your password",
-      "confirmPassword": "Confirm your password",
-      "birthday": "Select your birthday",
-      "search": "Search...",
-      "select": "Select an option",
-      "message": "Enter your message",
-      "subject": "Enter your subject"
+      "name": "Voer uw volledige naam in",
+      "email": "Voer uw e-mailadres in",
+      "phone": "Voer uw telefoonnummer in",
+      "password": "Voer wachtwoord in",
+      "confirmPassword": "Bevestig wachtwoord",
+      "birthday": "Selecteer geboortedatum",
+      "search": "Zoeken...",
+      "select": "Selecteer een optie",
+      "message": "Voer uw bericht in",
+      "subject": "Voer onderwerp in"
     },
     "descriptions": {
-      "optional": "Optional",
-      "required": "Required",
-      "passwordHelp": "Must be at least 8 characters long",
-      "phoneHelp": "Include country code for international numbers",
-      "fileHelp": "Supported formats: PDF, DOC, DOCX"
+      "optional": "Optioneel",
+      "required": "Verplicht",
+      "passwordHelp": "Moet minimaal 8 tekens bevatten",
+      "phoneHelp": "Voeg landcode toe voor internationale nummers",
+      "fileHelp": "Ondersteunde formaten: PDF, DOC, DOCX"
     },
     "validation": {
-      "required": "This field is required",
-      "email": "Please enter a valid email address",
-      "phone": "Please enter a valid phone number",
-      "password": "Password must be at least 8 characters",
-      "confirmPassword": "Passwords do not match",
-      "date": "Please enter a valid date (MM/DD/YYYY)",
-      "futureDate": "Date cannot be in the future",
-      "fileType": "Please select a valid file type",
-      "fileSize": "File size must be less than 10MB",
-      "termsRequired": "You must agree to the terms"
+      "required": "Dit veld is verplicht",
+      "email": "Voer een geldig e-mailadres in",
+      "phone": "Voer een geldig telefoonnummer in",
+      "password": "Wachtwoord moet minimaal 8 tekens bevatten",
+      "confirmPassword": "Wachtwoorden komen niet overeen",
+      "date": "Voer een geldige datum in (DD/MM/JJJJ)",
+      "futureDate": "Datum kan niet in de toekomst liggen",
+      "fileType": "Selecteer een geldig bestandstype",
+      "fileSize": "Bestandsgrootte moet kleiner zijn dan 10 MB",
+      "termsRequired": "U moet akkoord gaan met de voorwaarden"
     },
     "accessibility": {
-      "togglePassword": "Toggle password visibility",
-      "clearSearch": "Clear search",
-      "selectOption": "Select option",
-      "removeOption": "Remove option",
-      "uploadFile": "Upload file",
-      "removeFile": "Remove file",
-      "calendarOpen": "Open calendar",
-      "calendarClose": "Close calendar"
+      "togglePassword": "Wachtwoord tonen/verbergen",
+      "clearSearch": "Zoekopdracht wissen",
+      "selectOption": "Optie selecteren",
+      "removeOption": "Optie verwijderen",
+      "uploadFile": "Bestand uploaden",
+      "removeFile": "Bestand verwijderen",
+      "calendarOpen": "Kalender openen",
+      "calendarClose": "Kalender sluiten"
     },
     "actions": {
-      "submit": "Submit",
-      "submitting": "Submitting...",
-      "reset": "Reset",
-      "cancel": "Cancel",
-      "save": "Save",
-      "saving": "Saving..."
+      "submit": "Indienen",
+      "submitting": "Indienen...",
+      "reset": "Resetten",
+      "cancel": "Annuleren",
+      "save": "Opslaan",
+      "saving": "Opslaan..."
     },
     "examples": {
       "validatedForm": {
-        "title": "Validated Form Example"
+        "title": "Gevalideerd formuliervoorbeeld"
       }
     },
     "contactForm": {
-      "location": "Location",
-      "opposingParty": "Opposing Party (Optional)",
-      "submit": "Submit Contact Information",
+      "location": "Locatie",
+      "opposingParty": "Wederpartij (optioneel)",
+      "submit": "Contactgegevens indienen",
       "placeholders": {
-        "location": "City, State (e.g., New York, NY)",
-        "opposingParty": "Name of the other party involved (if any)"
+        "location": "Stad, provincie (bijv. Amsterdam, Noord-Holland)",
+        "opposingParty": "Naam van de andere partij (indien van toepassing)"
       }
     }
   },
   "onboarding": {
-    "title": "Welcome to Blawby AI",
-    "subtitle": "Let's get you set up",
+    "title": "Welkom bij Blawby AI",
+    "subtitle": "Laten we uw account instellen",
     "step1": {
-      "title": "Tell us about you",
-      "subtitle": "Help us personalize your experience",
-      "fullName": "Full name",
-      "fullNamePlaceholder": "Enter your full name",
-      "birthday": "Birthday",
-      "birthdayPlaceholder": "MM/DD/YYYY",
-      "termsAgreement": "By clicking \"Continue\", you agree to our <termsLink>Terms</termsLink> and have read our <privacyLink>Privacy Policy</privacyLink>.",
-      "continue": "Continue",
-      "back": "Back",
-      "required": "This field is required"
+      "title": "Vertel ons over uzelf",
+      "subtitle": "Help ons uw ervaring te personaliseren",
+      "fullName": "Volledige naam",
+      "fullNamePlaceholder": "Voer uw volledige naam in",
+      "birthday": "Geboortedatum",
+      "birthdayPlaceholder": "DD/MM/JJJJ",
+      "termsAgreement": "Door op \"Doorgaan\" te klikken, gaat u akkoord met onze <termsLink>Voorwaarden</termsLink> en heeft u ons <privacyLink>Privacybeleid</privacyLink> gelezen.",
+      "continue": "Doorgaan",
+      "back": "Terug",
+      "required": "Dit veld is verplicht"
     },
     "step2": {
-      "title": "What do you want to use Blawby AI for?",
-      "subtitle": "This helps us provide more relevant suggestions",
+      "title": "Waarvoor wilt u Blawby AI gebruiken?",
+      "subtitle": "Dit helpt ons relevantere suggesties te doen",
       "options": {
-        "personal": "Personal Legal Issues",
-        "business": "Business Legal Needs", 
-        "research": "Legal Research",
-        "documents": "Document Review",
-        "other": "Other"
+        "personal": "Persoonlijke juridische zaken",
+        "business": "Zakelijke juridische behoeften",
+        "research": "Juridisch onderzoek",
+        "documents": "Documentbeoordeling",
+        "other": "Anders"
       },
-      "otherPlaceholder": "Tell us more...",
-      "next": "Next",
-      "skip": "Skip"
+      "otherPlaceholder": "Vertel ons meer...",
+      "next": "Volgende",
+      "skip": "Overslaan"
     },
     "welcome": {
       "title": "Blawby AI",
-      "subtitle": "Tips for getting started",
+      "subtitle": "Tips om te beginnen",
       "tips": {
         "askAway": {
-          "title": "Ask away",
-          "description": "Blawby AI can answer legal questions, help you understand legal concepts, review documents, and much more."
+          "title": "Stel vragen",
+          "description": "Blawby AI kan juridische vragen beantwoorden, helpen juridische concepten te begrijpen, documenten beoordelen en meer."
         },
         "privacy": {
-          "title": "Don't share sensitive info",
-          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our <helpCenterLink>Help Center</helpCenterLink>."
+          "title": "Deel geen gevoelige informatie",
+          "description": "Chatgeschiedenis kan worden beoordeeld of gebruikt om onze services te verbeteren. Lees meer over uw opties in ons <helpCenterLink>Helpcentrum</helpCenterLink>."
         },
         "accuracy": {
-          "title": "Check your facts",
-          "description": "While we have safeguards, Blawby AI may give you inaccurate information. It's not intended to give legal advice."
+          "title": "Controleer de feiten",
+          "description": "Ondanks voorzorgsmaatregelen kan Blawby AI onjuiste informatie geven. Het is niet ontworpen om juridisch advies te geven."
         }
       },
-      "helpCenter": "Help Center",
-      "letsGo": "Okay, let's go"
+      "helpCenter": "Helpcentrum",
+      "letsGo": "Oké, laten we beginnen"
     }
   }
 }

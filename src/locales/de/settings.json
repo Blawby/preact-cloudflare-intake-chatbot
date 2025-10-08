@@ -175,7 +175,8 @@
     },
     "channels": {
       "push": "Push",
-      "email": "E-Mail"
+      "email": "E-Mail",
+      "none": "[NEEDS TRANSLATION] None"
     }
   },
   "security": {

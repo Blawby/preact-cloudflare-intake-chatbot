@@ -1,19 +1,19 @@
 {
   "menu": {
-    "profile": "Profile",
-    "settings": "Settings",
-    "upgrade": "Upgrade plan",
+    "profile": "Perfil",
+    "settings": "Configurações",
+    "upgrade": "Fazer upgrade do plano",
     "upgradeShort": "Upgrade",
-    "help": "Get help",
-    "signOut": "Sign out",
-    "signIn": "Sign In"
+    "help": "Obter ajuda",
+    "signOut": "Sair",
+    "signIn": "Entrar"
   },
   "status": {
-    "signingOut": "Signing Out...",
-    "loading": "Loading..."
+    "signingOut": "Saindo...",
+    "loading": "Carregando..."
   },
   "aria": {
-    "userProfile": "User profile for {{name}}",
-    "signInButton": "Sign in to your account"
+    "userProfile": "Perfil de usuário de {{name}}",
+    "signInButton": "Entrar na sua conta"
   }
 }

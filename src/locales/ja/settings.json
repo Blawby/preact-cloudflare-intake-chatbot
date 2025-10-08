@@ -175,7 +175,8 @@
     },
     "channels": {
       "push": "プッシュ",
-      "email": "メール"
+      "email": "メール",
+      "none": "[NEEDS TRANSLATION] None"
     }
   },
   "security": {

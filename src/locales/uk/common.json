@@ -1,149 +1,161 @@
 {
   "app": {
-    "loading": "Loading…"
+    "loading": "Завантаження…"
   },
   "notifications": {
-    "settingsSavedTitle": "Settings saved",
-    "settingsSavedBody": "Your preferences have been updated."
+    "settingsSavedTitle": "Налаштування збережено",
+    "settingsSavedBody": "Ваші вподобання оновлено."
   },
   "language": {
-    "auto": "Auto-detect",
+    "auto": "Автоматично",
     "en": "English",
     "vi": "Tiếng Việt",
     "es": "Español",
     "fr": "Français",
     "de": "Deutsch",
     "zh": "中文",
-    "ja": "日本語"
+    "ja": "日本語",
+    "pt": "Português",
+    "ar": "العربية",
+    "ru": "Русский",
+    "it": "Italiano",
+    "ko": "한국어",
+    "nl": "Nederlands",
+    "pl": "Polski",
+    "tr": "Türkçe",
+    "th": "ไทย",
+    "id": "Bahasa Indonesia",
+    "hi": "हिन्दी",
+    "uk": "Українська"
   },
   "forms": {
     "labels": {
-      "name": "Full Name",
-      "email": "Email Address",
-      "phone": "Phone Number",
-      "password": "Password",
-      "confirmPassword": "Confirm Password",
-      "birthday": "Birthday",
-      "terms": "Terms and Conditions",
-      "privacy": "Privacy Policy",
-      "search": "Search",
-      "select": "Select an option",
-      "upload": "Upload File",
-      "message": "Message",
-      "subject": "Subject"
+      "name": "Повне ім'я",
+      "email": "Електронна адреса",
+      "phone": "Номер телефону",
+      "password": "Пароль",
+      "confirmPassword": "Підтвердіть пароль",
+      "birthday": "Дата народження",
+      "terms": "Умови та положення",
+      "privacy": "Політика конфіденційності",
+      "search": "Пошук",
+      "select": "Виберіть варіант",
+      "upload": "Завантажити файл",
+      "message": "Повідомлення",
+      "subject": "Тема"
     },
     "placeholders": {
-      "name": "Enter your full name",
-      "email": "Enter your email address",
-      "phone": "Enter your phone number",
-      "password": "Enter your password",
-      "confirmPassword": "Confirm your password",
-      "birthday": "Select your birthday",
-      "search": "Search...",
-      "select": "Select an option",
-      "message": "Enter your message",
-      "subject": "Enter your subject"
+      "name": "Введіть повне ім'я",
+      "email": "Введіть електронну адресу",
+      "phone": "Введіть номер телефону",
+      "password": "Введіть пароль",
+      "confirmPassword": "Підтвердіть пароль",
+      "birthday": "Виберіть дату народження",
+      "search": "Пошук...",
+      "select": "Виберіть варіант",
+      "message": "Введіть повідомлення",
+      "subject": "Введіть тему"
     },
     "descriptions": {
-      "optional": "Optional",
-      "required": "Required",
-      "passwordHelp": "Must be at least 8 characters long",
-      "phoneHelp": "Include country code for international numbers",
-      "fileHelp": "Supported formats: PDF, DOC, DOCX"
+      "optional": "Необов'язково",
+      "required": "Обов'язково",
+      "passwordHelp": "Має містити щонайменше 8 символів",
+      "phoneHelp": "Вкажіть код країни для міжнародних номерів",
+      "fileHelp": "Підтримувані формати: PDF, DOC, DOCX"
     },
     "validation": {
-      "required": "This field is required",
-      "email": "Please enter a valid email address",
-      "phone": "Please enter a valid phone number",
-      "password": "Password must be at least 8 characters",
-      "confirmPassword": "Passwords do not match",
-      "date": "Please enter a valid date (MM/DD/YYYY)",
-      "futureDate": "Date cannot be in the future",
-      "fileType": "Please select a valid file type",
-      "fileSize": "File size must be less than 10MB",
-      "termsRequired": "You must agree to the terms"
+      "required": "Це поле обов'язкове",
+      "email": "Будь ласка, введіть дійсну електронну адресу",
+      "phone": "Будь ласка, введіть дійсний номер телефону",
+      "password": "Пароль має містити щонайменше 8 символів",
+      "confirmPassword": "Паролі не збігаються",
+      "date": "Будь ласка, введіть дійсну дату (DD/MM/YYYY)",
+      "futureDate": "Дата не може бути в майбутньому",
+      "fileType": "Будь ласка, виберіть дійсний тип файлу",
+      "fileSize": "Розмір файлу має бути менше 10 МБ",
+      "termsRequired": "Ви повинні погодитися з умовами"
     },
     "accessibility": {
-      "togglePassword": "Toggle password visibility",
-      "clearSearch": "Clear search",
-      "selectOption": "Select option",
-      "removeOption": "Remove option",
-      "uploadFile": "Upload file",
-      "removeFile": "Remove file",
-      "calendarOpen": "Open calendar",
-      "calendarClose": "Close calendar"
+      "togglePassword": "Перемкнути видимість пароля",
+      "clearSearch": "Очистити пошук",
+      "selectOption": "Вибрати варіант",
+      "removeOption": "Видалити варіант",
+      "uploadFile": "Завантажити файл",
+      "removeFile": "Видалити файл",
+      "calendarOpen": "Відкрити календар",
+      "calendarClose": "Закрити календар"
     },
     "actions": {
-      "submit": "Submit",
-      "submitting": "Submitting...",
-      "reset": "Reset",
-      "cancel": "Cancel",
-      "save": "Save",
-      "saving": "Saving..."
+      "submit": "Надіслати",
+      "submitting": "Надсилання...",
+      "reset": "Скинути",
+      "cancel": "Скасувати",
+      "save": "Зберегти",
+      "saving": "Збереження..."
     },
     "examples": {
       "validatedForm": {
-        "title": "Validated Form Example"
+        "title": "Приклад перевіреної форми"
       }
     },
     "contactForm": {
-      "location": "Location",
-      "opposingParty": "Opposing Party (Optional)",
-      "submit": "Submit Contact Information",
+      "location": "Місцезнаходження",
+      "opposingParty": "Протилежна сторона (необов'язково)",
+      "submit": "Надіслати контактну інформацію",
       "placeholders": {
-        "location": "City, State (e.g., New York, NY)",
-        "opposingParty": "Name of the other party involved (if any)"
+        "location": "Місто, область (наприклад, Київ, Київська обл.)",
+        "opposingParty": "Ім'я іншої сторони (якщо є)"
       }
     }
   },
   "onboarding": {
-    "title": "Welcome to Blawby AI",
-    "subtitle": "Let's get you set up",
+    "title": "Ласкаво просимо до Blawby AI",
+    "subtitle": "Давайте налаштуємо вас",
     "step1": {
-      "title": "Tell us about you",
-      "subtitle": "Help us personalize your experience",
-      "fullName": "Full name",
-      "fullNamePlaceholder": "Enter your full name",
-      "birthday": "Birthday",
-      "birthdayPlaceholder": "MM/DD/YYYY",
-      "termsAgreement": "By clicking \"Continue\", you agree to our <termsLink>Terms</termsLink> and have read our <privacyLink>Privacy Policy</privacyLink>.",
-      "continue": "Continue",
-      "back": "Back",
-      "required": "This field is required"
+      "title": "Розкажіть про себе",
+      "subtitle": "Допоможіть нам персоналізувати ваш досвід",
+      "fullName": "Повне ім'я",
+      "fullNamePlaceholder": "Введіть повне ім'я",
+      "birthday": "Дата народження",
+      "birthdayPlaceholder": "DD/MM/YYYY",
+      "termsAgreement": "Натискаючи \"Продовжити\", ви погоджуєтесь з нашими <termsLink>Умовами</termsLink> та ознайомились з <privacyLink>Політикою конфіденційності</privacyLink>.",
+      "continue": "Продовжити",
+      "back": "Назад",
+      "required": "Це поле обов'язкове"
     },
     "step2": {
-      "title": "What do you want to use Blawby AI for?",
-      "subtitle": "This helps us provide more relevant suggestions",
+      "title": "Для чого ви хочете використовувати Blawby AI?",
+      "subtitle": "Це допоможе нам надати більш релевантні пропозиції",
       "options": {
-        "personal": "Personal Legal Issues",
-        "business": "Business Legal Needs", 
-        "research": "Legal Research",
-        "documents": "Document Review",
-        "other": "Other"
+        "personal": "Особисті юридичні питання",
+        "business": "Юридичні потреби бізнесу",
+        "research": "Юридичні дослідження",
+        "documents": "Перевірка документів",
+        "other": "Інше"
       },
-      "otherPlaceholder": "Tell us more...",
-      "next": "Next",
-      "skip": "Skip"
+      "otherPlaceholder": "Розкажіть більше...",
+      "next": "Далі",
+      "skip": "Пропустити"
     },
     "welcome": {
       "title": "Blawby AI",
-      "subtitle": "Tips for getting started",
+      "subtitle": "Поради для початку роботи",
       "tips": {
         "askAway": {
-          "title": "Ask away",
-          "description": "Blawby AI can answer legal questions, help you understand legal concepts, review documents, and much more."
+          "title": "Запитуйте",
+          "description": "Blawby AI може відповідати на юридичні запитання, допомагати розуміти юридичні концепції, переглядати документи та багато іншого."
         },
         "privacy": {
-          "title": "Don't share sensitive info",
-          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our <helpCenterLink>Help Center</helpCenterLink>."
+          "title": "Не діліться конфіденційною інформацією",
+          "description": "Історія чату може бути переглянута або використана для покращення наших послуг. Дізнайтеся більше про ваші можливості в нашому <helpCenterLink>Центрі допомоги</helpCenterLink>."
         },
         "accuracy": {
-          "title": "Check your facts",
-          "description": "While we have safeguards, Blawby AI may give you inaccurate information. It's not intended to give legal advice."
+          "title": "Перевіряйте факти",
+          "description": "Хоча у нас є захисні заходи, Blawby AI може надавати неточну інформацію. Це не призначено для надання юридичних консультацій."
         }
       },
-      "helpCenter": "Help Center",
-      "letsGo": "Okay, let's go"
+      "helpCenter": "Центр допомоги",
+      "letsGo": "Гаразд, почнемо"
     }
   }
 }

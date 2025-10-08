@@ -1,149 +1,161 @@
 {
   "app": {
-    "loading": "Loading…"
+    "loading": "로딩 중…"
   },
   "notifications": {
-    "settingsSavedTitle": "Settings saved",
-    "settingsSavedBody": "Your preferences have been updated."
+    "settingsSavedTitle": "설정 저장됨",
+    "settingsSavedBody": "환경설정이 업데이트되었습니다."
   },
   "language": {
-    "auto": "Auto-detect",
+    "auto": "자동 감지",
     "en": "English",
     "vi": "Tiếng Việt",
     "es": "Español",
     "fr": "Français",
     "de": "Deutsch",
     "zh": "中文",
-    "ja": "日本語"
+    "ja": "日本語",
+    "pt": "Português",
+    "ar": "العربية",
+    "ru": "Русский",
+    "it": "Italiano",
+    "ko": "한국어",
+    "nl": "Nederlands",
+    "pl": "Polski",
+    "tr": "Türkçe",
+    "th": "ไทย",
+    "id": "Bahasa Indonesia",
+    "hi": "हिन्दी",
+    "uk": "Українська"
   },
   "forms": {
     "labels": {
-      "name": "Full Name",
-      "email": "Email Address",
-      "phone": "Phone Number",
-      "password": "Password",
-      "confirmPassword": "Confirm Password",
-      "birthday": "Birthday",
-      "terms": "Terms and Conditions",
-      "privacy": "Privacy Policy",
-      "search": "Search",
-      "select": "Select an option",
-      "upload": "Upload File",
-      "message": "Message",
-      "subject": "Subject"
+      "name": "전체 이름",
+      "email": "이메일 주소",
+      "phone": "전화번호",
+      "password": "비밀번호",
+      "confirmPassword": "비밀번호 확인",
+      "birthday": "생년월일",
+      "terms": "서비스 약관",
+      "privacy": "개인정보 처리방침",
+      "search": "검색",
+      "select": "옵션 선택",
+      "upload": "파일 업로드",
+      "message": "메시지",
+      "subject": "제목"
     },
     "placeholders": {
-      "name": "Enter your full name",
-      "email": "Enter your email address",
-      "phone": "Enter your phone number",
-      "password": "Enter your password",
-      "confirmPassword": "Confirm your password",
-      "birthday": "Select your birthday",
-      "search": "Search...",
-      "select": "Select an option",
-      "message": "Enter your message",
-      "subject": "Enter your subject"
+      "name": "전체 이름을 입력하세요",
+      "email": "이메일 주소를 입력하세요",
+      "phone": "전화번호를 입력하세요",
+      "password": "비밀번호를 입력하세요",
+      "confirmPassword": "비밀번호를 다시 입력하세요",
+      "birthday": "생년월일을 선택하세요",
+      "search": "검색...",
+      "select": "옵션 선택",
+      "message": "메시지를 입력하세요",
+      "subject": "제목을 입력하세요"
     },
     "descriptions": {
-      "optional": "Optional",
-      "required": "Required",
-      "passwordHelp": "Must be at least 8 characters long",
-      "phoneHelp": "Include country code for international numbers",
-      "fileHelp": "Supported formats: PDF, DOC, DOCX"
+      "optional": "선택사항",
+      "required": "필수",
+      "passwordHelp": "최소 8자 이상이어야 합니다",
+      "phoneHelp": "국제 전화번호의 경우 국가 코드를 포함하세요",
+      "fileHelp": "지원되는 형식: PDF, DOC, DOCX"
     },
     "validation": {
-      "required": "This field is required",
-      "email": "Please enter a valid email address",
-      "phone": "Please enter a valid phone number",
-      "password": "Password must be at least 8 characters",
-      "confirmPassword": "Passwords do not match",
-      "date": "Please enter a valid date (MM/DD/YYYY)",
-      "futureDate": "Date cannot be in the future",
-      "fileType": "Please select a valid file type",
-      "fileSize": "File size must be less than 10MB",
-      "termsRequired": "You must agree to the terms"
+      "required": "이 항목은 필수입니다",
+      "email": "유효한 이메일 주소를 입력하세요",
+      "phone": "유효한 전화번호를 입력하세요",
+      "password": "비밀번호는 최소 8자 이상이어야 합니다",
+      "confirmPassword": "비밀번호가 일치하지 않습니다",
+      "date": "유효한 날짜를 입력하세요 (일/월/년)",
+      "futureDate": "날짜는 미래일 수 없습니다",
+      "fileType": "유효한 파일 유형을 선택하세요",
+      "fileSize": "파일 크기는 10MB 미만이어야 합니다",
+      "termsRequired": "약관에 동의해야 합니다"
     },
     "accessibility": {
-      "togglePassword": "Toggle password visibility",
-      "clearSearch": "Clear search",
-      "selectOption": "Select option",
-      "removeOption": "Remove option",
-      "uploadFile": "Upload file",
-      "removeFile": "Remove file",
-      "calendarOpen": "Open calendar",
-      "calendarClose": "Close calendar"
+      "togglePassword": "비밀번호 표시/숨기기",
+      "clearSearch": "검색 지우기",
+      "selectOption": "옵션 선택",
+      "removeOption": "옵션 제거",
+      "uploadFile": "파일 업로드",
+      "removeFile": "파일 제거",
+      "calendarOpen": "달력 열기",
+      "calendarClose": "달력 닫기"
     },
     "actions": {
-      "submit": "Submit",
-      "submitting": "Submitting...",
-      "reset": "Reset",
-      "cancel": "Cancel",
-      "save": "Save",
-      "saving": "Saving..."
+      "submit": "제출",
+      "submitting": "제출 중...",
+      "reset": "초기화",
+      "cancel": "취소",
+      "save": "저장",
+      "saving": "저장 중..."
     },
     "examples": {
       "validatedForm": {
-        "title": "Validated Form Example"
+        "title": "검증된 양식 예시"
       }
     },
     "contactForm": {
-      "location": "Location",
-      "opposingParty": "Opposing Party (Optional)",
-      "submit": "Submit Contact Information",
+      "location": "위치",
+      "opposingParty": "상대방 (선택사항)",
+      "submit": "연락처 정보 제출",
       "placeholders": {
-        "location": "City, State (e.g., New York, NY)",
-        "opposingParty": "Name of the other party involved (if any)"
+        "location": "도시, 지역 (예: 서울, 경기도)",
+        "opposingParty": "상대방 이름 (해당하는 경우)"
       }
     }
   },
   "onboarding": {
-    "title": "Welcome to Blawby AI",
-    "subtitle": "Let's get you set up",
+    "title": "Blawby AI에 오신 것을 환영합니다",
+    "subtitle": "계정을 설정해 봅시다",
     "step1": {
-      "title": "Tell us about you",
-      "subtitle": "Help us personalize your experience",
-      "fullName": "Full name",
-      "fullNamePlaceholder": "Enter your full name",
-      "birthday": "Birthday",
-      "birthdayPlaceholder": "MM/DD/YYYY",
-      "termsAgreement": "By clicking \"Continue\", you agree to our <termsLink>Terms</termsLink> and have read our <privacyLink>Privacy Policy</privacyLink>.",
-      "continue": "Continue",
-      "back": "Back",
-      "required": "This field is required"
+      "title": "자신에 대해 알려주세요",
+      "subtitle": "경험을 맞춤화하는 데 도움을 주세요",
+      "fullName": "전체 이름",
+      "fullNamePlaceholder": "전체 이름을 입력하세요",
+      "birthday": "생년월일",
+      "birthdayPlaceholder": "일/월/년",
+      "termsAgreement": "\"계속\"을 클릭하면 당사의 <termsLink>약관</termsLink>에 동의하고 <privacyLink>개인정보 처리방침</privacyLink>을 읽은 것으로 간주됩니다.",
+      "continue": "계속",
+      "back": "뒤로",
+      "required": "이 항목은 필수입니다"
     },
     "step2": {
-      "title": "What do you want to use Blawby AI for?",
-      "subtitle": "This helps us provide more relevant suggestions",
+      "title": "Blawby AI를 어떤 용도로 사용하시겠습니까?",
+      "subtitle": "더 관련성 높은 제안을 제공하는 데 도움이 됩니다",
       "options": {
-        "personal": "Personal Legal Issues",
-        "business": "Business Legal Needs", 
-        "research": "Legal Research",
-        "documents": "Document Review",
-        "other": "Other"
+        "personal": "개인 법률 문제",
+        "business": "비즈니스 법률 요구사항",
+        "research": "법률 연구",
+        "documents": "문서 검토",
+        "other": "기타"
       },
-      "otherPlaceholder": "Tell us more...",
-      "next": "Next",
-      "skip": "Skip"
+      "otherPlaceholder": "자세히 알려주세요...",
+      "next": "다음",
+      "skip": "건너뛰기"
     },
     "welcome": {
       "title": "Blawby AI",
-      "subtitle": "Tips for getting started",
+      "subtitle": "시작하기 위한 팁",
       "tips": {
         "askAway": {
-          "title": "Ask away",
-          "description": "Blawby AI can answer legal questions, help you understand legal concepts, review documents, and much more."
+          "title": "질문하세요",
+          "description": "Blawby AI는 법률 질문에 답변하고, 법률 개념을 이해하는 데 도움을 주며, 문서를 검토하는 등의 작업을 수행할 수 있습니다."
         },
         "privacy": {
-          "title": "Don't share sensitive info",
-          "description": "Chat history may be reviewed or used to improve our services. Learn more about your choices in our <helpCenterLink>Help Center</helpCenterLink>."
+          "title": "민감한 정보를 공유하지 마세요",
+          "description": "채팅 기록은 검토되거나 서비스 개선에 사용될 수 있습니다. <helpCenterLink>고객센터</helpCenterLink>에서 옵션에 대해 자세히 알아보세요."
         },
         "accuracy": {
-          "title": "Check your facts",
-          "description": "While we have safeguards, Blawby AI may give you inaccurate information. It's not intended to give legal advice."
+          "title": "사실을 확인하세요",
+          "description": "예방 조치에도 불구하고 Blawby AI는 부정확한 정보를 제공할 수 있습니다. 법률 조언을 제공하기 위해 설계되지 않았습니다."
         }
       },
-      "helpCenter": "Help Center",
-      "letsGo": "Okay, let's go"
+      "helpCenter": "고객센터",
+      "letsGo": "알겠습니다, 시작합시다"
     }
   }
 }

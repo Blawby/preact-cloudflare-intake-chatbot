@@ -1,355 +1,355 @@
 {
   "navigation": {
-    "close": "Close settings",
-    "backToSettings": "Back to settings",
+    "close": "إغلاق الإعدادات",
+    "backToSettings": "العودة إلى الإعدادات",
     "items": {
-      "general": "General",
-      "notifications": "Notifications",
-      "account": "Account",
-      "security": "Security",
-      "help": "Help",
-      "signOut": "Sign Out"
+      "general": "عام",
+      "notifications": "الإشعارات",
+      "account": "الحساب",
+      "security": "الأمان",
+      "help": "المساعدة",
+      "signOut": "تسجيل الخروج"
     },
     "signOut": {
-      "toastTitle": "Signed out successfully",
-      "toastBody": "You have been signed out"
+      "toastTitle": "تم تسجيل الخروج بنجاح",
+      "toastBody": "تم تسجيل خروجك"
     }
   },
   "general": {
-    "title": "General",
+    "title": "عام",
     "theme": {
-      "label": "Theme",
+      "label": "المظهر",
       "options": {
-        "light": "Light",
-        "dark": "Dark",
-        "system": "System"
+        "light": "فاتح",
+        "dark": "داكن",
+        "system": "النظام"
       }
     },
     "accent": {
-      "label": "Accent color",
+      "label": "لون التمييز",
       "options": {
-        "default": "Default",
-        "blue": "Blue",
-        "green": "Green",
-        "purple": "Purple",
-        "red": "Red"
+        "default": "افتراضي",
+        "blue": "أزرق",
+        "green": "أخضر",
+        "purple": "أرجواني",
+        "red": "أحمر"
       }
     },
     "language": {
-      "label": "Language",
-      "description": "Select the language used for the interface.",
-      "toastTitle": "Language updated",
-      "toastBody": "Your language preference has been applied."
+      "label": "اللغة",
+      "description": "اختر اللغة المستخدمة للواجهة.",
+      "toastTitle": "تم تحديث اللغة",
+      "toastBody": "تم تطبيق تفضيل اللغة الخاص بك."
     },
     "spokenLanguage": {
-      "label": "Spoken language",
-      "description": "For best results, select the language you mainly speak. If it's not listed, auto-detection may still work."
+      "label": "اللغة المنطوقة",
+      "description": "للحصول على أفضل النتائج، اختر اللغة التي تتحدثها بشكل أساسي. إذا لم تكن مدرجة، فقد يعمل الكشف التلقائي."
     }
   },
   "account": {
-    "title": "Account",
-    "loadingError": "Failed to load account data",
-    "retry": "Retry",
+    "title": "الحساب",
+    "loadingError": "فشل تحميل بيانات الحساب",
+    "retry": "إعادة المحاولة",
     "plan": {
-      "currentPlanLabel": "Current Plan: {{tier}}",
+      "currentPlanLabel": "الخطة الحالية: {{tier}}",
       "tiers": {
-        "free": "Free",
+        "free": "مجاني",
         "plus": "Plus",
         "business": "Business"
       },
       "descriptions": {
-        "free": "Basic features with limited usage",
-        "plus": "Enhanced features with higher limits",
-        "business": "Full features with unlimited usage"
+        "free": "ميزات أساسية مع استخدام محدود",
+        "plus": "ميزات محسّنة مع حدود أعلى",
+        "business": "ميزات كاملة مع استخدام غير محدود"
       },
       "sections": {
-        "free": "Get ChatGPT Plus",
-        "plus": "Get ChatGPT Business",
-        "business": "Current Plan",
-        "default": "Current Plan"
+        "free": "احصل على ChatGPT Plus",
+        "plus": "احصل على ChatGPT Business",
+        "business": "الخطة الحالية",
+        "default": "الخطة الحالية"
       },
-      "upgradeButton": "Upgrade to {{plan}}",
-      "currentButton": "Current plan",
+      "upgradeButton": "الترقية إلى {{plan}}",
+      "currentButton": "الخطة الحالية",
       "toasts": {
         "upgrade": {
-          "title": "Upgrade",
-          "body": "Redirecting to upgrade page..."
+          "title": "ترقية",
+          "body": "جارٍ التوجيه إلى صفحة الترقية..."
         },
         "upgradeWithPlan": {
-          "title": "Upgrade",
-          "body": "Redirecting to upgrade to {{plan}}..."
+          "title": "ترقية",
+          "body": "جارٍ التوجيه للترقية إلى {{plan}}..."
         },
         "highest": {
-          "title": "Account",
-          "body": "You are already on the highest tier!"
+          "title": "الحساب",
+          "body": "أنت بالفعل في أعلى مستوى!"
         }
       }
     },
     "links": {
-      "title": "Links",
-      "domainLabel": "Select a domain",
-      "selectOption": "Select a domain",
-      "verifyNew": "Verify new domain",
-      "addButton": "Add",
+      "title": "الروابط",
+      "domainLabel": "اختر نطاقاً",
+      "selectOption": "اختر نطاقاً",
+      "verifyNew": "تحقق من نطاق جديد",
+      "addButton": "إضافة",
       "invalidDomainToast": {
-        "title": "Invalid domain"
+        "title": "نطاق غير صالح"
       },
       "addDomainToast": {
-        "title": "Domain added",
-        "body": "Domain {{domain}} has been added and is pending verification."
+        "title": "تمت إضافة النطاق",
+        "body": "تمت إضافة النطاق {{domain}} وهو قيد التحقق."
       },
       "linkedinToast": {
         "title": "LinkedIn",
-        "body": "Redirecting to LinkedIn connection..."
+        "body": "جارٍ التوجيه إلى اتصال LinkedIn..."
       },
       "githubToast": {
         "title": "GitHub",
-        "body": "Redirecting to GitHub connection..."
+        "body": "جارٍ التوجيه إلى اتصال GitHub..."
       },
       "verifiedToast": {
-        "title": "Domain Verified",
-        "body": "Domain {{domain}} has been successfully verified!"
+        "title": "تم التحقق من النطاق",
+        "body": "تم التحقق من النطاق {{domain}} بنجاح!"
       },
       "domainPlaceholder": "example.com"
     },
     "domainErrors": {
-      "empty": "Domain cannot be empty",
-      "spaces": "Domain cannot have leading or trailing spaces",
-      "format": "Please enter a valid domain format (e.g., example.com)",
-      "duplicate": "This domain has already been added"
+      "empty": "لا يمكن أن يكون النطاق فارغاً",
+      "spaces": "لا يمكن أن يحتوي النطاق على مسافات في البداية أو النهاية",
+      "format": "يرجى إدخال تنسيق نطاق صالح (مثل: example.com)",
+      "duplicate": "تمت إضافة هذا النطاق بالفعل"
     },
     "email": {
-      "title": "Email",
+      "title": "البريد الإلكتروني",
       "addressFallback": "chris@whynot.earth",
-      "receiveFeedback": "Receive feedback emails"
+      "receiveFeedback": "تلقي رسائل البريد الإلكتروني للملاحظات"
     },
     "delete": {
-      "sectionTitle": "Delete account",
-      "button": "Delete",
-      "modalTitle": "Delete Account",
-      "heading": "Are you sure you want to delete your account?",
-      "description": "This action cannot be undone. All your data, conversations, and settings will be permanently deleted.",
-      "listIntro": "This will permanently delete:",
+      "sectionTitle": "حذف الحساب",
+      "button": "حذف",
+      "modalTitle": "حذف الحساب",
+      "heading": "هل أنت متأكد من أنك تريد حذف حسابك؟",
+      "description": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع بياناتك ومحادثاتك وإعداداتك بشكل دائم.",
+      "listIntro": "سيؤدي هذا إلى حذف دائم:",
       "listItems": [
-        "All your conversations and chat history",
-        "Your account settings and preferences",
-        "Any uploaded files and documents",
-        "Your subscription and billing information"
+        "جميع محادثاتك وسجل الدردشة",
+        "إعدادات حسابك وتفضيلاتك",
+        "أي ملفات ومستندات تم تحميلها",
+        "معلومات الاشتراك والفوترة الخاصة بك"
       ],
-      "confirmLabel": "To confirm, type your email address:",
-      "inputPlaceholder": "Type your email address here",
-      "errorMismatch": "Please type your email address exactly as shown to confirm deletion.",
-      "errorFailed": "Failed to delete account. Please try again.",
-      "toastFailedTitle": "Account deletion failed",
-      "toastFailedBody": "There was an error deleting your account. Please try again.",
-      "toastSuccessTitle": "Account deleted",
-      "toastSuccessBody": "Your account has been permanently deleted.",
-      "cancel": "Cancel",
-      "confirmButton": "Delete Account"
+      "confirmLabel": "للتأكيد، اكتب عنوان بريدك الإلكتروني:",
+      "inputPlaceholder": "اكتب عنوان بريدك الإلكتروني هنا",
+      "errorMismatch": "يرجى كتابة عنوان بريدك الإلكتروني تماماً كما هو موضح لتأكيد الحذف.",
+      "errorFailed": "فشل حذف الحساب. يرجى المحاولة مرة أخرى.",
+      "toastFailedTitle": "فشل حذف الحساب",
+      "toastFailedBody": "حدث خطأ أثناء حذف حسابك. يرجى المحاولة مرة أخرى.",
+      "toastSuccessTitle": "تم حذف الحساب",
+      "toastSuccessBody": "تم حذف حسابك بشكل دائم.",
+      "cancel": "إلغاء",
+      "confirmButton": "حذف الحساب"
     },
     "domainModal": {
-      "title": "Add New Domain",
-      "label": "Domain",
-      "cancel": "Cancel",
-      "submit": "Add Domain"
+      "title": "إضافة نطاق جديد",
+      "label": "النطاق",
+      "cancel": "إلغاء",
+      "submit": "إضافة نطاق"
     }
   },
   "notifications": {
-    "title": "Notifications",
-    "loadError": "Failed to load notification settings",
-    "toastBody": "Your notification preferences have been updated",
+    "title": "الإشعارات",
+    "loadError": "فشل تحميل إعدادات الإشعارات",
+    "toastBody": "تم تحديث تفضيلات الإشعارات الخاصة بك",
     "sections": {
       "responses": {
-        "title": "Responses",
-        "description": "Get notified when ChatGPT responds to requests that take time, like research or image generation."
+        "title": "الردود",
+        "description": "احصل على إشعار عندما يستجيب ChatGPT للطلبات التي تستغرق وقتاً، مثل البحث أو توليد الصور."
       },
       "tasks": {
-        "title": "Tasks",
-        "description": "Get notified when tasks you've created have updates.",
-        "manage": "Manage tasks"
+        "title": "المهام",
+        "description": "احصل على إشعار عندما تحصل المهام التي أنشأتها على تحديثات.",
+        "manage": "إدارة المهام"
       },
       "messaging": {
-        "title": "Messaging",
+        "title": "المراسلة",
         "description": "Calpico"
       }
     },
     "channels": {
-      "push": "Push",
-      "email": "Email",
-      "none": "None"
+      "push": "إشعارات فورية",
+      "email": "بريد إلكتروني",
+      "none": "لا شيء"
     }
   },
   "security": {
-    "title": "Security",
-    "loadError": "Failed to load security settings",
-    "fallback": "Failed to load security settings",
+    "title": "الأمان",
+    "loadError": "فشل تحميل إعدادات الأمان",
+    "fallback": "فشل تحميل إعدادات الأمان",
     "toasts": {
-      "settingsUpdated": "Your security settings have been updated"
+      "settingsUpdated": "تم تحديث إعدادات الأمان الخاصة بك"
     },
     "password": {
-      "sectionTitle": "Password",
-      "description": "Change your account password or reset it if you've forgotten it.",
-      "changeButton": "Change password",
-      "cancelButton": "Cancel",
-      "resetButton": "Reset password",
+      "sectionTitle": "كلمة المرور",
+      "description": "قم بتغيير كلمة مرور حسابك أو إعادة تعيينها إذا نسيتها.",
+      "changeButton": "تغيير كلمة المرور",
+      "cancelButton": "إلغاء",
+      "resetButton": "إعادة تعيين كلمة المرور",
       "fields": {
         "current": {
-          "label": "Current Password",
-          "placeholder": "Enter current password"
+          "label": "كلمة المرور الحالية",
+          "placeholder": "أدخل كلمة المرور الحالية"
         },
         "new": {
-          "label": "New Password",
-          "placeholder": "Enter new password"
+          "label": "كلمة المرور الجديدة",
+          "placeholder": "أدخل كلمة المرور الجديدة"
         },
         "confirm": {
-          "label": "Confirm New Password",
-          "placeholder": "Confirm new password"
+          "label": "تأكيد كلمة المرور الجديدة",
+          "placeholder": "أكد كلمة المرور الجديدة"
         }
       },
-      "submit": "Change Password",
+      "submit": "تغيير كلمة المرور",
       "errors": {
         "missing": {
-          "title": "Missing fields",
-          "body": "Please fill in all password fields"
+          "title": "حقول مفقودة",
+          "body": "يرجى ملء جميع حقول كلمة المرور"
         },
         "mismatch": {
-          "title": "Password mismatch",
-          "body": "New password and confirmation do not match"
+          "title": "كلمات المرور غير متطابقة",
+          "body": "كلمة المرور الجديدة والتأكيد غير متطابقين"
         },
         "weak": {
-          "title": "Weak password",
-          "body": "Password must be at least 8 characters long"
+          "title": "كلمة مرور ضعيفة",
+          "body": "يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل"
         },
         "failed": {
-          "title": "Failed to change password",
-          "body": "Please try again"
+          "title": "فشل تغيير كلمة المرور",
+          "body": "يرجى المحاولة مرة أخرى"
         }
       },
       "success": {
-        "title": "Password changed",
-        "body": "Your password has been updated successfully"
+        "title": "تم تغيير كلمة المرور",
+        "body": "تم تحديث كلمة المرور الخاصة بك بنجاح"
       },
       "reset": {
-        "title": "Reset email sent",
-        "body": "Check your email for password reset instructions"
+        "title": "تم إرسال بريد إعادة التعيين",
+        "body": "تحقق من بريدك الإلكتروني للحصول على تعليمات إعادة تعيين كلمة المرور"
       }
     },
     "mfa": {
-      "title": "Multi-factor authentication",
-      "description": "Require an extra security challenge when logging in. If you are unable to pass this challenge, you will have the option to recover your account via email.",
+      "title": "المصادقة متعددة العوامل",
+      "description": "اطلب تحدياً أمنياً إضافياً عند تسجيل الدخول. إذا لم تتمكن من اجتياز هذا التحدي، فسيكون لديك خيار استرداد حسابك عبر البريد الإلكتروني.",
       "toastEnabled": {
-        "title": "MFA enabled",
-        "body": "Multi-factor authentication has been successfully enabled"
+        "title": "تم تفعيل MFA",
+        "body": "تم تفعيل المصادقة متعددة العوامل بنجاح"
       },
       "disable": {
-        "modalTitle": "Disable Multi-Factor Authentication",
-        "heading": "Are you sure you want to disable MFA?",
-        "description": "Disabling multi-factor authentication will make your account less secure. You will no longer be required to provide a second authentication factor when signing in.",
-        "cancel": "Cancel",
-        "confirm": "Disable MFA",
-        "toastTitle": "MFA disabled",
-        "toastBody": "Multi-factor authentication has been disabled"
+        "modalTitle": "تعطيل المصادقة متعددة العوامل",
+        "heading": "هل أنت متأكد من أنك تريد تعطيل MFA؟",
+        "description": "سيؤدي تعطيل المصادقة متعددة العوامل إلى جعل حسابك أقل أماناً. لن تحتاج بعد الآن إلى توفير عامل مصادقة ثانٍ عند تسجيل الدخول.",
+        "cancel": "إلغاء",
+        "confirm": "تعطيل MFA",
+        "toastTitle": "تم تعطيل MFA",
+        "toastBody": "تم تعطيل المصادقة متعددة العوامل"
       }
     },
     "trustedDevices": {
-      "title": "Trusted Devices",
-      "description": "When you sign in on another device, it will be added here and can automatically receive device prompts for signing in."
+      "title": "الأجهزة الموثوقة",
+      "description": "عند تسجيل الدخول على جهاز آخر، سيتم إضافته هنا ويمكنه تلقي طلبات الجهاز تلقائياً لتسجيل الدخول."
     },
     "logout": {
       "current": {
-        "title": "Log out of this device",
-        "button": "Log out",
-        "toastTitle": "Logged out",
-        "toastBody": "You have been logged out of this device"
+        "title": "تسجيل الخروج من هذا الجهاز",
+        "button": "تسجيل الخروج",
+        "toastTitle": "تم تسجيل الخروج",
+        "toastBody": "تم تسجيل خروجك من هذا الجهاز"
       },
       "all": {
-        "title": "Log out of all devices",
-        "description": "Log out of all active sessions across all devices, including your current session. It may take up to 30 minutes for other devices to be logged out.",
-        "button": "Log out all",
-        "toastTitle": "Logged out",
-        "toastBody": "You have been logged out of all devices"
+        "title": "تسجيل الخروج من جميع الأجهزة",
+        "description": "سجّل الخروج من جميع الجلسات النشطة عبر جميع الأجهزة، بما في ذلك جلستك الحالية. قد يستغرق الأمر ما يصل إلى 30 دقيقة لتسجيل خروج الأجهزة الأخرى.",
+        "button": "تسجيل الخروج من الكل",
+        "toastTitle": "تم تسجيل الخروج",
+        "toastBody": "تم تسجيل خروجك من جميع الأجهزة"
       }
     }
   },
   "mfa": {
-    "back": "← Back to Security",
-    "title": "Secure your account",
-    "instructions": "Scan the QR Code below using your preferred authenticator app and then enter the provided one-time code below.",
-    "qrLabel": "QR Code",
-    "troubleScanning": "Trouble scanning?",
-    "then": "Then",
-    "codeLabel": "Enter your one-time code*",
+    "back": "← العودة إلى الأمان",
+    "title": "قم بتأمين حسابك",
+    "instructions": "امسح رمز QR أدناه باستخدام تطبيق المصادقة المفضل لديك ثم أدخل الرمز الفريد المقدم أدناه.",
+    "qrLabel": "رمز QR",
+    "troubleScanning": "مشكلة في المسح؟",
+    "then": "ثم",
+    "codeLabel": "أدخل رمزك الفريد*",
     "codePlaceholder": "000000",
-    "verifyButton": "Continue",
-    "verifying": "Verifying...",
+    "verifyButton": "متابعة",
+    "verifying": "جارٍ التحقق...",
     "errors": {
       "codeRequired": {
-        "title": "Code required",
-        "body": "Please enter the verification code from your authenticator app"
+        "title": "الرمز مطلوب",
+        "body": "يرجى إدخال رمز التحقق من تطبيق المصادقة الخاص بك"
       },
       "codeInvalid": {
-        "title": "Invalid code",
-        "body": "Please enter a valid 6-digit code"
+        "title": "رمز غير صالح",
+        "body": "يرجى إدخال رمز صالح من 6 أرقام"
       },
       "verifyFailed": {
-        "title": "Verification failed",
-        "body": "Invalid code. Please try again."
+        "title": "فشل التحقق",
+        "body": "رمز غير صالح. يرجى المحاولة مرة أخرى."
       },
       "clipboardUnsupported": {
-        "title": "Clipboard not supported",
-        "body": "Your browser does not support copying to clipboard. Please manually copy the code."
+        "title": "الحافظة غير مدعومة",
+        "body": "متصفحك لا يدعم النسخ إلى الحافظة. يرجى نسخ الرمز يدوياً."
       },
       "copyFailed": {
-        "title": "Copy failed",
-        "body": "Failed to copy code to clipboard: {{message}}",
-        "unknown": "Unknown error"
+        "title": "فشل النسخ",
+        "body": "فشل نسخ الرمز إلى الحافظة: {{message}}",
+        "unknown": "خطأ غير معروف"
       }
     },
     "copied": {
-      "title": "Copied",
-      "body": "Manual code copied to clipboard"
+      "title": "تم النسخ",
+      "body": "تم نسخ الرمز اليدوي إلى الحافظة"
     },
     "footer": {
-      "terms": "Terms of Use",
-      "privacy": "Privacy Policy"
+      "terms": "شروط الاستخدام",
+      "privacy": "سياسة الخصوصية"
     }
   },
   "help": {
-    "title": "Help",
+    "title": "المساعدة",
     "sections": {
       "helpCenter": {
-        "title": "Help Center",
-        "description": "Get help and find answers to common questions",
-        "cta": "Visit",
-        "ariaLabel": "Visit Blawby help — opens in a new tab"
+        "title": "مركز المساعدة",
+        "description": "احصل على المساعدة وابحث عن إجابات للأسئلة الشائعة",
+        "cta": "زيارة",
+        "ariaLabel": "زيارة مساعدة Blawby — يفتح في تبويب جديد"
       },
       "releaseNotes": {
-        "title": "Release Notes",
-        "description": "See what's new in the latest updates",
-        "cta": "View",
-        "ariaLabel": "View release notes — opens in a new tab"
+        "title": "ملاحظات الإصدار",
+        "description": "شاهد ما الجديد في آخر التحديثات",
+        "cta": "عرض",
+        "ariaLabel": "عرض ملاحظات الإصدار — يفتح في تبويب جديد"
       },
       "terms": {
-        "title": "Terms & Policies",
-        "description": "Read our terms of service and privacy policy",
-        "cta": "Read",
-        "ariaLabel": "Read terms and policies — opens in a new tab"
+        "title": "الشروط والسياسات",
+        "description": "اقرأ شروط الخدمة وسياسة الخصوصية",
+        "cta": "قراءة",
+        "ariaLabel": "قراءة الشروط والسياسات — يفتح في تبويب جديد"
       },
       "bug": {
-        "title": "Report Bug",
-        "description": "Help us improve by reporting issues",
-        "cta": "Report"
+        "title": "الإبلاغ عن خطأ",
+        "description": "ساعدنا على التحسين من خلال الإبلاغ عن المشكلات",
+        "cta": "إبلاغ"
       },
       "downloads": {
-        "title": "Download Apps",
-        "description": "Get our mobile and desktop applications",
-        "cta": "Download",
-        "ariaLabel": "Download Blawby apps — opens in a new tab"
+        "title": "تنزيل التطبيقات",
+        "description": "احصل على تطبيقاتنا للهاتف المحمول وسطح المكتب",
+        "cta": "تنزيل",
+        "ariaLabel": "تنزيل تطبيقات Blawby — يفتح في تبويب جديد"
       },
       "shortcuts": {
-        "title": "Keyboard Shortcuts",
-        "description": "Learn keyboard shortcuts to work faster",
-        "cta": "View"
+        "title": "اختصارات لوحة المفاتيح",
+        "description": "تعلم اختصارات لوحة المفاتيح للعمل بشكل أسرع",
+        "cta": "عرض"
       }
     }
   }

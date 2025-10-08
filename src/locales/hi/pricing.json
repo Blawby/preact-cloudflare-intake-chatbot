@@ -1,231 +1,231 @@
 {
   "plans": {
     "free": {
-      "name": "Free",
-      "description": "Legal AI assistance for everyday needs",
-      "buttonText": "Your current plan"
+      "name": "फ्री",
+      "description": "रोज़मर्रा की ज़रूरतों के लिए कानूनी AI सहायता",
+      "buttonText": "आपकी वर्तमान योजना"
     },
     "plus": {
       "name": "Plus",
-      "description": "Enhanced legal AI capabilities for professionals",
-      "buttonText": "Get Plus"
+      "description": "पेशेवरों के लिए उन्नत कानूनी AI क्षमताएं",
+      "buttonText": "Plus प्राप्त करें"
     },
     "business": {
       "name": "Business",
-      "description": "Secure, collaborative workspace for teams",
-      "buttonText": "Get Business"
+      "description": "टीमों के लिए सुरक्षित, सहयोगी कार्यक्षेत्र",
+      "buttonText": "Business प्राप्त करें"
     }
   },
   "features": {
     "aiAccess": {
-      "name": "AI Access",
-      "description": "Access to our legal AI models",
+      "name": "AI एक्सेस",
+      "description": "हमारे कानूनी AI मॉडल तक पहुंच",
       "tiers": {
-        "free": "Blawby AI-1 (Limited)",
-        "plus": "Blawby AI-1 (Enhanced)",
-        "business": "Blawby AI-1 (Unlimited)"
+        "free": "Blawby AI-1 (सीमित)",
+        "plus": "Blawby AI-1 (उन्नत)",
+        "business": "Blawby AI-1 (असीमित)"
       },
       "text": {
-        "free": "Access to Blawby AI-1",
-        "plus": "Enhanced access to Blawby AI-1",
-        "business": "Unlimited access to our best model for work"
+        "free": "Blawby AI-1 तक पहुंच",
+        "plus": "Blawby AI-1 तक उन्नत पहुंच",
+        "business": "काम के लिए हमारे सर्वश्रेष्ठ मॉडल तक असीमित पहुंच"
       },
       "detail": {
-        "free": "Limited access to our legal AI model",
-        "plus": "Priority access to our legal AI model",
-        "business": "Unlimited access to advanced AI models"
+        "free": "हमारे कानूनी AI मॉडल तक सीमित पहुंच",
+        "plus": "हमारे कानूनी AI मॉडल तक प्राथमिकता पहुंच",
+        "business": "उन्नत AI मॉडल तक असीमित पहुंच"
       }
     },
     "documentAnalysis": {
-      "name": "Document Analysis",
-      "description": "Upload and analyze legal documents",
+      "name": "दस्तावेज़ विश्लेषण",
+      "description": "कानूनी दस्तावेज़ अपलोड और विश्लेषण करें",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "सीमित",
+        "plus": "उन्नत",
+        "business": "असीमित"
       },
       "text": {
-        "free": "Limited document analysis",
-        "plus": "Enhanced document analysis",
-        "business": "Advanced document analysis & case preparation"
+        "free": "सीमित दस्तावेज़ विश्लेषण",
+        "plus": "उन्नत दस्तावेज़ विश्लेषण",
+        "business": "उन्नत दस्तावेज़ विश्लेषण और मामले की तैयारी"
       },
       "detail": {
-        "free": "Upload and analyze basic legal documents",
-        "plus": "Faster and more accurate legal document processing",
-        "business": "Full legal document processing capabilities"
+        "free": "बुनियादी कानूनी दस्तावेज़ अपलोड और विश्लेषण करें",
+        "plus": "तेज़ और अधिक सटीक कानूनी दस्तावेज़ प्रसंस्करण",
+        "business": "पूर्ण कानूनी दस्तावेज़ प्रसंस्करण क्षमताएं"
       }
     },
     "casePreparation": {
-      "name": "Case PDF Preparation",
-      "description": "AI-powered case document preparation",
+      "name": "केस PDF तैयारी",
+      "description": "AI-संचालित केस दस्तावेज़ तैयारी",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "सीमित",
+        "plus": "उन्नत",
+        "business": "असीमित"
       },
       "text": {
-        "free": "Limited case PDF preparation",
-        "plus": "Enhanced case PDF preparation",
-        "business": "Advanced case PDF preparation"
+        "free": "सीमित केस PDF तैयारी",
+        "plus": "उन्नत केस PDF तैयारी",
+        "business": "उन्नत केस PDF तैयारी"
       },
       "detail": {
-        "free": "Basic case document preparation",
-        "plus": "Advanced case document preparation",
-        "business": "Full case document preparation capabilities"
+        "free": "बुनियादी केस दस्तावेज़ तैयारी",
+        "plus": "उन्नत केस दस्तावेज़ तैयारी",
+        "business": "पूर्ण केस दस्तावेज़ तैयारी क्षमताएं"
       }
     },
     "memoryContext": {
-      "name": "Memory & Context",
-      "description": "Conversation memory and context",
+      "name": "मेमोरी और संदर्भ",
+      "description": "वार्तालाप मेमोरी और संदर्भ",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "सीमित",
+        "plus": "उन्नत",
+        "business": "असीमित"
       },
       "text": {
-        "free": "Limited memory and context",
-        "plus": "Extended memory and context",
-        "business": "Unlimited memory and context"
+        "free": "सीमित मेमोरी और संदर्भ",
+        "plus": "विस्तारित मेमोरी और संदर्भ",
+        "business": "असीमित मेमोरी और संदर्भ"
       },
       "detail": {
-        "free": "Basic conversation memory",
-        "plus": "Longer conversation memory",
-        "business": "Unlimited conversation history"
+        "free": "बुनियादी वार्तालाप मेमोरी",
+        "plus": "लंबी वार्तालाप मेमोरी",
+        "business": "असीमित वार्तालाप इतिहास"
       }
     },
     "lawyerSearch": {
-      "name": "Lawyer Search",
-      "description": "Find and connect with qualified lawyers",
+      "name": "वकील खोज",
+      "description": "योग्य वकीलों को खोजें और उनसे जुड़ें",
       "tiers": {
-        "free": "Limited",
-        "plus": "Enhanced",
-        "business": "Unlimited"
+        "free": "सीमित",
+        "plus": "उन्नत",
+        "business": "असीमित"
       },
       "text": {
-        "free": "Limited lawyer search",
-        "plus": "Enhanced lawyer search",
-        "business": "Advanced lawyer search"
+        "free": "सीमित वकील खोज",
+        "plus": "उन्नत वकील खोज",
+        "business": "उन्नत वकील खोज"
       },
       "detail": {
-        "free": "Basic lawyer search capabilities",
-        "plus": "Advanced lawyer matching capabilities",
-        "business": "Full lawyer matching and research capabilities"
+        "free": "बुनियादी वकील खोज क्षमताएं",
+        "plus": "उन्नत वकील मिलान क्षमताएं",
+        "business": "पूर्ण वकील मिलान और अनुसंधान क्षमताएं"
       }
     },
     "teamCollaboration": {
-      "name": "Team Collaboration",
-      "description": "Shared projects and team features",
-      "text": "Tools for teams like shared projects & workflows",
-      "detail": "Team collaboration and project management"
+      "name": "टीम सहयोग",
+      "description": "साझा परियोजनाएं और टीम सुविधाएं",
+      "text": "टीमों के लिए साझा परियोजनाओं और वर्कफ़्लो जैसे उपकरण",
+      "detail": "टीम सहयोग और परियोजना प्रबंधन"
     },
     "security": {
-      "name": "Advanced Security",
-      "description": "SSO, MFA, and enterprise security",
-      "text": "Advanced security with SSO, MFA, & more",
-      "detail": "Enterprise-grade security features"
+      "name": "उन्नत सुरक्षा",
+      "description": "SSO, MFA, और एंटरप्राइज़ सुरक्षा",
+      "text": "SSO, MFA और अधिक के साथ उन्नत सुरक्षा",
+      "detail": "एंटरप्राइज़-ग्रेड सुरक्षा सुविधाएं"
     },
     "privacy": {
-      "name": "Privacy Protection",
-      "description": "Data never used for training",
-      "text": "Privacy built in; data never used for training",
-      "detail": "Complete data privacy protection"
+      "name": "गोपनीयता सुरक्षा",
+      "description": "डेटा कभी भी प्रशिक्षण के लिए उपयोग नहीं किया जाता",
+      "text": "गोपनीयता अंतर्निर्मित; डेटा कभी भी प्रशिक्षण के लिए उपयोग नहीं किया जाता",
+      "detail": "पूर्ण डेटा गोपनीयता सुरक्षा"
     },
     "integrations": {
-      "name": "Integrations",
-      "description": "SharePoint and other tools",
-      "text": "Integration with Quickbooks & other tools",
-      "detail": "Connect with your existing workflow"
+      "name": "इंटीग्रेशन",
+      "description": "SharePoint और अन्य टूल",
+      "text": "Quickbooks और अन्य टूल के साथ इंटीग्रेशन",
+      "detail": "अपने मौजूदा वर्कफ़्लो से कनेक्ट करें"
     },
     "billing": {
-      "name": "Simplified Billing",
-      "description": "User management and billing",
-      "text": "Simplified billing and user management",
-      "detail": "Easy team and billing management"
+      "name": "सरलीकृत बिलिंग",
+      "description": "उपयोगकर्ता प्रबंधन और बिलिंग",
+      "text": "सरलीकृत बिलिंग और उपयोगकर्ता प्रबंधन",
+      "detail": "आसान टीम और बिलिंग प्रबंधन"
     },
     "transcription": {
-      "name": "Voice Transcription",
-      "description": "Meeting and voice transcription",
-      "text": "Voice transcription and analysis",
-      "detail": "Voice transcription and legal analysis"
+      "name": "वॉइस ट्रांसक्रिप्शन",
+      "description": "मीटिंग और वॉइस ट्रांसक्रिप्शन",
+      "text": "वॉइस ट्रांसक्रिप्शन और विश्लेषण",
+      "detail": "वॉइस ट्रांसक्रिप्शन और कानूनी विश्लेषण"
     },
     "agents": {
-      "name": "AI Agents",
-      "description": "Coding and research agents",
-      "text": "Legal research and lawyer search agents",
-      "detail": "Specialized AI agents for legal research and lawyer matching"
+      "name": "AI एजेंट",
+      "description": "कोडिंग और अनुसंधान एजेंट",
+      "text": "कानूनी अनुसंधान और वकील खोज एजेंट",
+      "detail": "कानूनी अनुसंधान और वकील मिलान के लिए विशेष AI एजेंट"
     },
     "plusIncludes": {
-      "text": "Everything in Free, with higher limits",
-      "detail": "All free features with increased usage"
+      "text": "फ्री में सब कुछ, उच्च सीमा के साथ",
+      "detail": "बढ़ी हुई उपयोग के साथ सभी मुफ्त सुविधाएं"
     },
     "businessIncludes": {
-      "text": "Everything in Plus, with even higher limits",
-      "detail": "All Plus features with unlimited usage"
+      "text": "Plus में सब कुछ, और भी उच्च सीमा के साथ",
+      "detail": "असीमित उपयोग के साथ सभी Plus सुविधाएं"
     }
   },
   "limitations": {
     "free": {
-      "messagesPerDay": "Limited to 20 messages per day",
-      "documentSupport": "Basic document analysis support",
-      "responseTime": "Standard response times",
-      "noTeam": "No team collaboration features"
+      "messagesPerDay": "प्रति दिन 20 संदेश तक सीमित",
+      "documentSupport": "बुनियादी दस्तावेज़ विश्लेषण समर्थन",
+      "responseTime": "मानक प्रतिक्रिया समय",
+      "noTeam": "कोई टीम सहयोग सुविधाएं नहीं"
     },
     "plus": {
-      "messagesPerDay": "Limited to 200 messages per day",
-      "noTeam": "No team collaboration features",
-      "standardSupport": "Standard support response times"
+      "messagesPerDay": "प्रति दिन 200 संदेश तक सीमित",
+      "noTeam": "कोई टीम सहयोग सुविधाएं नहीं",
+      "standardSupport": "मानक समर्थन प्रतिक्रिया समय"
     },
     "business": {
-      "minUsers": "Requires 2+ users",
-      "annualBilling": "Annual billing recommended"
+      "minUsers": "2+ उपयोगकर्ताओं की आवश्यकता",
+      "annualBilling": "वार्षिक बिलिंग अनुशंसित"
     }
   },
   "benefits": {
     "free": {
-      "personal": "Perfect for personal legal needs",
-      "noCard": "No credit card required",
-      "fullAccess": "Full access to core legal AI features",
-      "support": "Community support"
+      "personal": "व्यक्तिगत कानूनी आवश्यकताओं के लिए बिल्कुल सही",
+      "noCard": "क्रेडिट कार्ड की आवश्यकता नहीं",
+      "fullAccess": "मुख्य कानूनी AI सुविधाओं तक पूर्ण पहुंच",
+      "support": "सामुदायिक समर्थन"
     },
     "plus": {
-      "higherLimits": "5x higher usage limits",
-      "priorityAccess": "Priority AI model access",
-      "enhanced": "Enhanced legal features",
-      "support": "Email support"
+      "higherLimits": "5x उच्च उपयोग सीमा",
+      "priorityAccess": "प्राथमिकता AI मॉडल पहुंच",
+      "enhanced": "उन्नत कानूनी सुविधाएं",
+      "support": "ईमेल समर्थन"
     },
     "business": {
-      "unlimited": "Unlimited usage",
-      "team": "Team collaboration",
-      "security": "Enterprise security",
-      "prioritySupport": "Priority support",
-      "customIntegrations": "Custom integrations"
+      "unlimited": "असीमित उपयोग",
+      "team": "टीम सहयोग",
+      "security": "एंटरप्राइज़ सुरक्षा",
+      "prioritySupport": "प्राथमिकता समर्थन",
+      "customIntegrations": "कस्टम इंटीग्रेशन"
     }
   },
   "modal": {
-    "title": "Upgrade your plan",
+    "title": "अपनी योजना अपग्रेड करें",
     "tabs": {
-      "personal": "Personal",
-      "business": "Business"
+      "personal": "व्यक्तिगत",
+      "business": "व्यवसाय"
     },
-    "countryLabel": "Select your country",
-    "currentPlan": "Current Plan",
-    "recommended": "Recommended",
-    "popular": "Most Popular",
-    "close": "Close"
+    "countryLabel": "अपना देश चुनें",
+    "currentPlan": "वर्तमान योजना",
+    "recommended": "अनुशंसित",
+    "popular": "सबसे लोकप्रिय",
+    "close": "बंद करें"
   },
   "billing": {
-    "monthly": "month",
-    "yearly": "year",
-    "billedMonthly": "Billed monthly",
-    "billedAnnually": "Billed annually",
+    "monthly": "महीना",
+    "yearly": "वर्ष",
+    "billedMonthly": "मासिक बिल किया गया",
+    "billedAnnually": "वार्षिक बिल किया गया",
     "currency": {
       "usd": "USD"
     }
   },
   "comparison": {
-    "title": "Compare Plans",
-    "feature": "Feature",
-    "included": "Included",
-    "notIncluded": "Not included"
+    "title": "योजनाओं की तुलना करें",
+    "feature": "सुविधा",
+    "included": "शामिल",
+    "notIncluded": "शामिल नहीं"
   }
 }

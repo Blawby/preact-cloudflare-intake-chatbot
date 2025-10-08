@@ -1,19 +1,19 @@
 {
   "menu": {
-    "profile": "Profile",
-    "settings": "Settings",
-    "upgrade": "Upgrade plan",
-    "upgradeShort": "Upgrade",
-    "help": "Get help",
-    "signOut": "Sign out",
-    "signIn": "Sign In"
+    "profile": "โปรไฟล์",
+    "settings": "ตั้งค่า",
+    "upgrade": "อัพเกรดแผน",
+    "upgradeShort": "อัพเกรด",
+    "help": "ขอความช่วยเหลือ",
+    "signOut": "ออกจากระบบ",
+    "signIn": "เข้าสู่ระบบ"
   },
   "status": {
-    "signingOut": "Signing Out...",
-    "loading": "Loading..."
+    "signingOut": "กำลังออกจากระบบ...",
+    "loading": "กำลังโหลด..."
   },
   "aria": {
-    "userProfile": "User profile for {{name}}",
-    "signInButton": "Sign in to your account"
+    "userProfile": "โปรไฟล์ผู้ใช้สำหรับ {{name}}",
+    "signInButton": "เข้าสู่ระบบบัญชีของคุณ"
   }
 }
