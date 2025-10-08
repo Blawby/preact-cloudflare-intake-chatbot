@@ -5,16 +5,20 @@ import PricingModal from "../../components/PricingModal";
 import { i18n, changeLanguage } from "@/i18n/hooks";
 import { formatCurrency } from "../../utils/currencyFormatter";
 
-// Mock the i18n hook
-vi.mock("@/i18n/hooks", () => ({
-  useTranslation: (namespace?: string) => {
-    const translate = (key: string, options?: any) => {
-      // Return key for simple verification in tests
-      return `${namespace || "common"}.${key}`;
-    };
-    return { t: translate };
-  },
-}));
+// Mock the i18n hook - keep real i18n and changeLanguage, only mock useTranslation
+vi.mock("@/i18n/hooks", async () => {
+  const actual = await vi.importActual<typeof import("@/i18n/hooks")>("@/i18n/hooks");
+  return {
+    ...actual,
+    useTranslation: (namespace?: string) => {
+      const translate = (key: string, options?: any) => {
+        // Return key for simple verification in tests
+        return `${namespace || "common"}.${key}`;
+      };
+      return { t: translate };
+    },
+  };
+});
 
 describe("Pricing Internationalization", () => {
   describe("i18n Configuration", () => {
