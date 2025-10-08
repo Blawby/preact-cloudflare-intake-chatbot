@@ -1,6 +1,4 @@
-import { memo } from 'preact/hooks';
-
-const LoadingIndicator = memo(() => {
+const LoadingIndicator = () => {
   return (
     <div className="message message-ai">
       <div 
@@ -15,7 +13,7 @@ const LoadingIndicator = memo(() => {
       </div>
     </div>
   );
-});
+};
 
 LoadingIndicator.displayName = 'LoadingIndicator';
 

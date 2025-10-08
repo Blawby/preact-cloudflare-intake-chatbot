@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "../utils/test-utils";
 import PricingComparison from "../../components/PricingComparison";
 import PricingModal from "../../components/PricingModal";
-import { i18n, changeLanguage } from "../../i18n";
+import { i18n, changeLanguage } from "@/i18n/hooks";
 import { formatCurrency } from "../../utils/currencyFormatter";
 
 // Mock the i18n hook
-vi.mock("../../components/ui/i18n/useTranslation", () => ({
+vi.mock("@/i18n/hooks", () => ({
   useTranslation: (namespace?: string) => {
     const translate = (key: string, options?: any) => {
       // Return key for simple verification in tests
