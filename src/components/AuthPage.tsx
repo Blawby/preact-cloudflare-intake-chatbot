@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 import { UserIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import OnboardingModal from './onboarding/OnboardingModal';
 import { OnboardingData } from '../utils/mockUserData';

@@ -1,5 +1,5 @@
 import { FunctionComponent, useState, useEffect, useRef } from 'preact/compat';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 import { ArrowTopRightOnSquareIcon, CreditCardIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 import Modal from './Modal';

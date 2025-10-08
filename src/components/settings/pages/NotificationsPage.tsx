@@ -3,7 +3,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { mockUserDataService, MockNotificationSettings } from '../../../utils/mockUserData';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 import { getNotificationDisplayText, NOTIFICATION_DEFAULTS } from '../../ui/validation/defaultValues';
 
 export interface NotificationsPageProps {

@@ -1,6 +1,6 @@
 import { FunctionComponent } from "preact";
 import { useState, useEffect } from "preact/hooks";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from '@/i18n/hooks';
 import Modal from "./Modal";
 import { Button } from "./ui/Button";
 import { UserGroupIcon } from "@heroicons/react/24/outline";
@@ -15,7 +15,7 @@ import {
   getLanguageForCountry,
 } from "../utils/mockUserData";
 import { formatCurrency } from "../utils/currencyFormatter";
-import { setLocale } from "../i18n";
+import { setLocale } from '@/i18n/hooks';
 
 interface PricingModalProps {
   isOpen: boolean;

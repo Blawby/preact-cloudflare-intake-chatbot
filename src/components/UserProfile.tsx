@@ -7,7 +7,7 @@ import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService } from '../utils/mockPricingData';
 import { mockUserDataService } from '../utils/mockUserData';
 import { debounce } from '../utils/debounce';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 
 interface User {
   id: string;

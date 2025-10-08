@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef } from 'preact/hooks';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 

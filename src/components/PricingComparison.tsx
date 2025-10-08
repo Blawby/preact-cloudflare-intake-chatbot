@@ -1,5 +1,5 @@
 import { FunctionComponent } from 'preact';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { formatCurrency } from '../utils/currencyFormatter';
