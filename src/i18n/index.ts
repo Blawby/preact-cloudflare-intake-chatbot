@@ -9,11 +9,33 @@ import profileEn from '../locales/en/profile.json';
 import pricingEn from '../locales/en/pricing.json';
 
 export const DEFAULT_LOCALE = 'en' as const;
+
+// Only includes languages that are ≥90% translated
+// Translation files exist for all languages but incomplete ones are hidden from the UI selector
 export const SUPPORTED_LOCALES = [
-  'en', 'es', 'fr', 'de', 'zh', 'ja', 'vi',  // Existing languages
-  'pt', 'ar', 'ru', 'it', 'ko', 'nl', 'pl',  // Phase 1-2: High/Medium priority
-  'tr', 'th', 'id', 'hi', 'uk'               // Phase 3: Expansion
+  'en',  // English - 100%
+  'pt',  // Português - 100%
+  'ar',  // العربية - 100%
+  'es',  // Español - 97.7%
+  'ja',  // 日本語 - 91.1%
+  'zh',  // 中文 - 91.1%
+  'vi',  // Tiếng Việt - 91.1%
+  'de',  // Deutsch - 91.1%
+  'fr',  // Français - 91.1%
 ] as const;
+
+// Languages with incomplete translations (<90%) - files exist but not shown in selector:
+// 'hi'  - हिन्दी - 75.5%
+// 'uk'  - Українська - 75.5%
+// 'id'  - Bahasa Indonesia - 75.5%
+// 'th'  - ไทย - 62.4%
+// 'ko'  - 한국어 - 53.7%
+// 'pl'  - Polski - 53.7%
+// 'nl'  - Nederlands - 53.7%
+// 'it'  - Italiano - 53.7%
+// 'ru'  - Русский - 53.7%
+// 'tr'  - Türkçe - 39.9%
+
 export type AppLocale = typeof SUPPORTED_LOCALES[number];
 
 // RTL (Right-to-Left) languages

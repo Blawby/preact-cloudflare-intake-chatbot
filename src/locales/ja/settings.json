@@ -176,7 +176,7 @@
     "channels": {
       "push": "プッシュ",
       "email": "メール",
-      "none": "[NEEDS TRANSLATION] None"
+      "none": "なし"
     }
   },
   "security": {

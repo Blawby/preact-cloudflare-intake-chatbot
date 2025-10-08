@@ -176,7 +176,7 @@
     "channels": {
       "push": "推送",
       "email": "电子邮件",
-      "none": "[NEEDS TRANSLATION] None"
+      "none": "无"
     }
   },
   "security": {

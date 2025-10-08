@@ -15,96 +15,96 @@
     "de": "Allemand",
     "zh": "中文",
     "ja": "日本語",
-    "pt": "[NEEDS TRANSLATION] Português",
-    "ar": "[NEEDS TRANSLATION] العربية",
-    "ru": "[NEEDS TRANSLATION] Русский",
-    "it": "[NEEDS TRANSLATION] Italiano",
-    "ko": "[NEEDS TRANSLATION] 한국어",
-    "nl": "[NEEDS TRANSLATION] Nederlands",
-    "pl": "[NEEDS TRANSLATION] Polski",
-    "tr": "[NEEDS TRANSLATION] Türkçe",
-    "th": "[NEEDS TRANSLATION] ไทย",
-    "id": "[NEEDS TRANSLATION] Bahasa Indonesia",
-    "hi": "[NEEDS TRANSLATION] हिन्दी",
-    "uk": "[NEEDS TRANSLATION] Українська"
+    "pt": "Portugais",
+    "ar": "Arabe",
+    "ru": "Russe",
+    "it": "Italien",
+    "ko": "Coréen",
+    "nl": "Néerlandais",
+    "pl": "Polonais",
+    "tr": "Turc",
+    "th": "Thaï",
+    "id": "Indonésien",
+    "hi": "Hindi",
+    "uk": "Ukrainien"
   },
   "forms": {
     "labels": {
-      "name": "[NEEDS TRANSLATION] Full Name",
-      "email": "[NEEDS TRANSLATION] Email Address",
-      "phone": "[NEEDS TRANSLATION] Phone Number",
-      "password": "[NEEDS TRANSLATION] Password",
-      "confirmPassword": "[NEEDS TRANSLATION] Confirm Password",
-      "birthday": "[NEEDS TRANSLATION] Birthday",
-      "terms": "[NEEDS TRANSLATION] Terms and Conditions",
-      "privacy": "[NEEDS TRANSLATION] Privacy Policy",
-      "search": "[NEEDS TRANSLATION] Search",
-      "select": "[NEEDS TRANSLATION] Select an option",
-      "upload": "[NEEDS TRANSLATION] Upload File",
-      "message": "[NEEDS TRANSLATION] Message",
-      "subject": "[NEEDS TRANSLATION] Subject"
+      "name": "Nom complet",
+      "email": "Adresse e-mail",
+      "phone": "Numéro de téléphone",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "birthday": "Date de naissance",
+      "terms": "Conditions générales",
+      "privacy": "Politique de confidentialité",
+      "search": "Rechercher",
+      "select": "Sélectionnez une option",
+      "upload": "Télécharger un fichier",
+      "message": "Message",
+      "subject": "Objet"
     },
     "placeholders": {
-      "name": "[NEEDS TRANSLATION] Enter your full name",
-      "email": "[NEEDS TRANSLATION] Enter your email address",
-      "phone": "[NEEDS TRANSLATION] Enter your phone number",
-      "password": "[NEEDS TRANSLATION] Enter your password",
-      "confirmPassword": "[NEEDS TRANSLATION] Confirm your password",
-      "birthday": "[NEEDS TRANSLATION] Select your birthday",
-      "search": "[NEEDS TRANSLATION] Search...",
-      "select": "[NEEDS TRANSLATION] Select an option",
-      "message": "[NEEDS TRANSLATION] Enter your message",
-      "subject": "[NEEDS TRANSLATION] Enter your subject"
+      "name": "Entrez votre nom complet",
+      "email": "Entrez votre adresse e-mail",
+      "phone": "Entrez votre numéro de téléphone",
+      "password": "Entrez votre mot de passe",
+      "confirmPassword": "Confirmez votre mot de passe",
+      "birthday": "Sélectionnez votre date de naissance",
+      "search": "Rechercher...",
+      "select": "Sélectionnez une option",
+      "message": "Entrez votre message",
+      "subject": "Entrez l'objet"
     },
     "descriptions": {
-      "optional": "[NEEDS TRANSLATION] Optional",
-      "required": "[NEEDS TRANSLATION] Required",
-      "passwordHelp": "[NEEDS TRANSLATION] Must be at least 8 characters long",
-      "phoneHelp": "[NEEDS TRANSLATION] Include country code for international numbers",
-      "fileHelp": "[NEEDS TRANSLATION] Supported formats: PDF, DOC, DOCX"
+      "optional": "Facultatif",
+      "required": "Obligatoire",
+      "passwordHelp": "Doit contenir au moins 8 caractères",
+      "phoneHelp": "Inclure l'indicatif pays pour les numéros internationaux",
+      "fileHelp": "Formats pris en charge : PDF, DOC, DOCX"
     },
     "validation": {
-      "required": "[NEEDS TRANSLATION] This field is required",
-      "email": "[NEEDS TRANSLATION] Please enter a valid email address",
-      "phone": "[NEEDS TRANSLATION] Please enter a valid phone number",
-      "password": "[NEEDS TRANSLATION] Password must be at least 8 characters",
-      "confirmPassword": "[NEEDS TRANSLATION] Passwords do not match",
-      "date": "[NEEDS TRANSLATION] Please enter a valid date (MM/DD/YYYY)",
-      "futureDate": "[NEEDS TRANSLATION] Date cannot be in the future",
-      "fileType": "[NEEDS TRANSLATION] Please select a valid file type",
-      "fileSize": "[NEEDS TRANSLATION] File size must be less than 10MB",
-      "termsRequired": "[NEEDS TRANSLATION] You must agree to the terms"
+      "required": "Ce champ est obligatoire",
+      "email": "Veuillez entrer une adresse e-mail valide",
+      "phone": "Veuillez entrer un numéro de téléphone valide",
+      "password": "Le mot de passe doit contenir au moins 8 caractères",
+      "confirmPassword": "Les mots de passe ne correspondent pas",
+      "date": "Veuillez entrer une date valide (JJ/MM/AAAA)",
+      "futureDate": "La date ne peut pas être dans le futur",
+      "fileType": "Veuillez sélectionner un type de fichier valide",
+      "fileSize": "La taille du fichier doit être inférieure à 10 Mo",
+      "termsRequired": "Vous devez accepter les conditions"
     },
     "accessibility": {
-      "togglePassword": "[NEEDS TRANSLATION] Toggle password visibility",
-      "clearSearch": "[NEEDS TRANSLATION] Clear search",
-      "selectOption": "[NEEDS TRANSLATION] Select option",
-      "removeOption": "[NEEDS TRANSLATION] Remove option",
-      "uploadFile": "[NEEDS TRANSLATION] Upload file",
-      "removeFile": "[NEEDS TRANSLATION] Remove file",
-      "calendarOpen": "[NEEDS TRANSLATION] Open calendar",
-      "calendarClose": "[NEEDS TRANSLATION] Close calendar"
+      "togglePassword": "Basculer la visibilité du mot de passe",
+      "clearSearch": "Effacer la recherche",
+      "selectOption": "Sélectionner l'option",
+      "removeOption": "Supprimer l'option",
+      "uploadFile": "Télécharger le fichier",
+      "removeFile": "Supprimer le fichier",
+      "calendarOpen": "Ouvrir le calendrier",
+      "calendarClose": "Fermer le calendrier"
     },
     "actions": {
-      "submit": "[NEEDS TRANSLATION] Submit",
-      "submitting": "[NEEDS TRANSLATION] Submitting...",
-      "reset": "[NEEDS TRANSLATION] Reset",
-      "cancel": "[NEEDS TRANSLATION] Cancel",
-      "save": "[NEEDS TRANSLATION] Save",
-      "saving": "[NEEDS TRANSLATION] Saving..."
+      "submit": "Soumettre",
+      "submitting": "Envoi en cours...",
+      "reset": "Réinitialiser",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "saving": "Enregistrement..."
     },
     "examples": {
       "validatedForm": {
-        "title": "[NEEDS TRANSLATION] Validated Form Example"
+        "title": "Exemple de formulaire validé"
       }
     },
     "contactForm": {
-      "location": "[NEEDS TRANSLATION] Location",
-      "opposingParty": "[NEEDS TRANSLATION] Opposing Party (Optional)",
-      "submit": "[NEEDS TRANSLATION] Submit Contact Information",
+      "location": "Emplacement",
+      "opposingParty": "Partie adverse (Facultatif)",
+      "submit": "Soumettre les informations de contact",
       "placeholders": {
-        "location": "[NEEDS TRANSLATION] City, State (e.g., New York, NY)",
-        "opposingParty": "[NEEDS TRANSLATION] Name of the other party involved (if any)"
+        "location": "Ville, Région (ex : Paris, Île-de-France)",
+        "opposingParty": "Nom de l'autre partie impliquée (le cas échéant)"
       }
     }
   },
@@ -120,7 +120,7 @@
       "birthdayPlaceholder": "JJ/MM/AAAA",
       "termsAgreement": "En cliquant sur \"Continuer\", vous acceptez nos <termsLink>Conditions</termsLink> et avez lu notre <privacyLink>Politique de confidentialité</privacyLink>.",
       "continue": "Continuer",
-      "back": "[NEEDS TRANSLATION] Back",
+      "back": "Retour",
       "required": "Ce champ est obligatoire"
     },
     "step2": {

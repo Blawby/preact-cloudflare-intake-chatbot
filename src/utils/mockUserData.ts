@@ -129,8 +129,7 @@ export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   // Chinese-speaking countries/regions
   'cn': 'zh',
   'tw': 'zh',
-  'hk': 'zh', // Also speaks English
-  'sg': 'zh', // Also speaks English, Malay, Tamil
+  // Note: 'hk' and 'sg' are listed under English-speaking countries above
   
   // Japanese-speaking countries
   'jp': 'ja',

@@ -15,96 +15,96 @@
     "de": "ドイツ語",
     "zh": "中文",
     "ja": "日本語",
-    "pt": "[NEEDS TRANSLATION] Português",
-    "ar": "[NEEDS TRANSLATION] العربية",
-    "ru": "[NEEDS TRANSLATION] Русский",
-    "it": "[NEEDS TRANSLATION] Italiano",
-    "ko": "[NEEDS TRANSLATION] 한국어",
-    "nl": "[NEEDS TRANSLATION] Nederlands",
-    "pl": "[NEEDS TRANSLATION] Polski",
-    "tr": "[NEEDS TRANSLATION] Türkçe",
-    "th": "[NEEDS TRANSLATION] ไทย",
-    "id": "[NEEDS TRANSLATION] Bahasa Indonesia",
-    "hi": "[NEEDS TRANSLATION] हिन्दी",
-    "uk": "[NEEDS TRANSLATION] Українська"
+    "pt": "ポルトガル語",
+    "ar": "アラビア語",
+    "ru": "ロシア語",
+    "it": "イタリア語",
+    "ko": "韓国語",
+    "nl": "オランダ語",
+    "pl": "ポーランド語",
+    "tr": "トルコ語",
+    "th": "タイ語",
+    "id": "インドネシア語",
+    "hi": "ヒンディー語",
+    "uk": "ウクライナ語"
   },
   "forms": {
     "labels": {
-      "name": "[NEEDS TRANSLATION] Full Name",
-      "email": "[NEEDS TRANSLATION] Email Address",
-      "phone": "[NEEDS TRANSLATION] Phone Number",
-      "password": "[NEEDS TRANSLATION] Password",
-      "confirmPassword": "[NEEDS TRANSLATION] Confirm Password",
-      "birthday": "[NEEDS TRANSLATION] Birthday",
-      "terms": "[NEEDS TRANSLATION] Terms and Conditions",
-      "privacy": "[NEEDS TRANSLATION] Privacy Policy",
-      "search": "[NEEDS TRANSLATION] Search",
-      "select": "[NEEDS TRANSLATION] Select an option",
-      "upload": "[NEEDS TRANSLATION] Upload File",
-      "message": "[NEEDS TRANSLATION] Message",
-      "subject": "[NEEDS TRANSLATION] Subject"
+      "name": "氏名",
+      "email": "メールアドレス",
+      "phone": "電話番号",
+      "password": "パスワード",
+      "confirmPassword": "パスワードの確認",
+      "birthday": "誕生日",
+      "terms": "利用規約",
+      "privacy": "プライバシーポリシー",
+      "search": "検索",
+      "select": "オプションを選択",
+      "upload": "ファイルをアップロード",
+      "message": "メッセージ",
+      "subject": "件名"
     },
     "placeholders": {
-      "name": "[NEEDS TRANSLATION] Enter your full name",
-      "email": "[NEEDS TRANSLATION] Enter your email address",
-      "phone": "[NEEDS TRANSLATION] Enter your phone number",
-      "password": "[NEEDS TRANSLATION] Enter your password",
-      "confirmPassword": "[NEEDS TRANSLATION] Confirm your password",
-      "birthday": "[NEEDS TRANSLATION] Select your birthday",
-      "search": "[NEEDS TRANSLATION] Search...",
-      "select": "[NEEDS TRANSLATION] Select an option",
-      "message": "[NEEDS TRANSLATION] Enter your message",
-      "subject": "[NEEDS TRANSLATION] Enter your subject"
+      "name": "氏名を入力してください",
+      "email": "メールアドレスを入力してください",
+      "phone": "電話番号を入力してください",
+      "password": "パスワードを入力してください",
+      "confirmPassword": "パスワードを確認してください",
+      "birthday": "誕生日を選択してください",
+      "search": "検索...",
+      "select": "オプションを選択してください",
+      "message": "メッセージを入力してください",
+      "subject": "件名を入力してください"
     },
     "descriptions": {
-      "optional": "[NEEDS TRANSLATION] Optional",
-      "required": "[NEEDS TRANSLATION] Required",
-      "passwordHelp": "[NEEDS TRANSLATION] Must be at least 8 characters long",
-      "phoneHelp": "[NEEDS TRANSLATION] Include country code for international numbers",
-      "fileHelp": "[NEEDS TRANSLATION] Supported formats: PDF, DOC, DOCX"
+      "optional": "任意",
+      "required": "必須",
+      "passwordHelp": "8文字以上である必要があります",
+      "phoneHelp": "国際電話番号には国番号を含めてください",
+      "fileHelp": "サポートされている形式：PDF、DOC、DOCX"
     },
     "validation": {
-      "required": "[NEEDS TRANSLATION] This field is required",
-      "email": "[NEEDS TRANSLATION] Please enter a valid email address",
-      "phone": "[NEEDS TRANSLATION] Please enter a valid phone number",
-      "password": "[NEEDS TRANSLATION] Password must be at least 8 characters",
-      "confirmPassword": "[NEEDS TRANSLATION] Passwords do not match",
-      "date": "[NEEDS TRANSLATION] Please enter a valid date (MM/DD/YYYY)",
-      "futureDate": "[NEEDS TRANSLATION] Date cannot be in the future",
-      "fileType": "[NEEDS TRANSLATION] Please select a valid file type",
-      "fileSize": "[NEEDS TRANSLATION] File size must be less than 10MB",
-      "termsRequired": "[NEEDS TRANSLATION] You must agree to the terms"
+      "required": "この項目は必須です",
+      "email": "有効なメールアドレスを入力してください",
+      "phone": "有効な電話番号を入力してください",
+      "password": "パスワードは8文字以上である必要があります",
+      "confirmPassword": "パスワードが一致しません",
+      "date": "有効な日付を入力してください（YYYY/MM/DD）",
+      "futureDate": "日付は未来にすることはできません",
+      "fileType": "有効なファイルタイプを選択してください",
+      "fileSize": "ファイルサイズは10MB未満である必要があります",
+      "termsRequired": "利用規約に同意する必要があります"
     },
     "accessibility": {
-      "togglePassword": "[NEEDS TRANSLATION] Toggle password visibility",
-      "clearSearch": "[NEEDS TRANSLATION] Clear search",
-      "selectOption": "[NEEDS TRANSLATION] Select option",
-      "removeOption": "[NEEDS TRANSLATION] Remove option",
-      "uploadFile": "[NEEDS TRANSLATION] Upload file",
-      "removeFile": "[NEEDS TRANSLATION] Remove file",
-      "calendarOpen": "[NEEDS TRANSLATION] Open calendar",
-      "calendarClose": "[NEEDS TRANSLATION] Close calendar"
+      "togglePassword": "パスワードの表示を切り替え",
+      "clearSearch": "検索をクリア",
+      "selectOption": "オプションを選択",
+      "removeOption": "オプションを削除",
+      "uploadFile": "ファイルをアップロード",
+      "removeFile": "ファイルを削除",
+      "calendarOpen": "カレンダーを開く",
+      "calendarClose": "カレンダーを閉じる"
     },
     "actions": {
-      "submit": "[NEEDS TRANSLATION] Submit",
-      "submitting": "[NEEDS TRANSLATION] Submitting...",
-      "reset": "[NEEDS TRANSLATION] Reset",
-      "cancel": "[NEEDS TRANSLATION] Cancel",
-      "save": "[NEEDS TRANSLATION] Save",
-      "saving": "[NEEDS TRANSLATION] Saving..."
+      "submit": "送信",
+      "submitting": "送信中...",
+      "reset": "リセット",
+      "cancel": "キャンセル",
+      "save": "保存",
+      "saving": "保存中..."
     },
     "examples": {
       "validatedForm": {
-        "title": "[NEEDS TRANSLATION] Validated Form Example"
+        "title": "検証フォームの例"
       }
     },
     "contactForm": {
-      "location": "[NEEDS TRANSLATION] Location",
-      "opposingParty": "[NEEDS TRANSLATION] Opposing Party (Optional)",
-      "submit": "[NEEDS TRANSLATION] Submit Contact Information",
+      "location": "住所",
+      "opposingParty": "相手方（任意）",
+      "submit": "連絡先情報を送信",
       "placeholders": {
-        "location": "[NEEDS TRANSLATION] City, State (e.g., New York, NY)",
-        "opposingParty": "[NEEDS TRANSLATION] Name of the other party involved (if any)"
+        "location": "市区町村、都道府県（例：東京都、東京）",
+        "opposingParty": "関与する相手方の名前（該当する場合）"
       }
     }
   },
@@ -120,7 +120,7 @@
       "birthdayPlaceholder": "YYYY/MM/DD",
       "termsAgreement": "「続ける」をクリックすることで、当社の<termsLink>利用規約</termsLink>に同意し、<privacyLink>プライバシーポリシー</privacyLink>を読んだことになります。",
       "continue": "続ける",
-      "back": "[NEEDS TRANSLATION] Back",
+      "back": "戻る",
       "required": "この項目は必須です"
     },
     "step2": {

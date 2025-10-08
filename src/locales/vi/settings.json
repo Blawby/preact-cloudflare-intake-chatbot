@@ -176,7 +176,7 @@
     "channels": {
       "push": "Push",
       "email": "Email",
-      "none": "[NEEDS TRANSLATION] None"
+      "none": "Không có"
     }
   },
   "security": {

@@ -15,18 +15,18 @@
     "de": "Alemán",
     "zh": "中文",
     "ja": "日本語",
-    "pt": "[NEEDS TRANSLATION] Português",
-    "ar": "[NEEDS TRANSLATION] العربية",
-    "ru": "[NEEDS TRANSLATION] Русский",
-    "it": "[NEEDS TRANSLATION] Italiano",
-    "ko": "[NEEDS TRANSLATION] 한국어",
-    "nl": "[NEEDS TRANSLATION] Nederlands",
-    "pl": "[NEEDS TRANSLATION] Polski",
-    "tr": "[NEEDS TRANSLATION] Türkçe",
-    "th": "[NEEDS TRANSLATION] ไทย",
-    "id": "[NEEDS TRANSLATION] Bahasa Indonesia",
-    "hi": "[NEEDS TRANSLATION] हिन्दी",
-    "uk": "[NEEDS TRANSLATION] Українська"
+    "pt": "Portugués",
+    "ar": "Árabe",
+    "ru": "Ruso",
+    "it": "Italiano",
+    "ko": "Coreano",
+    "nl": "Holandés",
+    "pl": "Polaco",
+    "tr": "Turco",
+    "th": "Tailandés",
+    "id": "Indonesio",
+    "hi": "Hindi",
+    "uk": "Ucraniano"
   },
   "forms": {
     "labels": {
@@ -99,12 +99,12 @@
       }
     },
     "contactForm": {
-      "location": "[NEEDS TRANSLATION] Location",
-      "opposingParty": "[NEEDS TRANSLATION] Opposing Party (Optional)",
-      "submit": "[NEEDS TRANSLATION] Submit Contact Information",
+      "location": "Ubicación",
+      "opposingParty": "Parte Contraria (Opcional)",
+      "submit": "Enviar Información de Contacto",
       "placeholders": {
-        "location": "[NEEDS TRANSLATION] City, State (e.g., New York, NY)",
-        "opposingParty": "[NEEDS TRANSLATION] Name of the other party involved (if any)"
+        "location": "Ciudad, Estado (ej. Nueva York, NY)",
+        "opposingParty": "Nombre de la otra parte involucrada (si aplica)"
       }
     }
   },
@@ -120,7 +120,7 @@
       "birthdayPlaceholder": "DD/MM/AAAA",
       "termsAgreement": "Al hacer clic en \"Continuar\", aceptas nuestros <termsLink>Términos</termsLink> y has leído nuestra <privacyLink>Política de Privacidad</privacyLink>.",
       "continue": "Continuar",
-      "back": "[NEEDS TRANSLATION] Back",
+      "back": "Atrás",
       "required": "Este campo es obligatorio"
     },
     "step2": {

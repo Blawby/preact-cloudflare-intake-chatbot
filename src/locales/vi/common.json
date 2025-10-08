@@ -15,96 +15,96 @@
     "de": "Tiếng Đức",
     "zh": "中文",
     "ja": "日本語",
-    "pt": "[NEEDS TRANSLATION] Português",
-    "ar": "[NEEDS TRANSLATION] العربية",
-    "ru": "[NEEDS TRANSLATION] Русский",
-    "it": "[NEEDS TRANSLATION] Italiano",
-    "ko": "[NEEDS TRANSLATION] 한국어",
-    "nl": "[NEEDS TRANSLATION] Nederlands",
-    "pl": "[NEEDS TRANSLATION] Polski",
-    "tr": "[NEEDS TRANSLATION] Türkçe",
-    "th": "[NEEDS TRANSLATION] ไทย",
-    "id": "[NEEDS TRANSLATION] Bahasa Indonesia",
-    "hi": "[NEEDS TRANSLATION] हिन्दी",
-    "uk": "[NEEDS TRANSLATION] Українська"
+    "pt": "Tiếng Bồ Đào Nha",
+    "ar": "Tiếng Ả Rập",
+    "ru": "Tiếng Nga",
+    "it": "Tiếng Ý",
+    "ko": "Tiếng Hàn",
+    "nl": "Tiếng Hà Lan",
+    "pl": "Tiếng Ba Lan",
+    "tr": "Tiếng Thổ Nhĩ Kỳ",
+    "th": "Tiếng Thái",
+    "id": "Tiếng Indonesia",
+    "hi": "Tiếng Hindi",
+    "uk": "Tiếng Ukraina"
   },
   "forms": {
     "labels": {
-      "name": "[NEEDS TRANSLATION] Full Name",
-      "email": "[NEEDS TRANSLATION] Email Address",
-      "phone": "[NEEDS TRANSLATION] Phone Number",
-      "password": "[NEEDS TRANSLATION] Password",
-      "confirmPassword": "[NEEDS TRANSLATION] Confirm Password",
-      "birthday": "[NEEDS TRANSLATION] Birthday",
-      "terms": "[NEEDS TRANSLATION] Terms and Conditions",
-      "privacy": "[NEEDS TRANSLATION] Privacy Policy",
-      "search": "[NEEDS TRANSLATION] Search",
-      "select": "[NEEDS TRANSLATION] Select an option",
-      "upload": "[NEEDS TRANSLATION] Upload File",
-      "message": "[NEEDS TRANSLATION] Message",
-      "subject": "[NEEDS TRANSLATION] Subject"
+      "name": "Họ và tên",
+      "email": "Địa chỉ email",
+      "phone": "Số điện thoại",
+      "password": "Mật khẩu",
+      "confirmPassword": "Xác nhận mật khẩu",
+      "birthday": "Ngày sinh",
+      "terms": "Điều khoản và Điều kiện",
+      "privacy": "Chính sách Bảo mật",
+      "search": "Tìm kiếm",
+      "select": "Chọn một tùy chọn",
+      "upload": "Tải lên tệp",
+      "message": "Tin nhắn",
+      "subject": "Chủ đề"
     },
     "placeholders": {
-      "name": "[NEEDS TRANSLATION] Enter your full name",
-      "email": "[NEEDS TRANSLATION] Enter your email address",
-      "phone": "[NEEDS TRANSLATION] Enter your phone number",
-      "password": "[NEEDS TRANSLATION] Enter your password",
-      "confirmPassword": "[NEEDS TRANSLATION] Confirm your password",
-      "birthday": "[NEEDS TRANSLATION] Select your birthday",
-      "search": "[NEEDS TRANSLATION] Search...",
-      "select": "[NEEDS TRANSLATION] Select an option",
-      "message": "[NEEDS TRANSLATION] Enter your message",
-      "subject": "[NEEDS TRANSLATION] Enter your subject"
+      "name": "Nhập họ và tên của bạn",
+      "email": "Nhập địa chỉ email của bạn",
+      "phone": "Nhập số điện thoại của bạn",
+      "password": "Nhập mật khẩu của bạn",
+      "confirmPassword": "Xác nhận mật khẩu của bạn",
+      "birthday": "Chọn ngày sinh của bạn",
+      "search": "Tìm kiếm...",
+      "select": "Chọn một tùy chọn",
+      "message": "Nhập tin nhắn của bạn",
+      "subject": "Nhập chủ đề"
     },
     "descriptions": {
-      "optional": "[NEEDS TRANSLATION] Optional",
-      "required": "[NEEDS TRANSLATION] Required",
-      "passwordHelp": "[NEEDS TRANSLATION] Must be at least 8 characters long",
-      "phoneHelp": "[NEEDS TRANSLATION] Include country code for international numbers",
-      "fileHelp": "[NEEDS TRANSLATION] Supported formats: PDF, DOC, DOCX"
+      "optional": "Tùy chọn",
+      "required": "Bắt buộc",
+      "passwordHelp": "Phải có ít nhất 8 ký tự",
+      "phoneHelp": "Bao gồm mã quốc gia cho số điện thoại quốc tế",
+      "fileHelp": "Định dạng được hỗ trợ: PDF, DOC, DOCX"
     },
     "validation": {
-      "required": "[NEEDS TRANSLATION] This field is required",
-      "email": "[NEEDS TRANSLATION] Please enter a valid email address",
-      "phone": "[NEEDS TRANSLATION] Please enter a valid phone number",
-      "password": "[NEEDS TRANSLATION] Password must be at least 8 characters",
-      "confirmPassword": "[NEEDS TRANSLATION] Passwords do not match",
-      "date": "[NEEDS TRANSLATION] Please enter a valid date (MM/DD/YYYY)",
-      "futureDate": "[NEEDS TRANSLATION] Date cannot be in the future",
-      "fileType": "[NEEDS TRANSLATION] Please select a valid file type",
-      "fileSize": "[NEEDS TRANSLATION] File size must be less than 10MB",
-      "termsRequired": "[NEEDS TRANSLATION] You must agree to the terms"
+      "required": "Trường này là bắt buộc",
+      "email": "Vui lòng nhập địa chỉ email hợp lệ",
+      "phone": "Vui lòng nhập số điện thoại hợp lệ",
+      "password": "Mật khẩu phải có ít nhất 8 ký tự",
+      "confirmPassword": "Mật khẩu không khớp",
+      "date": "Vui lòng nhập ngày hợp lệ (DD/MM/YYYY)",
+      "futureDate": "Ngày không thể ở tương lai",
+      "fileType": "Vui lòng chọn loại tệp hợp lệ",
+      "fileSize": "Kích thước tệp phải nhỏ hơn 10MB",
+      "termsRequired": "Bạn phải đồng ý với các điều khoản"
     },
     "accessibility": {
-      "togglePassword": "[NEEDS TRANSLATION] Toggle password visibility",
-      "clearSearch": "[NEEDS TRANSLATION] Clear search",
-      "selectOption": "[NEEDS TRANSLATION] Select option",
-      "removeOption": "[NEEDS TRANSLATION] Remove option",
-      "uploadFile": "[NEEDS TRANSLATION] Upload file",
-      "removeFile": "[NEEDS TRANSLATION] Remove file",
-      "calendarOpen": "[NEEDS TRANSLATION] Open calendar",
-      "calendarClose": "[NEEDS TRANSLATION] Close calendar"
+      "togglePassword": "Chuyển đổi hiển thị mật khẩu",
+      "clearSearch": "Xóa tìm kiếm",
+      "selectOption": "Chọn tùy chọn",
+      "removeOption": "Xóa tùy chọn",
+      "uploadFile": "Tải lên tệp",
+      "removeFile": "Xóa tệp",
+      "calendarOpen": "Mở lịch",
+      "calendarClose": "Đóng lịch"
     },
     "actions": {
-      "submit": "[NEEDS TRANSLATION] Submit",
-      "submitting": "[NEEDS TRANSLATION] Submitting...",
-      "reset": "[NEEDS TRANSLATION] Reset",
-      "cancel": "[NEEDS TRANSLATION] Cancel",
-      "save": "[NEEDS TRANSLATION] Save",
-      "saving": "[NEEDS TRANSLATION] Saving..."
+      "submit": "Gửi",
+      "submitting": "Đang gửi...",
+      "reset": "Đặt lại",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "saving": "Đang lưu..."
     },
     "examples": {
       "validatedForm": {
-        "title": "[NEEDS TRANSLATION] Validated Form Example"
+        "title": "Ví dụ Biểu mẫu Đã xác thực"
       }
     },
     "contactForm": {
-      "location": "[NEEDS TRANSLATION] Location",
-      "opposingParty": "[NEEDS TRANSLATION] Opposing Party (Optional)",
-      "submit": "[NEEDS TRANSLATION] Submit Contact Information",
+      "location": "Vị trí",
+      "opposingParty": "Bên đối lập (Tùy chọn)",
+      "submit": "Gửi thông tin liên hệ",
       "placeholders": {
-        "location": "[NEEDS TRANSLATION] City, State (e.g., New York, NY)",
-        "opposingParty": "[NEEDS TRANSLATION] Name of the other party involved (if any)"
+        "location": "Thành phố, Tỉnh (ví dụ: Hà Nội, Hà Nội)",
+        "opposingParty": "Tên của bên khác liên quan (nếu có)"
       }
     }
   },
@@ -120,7 +120,7 @@
       "birthdayPlaceholder": "DD/MM/YYYY",
       "termsAgreement": "Bằng cách nhấp vào \"Tiếp tục\", bạn đồng ý với <termsLink>Điều khoản</termsLink> của chúng tôi và đã đọc <privacyLink>Chính sách Bảo mật</privacyLink> của chúng tôi.",
       "continue": "Tiếp tục",
-      "back": "[NEEDS TRANSLATION] Back",
+      "back": "Quay lại",
       "required": "Trường này là bắt buộc"
     },
     "step2": {
