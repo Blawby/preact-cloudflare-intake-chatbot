@@ -481,13 +481,16 @@ export class LegalIntakeLogger {
     const logLevel = logEntry.level.toUpperCase();
     const logMessage = `[${logLevel}] [${logEntry.operation}] ${logEntry.message}`;
     
+    // Get environment from Logger or fallback to production
+    const environment = Logger.getEnvironment?.() || 'production';
+    
     // Create a structured log object
     const structuredLog = {
       ...logEntry,
       // Add additional metadata for log aggregation
       service: 'legal-intake',
       version: '1.0.0',
-      environment: 'development' // Environment should be injected via Logger.initialize()
+      environment
     };
 
     // Use appropriate Logger method based on level

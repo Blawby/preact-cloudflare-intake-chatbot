@@ -1,5 +1,7 @@
 import { PaymentService } from './PaymentService.js';
 import { MockPaymentService } from './MockPaymentService.js';
+import type { Env } from '../types.js';
+import type { Team } from './TeamService.js';
 
 export interface PaymentRequest {
   customerInfo: {
@@ -29,7 +31,7 @@ export class PaymentServiceFactory {
   /**
    * Creates the appropriate payment service based on environment configuration
    */
-  static createPaymentService(env: Record<string, unknown>): PaymentService | MockPaymentService {
+  static createPaymentService(env: Env): PaymentService | MockPaymentService {
     const hasApiToken = env.BLAWBY_API_TOKEN && env.BLAWBY_API_TOKEN !== 'your_resend_api_key_here';
     
     if (hasApiToken) {
@@ -43,9 +45,9 @@ export class PaymentServiceFactory {
    * Processes payment with fallback logic
    */
   static async processPayment(
-    env: Record<string, unknown>, 
+    env: Env, 
     paymentRequest: PaymentRequest, 
-    teamConfig: Record<string, unknown>
+    teamConfig: Team | null
   ): Promise<{ invoiceUrl: string | null; paymentId: string | null }> {
     const requiresPayment = teamConfig?.config?.requiresPayment || false;
     const consultationFee = teamConfig?.config?.consultationFee || 0;

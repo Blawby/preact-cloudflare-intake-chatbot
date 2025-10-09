@@ -45,6 +45,21 @@ export default {
           // Send initial status message
           await SessionService.sendAnalysisStatus(env, sessionId, teamId, "📄 Analyzing document...");
           
+          // Check if FILES_BUCKET is available
+          if (!env.FILES_BUCKET) {
+            await SessionService.sendAnalysisStatus(env, sessionId, teamId, "❌ Document storage is not configured");
+            const failureAnalysis: AnalysisResult = {
+              summary: "Storage not configured",
+              entities: { people: [], orgs: [], dates: [] },
+              key_facts: [],
+              action_items: [],
+              confidence: 0,
+              error: "FILES_BUCKET is not available"
+            };
+            await SessionService.sendAnalysisComplete(env, sessionId, teamId, failureAnalysis);
+            continue;
+          }
+          
           // Get file from R2
           const obj = await env.FILES_BUCKET.get(file.key);
           if (!obj) {
@@ -106,6 +121,11 @@ export default {
 
         // Handle legacy document processing
         const { key, teamId: _teamId, sessionId, mime } = msg.body as DocumentEvent;
+        
+        if (!env.FILES_BUCKET) {
+          msg.retry();
+          continue;
+        }
         const obj = await env.FILES_BUCKET.get(key);
         
         if (!obj) { 

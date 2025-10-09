@@ -20,6 +20,13 @@ export class Logger {
     this.env = env;
   }
 
+  /**
+   * Get the current environment from initialized Logger
+   */
+  static getEnvironment(): string {
+    return this.env?.NODE_ENV || 'production';
+  }
+
   private static isDebugEnabled(): boolean {
     // Use injected environment variables (Cloudflare Workers don't have process.env)
     const debug = this.env?.DEBUG;

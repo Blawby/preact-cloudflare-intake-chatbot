@@ -58,6 +58,9 @@ const MODEL_ALIASES: Record<string, string> = {
   'llama3.1': DEFAULT_GPT_MODEL
 };
 
+// Feature flag to control model aliasing behavior
+const ENABLE_MODEL_ALIASES = false; // Set to true to enable aliasing
+
 const DEFAULT_AVAILABLE_SERVICES = [
   'Family Law',
   'Employment Law',
@@ -82,7 +85,7 @@ function normalizeProvider(input?: string | null): string {
   return trimmed.length > 0 ? trimmed : LEGACY_AI_PROVIDER;
 }
 
-function sanitizeModel(model?: string | null): string | undefined {
+function sanitizeModel(model?: string | null, teamId?: string): string | undefined {
   if (!model) {
     return undefined;
   }
@@ -92,8 +95,20 @@ function sanitizeModel(model?: string | null): string | undefined {
   }
 
   const normalized = trimmed.toLowerCase();
-  if (MODEL_ALIASES[normalized]) {
-    return MODEL_ALIASES[normalized];
+  
+  // Only apply aliases if the feature flag is enabled
+  if (ENABLE_MODEL_ALIASES && MODEL_ALIASES[normalized]) {
+    const aliasedModel = MODEL_ALIASES[normalized];
+    
+    // Log warning when alias substitution occurs
+    console.warn('Model alias substitution applied:', {
+      originalModel: trimmed,
+      aliasedModel,
+      teamId: teamId || 'unknown',
+      message: `Llama model '${trimmed}' was aliased to '${aliasedModel}'. Consider updating your team configuration to use the new model directly.`
+    });
+    
+    return aliasedModel;
   }
 
   return trimmed;
@@ -386,7 +401,7 @@ export class TeamService {
       if (teamRow) {
         const rawConfig = this.decodeTeamConfig(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false);
+        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false, teamId);
         
         const team: Team = {
           id: teamRow.id as string,
@@ -418,13 +433,14 @@ export class TeamService {
   /**
    * Validates and normalizes team configuration to ensure all required properties are present
    * @param strictValidation - if true, applies strict validation including placeholder email checks
+   * @param teamId - team ID for logging context
    */
-  private validateAndNormalizeConfig(config: TeamConfig | null | undefined, strictValidation: boolean = false): TeamConfig {
+  private validateAndNormalizeConfig(config: TeamConfig | null | undefined, strictValidation: boolean = false, teamId?: string): TeamConfig {
     const defaultConfig = this.getDefaultConfig();
     const sourceConfig = (config ?? {}) as TeamConfig;
 
     const aiProvider = normalizeProvider(sourceConfig.aiProvider ?? defaultConfig.aiProvider);
-    const aiModel = sanitizeModel(sourceConfig.aiModel) ?? defaultConfig.aiModel ?? DEFAULT_GPT_MODEL;
+    const aiModel = sanitizeModel(sourceConfig.aiModel, teamId) ?? defaultConfig.aiModel ?? DEFAULT_GPT_MODEL;
     const providedFallback = sourceConfig.aiModelFallback !== undefined
       ? sanitizeFallbackList(sourceConfig.aiModelFallback)
       : undefined;
@@ -466,7 +482,7 @@ export class TeamService {
     const now = new Date().toISOString();
     
     // Validate and normalize the team configuration
-    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config, true);
+    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config, true, id);
     
     const team: Team = {
       ...teamData,
@@ -520,7 +536,7 @@ export class TeamService {
     // Validate and normalize the team configuration if it's being updated
     let normalizedConfig = existingTeam.config;
     if (mutableUpdates.config) {
-      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config, true);
+      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config, true, teamId);
     }
     
     const updatedTeam: Team = {
@@ -594,7 +610,7 @@ export class TeamService {
     return teams.results.map(row => {
       const rawConfig = this.decodeTeamConfig(row.config as string);
       const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false);
+      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false, row.id as string);
       
       return {
         id: row.id as string,

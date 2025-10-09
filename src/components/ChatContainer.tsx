@@ -6,6 +6,7 @@ import { ChatMessageUI } from '../../worker/types';
 import { FileAttachment } from '../../worker/types';
 import { ContactData } from './ContactForm';
 import { createKeyPressHandler } from '../utils/keyboard';
+import type { UploadingFile } from '../hooks/useFileUpload';
 
 interface ChatContainerProps {
   messages: ChatMessageUI[];
@@ -24,10 +25,12 @@ interface ChatContainerProps {
 
   // File handling props
   previewFiles: FileAttachment[];
+  uploadingFiles: UploadingFile[];
   removePreviewFile: (index: number) => void;
   clearPreviewFiles: () => void;
   handleFileSelect: (files: File[]) => Promise<void>;
   handleCameraCapture: (file: File) => Promise<void>;
+  cancelUpload: (fileId: string) => void;
   handleMediaCapture: (blob: Blob, type: 'audio' | 'video') => void;
   isRecording: boolean;
   setIsRecording: (v: boolean) => void;
@@ -48,10 +51,12 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   teamId,
   onFeedbackSubmit,
   previewFiles,
+  uploadingFiles,
   removePreviewFile,
   clearPreviewFiles,
   handleFileSelect,
   handleCameraCapture,
+  cancelUpload,
   handleMediaCapture,
   isRecording,
   setIsRecording,
@@ -149,10 +154,11 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           inputValue={inputValue}
           setInputValue={setInputValue}
           previewFiles={previewFiles}
+          uploadingFiles={uploadingFiles}
           removePreviewFile={removePreviewFile}
           handleFileSelect={handleFileSelect}
           handleCameraCapture={handleCameraCapture}
-
+          cancelUpload={cancelUpload}
           isRecording={isRecording}
           handleMediaCapture={handleMediaCapture}
           setIsRecording={setIsRecording}

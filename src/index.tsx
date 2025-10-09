@@ -68,12 +68,14 @@ function MainApp() {
 
 	const {
 		previewFiles,
+		uploadingFiles,
 		isDragging,
 		setIsDragging,
 		handleCameraCapture,
 		handleFileSelect,
 		removePreviewFile,
 		clearPreviewFiles,
+		cancelUpload,
 		isReadyToUpload
 	} = useFileUpload({
 		teamId,
@@ -391,18 +393,20 @@ function MainApp() {
 						teamId={teamId}
 						onFeedbackSubmit={handleFeedbackSubmit}
 						previewFiles={previewFiles}
+						uploadingFiles={uploadingFiles}
 						removePreviewFile={removePreviewFile}
 						clearPreviewFiles={clearPreviewFiles}
 						handleCameraCapture={handleCameraCapture}
 						handleFileSelect={async (files: File[]) => {
 							await handleFileSelect(files);
 						}}
-							handleMediaCapture={handleMediaCaptureWrapper}
-							isRecording={isRecording}
-							setIsRecording={setIsRecording}
-							clearInput={clearInputTrigger}
-							isReadyToUpload={isReadyToUpload}
-							isSessionReady={isSessionReady}
+						cancelUpload={cancelUpload}
+						handleMediaCapture={handleMediaCaptureWrapper}
+						isRecording={isRecording}
+						setIsRecording={setIsRecording}
+						clearInput={clearInputTrigger}
+						isReadyToUpload={isReadyToUpload}
+						isSessionReady={isSessionReady}
 						/>
 				</div>
 			</AppLayout>

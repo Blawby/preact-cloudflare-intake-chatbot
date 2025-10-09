@@ -42,8 +42,53 @@ interface RouteBody {
  */
 export async function handleAgentStreamV2(request: Request, env: Env): Promise<Response> {
 
+  // Handle GET requests for SSE connections
+  if (request.method === 'GET') {
+    const url = new URL(request.url);
+    const sessionId = url.searchParams.get('sessionId');
+    
+    if (!sessionId) {
+      throw HttpErrors.badRequest('sessionId parameter is required');
+    }
+
+    // Create SSE response for status updates
+    const headers = new Headers({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // For now, return a simple SSE stream that sends periodic status updates
+    // In a real implementation, this would connect to a Durable Object or KV store
+    const stream = new ReadableStream({
+      start(controller) {
+        // Send initial connection message
+        controller.enqueue(`data: ${JSON.stringify({ type: 'connected', message: 'SSE connection established' })}\n\n`);
+        
+        // Keep connection alive with periodic pings
+        const interval = setInterval(() => {
+          try {
+            controller.enqueue(`data: ${JSON.stringify({ type: 'ping', timestamp: Date.now() })}\n\n`);
+          } catch (error) {
+            clearInterval(interval);
+          }
+        }, 30000); // Ping every 30 seconds
+
+        // Clean up on close
+        request.signal?.addEventListener('abort', () => {
+          clearInterval(interval);
+          controller.close();
+        });
+      }
+    });
+
+    return new Response(stream, { headers });
+  }
+
   if (request.method !== 'POST') {
-    throw HttpErrors.methodNotAllowed('Only POST method is allowed');
+    throw HttpErrors.methodNotAllowed('Only POST and GET methods are allowed');
   }
 
   // Set SSE headers for streaming

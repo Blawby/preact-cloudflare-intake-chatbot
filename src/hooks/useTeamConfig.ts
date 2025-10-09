@@ -144,9 +144,10 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
           const teamsResponse = TeamsResponseSchema.parse(rawResponse);
           const team = teamsResponse.data.find((t) => t.slug === currentTeamId || t.id === currentTeamId);
 
-          if (team?.config) {
-            const parsedConfig = TeamConfigSchema.safeParse(team.config);
-            const cfg = parsedConfig.success ? parsedConfig.data : {};
+          if (team) {
+            // Team exists, use its config or defaults
+            const parsedConfig = team.config ? TeamConfigSchema.safeParse(team.config) : { success: true, data: {} as z.infer<typeof TeamConfigSchema> };
+            const cfg = parsedConfig.success ? parsedConfig.data : {} as z.infer<typeof TeamConfigSchema>;
             const normalizedJurisdiction: TeamConfig['jurisdiction'] = {
               type: cfg.jurisdiction?.type ?? 'national',
               description: cfg.jurisdiction?.description ?? 'Available nationwide',
@@ -177,6 +178,7 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
             // Only add to fetched set after successful config processing
             fetchedTeamIds.current.add(currentTeamId);
           } else {
+            // Team not found in the list - this indicates a 404-like scenario
             setTeamNotFound(true);
           }
         } catch (parseError) {
@@ -184,7 +186,11 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
           setTeamNotFound(true);
           onError?.('Invalid team configuration data received');
         }
+      } else if (response.status === 404) {
+        // Only set team not found for actual 404 responses
+        setTeamNotFound(true);
       } else {
+        // For other HTTP errors, set team not found as well
         setTeamNotFound(true);
       }
     } catch (error) {

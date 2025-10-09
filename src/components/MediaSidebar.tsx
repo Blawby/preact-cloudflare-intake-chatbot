@@ -1,38 +1,25 @@
 import { useState } from 'preact/hooks';
 import {
   PhotoIcon,
-  VideoCameraIcon,
-  MusicalNoteIcon,
-  DocumentIcon,
-  DocumentTextIcon,
-  TableCellsIcon,
   EyeIcon,
   ArrowDownTrayIcon
 } from "@heroicons/react/24/outline";
 import { 
   aggregateMediaFromMessages, 
   formatFileSize, 
-  getFileIconName,
   type MediaGroup,
   type AggregatedMedia 
 } from '../utils/mediaAggregation';
+import { FileAttachment } from '../../worker/types';
 import { Button } from './ui/Button';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
+import { FileCard } from './ui/upload/molecules/FileCard';
 import Modal from './Modal';
 import MediaContent from './MediaContent';
 
 interface MediaSidebarProps {
-  messages: unknown[];
+  messages: Array<{ files?: FileAttachment[] }>;
 }
-
-const iconMap = {
-  PhotoIcon,
-  VideoCameraIcon,
-  MusicalNoteIcon,
-  DocumentIcon,
-  DocumentTextIcon,
-  TableCellsIcon
-};
 
 const categoryLabels = {
   image: 'Photos',
@@ -102,14 +89,23 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                     </h5>
                     <div className="flex flex-col gap-2">
                       {group.files.map((media) => {
-                        const IconComponent = iconMap[getFileIconName(media.category, media.name) as keyof typeof iconMap] || DocumentIcon;
-                        
+                        // Convert AggregatedMedia to FileCard format
+                        const fileForCard = {
+                          name: media.name,
+                          type: media.category === 'image' ? 'image/jpeg' : 
+                                media.category === 'video' ? 'video/mp4' :
+                                media.category === 'audio' ? 'audio/mp3' :
+                                media.category === 'document' ? 'application/pdf' : 'application/octet-stream',
+                          size: media.size,
+                          url: media.url
+                        };
+
                         return (
                           <div 
                             key={media.id} 
                             role="button"
                             tabIndex={0}
-                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                            className="cursor-pointer transition-transform duration-200 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded-lg"
                             onClick={() => handleMediaClick(media)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
@@ -118,38 +114,34 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                               }
                             }}
                           >
-                            {media.category === 'image' ? (
-                              <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-                                <img 
-                                  src={media.url} 
-                                  alt={media.name}
-                                  className="w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
-                                  <EyeIcon className="text-white w-4 h-4" />
+                            <div className="flex items-center gap-3">
+                              {/* Use our atomic FileCard component */}
+                              <FileCard
+                                fileName={fileForCard.name}
+                                mimeType={fileForCard.type}
+                                status="preview"
+                                imageUrl={media.category === 'image' ? media.url : undefined}
+                                size="sm"
+                                className="flex-shrink-0"
+                              />
+                              
+                              {/* File info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" title={media.name}>
+                                  {media.name.length > 20 ? `${media.name.substring(0, 20)}...` : media.name}
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-dark-hover flex items-center justify-center flex-shrink-0">
-                                <IconComponent className="text-gray-600 dark:text-gray-400 w-6 h-6" />
-                              </div>
-                            )}
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" title={media.name}>
-                                {media.name.length > 20 ? `${media.name.substring(0, 20)}...` : media.name}
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-accent-500">{formatFileSize(media.size)}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => handleDownload(media, e)}
-                                  title="Download file"
-                                  className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
-                                >
-                                  <ArrowDownTrayIcon className="w-3 h-3" />
-                                </Button>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs text-accent-500">{formatFileSize(media.size)}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => handleDownload(media, e)}
+                                    title="Download file"
+                                    className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
+                                  >
+                                    <ArrowDownTrayIcon className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>

@@ -1,19 +1,24 @@
-import type { RefObject, JSXMarkIcon } from 'preact';
+import type { RefObject } from 'preact';
 import { useLayoutEffect } from 'preact/hooks';
 import { Button } from './ui/Button';
 import FileMenu from './FileMenu';
 import MediaControls from './MediaControls';
-import { ArrowUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { FileDisplay } from './ui/upload/molecules/FileDisplay';
+import { FileUploadStatus } from './ui/upload/molecules/FileUploadStatus';
+import { ArrowUpIcon } from "@heroicons/react/24/outline";
 import { features } from '../config/features';
 import { FileAttachment } from '../../worker/types';
+import type { UploadingFile } from '../hooks/useFileUpload';
 
 interface MessageComposerProps {
   inputValue: string;
   setInputValue: (value: string) => void;
   previewFiles: FileAttachment[];
+  uploadingFiles: UploadingFile[];
   removePreviewFile: (index: number) => void;
   handleFileSelect: (files: File[]) => Promise<void>;
   handleCameraCapture: (file: File) => Promise<void>;
+  cancelUpload: (fileId: string) => void;
   isRecording: boolean;
   handleMediaCapture: (blob: Blob, type: 'audio' | 'video') => void;
   setIsRecording: (recording: boolean) => void;
@@ -22,16 +27,17 @@ interface MessageComposerProps {
   textareaRef: RefObject<HTMLTextAreaElement>;
   isReadyToUpload?: boolean;
   isSessionReady?: boolean;
-
 }
 
 const MessageComposer = ({
   inputValue,
   setInputValue,
   previewFiles,
+  uploadingFiles,
   removePreviewFile,
   handleFileSelect,
   handleCameraCapture,
+  cancelUpload,
   isRecording,
   handleMediaCapture,
   setIsRecording,
@@ -41,7 +47,7 @@ const MessageComposer = ({
   isReadyToUpload,
   isSessionReady,
 }: MessageComposerProps) => {
-  const handleInput = (e: JSXMarkIcon.TargetedEvent<HTMLTextAreaElement, Event>) => {
+  const handleInput = (e: Event & { currentTarget: HTMLTextAreaElement }) => {
     const t = e.currentTarget;
     setInputValue(t.value);
     t.style.height = 'auto';
@@ -61,7 +67,7 @@ const MessageComposer = ({
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${Math.max(32, el.scrollHeight)}px`;
-  }, [inputValue]);
+  }, [inputValue, textareaRef]);
 
     return (
     <form 
@@ -72,50 +78,32 @@ const MessageComposer = ({
         handleSubmit();
       }}
     >
-      <div className="flex flex-col w-full relative bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-2xl p-2 min-h-[48px] gap-2 h-auto overflow-visible">
-        {previewFiles.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 m-0" role="list" aria-label="File attachments">
-            {previewFiles.map((file, index) => (
-              <div
-                className="relative flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+      <div className="message-composer-container">
+        {/* Show all files (uploading + preview) in one horizontal container */}
+        {(uploadingFiles.length > 0 || previewFiles.length > 0) && (
+          <div className="message-composer-preview-container" role="list" aria-label="File attachments">
+            {/* Uploading files - newest first */}
+            {uploadingFiles.slice().reverse().map(file => (
+              <FileUploadStatus
+                key={file.id}
+                file={file}
+                onCancel={() => cancelUpload(file.id)}
+              />
+            ))}
+            
+            {/* Preview files - newest first */}
+            {previewFiles.slice().reverse().map((file, index) => (
+              <FileDisplay
                 key={file.url || `${file.name}-${index}`}
-                role="listitem"
-              >
-                {file.type.startsWith('image/') ? (
-                  <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-                    <img src={file.url} alt={`Preview of ${file.name}`} className="w-full h-full object-cover" />
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">{file.name.split('.').pop()}</span>
-                  </div>
-                )}
-                
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" title={file.name}>
-                    {file.name.length > 25 ? `${file.name.substring(0, 25)}...` : file.name}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {file.type}
-                  </div>
-                </div>
-                
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removePreviewFile(index)}
-                  aria-label={`Remove ${file.name}`}
-                  className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
-                >
-                  <XMarkIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                </Button>
-              </div>
+                file={file}
+                status="preview"
+                onRemove={() => removePreviewFile(previewFiles.length - 1 - index)}
+              />
             ))}
           </div>
         )}
 
-        <div className="flex items-center gap-3 w-full">
+        <div className="message-composer-input-row">
           {!isRecording && (
             <div className="flex-shrink-0">
               <FileMenu

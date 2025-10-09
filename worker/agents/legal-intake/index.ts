@@ -1741,9 +1741,9 @@ async function handleCreateMatter(
   }
 
   const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(
-    env as unknown as Record<string, unknown>, 
+    env, 
     paymentRequest, 
-    team as unknown as Record<string, unknown>
+    team
   );
 
   const orchestrationResult = await ContactIntakeOrchestrator.finalizeSubmission({
@@ -1886,7 +1886,7 @@ async function handleRequestLawyerReview(
 
   await notificationService.sendLawyerReviewNotification({
     type: 'lawyer_review',
-    teamConfig: team as unknown as Record<string, unknown>,
+    teamConfig: team,
     matterInfo: {
       type: matter_type as string,
       urgency: urgency as string,
@@ -1979,7 +1979,7 @@ async function handleCreatePaymentInvoice(
   };
 
   try {
-    const paymentService = PaymentServiceFactory.createPaymentService(env as unknown as Record<string, unknown>);
+    const paymentService = PaymentServiceFactory.createPaymentService(env);
 
     const paymentRequest = {
       customerInfo: {

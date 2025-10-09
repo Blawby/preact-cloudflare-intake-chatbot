@@ -81,9 +81,16 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
         if (!isBrowser || !isRecording || !mediaStream) return;
 
         try {
-            // Initialize Audio Context
-            const AudioContext = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-            audioContextRef.current = new AudioContext();
+            // Initialize Audio Context - get constructor from globalThis to avoid shadowing
+            const AudioContextConstructor = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
+            
+            if (!AudioContextConstructor) {
+                console.warn('AudioContext not supported in this browser');
+                fallbackVisualization();
+                return;
+            }
+            
+            audioContextRef.current = new AudioContextConstructor();
             
             // Create analyzer node
             analyserRef.current = audioContextRef.current.createAnalyser();

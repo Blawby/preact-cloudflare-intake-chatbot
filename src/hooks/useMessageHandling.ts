@@ -136,6 +136,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
       attachments
     };
 
+
     try {
       // Use fetch with POST to send the request and get the stream
       const response = await fetch(apiEndpoint, {

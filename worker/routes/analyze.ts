@@ -5,12 +5,31 @@ import { AdobeDocumentService, type AdobeExtractSuccess } from '../services/Adob
 import { type AnalysisResult } from '../services/SessionService.js';
 import { 
   log, 
-  generateRequestId, 
   logRequestStart, 
   logAIProcessing, 
   logError, 
   logWarning 
 } from '../utils/logging.js';
+
+// Extended AnalysisResult for debugging purposes
+interface ExtendedAnalysisResult extends AnalysisResult {
+  adobeExtractTextLength?: number;
+  adobeExtractTextPreview?: string;
+  debug?: {
+    adobeEnabled: boolean;
+    adobeClientIdSet: boolean;
+    adobeClientSecretSet: boolean;
+    fileTypeEligible: boolean;
+    analysisMethod: string;
+    debugTimestamp: string;
+    codeVersion: string;
+    summaryContainsUnable: boolean;
+    summaryContainsNotProvided: boolean;
+    summaryLength: number;
+    adobeExtractTextLength: number;
+    adobeExtractTextPreview: string;
+  };
+}
 
 
 
@@ -29,10 +48,13 @@ function _createFallbackResponse(aiResponse: string): AnalysisResult {
 async function attemptAdobeExtract(
   file: File,
   question: string,
-  env: Env,
-  requestId: string
+  env: Env
 ): Promise<AnalysisResult | null> {
+  console.log('🔍 DEBUG: Creating Adobe service...');
   const adobeService = new AdobeDocumentService(env);
+  console.log('🔍 DEBUG: Adobe service created');
+  console.log('🔍 DEBUG: Adobe service isEnabled():', adobeService.isEnabled());
+  
   const eligibleTypes = new Set([
     'application/pdf',
     'application/msword',
@@ -40,7 +62,6 @@ async function attemptAdobeExtract(
   ]);
 
   log('info', 'adobe_extract_attempt', {
-    request_id: requestId,
     fileType: file.type,
     isEligibleType: eligibleTypes.has(file.type),
     isEnabled: adobeService.isEnabled(),
@@ -50,45 +71,64 @@ async function attemptAdobeExtract(
   });
 
   log('info', 'adobe_service_check', {
-    request_id: requestId,
     isEnabled: adobeService.isEnabled(),
     enableFlag: env.ENABLE_ADOBE_EXTRACT,
     adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET'
   });
 
   if (!eligibleTypes.has(file.type)) {
-    log('info', 'adobe_extract_skipped', { request_id: requestId, reason: 'not_eligible_type', fileType: file.type });
+    log('info', 'adobe_extract_skipped', { reason: 'not_eligible_type', fileType: file.type });
     return null;
   }
   
   if (!adobeService.isEnabled()) {
-    log('info', 'adobe_extract_skipped', { request_id: requestId, reason: 'not_enabled', isEnabled: adobeService.isEnabled() });
+    log('info', 'adobe_extract_skipped', { reason: 'not_enabled', isEnabled: adobeService.isEnabled() });
     return null;
   }
 
   try {
-    log('info', 'adobe_extraction_start', { request_id: requestId, fileName: file.name, fileType: file.type });
+    log('info', 'adobe_extraction_start', { fileName: file.name, fileType: file.type });
+    console.log('🔍 DEBUG: Starting Adobe extraction');
+    console.log('  - File name:', file.name);
+    console.log('  - File type:', file.type);
+    console.log('  - File size:', file.size);
+    
     const buffer = await file.arrayBuffer();
-    log('info', 'adobe_file_buffer', { request_id: requestId, fileName: file.name, bufferSize: buffer.byteLength });
+    log('info', 'adobe_file_buffer', { fileName: file.name, bufferSize: buffer.byteLength });
+    console.log('  - Buffer size:', buffer.byteLength);
     
     const extractResult = await adobeService.extractFromBuffer(file.name, file.type, buffer);
     log('info', 'adobe_extraction_result', {
-      request_id: requestId,
       success: extractResult.success,
       hasDetails: !!extractResult.details,
       error: extractResult.error,
       warnings: extractResult.warnings
     });
+    
+    console.log('🔍 DEBUG: Adobe extraction result');
+    console.log('  - Success:', extractResult.success);
+    console.log('  - Has details:', !!extractResult.details);
+    console.log('  - Error:', extractResult.error || 'None');
+    console.log('  - Warnings:', extractResult.warnings || 'None');
+    if (extractResult.details && extractResult.details.text) {
+      console.log('  - Text length:', extractResult.details.text.length);
+      console.log('  - Text preview:', extractResult.details.text.substring(0, 200) + '...');
+    }
 
     if (!extractResult.success || !extractResult.details) {
-      log('warn', 'adobe_extraction_failed', { request_id: requestId, reason: 'no_success_or_details' });
+      log('warn', 'adobe_extraction_failed', { reason: 'no_success_or_details' });
+      console.log('🔍 DEBUG: Adobe extraction failed - no success or details');
+      console.log('🔍 DEBUG: extractResult.success:', extractResult.success);
+      console.log('🔍 DEBUG: extractResult.details:', !!extractResult.details);
+      console.log('🔍 DEBUG: extractResult.error:', extractResult.error);
       return null;
     }
 
-    log('info', 'adobe_extraction_success', { request_id: requestId, fileName: file.name });
-    return await summarizeAdobeExtract(extractResult.details, question, env, requestId);
+    log('info', 'adobe_extraction_success', { fileName: file.name });
+    console.log('🔍 DEBUG: Adobe extraction successful, calling summarizeAdobeExtract');
+    return await summarizeAdobeExtract(extractResult.details, question, env);
   } catch (error) {
-    logWarning(requestId, 'adobe_extract_failed', 'Adobe extract failed, using fallback analysis path', {
+    logWarning('analyze', 'adobe_extract_failed', 'Adobe extract failed, using fallback analysis path', {
       fileName: file.name,
       fileType: file.type,
       error: error instanceof Error ? error.message : String(error)
@@ -100,13 +140,21 @@ async function attemptAdobeExtract(
 async function summarizeAdobeExtract(
   extract: AdobeExtractSuccess,
   question: string,
-  env: Env,
-  requestId: string
-): Promise<AnalysisResult> {
+  env: Env
+): Promise<ExtendedAnalysisResult> {
+  console.log('🔍 DEBUG: summarizeAdobeExtract called');
+  console.log('🔍 DEBUG: extract.text length:', extract.text?.length || 0);
+  console.log('🔍 DEBUG: extract.text preview:', extract.text?.substring(0, 200) || 'NO TEXT');
+  console.log('🔍 DEBUG: extract.tables count:', extract.tables?.length || 0);
+  console.log('🔍 DEBUG: extract.elements count:', extract.elements?.length || 0);
+  
   const rawText = extract.text ?? '';
   const truncatedText = rawText.length > 20000
     ? `${rawText.slice(0, 20000)}...`
     : rawText;
+    
+  console.log('🔍 DEBUG: truncatedText length:', truncatedText.length);
+  console.log('🔍 DEBUG: truncatedText preview:', truncatedText.substring(0, 200));
 
   const structuredPayload = JSON.stringify({
     tables: extract.tables ?? [],
@@ -128,15 +176,24 @@ async function summarizeAdobeExtract(
 
   // Use the correct format for Cloudflare AI
   const res = await (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run('@cf/openai/gpt-oss-20b', {
-    prompt: `${systemPrompt}\n\n${userPrompt}`,
+    input: `${systemPrompt}\n\n${userPrompt}`,
     max_tokens: 800,
     temperature: 0.1
   });
 
-  logAIProcessing(requestId, 'response', { response: res });
+  logAIProcessing('analyze', 'response.meta', {
+    type: typeof res,
+    keys: typeof res === 'object' && res !== null ? Object.keys(res as Record<string, unknown>).slice(0, 10) : []
+  });
   const result = safeJson(res as Record<string, unknown>);
-  logAIProcessing(requestId, 'safe_json', { result });
-  return result;
+  logAIProcessing('analyze', 'safe_json', { result });
+  
+  // Add Adobe extraction details to the result for debugging
+  const extendedResult = result as ExtendedAnalysisResult;
+  extendedResult.adobeExtractTextLength = rawText.length;
+  extendedResult.adobeExtractTextPreview = rawText.substring(0, 200);
+  
+  return extendedResult;
 }
 
 // Helper function to safely parse JSON responses with hardened truncation handling
@@ -210,7 +267,7 @@ function safeJson(response: unknown): AnalysisResult {
     }
 
     // Fallback
-    logWarning('', 'safe_json_unexpected_format', 'Unexpected format in safeJson', { response });
+    logWarning('analyze', 'safe_json_unexpected_format', 'Unexpected format in safeJson', { response });
     return {
       summary: "Analysis completed but response format was unexpected",
       key_facts: ["Document processed successfully"],
@@ -219,7 +276,7 @@ function safeJson(response: unknown): AnalysisResult {
       confidence: 0.3
     };
   } catch (err) {
-    logError('', 'safe_json_parse_error', err as Error, { response });
+    logError('analyze', 'safe_json_parse_error', err as Error, { response });
     return {
       summary: "Analysis completed but response format was unexpected",
       key_facts: ["Document processed successfully"],
@@ -259,12 +316,12 @@ function extractValidJson(input: string): AnalysisResult {
     } catch (_innerErr) {
       // fallback: trim to before any trailing garbage after a closing brace
       const trimmed = jsonCandidate.replace(/}[^}]*$/, "}");
-      logWarning('', 'safe_json_retry_parse', 'Retrying JSON parse after trim', { phase: 'extractValidJson' });
+      logWarning('analyze', 'safe_json_retry_parse', 'Retrying JSON parse after trim', { phase: 'extractValidJson' });
       return JSON.parse(trimmed);
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    logError('', 'safe_json_final_fallback', new Error(errorMessage), { phase: 'extractValidJson' });
+    logError('analyze', 'safe_json_final_fallback', new Error(errorMessage), { phase: 'extractValidJson' });
   }
 
   // Final fallback — return structured failure
@@ -297,6 +354,76 @@ const ALLOWED_ANALYSIS_MIME_TYPES = [
 
 const MAX_ANALYSIS_FILE_SIZE = 8 * 1024 * 1024; // 8MB for inline analysis
 
+async function analyzeWithGenericAI(
+  file: File,
+  question: string,
+  env: Env
+): Promise<AnalysisResult> {
+  try {
+    log('info', 'generic_ai_analysis_start', {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size
+    });
+
+    let content = '';
+    
+    if (file.type === 'text/plain') {
+      // Read text content directly
+      content = await file.text();
+    } else {
+      // For other types, produce a concise intake description
+      content = `Document: ${file.name}\nType: ${file.type}\nSize: ${file.size} bytes\nQuestion: ${question}`;
+    }
+
+    const systemPrompt = [
+      'You are a legal intake analyst. Analyze the provided content and answer the intake question.',
+      'Return STRICT JSON: { "summary": string, "key_facts": string[], "entities": { "people": string[], "orgs": string[], "dates": string[] }, "action_items": string[], "confidence": number }',
+      'Focus on legal parties, obligations, deadlines, amounts, and recommended next steps.'
+    ].join('\n');
+
+    const userPrompt = `Intake question: ${question}\n\nContent:\n${content}`;
+
+    // Use the default AI model or fallback
+    const model = env.AI_MODEL_DEFAULT || '@cf/meta/llama-3.1-8b-instruct';
+    
+    const res = await (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run(model, {
+      input: `${systemPrompt}\n\n${userPrompt}`,
+      max_tokens: 800,
+      temperature: 0.1
+    });
+
+    logAIProcessing('analyze', 'generic_ai_response.meta', {
+      type: typeof res,
+      keys: typeof res === 'object' && res !== null ? Object.keys(res as Record<string, unknown>).slice(0, 10) : []
+    });
+
+    const result = safeJson(res as Record<string, unknown>);
+    
+    log('info', 'generic_ai_analysis_completed', {
+      fileName: file.name,
+      confidence: result.confidence,
+      summaryLength: result.summary?.length || 0
+    });
+
+    return result;
+  } catch (error) {
+    logError('analyze', 'generic_ai_analysis_failed', error as Error, {
+      fileName: file.name,
+      fileType: file.type
+    });
+
+    return {
+      summary: "Analysis failed due to an internal error. Please try again or contact support.",
+      key_facts: ["Document analysis encountered an error"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: ["Retry the analysis", "Contact support if the issue persists"],
+      confidence: 0.0,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
 function validateAnalysisFile(file: File): { isValid: boolean; error?: string } {
   // Check file size
   if (file.size > MAX_ANALYSIS_FILE_SIZE) {
@@ -320,29 +447,33 @@ function validateAnalysisFile(file: File): { isValid: boolean; error?: string } 
 export async function analyzeWithCloudflareAI(
   file: File,
   question: string,
-  env: Env,
-  requestId: string
-): Promise<AnalysisResult> {
-  // Only use Adobe extraction - no Cloudflare AI fallbacks
-  const adobeAnalysis = await attemptAdobeExtract(file, question, env, requestId);
+  env: Env
+): Promise<ExtendedAnalysisResult> {
+  console.log('🔍 DEBUG: analyzeWithCloudflareAI called');
+  console.log('🔍 DEBUG: File type:', file.type);
+  console.log('🔍 DEBUG: File name:', file.name);
+  
+  // Try Adobe extraction first
+  console.log('🔍 DEBUG: Attempting Adobe extraction...');
+  const adobeAnalysis = await attemptAdobeExtract(file, question, env);
   if (adobeAnalysis) {
+    console.log('🔍 DEBUG: Adobe analysis successful, returning result');
     return adobeAnalysis;
   }
   
-  // Adobe extraction failed - return service down message
-  return {
-    summary: "Document analysis service is currently unavailable. Please try again later or contact support if the issue persists.",
-    key_facts: ["Document analysis service temporarily unavailable"],
-    entities: { people: [], orgs: [], dates: [] },
-    action_items: ["Try uploading the document again in a few minutes", "Contact support if the issue persists"],
-    confidence: 0.0,
-    error: "Adobe document extraction service unavailable"
-  };
+  // Adobe extraction failed or ineligible - use generic AI fallback
+  console.log('🔍 DEBUG: Adobe extraction failed, using generic AI fallback');
+  log('info', 'adobe_extract_fallback', {
+    fileName: file.name,
+    fileType: file.type,
+    reason: 'adobe_extraction_failed_or_ineligible'
+  });
+  
+  return await analyzeWithGenericAI(file, question, env);
 }
 
 export async function handleAnalyze(request: Request, env: Env): Promise<Response> {
   const _startTime = Date.now();
-  const requestId = generateRequestId();
   
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
@@ -351,7 +482,7 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
   // Rate limiting for analysis endpoint
   const clientId = getClientId(request);
   if (!(await rateLimit(env, clientId, 30, 60))) { // 30 requests per minute
-    logWarning(requestId, 'rate_limit.exceeded', 'Rate limit exceeded', { clientId });
+    logWarning('analyze', 'rate_limit.exceeded', 'Rate limit exceeded', { clientId });
     return new Response(JSON.stringify({
       success: false,
       error: 'Rate limit exceeded. Please try again later.',
@@ -363,11 +494,10 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
   }
 
   try {
-    logRequestStart(requestId, request.method, new URL(request.url).pathname);
+    logRequestStart('analyze', request.method, new URL(request.url).pathname);
     
     // Debug: Log environment variables
     log('info', 'environment_check', {
-      request_id: requestId,
       CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID ? 'SET' : 'NOT SET',
       CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN ? 'SET' : 'NOT SET', 
       CLOUDFLARE_PUBLIC_URL: env.CLOUDFLARE_PUBLIC_URL ? 'SET' : 'NOT SET'
@@ -389,7 +519,6 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
     }
 
     log('info', 'file_analysis_start', {
-      request_id: requestId,
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
@@ -398,11 +527,35 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
       ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET'
     });
 
+    // Debug: Log Adobe service status
+    console.log('🔍 DEBUG: Adobe service check');
+    console.log('  - ENABLE_ADOBE_EXTRACT:', env.ENABLE_ADOBE_EXTRACT);
+    console.log('  - ADOBE_CLIENT_ID:', env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET');
+    console.log('  - ADOBE_CLIENT_SECRET:', env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET');
+    console.log('  - File type eligible for Adobe:', ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type));
+
     // Perform analysis
-    const analysis = await analyzeWithCloudflareAI(file, question, env, requestId);
+    const analysis = await analyzeWithCloudflareAI(file, question, env);
+    
+    // Add debug information to analysis
+    const extendedAnalysis = analysis as ExtendedAnalysisResult;
+    extendedAnalysis.debug = {
+      adobeEnabled: Boolean(env.ENABLE_ADOBE_EXTRACT),
+      adobeClientIdSet: !!env.ADOBE_CLIENT_ID,
+      adobeClientSecretSet: !!env.ADOBE_CLIENT_SECRET,
+      fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type),
+      analysisMethod: analysis.summary?.includes('Unable to analyze') ? 'fallback' : 'adobe',
+      debugTimestamp: new Date().toISOString(),
+      codeVersion: 'v2.3-debug',
+      summaryContainsUnable: analysis.summary?.includes('Unable to analyze') || false,
+      summaryContainsNotProvided: analysis.summary?.includes('not provided') || false,
+      summaryLength: analysis.summary?.length || 0,
+      // Add Adobe extraction details to debug
+      adobeExtractTextLength: extendedAnalysis.adobeExtractTextLength || 0,
+      adobeExtractTextPreview: extendedAnalysis.adobeExtractTextPreview || 'N/A'
+    };
 
     log('info', 'analysis_completed', {
-      request_id: requestId,
       fileName: file.name,
       confidence: analysis.confidence,
       summaryLength: analysis.summary?.length || 0,
@@ -418,13 +571,18 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
         fileType: file.type,
         fileSize: file.size,
         question: question,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // Debug information
+        ENABLE_ADOBE_EXTRACT: env.ENABLE_ADOBE_EXTRACT,
+        ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+        ADOBE_CLIENT_SECRET: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET',
+        isAdobeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)
       },
       disclaimer
     });
 
   } catch (error) {
-    logError(requestId, 'analysis_error', error as Error, {});
+    logError('analyze', 'analysis_error', error as Error, {});
     return handleError(error);
   }
 }
