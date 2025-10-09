@@ -293,8 +293,6 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
         description: t(plan.description),
         buttonText: isCurrent ? t('pricing:modal.currentPlan') : t(plan.buttonText),
         price: formatCurrency(plan.priceAmount, plan.currency, i18n.language) +
-               " " +
-               plan.currency.toUpperCase() +
                " / " +
                t(
                  `pricing:billing.${
@@ -447,9 +445,9 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                 {plan.id === "free" && (
                   <div className="mt-6 pt-4 border-t border-dark-border">
                     <p className="text-xs text-gray-400">
-                      Have an existing plan?{" "}
+                      {t("pricing:modal.existingPlan")}{" "}
                       <button className="underline hover:text-white">
-                        See billing help
+                        {t("pricing:modal.billingHelp")}
                       </button>
                     </p>
                   </div>
@@ -458,12 +456,12 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                 {plan.id === "business" && (
                   <div className="mt-6 pt-4 border-t border-dark-border">
                     <p className="text-xs text-gray-400 mb-1">
-                      For 2+ users, billed annually
+                      {t("pricing:modal.businessUsers")}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Unlimited subject to abuse guardrails.{" "}
+                      {t("pricing:modal.unlimitedGuardrails")}{" "}
                       <button className="underline hover:text-white">
-                        Learn more
+                        {t("common:learnMore")}
                       </button>
                     </p>
                   </div>
@@ -479,7 +477,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
               <div className="flex items-center gap-2">
                 <UserGroupIcon className="w-4 h-4 text-gray-400" />
                 <span className="text-sm text-gray-400">
-                  Need more capabilities?
+                  {t("pricing:modal.needMore")}
                 </span>
                 <button
                   className="text-sm text-white underline hover:text-gray-300 transition-colors"
@@ -488,7 +486,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                     window.open("/enterprise", "_blank");
                   }}
                 >
-                  See Blawby Enterprise
+                  {t("pricing:modal.seeEnterprise")}
                 </button>
               </div>
 

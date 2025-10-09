@@ -1,6 +1,5 @@
 import { FunctionComponent } from 'preact';
 import { useState, useRef } from 'preact/hooks';
-import { useTranslation } from '@/i18n/hooks';
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 
@@ -17,7 +16,6 @@ const PaymentContent: FunctionComponent<PaymentContentProps> = ({
     description,
     onPaymentComplete
 }) => {
-    const { t } = useTranslation('common');
     const [hasError, setHasError] = useState(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
