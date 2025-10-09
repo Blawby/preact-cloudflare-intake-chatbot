@@ -25,7 +25,8 @@ export class StatusService {
   private static readonly SUBSCRIPTION_PREFIX = 'sub:';
   private static readonly STATUS_TTL = 24 * 60 * 60; // 24 hours
   private static readonly SUBSCRIPTION_TTL = 60 * 60; // 1 hour
-  private static readonly POLL_INTERVAL = 2000; // 2 seconds
+  private static readonly DEFAULT_POLL_INTERVAL = 2000; // 2 seconds
+  private static readonly MAX_BACKOFF_INTERVAL = 30000; // 30 seconds
 
   /**
    * Create or update a status entry
@@ -37,7 +38,7 @@ export class StatusService {
     const now = Date.now();
     const status: StatusUpdate = {
       ...statusUpdate,
-      createdAt: statusUpdate.createdAt || now,
+      createdAt: now,
       updatedAt: now,
       expiresAt: now + (StatusService.STATUS_TTL * 1000)
     };
@@ -78,21 +79,27 @@ export class StatusService {
     
     const statuses: StatusUpdate[] = [];
     
-    for (const [key, value] of list.keys) {
-      if (!value) continue;
+    // Get all values in parallel for better performance
+    const getPromises = list.keys.map(async (keyEntry) => {
+      const value = await env.CHAT_SESSIONS.get(keyEntry.name);
+      if (!value) return null;
       
       try {
         const status = JSON.parse(value) as StatusUpdate;
         if (status.sessionId === sessionId) {
-          statuses.push(status);
+          return status;
         }
       } catch (error) {
         console.error('Failed to parse status from list:', error);
       }
-    }
+      return null;
+    });
+    
+    const results = await Promise.all(getPromises);
+    const validStatuses = results.filter((status): status is StatusUpdate => status !== null);
 
     // Sort by creation time, newest first
-    return statuses.sort((a, b) => b.createdAt - a.createdAt);
+    return validStatuses.sort((a, b) => b.createdAt - a.createdAt);
   }
 
   /**
@@ -132,7 +139,8 @@ export class StatusService {
    */
   static async updateSubscriptionLastSeen(
     env: Env,
-    sessionId: string
+    sessionId: string,
+    lastSeen?: number
   ): Promise<void> {
     const key = `${StatusService.SUBSCRIPTION_PREFIX}${sessionId}`;
     const existing = await env.CHAT_SESSIONS.get(key);
@@ -140,7 +148,7 @@ export class StatusService {
     if (existing) {
       try {
         const subscription = JSON.parse(existing) as StatusSubscription;
-        subscription.lastSeen = Date.now();
+        subscription.lastSeen = lastSeen ?? Date.now();
         
         await env.CHAT_SESSIONS.put(key, JSON.stringify(subscription), {
           expirationTtl: StatusService.SUBSCRIPTION_TTL
@@ -149,6 +157,28 @@ export class StatusService {
         console.error('Failed to update subscription:', error);
       }
     }
+  }
+
+  /**
+   * Get configurable polling interval from environment or use default
+   */
+  static getPollInterval(env: Env): number {
+    const envInterval = env.SSE_POLL_INTERVAL;
+    if (envInterval && typeof envInterval === 'string') {
+      const parsed = parseInt(envInterval, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return StatusService.DEFAULT_POLL_INTERVAL;
+  }
+
+  /**
+   * Calculate exponential backoff delay with cap
+   */
+  static calculateBackoffDelay(baseInterval: number, errorCount: number): number {
+    const exponentialDelay = baseInterval * Math.pow(2, errorCount);
+    return Math.min(exponentialDelay, StatusService.MAX_BACKOFF_INTERVAL);
   }
 
   /**
@@ -168,21 +198,27 @@ export class StatusService {
     const now = Date.now();
     let cleaned = 0;
 
-    for (const [key, value] of list.keys) {
-      if (!value) continue;
+    // Process all keys in parallel for better performance
+    const deletePromises = list.keys.map(async (keyEntry) => {
+      const value = await env.CHAT_SESSIONS.get(keyEntry.name);
+      if (!value) return false;
       
       try {
         const status = JSON.parse(value) as StatusUpdate;
         if (status.expiresAt < now) {
-          await env.CHAT_SESSIONS.delete(key);
-          cleaned++;
+          await env.CHAT_SESSIONS.delete(keyEntry.name);
+          return true;
         }
-      } catch (error) {
+      } catch (_error) {
         // If we can't parse it, delete it
-        await env.CHAT_SESSIONS.delete(key);
-        cleaned++;
+        await env.CHAT_SESSIONS.delete(keyEntry.name);
+        return true;
       }
-    }
+      return false;
+    });
+    
+    const results = await Promise.all(deletePromises);
+    cleaned = results.filter(Boolean).length;
 
     if (cleaned > 0) {
       console.log(`Cleaned up ${cleaned} expired status entries`);

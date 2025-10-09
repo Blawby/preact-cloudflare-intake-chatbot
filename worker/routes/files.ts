@@ -3,9 +3,76 @@ import { HttpErrors, handleError } from '../errorHandler';
 import { z } from 'zod';
 import { SessionService } from '../services/SessionService.js';
 import { ActivityService } from '../services/ActivityService';
-import { StatusService } from '../services/StatusService.ts';
+import { StatusService, type StatusUpdate } from '../services/StatusService.js';
 import { Logger } from '../utils/logger';
 import type { MessageBatch } from '@cloudflare/workers-types';
+
+/**
+ * Updates status with retry logic and exponential backoff
+ * @param env - Environment object
+ * @param statusUpdate - Status update data
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
+ * @param baseDelayMs - Base delay in milliseconds for exponential backoff (default: 1000)
+ * @returns Promise that resolves when status is updated or rejects after all retries fail
+ */
+async function updateStatusWithRetry(
+  env: Env,
+  statusUpdate: Omit<StatusUpdate, 'createdAt' | 'updatedAt' | 'expiresAt'>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 1000
+): Promise<void> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await StatusService.setStatus(env, statusUpdate);
+      Logger.info('Status update successful', {
+        statusId: statusUpdate.id,
+        attempt: attempt + 1,
+        status: statusUpdate.status
+      });
+      return; // Success, exit early
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt === maxRetries) {
+        // Final attempt failed, log to monitoring and throw
+        Logger.error('Status update failed after all retries', {
+          statusId: statusUpdate.id,
+          status: statusUpdate.status,
+          totalAttempts: maxRetries + 1,
+          finalError: lastError.message,
+          errorStack: lastError.stack
+        });
+        
+        // Emit alert for critical status update failures
+        Logger.error('ALERT: Critical status update failure', {
+          statusId: statusUpdate.id,
+          sessionId: statusUpdate.sessionId,
+          teamId: statusUpdate.teamId,
+          status: statusUpdate.status,
+          message: statusUpdate.message,
+          error: lastError.message
+        });
+        
+        throw lastError;
+      }
+      
+      // Calculate exponential backoff delay
+      const delayMs = baseDelayMs * Math.pow(2, attempt);
+      Logger.warn('Status update attempt failed, retrying', {
+        statusId: statusUpdate.id,
+        attempt: attempt + 1,
+        maxRetries: maxRetries + 1,
+        nextRetryInMs: delayMs,
+        error: lastError.message
+      });
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+}
 
 // Types for document processing
 interface DocumentEvent {
@@ -303,29 +370,68 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       const resolvedSessionId = sessionResolution.session.id;
 
       // Create initial status update for file processing
-      const statusId = await StatusService.createFileProcessingStatus(
-        env,
-        resolvedSessionId,
-        resolvedTeamId,
-        file.name,
-        'processing',
-        10
-      );
+      let statusId: string | null = null;
+      try {
+        statusId = await StatusService.createFileProcessingStatus(
+          env,
+          resolvedSessionId,
+          resolvedTeamId,
+          file.name,
+          'processing',
+          10
+        );
+      } catch (statusError) {
+        Logger.warn('Failed to create initial file processing status:', statusError);
+        // Continue without status tracking if status creation fails
+      }
 
-      // Store file
-      const { fileId, url, storageKey } = await storeFile(file, resolvedTeamId, resolvedSessionId, env);
+      // Store file with error handling
+      let fileId: string, url: string, storageKey: string;
+      try {
+        const result = await storeFile(file, resolvedTeamId, resolvedSessionId, env);
+        fileId = result.fileId;
+        url = result.url;
+        storageKey = result.storageKey;
+      } catch (storeError) {
+        // Update status to failed if we have a statusId
+        if (statusId) {
+          try {
+            await updateStatusWithRetry(env, {
+              id: statusId,
+              sessionId: resolvedSessionId,
+              teamId: resolvedTeamId,
+              type: 'file_processing',
+              status: 'failed',
+              message: `File ${file.name} upload failed: ${storeError.message}`,
+              progress: 0,
+              data: { fileName: file.name, error: storeError.message }
+            });
+          } catch (_statusUpdateError) {
+            // Error is already logged by updateStatusWithRetry, just continue
+            Logger.warn('Continuing despite status update failure for upload failure');
+          }
+        }
+        throw storeError; // Re-throw the original error
+      }
 
       // Update status to indicate file stored
-      await StatusService.setStatus(env, {
-        id: statusId,
-        sessionId: resolvedSessionId,
-        teamId: resolvedTeamId,
-        type: 'file_processing',
-        status: 'processing',
-        message: `File ${file.name} uploaded successfully, starting analysis...`,
-        progress: 50,
-        data: { fileName: file.name, fileId, url }
-      });
+      if (statusId) {
+        try {
+          await updateStatusWithRetry(env, {
+            id: statusId,
+            sessionId: resolvedSessionId,
+            teamId: resolvedTeamId,
+            type: 'file_processing',
+            status: 'processing',
+            message: `File ${file.name} uploaded successfully, starting analysis...`,
+            progress: 50,
+            data: { fileName: file.name, fileId, url }
+          });
+        } catch (_statusUpdateError) {
+          // Error is already logged by updateStatusWithRetry, just continue
+          Logger.warn('Continuing despite status update failure after file storage');
+        }
+      }
 
       Logger.info('File upload successful:', {
         fileId,
@@ -368,35 +474,45 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         };
         
         // Process inline (don't await to avoid blocking the response)
-        docProcessor.queue(mockBatch, env).then(() => {
+        docProcessor.queue(mockBatch, env).then(async () => {
           // Update status to completed
-          StatusService.setStatus(env, {
-            id: statusId,
-            sessionId: resolvedSessionId,
-            teamId: resolvedTeamId,
-            type: 'file_processing',
-            status: 'completed',
-            message: `Analysis of ${file.name} completed successfully`,
-            progress: 100,
-            data: { fileName: file.name, fileId, url, analysisComplete: true }
-          }).catch(error => {
-            console.error('Failed to update status to completed:', error);
-          });
-        }).catch(error => {
+          if (statusId) {
+            try {
+              await updateStatusWithRetry(env, {
+                id: statusId,
+                sessionId: resolvedSessionId,
+                teamId: resolvedTeamId,
+                type: 'file_processing',
+                status: 'completed',
+                message: `Analysis of ${file.name} completed successfully`,
+                progress: 100,
+                data: { fileName: file.name, fileId, url, analysisComplete: true }
+              });
+            } catch (_error) {
+              // Error is already logged by updateStatusWithRetry, just continue
+              Logger.warn('Continuing despite status update failure for completed analysis');
+            }
+          }
+        }).catch(async (error) => {
           console.error('Inline processing failed:', error);
           // Update status to failed
-          StatusService.setStatus(env, {
-            id: statusId,
-            sessionId: resolvedSessionId,
-            teamId: resolvedTeamId,
-            type: 'file_processing',
-            status: 'failed',
-            message: `Analysis of ${file.name} failed: ${error.message}`,
-            progress: 0,
-            data: { fileName: file.name, fileId, url, error: error.message }
-          }).catch(statusError => {
-            console.error('Failed to update status to failed:', statusError);
-          });
+          if (statusId) {
+            try {
+              await updateStatusWithRetry(env, {
+                id: statusId,
+                sessionId: resolvedSessionId,
+                teamId: resolvedTeamId,
+                type: 'file_processing',
+                status: 'failed',
+                message: `Analysis of ${file.name} failed: ${error.message}`,
+                progress: 0,
+                data: { fileName: file.name, fileId, url, error: error.message }
+              });
+            } catch (_statusError) {
+              // Error is already logged by updateStatusWithRetry, just continue
+              Logger.warn('Continuing despite status update failure for failed analysis');
+            }
+          }
         });
         
         Logger.info('🚀 Started inline auto-analysis processing');

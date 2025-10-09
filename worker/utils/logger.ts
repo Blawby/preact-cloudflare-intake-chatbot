@@ -1,3 +1,5 @@
+import { parseEnvBool } from './safeStringUtils.js';
+
 export class Logger {
   private static env?: { DEBUG?: string; NODE_ENV?: string };
 
@@ -37,7 +39,7 @@ export class Logger {
     const debug = this.env?.DEBUG;
     const nodeEnv = this.env?.NODE_ENV;
     
-    return debug === 'true' || nodeEnv === 'development';
+    return parseEnvBool(debug) || nodeEnv === 'development';
   }
 
   static debug(message: string, data?: unknown): void {
@@ -88,7 +90,7 @@ export class Logger {
    * Sanitizes configuration data to remove sensitive information
    */
   private static sanitizeConfig(config: unknown): Record<string, unknown> {
-    if (!config || typeof config !== 'object') return {};
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return {};
 
     const sanitized = { ...(config as Record<string, unknown>) };
 

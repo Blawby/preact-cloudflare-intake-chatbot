@@ -58,3 +58,19 @@ export function safeToLowerCase(value: unknown): string {
 export function safeToUpperCase(value: unknown): string {
   return typeof value === 'string' ? value.toUpperCase() : '';
 }
+
+/**
+ * Parses an environment variable value as a boolean
+ * Treats '1', 'true', 'yes' (case-insensitive) as true, everything else as false
+ * @param value - The environment variable value to parse
+ * @param defaultValue - Default value to return if value is undefined (defaults to false)
+ * @returns boolean value
+ */
+export function parseEnvBool(value: string | undefined, defaultValue: boolean = false): boolean {
+  if (value === undefined) {
+    return defaultValue;
+  }
+  
+  const normalized = value.toLowerCase().trim();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes';
+}

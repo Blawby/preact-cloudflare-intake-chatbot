@@ -45,6 +45,9 @@ export interface Env {
   ENV_TEST?: string;
   IS_PRODUCTION?: string;
   
+  // SSE Configuration
+  SSE_POLL_INTERVAL?: string;
+  
 }
 
 // HTTP Error class for centralized error handling

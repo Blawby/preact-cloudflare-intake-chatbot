@@ -146,8 +146,8 @@ echo "👥 Setting up default teams..."
 EXISTING_TEAMS=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM teams;" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
 
 if [ "$EXISTING_TEAMS" -eq 0 ]; then
-    echo "  Teams will be created by the schema.sql file"
-    echo "  (The schema.sql file contains INSERT statements for default teams)"
+    echo "ERROR: no teams found after executing schema.sql; aborting" >&2
+    exit 1
 else
     echo "✅ Teams already exist"
 fi

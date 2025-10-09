@@ -35,7 +35,7 @@ export const getFileTypeConfig = (fileName: string, mimeType: string): FileTypeC
   }
   
   // Image files
-  if (mimeType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'tiff', 'ico', 'heic'].includes(extension)) {
+  if ((typeof mimeType === 'string' && mimeType.startsWith('image/')) || ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'tiff', 'ico', 'heic'].includes(extension)) {
     return {
       color: 'bg-light-file-type-image dark:bg-dark-file-type-image',
       icon: PhotoIcon,
@@ -44,7 +44,7 @@ export const getFileTypeConfig = (fileName: string, mimeType: string): FileTypeC
   }
   
   // Video files
-  if (mimeType.startsWith('video/') || ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension)) {
+  if ((typeof mimeType === 'string' && mimeType.startsWith('video/')) || ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension)) {
     return {
       color: 'bg-light-file-type-video dark:bg-dark-file-type-video',
       icon: VideoCameraIcon,
@@ -53,7 +53,7 @@ export const getFileTypeConfig = (fileName: string, mimeType: string): FileTypeC
   }
   
   // Audio files
-  if (mimeType.startsWith('audio/') || ['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(extension)) {
+  if ((typeof mimeType === 'string' && mimeType.startsWith('audio/')) || ['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(extension)) {
     return {
       color: 'bg-light-file-type-audio dark:bg-dark-file-type-audio',
       icon: MusicalNoteIcon,

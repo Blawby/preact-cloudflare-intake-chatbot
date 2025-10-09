@@ -1,6 +1,6 @@
 import type { Env } from '../types.js';
 import { HttpErrors } from '../errorHandler.js';
-import { StatusService } from '../services/StatusService.ts';
+import { StatusService } from '../services/StatusService.js';
 
 /**
  * Handle status-related endpoints

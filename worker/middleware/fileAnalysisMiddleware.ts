@@ -156,8 +156,17 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         ...context,
         currentAttachments: undefined, // Clear attachments after processing
         fileAnalysis: {
+          status: 'completed',
+          files: attachments.map(attachment => ({
+            fileId: extractFileIdFromUrl(attachment.url) || '',
+            name: attachment.name,
+            type: attachment.type,
+            size: attachment.size,
+            url: attachment.url
+          })),
           results: analysisResults,
-          processedAt: new Date().toISOString(),
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
           totalFiles: analysisResults.length
         }
       };

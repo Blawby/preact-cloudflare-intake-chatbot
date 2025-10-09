@@ -1,5 +1,3 @@
-/// <reference types="@cloudflare/workers-types" />
-
 // Removed shim - trying to identify the actual caller
 
 import {
@@ -22,6 +20,7 @@ import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
 import { withCORS, getCorsConfig } from './middleware/cors';
 import docProcessor from './consumers/doc-processor';
+import type { ScheduledEvent } from '@cloudflare/workers-types';
 
 // Basic request validation
 function validateRequest(request: Request): boolean {
@@ -122,12 +121,20 @@ export default {
 
 // Scheduled event for cleanup (runs daily)
 export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-  if (event.type === 'scheduled') {
-    // Clean up expired status entries
-    const { StatusService } = await import('./services/StatusService.ts');
-    const cleaned = await StatusService.cleanupExpiredStatuses(env);
-    console.log(`Scheduled cleanup: removed ${cleaned} expired status entries`);
-  }
+  // Import StatusService
+  const { StatusService } = await import('./services/StatusService');
+  
+  // Create cleanup promise with error handling
+  const cleanupPromise = StatusService.cleanupExpiredStatuses(env)
+    .then(count => {
+      console.log(`Scheduled cleanup: removed ${count} expired status entries`);
+    })
+    .catch(error => {
+      console.error('Scheduled cleanup failed:', error);
+    });
+  
+  // Use ctx.waitUntil to ensure cleanup completes after handler returns
+  ctx.waitUntil(cleanupPromise);
 }
 
 // Export Durable Object classes (none currently)

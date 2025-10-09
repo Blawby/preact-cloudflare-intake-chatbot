@@ -1,6 +1,7 @@
 import type { Env } from '../types.js';
 import { StatusService } from './StatusService.js';
 import { Logger } from '../utils/logger.js';
+import { analyzeFile } from '../utils/fileAnalysisUtils.js';
 
 type AttachmentData = {
   fileId: string;
@@ -9,6 +10,7 @@ type AttachmentData = {
   analysisType: string;
   analysisQuestion: string;
 };
+
 
 /**
  * Async Adobe Analysis Service
@@ -96,13 +98,13 @@ export class AsyncAdobeAnalysis {
         data: { 
           fileName: attachment.fileName,
           result: {
-            confidence: result.confidence,
-            summary: result.summary,
-            keyFactsCount: result.key_facts?.length || 0,
+            confidence: result.confidence as number,
+            summary: result.summary as string,
+            keyFactsCount: Array.isArray(result.key_facts) ? result.key_facts.length : 0,
             entitiesCount: {
-              people: result.entities?.people?.length || 0,
-              orgs: result.entities?.orgs?.length || 0,
-              dates: result.entities?.dates?.length || 0
+              people: Array.isArray((result.entities as Record<string, unknown>)?.people) ? ((result.entities as Record<string, unknown>).people as unknown[]).length : 0,
+              orgs: Array.isArray((result.entities as Record<string, unknown>)?.orgs) ? ((result.entities as Record<string, unknown>).orgs as unknown[]).length : 0,
+              dates: Array.isArray((result.entities as Record<string, unknown>)?.dates) ? ((result.entities as Record<string, unknown>).dates as unknown[]).length : 0
             }
           }
         }
@@ -112,7 +114,7 @@ export class AsyncAdobeAnalysis {
         sessionId,
         teamId,
         fileName: attachment.fileName,
-        confidence: result.confidence
+        confidence: result.confidence as number
       });
 
     } catch (error) {
@@ -146,12 +148,9 @@ export class AsyncAdobeAnalysis {
   private static async performAdobeAnalysis(
     env: Env,
     attachment: AttachmentData
-  ): Promise<any> {
-    // Import and use existing analysis logic
-    const { analyzeFile } = await import('../utils/fileAnalysisUtils.js');
-    
+  ): Promise<Record<string, unknown>> {
     // This is the same call that was blocking in the middleware
     // Now it runs in the background with status updates
-    return await analyzeFile(env, attachment.fileId, attachment.analysisQuestion);
+    return await analyzeFile(env as unknown as Record<string, unknown>, attachment.fileId, attachment.analysisQuestion);
   }
 }

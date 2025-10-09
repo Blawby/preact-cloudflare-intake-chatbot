@@ -15,8 +15,9 @@ import { fileAnalysisMiddleware } from '../middleware/fileAnalysisMiddleware.js'
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index.js';
 import { getCloudflareLocation } from '../utils/cloudflareLocationValidator.js';
 import { SessionService } from '../services/SessionService.js';
-import { StatusService } from '../services/StatusService.ts';
+import { StatusService } from '../services/StatusService.js';
 import { chunkResponseText } from '../utils/streaming.js';
+import { Logger } from '../utils/logger.js';
 
 // Interface for the request body
 interface RouteBody {
@@ -67,7 +68,27 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     });
 
     // Register session subscription for real-time updates
-    await StatusService.subscribeSession(env, sessionId, teamId);
+    try {
+      await StatusService.subscribeSession(env, sessionId, teamId);
+    } catch (error) {
+      Logger.error('Failed to subscribe session for SSE updates', {
+        error: error instanceof Error ? error.message : String(error),
+        sessionId,
+        teamId,
+        env: env ? 'present' : 'missing'
+      });
+      
+      // Return error response with SSE error event
+      const errorEvent = `data: ${JSON.stringify({
+        type: 'error',
+        message: 'Failed to establish session subscription for real-time updates',
+        error: error instanceof Error ? error.message : String(error),
+        sessionId,
+        timestamp: Date.now()
+      })}\n\n`;
+      
+      return new Response(errorEvent, { headers });
+    }
 
     // Create SSE stream with real-time status polling
     const stream = new ReadableStream({
@@ -75,6 +96,8 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
         const encoder = new TextEncoder();
         let lastSeen = Date.now();
         let isActive = true;
+        let errorCount = 0;
+        let pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
         const sendEvent = (event: unknown) => {
           if (!isActive) return;
@@ -94,12 +117,9 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
           timestamp: Date.now()
         });
 
-        // Poll for status updates every 2 seconds
-        const pollInterval = setInterval(async () => {
-          if (!isActive) {
-            clearInterval(pollInterval);
-            return;
-          }
+        // Self-scheduling async poll function with exponential backoff
+        const pollForUpdates = async () => {
+          if (!isActive) return;
 
           try {
             // Get recent status updates
@@ -122,9 +142,9 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
                 });
               }
               
-              // Update last seen timestamp
-              lastSeen = Math.max(...recentStatuses.map(s => s.updatedAt));
-              await StatusService.updateSubscriptionLastSeen(env, sessionId);
+              // Update last seen timestamp safely to handle out-of-order timestamps
+              lastSeen = Math.max(lastSeen, ...recentStatuses.map(s => s.updatedAt));
+              await StatusService.updateSubscriptionLastSeen(env, sessionId, lastSeen);
             }
 
             // Send periodic ping to keep connection alive
@@ -134,20 +154,44 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
               lastSeen
             });
 
+            // Reset error count on successful poll
+            errorCount = 0;
+
           } catch (error) {
             console.error('Error polling status updates:', error);
+            errorCount++;
+            
             sendEvent({
               type: 'error',
               message: 'Failed to fetch status updates',
               timestamp: Date.now()
             });
           }
-        }, 2000); // Poll every 2 seconds
+
+          // Schedule next poll with exponential backoff on errors
+          if (isActive) {
+            const baseInterval = StatusService.getPollInterval(env);
+            const delay = errorCount > 0 
+              ? StatusService.calculateBackoffDelay(baseInterval, errorCount)
+              : baseInterval;
+            
+            pollTimeoutId = setTimeout(pollForUpdates, delay);
+          }
+        };
+
+        // Start the polling loop
+        pollForUpdates();
 
         // Clean up on close
+        let cleanedUp = false;
         const cleanup = () => {
+          if (cleanedUp) return;
+          cleanedUp = true;
           isActive = false;
-          clearInterval(pollInterval);
+          if (pollTimeoutId !== null) {
+            clearTimeout(pollTimeoutId);
+            pollTimeoutId = null;
+          }
           StatusService.unsubscribeSession(env, sessionId).catch(error => {
             console.error('Failed to unsubscribe session:', error);
           });

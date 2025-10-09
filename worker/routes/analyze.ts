@@ -10,6 +10,7 @@ import {
   logError, 
   logWarning 
 } from '../utils/logging.js';
+import { parseEnvBool } from '../utils/safeStringUtils.js';
 
 // Extended AnalysisResult for debugging purposes
 interface ExtendedAnalysisResult extends AnalysisResult {
@@ -624,7 +625,7 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
     };
 
     // Only include debug information when DEBUG mode is enabled
-    if (env.DEBUG === 'true') {
+    if (parseEnvBool(env.DEBUG)) {
       metadata.debug = {
         adobeClientIdConfigured: !!env.ADOBE_CLIENT_ID,
         adobeExtractEnabled: !!env.ENABLE_ADOBE_EXTRACT

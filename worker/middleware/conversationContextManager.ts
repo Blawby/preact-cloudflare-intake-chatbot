@@ -100,6 +100,7 @@ export interface ConversationContext {
   fileAnalysis?: {
     status: 'processing' | 'completed' | 'failed';
     files: Array<{
+      fileId: string;
       name: string;
       type: string;
       size: number;
@@ -560,5 +561,35 @@ export class ConversationContextManager {
     }
     
     return updated;
+  }
+
+  /**
+   * Get file analysis result for a specific file by fileId
+   * This utility demonstrates how to correlate files with their analysis results
+   */
+  static getFileAnalysisResult(
+    context: ConversationContext,
+    fileId: string
+  ): ConversationContext['fileAnalysis']['results'][0] | undefined {
+    if (!context.fileAnalysis?.results) {
+      return undefined;
+    }
+    
+    return context.fileAnalysis.results.find(result => result.fileId === fileId);
+  }
+
+  /**
+   * Get file metadata for a specific file by fileId
+   * This utility demonstrates how to get file information from the files array
+   */
+  static getFileMetadata(
+    context: ConversationContext,
+    fileId: string
+  ): ConversationContext['fileAnalysis']['files'][0] | undefined {
+    if (!context.fileAnalysis?.files) {
+      return undefined;
+    }
+    
+    return context.fileAnalysis.files.find(file => file.fileId === fileId);
   }
 }
