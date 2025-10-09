@@ -155,7 +155,8 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
     const preferences = mockUserDataService.getPreferences();
     // Default to 'us' if no country is set, or if the country isn't in our list
     const country = preferences.country?.toLowerCase() || 'us';
-    const countryExists = countryOptions.some(opt => opt.value === country);
+    // Check against stable COUNTRY_CODES constant to avoid countryOptions dependency
+    const countryExists = COUNTRY_CODES.includes(country as any);
     setSelectedCountry(countryExists ? country : 'us');
   }, []);
 
