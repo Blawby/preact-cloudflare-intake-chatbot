@@ -21,7 +21,7 @@ import { useNavigation } from '../../utils/navigation';
 import { useToastContext } from '../../contexts/ToastContext';
 import { cn } from '../../utils/cn';
 import { mockUserDataService } from '../../utils/mockUserData';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 
 
 export interface SettingsPageProps {

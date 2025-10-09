@@ -211,6 +211,7 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: {
+			'@': resolve(__dirname, './src'),
 			'react': 'preact/compat',
 			'react-dom': 'preact/compat',
 			'react/jsx-runtime': 'preact/jsx-runtime',
