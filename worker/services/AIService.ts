@@ -19,7 +19,7 @@ export class AIService {
   
   async runLLM(
     messages: Array<Record<string, unknown>>,
-    model: string = '@cf/meta/llama-3.1-8b-instruct'
+    model: string = '@cf/openai/gpt-oss-20b'
   ) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout

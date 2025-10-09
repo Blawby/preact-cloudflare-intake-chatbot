@@ -55,7 +55,20 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         return { context };
       }
 
-      Logger.info('File attachments detected in middleware', {
+      // Only process attachments if the latest message indicates file analysis is needed
+      // This prevents processing stale attachments when user just says "hello"
+      const latestMessage = messages[messages.length - 1];
+      if (!latestMessage || latestMessage.role !== 'user') {
+        Logger.info('Skipping file analysis - no user message in current request', {
+          sessionId: context.sessionId,
+          teamId: context.teamId
+        });
+        return { context };
+      }
+
+      // Process attachments when they exist in context.currentAttachments
+      // This ensures users see analysis results for newly uploaded files
+      Logger.info('Processing current attachments for file analysis', {
         sessionId: context.sessionId,
         teamId: context.teamId,
         attachmentCount: context.currentAttachments.length
@@ -138,9 +151,10 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         analysisCount: analysisResults.length
       });
 
-      // Update context with file analysis results
+      // Update context with file analysis results and clear currentAttachments
       const updatedContext = {
         ...context,
+        currentAttachments: undefined, // Clear attachments after processing
         fileAnalysis: {
           results: analysisResults,
           processedAt: new Date().toISOString(),
@@ -169,8 +183,12 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       });
     }
 
-      // No successful analysis results - continue pipeline
-      return { context };
+      // No successful analysis results - clear attachments and continue pipeline
+      const updatedContext = {
+        ...context,
+        currentAttachments: undefined // Clear attachments even if no analysis results
+      };
+      return { context: updatedContext };
     } catch (error) {
       Logger.error('File analysis middleware error', {
         sessionId: context.sessionId,
@@ -178,8 +196,12 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         error: error instanceof Error ? error.message : String(error)
       });
       
-      // Continue pipeline on error
-      return { context };
+      // Clear attachments and continue pipeline on error
+      const updatedContext = {
+        ...context,
+        currentAttachments: undefined
+      };
+      return { context: updatedContext };
     }
   }
 };

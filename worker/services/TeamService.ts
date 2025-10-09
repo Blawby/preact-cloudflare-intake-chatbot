@@ -48,18 +48,6 @@ export interface TeamConfig {
 const LEGACY_AI_PROVIDER = 'workers-ai';
 const DEFAULT_GPT_MODEL = '@cf/openai/gpt-oss-20b';
 
-const MODEL_ALIASES: Record<string, string> = {
-  llama: DEFAULT_GPT_MODEL,
-  'llama-3': DEFAULT_GPT_MODEL,
-  'llama-3.1': DEFAULT_GPT_MODEL,
-  'llama-3-8b': DEFAULT_GPT_MODEL,
-  'llama-3.1-8b': DEFAULT_GPT_MODEL,
-  llama3: DEFAULT_GPT_MODEL,
-  'llama3.1': DEFAULT_GPT_MODEL
-};
-
-// Feature flag to control model aliasing behavior
-const ENABLE_MODEL_ALIASES = false; // Set to true to enable aliasing
 
 const DEFAULT_AVAILABLE_SERVICES = [
   'Family Law',
@@ -92,23 +80,6 @@ function sanitizeModel(model?: string | null, teamId?: string): string | undefin
   const trimmed = model.trim();
   if (!trimmed.length) {
     return undefined;
-  }
-
-  const normalized = trimmed.toLowerCase();
-  
-  // Only apply aliases if the feature flag is enabled
-  if (ENABLE_MODEL_ALIASES && MODEL_ALIASES[normalized]) {
-    const aliasedModel = MODEL_ALIASES[normalized];
-    
-    // Log warning when alias substitution occurs
-    console.warn('Model alias substitution applied:', {
-      originalModel: trimmed,
-      aliasedModel,
-      teamId: teamId || 'unknown',
-      message: `Llama model '${trimmed}' was aliased to '${aliasedModel}'. Consider updating your team configuration to use the new model directly.`
-    });
-    
-    return aliasedModel;
   }
 
   return trimmed;

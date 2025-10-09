@@ -126,9 +126,6 @@ function deriveProviderForModel(model: string, preferredProvider: string): strin
   if (model.startsWith('@cf/gateway/') || model.startsWith('openai:')) {
     return 'gateway-openai';
   }
-  if (model.startsWith('@cf/meta/llama') || model.includes('llama')) {
-    return 'legacy-llama';
-  }
   return preferredProvider;
 }
 
@@ -162,6 +159,23 @@ function buildProviderPayload(
   provider: string
 ): Record<string, unknown> {
   const { messages, tools, max_tokens, temperature, stream } = basePayload;
+  
+  // For gpt-oss-20b, use the input format instead of messages format
+  if (provider === 'workers-ai' && messages.some(msg => msg.role === 'system')) {
+    // Convert messages to input format for gpt-oss-20b
+    const systemMessage = messages.find(msg => msg.role === 'system');
+    const userMessages = messages.filter(msg => msg.role !== 'system');
+    const conversationText = userMessages.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+    const input = systemMessage ? `${systemMessage.content}\n\n${conversationText}` : conversationText;
+    
+    return {
+      input,
+      max_tokens,
+      temperature,
+      stream: false // gpt-oss-20b streaming format requires different handling
+    };
+  }
+  
   if (provider === 'workers-ai' || provider === 'gateway-openai') {
     return {
       messages,
@@ -2178,11 +2192,59 @@ function buildPromptMessages(messages: readonly AgentMessage[]): Array<{ role: '
 }
 
 function extractAIResponse(aiResult: unknown): string {
-  if (aiResult && typeof aiResult === 'object' && 'response' in aiResult) {
-    const response = (aiResult as Record<string, unknown>).response;
-    return typeof response === 'string' ? response : 
-      'I apologize, but I encountered an error processing your request.';
+  // Handle gpt-oss-20b response format - it returns the text directly as a string
+  if (typeof aiResult === 'string') {
+    return aiResult;
   }
+  
+  if (!aiResult || typeof aiResult !== 'object') {
+    return 'I apologize, but I encountered an error processing your request.';
+  }
+
+  const result = aiResult as Record<string, unknown>;
+  
+  // Handle simple response format
+  if ('response' in result && typeof result.response === 'string') {
+    return result.response;
+  }
+  
+  // Handle gpt-oss-20b response format with output array
+  if ('output' in result && Array.isArray(result.output)) {
+    const output = result.output as unknown[];
+    // Find the message object in the output array
+    const message = output.find((msg: unknown) => 
+      msg && typeof msg === 'object' && 'type' in msg && msg.type === 'message'
+    );
+    
+    if (message && typeof message === 'object' && 'content' in message) {
+      const messageContent = (message as Record<string, unknown>).content;
+      if (Array.isArray(messageContent)) {
+        // Find the output_text content
+        const outputText = messageContent.find((content: unknown) => 
+          content && typeof content === 'object' && 'type' in content && content.type === 'output_text'
+        );
+        
+        if (outputText && typeof outputText === 'object' && 'text' in outputText) {
+          const text = (outputText as Record<string, unknown>).text;
+          return typeof text === 'string' ? text : 'I apologize, but I encountered an error processing your request.';
+        }
+      }
+    }
+  }
+  
+  // Handle other common response fields
+  if ('output' in result && typeof result.output === 'string') {
+    return result.output;
+  }
+  
+  if ('content' in result && typeof result.content === 'string') {
+    return result.content;
+  }
+  
+  if ('text' in result && typeof result.text === 'string') {
+    return result.text;
+  }
+  
   return 'I apologize, but I encountered an error processing your request.';
 }
 

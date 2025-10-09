@@ -96,6 +96,34 @@ export interface ConversationContext {
     type: string;
     url: string;
   }>;
+  // File analysis results
+  fileAnalysis?: {
+    status: 'processing' | 'completed' | 'failed';
+    files: Array<{
+      name: string;
+      type: string;
+      size: number;
+      url: string;
+    }>;
+    results?: Array<{
+      fileId: string;
+      fileName: string;
+      fileType: string;
+      analysisType: string;
+      confidence: number;
+      summary?: string;
+      entities?: {
+        people?: string[];
+        orgs?: string[];
+        dates?: string[];
+      };
+      key_facts?: string[];
+      action_items?: string[];
+    }>;
+    startedAt: string;
+    completedAt?: string;
+    totalFiles: number;
+  };
 }
 
 export class ConversationContextManager {

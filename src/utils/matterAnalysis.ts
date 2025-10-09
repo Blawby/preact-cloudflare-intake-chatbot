@@ -41,7 +41,7 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
   }
   
   // Cache service.toLowerCase() to avoid repeated calls
-  const serviceLower = matterData.service.toLowerCase();
+  const serviceLower = (matterData.service || '').toLowerCase();
   
   // Service-specific checks
   if (serviceLower.includes('family')) {

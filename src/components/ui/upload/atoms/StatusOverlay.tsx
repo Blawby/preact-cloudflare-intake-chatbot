@@ -7,6 +7,7 @@
 
 import { cn } from '../../../../utils/cn';
 import { ProgressRing } from './ProgressRing';
+import { LoadingSpinner } from '../../layout/LoadingSpinner';
 
 export type StatusType = 'uploading' | 'completed' | 'processing' | 'analyzing' | 'none';
 
@@ -44,13 +45,29 @@ export const StatusOverlay = ({
     )}>
       
       {status === 'completed' && (
-        <svg className={cn('text-green-500', sizeClasses[size])} fill="currentColor" viewBox="0 0 20 20">
+        <svg 
+          className={cn('text-green-500', sizeClasses[size])} 
+          fill="currentColor" 
+          viewBox="0 0 20 20"
+          role="img"
+          aria-label="Upload completed"
+        >
           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
         </svg>
       )}
       
-      {(status === 'processing' || status === 'analyzing') && (
-        <ProgressRing progress={100} size={size} />
+      {status === 'processing' && (
+        <LoadingSpinner 
+          size={size} 
+          ariaLabel="Processing document" 
+        />
+      )}
+      
+      {status === 'analyzing' && (
+        <LoadingSpinner 
+          size={size} 
+          ariaLabel="Analyzing document" 
+        />
       )}
     </div>
   );

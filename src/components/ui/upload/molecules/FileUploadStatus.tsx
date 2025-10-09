@@ -5,6 +5,7 @@
  * Maintains backward compatibility while using consistent styling.
  */
 
+import { useState, useEffect } from 'preact/hooks';
 import { FileDisplay, type FileDisplayStatus } from './FileDisplay';
 import type { UploadingFile } from '../../../../hooks/useFileUpload';
 
@@ -15,6 +16,8 @@ interface FileUploadStatusProps {
 }
 
 export const FileUploadStatus = ({ file, onCancel, className }: FileUploadStatusProps) => {
+  const [objectUrl, setObjectUrl] = useState<string | undefined>(undefined);
+
   // Map UploadingFile status to FileDisplay status
   const getDisplayStatus = (): FileDisplayStatus => {
     switch (file.status) {
@@ -27,12 +30,35 @@ export const FileUploadStatus = ({ file, onCancel, className }: FileUploadStatus
     }
   };
 
+  // Manage object URL lifecycle
+  useEffect(() => {
+    // Revoke previous URL if it exists
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+    }
+
+    // Create new URL for image files
+    if (file.file.type.startsWith('image/')) {
+      const newUrl = URL.createObjectURL(file.file);
+      setObjectUrl(newUrl);
+    } else {
+      setObjectUrl(undefined);
+    }
+
+    // Cleanup function to revoke URL on unmount or file change
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [file.file]); // Re-run when file changes
+
   // Create file object with URL for images
   const fileWithUrl = {
     name: file.file.name,
     type: file.file.type,
     size: file.file.size,
-    url: file.file.type.startsWith('image/') ? URL.createObjectURL(file.file) : undefined
+    url: objectUrl
   };
 
   return (

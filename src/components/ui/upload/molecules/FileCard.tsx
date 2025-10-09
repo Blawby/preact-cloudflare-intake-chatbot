@@ -53,7 +53,7 @@ export const FileCard = ({
         'border border-light-file-border dark:border-dark-file-border',
         'transition-all duration-200',
         // Make images square, matching the height of file cards
-        size === 'sm' ? 'w-14 h-14' : size === 'md' ? 'w-16 h-16' : 'w-18 h-18',
+        size === 'sm' ? 'w-14 h-14' : size === 'md' ? 'w-16 h-16' : 'w-20 h-20',
         className
       )}>
         <FileIconWithStatus

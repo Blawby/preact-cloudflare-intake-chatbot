@@ -50,10 +50,10 @@ async function attemptAdobeExtract(
   question: string,
   env: Env
 ): Promise<AnalysisResult | null> {
-  console.log('🔍 DEBUG: Creating Adobe service...');
+  log('debug', 'adobe_service_creation', { message: 'Creating Adobe service' });
   const adobeService = new AdobeDocumentService(env);
-  console.log('🔍 DEBUG: Adobe service created');
-  console.log('🔍 DEBUG: Adobe service isEnabled():', adobeService.isEnabled());
+  log('debug', 'adobe_service_created', { message: 'Adobe service created' });
+  log('debug', 'adobe_service_enabled_check', { isEnabled: adobeService.isEnabled() });
   
   const eligibleTypes = new Set([
     'application/pdf',
@@ -88,14 +88,15 @@ async function attemptAdobeExtract(
 
   try {
     log('info', 'adobe_extraction_start', { fileName: file.name, fileType: file.type });
-    console.log('🔍 DEBUG: Starting Adobe extraction');
-    console.log('  - File name:', file.name);
-    console.log('  - File type:', file.type);
-    console.log('  - File size:', file.size);
+    log('debug', 'adobe_extraction_details', {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size
+    });
     
     const buffer = await file.arrayBuffer();
     log('info', 'adobe_file_buffer', { fileName: file.name, bufferSize: buffer.byteLength });
-    console.log('  - Buffer size:', buffer.byteLength);
+    log('debug', 'adobe_buffer_details', { bufferSize: buffer.byteLength });
     
     const extractResult = await adobeService.extractFromBuffer(file.name, file.type, buffer);
     log('info', 'adobe_extraction_result', {
@@ -105,27 +106,27 @@ async function attemptAdobeExtract(
       warnings: extractResult.warnings
     });
     
-    console.log('🔍 DEBUG: Adobe extraction result');
-    console.log('  - Success:', extractResult.success);
-    console.log('  - Has details:', !!extractResult.details);
-    console.log('  - Error:', extractResult.error || 'None');
-    console.log('  - Warnings:', extractResult.warnings || 'None');
-    if (extractResult.details && extractResult.details.text) {
-      console.log('  - Text length:', extractResult.details.text.length);
-      console.log('  - Text preview:', extractResult.details.text.substring(0, 200) + '...');
-    }
+    log('debug', 'adobe_extraction_result_details', {
+      success: extractResult.success,
+      hasDetails: !!extractResult.details,
+      error: extractResult.error || 'None',
+      warnings: extractResult.warnings || 'None',
+      textLength: extractResult.details?.text?.length || 0,
+      textPreview: extractResult.details?.text?.substring(0, 200) || 'No text'
+    });
 
     if (!extractResult.success || !extractResult.details) {
       log('warn', 'adobe_extraction_failed', { reason: 'no_success_or_details' });
-      console.log('🔍 DEBUG: Adobe extraction failed - no success or details');
-      console.log('🔍 DEBUG: extractResult.success:', extractResult.success);
-      console.log('🔍 DEBUG: extractResult.details:', !!extractResult.details);
-      console.log('🔍 DEBUG: extractResult.error:', extractResult.error);
+      log('debug', 'adobe_extraction_failure_details', {
+        success: extractResult.success,
+        hasDetails: !!extractResult.details,
+        error: extractResult.error
+      });
       return null;
     }
 
     log('info', 'adobe_extraction_success', { fileName: file.name });
-    console.log('🔍 DEBUG: Adobe extraction successful, calling summarizeAdobeExtract');
+    log('debug', 'adobe_extraction_success_details', { message: 'Adobe extraction successful, calling summarizeAdobeExtract' });
     return await summarizeAdobeExtract(extractResult.details, question, env);
   } catch (error) {
     logWarning('analyze', 'adobe_extract_failed', 'Adobe extract failed, using fallback analysis path', {
@@ -142,19 +143,54 @@ async function summarizeAdobeExtract(
   question: string,
   env: Env
 ): Promise<ExtendedAnalysisResult> {
-  console.log('🔍 DEBUG: summarizeAdobeExtract called');
-  console.log('🔍 DEBUG: extract.text length:', extract.text?.length || 0);
-  console.log('🔍 DEBUG: extract.text preview:', extract.text?.substring(0, 200) || 'NO TEXT');
-  console.log('🔍 DEBUG: extract.tables count:', extract.tables?.length || 0);
-  console.log('🔍 DEBUG: extract.elements count:', extract.elements?.length || 0);
+  log('debug', 'summarize_adobe_extract_called', {
+    textLength: extract.text?.length || 0,
+    textPreview: extract.text?.substring(0, 200) || 'NO TEXT',
+    tablesCount: extract.tables?.length || 0,
+    elementsCount: extract.elements?.length || 0
+  });
   
   const rawText = extract.text ?? '';
+  
+  // If no text was extracted, return a meaningful error response
+  if (!rawText || rawText.trim().length === 0) {
+    log('warn', 'adobe_extract_no_text', {
+      message: 'Adobe extraction returned no text content',
+      hasElements: (extract.elements?.length || 0) > 0,
+      hasTables: (extract.tables?.length || 0) > 0
+    });
+    
+    return {
+      summary: "Adobe PDF extraction was unable to extract readable text from this document. This could be due to the document being image-based, having text in non-standard formats, or other extraction limitations.",
+      key_facts: [
+        "Document appears to be a PDF but text extraction failed",
+        "Adobe PDF Services was unable to extract readable content",
+        "Document may contain images, scanned content, or non-standard text formats"
+      ],
+      entities: {
+        people: [],
+        orgs: [],
+        dates: []
+      },
+      action_items: [
+        "Try uploading a different PDF with standard text content",
+        "Consider converting the document to a text format",
+        "Verify the PDF contains selectable text (not just images)"
+      ],
+      confidence: 0.1,
+      adobeExtractTextLength: 0,
+      adobeExtractTextPreview: 'No text extracted'
+    };
+  }
+  
   const truncatedText = rawText.length > 20000
     ? `${rawText.slice(0, 20000)}...`
     : rawText;
     
-  console.log('🔍 DEBUG: truncatedText length:', truncatedText.length);
-  console.log('🔍 DEBUG: truncatedText preview:', truncatedText.substring(0, 200));
+  log('debug', 'truncated_text_details', {
+    truncatedTextLength: truncatedText.length,
+    truncatedTextPreview: truncatedText.substring(0, 200)
+  });
 
   const structuredPayload = JSON.stringify({
     tables: extract.tables ?? [],
@@ -369,6 +405,10 @@ async function analyzeWithGenericAI(
     let content = '';
     
     if (file.type === 'text/plain') {
+      // Check file size before reading into memory
+      if (file.size > MAX_ANALYSIS_FILE_SIZE) {
+        throw new Error(`File size exceeds maximum limit of ${MAX_ANALYSIS_FILE_SIZE / (1024 * 1024)}MB for analysis`);
+      }
       // Read text content directly
       content = await file.text();
     } else {
@@ -385,7 +425,7 @@ async function analyzeWithGenericAI(
     const userPrompt = `Intake question: ${question}\n\nContent:\n${content}`;
 
     // Use the default AI model or fallback
-    const model = env.AI_MODEL_DEFAULT || '@cf/meta/llama-3.1-8b-instruct';
+    const model = env.AI_MODEL_DEFAULT || '@cf/openai/gpt-oss-20b';
     
     const res = await (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run(model, {
       input: `${systemPrompt}\n\n${userPrompt}`,
@@ -449,20 +489,21 @@ export async function analyzeWithCloudflareAI(
   question: string,
   env: Env
 ): Promise<ExtendedAnalysisResult> {
-  console.log('🔍 DEBUG: analyzeWithCloudflareAI called');
-  console.log('🔍 DEBUG: File type:', file.type);
-  console.log('🔍 DEBUG: File name:', file.name);
+  log('debug', 'analyze_with_cloudflare_ai_called', {
+    fileType: file.type,
+    fileName: file.name
+  });
   
   // Try Adobe extraction first
-  console.log('🔍 DEBUG: Attempting Adobe extraction...');
+  log('debug', 'attempting_adobe_extraction', { message: 'Attempting Adobe extraction' });
   const adobeAnalysis = await attemptAdobeExtract(file, question, env);
   if (adobeAnalysis) {
-    console.log('🔍 DEBUG: Adobe analysis successful, returning result');
+    log('debug', 'adobe_analysis_successful', { message: 'Adobe analysis successful, returning result' });
     return adobeAnalysis;
   }
   
   // Adobe extraction failed or ineligible - use generic AI fallback
-  console.log('🔍 DEBUG: Adobe extraction failed, using generic AI fallback');
+  log('debug', 'adobe_extraction_failed_fallback', { message: 'Adobe extraction failed, using generic AI fallback' });
   log('info', 'adobe_extract_fallback', {
     fileName: file.name,
     fileType: file.type,
@@ -528,11 +569,12 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
     });
 
     // Debug: Log Adobe service status
-    console.log('🔍 DEBUG: Adobe service check');
-    console.log('  - ENABLE_ADOBE_EXTRACT:', env.ENABLE_ADOBE_EXTRACT);
-    console.log('  - ADOBE_CLIENT_ID:', env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET');
-    console.log('  - ADOBE_CLIENT_SECRET:', env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET');
-    console.log('  - File type eligible for Adobe:', ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type));
+    log('debug', 'adobe_service_status_check', {
+      enableAdobeExtract: env.ENABLE_ADOBE_EXTRACT,
+      adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+      adobeClientSecret: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET',
+      fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)
+    });
 
     // Perform analysis
     const analysis = await analyzeWithCloudflareAI(file, question, env);
@@ -564,20 +606,34 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
 
     const disclaimer = "Blawby provides general information, not legal advice. No attorney-client relationship is formed. For advice, consult a licensed attorney in your jurisdiction.";
     
+    const metadata: {
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      question: string;
+      timestamp: string;
+      isAdobeEligible: boolean;
+      debug?: Record<string, unknown>;
+    } = {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      question: question,
+      timestamp: new Date().toISOString(),
+      isAdobeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)
+    };
+
+    // Only include debug information when DEBUG mode is enabled
+    if (env.DEBUG === 'true') {
+      metadata.debug = {
+        adobeClientIdConfigured: !!env.ADOBE_CLIENT_ID,
+        adobeExtractEnabled: !!env.ENABLE_ADOBE_EXTRACT
+      };
+    }
+
     return createSuccessResponse({
       analysis,
-      metadata: {
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        question: question,
-        timestamp: new Date().toISOString(),
-        // Debug information
-        ENABLE_ADOBE_EXTRACT: env.ENABLE_ADOBE_EXTRACT,
-        ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
-        ADOBE_CLIENT_SECRET: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET',
-        isAdobeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)
-      },
+      metadata,
       disclaimer
     });
 

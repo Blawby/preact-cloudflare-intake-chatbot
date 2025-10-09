@@ -248,7 +248,7 @@ async function summarizeLegal(env: Env, text: string) {
   ].join("\n");
   
   const truncated = text.length > MAX_TEXT_CHARS ? `${text.slice(0, MAX_TEXT_CHARS)}...` : text;
-  const res = await withAIRetry(() => (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run("@cf/meta/llama-3.1-8b-instruct", {
+  const res = await withAIRetry(() => (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run("@cf/openai/gpt-oss-20b", {
     messages: [
       { role: "system", content: prompt },
       { role: "user", content: truncated }
@@ -346,12 +346,10 @@ async function summarizeAdobeResult(env: Env, extract: AdobeExtractSuccess) {
     structured ? `Structured data:\n${structured}` : ''
   ].filter(Boolean).join('\n\n');
 
-  const res = await withAIRetry(() => (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run("@cf/meta/llama-3.1-8b-instruct", {
-    messages: [
-      { role: "system", content: basePrompt },
-      { role: "user", content: userContent }
-    ],
-    max_tokens: 800
+  const res = await withAIRetry(() => (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run("@cf/openai/gpt-oss-20b", {
+    input: `${basePrompt}\n\n${userContent}`,
+    max_tokens: 800,
+    temperature: 0.1
   }));
 
   return safeJson(res as Record<string, unknown>);

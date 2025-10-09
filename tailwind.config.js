@@ -55,7 +55,7 @@ export default {
           'file-remove-bg': '#1f2937',
           'file-remove-hover': '#111827',
           'file-progress-bg': 'rgba(255, 255, 255, 0.3)',
-          'file-progress-fill': '#ffffff',
+          'file-progress-fill': '#6b7280',
           'file-type-pdf': '#ef4444',
           'file-type-image': '#ec4899',
           'file-type-video': '#eab308',

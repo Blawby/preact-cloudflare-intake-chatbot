@@ -11,13 +11,23 @@ interface ProgressRingProps {
   progress: number; // 0-100
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  'aria-label'?: string;
 }
 
 export const ProgressRing = ({ 
   progress, 
   size = 'md',
-  className 
+  className,
+  'aria-label': ariaLabel
 }: ProgressRingProps) => {
+  // Clamp progress to 0-100 range
+  const clampedProgress = Math.min(100, Math.max(0, progress));
+  
+  // Development warning for out-of-range values
+  if (process.env.NODE_ENV === 'development' && (progress < 0 || progress > 100)) {
+    console.warn(`ProgressRing: progress value ${progress} is out of range (0-100). Clamped to ${clampedProgress}.`);
+  }
+  
   const sizeClasses = {
     sm: 'w-6 h-6',
     md: 'w-8 h-8',
@@ -26,7 +36,7 @@ export const ProgressRing = ({
   
   const radius = size === 'sm' ? 10 : size === 'md' ? 14 : 18;
   const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = `${(progress / 100) * circumference} ${circumference}`;
+  const strokeDasharray = `${(clampedProgress / 100) * circumference} ${circumference}`;
 
   return (
     <div className={cn('absolute inset-0 flex items-center justify-center', className)}>
@@ -36,6 +46,8 @@ export const ProgressRing = ({
           sizeClasses[size]
         )} 
         viewBox={`0 0 ${radius * 2 + 4} ${radius * 2 + 4}`}
+        role="img"
+        aria-label={ariaLabel}
       >
       {/* Background circle */}
       <circle

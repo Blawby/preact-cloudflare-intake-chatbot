@@ -7,7 +7,6 @@ async function createTestTeam() {
     slug: `test-team-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     name: 'Test Legal Team',
     config: {
-      aiModel: 'llama',
       consultationFee: 150,
       requiresPayment: true,
       ownerEmail: 'test@realcompany.com',
@@ -175,7 +174,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
         slug: `test-team-${Date.now()}`,
         name: 'Test Legal Team',
         config: {
-          aiModel: 'llama',
+          aiModel: '@cf/openai/gpt-oss-20b',
           consultationFee: 150,
           requiresPayment: true,
           ownerEmail: 'test@realcompany.com',
@@ -233,7 +232,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
       const newTeam = {
         slug: `update-test-${Date.now()}`,
         name: 'Team to Update',
-        config: { aiModel: 'llama' }
+        config: {}
       };
 
       const createResponse = await fetch(`${WORKER_URL}/api/teams`, {

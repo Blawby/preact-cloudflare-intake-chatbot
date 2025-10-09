@@ -115,8 +115,8 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
 
     setUploadingFiles(prev => [...prev, ...newUploads]);
 
-    // Upload each file with progress tracking
-    newUploads.forEach(async (upload) => {
+    // Upload each file with progress tracking in parallel
+    const uploadPromises = newUploads.map(async (upload) => {
       const abortController = new AbortController();
       abortControllers.current.set(upload.id, abortController);
 
@@ -173,16 +173,27 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
           signal: abortController.signal
         });
 
+        return result;
       } catch (error) {
         setUploadingFiles(prev => prev.map(f => 
           f.id === upload.id 
             ? { ...f, status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' }
             : f
         ));
+        throw error;
       } finally {
         abortControllers.current.delete(upload.id);
       }
     });
+
+    // Wait for all uploads to complete (or fail)
+    try {
+      await Promise.all(uploadPromises);
+    } catch (error) {
+      // Individual upload errors are already handled in the map function above
+      // This catch block ensures the function doesn't throw unhandled promise rejections
+      console.warn('Some uploads failed:', error);
+    }
   }, [resolvedTeamId, resolvedSessionId, isReadyToUpload, onError]);
 
   // Handle camera capture

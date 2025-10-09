@@ -11,7 +11,7 @@
 - **Custom Domain**: ai.blawby.com live with SSL ✅
 - **API Endpoints**: Health, Teams, Chat working ✅
 - **Team Configuration**: Multiple teams with different pricing ✅
-- **Basic AI Integration**: Llama 3.1 8B responding ✅
+- **Basic AI Integration**: GPT-OSS 20B responding ✅
 - **Scheduling System**: Complete appointment booking with date/time selection ✅
 
 ### 🔄 In Progress (Phase 2)
@@ -44,7 +44,7 @@
 
 ### 1. Cloudflare Workers AI Backend
 - [x] **AI-Powered Chat Engine**
-  - [x] Cloudflare Workers AI integration (Llama 3.1 8B)
+  - [x] Cloudflare Workers AI integration (GPT-OSS 20B)
   - [ ] Intelligent conversation flow management
   - [x] Context-aware responses based on team configuration
   - [ ] Natural language processing for intent detection
@@ -113,8 +113,8 @@ compatibility_date = "2024-01-01"
 binding = "AI"
 
 [[ai.models]]
-binding = "llama"
-model = "@cf/meta/llama-3.1-8b-instruct"
+binding = "gpt-oss"
+model = "@cf/openai/gpt-oss-20b"
 
 # Fresh resources for AI chatbot
 [[kv_namespaces]]
@@ -240,9 +240,9 @@ wrangler pages deployment list --project-name=essentials-v3
 
 ### AI-Powered Conversation Engine
 ```typescript
-// Generate AI response with Llama model
+// Generate AI response with GPT model
 const generateResponse = async (messages: Message[], teamConfig: TeamConfig) => {
-  const response = await env.AI.run('llama', {
+  const response = await env.AI.run('@cf/openai/gpt-oss-20b', {
     messages: formatMessagesForAI(messages, teamConfig),
     stream: true
   });

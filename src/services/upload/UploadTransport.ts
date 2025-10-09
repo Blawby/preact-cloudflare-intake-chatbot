@@ -44,10 +44,39 @@ export async function uploadWithProgress(
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    
+    // Track last progress values for accurate final progress update
+    let lastProgress: { loaded: number; total: number } | null = null;
+
+    // Store abort handler for cleanup
+    let abortHandler: (() => void) | null = null;
+
+    // Cleanup function to remove abort signal listener
+    const cleanup = () => {
+      if (signal && abortHandler) {
+        signal.removeEventListener('abort', abortHandler);
+        abortHandler = null;
+      }
+    };
+
+    // Wrapper functions that ensure cleanup is called
+    const resolveWithCleanup = (result: UploadResult) => {
+      cleanup();
+      resolve(result);
+    };
+
+    const rejectWithCleanup = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
 
     // Handle upload progress
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable && onProgress) {
+        lastProgress = {
+          loaded: event.loaded,
+          total: event.total
+        };
         const progress: UploadProgress = {
           loaded: event.loaded,
           total: event.total,
@@ -75,29 +104,31 @@ export async function uploadWithProgress(
 
             // Final progress update to 100%
             if (onProgress) {
+              const total = lastProgress?.total || file.size;
+              const loaded = lastProgress?.loaded || file.size;
               onProgress({
-                loaded: event.total || file.size,
-                total: event.total || file.size,
+                loaded: total, // Use total as loaded for 100% completion
+                total: total,
                 percentage: 100
               });
             }
 
             onSuccess?.(result);
-            resolve(result);
+            resolveWithCleanup(result);
           } else {
             const error = new Error(response.message || 'Upload failed: Invalid response format');
             onError?.(error);
-            reject(error);
+            rejectWithCleanup(error);
           }
         } catch (parseError) {
           const error = new Error(`Upload failed: Invalid JSON response - ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
           onError?.(error);
-          reject(error);
+          rejectWithCleanup(error);
         }
       } else {
         const error = new Error(`Upload failed: HTTP ${xhr.status} - ${xhr.statusText}`);
         onError?.(error);
-        reject(error);
+        rejectWithCleanup(error);
       }
     });
 
@@ -105,21 +136,22 @@ export async function uploadWithProgress(
     xhr.addEventListener('error', () => {
       const error = new Error('Network error during upload');
       onError?.(error);
-      reject(error);
+      rejectWithCleanup(error);
     });
 
     // Handle abort
     xhr.addEventListener('abort', () => {
       const error = new Error('Upload cancelled');
       onError?.(error);
-      reject(error);
+      rejectWithCleanup(error);
     });
 
     // Handle abort signal
     if (signal) {
-      signal.addEventListener('abort', () => {
+      abortHandler = () => {
         xhr.abort();
-      });
+      };
+      signal.addEventListener('abort', abortHandler);
     }
 
     // Build FormData (matches existing endpoint format)
@@ -156,7 +188,7 @@ export function validateFile(file: File): { isValid: boolean; error?: string } {
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
   const ALLOWED_TYPES = [
     'image/jpeg',
-    'image/jpg', 
+    'image/jpg', // Retained for legacy systems that may report this non-standard MIME type
     'image/png',
     'image/webp',
     'image/gif',

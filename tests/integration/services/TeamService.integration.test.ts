@@ -91,7 +91,6 @@ describe('TeamService Integration - Real API', () => {
         slug: `test-team-${Date.now()}`,
         name: 'Test Team',
         config: {
-                aiModel: 'llama',
                 consultationFee: 0,
                 requiresPayment: false,
           ownerEmail: 'test@realcompany.com',
@@ -155,7 +154,6 @@ describe('TeamService Integration - Real API', () => {
         slug: `update-test-${Date.now()}`,
         name: 'Update Test Team',
         config: {
-          aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
           ownerEmail: 'update@realcompany.com',
@@ -240,7 +238,6 @@ describe('TeamService Integration - Real API', () => {
         slug: `delete-test-${timestamp}-${randomId}`,
         name: 'Delete Test Team',
         config: {
-          aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
           ownerEmail: 'delete@realcompany.com',
@@ -348,7 +345,6 @@ describe('TeamService Integration - Real API', () => {
         slug: `api-token-test-${Date.now()}`,
         name: 'API Token Test Team',
         config: {
-          aiModel: 'llama',
           consultationFee: 0,
           requiresPayment: false,
           ownerEmail: 'apitoken@realcompany.com',

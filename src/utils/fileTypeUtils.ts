@@ -18,7 +18,7 @@ import {
 
 export interface FileTypeConfig {
   color: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement> & { title?: string; titleId?: string }>;
   label: string;
 }
 
@@ -35,7 +35,7 @@ export const getFileTypeConfig = (fileName: string, mimeType: string): FileTypeC
   }
   
   // Image files
-  if (mimeType.startsWith('image/')) {
+  if (mimeType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'tiff', 'ico', 'heic'].includes(extension)) {
     return {
       color: 'bg-light-file-type-image dark:bg-dark-file-type-image',
       icon: PhotoIcon,
@@ -105,6 +105,89 @@ export const getFileTypeConfig = (fileName: string, mimeType: string): FileTypeC
   };
 };
 
-export const isImageFile = (mimeType: string): boolean => {
-  return mimeType.startsWith('image/');
+export const isImageFile = (mimeType: string | null | undefined): boolean => {
+  return !!mimeType && mimeType.startsWith('image/');
+};
+
+/**
+ * Get MIME type from file extension
+ * Maps common file extensions to their corresponding MIME types
+ */
+export const getMimeTypeFromFilename = (filename: string): string => {
+  const extension = filename.split('.').pop()?.toLowerCase() || '';
+  
+  // Image types
+  const imageTypes: Record<string, string> = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+    'bmp': 'image/bmp',
+    'tiff': 'image/tiff',
+    'tif': 'image/tiff',
+    'ico': 'image/x-icon',
+    'heic': 'image/heic',
+    'heif': 'image/heif'
+  };
+  
+  // Video types
+  const videoTypes: Record<string, string> = {
+    'mp4': 'video/mp4',
+    'webm': 'video/webm',
+    'avi': 'video/x-msvideo',
+    'mov': 'video/quicktime',
+    'mkv': 'video/x-matroska',
+    'flv': 'video/x-flv',
+    'wmv': 'video/x-ms-wmv',
+    'm4v': 'video/x-m4v'
+  };
+  
+  // Audio types
+  const audioTypes: Record<string, string> = {
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'ogg': 'audio/ogg',
+    'm4a': 'audio/mp4',
+    'aac': 'audio/aac',
+    'flac': 'audio/flac',
+    'webm': 'audio/webm'
+  };
+  
+  // Document types
+  const documentTypes: Record<string, string> = {
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'txt': 'text/plain',
+    'rtf': 'application/rtf',
+    'odt': 'application/vnd.oasis.opendocument.text',
+    'ods': 'application/vnd.oasis.opendocument.spreadsheet',
+    'odp': 'application/vnd.oasis.opendocument.presentation'
+  };
+  
+  // Archive types
+  const archiveTypes: Record<string, string> = {
+    'zip': 'application/zip',
+    'rar': 'application/vnd.rar',
+    '7z': 'application/x-7z-compressed',
+    'tar': 'application/x-tar',
+    'gz': 'application/gzip',
+    'bz2': 'application/x-bzip2'
+  };
+  
+  // Check all type maps
+  if (imageTypes[extension]) return imageTypes[extension];
+  if (videoTypes[extension]) return videoTypes[extension];
+  if (audioTypes[extension]) return audioTypes[extension];
+  if (documentTypes[extension]) return documentTypes[extension];
+  if (archiveTypes[extension]) return archiveTypes[extension];
+  
+  // Default fallback
+  return 'application/octet-stream';
 };

@@ -1,107 +1,107 @@
 import type { Env } from '../types.js';
+import { AdobeDocumentService } from '../services/AdobeDocumentService.js';
+import { Logger } from '../utils/logger.js';
 
+/**
+ * Debug endpoint to test Adobe extraction and capture request details
+ */
 export async function handleDebug(request: Request, env: Env): Promise<Response> {
-
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/debug', '');
+  const path = url.pathname;
 
-  try {
-    if (request.method === 'GET') {
-      if (path === '' || path === '/') {
-        return await getDebugInfo(env);
-      } else if (path === '/teams') {
-        return await getTeamsInfo(env);
-      }
-    }
+  console.log('🧪 DEBUG: handleDebug called with path:', path);
 
-    return new Response('Endpoint not found', { 
-      status: 404 
-    });
-
-  } catch (error) {
-    console.error('Debug API error:', error);
-          return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Internal server error' 
-        }), 
-        { 
-          status: 500, 
-          headers: { 'Content-Type': 'application/json' } 
-        }
-      );
+  if (path === '/api/debug/adobe-test') {
+    return await testAdobeExtraction(request, env);
   }
+
+  return new Response('Debug endpoint not found', { status: 404 });
 }
 
-async function getDebugInfo(env: Env): Promise<Response> {
-  const info = {
-    timestamp: new Date().toISOString(),
-    environment: 'Cloudflare Workers',
-    database: 'D1 (Cloudflare)',
-    architecture: 'API-First Multi-Tenant',
-    features: {
-      teams: 'Pure API-based team management',
-      chat: 'AI-powered conversations',
-      fileUpload: 'Multi-file upload support',
-
-      payments: 'Stripe integration',
-      forms: 'Contact form handling'
-    },
-    endpoints: {
-      teams: '/api/teams',
-      chat: '/api/chat',
-      agent: '/api/agent',
-      files: '/api/files',
-
-      payment: '/api/payment',
-      forms: '/api/forms',
-      debug: '/api/debug'
-    },
-    teamManagement: {
-      create: 'POST /api/teams',
-      list: 'GET /api/teams',
-              get: 'GET /api/teams/{slugOrId}',
-        update: 'PUT /api/teams/{slugOrId}',
-        delete: 'DELETE /api/teams/{slugOrId}'
-    },
-    cloudflarePatterns: {
-      environmentResolution: '${ENV_VAR} pattern supported',
-      caching: '5-minute TTL cache',
-      security: 'No hardcoded secrets',
-      scaling: 'API-first architecture'
-    }
+async function testAdobeExtraction(request: Request, env: Env): Promise<Response> {
+  const debugLogs: string[] = [];
+  
+  const log = (message: string) => {
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] ${message}`;
+    debugLogs.push(logEntry);
+    console.log(logEntry);
   };
 
-  return new Response(JSON.stringify(info, null, 2), {
-    headers: {
-      'Content-Type': 'application/json',
-    }
-  });
-}
-
-async function getTeamsInfo(env: Env): Promise<Response> {
   try {
-    const { TeamService } = await import('../services/TeamService.js');
-    const teamService = new TeamService(env);
-    const teams = await teamService.listTeams();
+    log('🧪 DEBUG: Starting Adobe extraction test');
     
-    return new Response(JSON.stringify({ 
-      success: true, 
-      data: teams 
+    // Create a small test PDF buffer (minimal valid PDF)
+    const testPdfBuffer = new Uint8Array([
+      0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34, 0x0A, 0x25, 0xE2, 0xE3, 0xCF, 0xD3, 0x0A,
+      0x31, 0x20, 0x30, 0x20, 0x6F, 0x62, 0x6A, 0x0A, 0x3C, 0x3C, 0x2F, 0x54, 0x79, 0x70, 0x65,
+      0x2F, 0x43, 0x61, 0x74, 0x61, 0x6C, 0x6F, 0x67, 0x2F, 0x50, 0x61, 0x67, 0x65, 0x73, 0x20,
+      0x32, 0x20, 0x30, 0x20, 0x52, 0x3E, 0x3E, 0x0A, 0x65, 0x6E, 0x64, 0x6F, 0x62, 0x6A, 0x0A,
+      0x32, 0x20, 0x30, 0x20, 0x6F, 0x62, 0x6A, 0x0A, 0x3C, 0x3C, 0x2F, 0x54, 0x79, 0x70, 0x65,
+      0x2F, 0x50, 0x61, 0x67, 0x65, 0x73, 0x2F, 0x4B, 0x69, 0x64, 0x73, 0x5B, 0x33, 0x20, 0x30,
+      0x20, 0x52, 0x5D, 0x2F, 0x43, 0x6F, 0x75, 0x6E, 0x74, 0x20, 0x31, 0x3E, 0x3E, 0x0A, 0x65,
+      0x6E, 0x64, 0x6F, 0x62, 0x6A, 0x0A, 0x33, 0x20, 0x30, 0x20, 0x6F, 0x62, 0x6A, 0x0A, 0x3C,
+      0x3C, 0x2F, 0x54, 0x79, 0x70, 0x65, 0x2F, 0x50, 0x61, 0x67, 0x65, 0x2F, 0x50, 0x61, 0x72,
+      0x65, 0x6E, 0x74, 0x20, 0x32, 0x20, 0x30, 0x20, 0x52, 0x2F, 0x4D, 0x65, 0x64, 0x69, 0x61,
+      0x42, 0x6F, 0x78, 0x5B, 0x30, 0x20, 0x30, 0x20, 0x36, 0x31, 0x32, 0x20, 0x37, 0x39, 0x32,
+      0x5D, 0x3E, 0x3E, 0x0A, 0x65, 0x6E, 0x64, 0x6F, 0x62, 0x6A, 0x0A, 0x78, 0x72, 0x65, 0x66,
+      0x0A, 0x30, 0x20, 0x34, 0x0A, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
+      0x20, 0x36, 0x35, 0x35, 0x33, 0x35, 0x20, 0x66, 0x20, 0x0A, 0x30, 0x30, 0x30, 0x30, 0x30,
+      0x30, 0x30, 0x30, 0x39, 0x20, 0x30, 0x30, 0x30, 0x30, 0x30, 0x20, 0x6E, 0x20, 0x0A, 0x30,
+      0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x35, 0x20, 0x30, 0x30, 0x30, 0x30, 0x30, 0x20,
+      0x6E, 0x20, 0x0A, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x32, 0x34, 0x20, 0x30, 0x30,
+      0x30, 0x30, 0x30, 0x20, 0x6E, 0x20, 0x0A, 0x74, 0x72, 0x61, 0x69, 0x6C, 0x65, 0x72, 0x0A,
+      0x3C, 0x3C, 0x2F, 0x53, 0x69, 0x7A, 0x65, 0x20, 0x34, 0x2F, 0x52, 0x6F, 0x6F, 0x74, 0x20,
+      0x31, 0x20, 0x30, 0x20, 0x52, 0x3E, 0x3E, 0x0A, 0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x72,
+      0x65, 0x66, 0x0A, 0x30, 0x0A, 0x25, 0x25, 0x45, 0x4F, 0x46, 0x0A
+    ]);
+
+    log(`🧪 DEBUG: Created test PDF buffer, size: ${testPdfBuffer.length}`);
+
+    // Create Adobe service
+    const adobeService = new AdobeDocumentService(env);
+    log(`🧪 DEBUG: Adobe service created, enabled: ${adobeService.isEnabled()}`);
+
+    // Test the extraction
+    log('🧪 DEBUG: Starting Adobe extraction...');
+    const result = await adobeService.extractFromBuffer(
+      'test-document.pdf',
+      'application/pdf',
+      testPdfBuffer.buffer
+    );
+
+    log('🧪 DEBUG: Adobe extraction completed');
+    log(`🧪 DEBUG: Result: ${JSON.stringify(result, null, 2)}`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      test: 'Adobe extraction test completed',
+      result: result,
+      debug: {
+        pdfBufferSize: testPdfBuffer.length,
+        adobeEnabled: adobeService.isEnabled(),
+        timestamp: new Date().toISOString()
+      },
+      logs: debugLogs
     }, null, 2), {
-      headers: {
-        'Content-Type': 'application/json',
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
+
   } catch (error) {
+    log(`🧪 DEBUG: Adobe test failed: ${error}`);
+    
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      debug: {
+        timestamp: new Date().toISOString(),
+        errorType: typeof error
+      },
+      logs: debugLogs
     }, null, 2), {
       status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-} 
+}

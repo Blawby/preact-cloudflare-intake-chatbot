@@ -24,7 +24,12 @@ export class Logger {
    * Get the current environment from initialized Logger
    */
   static getEnvironment(): string {
-    return this.env?.NODE_ENV || 'production';
+    // Check if Logger has been initialized
+    if (this.env === undefined) {
+      throw new Error('Logger.getEnvironment: Logger has not been initialized. Call Logger.initialize() first.');
+    }
+    
+    return this.env.NODE_ENV || 'production';
   }
 
   private static isDebugEnabled(): boolean {
@@ -82,10 +87,10 @@ export class Logger {
   /**
    * Sanitizes configuration data to remove sensitive information
    */
-  private static sanitizeConfig(config: Record<string, unknown>): Record<string, unknown> {
-    if (!config) return config;
+  private static sanitizeConfig(config: unknown): Record<string, unknown> {
+    if (!config || typeof config !== 'object') return {};
 
-    const sanitized = { ...config };
+    const sanitized = { ...(config as Record<string, unknown>) };
 
     // Mask sensitive fields
     const sensitiveFields = [
@@ -121,7 +126,7 @@ export class Logger {
     // Recursively sanitize nested objects
     for (const [key, value] of Object.entries(sanitized)) {
       if (value && typeof value === 'object' && !Array.isArray(value)) {
-        sanitized[key] = this.sanitizeConfig(value);
+        sanitized[key] = this.sanitizeConfig(value as Record<string, unknown>);
       }
     }
 

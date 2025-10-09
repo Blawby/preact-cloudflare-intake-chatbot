@@ -10,6 +10,7 @@ import {
   type MediaGroup,
   type AggregatedMedia 
 } from '../utils/mediaAggregation';
+import { getMimeTypeFromFilename } from '../utils/fileTypeUtils';
 import { FileAttachment } from '../../worker/types';
 import { Button } from './ui/Button';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
@@ -90,12 +91,14 @@ export default function MediaSidebar({ messages }: MediaSidebarProps) {
                     <div className="flex flex-col gap-2">
                       {group.files.map((media) => {
                         // Convert AggregatedMedia to FileCard format
+                        // Prefer the actual MIME type from media.type, fallback to extension-based detection
+                        const mimeType = media.type && media.type !== 'application/octet-stream' 
+                          ? media.type 
+                          : getMimeTypeFromFilename(media.name);
+                        
                         const fileForCard = {
                           name: media.name,
-                          type: media.category === 'image' ? 'image/jpeg' : 
-                                media.category === 'video' ? 'video/mp4' :
-                                media.category === 'audio' ? 'audio/mp3' :
-                                media.category === 'document' ? 'application/pdf' : 'application/octet-stream',
+                          type: mimeType,
                           size: media.size,
                           url: media.url
                         };

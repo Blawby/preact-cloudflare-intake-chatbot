@@ -76,7 +76,8 @@ const POLL_BASE_DELAY_MS = 2000; // Increased from 1000 to 2000ms
 
 const DEFAULT_EXTRACT_PARAMS = {
   elementsToExtract: ['text', 'tables'],
-  renditionsToGenerate: []
+  renditionsToGenerate: [],
+  includeStyling: false
 } as const;
 
 /**
@@ -274,27 +275,28 @@ export class AdobeDocumentService {
     config: AdobeConfig,
     accessToken: string
   ): Promise<string> {
+    // Restore the exact working payload from commit 872c3ed
     const payload = {
       assetID: assetId,
-      ...DEFAULT_EXTRACT_PARAMS
+      elementsToExtract: ["text", "tables"]
     };
 
-    Logger.debug('Adobe Step 4: Starting extract job', { payload });
+    console.log('🧩 Adobe Step 4: Starting extract job with payload', JSON.stringify(payload, null, 2));
 
     const response = await fetch(`${config.pdfBase}/operation/extractpdf`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'x-api-key': config.clientId,
-        'x-request-id': `extract-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+        'x-request-id': `extract-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
 
     if (response.status !== 201 && response.status !== 202) {
-      const payload = await response.text();
-      throw new Error(`Failed to start Adobe extract job (${response.status}): ${payload}`);
+      const responseText = await response.text();
+      throw new Error(`Failed to start Adobe extract job (${response.status}): ${responseText}`);
     }
 
     const location = response.headers.get('location');
@@ -373,8 +375,8 @@ export class AdobeDocumentService {
 
   private async downloadResult(
     downloadUri: string,
-    config: AdobeConfig,
-    accessToken: string
+    _config: AdobeConfig,
+    _accessToken: string
   ): Promise<ArrayBuffer> {
     const response = await fetch(downloadUri, {
       method: 'GET'

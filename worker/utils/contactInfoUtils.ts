@@ -196,11 +196,11 @@ export function logContactInfoDetection(
     hasEmail: detection.hasEmail,
     hasPhone: detection.hasPhone,
     hasLocation: detection.hasLocation,
-    // Remove actual values to prevent PII leakage
-    name: detection.name ? '[REDACTED]' : null,
-    email: detection.email ? '[REDACTED]' : null,
-    phone: detection.phone ? '[REDACTED]' : null,
-    location: detection.location ? '[REDACTED]' : null
+    hasContactInfoHeader: detection.hasContactInfoHeader,
+    // Include PII-safe pattern information from matches array
+    matchedPatterns: detection.matches
+      .filter(match => match.matched)
+      .map(match => match.pattern)
   };
 
   // Use structured logging with Logger instead of console.log

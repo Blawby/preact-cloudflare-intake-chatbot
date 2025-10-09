@@ -7,8 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 binding = "AI"
 
 [[ai.models]]
-binding = "llama"
-model = "@cf/meta/llama-3.1-8b-instruct"
+binding = "gpt-oss"
+model = "@cf/openai/gpt-oss-20b"
 
 [[ai.models]]
 binding = "llava"
@@ -65,7 +65,7 @@ LOG_LEVEL = "debug"
 # Authentication removed - frontend-only application
 
 # AI Model Configuration (used in worker/agents/legal-intake/index.ts)
-AI_MODEL = "llama-3.1-8b-instant"
+AI_MODEL = "@cf/openai/gpt-oss-20b"
 AI_PROVIDER_DEFAULT = "workers-ai"
 AI_MODEL_DEFAULT = "@cf/openai/gpt-oss-20b"
 AI_MODEL_FALLBACK = "@cf/openai/gpt-oss-20b"

@@ -15,6 +15,7 @@ import { fileAnalysisMiddleware } from '../middleware/fileAnalysisMiddleware.js'
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index.js';
 import { getCloudflareLocation } from '../utils/cloudflareLocationValidator.js';
 import { SessionService } from '../services/SessionService.js';
+import { StatusService } from '../services/StatusService.ts';
 import { chunkResponseText } from '../utils/streaming.js';
 
 // Interface for the request body
@@ -46,9 +47,14 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
   if (request.method === 'GET') {
     const url = new URL(request.url);
     const sessionId = url.searchParams.get('sessionId');
+    const teamId = url.searchParams.get('teamId');
     
     if (!sessionId) {
       throw HttpErrors.badRequest('sessionId parameter is required');
+    }
+
+    if (!teamId) {
+      throw HttpErrors.badRequest('teamId parameter is required');
     }
 
     // Create SSE response for status updates
@@ -60,27 +66,102 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       'Access-Control-Allow-Headers': 'Cache-Control'
     });
 
-    // For now, return a simple SSE stream that sends periodic status updates
-    // In a real implementation, this would connect to a Durable Object or KV store
+    // Register session subscription for real-time updates
+    await StatusService.subscribeSession(env, sessionId, teamId);
+
+    // Create SSE stream with real-time status polling
     const stream = new ReadableStream({
-      start(controller) {
-        // Send initial connection message
-        controller.enqueue(`data: ${JSON.stringify({ type: 'connected', message: 'SSE connection established' })}\n\n`);
-        
-        // Keep connection alive with periodic pings
-        const interval = setInterval(() => {
+      async start(controller) {
+        const encoder = new TextEncoder();
+        let lastSeen = Date.now();
+        let isActive = true;
+
+        const sendEvent = (event: unknown) => {
+          if (!isActive) return;
           try {
-            controller.enqueue(`data: ${JSON.stringify({ type: 'ping', timestamp: Date.now() })}\n\n`);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
           } catch (error) {
-            clearInterval(interval);
+            console.error('Failed to send SSE event:', error);
+            isActive = false;
           }
-        }, 30000); // Ping every 30 seconds
+        };
+
+        // Send initial connection message
+        sendEvent({ 
+          type: 'connected', 
+          message: 'SSE connection established',
+          sessionId,
+          timestamp: Date.now()
+        });
+
+        // Poll for status updates every 2 seconds
+        const pollInterval = setInterval(async () => {
+          if (!isActive) {
+            clearInterval(pollInterval);
+            return;
+          }
+
+          try {
+            // Get recent status updates
+            const recentStatuses = await StatusService.getRecentStatuses(env, sessionId, lastSeen);
+            
+            if (recentStatuses.length > 0) {
+              // Send each status update as a separate event
+              for (const status of recentStatuses) {
+                sendEvent({
+                  type: 'status_update',
+                  data: {
+                    id: status.id,
+                    type: status.type,
+                    status: status.status,
+                    message: status.message,
+                    progress: status.progress,
+                    data: status.data,
+                    timestamp: status.updatedAt
+                  }
+                });
+              }
+              
+              // Update last seen timestamp
+              lastSeen = Math.max(...recentStatuses.map(s => s.updatedAt));
+              await StatusService.updateSubscriptionLastSeen(env, sessionId);
+            }
+
+            // Send periodic ping to keep connection alive
+            sendEvent({ 
+              type: 'ping', 
+              timestamp: Date.now(),
+              lastSeen
+            });
+
+          } catch (error) {
+            console.error('Error polling status updates:', error);
+            sendEvent({
+              type: 'error',
+              message: 'Failed to fetch status updates',
+              timestamp: Date.now()
+            });
+          }
+        }, 2000); // Poll every 2 seconds
 
         // Clean up on close
-        request.signal?.addEventListener('abort', () => {
-          clearInterval(interval);
-          controller.close();
-        });
+        const cleanup = () => {
+          isActive = false;
+          clearInterval(pollInterval);
+          StatusService.unsubscribeSession(env, sessionId).catch(error => {
+            console.error('Failed to unsubscribe session:', error);
+          });
+          try {
+            controller.close();
+          } catch (error) {
+            console.error('Failed to close controller:', error);
+          }
+        };
+
+        request.signal?.addEventListener('abort', cleanup);
+        
+        // Also cleanup after 1 hour to prevent long-running connections
+        setTimeout(cleanup, 60 * 60 * 1000);
       }
     });
 
@@ -115,7 +196,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     
     const normalizedMessages = messages.map(message => {
       const rawRole = typeof message.role === 'string' ? message.role.trim().toLowerCase() : '';
-      const normalizedRole = rawRole === 'user'
+      const normalizedRole: 'user' | 'assistant' | 'system' = rawRole === 'user'
         ? 'user'
         : rawRole === 'system'
           ? 'system'
@@ -407,7 +488,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
           
           // Convert messages to the format expected by the AI agent
         const formattedMessages = normalizedMessages.map(msg => ({
-            role: msg.role,
+            role: msg.role as 'user' | 'assistant' | 'system',
             content: msg.content
           }));
 

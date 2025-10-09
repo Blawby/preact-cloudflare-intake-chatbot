@@ -17,6 +17,7 @@ import {
   handlePDF,
   handleDebug
 } from './routes';
+import { handleStatus } from './routes/status.js';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
 import { withCORS, getCorsConfig } from './middleware/cors';
@@ -93,6 +94,8 @@ async function handleRequestInternal(request: Request, env: Env, _ctx: Execution
       response = await handlePDF(request, env);
     } else if (path.startsWith('/api/debug')) {
       response = await handleDebug(request, env);
+    } else if (path.startsWith('/api/status')) {
+      response = await handleStatus(request, env);
     } else if (path === '/api/health') {
       response = await handleHealth(request, env);
     } else if (path === '/') {
@@ -116,5 +119,15 @@ export default {
   fetch: handleRequest,
   queue: docProcessor.queue
 };
+
+// Scheduled event for cleanup (runs daily)
+export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  if (event.type === 'scheduled') {
+    // Clean up expired status entries
+    const { StatusService } = await import('./services/StatusService.ts');
+    const cleaned = await StatusService.cleanupExpiredStatuses(env);
+    console.log(`Scheduled cleanup: removed ${cleaned} expired status entries`);
+  }
+}
 
 // Export Durable Object classes (none currently)

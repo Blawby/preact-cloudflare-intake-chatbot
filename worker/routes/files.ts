@@ -3,6 +3,7 @@ import { HttpErrors, handleError } from '../errorHandler';
 import { z } from 'zod';
 import { SessionService } from '../services/SessionService.js';
 import { ActivityService } from '../services/ActivityService';
+import { StatusService } from '../services/StatusService.ts';
 import { Logger } from '../utils/logger';
 import type { MessageBatch } from '@cloudflare/workers-types';
 
@@ -301,8 +302,30 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       const resolvedTeamId = sessionResolution.session.teamId;
       const resolvedSessionId = sessionResolution.session.id;
 
+      // Create initial status update for file processing
+      const statusId = await StatusService.createFileProcessingStatus(
+        env,
+        resolvedSessionId,
+        resolvedTeamId,
+        file.name,
+        'processing',
+        10
+      );
+
       // Store file
       const { fileId, url, storageKey } = await storeFile(file, resolvedTeamId, resolvedSessionId, env);
+
+      // Update status to indicate file stored
+      await StatusService.setStatus(env, {
+        id: statusId,
+        sessionId: resolvedSessionId,
+        teamId: resolvedTeamId,
+        type: 'file_processing',
+        status: 'processing',
+        message: `File ${file.name} uploaded successfully, starting analysis...`,
+        progress: 50,
+        data: { fileName: file.name, fileId, url }
+      });
 
       Logger.info('File upload successful:', {
         fileId,
@@ -311,7 +334,8 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         fileSize: file.size,
         teamId: resolvedTeamId,
         sessionId: resolvedSessionId,
-        url
+        url,
+        statusId
       });
 
       // Auto-analysis enqueue is handled inside storeFile to avoid double-processing
@@ -344,8 +368,35 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         };
         
         // Process inline (don't await to avoid blocking the response)
-        docProcessor.queue(mockBatch, env).catch(error => {
+        docProcessor.queue(mockBatch, env).then(() => {
+          // Update status to completed
+          StatusService.setStatus(env, {
+            id: statusId,
+            sessionId: resolvedSessionId,
+            teamId: resolvedTeamId,
+            type: 'file_processing',
+            status: 'completed',
+            message: `Analysis of ${file.name} completed successfully`,
+            progress: 100,
+            data: { fileName: file.name, fileId, url, analysisComplete: true }
+          }).catch(error => {
+            console.error('Failed to update status to completed:', error);
+          });
+        }).catch(error => {
           console.error('Inline processing failed:', error);
+          // Update status to failed
+          StatusService.setStatus(env, {
+            id: statusId,
+            sessionId: resolvedSessionId,
+            teamId: resolvedTeamId,
+            type: 'file_processing',
+            status: 'failed',
+            message: `Analysis of ${file.name} failed: ${error.message}`,
+            progress: 0,
+            data: { fileName: file.name, fileId, url, error: error.message }
+          }).catch(statusError => {
+            console.error('Failed to update status to failed:', statusError);
+          });
         });
         
         Logger.info('🚀 Started inline auto-analysis processing');
@@ -361,6 +412,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
           fileType: file.type,
           fileSize: file.size,
           url,
+          statusId,
           message: 'File uploaded successfully'
         }
       };
