@@ -286,19 +286,24 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       const isCurrent = plan.id === currentTier;
       const isRecommended = selectedTab === 'personal' ? plan.id === 'plus' : plan.id === 'business';
       
+      const formattedPrice = formatCurrency(
+        plan.priceAmount,
+        plan.currency,
+        i18n.language
+      );
+      const billingTerm = t(
+        `pricing:billing.${
+          plan.billingPeriod === "month" ? "monthly" : "yearly"
+        }`
+      );
+
       return {
         ...plan,
-        // Translate all text fields
         name: t(plan.name),
         description: t(plan.description),
-        buttonText: isCurrent ? t('pricing:modal.currentPlan') : t(plan.buttonText),
-        price: formatCurrency(plan.priceAmount, plan.currency, i18n.language) +
-               " / " +
-               t(
-                 `pricing:billing.${
-                   plan.billingPeriod === "month" ? "monthly" : "yearly"
-                 }`
-               ),
+        buttonText: isCurrent ? t("pricing:modal.currentPlan") : t(plan.buttonText),
+        formattedPrice,
+        billingTerm,
         features: plan.features.map((f) => ({
           ...f,
           text: t(f.text),
@@ -408,9 +413,9 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                     {plan.name}
                   </h3>
                   <div className="text-3xl font-bold mb-2 text-white">
-                    {plan.price.split(" ")[0]}
+                    {plan.formattedPrice}
                     <span className="text-lg font-normal text-gray-300 ml-1">
-                      {plan.price.split(" ").slice(1).join(" ")}
+                      / {plan.billingTerm}
                     </span>
                   </div>
                   <p className="text-gray-300">{plan.description}</p>
