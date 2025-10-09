@@ -8,30 +8,34 @@ The Blawby AI Chatbot supports **19 languages** across the globe, with comprehen
 
 ### Current Languages (19 Total)
 
-| Language | Code | Regions | Native Speakers | Status |
-|----------|------|---------|-----------------|--------|
-| English | `en` | Global | 1.5B+ | ✅ Complete |
-| Spanish | `es` | Americas, Europe | 500M+ | ✅ Complete |
-| French | `fr` | Europe, Africa | 300M+ | ✅ Complete |
-| German | `de` | Central Europe | 130M+ | ✅ Complete |
-| Chinese | `zh` | Asia | 1.3B+ | ✅ Complete |
-| Japanese | `ja` | Japan | 125M+ | ✅ Complete |
-| Vietnamese | `vi` | Southeast Asia | 85M+ | ✅ Complete |
-| **Portuguese** | `pt` | Brazil, Portugal, Africa | 250M+ | ✅ Complete |
-| **Arabic** | `ar` | Middle East, North Africa | 400M+ | ✅ Complete (RTL) |
-| **Russian** | `ru` | Eastern Europe, Central Asia | 260M+ | ✅ Complete |
-| **Italian** | `it` | Italy, Europe | 85M+ | ✅ Complete |
-| **Korean** | `ko` | Korea | 80M+ | ✅ Complete |
-| **Dutch** | `nl` | Netherlands, Belgium | 25M+ | ✅ Complete |
-| **Polish** | `pl` | Poland, Europe | 45M+ | ✅ Complete |
-| **Turkish** | `tr` | Turkey, Cyprus | 85M+ | ✅ Complete |
-| **Thai** | `th` | Thailand | 70M+ | ✅ Complete |
-| **Indonesian** | `id` | Indonesia | 200M+ | ✅ Complete |
-| **Hindi** | `hi` | India | 600M+ | ✅ Complete |
-| **Ukrainian** | `uk` | Ukraine | 45M+ | ✅ Complete |
+All 19 languages are fully supported in the codebase with complete translation files. However, the UI language selector displays only languages with ≥90% translation completion to ensure quality user experience.
+
+| Language | Code | Regions | Native Speakers | Translation Status | UI Visible |
+|----------|------|---------|-----------------|-------------------|------------|
+| English | `en` | Global | 1.5B+ | 100% Complete | ✅ Yes |
+| Spanish | `es` | Americas, Europe | 500M+ | ~95% Complete | ✅ Yes |
+| French | `fr` | Europe, Africa | 300M+ | ~95% Complete | ✅ Yes |
+| German | `de` | Central Europe | 130M+ | ~95% Complete | ✅ Yes |
+| Chinese | `zh` | Asia | 1.3B+ | ~95% Complete | ✅ Yes |
+| Japanese | `ja` | Japan | 125M+ | ~95% Complete | ✅ Yes |
+| Vietnamese | `vi` | Southeast Asia | 85M+ | ~95% Complete | ✅ Yes |
+| **Portuguese** | `pt` | Brazil, Portugal, Africa | 250M+ | ~92% Complete | ✅ Yes |
+| **Arabic** | `ar` | Middle East, North Africa | 400M+ | ~92% Complete (RTL) | ✅ Yes |
+| **Russian** | `ru` | Eastern Europe, Central Asia | 260M+ | ~85% Template | ⏳ Hidden |
+| **Italian** | `it` | Italy, Europe | 85M+ | ~85% Template | ⏳ Hidden |
+| **Korean** | `ko` | Korea | 80M+ | ~85% Template | ⏳ Hidden |
+| **Dutch** | `nl` | Netherlands, Belgium | 25M+ | ~85% Template | ⏳ Hidden |
+| **Polish** | `pl` | Poland, Europe | 45M+ | ~85% Template | ⏳ Hidden |
+| **Turkish** | `tr` | Turkey, Cyprus | 85M+ | ~85% Template | ⏳ Hidden |
+| **Thai** | `th` | Thailand | 70M+ | ~85% Template | ⏳ Hidden |
+| **Indonesian** | `id` | Indonesia | 200M+ | ~85% Template | ⏳ Hidden |
+| **Hindi** | `hi` | India | 600M+ | ~85% Template | ⏳ Hidden |
+| **Ukrainian** | `uk` | Ukraine | 45M+ | ~85% Template | ⏳ Hidden |
 
 **Total Reach:** 5+ billion native speakers  
-**Global Coverage:** 90%+ of internet users
+**Global Coverage:** 90%+ of internet users  
+**UI Available:** 9 languages (≥90% complete)  
+**In Development:** 10 languages (templates ready for translation)
 
 ### Language Coverage by Region
 
@@ -216,7 +220,7 @@ npm test -- RTLSupport.test.tsx
 
 ## Country-to-Language Mapping
 
-Located in `src/data/mockUserData.ts`:
+Located in `src/utils/mockUserData.ts`:
 
 ```typescript
 export const countryToLanguageMap: Record<string, Language> = {

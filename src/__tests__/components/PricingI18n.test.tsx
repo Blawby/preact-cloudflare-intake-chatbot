@@ -238,7 +238,8 @@ describe("Pricing Internationalization", () => {
         'billing.billedAnnually',
       ];
 
-      for (const lang of languages) {
+      // Use Promise.all to properly handle async operations
+      await Promise.all(languages.map(async (lang) => {
         const t = i18n.getFixedT(lang, 'pricing');
         
         requiredKeys.forEach(key => {
@@ -247,7 +248,7 @@ describe("Pricing Internationalization", () => {
           // Should not return the key itself (fallback behavior)
           expect(translation).not.toBe(key);
         });
-      }
+      }));
     });
 
     it("should not have missing translation keys", async () => {
