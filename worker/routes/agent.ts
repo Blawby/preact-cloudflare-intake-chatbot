@@ -143,7 +143,15 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
               }
               
               // Update last seen timestamp safely to handle out-of-order timestamps
-              lastSeen = Math.max(lastSeen, ...recentStatuses.map(s => s.updatedAt));
+              // Filter and normalize timestamps to avoid NaN from invalid values
+              const validTimestamps = [
+                lastSeen, // Include current lastSeen in candidate set
+                ...recentStatuses
+                  .map(s => s.updatedAt)
+                  .map(timestamp => typeof timestamp === 'string' ? Date.parse(timestamp) : Number(timestamp))
+                  .filter(timestamp => isFinite(timestamp))
+              ];
+              lastSeen = Math.max(...validTimestamps);
               await StatusService.updateSubscriptionLastSeen(env, sessionId, lastSeen);
             }
 

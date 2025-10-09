@@ -36,14 +36,19 @@ export class StatusService {
     statusUpdate: Omit<StatusUpdate, 'createdAt' | 'updatedAt' | 'expiresAt'>
   ): Promise<void> {
     const now = Date.now();
+    const key = `${StatusService.STATUS_PREFIX}${statusUpdate.id}`;
+    
+    // Check if status already exists to preserve createdAt
+    const existingStatus = await StatusService.getStatus(env, statusUpdate.id);
+    const createdAt = existingStatus?.createdAt ?? now;
+    
     const status: StatusUpdate = {
       ...statusUpdate,
-      createdAt: now,
+      createdAt,
       updatedAt: now,
       expiresAt: now + (StatusService.STATUS_TTL * 1000)
     };
 
-    const key = `${StatusService.STATUS_PREFIX}${status.id}`;
     await env.CHAT_SESSIONS.put(key, JSON.stringify(status), {
       expirationTtl: StatusService.STATUS_TTL
     });
@@ -177,7 +182,8 @@ export class StatusService {
    * Calculate exponential backoff delay with cap
    */
   static calculateBackoffDelay(baseInterval: number, errorCount: number): number {
-    const exponentialDelay = baseInterval * Math.pow(2, errorCount);
+    const safeCount = Math.max(0, Math.floor(errorCount));
+    const exponentialDelay = baseInterval * Math.pow(2, safeCount);
     return Math.min(exponentialDelay, StatusService.MAX_BACKOFF_INTERVAL);
   }
 
