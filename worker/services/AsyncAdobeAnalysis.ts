@@ -70,6 +70,9 @@ export class AsyncAdobeAnalysis {
       'processing'
     );
 
+    // Get the createdAt timestamp for this statusId to preserve it across updates
+    const statusCreatedAt = await StatusService.getStatusCreatedAt(env, statusId);
+
     try {
       // Update status: starting extraction
       await StatusService.setStatus(env, {
@@ -81,7 +84,7 @@ export class AsyncAdobeAnalysis {
         message: `🔍 Extracting content from ${attachment.fileName}...`,
         progress: 25,
         data: { fileName: attachment.fileName, analysisType: attachment.analysisType }
-      });
+      }, statusCreatedAt ?? undefined);
 
       // Perform the actual Adobe analysis (this is the blocking part we moved to background)
       const result = await AsyncAdobeAnalysis.performAdobeAnalysis(env, attachment);
@@ -108,7 +111,7 @@ export class AsyncAdobeAnalysis {
             }
           }
         }
-      });
+      }, statusCreatedAt ?? undefined);
 
       Logger.info('Async Adobe analysis completed successfully', {
         sessionId,
@@ -130,7 +133,7 @@ export class AsyncAdobeAnalysis {
           fileName: attachment.fileName,
           error: error instanceof Error ? error.message : String(error)
         }
-      });
+      }, statusCreatedAt ?? undefined);
 
       Logger.error('Async Adobe analysis failed for attachment', {
         sessionId,

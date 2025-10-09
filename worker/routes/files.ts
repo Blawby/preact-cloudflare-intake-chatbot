@@ -19,13 +19,14 @@ async function updateStatusWithRetry(
   env: Env,
   statusUpdate: Omit<StatusUpdate, 'createdAt' | 'updatedAt' | 'expiresAt'>,
   maxRetries: number = 3,
-  baseDelayMs: number = 1000
+  baseDelayMs: number = 1000,
+  createdAt?: number
 ): Promise<void> {
   let lastError: Error | null = null;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      await StatusService.setStatus(env, statusUpdate);
+      await StatusService.setStatus(env, statusUpdate, createdAt);
       Logger.info('Status update successful', {
         statusId: statusUpdate.id,
         attempt: attempt + 1,
@@ -371,6 +372,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
 
       // Create initial status update for file processing
       let statusId: string | null = null;
+      let statusCreatedAt: number | null = null;
       try {
         statusId = await StatusService.createFileProcessingStatus(
           env,
@@ -380,6 +382,10 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
           'processing',
           10
         );
+        // Get the createdAt timestamp for this statusId to preserve it across updates
+        if (statusId) {
+          statusCreatedAt = await StatusService.getStatusCreatedAt(env, statusId);
+        }
       } catch (statusError) {
         Logger.warn('Failed to create initial file processing status:', statusError);
         // Continue without status tracking if status creation fails
@@ -405,7 +411,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
               message: `File ${file.name} upload failed: ${storeError.message}`,
               progress: 0,
               data: { fileName: file.name, error: storeError.message }
-            });
+            }, 3, 1000, statusCreatedAt ?? undefined);
           } catch (_statusUpdateError) {
             // Error is already logged by updateStatusWithRetry, just continue
             Logger.warn('Continuing despite status update failure for upload failure');
@@ -426,7 +432,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
             message: `File ${file.name} uploaded successfully, starting analysis...`,
             progress: 50,
             data: { fileName: file.name, fileId, url }
-          });
+          }, 3, 1000, statusCreatedAt ?? undefined);
         } catch (_statusUpdateError) {
           // Error is already logged by updateStatusWithRetry, just continue
           Logger.warn('Continuing despite status update failure after file storage');
@@ -487,7 +493,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
                 message: `Analysis of ${file.name} completed successfully`,
                 progress: 100,
                 data: { fileName: file.name, fileId, url, analysisComplete: true }
-              });
+              }, 3, 1000, statusCreatedAt ?? undefined);
             } catch (_error) {
               // Error is already logged by updateStatusWithRetry, just continue
               Logger.warn('Continuing despite status update failure for completed analysis');
@@ -507,7 +513,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
                 message: `Analysis of ${file.name} failed: ${error.message}`,
                 progress: 0,
                 data: { fileName: file.name, fileId, url, error: error.message }
-              });
+              }, 3, 1000, statusCreatedAt ?? undefined);
             } catch (_statusError) {
               // Error is already logged by updateStatusWithRetry, just continue
               Logger.warn('Continuing despite status update failure for failed analysis');

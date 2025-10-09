@@ -22,6 +22,7 @@ export interface StatusSubscription {
 
 export class StatusService {
   private static readonly STATUS_PREFIX = 'status:';
+  private static readonly CREATED_AT_PREFIX = 'created_at:';
   private static readonly SUBSCRIPTION_PREFIX = 'sub:';
   private static readonly STATUS_TTL = 24 * 60 * 60; // 24 hours
   private static readonly SUBSCRIPTION_TTL = 60 * 60; // 1 hour
@@ -33,18 +34,18 @@ export class StatusService {
    */
   static async setStatus(
     env: Env,
-    statusUpdate: Omit<StatusUpdate, 'createdAt' | 'updatedAt' | 'expiresAt'>
+    statusUpdate: Omit<StatusUpdate, 'createdAt' | 'updatedAt' | 'expiresAt'>,
+    createdAt?: number
   ): Promise<void> {
     const now = Date.now();
     const key = `${StatusService.STATUS_PREFIX}${statusUpdate.id}`;
     
-    // Check if status already exists to preserve createdAt
-    const existingStatus = await StatusService.getStatus(env, statusUpdate.id);
-    const createdAt = existingStatus?.createdAt ?? now;
+    // Use provided createdAt or current time for new entries
+    const finalCreatedAt = createdAt ?? now;
     
     const status: StatusUpdate = {
       ...statusUpdate,
-      createdAt,
+      createdAt: finalCreatedAt,
       updatedAt: now,
       expiresAt: now + (StatusService.STATUS_TTL * 1000)
     };
@@ -54,6 +55,14 @@ export class StatusService {
     });
 
     console.log(`Status updated: ${status.type} - ${status.status} for session ${status.sessionId}`);
+  }
+
+  /**
+   * Get the createdAt timestamp for a status ID
+   */
+  static async getStatusCreatedAt(env: Env, statusId: string): Promise<number | null> {
+    const status = await StatusService.getStatus(env, statusId);
+    return status?.createdAt ?? null;
   }
 
   /**
@@ -182,7 +191,10 @@ export class StatusService {
    * Calculate exponential backoff delay with cap
    */
   static calculateBackoffDelay(baseInterval: number, errorCount: number): number {
-    const safeCount = Math.max(0, Math.floor(errorCount));
+    // Coerce errorCount to a number and ensure it's finite
+    const numericErrorCount = Number(errorCount);
+    const finiteErrorCount = Number.isFinite(numericErrorCount) ? numericErrorCount : 0;
+    const safeCount = Math.max(0, Math.floor(finiteErrorCount));
     const exponentialDelay = baseInterval * Math.pow(2, safeCount);
     return Math.min(exponentialDelay, StatusService.MAX_BACKOFF_INTERVAL);
   }
@@ -267,22 +279,40 @@ export class StatusService {
     env: Env,
     sessionId: string,
     teamId: string,
-    documentName: string,
-    status: StatusUpdate['status'] = 'pending',
-    progress?: number
+    fileName: string,
+    status: StatusUpdate['status'] = 'processing',
+    priority: number = 10
   ): Promise<string> {
-    const statusId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Validate inputs
+    if (!sessionId || !teamId || !fileName) {
+      throw new Error('sessionId, teamId, and fileName are required');
+    }
     
-    await StatusService.setStatus(env, {
+    if (!['pending', 'processing', 'completed', 'failed'].includes(status)) {
+      throw new Error('Invalid status value');
+    }
+    
+    if (typeof priority !== 'number' || priority < 0) {
+      throw new Error('Priority must be a non-negative number');
+    }
+
+    const statusId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+    
+    const statusUpdate: StatusUpdate = {
       id: statusId,
       sessionId,
       teamId,
       type: 'document_analysis',
       status,
-      message: `Analyzing ${documentName}...`,
-      progress,
-      data: { documentName }
-    });
+      message: `Analyzing ${fileName}...`,
+      data: { fileName, priority },
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: now + (StatusService.STATUS_TTL * 1000)
+    };
+    
+    await StatusService.setStatus(env, statusUpdate, now);
 
     return statusId;
   }
