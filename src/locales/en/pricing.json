@@ -227,5 +227,9 @@
     "feature": "Feature",
     "included": "Included",
     "notIncluded": "Not included"
+  },
+  "sections": {
+    "benefits": "Benefits:",
+    "limitations": "Limitations:"
   }
 }

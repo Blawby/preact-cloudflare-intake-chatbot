@@ -223,9 +223,13 @@
     }
   },
   "comparison": {
-    "title": "Tarife Vergleichen",
+    "title": "Pläne vergleichen",
     "feature": "Funktion",
-    "included": "Enthalten",
-    "notIncluded": "Nicht enthalten"
+    "included": "Inbegriffen",
+    "notIncluded": "Nicht inbegriffen"
+  },
+  "sections": {
+    "benefits": "Vorteile:",
+    "limitations": "Einschränkungen:"
   }
 }

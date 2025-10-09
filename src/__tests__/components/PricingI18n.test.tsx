@@ -80,11 +80,13 @@ describe("Pricing Internationalization", () => {
     it("should load English pricing translations", async () => {
       const t = i18n.getFixedT("en", "pricing");
 
-      // Check that translations exist
-      expect(t("title")).toBeTruthy();
+      // Check that plan translations exist
       expect(t("plans.free.name")).toBeTruthy();
       expect(t("plans.plus.name")).toBeTruthy();
       expect(t("plans.business.name")).toBeTruthy();
+      expect(t("plans.free.description")).toBeTruthy();
+      expect(t("plans.plus.description")).toBeTruthy();
+      expect(t("plans.business.description")).toBeTruthy();
     });
 
     it("should have translations for all tiers", () => {
@@ -94,15 +96,19 @@ describe("Pricing Internationalization", () => {
       tiers.forEach((tier) => {
         expect(t(`plans.${tier}.name`)).toBeTruthy();
         expect(t(`plans.${tier}.description`)).toBeTruthy();
+        expect(t(`plans.${tier}.buttonText`)).toBeTruthy();
       });
     });
+
     it("should have feature translations", () => {
       const t = i18n.getFixedT("en", "pricing");
 
-      expect(t("features.title")).toBeTruthy();
-      expect(t("features.chat_consultation")).toBeTruthy();
-      expect(t("features.document_analysis")).toBeTruthy();
-      expect(t("features.case_management")).toBeTruthy();
+      // Test actual feature keys that exist in pricing.json
+      expect(t("features.aiAccess.name")).toBeTruthy();
+      expect(t("features.documentAnalysis.name")).toBeTruthy();
+      expect(t("features.casePreparation.name")).toBeTruthy();
+      expect(t("features.memoryContext.name")).toBeTruthy();
+      expect(t("features.lawyerSearch.name")).toBeTruthy();
     });
 
     it("should have billing period translations", () => {
@@ -114,13 +120,14 @@ describe("Pricing Internationalization", () => {
       expect(t("billing.billedAnnually")).toBeTruthy();
     });
 
-    it("should have CTA button translations", () => {
+    it("should have modal translations", () => {
       const t = i18n.getFixedT("en", "pricing");
 
-      expect(t("cta.select_plan")).toBeTruthy();
-      expect(t("cta.current_plan")).toBeTruthy();
-      expect(t("cta.upgrade")).toBeTruthy();
-      expect(t("cta.contact_sales")).toBeTruthy();
+      expect(t("modal.title")).toBeTruthy();
+      expect(t("modal.currentPlan")).toBeTruthy();
+      expect(t("modal.recommended")).toBeTruthy();
+      expect(t("modal.popular")).toBeTruthy();
+      expect(t("modal.close")).toBeTruthy();
     });
   });
 

@@ -227,5 +227,9 @@
     "feature": "Recurso",
     "included": "Incluído",
     "notIncluded": "Não incluído"
+  },
+  "sections": {
+    "benefits": "Benefícios:",
+    "limitations": "Limitações:"
   }
 }

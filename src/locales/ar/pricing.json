@@ -225,7 +225,11 @@
   "comparison": {
     "title": "مقارنة الخطط",
     "feature": "الميزة",
-    "included": "مضمّن",
-    "notIncluded": "غير مضمّن"
+    "included": "مشمول",
+    "notIncluded": "غير مشمول"
+  },
+  "sections": {
+    "benefits": "الفوائد:",
+    "limitations": "القيود:"
   }
 }

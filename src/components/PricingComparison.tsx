@@ -23,15 +23,14 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
     ? mockPricingDataService.getPricingPlans()
     : mockPricingDataService.getUpgradePath(currentTier);
     
-  // Translate plans with separate price components
+  // Translate plans with formatted price
   const plans = rawPlans.map(plan => ({
     ...plan,
     name: t(plan.name),
     description: t(plan.description),
     buttonText: t(plan.buttonText),
-    // Separate price components instead of concatenated string
-    priceAmount: formatCurrency(plan.priceAmount, plan.currency, i18n.language),
-    currencyCode: plan.currency.toUpperCase(),
+    // formatCurrency already includes the currency symbol/code
+    formattedPrice: formatCurrency(plan.priceAmount, plan.currency, i18n.language),
     billingPeriodLabel: t(`billing.${plan.billingPeriod === 'month' ? 'monthly' : 'yearly'}`),
     features: plan.features.map(f => ({
       ...f,
@@ -75,9 +74,9 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
           <div className="mb-6">
             <h3 className="text-2xl font-bold mb-2 text-white">{plan.name}</h3>
             <div className="text-3xl font-bold mb-2 text-white">
-              {plan.priceAmount}
+              {plan.formattedPrice}
               <span className="text-lg font-normal text-gray-300 ml-1">
-                {plan.currencyCode} / {plan.billingPeriodLabel}
+                / {plan.billingPeriodLabel}
               </span>
             </div>
             <p className="text-gray-300">{plan.description}</p>
@@ -116,7 +115,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
           {/* Benefits */}
           {plan.benefits && plan.benefits.length > 0 && (
             <div className="mt-6 pt-4 border-t border-dark-border">
-              <h4 className="text-sm font-medium text-white mb-2">Benefits:</h4>
+              <h4 className="text-sm font-medium text-white mb-2">{t('sections.benefits')}</h4>
               <ul className="space-y-1">
                 {plan.benefits.map((benefit, index) => (
                   <li key={index} className="text-xs text-gray-400 flex items-center gap-2">
@@ -131,7 +130,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
           {/* Limitations */}
           {plan.limitations && plan.limitations.length > 0 && (
             <div className="mt-4 pt-4 border-t border-dark-border">
-              <h4 className="text-sm font-medium text-white mb-2">Limitations:</h4>
+              <h4 className="text-sm font-medium text-white mb-2">{t('sections.limitations')}</h4>
               <ul className="space-y-1">
                 {plan.limitations.map((limitation, index) => (
                   <li key={index} className="text-xs text-gray-500 flex items-center gap-2">

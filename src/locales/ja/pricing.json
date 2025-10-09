@@ -225,7 +225,11 @@
   "comparison": {
     "title": "プランを比較",
     "feature": "機能",
-    "included": "含まれる",
-    "notIncluded": "含まれない"
+    "included": "含まれています",
+    "notIncluded": "含まれていません"
+  },
+  "sections": {
+    "benefits": "メリット:",
+    "limitations": "制限:"
   }
 }

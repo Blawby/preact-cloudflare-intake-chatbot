@@ -223,9 +223,13 @@
     }
   },
   "comparison": {
-    "title": "Comparer les Forfaits",
+    "title": "Comparer les plans",
     "feature": "Fonctionnalité",
     "included": "Inclus",
     "notIncluded": "Non inclus"
+  },
+  "sections": {
+    "benefits": "Avantages:",
+    "limitations": "Limitations:"
   }
 }

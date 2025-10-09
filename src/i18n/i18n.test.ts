@@ -204,8 +204,8 @@ describe('Translation Files Structure', () => {
     for (const namespace of NAMESPACES) {
       const enTranslation = await loadTranslation('en', namespace);
       
-      const checkPlaceholders = (enObj: any, path: string[] = []): void => {
-        Object.entries(enObj).forEach(([key, enValue]) => {
+      const checkPlaceholders = async (enObj: any, path: string[] = []): Promise<void> => {
+        for (const [key, enValue] of Object.entries(enObj)) {
           const currentPath = [...path, key];
           
           if (typeof enValue === 'string') {
@@ -214,9 +214,9 @@ describe('Translation Files Structure', () => {
             if (enMatches.length > 0) {
               const enPlaceholders = enMatches.map(m => m[1]).sort();
               
-              // Check in all locales
-              SUPPORTED_LOCALES.forEach(async locale => {
-                if (locale === 'en') return;
+              // Check in all locales using for...of to properly await
+              for (const locale of SUPPORTED_LOCALES) {
+                if (locale === 'en') continue;
                 
                 try {
                   const localeTranslation = await loadTranslation(locale, namespace);
@@ -235,15 +235,15 @@ describe('Translation Files Structure', () => {
                 } catch (error) {
                   // Skip if file doesn't exist
                 }
-              });
+              }
             }
           } else if (enValue && typeof enValue === 'object' && !Array.isArray(enValue)) {
-            checkPlaceholders(enValue, currentPath);
+            await checkPlaceholders(enValue, currentPath);
           }
-        });
+        }
       };
 
-      checkPlaceholders(enTranslation);
+      await checkPlaceholders(enTranslation);
     }
 
     if (placeholderIssues.length > 0) {

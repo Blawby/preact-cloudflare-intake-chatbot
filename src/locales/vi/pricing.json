@@ -223,9 +223,13 @@
     }
   },
   "comparison": {
-    "title": "So sánh Gói",
+    "title": "So sánh gói",
     "feature": "Tính năng",
-    "included": "Bao gồm",
+    "included": "Đã bao gồm",
     "notIncluded": "Không bao gồm"
+  },
+  "sections": {
+    "benefits": "Lợi ích:",
+    "limitations": "Hạn chế:"
   }
 }

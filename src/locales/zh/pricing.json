@@ -227,5 +227,9 @@
     "feature": "功能",
     "included": "包含",
     "notIncluded": "不包含"
+  },
+  "sections": {
+    "benefits": "优势:",
+    "limitations": "限制:"
   }
 }
