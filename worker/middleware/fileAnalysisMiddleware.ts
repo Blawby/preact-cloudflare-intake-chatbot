@@ -6,6 +6,14 @@ import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js'
 import { Logger } from '../utils/logger.js';
 
 /**
+ * Type adapter for file analysis - contains only the properties needed by analyzeFile
+ */
+type FileAnalysisEnv = {
+  FILES_BUCKET: Env['FILES_BUCKET'];
+  DB: Env['DB'];
+};
+
+/**
  * Timeout helper to prevent operations from hanging indefinitely
  */
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
@@ -112,7 +120,6 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
 
       // Process each attachment
       for (const attachment of attachments) {
-      try {
         // Extract file ID from attachment URL
         const fileId = extractFileIdFromUrl(attachment.url);
         if (!fileId) {
@@ -120,9 +127,15 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           continue;
         }
 
-        // Mark file as being processed to prevent duplicates
-        if (!context.processedFiles!.includes(fileId)) {
-          context.processedFiles!.push(fileId);
+        // Check for duplicates before starting analysis (allow retries on transient failures)
+        if (context.processedFiles!.includes(fileId)) {
+          Logger.info('Skipping already processed file', {
+            sessionId: context.sessionId,
+            teamId: context.teamId,
+            fileId,
+            fileName: attachment.name
+          });
+          continue;
         }
 
         // Determine analysis type based on file
@@ -136,42 +149,52 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           analysisType
         });
 
-        // Get appropriate analysis question
-        const analysisQuestion = getAnalysisQuestion(analysisType);
-        
-        // Perform file analysis with timeout protection (30 seconds)
-        const analysis = await withTimeout(
-          analyzeFile(env as unknown as Record<string, unknown>, fileId, analysisQuestion),
-          30000
-        );
-        
-        if (analysis && (analysis.confidence as number) > 0) {
-          analysisResults.push({
-            fileId,
-            fileName: attachment.name,
-            fileType: attachment.type,
-            analysisType,
-            ...analysis
-          });
+        try {
+          // Get appropriate analysis question
+          const analysisQuestion = getAnalysisQuestion(analysisType);
+          
+          // Create typed adapter with only the properties needed by analyzeFile
+          const fileAnalysisEnv: FileAnalysisEnv = {
+            FILES_BUCKET: env.FILES_BUCKET,
+            DB: env.DB
+          };
+          
+          // Perform file analysis with timeout protection (30 seconds)
+          const analysis = await withTimeout(
+            analyzeFile(fileAnalysisEnv, fileId, analysisQuestion),
+            30000
+          );
+          
+          if (analysis && (analysis.confidence as number) > 0) {
+            analysisResults.push({
+              fileId,
+              fileName: attachment.name,
+              fileType: attachment.type,
+              analysisType,
+              ...analysis
+            });
 
-          Logger.info('File analysis completed successfully', {
-            sessionId: context.sessionId,
-            teamId: context.teamId,
-            fileId,
-            fileName: attachment.name,
-            confidence: analysis.confidence as number,
-            summaryLength: (analysis.summary as string)?.length || 0
-          });
-        } else {
-          Logger.warn('File analysis failed or returned low confidence', {
-            sessionId: context.sessionId,
-            teamId: context.teamId,
-            fileId,
-            fileName: attachment.name,
-            confidence: (analysis?.confidence as number) || 0
-          });
-        }
-      } catch (error) {
+            Logger.info('File analysis completed successfully', {
+              sessionId: context.sessionId,
+              teamId: context.teamId,
+              fileId,
+              fileName: attachment.name,
+              confidence: analysis.confidence as number,
+              summaryLength: (analysis.summary as string)?.length || 0
+            });
+          } else {
+            Logger.warn('File analysis failed or returned low confidence', {
+              sessionId: context.sessionId,
+              teamId: context.teamId,
+              fileId,
+              fileName: attachment.name,
+              confidence: (analysis?.confidence as number) || 0
+            });
+          }
+
+          // Mark file as successfully processed only after analysis completes
+          context.processedFiles!.push(fileId);
+        } catch (error) {
         Logger.error('File analysis error in middleware', {
           sessionId: context.sessionId,
           teamId: context.teamId,

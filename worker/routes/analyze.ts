@@ -148,45 +148,24 @@ async function attemptAdobeExtract(
       }
     };
   } catch (error) {
-    logWarning('analyze', 'adobe_extract_failed', 'Adobe extract failed, using fallback analysis path', {
+    logWarning('analyze', 'adobe_extract_failed', 'Adobe extract failed, falling back to generic AI analysis', {
       fileName: file.name,
       fileType: file.type,
       error: error instanceof Error ? error.message : String(error),
-      requestId
-    });
-    
-    // Return a meaningful fallback analysis instead of null
-    return {
-      summary: `I encountered an issue analyzing "${file.name}" using Adobe PDF Services. This could be due to file format, content, or service availability issues.`,
-      key_facts: [
-        `File "${file.name}" could not be processed by Adobe PDF Services`,
-        "This may be due to file format, content, or service limitations",
-        "Manual document review may be needed"
-      ],
-      entities: { people: [], orgs: [], dates: [] },
-      action_items: [
-        "Try uploading the document in a different format (e.g., plain text)",
-        "Describe the document content manually",
-        "Contact support if the issue persists"
-      ],
-      confidence: 0.1,
-      adobeExtractTextLength: 0,
-      adobeExtractTextPreview: 'No text',
+      requestId,
       debug: {
         adobeEnabled: Boolean(env.ENABLE_ADOBE_EXTRACT),
         adobeClientIdSet: !!env.ADOBE_CLIENT_ID,
         adobeClientSecretSet: !!env.ADOBE_CLIENT_SECRET,
         fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type),
-        analysisMethod: 'fallback',
+        analysisMethod: 'fallback_to_generic_ai',
         debugTimestamp: new Date().toISOString(),
-        codeVersion: 'v2.3-debug',
-        summaryContainsUnable: true,
-        summaryContainsNotProvided: false,
-        summaryLength: 0,
-        adobeExtractTextLength: 0,
-        adobeExtractTextPreview: 'No text'
+        codeVersion: 'v2.3-debug'
       }
-    };
+    });
+    
+    // Return null to allow the caller to fall back to generic AI analysis
+    return null;
   }
 }
 
