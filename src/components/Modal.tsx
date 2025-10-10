@@ -74,7 +74,7 @@ const Modal: FunctionComponent<ModalProps> = ({
     if (!isOpen || !isBrowser) return null;
 
     // Determine modal behavior based on type and mobile state
-    const shouldUseDrawer = type === 'drawer' || (mobileBehavior === 'drawer' && isMobile);
+    const shouldUseDrawer = type === 'drawer' || (type !== 'fullscreen' && mobileBehavior === 'drawer' && isMobile);
     const shouldUseFullscreen = type === 'fullscreen';
 
     const modalContent = (
@@ -92,6 +92,7 @@ const Modal: FunctionComponent<ModalProps> = ({
                     <div 
                         className="absolute inset-0 bg-black bg-opacity-50"
                         onClick={disableBackdropClick ? undefined : onClose}
+                        onKeyDown={disableBackdropClick ? undefined : () => {}}
                     />
                     
                     {/* Content */}
