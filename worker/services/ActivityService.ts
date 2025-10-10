@@ -304,7 +304,7 @@ export class ActivityService {
         event.title,
         event.description,
         event.eventDate,
-        event.actorId,
+        event.actorId || null,
         JSON.stringify(event.metadata || {}),
         now,
         now
@@ -321,7 +321,7 @@ export class ActivityService {
         event.metadata?.sessionId,
         event.eventType,
         event.actorType || 'system',
-        event.actorId,
+        event.actorId || null,
         event.description,
         now
       ).run();

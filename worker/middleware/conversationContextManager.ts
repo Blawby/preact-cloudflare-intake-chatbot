@@ -89,6 +89,8 @@ export interface ConversationContext {
     urgency: string;
     reason: string;
   };
+  // File processing deduplication
+  processedFiles?: Set<string>;
   // Current request attachments for file analysis
   currentAttachments?: Array<{
     name: string;

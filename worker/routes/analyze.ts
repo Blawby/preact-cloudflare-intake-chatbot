@@ -143,7 +143,23 @@ async function attemptAdobeExtract(
       error: error instanceof Error ? error.message : String(error),
       requestId
     });
-    return null;
+    
+    // Return a meaningful fallback analysis instead of null
+    return {
+      summary: `I encountered an issue analyzing "${file.name}" using Adobe PDF Services. This could be due to file format, content, or service availability issues.`,
+      key_facts: [
+        `File "${file.name}" could not be processed by Adobe PDF Services`,
+        "This may be due to file format, content, or service limitations",
+        "Manual document review may be needed"
+      ],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: [
+        "Try uploading the document in a different format (e.g., plain text)",
+        "Describe the document content manually",
+        "Contact support if the issue persists"
+      ],
+      confidence: 0.1
+    };
   }
 }
 

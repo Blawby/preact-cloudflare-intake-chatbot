@@ -66,15 +66,48 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         return { context };
       }
 
+      // Initialize processed files tracking if not exists
+      if (!context.processedFiles) {
+        context.processedFiles = new Set<string>();
+      }
+
+      // Filter out already processed files to prevent duplicates
+      const attachments = context.currentAttachments.filter(attachment => {
+        const fileId = extractFileIdFromUrl(attachment.url);
+        if (!fileId) {
+          Logger.warn('Could not extract file ID from attachment URL', { url: attachment.url });
+          return false;
+        }
+        
+        if (context.processedFiles!.has(fileId)) {
+          Logger.info('Skipping already processed file', {
+            sessionId: context.sessionId,
+            teamId: context.teamId,
+            fileId,
+            fileName: attachment.name
+          });
+          return false;
+        }
+        
+        return true;
+      });
+
+      if (attachments.length === 0) {
+        Logger.info('No new attachments to process after deduplication', {
+          sessionId: context.sessionId,
+          teamId: context.teamId
+        });
+        return { context };
+      }
+
       // Process attachments when they exist in context.currentAttachments
       // This ensures users see analysis results for newly uploaded files
       Logger.info('Processing current attachments for file analysis', {
         sessionId: context.sessionId,
         teamId: context.teamId,
-        attachmentCount: context.currentAttachments.length
+        attachmentCount: attachments.length,
+        totalAttachments: context.currentAttachments.length
       });
-
-      const attachments = context.currentAttachments;
       const analysisResults = [];
 
       // Process each attachment
@@ -86,6 +119,9 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           Logger.warn('Could not extract file ID from attachment URL', { url: attachment.url });
           continue;
         }
+
+        // Mark file as being processed to prevent duplicates
+        context.processedFiles!.add(fileId);
 
         // Determine analysis type based on file
         const analysisType = determineAnalysisType(attachment);
@@ -103,11 +139,11 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         
         // Perform file analysis with timeout protection (30 seconds)
         const analysis = await withTimeout(
-          analyzeFile(env, fileId, analysisQuestion),
+          analyzeFile(env as unknown as Record<string, unknown>, fileId, analysisQuestion),
           30000
         );
         
-        if (analysis && analysis.confidence > 0) {
+        if (analysis && (analysis.confidence as number) > 0) {
           analysisResults.push({
             fileId,
             fileName: attachment.name,
@@ -121,8 +157,8 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
             teamId: context.teamId,
             fileId,
             fileName: attachment.name,
-            confidence: analysis.confidence,
-            summaryLength: analysis.summary?.length || 0
+            confidence: analysis.confidence as number,
+            summaryLength: (analysis.summary as string)?.length || 0
           });
         } else {
           Logger.warn('File analysis failed or returned low confidence', {
@@ -130,7 +166,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
             teamId: context.teamId,
             fileId,
             fileName: attachment.name,
-            confidence: analysis?.confidence || 0
+            confidence: (analysis?.confidence as number) || 0
           });
         }
       } catch (error) {
@@ -140,6 +176,21 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           fileName: attachment.name,
           error: error instanceof Error ? error.message : String(error)
         });
+        
+        // Add partial result with error message instead of silently failing
+        const fileId = extractFileIdFromUrl(attachment.url);
+        if (fileId) {
+          analysisResults.push({
+            fileId,
+            fileName: attachment.name,
+            fileType: attachment.type,
+            analysisType: determineAnalysisType(attachment),
+            confidence: 0,
+            summary: `I encountered an issue analyzing "${attachment.name}". This could be due to file format or content issues. Would you like to describe the document to me instead?`,
+            key_facts: [],
+            action_items: ['Describe the document content manually', 'Try uploading in a different format']
+          });
+        }
       }
     }
 
@@ -156,7 +207,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         ...context,
         currentAttachments: undefined, // Clear attachments after processing
         fileAnalysis: {
-          status: 'completed',
+          status: 'completed' as const,
           files: attachments.map(attachment => ({
             fileId: extractFileIdFromUrl(attachment.url) || '',
             name: attachment.name,

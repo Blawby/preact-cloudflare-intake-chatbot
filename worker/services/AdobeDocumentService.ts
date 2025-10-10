@@ -367,6 +367,14 @@ export class AdobeDocumentService {
     config: AdobeConfig,
     accessToken: string
   ): Promise<string> {
+    // Validate assetId
+    if (!assetId || typeof assetId !== 'string' || assetId.trim().length === 0) {
+      throw new Error(`Invalid assetId provided: ${assetId}`);
+    }
+    
+    // Log the exact assetId being used
+    Logger.info('Adobe Step 4: Starting extract job', { assetId });
+    
     // Restore the exact working payload from commit 872c3ed
     const payload = {
       assetID: assetId,
@@ -374,7 +382,16 @@ export class AdobeDocumentService {
     };
 
     const url = `${config.pdfBase}/operation/extractpdf`;
-    Logger.debug('Adobe Step 4: Starting extract job with payload', { assetId, payload, url });
+    
+    // Log the stringified payload to see exactly what's being sent
+    const payloadString = JSON.stringify(payload);
+    Logger.debug('Adobe Step 4: Extract job payload', { 
+      assetId, 
+      payload, 
+      payloadString,
+      payloadLength: payloadString.length,
+      url 
+    });
 
     return withRetry(async () => {
       const response = await fetchWithTimeout(url, {
