@@ -60,7 +60,7 @@ jobs:
         sleep 30
         
         # Test health endpoint
-        curl -f "${{ secrets.CLOUDFLARE_PUBLIC_URL }}/health"
+        curl -f "${{ secrets.CLOUDFLARE_PUBLIC_URL }}/api/health"
         
         # Test analyze endpoint with small PDF (if available)
         if [ -f "test-document.pdf" ]; then
