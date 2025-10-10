@@ -284,8 +284,8 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       type="fullscreen"
       showCloseButton={false}
     >
-      <div className="h-screen lg:h-full bg-dark-bg text-white overflow-y-auto overscroll-contain">
-        {/* Header - Mobile scroll fix */}
+      <div className="h-full bg-dark-bg text-white overflow-y-auto">
+        {/* Header */}
         <div className="relative p-6 border-b border-dark-border">
           {/* Close Button */}
           <Button
