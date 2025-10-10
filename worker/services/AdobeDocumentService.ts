@@ -1,5 +1,6 @@
 import type { Env } from '../types.js';
 import { Logger } from '../utils/logger.js';
+import { withRetry } from '../utils/retry.js';
 import { unzipSync, strFromU8 } from 'fflate';
 
 type AdobeEnv = Pick<
@@ -74,11 +75,47 @@ const DEFAULT_SCOPE = 'openid,AdobeID,DCAPI';
 const MAX_POLL_ATTEMPTS = 60; // Increased from 20 to 60 (about 2-3 minutes)
 const POLL_BASE_DELAY_MS = 2000; // Increased from 1000 to 2000ms
 
+// Timeout and retry configuration for external API calls
+const IMS_TOKEN_TIMEOUT_MS = 10000; // 10 seconds timeout for IMS token requests
+const IMS_TOKEN_RETRY_ATTEMPTS = 3;
+const IMS_TOKEN_RETRY_BASE_DELAY = 500; // 500ms base delay
+
+const PDF_API_TIMEOUT_MS = 15000; // 15 seconds timeout for PDF API requests
+const PDF_API_RETRY_ATTEMPTS = 3;
+const PDF_API_RETRY_BASE_DELAY = 1000; // 1 second base delay
+
 const DEFAULT_EXTRACT_PARAMS = {
   elementsToExtract: ['text', 'tables'],
   renditionsToGenerate: [],
   includeStyling: false
 } as const;
+
+/**
+ * Utility function to add timeout to fetch requests
+ */
+async function fetchWithTimeout(
+  url: string, 
+  options: Parameters<typeof fetch>[1] & { signal?: AbortSignal }, 
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
 
 /**
  * Adobe PDF Services client that implements the REST workflow:
@@ -119,29 +156,29 @@ export class AdobeDocumentService {
     }
 
     try {
-      console.log('🧩 Adobe Step 1: Getting config and access token');
+      Logger.debug('Adobe Step 1: Getting config and access token', { fileName, mimeType });
       const config = this.getConfig();
-      console.log('🧩 Adobe Step 1a: Config obtained');
+      Logger.debug('Adobe Step 1a: Config obtained', { fileName, mimeType });
       const accessToken = await this.getAccessToken(config);
-      console.log('🧩 Adobe Step 1: Access token obtained');
+      Logger.info('Adobe Step 1: Access token obtained', { fileName, mimeType });
 
-      console.log('🧩 Adobe Step 2: Creating asset');
+      Logger.debug('Adobe Step 2: Creating asset', { fileName, mimeType });
       const { assetID, uploadUri } = await this.createAsset(fileName, mimeType, config, accessToken);
-      console.log('🧩 Adobe Step 2: Asset created with ID:', assetID);
+      Logger.info('Adobe Step 2: Asset created', { fileName, mimeType, assetID });
 
-      console.log('🧩 Adobe Step 3: Uploading asset');
+      Logger.debug('Adobe Step 3: Uploading asset', { fileName, mimeType, assetID });
       await this.uploadAsset(uploadUri, buffer, mimeType);
-      console.log('🧩 Adobe Step 3: Asset uploaded');
+      Logger.info('Adobe Step 3: Asset uploaded', { fileName, mimeType, assetID });
 
-      console.log('🧩 Adobe Step 4: Starting extract job');
+      Logger.debug('Adobe Step 4: Starting extract job', { fileName, mimeType, assetID });
       const jobLocation = await this.startExtractJob(assetID, config, accessToken);
-      console.log('🧩 Adobe Step 4: Extract job started at:', jobLocation);
+      Logger.info('Adobe Step 4: Extract job started', { fileName, mimeType, assetID, jobLocation });
 
-      console.log('🧩 Adobe Step 5: Polling job status');
+      Logger.debug('Adobe Step 5: Polling job status', { fileName, mimeType, assetID, jobLocation });
       const resolution = await this.pollJob(jobLocation, config, accessToken);
-      console.log('🧩 Adobe Step 5: Job completed, resolution type:', resolution.type);
+      Logger.info('Adobe Step 5: Job completed', { fileName, mimeType, assetID, jobLocation, resolutionType: resolution.type });
 
-      console.log('🧩 Adobe Step 6: Processing results');
+      Logger.debug('Adobe Step 6: Processing results', { fileName, mimeType, assetID, jobLocation, resolutionType: resolution.type });
       let zipBuffer: ArrayBuffer;
       if (resolution.type === 'buffer') {
         zipBuffer = resolution.buffer;
@@ -149,12 +186,14 @@ export class AdobeDocumentService {
         zipBuffer = await this.downloadResult(resolution.downloadUri, config, accessToken);
       }
 
-      console.log('🧩 Adobe Step 7: Processing ZIP payload');
+      Logger.debug('Adobe Step 7: Processing ZIP payload', { fileName, mimeType, assetID, jobLocation, resolutionType: resolution.type });
       return this.processZipPayload(new Uint8Array(zipBuffer));
     } catch (error) {
-      console.log('🧩 Adobe Error:', error instanceof Error ? error.message : String(error));
       Logger.error('Adobe extract failed', {
-        error: error instanceof Error ? error.message : String(error)
+        fileName,
+        mimeType,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       });
       return {
         success: false,
@@ -188,27 +227,46 @@ export class AdobeDocumentService {
     const url = `${config.imsBase}/ims/token/v3`;
     const body = `client_id=${encodeURIComponent(config.clientId)}&client_secret=${encodeURIComponent(config.clientSecret)}&grant_type=client_credentials&scope=${encodeURIComponent(config.scope)}`;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body
+    Logger.debug('Fetching Adobe IMS access token', { 
+      url, 
+      clientId: config.clientId,
+      scope: config.scope 
     });
 
-    if (!response.ok) {
-      const payload = await response.text();
-      throw new Error(`Failed to obtain Adobe token (${response.status}): ${payload}`);
-    }
+    return withRetry(async () => {
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      }, IMS_TOKEN_TIMEOUT_MS);
 
-    const data = await response.json() as { access_token: string; expires_in?: number };
-    if (!data.access_token) {
-      throw new Error('Adobe token response missing access_token');
-    }
+      if (!response.ok) {
+        const payload = await response.text();
+        throw new Error(`Failed to obtain Adobe token (${response.status}): ${payload}`);
+      }
 
-    const expiresIn = typeof data.expires_in === 'number' ? data.expires_in * 1000 : 3600 * 1000;
-    return {
-      accessToken: data.access_token,
-      expiresAt: Date.now() + Math.max(expiresIn - FIVE_MINUTES_MS, 0)
-    };
+      const data = await response.json() as { access_token: string; expires_in?: number };
+      if (!data.access_token) {
+        throw new Error('Adobe token response missing access_token');
+      }
+
+      const expiresIn = typeof data.expires_in === 'number' ? data.expires_in * 1000 : 3600 * 1000;
+      const token = {
+        accessToken: data.access_token,
+        expiresAt: Date.now() + Math.max(expiresIn - FIVE_MINUTES_MS, 0)
+      };
+
+      Logger.info('Adobe IMS access token obtained successfully', { 
+        expiresIn: expiresIn / 1000,
+        expiresAt: new Date(token.expiresAt).toISOString()
+      });
+
+      return token;
+    }, {
+      attempts: IMS_TOKEN_RETRY_ATTEMPTS,
+      baseDelay: IMS_TOKEN_RETRY_BASE_DELAY,
+      operationName: 'Adobe IMS token fetch'
+    });
   }
 
   private async getAccessToken(config: AdobeConfig): Promise<string> {
@@ -231,31 +289,48 @@ export class AdobeDocumentService {
     config: AdobeConfig,
     accessToken: string
   ): Promise<AdobeAssetResponse> {
-    const response = await fetch(`${config.pdfBase}/assets`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'x-api-key': config.clientId,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        mediaType: mimeType,
-        name: fileName
-      })
+    const url = `${config.pdfBase}/assets`;
+    const payload = {
+      mediaType: mimeType,
+      name: fileName
+    };
+
+    Logger.debug('Creating Adobe asset', { fileName, mimeType, url });
+
+    return withRetry(async () => {
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'x-api-key': config.clientId,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }, PDF_API_TIMEOUT_MS);
+
+      if (!response.ok) {
+        const errorPayload = await response.text();
+        throw new Error(`Failed to create Adobe asset (${response.status}): ${errorPayload}`);
+      }
+
+      const data = await response.json() as { id?: string; assetID?: string; uploadUri?: string };
+      const assetID = data.assetID ?? data.id;
+      if (!assetID || !data.uploadUri) {
+        throw new Error('Adobe asset response missing required fields');
+      }
+
+      Logger.debug('Adobe asset created successfully', { 
+        fileName, 
+        mimeType, 
+        assetID 
+      });
+
+      return { assetID, uploadUri: data.uploadUri };
+    }, {
+      attempts: PDF_API_RETRY_ATTEMPTS,
+      baseDelay: PDF_API_RETRY_BASE_DELAY,
+      operationName: 'Adobe asset creation'
     });
-
-    if (!response.ok) {
-      const payload = await response.text();
-      throw new Error(`Failed to create Adobe asset (${response.status}): ${payload}`);
-    }
-
-    const data = await response.json() as { id?: string; assetID?: string; uploadUri?: string };
-    const assetID = data.assetID ?? data.id;
-    if (!assetID || !data.uploadUri) {
-      throw new Error('Adobe asset response missing required fields');
-    }
-
-    return { assetID, uploadUri: data.uploadUri };
   }
 
   private async uploadAsset(uploadUri: string, buffer: ArrayBuffer, mimeType: string): Promise<void> {
@@ -281,30 +356,38 @@ export class AdobeDocumentService {
       elementsToExtract: ["text", "tables"]
     };
 
-    console.log('🧩 Adobe Step 4: Starting extract job with payload', JSON.stringify(payload, null, 2));
+    const url = `${config.pdfBase}/operation/extractpdf`;
+    Logger.debug('Adobe Step 4: Starting extract job with payload', { assetId, payload, url });
 
-    const response = await fetch(`${config.pdfBase}/operation/extractpdf`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'x-api-key': config.clientId,
-        'x-request-id': `extract-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    return withRetry(async () => {
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'x-api-key': config.clientId,
+          'x-request-id': `extract-${Date.now()}-${crypto.randomUUID()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }, PDF_API_TIMEOUT_MS);
+
+      if (response.status !== 201 && response.status !== 202) {
+        const responseText = await response.text();
+        throw new Error(`Failed to start Adobe extract job (${response.status}): ${responseText}`);
+      }
+
+      const location = response.headers.get('location');
+      if (!location) {
+        throw new Error('Adobe extract job did not return a location header');
+      }
+
+      Logger.debug('Adobe extract job started successfully', { assetId, location });
+      return location;
+    }, {
+      attempts: PDF_API_RETRY_ATTEMPTS,
+      baseDelay: PDF_API_RETRY_BASE_DELAY,
+      operationName: 'Adobe extract job start'
     });
-
-    if (response.status !== 201 && response.status !== 202) {
-      const responseText = await response.text();
-      throw new Error(`Failed to start Adobe extract job (${response.status}): ${responseText}`);
-    }
-
-    const location = response.headers.get('location');
-    if (!location) {
-      throw new Error('Adobe extract job did not return a location header');
-    }
-
-    return location;
   }
 
   private async pollJob(
@@ -313,7 +396,7 @@ export class AdobeDocumentService {
     accessToken: string
   ): Promise<JobResolution> {
     for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-      console.log(`🧩 Adobe Step 5: Polling attempt ${attempt + 1}/${MAX_POLL_ATTEMPTS}`);
+      Logger.debug('Adobe Step 5: Polling attempt', { attempt: attempt + 1, maxAttempts: MAX_POLL_ATTEMPTS, location });
       
       const response = await fetch(location, {
         method: 'GET',
@@ -325,7 +408,7 @@ export class AdobeDocumentService {
 
       if (response.status === 202) {
         const delay = Math.min(POLL_BASE_DELAY_MS * (attempt + 1), 5000);
-        console.log(`🧩 Adobe Step 5: Job still processing, waiting ${delay}ms...`);
+        Logger.debug('Adobe Step 5: Job still processing, waiting', { attempt: attempt + 1, delay, location });
         await this.wait(delay);
         continue;
       }
@@ -343,7 +426,7 @@ export class AdobeDocumentService {
 
       const jobStatus = await response.json() as AdobeJobStatus;
       if (jobStatus.status === 'done') {
-        console.log('Job completed, looking for download URI in:', JSON.stringify(jobStatus, null, 2));
+        Logger.debug('Job completed, looking for download URI', { location, jobStatus });
         
         const downloadUri =
           jobStatus.downloadUri ||
@@ -353,7 +436,7 @@ export class AdobeDocumentService {
           jobStatus.resource?.downloadUri ||
           jobStatus.content?.downloadUri;
 
-        console.log('Found download URI:', downloadUri);
+        Logger.debug('Found download URI', { location, downloadUri });
 
         if (downloadUri) {
           return { type: 'uri', downloadUri };

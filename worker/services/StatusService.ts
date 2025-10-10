@@ -256,7 +256,7 @@ export class StatusService {
     status: StatusUpdate['status'] = 'pending',
     progress?: number
   ): Promise<string> {
-    const statusId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const statusId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     
     await StatusService.setStatus(env, {
       id: statusId,
@@ -296,7 +296,7 @@ export class StatusService {
       throw new Error('Priority must be a non-negative number');
     }
 
-    const statusId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const statusId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     const now = Date.now();
     
     const statusUpdate: StatusUpdate = {
@@ -327,7 +327,7 @@ export class StatusService {
     message: string,
     data?: Record<string, unknown>
   ): Promise<string> {
-    const statusId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const statusId = `notif_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     
     await StatusService.setStatus(env, {
       id: statusId,

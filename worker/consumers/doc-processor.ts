@@ -14,7 +14,7 @@ interface DocumentEvent {
   size: number;
 }
 
-interface AutoAnalysisEvent {
+export interface AutoAnalysisEvent {
   type: "analyze_uploaded_document";
   sessionId: string;
   teamId: string;
@@ -106,6 +106,7 @@ export default {
               error: "FILES_BUCKET is not available"
             };
             await SessionService.sendAnalysisComplete(env, sessionId, teamId, failureAnalysis);
+            await msg.ack();
             continue;
           }
           
@@ -151,6 +152,7 @@ export default {
             };
             
             await SessionService.sendAnalysisComplete(env, sessionId, teamId, failureAnalysis);
+            await msg.ack();
             continue;
           }
           
@@ -199,6 +201,25 @@ export default {
           
           // Send final analysis result
           await SessionService.sendAnalysisComplete(env, sessionId, teamId, analysis);
+          
+          // Update file_processing status to completed
+          if (statusId) {
+            try {
+              await StatusService.setStatus(env, {
+                id: statusId,
+                sessionId,
+                teamId,
+                type: 'file_processing',
+                status: 'completed',
+                message: `Analysis of ${file.name} completed successfully`,
+                progress: 100,
+                data: { fileName: file.name, analysisComplete: true }
+              }, statusCreatedAt ?? undefined);
+            } catch (statusError) {
+              console.error('Failed to update file_processing status to completed:', statusError);
+              // Continue execution even if status update fails
+            }
+          }
           
           console.log('✅ Auto-analysis completed successfully:', { 
             key: file.key, 

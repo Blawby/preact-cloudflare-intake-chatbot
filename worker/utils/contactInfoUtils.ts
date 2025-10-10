@@ -161,12 +161,12 @@ export function isContactInfoComplete(conversationText: string): boolean {
 export function logContactInfoDetection(
   conversationText: string, 
   detection: ContactInfoMatch, 
-  correlationId?: string
+  correlationId?: string,
+  env?: { NODE_ENV?: string }
 ): void {
   // Only log in non-production environments or when debug is enabled
-  // For now, use a simple environment check since we can't easily access Logger here
-  // TODO: Consider passing Logger instance as parameter or using a different approach
-  const isProduction = typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
+  // Use env.NODE_ENV for Cloudflare Workers compatibility
+  const isProduction = env?.NODE_ENV === 'production';
   
   if (isProduction) {
     return;

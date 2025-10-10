@@ -3,6 +3,12 @@ import { useEffect, useState, useRef } from 'preact/hooks';
 import { XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 
+// Type-safe interface for AudioContext globals
+interface AudioContextGlobals {
+    AudioContext?: typeof AudioContext;
+    webkitAudioContext?: typeof AudioContext;
+}
+
 interface AudioRecordingUIProps {
     onCancel: () => void;
     onConfirm: () => void;
@@ -82,7 +88,9 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
 
         try {
             // Initialize Audio Context - get constructor from globalThis to avoid shadowing
-            const AudioContextConstructor = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
+            const audioGlobals = globalThis as unknown as AudioContextGlobals;
+            const AudioContextConstructor: typeof AudioContext | undefined = 
+                audioGlobals.AudioContext || audioGlobals.webkitAudioContext;
             
             if (!AudioContextConstructor) {
                 console.warn('AudioContext not supported in this browser');

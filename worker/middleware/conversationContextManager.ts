@@ -570,7 +570,7 @@ export class ConversationContextManager {
   static getFileAnalysisResult(
     context: ConversationContext,
     fileId: string
-  ): ConversationContext['fileAnalysis']['results'][0] | undefined {
+  ): NonNullable<ConversationContext['fileAnalysis']>['results'][0] | undefined {
     if (!context.fileAnalysis?.results) {
       return undefined;
     }
@@ -585,7 +585,7 @@ export class ConversationContextManager {
   static getFileMetadata(
     context: ConversationContext,
     fileId: string
-  ): ConversationContext['fileAnalysis']['files'][0] | undefined {
+  ): NonNullable<ConversationContext['fileAnalysis']>['files'][0] | undefined {
     if (!context.fileAnalysis?.files) {
       return undefined;
     }

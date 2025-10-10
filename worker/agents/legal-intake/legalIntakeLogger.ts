@@ -482,7 +482,17 @@ export class LegalIntakeLogger {
     const logMessage = `[${logLevel}] [${logEntry.operation}] ${logEntry.message}`;
     
     // Get environment from Logger or fallback to production
-    const environment = Logger.getEnvironment?.() || 'production';
+    let environment: string;
+    try {
+      environment = Logger.getEnvironment?.() || 'production';
+    } catch (error) {
+      // Fallback to production if Logger.getEnvironment throws (e.g., Logger not initialized)
+      environment = 'production';
+      // Log the error at debug level if available
+      if (Logger.debug) {
+        Logger.debug('Failed to get environment from Logger, falling back to production', { error });
+      }
+    }
     
     // Create a structured log object
     const structuredLog = {

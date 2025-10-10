@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function testAdobeAnalysisDetailed() {
   try {
@@ -8,10 +14,17 @@ async function testAdobeAnalysisDetailed() {
     console.log('=====================================\n');
     
     // Step 1: Check if PDF file exists
-    const pdfPath = '/Users/paulchrisluke/Repos2025/preact-cloudflare-intake-chatbot/blawby-ai-chatbot/Ai-native-vs-platform-revenue.pdf';
+    // Resolve PDF path: CLI arg > env var > repo-relative fallback
+    const pdfPath = process.argv[2] || 
+                   process.env.PDF_PATH || 
+                   path.join(__dirname, 'Ai-native-vs-platform-revenue.pdf');
+    
     console.log('📁 Step 1: Checking PDF file...');
+    console.log(`   - Resolved path: ${pdfPath}`);
     if (!fs.existsSync(pdfPath)) {
       console.error('❌ PDF file not found:', pdfPath);
+      console.error('   - Try: node test-adobe-detailed.js /path/to/your/pdf.pdf');
+      console.error('   - Or set: PDF_PATH=/path/to/your/pdf.pdf node test-adobe-detailed.js');
       return;
     }
     
@@ -24,7 +37,8 @@ async function testAdobeAnalysisDetailed() {
     // Step 2: Create proper File object
     console.log('📄 Step 2: Creating File object...');
     const fileBuffer = fs.readFileSync(pdfPath);
-    const file = new File([fileBuffer], 'Ai-native-vs-platform-revenue.pdf', { 
+    const fileName = path.basename(pdfPath);
+    const file = new File([fileBuffer], fileName, { 
       type: 'application/pdf' 
     });
     console.log('✅ File object created:');

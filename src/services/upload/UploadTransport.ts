@@ -43,6 +43,14 @@ export async function uploadWithProgress(
   const { teamId, sessionId, onProgress, onSuccess, onError, signal } = options;
 
   return new Promise((resolve, reject) => {
+    // Preflight abort check - if already aborted, don't create XHR
+    if (signal?.aborted) {
+      const abortError = new Error('Upload cancelled');
+      abortError.name = 'AbortError';
+      reject(abortError);
+      return;
+    }
+
     const xhr = new XMLHttpRequest();
     
     // Track last progress values for accurate final progress update
@@ -108,7 +116,7 @@ export async function uploadWithProgress(
               const loaded = lastProgress?.loaded || file.size;
               onProgress({
                 loaded: total, // Use total as loaded for 100% completion
-                total: total,
+                total,
                 percentage: 100
               });
             }
@@ -148,6 +156,14 @@ export async function uploadWithProgress(
 
     // Handle abort signal
     if (signal) {
+      // Preflight abort check - if already aborted, don't attach listener
+      if (signal.aborted) {
+        const abortError = new Error('Upload cancelled');
+        abortError.name = 'AbortError';
+        rejectWithCleanup(abortError);
+        return;
+      }
+      
       abortHandler = () => {
         xhr.abort();
       };

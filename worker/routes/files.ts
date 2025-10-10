@@ -88,6 +88,7 @@ interface AutoAnalysisEvent {
   type: "analyze_uploaded_document";
   sessionId: string;
   teamId: string;
+  statusId?: string;
   file: {
     key: string;
     name: string;
@@ -452,8 +453,10 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
 
       // Auto-analysis enqueue is handled inside storeFile to avoid double-processing
 
-      // Inline processing for local development (bypass queue)
-      try {
+      // Inline processing for local development only (bypass queue)
+      // Only run inline processing in development to avoid duplicate processing in production
+      if (env.NODE_ENV === 'development') {
+        try {
         const { default: docProcessor } = await import('../consumers/doc-processor.js');
         const mockBatch: MessageBatch<DocumentEvent | AutoAnalysisEvent> = {
           messages: [{
@@ -462,13 +465,14 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
               type: "analyze_uploaded_document",
               sessionId: resolvedSessionId,
               teamId: resolvedTeamId,
+              statusId: statusId,
               file: {
                 key: storageKey,
                 name: file.name,
                 mime: file.type,
                 size: file.size
               }
-            },
+            } as AutoAnalysisEvent,
             timestamp: new Date(),
             attempts: 0,
             retry: () => {},
@@ -521,9 +525,12 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
           }
         });
         
-        Logger.info('🚀 Started inline auto-analysis processing');
-      } catch (inlineError) {
-        Logger.warn('Failed to start inline processing:', inlineError);
+          Logger.info('🚀 Started inline auto-analysis processing');
+        } catch (inlineError) {
+          Logger.warn('Failed to start inline processing:', inlineError);
+        }
+      } else {
+        Logger.info('Skipping inline processing - using queue-based processing only');
       }
 
       const responseBody = {

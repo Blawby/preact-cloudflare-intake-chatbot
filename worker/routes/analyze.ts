@@ -49,12 +49,13 @@ function _createFallbackResponse(aiResponse: string): AnalysisResult {
 async function attemptAdobeExtract(
   file: File,
   question: string,
-  env: Env
+  env: Env,
+  requestId?: string
 ): Promise<AnalysisResult | null> {
-  log('debug', 'adobe_service_creation', { message: 'Creating Adobe service' });
+  log('debug', 'adobe_service_creation', { message: 'Creating Adobe service', requestId });
   const adobeService = new AdobeDocumentService(env);
-  log('debug', 'adobe_service_created', { message: 'Adobe service created' });
-  log('debug', 'adobe_service_enabled_check', { isEnabled: adobeService.isEnabled() });
+  log('debug', 'adobe_service_created', { message: 'Adobe service created', requestId });
+  log('debug', 'adobe_service_enabled_check', { isEnabled: adobeService.isEnabled(), requestId });
   
   const eligibleTypes = new Set([
     'application/pdf',
@@ -68,43 +69,47 @@ async function attemptAdobeExtract(
     isEnabled: adobeService.isEnabled(),
     enableFlag: env.ENABLE_ADOBE_EXTRACT,
     adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
-    adobeClientSecret: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET'
+    adobeClientSecret: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET',
+    requestId
   });
 
   log('info', 'adobe_service_check', {
     isEnabled: adobeService.isEnabled(),
     enableFlag: env.ENABLE_ADOBE_EXTRACT,
-    adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET'
+    adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+    requestId
   });
 
   if (!eligibleTypes.has(file.type)) {
-    log('info', 'adobe_extract_skipped', { reason: 'not_eligible_type', fileType: file.type });
+    log('info', 'adobe_extract_skipped', { reason: 'not_eligible_type', fileType: file.type, requestId });
     return null;
   }
   
   if (!adobeService.isEnabled()) {
-    log('info', 'adobe_extract_skipped', { reason: 'not_enabled', isEnabled: adobeService.isEnabled() });
+    log('info', 'adobe_extract_skipped', { reason: 'not_enabled', isEnabled: adobeService.isEnabled(), requestId });
     return null;
   }
 
   try {
-    log('info', 'adobe_extraction_start', { fileName: file.name, fileType: file.type });
+    log('info', 'adobe_extraction_start', { fileName: file.name, fileType: file.type, requestId });
     log('debug', 'adobe_extraction_details', {
       fileName: file.name,
       fileType: file.type,
-      fileSize: file.size
+      fileSize: file.size,
+      requestId
     });
     
     const buffer = await file.arrayBuffer();
-    log('info', 'adobe_file_buffer', { fileName: file.name, bufferSize: buffer.byteLength });
-    log('debug', 'adobe_buffer_details', { bufferSize: buffer.byteLength });
+    log('info', 'adobe_file_buffer', { fileName: file.name, bufferSize: buffer.byteLength, requestId });
+    log('debug', 'adobe_buffer_details', { bufferSize: buffer.byteLength, requestId });
     
     const extractResult = await adobeService.extractFromBuffer(file.name, file.type, buffer);
     log('info', 'adobe_extraction_result', {
       success: extractResult.success,
       hasDetails: !!extractResult.details,
       error: extractResult.error,
-      warnings: extractResult.warnings
+      warnings: extractResult.warnings,
+      requestId
     });
     
     log('debug', 'adobe_extraction_result_details', {
@@ -113,27 +118,30 @@ async function attemptAdobeExtract(
       error: extractResult.error || 'None',
       warnings: extractResult.warnings || 'None',
       textLength: extractResult.details?.text?.length || 0,
-      textPreview: extractResult.details?.text?.substring(0, 200) || 'No text'
+      textPreview: extractResult.details?.text?.substring(0, 200) || 'No text',
+      requestId
     });
 
     if (!extractResult.success || !extractResult.details) {
-      log('warn', 'adobe_extraction_failed', { reason: 'no_success_or_details' });
+      log('warn', 'adobe_extraction_failed', { reason: 'no_success_or_details', requestId });
       log('debug', 'adobe_extraction_failure_details', {
         success: extractResult.success,
         hasDetails: !!extractResult.details,
-        error: extractResult.error
+        error: extractResult.error,
+        requestId
       });
       return null;
     }
 
-    log('info', 'adobe_extraction_success', { fileName: file.name });
-    log('debug', 'adobe_extraction_success_details', { message: 'Adobe extraction successful, calling summarizeAdobeExtract' });
-    return await summarizeAdobeExtract(extractResult.details, question, env);
+    log('info', 'adobe_extraction_success', { fileName: file.name, requestId });
+    log('debug', 'adobe_extraction_success_details', { message: 'Adobe extraction successful, calling summarizeAdobeExtract', requestId });
+    return await summarizeAdobeExtract(extractResult.details, question, env, requestId || 'unknown');
   } catch (error) {
     logWarning('analyze', 'adobe_extract_failed', 'Adobe extract failed, using fallback analysis path', {
       fileName: file.name,
       fileType: file.type,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      requestId
     });
     return null;
   }
@@ -142,13 +150,15 @@ async function attemptAdobeExtract(
 async function summarizeAdobeExtract(
   extract: AdobeExtractSuccess,
   question: string,
-  env: Env
+  env: Env,
+  requestId: string
 ): Promise<ExtendedAnalysisResult> {
   log('debug', 'summarize_adobe_extract_called', {
     textLength: extract.text?.length || 0,
     textPreview: extract.text?.substring(0, 200) || 'NO TEXT',
     tablesCount: extract.tables?.length || 0,
-    elementsCount: extract.elements?.length || 0
+    elementsCount: extract.elements?.length || 0,
+    requestId
   });
   
   const rawText = extract.text ?? '';
@@ -158,7 +168,8 @@ async function summarizeAdobeExtract(
     log('warn', 'adobe_extract_no_text', {
       message: 'Adobe extraction returned no text content',
       hasElements: (extract.elements?.length || 0) > 0,
-      hasTables: (extract.tables?.length || 0) > 0
+      hasTables: (extract.tables?.length || 0) > 0,
+      requestId
     });
     
     return {
@@ -190,7 +201,8 @@ async function summarizeAdobeExtract(
     
   log('debug', 'truncated_text_details', {
     truncatedTextLength: truncatedText.length,
-    truncatedTextPreview: truncatedText.substring(0, 200)
+    truncatedTextPreview: truncatedText.substring(0, 200),
+    requestId
   });
 
   const structuredPayload = JSON.stringify({
@@ -215,15 +227,17 @@ async function summarizeAdobeExtract(
   const res = await (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run('@cf/openai/gpt-oss-20b', {
     input: `${systemPrompt}\n\n${userPrompt}`,
     max_tokens: 800,
-    temperature: 0.1
+    temperature: 0.1,
+    user_request_id: requestId || 'unknown'
   });
 
   logAIProcessing('analyze', 'response.meta', {
     type: typeof res,
-    keys: typeof res === 'object' && res !== null ? Object.keys(res as Record<string, unknown>).slice(0, 10) : []
+    keys: typeof res === 'object' && res !== null ? Object.keys(res as Record<string, unknown>).slice(0, 10) : [],
+    requestId: requestId || 'unknown'
   });
   const result = safeJson(res as Record<string, unknown>);
-  logAIProcessing('analyze', 'safe_json', { result });
+  logAIProcessing('analyze', 'safe_json', { result, requestId: requestId || 'unknown' });
   
   // Add Adobe extraction details to the result for debugging
   const extendedResult = result as ExtendedAnalysisResult;
@@ -394,13 +408,15 @@ const MAX_ANALYSIS_FILE_SIZE = 8 * 1024 * 1024; // 8MB for inline analysis
 async function analyzeWithGenericAI(
   file: File,
   question: string,
-  env: Env
+  env: Env,
+  requestId?: string
 ): Promise<AnalysisResult> {
   try {
     log('info', 'generic_ai_analysis_start', {
       fileName: file.name,
       fileType: file.type,
-      fileSize: file.size
+      fileSize: file.size,
+      requestId
     });
 
     let content = '';
@@ -444,7 +460,8 @@ async function analyzeWithGenericAI(
     log('info', 'generic_ai_analysis_completed', {
       fileName: file.name,
       confidence: result.confidence,
-      summaryLength: result.summary?.length || 0
+      summaryLength: result.summary?.length || 0,
+      requestId
     });
 
     return result;
@@ -488,34 +505,38 @@ function validateAnalysisFile(file: File): { isValid: boolean; error?: string } 
 export async function analyzeWithCloudflareAI(
   file: File,
   question: string,
-  env: Env
+  env: Env,
+  requestId?: string
 ): Promise<ExtendedAnalysisResult> {
   log('debug', 'analyze_with_cloudflare_ai_called', {
     fileType: file.type,
-    fileName: file.name
+    fileName: file.name,
+    requestId
   });
   
   // Try Adobe extraction first
-  log('debug', 'attempting_adobe_extraction', { message: 'Attempting Adobe extraction' });
-  const adobeAnalysis = await attemptAdobeExtract(file, question, env);
+  log('debug', 'attempting_adobe_extraction', { message: 'Attempting Adobe extraction', requestId });
+  const adobeAnalysis = await attemptAdobeExtract(file, question, env, requestId);
   if (adobeAnalysis) {
-    log('debug', 'adobe_analysis_successful', { message: 'Adobe analysis successful, returning result' });
+    log('debug', 'adobe_analysis_successful', { message: 'Adobe analysis successful, returning result', requestId });
     return adobeAnalysis;
   }
   
   // Adobe extraction failed or ineligible - use generic AI fallback
-  log('debug', 'adobe_extraction_failed_fallback', { message: 'Adobe extraction failed, using generic AI fallback' });
+  log('debug', 'adobe_extraction_failed_fallback', { message: 'Adobe extraction failed, using generic AI fallback', requestId });
   log('info', 'adobe_extract_fallback', {
     fileName: file.name,
     fileType: file.type,
-    reason: 'adobe_extraction_failed_or_ineligible'
+    reason: 'adobe_extraction_failed_or_ineligible',
+    requestId
   });
   
-  return await analyzeWithGenericAI(file, question, env);
+  return await analyzeWithGenericAI(file, question, env, requestId);
 }
 
 export async function handleAnalyze(request: Request, env: Env): Promise<Response> {
   const _startTime = Date.now();
+  const requestId = crypto.randomUUID();
   
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
@@ -566,7 +587,8 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
       fileSize: file.size,
       question: question,
       ENABLE_ADOBE_EXTRACT: env.ENABLE_ADOBE_EXTRACT,
-      ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET'
+      ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+      requestId
     });
 
     // Debug: Log Adobe service status
@@ -574,11 +596,12 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
       enableAdobeExtract: env.ENABLE_ADOBE_EXTRACT,
       adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
       adobeClientSecret: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET',
-      fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)
+      fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type),
+      requestId
     });
 
     // Perform analysis
-    const analysis = await analyzeWithCloudflareAI(file, question, env);
+    const analysis = await analyzeWithCloudflareAI(file, question, env, requestId);
     
     // Add debug information to analysis
     const extendedAnalysis = analysis as ExtendedAnalysisResult;
@@ -602,7 +625,8 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
       fileName: file.name,
       confidence: analysis.confidence,
       summaryLength: analysis.summary?.length || 0,
-      keyFactsCount: analysis.key_facts?.length || 0
+      keyFactsCount: analysis.key_facts?.length || 0,
+      requestId
     });
 
     const disclaimer = "Blawby provides general information, not legal advice. No attorney-client relationship is formed. For advice, consult a licensed attorney in your jurisdiction.";

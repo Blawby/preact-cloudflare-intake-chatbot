@@ -195,6 +195,7 @@ export interface FileAttachment {
   size: number;
   type: string;
   url: string;
+  storageKey?: string;
 }
 
 

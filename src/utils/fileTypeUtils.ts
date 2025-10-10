@@ -5,6 +5,7 @@
  * No UI components, just data transformation.
  */
 
+import type { ForwardRefExoticComponent, SVGProps } from 'react';
 import { 
   DocumentIcon, 
   PhotoIcon, 
@@ -18,7 +19,7 @@ import {
 
 export interface FileTypeConfig {
   color: string;
-  icon: React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement> & { title?: string; titleId?: string }>;
+  icon: ForwardRefExoticComponent<SVGProps<SVGSVGElement> & { title?: string; titleId?: string }>;
   label: string;
 }
 

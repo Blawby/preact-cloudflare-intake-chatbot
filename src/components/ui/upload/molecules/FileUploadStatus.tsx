@@ -38,17 +38,18 @@ export const FileUploadStatus = ({ file, onCancel, className }: FileUploadStatus
     }
 
     // Create new URL for image files
+    let createdUrl: string | undefined;
     if (file.file.type.startsWith('image/')) {
-      const newUrl = URL.createObjectURL(file.file);
-      setObjectUrl(newUrl);
+      createdUrl = URL.createObjectURL(file.file);
+      setObjectUrl(createdUrl);
     } else {
       setObjectUrl(undefined);
     }
 
     // Cleanup function to revoke URL on unmount or file change
     return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
       }
     };
   }, [file.file]); // Re-run when file changes

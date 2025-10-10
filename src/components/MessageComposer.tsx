@@ -3,7 +3,7 @@ import { useLayoutEffect } from 'preact/hooks';
 import { Button } from './ui/Button';
 import FileMenu from './FileMenu';
 import MediaControls from './MediaControls';
-import { FileDisplay } from './ui/upload/molecules/FileDisplay';
+import { FileDisplay } from './ui/upload/organisms/FileDisplay';
 import { FileUploadStatus } from './ui/upload/molecules/FileUploadStatus';
 import { ArrowUpIcon } from "@heroicons/react/24/outline";
 import { features } from '../config/features';
