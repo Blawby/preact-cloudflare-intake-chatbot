@@ -92,14 +92,7 @@ const Modal: FunctionComponent<ModalProps> = ({
                     <div 
                         className="absolute inset-0 bg-black bg-opacity-50"
                         onClick={disableBackdropClick ? undefined : onClose}
-                        onKeyDown={disableBackdropClick ? undefined : (e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                onClose();
-                            }
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        aria-label="Close modal"
+                        onKeyDown={disableBackdropClick ? undefined : () => {}}
                     />
                     
                     {/* Content */}
