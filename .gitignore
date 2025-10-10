@@ -71,6 +71,9 @@ migration-report.json
 verification-report.json
 undo-migration.js
 
+# Backups and archives
+backups/
+
 # Misc
 .cache
 .parcel-cache
