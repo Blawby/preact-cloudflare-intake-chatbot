@@ -23,8 +23,8 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
         throw HttpErrors.badRequest('Missing required matter information');
       }
 
-      if (!body.teamId) {
-        throw HttpErrors.badRequest('Missing team ID');
+      if (!body.organizationId) {
+        throw HttpErrors.badRequest('Missing organization ID');
       }
 
       // Use real service for staging.blawby.com, mock for localhost
@@ -88,26 +88,26 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
     }
   }
 
-  // GET /api/payment/history - Get payment history for a user or team
+  // GET /api/payment/history - Get payment history for a user or organization
   if (path === '/api/payment/history' && request.method === 'GET') {
     try {
       const url = new URL(request.url);
-      const teamId = url.searchParams.get('teamId');
+      const organizationId = url.searchParams.get('organizationId');
       const customerEmail = url.searchParams.get('customerEmail');
       const limit = parseInt(url.searchParams.get('limit') || '50');
       const offset = parseInt(url.searchParams.get('offset') || '0');
 
-      if (!teamId && !customerEmail) {
-        throw HttpErrors.badRequest('Either teamId or customerEmail is required');
+      if (!organizationId && !customerEmail) {
+        throw HttpErrors.badRequest('Either organizationId or customerEmail is required');
       }
 
       let query = 'SELECT * FROM payment_history';
       let params: unknown[] = [];
       const conditions = [];
 
-      if (teamId) {
-        conditions.push('team_id = ?');
-        params.push(teamId);
+      if (organizationId) {
+        conditions.push('organization_id = ?');
+        params.push(organizationId);
       }
 
       if (customerEmail) {
@@ -145,7 +145,7 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
   if (path === '/api/payment/stats' && request.method === 'GET') {
     try {
       const url = new URL(request.url);
-      const teamId = url.searchParams.get('teamId');
+      const organizationId = url.searchParams.get('organizationId');
       const period = url.searchParams.get('period') || '30'; // days
 
       let query = `
@@ -162,9 +162,9 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
 
       let params: unknown[] = [];
 
-      if (teamId) {
-        query += ' AND team_id = ?';
-        params.push(teamId);
+      if (organizationId) {
+        query += ' AND organization_id = ?';
+        params.push(organizationId);
       }
 
       const stats = await env.DB.prepare(query).bind(...params).first();
@@ -287,14 +287,14 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
       // Store payment history
       await env.DB.prepare(`
         INSERT INTO payment_history (
-          payment_id, team_id, customer_email, amount, status, 
+          payment_id, organization_id, customer_email, amount, status, 
           event_type, metadata, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         ON CONFLICT(payment_id) DO UPDATE SET
           status = ?, updated_at = datetime('now')
       `).bind(
         paymentId,
-        body.teamId || 'unknown',
+        body.organizationId || 'unknown',
         customerEmail,
         amount,
         status,

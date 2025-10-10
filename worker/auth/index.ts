@@ -152,31 +152,30 @@ export async function getAuth(env: Env) {
               },
             }),
           ],
-        }
-      ),
-    },
-    // Add hooks for organization auto-creation
-    hooks: {
-      after: [
-        {
-          matcher: (context) => {
-            // Match signup and email verification events
-            return context.path === "/sign-up" || context.path === "/verify-email";
-          },
-          handler: async (context) => {
-            if (context.user && context.user.emailVerified) {
-              console.log(`Running post-signup hook for user ${context.user.id}`);
-              await handlePostSignup(
-                context.user.id,
-                context.user.name || 'User',
-                env
-              );
-            }
+          // Add hooks for organization auto-creation
+          hooks: {
+            after: [
+              {
+                matcher: (context) => {
+                  // Match signup and email verification events
+                  return context.path === "/sign-up" || context.path === "/verify-email";
+                },
+                handler: async (context) => {
+                  if (context.user && context.user.emailVerified) {
+                    console.log(`Running post-signup hook for user ${context.user.id}`);
+                    await handlePostSignup(
+                      context.user.id,
+                      context.user.name || 'User',
+                      env
+                    );
+                  }
+                }
+              }
+            ]
           }
         }
-      ]
-    }
-  });
+      )
+    });
   }
   
   return authInstance;

@@ -16,11 +16,11 @@ export default {
       try {
         // Handle auto-analysis events
         if ('type' in msg.body && msg.body.type === "analyze_uploaded_document") {
-          const { sessionId, teamId, file, statusId } = msg.body as AutoAnalysisEvent;
+          const { sessionId, organizationId, file, statusId } = msg.body as AutoAnalysisEvent;
           
           console.log('🧩 Auto-analysis started for uploaded document', { 
             sessionId, 
-            teamId, 
+            organizationId, 
             file: file.name,
             mime: file.mime,
             statusId
@@ -37,7 +37,7 @@ export default {
             await StatusService.setStatus(env, {
               id: statusId,
               sessionId,
-              teamId,
+              organizationId,
               type: 'file_processing',
               status: 'processing',
               message: "📁 File uploaded, starting analysis...",
@@ -47,14 +47,14 @@ export default {
           }
           
           // Send initial status message
-          await SessionService.sendAnalysisStatus(env, sessionId, teamId, "📄 Analyzing document...");
+          await SessionService.sendAnalysisStatus(env, sessionId, organizationId, "📄 Analyzing document...");
           
           // Step 2: Check storage (25%)
           if (statusId) {
             await StatusService.setStatus(env, {
               id: statusId,
               sessionId,
-              teamId,
+              organizationId,
               type: 'file_processing',
               status: 'processing',
               message: "🗄️ Checking file storage...",
@@ -69,7 +69,7 @@ export default {
               await StatusService.setStatus(env, {
                 id: statusId,
                 sessionId,
-                teamId,
+                organizationId,
                 type: 'file_processing',
                 status: 'failed',
                 message: "❌ Document storage is not configured",
@@ -77,7 +77,7 @@ export default {
                 data: { fileName: file.name }
               }, statusCreatedAt ?? undefined);
             }
-            await SessionService.sendAnalysisStatus(env, sessionId, teamId, "❌ Document storage is not configured");
+            await SessionService.sendAnalysisStatus(env, sessionId, organizationId, "❌ Document storage is not configured");
             const failureAnalysis: AnalysisResult = {
               summary: "Storage not configured",
               entities: { people: [], orgs: [], dates: [] },
@@ -86,7 +86,7 @@ export default {
               confidence: 0,
               error: "FILES_BUCKET is not available"
             };
-            await SessionService.sendAnalysisComplete(env, sessionId, teamId, failureAnalysis);
+            await SessionService.sendAnalysisComplete(env, sessionId, organizationId, failureAnalysis);
             await msg.ack();
             continue;
           }
@@ -96,7 +96,7 @@ export default {
             await StatusService.setStatus(env, {
               id: statusId,
               sessionId,
-              teamId,
+              organizationId,
               type: 'file_processing',
               status: 'processing',
               message: "📥 Retrieving file from storage...",
@@ -112,7 +112,7 @@ export default {
               await StatusService.setStatus(env, {
                 id: statusId,
                 sessionId,
-                teamId,
+                organizationId,
                 type: 'file_processing',
                 status: 'failed',
                 message: "❌ Document not found for analysis",
@@ -120,7 +120,7 @@ export default {
                 data: { fileName: file.name }
               }, statusCreatedAt ?? undefined);
             }
-            await SessionService.sendAnalysisStatus(env, sessionId, teamId, "❌ Document not found for analysis");
+            await SessionService.sendAnalysisStatus(env, sessionId, organizationId, "❌ Document not found for analysis");
             
             // Send analysis complete with failure payload
             const failureAnalysis: AnalysisResult = {
@@ -132,7 +132,7 @@ export default {
               error: "Document not found for analysis"
             };
             
-            await SessionService.sendAnalysisComplete(env, sessionId, teamId, failureAnalysis);
+            await SessionService.sendAnalysisComplete(env, sessionId, organizationId, failureAnalysis);
             await msg.ack();
             continue;
           }
@@ -146,7 +146,7 @@ export default {
             await StatusService.setStatus(env, {
               id: statusId,
               sessionId,
-              teamId,
+              organizationId,
               type: 'file_processing',
               status: 'processing',
               message: "🔍 Analyzing document content...",
@@ -162,7 +162,7 @@ export default {
             file.mime,
             buf,
             sessionId,
-            teamId,
+            organizationId,
             statusId
           );
 
@@ -181,7 +181,7 @@ export default {
           );
           
           // Send final analysis result
-          await SessionService.sendAnalysisComplete(env, sessionId, teamId, analysis);
+          await SessionService.sendAnalysisComplete(env, sessionId, organizationId, analysis);
           
           // Update file_processing status to completed
           if (statusId) {
@@ -189,7 +189,7 @@ export default {
               await StatusService.setStatus(env, {
                 id: statusId,
                 sessionId,
-                teamId,
+                organizationId,
                 type: 'file_processing',
                 status: 'completed',
                 message: `Analysis of ${file.name} completed successfully`,
@@ -213,7 +213,7 @@ export default {
         }
 
         // Handle legacy document processing
-        const { key, teamId: _teamId, sessionId, mime } = msg.body as DocumentEvent;
+        const { key, organizationId: _organizationId, sessionId, mime } = msg.body as DocumentEvent;
         
         if (!env.FILES_BUCKET) {
           msg.retry();
@@ -275,7 +275,7 @@ async function performDocumentAnalysis(
   mime: string,
   buf: ArrayBuffer,
   sessionId?: string,
-  teamId?: string,
+  organizationId?: string,
   statusId?: string
 ): Promise<AnalysisResult> {
   let analysis: AnalysisResult | undefined;
@@ -289,11 +289,11 @@ async function performDocumentAnalysis(
 
   if (adobeEligible && adobeService.isEnabled()) {
     // Step 4a: Adobe extraction (70%)
-    if (statusId && sessionId && teamId) {
+    if (statusId && sessionId && organizationId) {
       await StatusService.setStatus(env, {
         id: statusId,
         sessionId,
-        teamId,
+        organizationId,
         type: 'file_processing',
         status: 'processing',
         message: "🔍 Extracting document content with Adobe...",
@@ -302,8 +302,8 @@ async function performDocumentAnalysis(
       }, statusCreatedAt ?? undefined);
     }
     
-    if (sessionId && teamId) {
-      await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Extracting document content...");
+    if (sessionId && organizationId) {
+      await SessionService.sendAnalysisStatus(env, sessionId, organizationId, "🔍 Extracting document content...");
     }
     
     const adobeResult = await adobeService.extractFromBuffer(
@@ -314,11 +314,11 @@ async function performDocumentAnalysis(
     
     if (adobeResult.success && adobeResult.details) {
       // Step 4b: AI summarization (80%)
-      if (statusId && sessionId && teamId) {
+      if (statusId && sessionId && organizationId) {
         await StatusService.setStatus(env, {
           id: statusId,
           sessionId,
-          teamId,
+          organizationId,
           type: 'file_processing',
           status: 'processing',
           message: "🤖 Summarizing with AI...",
@@ -327,16 +327,16 @@ async function performDocumentAnalysis(
         }, statusCreatedAt ?? undefined);
       }
       
-      if (sessionId && teamId) {
-        await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Summarizing document...");
+      if (sessionId && organizationId) {
+        await SessionService.sendAnalysisStatus(env, sessionId, organizationId, "🔍 Summarizing document...");
       }
-      analysis = await summarizeAdobeResult(env, adobeResult.details, sessionId, teamId, statusId);
+      analysis = await summarizeAdobeResult(env, adobeResult.details, sessionId, organizationId, statusId);
     } else {
-      if (statusId && sessionId && teamId) {
+      if (statusId && sessionId && organizationId) {
         await StatusService.setStatus(env, {
           id: statusId,
           sessionId,
-          teamId,
+          organizationId,
           type: 'file_processing',
           status: 'processing',
           message: "🔄 Adobe extraction unavailable, using alternative analysis...",
@@ -353,13 +353,13 @@ async function performDocumentAnalysis(
 
   if (!analysis) {
     if (mime.startsWith('image/')) {
-      if (sessionId && teamId) {
-        await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Analyzing image content...");
+      if (sessionId && organizationId) {
+        await SessionService.sendAnalysisStatus(env, sessionId, organizationId, "🔍 Analyzing image content...");
       }
       analysis = await analyzeImage(env, new Uint8Array(buf));
     } else if (mime === 'application/pdf') {
-      if (sessionId && teamId) {
-        await SessionService.sendAnalysisStatus(env, sessionId, teamId, "❌ Unable to analyze PDF document");
+      if (sessionId && organizationId) {
+        await SessionService.sendAnalysisStatus(env, sessionId, organizationId, "❌ Unable to analyze PDF document");
       }
       analysis = {
         summary: "PDF document could not be analyzed. Adobe extraction failed and text-based analysis is not available for binary PDF files.",
@@ -371,11 +371,11 @@ async function performDocumentAnalysis(
       };
     } else {
       // Step 4c: Text processing fallback (80%)
-      if (statusId && sessionId && teamId) {
+      if (statusId && sessionId && organizationId) {
         await StatusService.setStatus(env, {
           id: statusId,
           sessionId,
-          teamId,
+          organizationId,
           type: 'file_processing',
           status: 'processing',
           message: "📝 Processing document text...",
@@ -384,18 +384,18 @@ async function performDocumentAnalysis(
         }, statusCreatedAt ?? undefined);
       }
       
-      if (sessionId && teamId) {
-        await SessionService.sendAnalysisStatus(env, sessionId, teamId, "🔍 Processing document text...");
+      if (sessionId && organizationId) {
+        await SessionService.sendAnalysisStatus(env, sessionId, organizationId, "🔍 Processing document text...");
       }
       const text = new TextDecoder().decode(buf);
-      analysis = await summarizeLegal(env, text, sessionId, teamId, statusId, statusCreatedAt);
+      analysis = await summarizeLegal(env, text, sessionId, organizationId, statusId, statusCreatedAt);
     }
   }
 
   return analysis;
 }
 
-async function summarizeLegal(env: Env, text: string, sessionId?: string, teamId?: string, statusId?: string, statusCreatedAt?: number) {
+async function summarizeLegal(env: Env, text: string, sessionId?: string, organizationId?: string, statusId?: string, statusCreatedAt?: number) {
   const prompt = [
     "You are a legal intake summarizer. Output JSON with fields:",
     "summary, key_facts[], entities{people[],orgs[],dates[]}, action_items[], confidence(0-1).",
@@ -405,11 +405,11 @@ async function summarizeLegal(env: Env, text: string, sessionId?: string, teamId
   const truncated = text.length > MAX_TEXT_CHARS ? `${text.slice(0, MAX_TEXT_CHARS)}...` : text;
   
   // Step 4d: AI analysis (90%)
-  if (statusId && sessionId && teamId) {
+  if (statusId && sessionId && organizationId) {
     await StatusService.setStatus(env, {
       id: statusId,
       sessionId,
-      teamId,
+      organizationId,
       type: 'file_processing',
       status: 'processing',
       message: "🤖 Analyzing with AI...",
@@ -493,7 +493,7 @@ function buildSafeStructuredPayload(tables: Record<string, unknown>[], elements:
   return '[structured data omitted - too large]';
 }
 
-async function summarizeAdobeResult(env: Env, extract: AdobeExtractSuccess, sessionId?: string, teamId?: string, statusId?: string) {
+async function summarizeAdobeResult(env: Env, extract: AdobeExtractSuccess, sessionId?: string, organizationId?: string, statusId?: string) {
   const text = extract.text ?? '';
   const structured = buildSafeStructuredPayload(
     (extract.tables ?? []) as Record<string, unknown>[], 

@@ -20,16 +20,25 @@ A production-ready legal intake chatbot built with Cloudflare Workers AI, featur
 
 2. **Set up environment**
    ```bash
-   cp .dev.vars.example .dev.vars
+   cp dev.vars.example .dev.vars
    # Edit .dev.vars with your API keys
    ```
 
-3. **Start development**
+3. **Set up local database**
+   ```bash
+   # Apply database schema
+   wrangler d1 execute blawby-ai-chatbot --local --file=./worker/schema.sql
+   
+   # Apply Better Auth migrations
+   wrangler d1 execute blawby-ai-chatbot --local --file=./migrations/add_better_auth_organization.sql
+   ```
+
+4. **Start development**
    ```bash
    npm run dev:full  # Both frontend and worker
    ```
 
-4. **Deploy to Cloudflare**
+5. **Deploy to Cloudflare**
    ```bash
    wrangler deploy
    ```
@@ -39,7 +48,7 @@ A production-ready legal intake chatbot built with Cloudflare Workers AI, featur
 - **🤖 AI-Powered Legal Intake**: Intelligent conversation handling with Cloudflare Workers AI
 - **📋 Lead Qualification**: Smart filtering to ensure quality leads before contact collection
 - **⚖️ Matter Classification**: Automatic legal issue categorization (Employment, Family, Personal Injury, etc.)
-- **💰 Payment Integration**: Automated consultation fee collection with team configuration
+- **💰 Payment Integration**: Automated consultation fee collection with organization configuration
 - **👨‍💼 Human Review Queue**: Lawyer oversight for urgent/complex matters
 - **📱 Mobile-First Design**: Responsive interface with modern UI/UX
 - **📎 File Upload Support**: Photos, videos, audio, documents (25MB max) with camera capture
@@ -55,7 +64,7 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 **Core Components:**
 - **Legal Intake Agent**: Self-contained AI with built-in memory and tool execution
 - **Tool Handlers**: Modular functions for contact collection, matter creation, lawyer review
-- **Team Configuration**: Dynamic payment and service configuration per team
+- **organization Configuration**: Dynamic payment and service configuration per organization
 - **Review Queue**: Human-in-the-loop system for lawyer oversight
 
 ## 🛠️ **Technology Stack**
@@ -112,18 +121,24 @@ Copy `.dev.vars.example` to `.dev.vars` and add your API keys:
 - Contributors can follow the workflow in `docs/i18n.md` to add new strings or locales.
 - Run `npm run lint:i18n` before committing to make sure every locale contains the same keys as the English baseline.
 
-### Team Management
-Teams are managed via REST API:
+### Organization Management
+Organizations are managed via REST API:
 ```bash
-# List teams
-curl -X GET http://localhost:8787/api/teams
+# List organizations
+curl -X GET http://localhost:8787/api/organizations
 
-# Create team (requires admin token)
-curl -X POST http://localhost:8787/api/teams \
+# Create organization (requires admin token)
+curl -X POST http://localhost:8787/api/organizations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{"slug": "new-team", "name": "New Team", "config": {"aiModel": "@cf/openai/gpt-oss-20b"}}'
+  -d '{"slug": "new-organization", "name": "New Organization", "config": {"aiModel": "@cf/openai/gpt-oss-20b"}}'
 ```
+
+### Authentication & User Management
+User authentication and organization membership is handled by Better Auth:
+- Users sign up/sign in through the `/auth` page
+- Organization membership and roles are managed through Better Auth
+- Access the application with `?organizationId=<org-slug>` parameter
 
 ## 🔒 **Security**
 

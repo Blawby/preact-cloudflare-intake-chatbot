@@ -27,7 +27,7 @@ describe('Matter Creation API Integration Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
+          organizationId: 'north-carolina-legal-services',
           step: 'service-selection',
           sessionId: 'test-session',
         }),
@@ -60,7 +60,7 @@ describe('Matter Creation API Integration Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
+          organizationId: 'north-carolina-legal-services',
           step: 'service-selection',
           service: 'Family Law',
           sessionId: 'test-session',
@@ -95,7 +95,7 @@ describe('Matter Creation API Integration Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
+          organizationId: 'north-carolina-legal-services',
           step: 'questions',
           service: 'Family Law',
           currentQuestionIndex: 1,
@@ -127,7 +127,7 @@ describe('Matter Creation API Integration Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
+          organizationId: 'north-carolina-legal-services',
           step: 'questions',
           service: 'Family Law',
           currentQuestionIndex: 5,
@@ -170,7 +170,7 @@ describe('Matter Creation API Integration Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
+          organizationId: 'north-carolina-legal-services',
           step: 'matter-details',
           service: 'Family Law',
           description: 'Seeking divorce after 10 years of marriage. Have two children ages 8 and 12.',
@@ -199,11 +199,11 @@ describe('Matter Creation API Integration Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle invalid team ID', async () => {
+    it('should handle invalid organization ID', async () => {
       const mockResponse = {
         ok: false,
         status: 404,
-        json: () => Promise.resolve({ error: 'Team not found' }),
+        json: () => Promise.resolve({ error: 'Organization not found' }),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
@@ -213,7 +213,7 @@ describe('Matter Creation API Integration Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          teamId: 'non-existent-team',
+          organizationId: 'non-existent-organization',
           step: 'service-selection',
         }),
       });
@@ -235,7 +235,7 @@ describe('Matter Creation API Integration Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          teamId: 'north-carolina-legal-services',
+          organizationId: 'north-carolina-legal-services',
           // Missing step
         }),
       });

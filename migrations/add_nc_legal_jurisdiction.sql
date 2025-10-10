@@ -1,7 +1,7 @@
 -- Add jurisdiction configuration to North Carolina Legal Services
--- This enables location-based validation for the team
+-- This enables location-based validation for the organization
 
-UPDATE teams 
+UPDATE organizations 
 SET config = json_patch(config, json('{
   "jurisdiction": {
     "type": "state",

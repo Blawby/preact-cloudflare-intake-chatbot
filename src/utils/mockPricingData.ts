@@ -110,9 +110,9 @@ const FEATURE_DEFINITIONS = {
       business: 'Unlimited'
     }
   },
-  teamCollaboration: {
-    name: 'Team Collaboration',
-    description: 'Shared projects and team features',
+  organizationCollaboration: {
+    name: 'Organization Collaboration',
+    description: 'Shared projects and organization features',
     icon: UserGroupIcon,
     tiers: {
       free: false,
@@ -204,7 +204,7 @@ const PRICING_PLANS: PricingPlan[] = [
       'Limited to 20 messages per day',
       'Basic document analysis support',
       'Standard response times',
-      'No team collaboration features'
+      'No organization collaboration features'
     ],
     benefits: [
       'Perfect for personal legal needs',
@@ -233,7 +233,7 @@ const PRICING_PLANS: PricingPlan[] = [
     isRecommended: true,
     limitations: [
       'Limited to 200 messages per day',
-      'No team collaboration features',
+      'No organization collaboration features',
       'Standard support response times'
     ],
     benefits: [
@@ -250,16 +250,16 @@ const PRICING_PLANS: PricingPlan[] = [
     priceAmount: 25,
     currency: 'USD',
     billingPeriod: 'month',
-    description: 'Secure, collaborative workspace for teams',
+    description: 'Secure, collaborative workspace for organizations',
     features: [
       { icon: PlusIcon, text: 'Everything in Plus, with even higher limits', description: 'All Plus features with unlimited usage' },
       { icon: CpuChipIcon, text: 'Unlimited access to our best model for work', description: 'Unlimited access to advanced AI models' },
       { icon: VideoCameraIcon, text: 'Advanced document analysis & case preparation', description: 'Full legal document processing capabilities' },
       { icon: LockClosedIcon, text: 'Advanced security with SSO, MFA, & more', description: 'Enterprise-grade security features' },
       { icon: EyeSlashIcon, text: 'Privacy built in; data never used for training', description: 'Complete data privacy protection' },
-      { icon: UserGroupIcon, text: 'Tools for teams like shared projects & workflows', description: 'Team collaboration and project management' },
+      { icon: UserGroupIcon, text: 'Tools for organizations like shared projects & workflows', description: 'Organization collaboration and project management' },
       { icon: ShareIcon, text: 'Integration with Quickbooks & other tools', description: 'Connect with your existing workflow' },
-      { icon: CurrencyDollarIcon, text: 'Simplified billing and user management', description: 'Easy team and billing management' },
+      { icon: CurrencyDollarIcon, text: 'Simplified billing and user management', description: 'Easy organization and billing management' },
       { icon: MicrophoneIcon, text: 'Voice transcription and analysis', description: 'Voice transcription and legal analysis' },
       { icon: Cog6ToothIcon, text: 'Legal research and lawyer search agents', description: 'Specialized AI agents for legal research and lawyer matching' }
     ],
@@ -271,7 +271,7 @@ const PRICING_PLANS: PricingPlan[] = [
     ],
     benefits: [
       'Unlimited usage',
-      'Team collaboration',
+      'Organization collaboration',
       'Enterprise security',
       'Priority support',
       'Custom integrations'

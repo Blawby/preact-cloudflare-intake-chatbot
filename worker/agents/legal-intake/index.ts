@@ -1,5 +1,5 @@
 import type { Env, AgentMessage, AgentResponse, FileAttachment } from '../../types.js';
-import { TeamService, type Team, buildDefaultTeamConfig } from '../../services/TeamService.js';
+import { OrganizationService, type Organization, buildDefaultOrganizationConfig } from '../../services/OrganizationService.js';
 import { ConversationContextManager } from '../../middleware/conversationContextManager.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolCallParser } from '../../utils/toolCallParser.js';
@@ -67,18 +67,18 @@ const CACHE_CONFIG = {
   MAX_SIZE: 100
 } as const;
 
-const PUBLIC_TEAM_IDS = new Set(['blawby-ai']);
+const PUBLIC_ORGANIZATION_IDS = new Set(['blawby-ai']);
 
 function resolveAIExecutionPlan(
   env: Env,
-  team: Team | null,
+  organization: Organization | null,
   overrides?: AIExecutionOverrides
 ): AIExecutionPlan {
-  const defaults = buildDefaultTeamConfig(env);
+  const defaults = buildDefaultOrganizationConfig(env);
 
   const providerCandidate = [
     overrides?.provider,
-    team?.config?.aiProvider,
+    organization?.config?.aiProvider,
     defaults.aiProvider,
     DEFAULT_AI_PROVIDER
   ].find(value => typeof value === 'string' && value.trim().length > 0);
@@ -87,7 +87,7 @@ function resolveAIExecutionPlan(
 
   const modelCandidate = [
     overrides?.model,
-    team?.config?.aiModel,
+    organization?.config?.aiModel,
     defaults.aiModel,
     DEFAULT_LEGACY_MODEL
   ].find(value => typeof value === 'string' && value.trim().length > 0);
@@ -95,9 +95,9 @@ function resolveAIExecutionPlan(
   const model = (typeof modelCandidate === 'string' ? modelCandidate.trim() : '') || DEFAULT_LEGACY_MODEL;
 
   const fallbackCandidates: string[] = [];
-  const teamFallback = team?.config?.aiModelFallback;
-  if (Array.isArray(teamFallback)) {
-    fallbackCandidates.push(...teamFallback);
+  const organizationFallback = organization?.config?.aiModelFallback;
+  if (Array.isArray(organizationFallback)) {
+    fallbackCandidates.push(...organizationFallback);
   }
   if (Array.isArray(defaults.aiModelFallback)) {
     fallbackCandidates.push(...defaults.aiModelFallback);
@@ -239,7 +239,7 @@ async function executeModelWithFallback<T>(
 
 function shouldShowContactFormPreemptively(
   context: ConversationContext,
-  team: Team | null,
+  organization: Organization | null,
   messages: readonly AgentMessage[]
 ): boolean {
   const nameValue = context.contactInfo?.name?.trim() ?? '';
@@ -256,7 +256,7 @@ function shouldShowContactFormPreemptively(
     && !hasPlaceholderValue(phoneValue);
   const hasReachableContact = emailUsable || phoneUsable;
 
-  const requiresLocation = team?.config?.jurisdiction?.type === 'state';
+  const requiresLocation = organization?.config?.jurisdiction?.type === 'state';
   const hasValidLocation = !requiresLocation
     || (locationValue.length > 0 && !hasPlaceholderValue(locationValue) && ValidationService.validateLocation(locationValue));
 
@@ -306,7 +306,7 @@ function shouldFallbackToContactForm(
   messages: readonly AgentMessage[],
   observedToolCalls: ToolCall[],
   finalResponse: string,
-  team: Team | null
+  organization: Organization | null
 ): boolean {
   if (observedToolCalls.length > 0) {
     return false;
@@ -316,7 +316,7 @@ function shouldFallbackToContactForm(
     return false;
   }
 
-  if (shouldShowContactFormPreemptively(context, team, messages)) {
+  if (shouldShowContactFormPreemptively(context, organization, messages)) {
     return true;
   }
 
@@ -694,8 +694,8 @@ const createPaymentInvoice: ToolDefinition = {
 // UTILITY FUNCTIONS
 // ============================================================================
 
-function isPublicMode(teamId?: string | null): boolean {
-  return !teamId || PUBLIC_TEAM_IDS.has(teamId);
+function isPublicMode(organizationId?: string | null): boolean {
+  return !organizationId || PUBLIC_ORGANIZATION_IDS.has(organizationId);
 }
 
 function hasPlaceholderValue(value: string | undefined | null): boolean {
@@ -705,24 +705,24 @@ function hasPlaceholderValue(value: string | undefined | null): boolean {
 
 
 // ============================================================================
-// TEAM CONFIG CACHE
+// ORGANIZATION CONFIG CACHE
 // ============================================================================
 
-class TeamCache {
-  private cache = new Map<string, { team: Team; timestamp: number }>();
+class OrganizationCache {
+  private cache = new Map<string, { organization: Organization; timestamp: number }>();
 
-  async get(teamId: string, env: Env): Promise<Team | null> {
-    const cached = this.cache.get(teamId);
+  async get(organizationId: string, env: Env): Promise<Organization | null> {
+    const cached = this.cache.get(organizationId);
     if (cached && Date.now() - cached.timestamp < CACHE_CONFIG.TTL_MS) {
-      return cached.team;
+      return cached.organization;
     }
 
     try {
-      const teamService = new TeamService(env);
-      const team = await teamService.getTeam(teamId);
+      const organizationService = new OrganizationService(env);
+      const organization = await organizationService.getOrganization(organizationId);
       
-      if (team) {
-        this.cache.set(teamId, { team, timestamp: Date.now() });
+      if (organization) {
+        this.cache.set(organizationId, { organization, timestamp: Date.now() });
         
         // Cleanup old entries
         if (this.cache.size > CACHE_CONFIG.MAX_SIZE) {
@@ -732,10 +732,10 @@ class TeamCache {
         }
       }
       
-      return team;
+      return organization;
     } catch (error) {
-      Logger.error('Failed to retrieve team configuration', { 
-        teamId, 
+      Logger.error('Failed to retrieve organization configuration', { 
+        organizationId, 
         error: error instanceof Error ? error.message : String(error) 
       });
       return null;
@@ -743,7 +743,7 @@ class TeamCache {
   }
 }
 
-const teamCache = new TeamCache();
+const organizationCache = new OrganizationCache();
 
 // ============================================================================
 // CONTEXT DETECTION
@@ -916,13 +916,13 @@ class ContextDetector {
 // ============================================================================
 
 class PromptBuilder {
-  static build(context: ConversationContext, team: Team | null, teamId?: string | null): string {
-    const teamName = team?.name || 'our law firm';
-    const publicMode = isPublicMode(teamId);
-    const requiresLocation = team?.config?.jurisdiction?.type === 'state';
+  static build(context: ConversationContext, organization: Organization | null, organizationId?: string | null): string {
+    const organizationName = organization?.name || 'our law firm';
+    const publicMode = isPublicMode(organizationId);
+    const requiresLocation = organization?.config?.jurisdiction?.type === 'state';
     
     const locationRequirement = requiresLocation ? 
-      `\nIMPORTANT: This team requires location information (city and state) before proceeding with contact forms or matter creation. Always ask for location first if not provided.` : '';
+      `\nIMPORTANT: This organization requires location information (city and state) before proceeding with contact forms or matter creation. Always ask for location first if not provided.` : '';
     
     const hasLocationFlag = context.safetyFlags?.includes('location_required');
     const locationFlagMessage = hasLocationFlag ? 
@@ -931,7 +931,7 @@ class PromptBuilder {
     const isSkipToLawyer = context.userIntent === 'skip_to_lawyer' || 
                            context.conversationPhase === 'showing_contact_form';
     const skipToLawyerMessage = isSkipToLawyer ? 
-      `\nURGENT: The user wants to skip the intake process and contact the legal team directly. You MUST immediately show the contact form using the show_contact_form tool.` : '';
+      `\nURGENT: The user wants to skip the intake process and contact the legal organization directly. You MUST immediately show the contact form using the show_contact_form tool.` : '';
     
     const styleGuidance = publicMode
       ? `- Keep responses to three short sentences or fewer.
@@ -941,7 +941,7 @@ class PromptBuilder {
 - Transition to the contact form or explain precisely what is still needed instead of rehashing prior guidance.
 - Keep answers crisp and professional; avoid script-style introductions.`;
     
-    return `You are a legal intake specialist for ${teamName}.
+    return `You are a legal intake specialist for ${organizationName}.
 Current situation: ${context.legalIssueType ? `Client has ${context.legalIssueType} issue` : 'Gathering information'}${locationRequirement}${locationFlagMessage}${skipToLawyerMessage}
 Available tools: create_matter, show_contact_form, request_lawyer_review, create_payment_invoice
 
@@ -964,7 +964,7 @@ DECISION TREE:
 - Always start by briefly reflecting the user's latest concern so they know you understood (e.g., "I'm sorry you were fired").
 - Be concise and skip pleasantries; respond to the user's latest question directly
 - Let middleware-driven UI (case drafts, checklists, PDFs) speak for itself—mention them briefly rather than describing their contents
-- Only show contact form when user explicitly asks to skip intake or contact the team directly
+- Only show contact form when user explicitly asks to skip intake or contact the organization directly
 - For employment law issues, ask specific questions like: "When were you fired?", "What reason was given?", "Do you have any documentation?"
 - When you don't yet have contact information, collect at least two concrete qualifiers (e.g., reason, timeline, urgency) before moving on.
 
@@ -1472,11 +1472,11 @@ async function consumeAIStream(
 class ToolExecutor {
   constructor(
     private env: Env,
-    private team: Team | null,
+    private organization: Organization | null,
     private sse: SSEController,
     private correlationId: string,
     private sessionId?: string,
-    private teamId?: string
+    private organizationId?: string
   ) {}
 
   async execute(toolCall: ToolCall): Promise<void> {
@@ -1487,7 +1487,7 @@ class ToolExecutor {
           parameters: toolCall.arguments,
           correlationId: this.correlationId,
           sessionId: this.sessionId,
-          teamId: this.teamId
+          organizationId: this.organizationId
         });
         
         toolCall = { name: 'show_contact_form', arguments: {} };
@@ -1506,7 +1506,7 @@ class ToolExecutor {
       LegalIntakeLogger.logToolCall(
         this.correlationId,
         this.sessionId,
-        this.teamId,
+        this.organizationId,
         LegalIntakeOperation.TOOL_CALL_FAILED,
         toolCall.name,
         toolCall.arguments,
@@ -1520,7 +1520,7 @@ class ToolExecutor {
     LegalIntakeLogger.logToolCall(
       this.correlationId,
       this.sessionId,
-      this.teamId,
+      this.organizationId,
       LegalIntakeOperation.TOOL_CALL_START,
       toolCall.name,
       toolCall.arguments
@@ -1530,17 +1530,17 @@ class ToolExecutor {
       const toolResult = await handler(
         toolCall.arguments,
         this.env,
-        this.team,
+        this.organization,
         this.correlationId,
         this.sessionId,
-        this.teamId
+        this.organizationId
       );
 
       ToolUsageMonitor.recordToolUsage(toolCall.name, toolResult.success);
       LegalIntakeLogger.logToolCall(
         this.correlationId,
         this.sessionId,
-        this.teamId,
+        this.organizationId,
         LegalIntakeOperation.TOOL_CALL_SUCCESS,
         toolCall.name,
         toolCall.arguments,
@@ -1578,7 +1578,7 @@ class ToolExecutor {
       LegalIntakeLogger.logToolCall(
         this.correlationId,
         this.sessionId,
-        this.teamId,
+        this.organizationId,
         LegalIntakeOperation.TOOL_CALL_FAILED,
         toolCall.name,
         toolCall.arguments,
@@ -1603,7 +1603,7 @@ class ToolExecutor {
       ? toolResult.data as ContactFormResponse
       : null;
 
-    const requiresLocation = this.team?.config?.jurisdiction?.type === 'state';
+    const requiresLocation = this.organization?.config?.jurisdiction?.type === 'state';
     
     const requiredFields = ['name', 'email', 'phone'];
     if (requiresLocation) {
@@ -1657,10 +1657,10 @@ class ToolExecutor {
 async function handleCreateMatter(
   parameters: Record<string, unknown>,
   env: Env,
-  team: Team | null,
+  organization: Organization | null,
   correlationId?: string,
   sessionId?: string,
-  teamId?: string
+  organizationId?: string
 ): Promise<ToolResult> {
   Logger.debug('[handleCreateMatter] parameters:', 
     ToolCallParser.sanitizeParameters(parameters));
@@ -1746,25 +1746,25 @@ async function handleCreateMatter(
       urgency: finalUrgency,
       opposingParty: (opposing_party as string) || ''
     },
-    teamId: team?.id || env.BLAWBY_TEAM_ULID,
+    organizationId: organization?.id || env.BLAWBY_ORGANIZATION_ULID,
     sessionId: sessionId || 'session-' + Date.now()
   };
 
-  if (!paymentRequest.teamId) {
-    throw new Error('Team ID not configured - cannot process payment');
+  if (!paymentRequest.organizationId) {
+    throw new Error('Organization ID not configured - cannot process payment');
   }
 
   const { invoiceUrl, paymentId } = await PaymentServiceFactory.processPayment(
     env, 
     paymentRequest, 
-    team
+    organization
   );
 
   const orchestrationResult = await ContactIntakeOrchestrator.finalizeSubmission({
     env,
-    teamConfig: team,
+    organizationConfig: organization,
     sessionId,
-    teamId,
+    organizationId,
     correlationId,
     matter: {
       matterType: matter_type as string,
@@ -1778,8 +1778,8 @@ async function handleCreateMatter(
     }
   });
 
-  const requiresPayment = team?.config?.requiresPayment || false;
-  const consultationFee = team?.config?.consultationFee || 0;
+  const requiresPayment = organization?.config?.requiresPayment || false;
+  const consultationFee = organization?.config?.consultationFee || 0;
 
   const { generateCompleteMatterMessage } = await import('../../utils/messageTemplates');
   const { analyzeMissingInfo } = await import('../../../src/utils/matterAnalysis');
@@ -1805,7 +1805,7 @@ async function handleCreateMatter(
     urgency: finalUrgency,
     requiresPayment: requiresPayment && consultationFee > 0,
     consultationFee,
-    paymentLink: invoiceUrl || team?.config?.paymentLink,
+    paymentLink: invoiceUrl || organization?.config?.paymentLink,
     pdfFilename: orchestrationResult.pdf?.filename,
     missingInfo
   };
@@ -1823,7 +1823,7 @@ async function handleCreateMatter(
     opposing_party: opposing_party as string,
     requires_payment: requiresPayment,
     consultation_fee: consultationFee,
-    payment_link: invoiceUrl || team?.config?.paymentLink,
+    payment_link: invoiceUrl || organization?.config?.paymentLink,
     payment_embed: invoiceUrl ? {
       paymentUrl: invoiceUrl,
       amount: consultationFee,
@@ -1838,10 +1838,10 @@ async function handleCreateMatter(
 async function handleRequestLawyerReview(
   parameters: Record<string, unknown>,
   env: Env,
-  team: Team | null,
+  organization: Organization | null,
   correlationId?: string,
   sessionId?: string,
-  teamId?: string
+  organizationId?: string
 ): Promise<ToolResult> {
   const { urgency, complexity, matter_type } = parameters as {
     urgency?: string;
@@ -1854,9 +1854,9 @@ async function handleRequestLawyerReview(
   let contactPhone: string | undefined;
   let matterDescription: string | undefined;
 
-  if (sessionId && teamId) {
+  if (sessionId && organizationId) {
     try {
-      const context = await ConversationContextManager.load(sessionId, teamId, env);
+      const context = await ConversationContextManager.load(sessionId, organizationId, env);
       contactName = context.contactInfo?.name?.trim() || undefined;
       contactEmail = context.contactInfo?.email?.trim() || undefined;
       contactPhone = context.contactInfo?.phone?.trim() || undefined;
@@ -1870,7 +1870,7 @@ async function handleRequestLawyerReview(
       Logger.warn('[handleRequestLawyerReview] Failed to load context', {
         correlationId,
         sessionId,
-        teamId,
+        organizationId,
         error: error instanceof Error ? error.message : String(error)
       });
     }
@@ -1900,7 +1900,7 @@ async function handleRequestLawyerReview(
 
   await notificationService.sendLawyerReviewNotification({
     type: 'lawyer_review',
-    teamConfig: team,
+    organizationConfig: organization,
     matterInfo: {
       type: matter_type as string,
       urgency: urgency as string,
@@ -1969,16 +1969,16 @@ function formatDocumentAnalysisMessage(fileId: string, analysis: DocumentAnalysi
 async function handleCreatePaymentInvoice(
   parameters: Record<string, unknown>,
   env: Env,
-  team?: Team | null
+  organization?: Organization | null
 ): Promise<ToolResult> {
   const sessionId = crypto.randomUUID();
 
-  if (!team?.id) {
+  if (!organization?.id) {
     return {
       success: false,
       error: {
-        message: 'Team configuration missing: team ID is required for payment processing',
-        toUserResponse: () => 'Team configuration error. Please contact support.'
+        message: 'Organization configuration missing: organization ID is required for payment processing',
+        toUserResponse: () => 'Organization configuration error. Please contact support.'
       }
     };
   }
@@ -2008,7 +2008,7 @@ async function handleCreatePaymentInvoice(
         urgency: 'normal',
         opposingParty: ''
       },
-      teamId: team.id,
+      organizationId: organization.id,
       sessionId,
       invoiceId: invoice_id as string,
       currency: currency as string,
@@ -2056,10 +2056,10 @@ async function handleCreatePaymentInvoice(
 async function handleShowContactForm(
   parameters: unknown,
   env: Env,
-  team?: Team | null,
+  organization?: Organization | null,
   correlationId?: string,
   sessionId?: string,
-  teamId?: string
+  organizationId?: string
 ): Promise<ToolResult> {
   try {
     const params = parameters && typeof parameters === 'object' ? parameters as ContactFormParameters : {};
@@ -2067,9 +2067,9 @@ async function handleShowContactForm(
 
     let initialValues: ContactFormData['initialValues'];
 
-    if (sessionId && teamId) {
+    if (sessionId && organizationId) {
       try {
-        const context = await ConversationContextManager.load(sessionId, teamId, env);
+        const context = await ConversationContextManager.load(sessionId, organizationId, env);
         if (context?.contactInfo) {
           const sanitizedValues: Record<string, string> = {};
           const { contactInfo } = context;
@@ -2094,7 +2094,7 @@ async function handleShowContactForm(
       } catch (contextError) {
         Logger.warn('[handleShowContactForm] Failed to load context', {
           sessionId,
-          teamId,
+          organizationId,
           error: contextError instanceof Error ? contextError.message : String(contextError)
         });
       }
@@ -2129,7 +2129,7 @@ async function handleShowContactForm(
         method: 'handleShowContactForm',
         correlationId,
         sessionId,
-        teamId
+        organizationId
       }
     );
     return createErrorResult(validationError);
@@ -2259,7 +2259,7 @@ function hasToolCalls(aiResult: unknown): aiResult is { tool_calls: ToolCall[] }
 export async function runLegalIntakeAgentStream(
   env: Env,
   messages: readonly AgentMessage[],
-  teamId?: string,
+  organizationId?: string,
   sessionId?: string,
   cloudflareLocation?: CloudflareLocation,
   controller?: ReadableStreamDefaultController<Uint8Array>,
@@ -2274,18 +2274,18 @@ export async function runLegalIntakeAgentStream(
   try {
     await sse.emit({ type: 'connected' });
 
-    const team = teamId ? await teamCache.get(teamId, env) : null;
-    const executionPlan = resolveAIExecutionPlan(env, team, executionOverrides);
-    const executor = new ToolExecutor(env, team, sse, correlationId, sessionId, teamId);
+    const organization = organizationId ? await organizationCache.get(organizationId, env) : null;
+    const executionPlan = resolveAIExecutionPlan(env, organization, executionOverrides);
+    const executor = new ToolExecutor(env, organization, sse, correlationId, sessionId, organizationId);
 
     LegalIntakeLogger.logAgentStart(
       correlationId,
       sessionId,
-      teamId,
+      organizationId,
       messages.length,
       attachments.length > 0,
       attachments.length,
-      team ? { hasConfig: true } : { hasConfig: false }
+      organization ? { hasConfig: true } : { hasConfig: false }
     );
 
     // Build conversation text
@@ -2317,7 +2317,7 @@ export async function runLegalIntakeAgentStream(
           metadata: {
             conversationComplete: true,
             sessionId,
-            teamId,
+            organizationId,
             inputMessageCount: messages.length,
             lastUserMessage
           }
@@ -2330,19 +2330,19 @@ export async function runLegalIntakeAgentStream(
     const context = ContextDetector.detectContext(conversationText);
 
     // Get available tools and build prompt
-    if (shouldShowContactFormPreemptively(context, team, messages)) {
+    if (shouldShowContactFormPreemptively(context, organization, messages)) {
       await executor.execute({ name: 'show_contact_form', arguments: {} });
       // Note: The show_contact_form tool already provides its own message, so we don't need to add another one
       return;
     }
 
     const availableTools = getAvailableTools(context.state, context, attachments);
-    const systemPrompt = PromptBuilder.build(context, team, teamId);
+    const systemPrompt = PromptBuilder.build(context, organization, organizationId);
 
     Logger.info('Conversation State:', {
       correlationId,
       sessionId,
-      teamId,
+      organizationId,
       state: context.state,
       messageCount: messages.length,
       hasLegalIssue: Boolean(context.legalIssueType),
@@ -2356,7 +2356,7 @@ export async function runLegalIntakeAgentStream(
     LegalIntakeLogger.logAIModelCall(
       correlationId,
       sessionId,
-      teamId,
+      organizationId,
       LegalIntakeOperation.AI_MODEL_CALL,
       executionPlan.model,
       undefined,
@@ -2424,7 +2424,7 @@ export async function runLegalIntakeAgentStream(
     LegalIntakeLogger.logAIModelCall(
       correlationId,
       sessionId,
-      teamId,
+      organizationId,
       LegalIntakeOperation.AI_MODEL_RESPONSE,
       activeModel,
       undefined,
@@ -2445,7 +2445,7 @@ export async function runLegalIntakeAgentStream(
         messages,
         effectiveToolCalls,
         finalResponse,
-        team
+        organization
       );
 
       if (fallbackToContactForm) {
@@ -2467,14 +2467,14 @@ export async function runLegalIntakeAgentStream(
     Logger.error('Agent error occurred', {
       correlationId,
       sessionId,
-      teamId,
+      organizationId,
       error: errorMessage
     });
 
     LegalIntakeLogger.logAgentError(
       correlationId,
       sessionId,
-      teamId,
+      organizationId,
       error instanceof Error ? error : new Error(String(error))
     );
 
@@ -2487,7 +2487,7 @@ export async function runLegalIntakeAgentStream(
         metadata: {
           error: errorMessage,
           sessionId,
-          teamId,
+          organizationId,
           inputMessageCount: messages.length,
           lastUserMessage
         }

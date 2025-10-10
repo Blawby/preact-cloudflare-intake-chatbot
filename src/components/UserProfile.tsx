@@ -14,7 +14,7 @@ interface User {
   name: string;
   email: string;
   image?: string | null;
-  teamId?: string | null;
+  organizationId?: string | null;
   role?: string | null;
   phone?: string | null;
   subscriptionTier?: SubscriptionTier;

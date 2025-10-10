@@ -4,31 +4,31 @@ import type { Env } from '../types.js';
 import { SessionService } from '../services/SessionService.js';
 import { sessionRequestBodySchema } from '../schemas/validation.js';
 
-async function normalizeTeamId(env: Env, teamId?: string | null): Promise<string> {
-  if (!teamId) {
-    throw HttpErrors.badRequest('teamId is required');
+async function normalizeOrganizationId(env: Env, organizationId?: string | null): Promise<string> {
+  if (!organizationId) {
+    throw HttpErrors.badRequest('organizationId is required');
   }
-  const trimmed = teamId.trim();
+  const trimmed = organizationId.trim();
   if (!trimmed) {
-    throw HttpErrors.badRequest('teamId cannot be empty');
+    throw HttpErrors.badRequest('organizationId cannot be empty');
   }
 
-  // Try to find team by ID (ULID) first, then by slug
-  let teamRow = await env.DB.prepare(
-    'SELECT id FROM teams WHERE id = ?'
+  // Try to find organization by ID (ULID) first, then by slug
+  let organizationRow = await env.DB.prepare(
+    'SELECT id FROM organizations WHERE id = ?'
   ).bind(trimmed).first();
   
-  if (!teamRow) {
-    teamRow = await env.DB.prepare(
-      'SELECT id FROM teams WHERE slug = ?'
+  if (!organizationRow) {
+    organizationRow = await env.DB.prepare(
+      'SELECT id FROM organizations WHERE slug = ?'
     ).bind(trimmed).first();
   }
   
-  if (teamRow) {
-    return teamRow.id as string;
+  if (organizationRow) {
+    return organizationRow.id as string;
   }
   
-  // If no team found, return the original trimmed value
+  // If no organization found, return the original trimmed value
   // This will cause a foreign key constraint error, but that's better than silent failure
   return trimmed;
 }
@@ -68,13 +68,13 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     }
     
     const body = validationResult.data;
-    const teamId = await normalizeTeamId(env, body.teamId);
+    const organizationId = await normalizeOrganizationId(env, body.organizationId);
 
     const resolution = await SessionService.resolveSession(env, {
       request,
       sessionId: body.sessionId,
       sessionToken: body.sessionToken,
-      teamId,
+      organizationId,
       retentionHorizonDays: body.retentionHorizonDays,
       createIfMissing: true
     });
@@ -84,7 +84,7 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
 
     return createJsonResponse({
       sessionId: resolution.session.id,
-      teamId: resolution.session.teamId,
+      organizationId: resolution.session.organizationId,
       state: resolution.session.state,
       lastActive: resolution.session.lastActive,
       createdAt: resolution.session.createdAt,
@@ -116,10 +116,10 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     }
 
     if (!session) {
-      const fallbackTeamId = await normalizeTeamId(env, url.searchParams.get('teamId') ?? 'public');
+      const fallbackOrganizationId = await normalizeOrganizationId(env, url.searchParams.get('organizationId') ?? 'public');
       const fallback = {
         sessionId,
-        teamId: fallbackTeamId,
+        organizationId: fallbackOrganizationId,
         state: 'active' as const,
         statusReason: 'ephemeral_fallback',
         retentionHorizonDays: 180,
@@ -132,17 +132,17 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
       return createJsonResponse(fallback);
     }
 
-    const teamIdParam = url.searchParams.get('teamId');
-    if (teamIdParam) {
-      const requestedTeam = await normalizeTeamId(env, teamIdParam);
-      if (requestedTeam !== session.teamId) {
-        throw HttpErrors.notFound('Session not found for requested team');
+    const organizationIdParam = url.searchParams.get('organizationId');
+    if (organizationIdParam) {
+      const requestedOrganization = await normalizeOrganizationId(env, organizationIdParam);
+      if (requestedOrganization !== session.organizationId) {
+        throw HttpErrors.notFound('Session not found for requested organization');
       }
     }
 
     const data = {
       sessionId: session.id,
-      teamId: session.teamId,
+      organizationId: session.organizationId,
       state: session.state,
       statusReason: session.statusReason,
       retentionHorizonDays: session.retentionHorizonDays,

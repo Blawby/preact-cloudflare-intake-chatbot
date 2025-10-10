@@ -2,13 +2,13 @@ import type { ConversationContext, ConversationState } from './legalIntakeLogger
 import { LegalIntakeLogger } from './legalIntakeLogger.js';
 
 /**
- * Interface for team configuration used in prompt templates
- * Based on the Team interface but only includes properties used in this module
+ * Interface for organization configuration used in prompt templates
+ * Based on the Organization interface but only includes properties used in this module
  */
-export interface TeamConfig {
-  /** Team slug identifier */
+export interface OrganizationConfig {
+  /** Organization slug identifier */
   slug?: string;
-  /** Team name */
+  /** Organization name */
   name?: string;
 }
 
@@ -68,7 +68,7 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
 /**
  * System prompt template for case preparation assistant (Blawby AI)
  */
-export const CASE_PREPARATION_PROMPT_TEMPLATE = `You are {{teamName}}, a legal case preparation assistant. Your primary goal is to help users organize their legal situation, gather all important details, and prepare a comprehensive case summary that they can take to any attorney.
+export const CASE_PREPARATION_PROMPT_TEMPLATE = `You are {{organizationName}}, a legal case preparation assistant. Your primary goal is to help users organize their legal situation, gather all important details, and prepare a comprehensive case summary that they can take to any attorney.
 
 **Your persona:**
 - Empathetic, caring, and professional case preparation partner.
@@ -137,7 +137,7 @@ Your response should be in markdown format.`;
 /**
  * System prompt template for the legal intake specialist AI
  */
-export const SYSTEM_PROMPT_TEMPLATE = `You are a legal intake specialist for {{teamName}}. Your primary goal is to empathetically assist users, understand their legal needs, and gather necessary information to create a legal matter.
+export const SYSTEM_PROMPT_TEMPLATE = `You are a legal intake specialist for {{organizationName}}. Your primary goal is to empathetically assist users, understand their legal needs, and gather necessary information to create a legal matter.
 
 **Your persona:**
 - Empathetic, caring, and professional.
@@ -254,7 +254,7 @@ export function buildContextSection(
   state: ConversationState,
   correlationId?: string,
   sessionId?: string,
-  teamId?: string
+  organizationId?: string
 ): string {
   // Parameter validation
   if (!context || typeof context !== 'object') {
@@ -294,7 +294,7 @@ export function buildContextSection(
       LegalIntakeLogger.logSecurityEvent(
         correlationId,
         sessionId,
-        teamId,
+        organizationId,
         'injection_attempt',
         'medium',
         {
@@ -353,9 +353,9 @@ export function buildSystemPrompt(
   state: ConversationState,
   correlationId?: string,
   sessionId?: string,
-  teamId?: string,
-  teamName: string = 'North Carolina Legal Services',
-  teamConfig?: TeamConfig
+  organizationId?: string,
+  organizationName: string = 'North Carolina Legal Services',
+  organizationConfig?: OrganizationConfig
 ): string {
   // Guard clause parameter validation
   if (!context || typeof context !== 'object') {
@@ -374,27 +374,27 @@ export function buildSystemPrompt(
     throw new TypeError('sessionId must be a non-empty string when provided');
   }
   
-  if (teamId !== undefined && (typeof teamId !== 'string' || teamId.trim() === '')) {
-    throw new TypeError('teamId must be a non-empty string when provided');
+  if (organizationId !== undefined && (typeof organizationId !== 'string' || organizationId.trim() === '')) {
+    throw new TypeError('organizationId must be a non-empty string when provided');
   }
   
-  if (typeof teamName !== 'string' || teamName.trim() === '') {
-    teamName = 'North Carolina Legal Services';
+  if (typeof organizationName !== 'string' || organizationName.trim() === '') {
+    organizationName = 'North Carolina Legal Services';
   }
 
-  const contextSection = buildContextSection(context, state, correlationId, sessionId, teamId);
+  const contextSection = buildContextSection(context, state, correlationId, sessionId, organizationId);
   const rulesSection = buildRulesSection();
   
-  // Choose the appropriate template based on team configuration
+  // Choose the appropriate template based on organization configuration
   let template = SYSTEM_PROMPT_TEMPLATE; // Default to legal intake specialist
   
   // Use case preparation template for Blawby AI
-  if (teamId === 'blawby-ai' || teamName === 'Blawby AI' || teamConfig?.slug === 'blawby-ai') {
+  if (organizationId === 'blawby-ai' || organizationName === 'Blawby AI' || organizationConfig?.slug === 'blawby-ai') {
     template = CASE_PREPARATION_PROMPT_TEMPLATE;
   }
   
   return template
-    .replace('{{teamName}}', teamName)
+    .replace('{{organizationName}}', organizationName)
     .replace('{CONTEXT_SECTION}', contextSection)
     .replace('{RULES_SECTION}', rulesSection);
 }

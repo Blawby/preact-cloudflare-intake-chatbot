@@ -52,12 +52,12 @@ interface ChatMessageHistoryEntry {
 }
 
 interface UseMessageHandlingOptions {
-  teamId?: string;
+  organizationId?: string;
   sessionId?: string;
   onError?: (error: string) => void;
 }
 
-export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHandlingOptions) => {
+export const useMessageHandling = ({ organizationId, sessionId, onError }: UseMessageHandlingOptions) => {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const abortControllerRef = useRef<globalThis.AbortController | null>(null);
   
@@ -116,10 +116,10 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     // Create new abort controller
     abortControllerRef.current = new globalThis.AbortController();
     
-    const effectiveTeamId = (teamId ?? '').trim();
+    const effectiveOrganizationId = (organizationId ?? '').trim();
     const effectiveSessionId = (sessionId ?? '').trim();
 
-    if (!effectiveTeamId || !effectiveSessionId) {
+    if (!effectiveOrganizationId || !effectiveSessionId) {
       const errorMessage = 'Secure session is still initializing. Please wait and try again.';
       console.warn(errorMessage);
       onError?.(errorMessage);
@@ -131,7 +131,7 @@ export const useMessageHandling = ({ teamId, sessionId, onError }: UseMessageHan
     // Create the request body
     const requestBody = {
       messages: messageHistory,
-      teamId: effectiveTeamId,
+      organizationId: effectiveOrganizationId,
       sessionId: effectiveSessionId,
       attachments
     };
@@ -435,7 +435,7 @@ ${matterData.opposing_party ? `- Opposing Party: ${matterData.opposing_party}` :
       console.error('Streaming error:', error);
       throw error;
     }
-  }, [teamId, sessionId, onError, updateAIMessage]);
+  }, [organizationId, sessionId, onError, updateAIMessage]);
 
   // Main message sending function
   const sendMessage = useCallback(async (message: string, attachments: FileAttachment[] = []) => {
@@ -444,10 +444,10 @@ ${matterData.opposing_party ? `- Opposing Party: ${matterData.opposing_party}` :
       window.__DEBUG_SEND_MESSAGE__(message, attachments);
     }
     
-    const effectiveTeamId = (teamId ?? '').trim();
+    const effectiveOrganizationId = (organizationId ?? '').trim();
     const effectiveSessionId = (sessionId ?? '').trim();
 
-    if (!effectiveTeamId || !effectiveSessionId) {
+    if (!effectiveOrganizationId || !effectiveSessionId) {
       const errorMessage = 'Secure session is still initializing. Please wait a moment and try again.';
       console.warn(errorMessage);
       onError?.(errorMessage);
@@ -502,7 +502,7 @@ ${matterData.opposing_party ? `- Opposing Party: ${matterData.opposing_party}` :
       
       onError?.(error instanceof Error ? error.message : 'Unknown error occurred');
     }
-  }, [messages, teamId, sessionId, createMessageHistory, sendMessageWithStreaming, onError, updateAIMessage]);
+  }, [messages, organizationId, sessionId, createMessageHistory, sendMessageWithStreaming, onError, updateAIMessage]);
 
   // Handle contact form submission
   const handleContactFormSubmit = useCallback(async (contactData: ContactData) => {

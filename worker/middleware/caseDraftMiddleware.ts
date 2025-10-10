@@ -1,5 +1,5 @@
 import type { ConversationContext, CaseDraft } from './conversationContextManager.js';
-import type { TeamConfig } from '../agents/legal-intake/promptTemplates.js';
+import type { OrganizationConfig } from '../agents/legal-intake/promptTemplates.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
 import { ConversationContextManager } from './conversationContextManager.js';
@@ -30,7 +30,7 @@ interface MiddlewareResponse {
 export const caseDraftMiddleware: PipelineMiddleware = {
   name: 'caseDraftMiddleware',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
     // Build conversation text for context-aware analysis
     const conversationText = messages.map(msg => msg.content).join(' ');
     const latestMessage = messages[messages.length - 1];

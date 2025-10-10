@@ -5,7 +5,7 @@ import {
   handleRoot,
   handleAgentStream,
   handleForms,
-  handleTeams,
+  handleOrganizations,
   handleSessions,
   handleActivity,
   handleFiles,
@@ -72,8 +72,8 @@ async function handleRequestInternal(request: Request, env: Env, _ctx: Execution
     if (path === '/api/agent/stream') {
       console.log('✅ Matched agent route');
       response = await handleAgentStream(request, env);
-    } else if (path.startsWith('/api/teams')) {
-      response = await handleTeams(request, env);
+    } else if (path.startsWith('/api/organizations')) {
+      response = await handleOrganizations(request, env);
     } else if (path.startsWith('/api/forms')) {
       response = await handleForms(request, env);
 

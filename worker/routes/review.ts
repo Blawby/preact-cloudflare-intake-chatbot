@@ -16,15 +16,15 @@ export async function handleReview(request: Request, env: Env): Promise<Response
 async function handleGetReviewMatters(request: Request, env: Env): Promise<Response> {
   try {
     const url = new URL(request.url);
-    const teamId = url.searchParams.get('teamId');
+    const organizationId = url.searchParams.get('organizationId');
 
-    if (!teamId) {
-      throw HttpErrors.badRequest('Team ID is required');
+    if (!organizationId) {
+      throw HttpErrors.badRequest('Organization ID is required');
     }
 
     const reviewService = new ReviewService(env);
-    const matters = await reviewService.getReviewMatters(teamId);
-    const stats = await reviewService.getReviewStats(teamId);
+    const matters = await reviewService.getReviewMatters(organizationId);
+    const stats = await reviewService.getReviewStats(organizationId);
 
     return createSuccessResponse({
       matters,

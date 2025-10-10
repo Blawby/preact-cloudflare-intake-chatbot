@@ -84,10 +84,10 @@ interface MessageProps {
 		}>;
 		total: number;
 	};
-	teamConfig?: {
+	organizationConfig?: {
 		name: string;
 		profileImage: string | null;
-		teamId: string;
+		organizationId: string;
 	};
 	onOpenSidebar?: () => void;
 	onContactFormSubmit?: (data: ContactData) => void | Promise<void>;
@@ -97,7 +97,7 @@ interface MessageProps {
 	// Feedback props
 	id?: string;
 	sessionId?: string;
-	teamId?: string;
+	organizationId?: string;
 	showFeedback?: boolean;
 	onFeedbackSubmit?: (feedback: { rating: number; comment?: string }) => void;
 }
@@ -218,7 +218,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	contactForm,
 	documentChecklist,
 	lawyerSearchResults,
-	teamConfig: _teamConfig,
+	organizationConfig: _organizationConfig,
 	onOpenSidebar: _onOpenSidebar,
 	onContactFormSubmit,
 	isLoading,
@@ -226,7 +226,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	toolMessage,
 	id: _id,
 	sessionId: _sessionId,
-	teamId: _teamId,
+	organizationId: _organizationId,
 	showFeedback: _showFeedback = true,
 	onFeedbackSubmit: _onFeedbackSubmit
 }) => {

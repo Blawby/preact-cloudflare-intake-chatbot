@@ -21,6 +21,12 @@ export interface Env {
   ADOBE_SCOPE?: string;
   ENABLE_ADOBE_EXTRACT?: string | boolean;
   
+  // Better Auth Configuration
+  BETTER_AUTH_SECRET?: string;
+  BETTER_AUTH_URL?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  
   // Cloudflare AI Configuration
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_API_TOKEN?: string;
@@ -28,14 +34,14 @@ export interface Env {
 
   BLAWBY_API_URL?: string;
   BLAWBY_API_TOKEN?: string;
-  BLAWBY_TEAM_ULID?: string;
+  BLAWBY_ORGANIZATION_ULID?: string;
   IDEMPOTENCY_SALT?: string;
   PAYMENT_IDEMPOTENCY_SECRET?: string;
   LAWYER_SEARCH_API_KEY?: string;
   // AI provider defaults / feature flags
   AI_PROVIDER_DEFAULT?: string;
   AI_MODEL_DEFAULT?: string;
-  AI_MODEL_FALLBACK?: string[];  // Align with Team.config.aiModelFallback type
+  AI_MODEL_FALLBACK?: string[];  // Align with Organization.config.aiModelFallback type
   ENABLE_WORKERS_AI?: boolean;   // Use boolean for feature flags
   ENABLE_GATEWAY_OPENAI?: boolean;
   
@@ -81,7 +87,7 @@ export interface ChatMessage {
 
 export interface ChatSession {
   id: string;
-  teamId: string;
+  organizationId: string;
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
@@ -91,7 +97,7 @@ export interface ChatSession {
 // Matter types
 export interface Matter {
   id: string;
-  teamId: string;
+  organizationId: string;
   title: string;
   description: string;
   status: 'draft' | 'active' | 'closed';
@@ -100,10 +106,13 @@ export interface Matter {
   metadata?: Record<string, unknown>;
 }
 
-// Team types
-export interface Team {
+// Organization types (Better Auth compatible)
+export interface Organization {
   id: string;
   name: string;
+  slug?: string;
+  domain?: string;
+  metadata?: Record<string, unknown>;
   config: {
     aiProvider?: string;
     aiModel: string;
@@ -127,14 +136,15 @@ export interface Team {
       displayName?: string | null;
       previewUrl?: string | null;
     };
-
   };
+  createdAt: number;
+  updatedAt: number;
 }
 
 // Form types
 export interface ContactForm {
   id: string;
-  teamId: string;
+  organizationId: string;
   name: string;
   email: string;
   phone?: string;
@@ -146,7 +156,7 @@ export interface ContactForm {
 
 export interface Appointment {
   id: string;
-  teamId: string;
+  organizationId: string;
   name: string;
   email: string;
   phone?: string;
@@ -161,7 +171,7 @@ export interface Appointment {
 // File upload types
 export interface FileUpload {
   id: string;
-  teamId: string;
+  organizationId: string;
   filename: string;
   contentType: string;
   size: number;
@@ -173,7 +183,7 @@ export interface FileUpload {
 // Feedback types
 export interface Feedback {
   id: string;
-  teamId: string;
+  organizationId: string;
   sessionId: string;
   rating: number;
   comment?: string;
@@ -332,7 +342,7 @@ export interface AgentResponse {
     readonly inputMessageCount: number;
     readonly lastUserMessage: string | null;
     readonly sessionId?: string;
-    readonly teamId?: string;
+    readonly organizationId?: string;
     readonly error?: string;
     readonly toolName?: string;
     readonly toolResult?: unknown;

@@ -1,4 +1,4 @@
-import { Env, Organization } from '../types.js';
+import { Env } from '../types.js';
 import { ValidationService } from './ValidationService.js';
 import { ValidationError } from '../utils/validationErrors.js';
 import { getAuth } from '../auth/index.js';
@@ -11,6 +11,17 @@ export interface OrganizationVoiceConfig {
   voiceId?: string;
   displayName?: string;
   previewUrl?: string;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug?: string;
+  domain?: string;
+  metadata?: Record<string, unknown>;
+  config: OrganizationConfig;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface OrganizationConfig {
@@ -41,7 +52,7 @@ export interface OrganizationConfig {
     enabled: boolean;
     apiKey?: string | null;  // Optional/nullable for migration to hash-at-rest
     apiKeyHash?: string;     // Lowercase hex SHA-256 hash (32 bytes -> 64 hex chars)
-    teamUlid?: string;       // Team identifier for API calls
+    organizationUlid?: string;       // Organization identifier for API calls
     apiUrl?: string;
   };
 }
@@ -74,7 +85,7 @@ function normalizeProvider(input?: string | null): string {
   return trimmed.length > 0 ? trimmed : LEGACY_AI_PROVIDER;
 }
 
-function sanitizeModel(model?: string | null, teamId?: string): string | undefined {
+function sanitizeModel(model?: string | null, organizationId?: string): string | undefined {
   if (!model) {
     return undefined;
   }
@@ -132,7 +143,7 @@ function buildFallbackList(baseModel: string, preferred?: string[], useDefaults:
   return Array.from(unique);
 }
 
-export function buildDefaultTeamConfig(env: Env): TeamConfig {
+export function buildDefaultOrganizationConfig(env: Env): OrganizationConfig {
   const defaultProvider = normalizeProvider(env.AI_PROVIDER_DEFAULT);
   const defaultModel = sanitizeModel(env.AI_MODEL_DEFAULT) ?? DEFAULT_GPT_MODEL;
   const fallbackFromEnv = sanitizeFallbackList(env.AI_MODEL_FALLBACK);
@@ -159,11 +170,11 @@ export function buildDefaultTeamConfig(env: Env): TeamConfig {
   };
 }
 
-export interface Team {
+export interface Organization {
   id: string;
   slug: string;
   name: string;
-  config: TeamConfig;
+  config: OrganizationConfig;
   createdAt: string;
   updatedAt: string;
 }
@@ -174,12 +185,12 @@ export class OrganizationService {
 
   constructor(private env: Env) {}
 
-  private getDefaultConfig(): TeamConfig {
-    return buildDefaultTeamConfig(this.env);
+  private getDefaultConfig(): OrganizationConfig {
+    return buildDefaultOrganizationConfig(this.env);
   }
 
   /**
-   * Resolves environment variable placeholders in team configuration
+   * Resolves environment variable placeholders in organization configuration
    * This allows storing sensitive data like API keys as environment variable references
    * Supports generic ${VAR_NAME} pattern matching
    */
@@ -206,19 +217,19 @@ export class OrganizationService {
   }
 
   /**
-   * Safely decodes team config from database as plain JSON
-   * Team configs are stored as plain JSON text in the database
+   * Safely decodes organization config from database as plain JSON
+   * Organization configs are stored as plain JSON text in the database
    */
-  private decodeTeamConfig(configString: string): unknown {
+  private decodeOrganizationConfig(configString: string): unknown {
     try {
       return JSON.parse(configString);
     } catch (jsonError) {
-      console.error('Failed to parse team config as JSON:', { 
+      console.error('Failed to parse organization config as JSON:', { 
         configString: configString.substring(0, 100) + '...', 
         error: jsonError 
       });
       // Return a safe default config if JSON parsing fails
-      return buildDefaultTeamConfig(this.env);
+      return buildDefaultOrganizationConfig(this.env);
     }
   }
 
@@ -278,12 +289,12 @@ export class OrganizationService {
 
   /**
    * Normalizes fields that should be arrays but might be objects
-   * @param config The team configuration to normalize
-   * @returns Normalized team configuration with array fields
+   * @param config The organization configuration to normalize
+   * @returns Normalized organization configuration with array fields
    */
-  private normalizeConfigArrays(config: unknown): TeamConfig {
+  private normalizeConfigArrays(config: unknown): OrganizationConfig {
     const base = (config ?? {}) as Record<string, unknown>;
-    const normalized: Partial<TeamConfig> & { voice?: unknown } = { ...base };
+    const normalized: Partial<OrganizationConfig> & { voice?: unknown } = { ...base };
 
     // Normalize availableServices
     if (normalized.availableServices && !Array.isArray(normalized.availableServices)) {
@@ -306,15 +317,15 @@ export class OrganizationService {
 
     normalized.voice = this.normalizeVoiceConfig(normalized.voice);
 
-    return normalized as TeamConfig;
+    return normalized as OrganizationConfig;
   }
 
-  private isValidVoiceProvider(value: unknown): value is TeamVoiceProvider {
+  private isValidVoiceProvider(value: unknown): value is OrganizationVoiceProvider {
     return value === 'cloudflare' || value === 'elevenlabs' || value === 'custom';
   }
 
-  private normalizeVoiceConfig(rawVoice: unknown): TeamVoiceConfig {
-    const baseConfig: TeamVoiceConfig = {
+  private normalizeVoiceConfig(rawVoice: unknown): OrganizationVoiceConfig {
+    const baseConfig: OrganizationVoiceConfig = {
       enabled: false,
       provider: 'cloudflare'
     };
@@ -327,7 +338,7 @@ export class OrganizationService {
 
     const provider = this.isValidVoiceProvider(voiceRecord.provider) ? voiceRecord.provider : 'cloudflare';
 
-    const normalizedVoice: TeamVoiceConfig = {
+    const normalizedVoice: OrganizationVoiceConfig = {
       enabled: Boolean(voiceRecord.enabled),
       provider
     };
@@ -401,11 +412,11 @@ export class OrganizationService {
   }
 
   // Legacy method for backward compatibility during migration
-  async getTeamConfig(teamId: string): Promise<TeamConfig | null> {
-    const organization = await this.getOrganization(teamId);
+  async getOrganizationConfig(organizationId: string): Promise<OrganizationConfig | null> {
+    const organization = await this.getOrganization(organizationId);
     if (!organization) return null;
     
-    // Convert organization metadata to legacy team config format
+    // Convert organization metadata to legacy organization config format
     return {
       aiProvider: organization.metadata.aiProvider,
       aiModel: organization.metadata.aiModel,
@@ -490,7 +501,7 @@ export class OrganizationService {
   }
 
   // Legacy method for backward compatibility
-  async listTeams(): Promise<Team[]> {
+  async listOrganizations(): Promise<Organization[]> {
     const organizations = await this.listOrganizations();
     return organizations.map(org => ({
       id: org.id,
@@ -517,16 +528,16 @@ export class OrganizationService {
   }
 
   /**
-   * Validates and normalizes team configuration to ensure all required properties are present
+   * Validates and normalizes organization configuration to ensure all required properties are present
    * @param strictValidation - if true, applies strict validation including placeholder email checks
-   * @param teamId - team ID for logging context
+   * @param organizationId - organization ID for logging context
    */
-  private validateAndNormalizeConfig(config: TeamConfig | null | undefined, strictValidation: boolean = false, teamId?: string): TeamConfig {
+  private validateAndNormalizeConfig(config: OrganizationConfig | null | undefined, strictValidation: boolean = false, organizationId?: string): OrganizationConfig {
     const defaultConfig = this.getDefaultConfig();
-    const sourceConfig = (config ?? {}) as TeamConfig;
+    const sourceConfig = (config ?? {}) as OrganizationConfig;
 
     const aiProvider = normalizeProvider(sourceConfig.aiProvider ?? defaultConfig.aiProvider);
-    const aiModel = sanitizeModel(sourceConfig.aiModel, teamId) ?? defaultConfig.aiModel ?? DEFAULT_GPT_MODEL;
+    const aiModel = sanitizeModel(sourceConfig.aiModel, organizationId) ?? defaultConfig.aiModel ?? DEFAULT_GPT_MODEL;
     const providedFallback = sourceConfig.aiModelFallback !== undefined
       ? sanitizeFallbackList(sourceConfig.aiModelFallback)
       : undefined;
@@ -547,7 +558,7 @@ export class OrganizationService {
       }
     }
 
-    const merged: TeamConfig = {
+    const merged: OrganizationConfig = {
       ...defaultConfig,
       ...sourceConfig,
       aiProvider,
@@ -563,119 +574,119 @@ export class OrganizationService {
     return this.normalizeConfigArrays(merged);
   }
 
-  async createTeam(teamData: Omit<Team, 'id' | 'createdAt' | 'updatedAt'>): Promise<Team> {
+  async createOrganization(organizationData: Omit<Organization, 'id' | 'createdAt' | 'updatedAt'>): Promise<Organization> {
     const id = this.generateULID();
     const now = new Date().toISOString();
     
-    // Validate and normalize the team configuration
-    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config, true, id);
+    // Validate and normalize the organization configuration
+    const normalizedConfig = this.validateAndNormalizeConfig(organizationData.config, true, id);
     
-    const team: Team = {
-      ...teamData,
+    const organization: Organization = {
+      ...organizationData,
       config: normalizedConfig,
       id,
       createdAt: now,
       updatedAt: now
     };
 
-    console.log('TeamService.createTeam: Attempting to insert team:', { id: team.id, slug: team.slug, name: team.name });
+    console.log('OrganizationService.createOrganization: Attempting to insert organization:', { id: organization.id, slug: organization.slug, name: organization.name });
     
     try {
       const result = await this.env.DB.prepare(`
-        INSERT INTO teams (id, slug, name, config, created_at, updated_at)
+        INSERT INTO organizations (id, slug, name, config, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?)
       `).bind(
-        team.id,
-        team.slug,
-        team.name,
-        JSON.stringify(team.config),
-        team.createdAt,
-        team.updatedAt
+        organization.id,
+        organization.slug,
+        organization.name,
+        JSON.stringify(organization.config),
+        organization.createdAt,
+        organization.updatedAt
       ).run();
       
-      console.log('TeamService.createTeam: Insert result:', { success: result.success });
+      console.log('OrganizationService.createOrganization: Insert result:', { success: result.success });
       
-      // Verify the team was actually created by querying the database
-      const verifyTeam = await this.env.DB.prepare('SELECT id FROM teams WHERE id = ?').bind(team.id).first();
-      if (!verifyTeam) {
-        throw new Error('Team creation failed - team not found in database after insert');
+      // Verify the organization was actually created by querying the database
+      const verifyOrganization = await this.env.DB.prepare('SELECT id FROM organizations WHERE id = ?').bind(organization.id).first();
+      if (!verifyOrganization) {
+        throw new Error('Organization creation failed - organization not found in database after insert');
       }
     } catch (error) {
-      console.error('TeamService.createTeam: Database insert failed:', error);
+      console.error('OrganizationService.createOrganization: Database insert failed:', error);
       throw error;
     }
 
-    this.clearCache(team.id);
-    console.log('TeamService.createTeam: Team created successfully:', { id: team.id, slug: team.slug });
-    return team;
+    this.clearCache(organization.id);
+    console.log('OrganizationService.createOrganization: Organization created successfully:', { id: organization.id, slug: organization.slug });
+    return organization;
   }
 
-  async updateTeam(teamId: string, updates: Partial<Team>): Promise<Team | null> {
-    const existingTeam = await this.getTeam(teamId);
-    if (!existingTeam) {
+  async updateOrganization(organizationId: string, updates: Partial<Organization>): Promise<Organization | null> {
+    const existingOrganization = await this.getOrganization(organizationId);
+    if (!existingOrganization) {
       return null;
     }
 
     // Extract only mutable fields from updates, excluding immutable fields
     const { id: _ignoreId, createdAt: _ignoreCreatedAt, ...mutableUpdates } = updates;
 
-    // Validate and normalize the team configuration if it's being updated
-    let normalizedConfig = existingTeam.config;
+    // Validate and normalize the organization configuration if it's being updated
+    let normalizedConfig = existingOrganization.config;
     if (mutableUpdates.config) {
-      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config, true, teamId);
+      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config, true, organizationId);
     }
     
-    const updatedTeam: Team = {
-      ...existingTeam,
+    const updatedOrganization: Organization = {
+      ...existingOrganization,
       ...mutableUpdates,
       config: normalizedConfig,
       updatedAt: new Date().toISOString()
     };
 
     await this.env.DB.prepare(`
-      UPDATE teams 
+      UPDATE organizations 
       SET slug = ?, name = ?, config = ?, updated_at = ?
       WHERE id = ?
     `).bind(
-      updatedTeam.slug,
-      updatedTeam.name,
-      JSON.stringify(updatedTeam.config),
-      updatedTeam.updatedAt,
-      teamId
+      updatedOrganization.slug,
+      updatedOrganization.name,
+      JSON.stringify(updatedOrganization.config),
+      updatedOrganization.updatedAt,
+      organizationId
     ).run();
 
-    this.clearCache(teamId);
-    return updatedTeam;
+    this.clearCache(organizationId);
+    return updatedOrganization;
   }
 
-  async deleteTeam(teamId: string): Promise<boolean> {
-    console.log('TeamService.deleteTeam called with teamId:', teamId);
+  async deleteOrganization(organizationId: string): Promise<boolean> {
+    console.log('OrganizationService.deleteOrganization called with organizationId:', organizationId);
     
-    // First check if the team exists
-    const existingTeam = await this.getTeam(teamId);
-    if (!existingTeam) {
-      console.log('❌ Team not found for deletion:', teamId);
+    // First check if the organization exists
+    const existingOrganization = await this.getOrganization(organizationId);
+    if (!existingOrganization) {
+      console.log('❌ Organization not found for deletion:', organizationId);
       return false;
     }
     
-    console.log('✅ Team found for deletion:', { id: existingTeam.id, slug: existingTeam.slug, name: existingTeam.name });
+    console.log('✅ Organization found for deletion:', { id: existingOrganization.id, slug: existingOrganization.slug, name: existingOrganization.name });
     
     try {
-      const result = await this.env.DB.prepare('DELETE FROM teams WHERE id = ?').bind(teamId).run();
+      const result = await this.env.DB.prepare('DELETE FROM organizations WHERE id = ?').bind(organizationId).run();
       console.log('Delete result:', { success: result.success });
       
-      this.clearCache(teamId);
+      this.clearCache(organizationId);
       
       // Check if the operation was successful
       // In D1 local development, changes might be undefined but success is true
       if (result.success) {
-        // Double-check by trying to get the team again
-        const verifyDeleted = await this.env.DB.prepare('SELECT id FROM teams WHERE id = ?').bind(teamId).first();
+        // Double-check by trying to get the organization again
+        const verifyDeleted = await this.env.DB.prepare('SELECT id FROM organizations WHERE id = ?').bind(organizationId).first();
         if (!verifyDeleted) {
-          console.log('✅ Team deleted successfully (verified by query)');
+          console.log('✅ Organization deleted successfully (verified by query)');
           return true;
         } else {
-          console.log('❌ Delete operation reported success but team still exists');
+          console.log('❌ Delete operation reported success but organization still exists');
           return false;
         }
       } else {
@@ -683,83 +694,63 @@ export class OrganizationService {
         return false;
       }
     } catch (error) {
-      console.error('❌ Database error during team deletion:', error);
+      console.error('❌ Database error during organization deletion:', error);
       return false;
     }
   }
 
-  async listTeams(): Promise<Team[]> {
-    const teams = await this.env.DB.prepare(
-      'SELECT id, slug, name, config, created_at, updated_at FROM teams ORDER BY created_at DESC'
-    ).all();
 
-    return teams.results.map(row => {
-      const rawConfig = this.decodeTeamConfig(row.config as string);
-      const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false, row.id as string);
-      
-      return {
-        id: row.id as string,
-        slug: row.slug as string,
-        name: row.name as string,
-        config: normalizedConfig,
-        createdAt: row.created_at as string,
-        updatedAt: row.updated_at as string
-      };
-    });
-  }
-
-  async validateTeamAccess(teamId: string, apiToken: string): Promise<boolean> {
+  async validateOrganizationAccess(organizationId: string, apiToken: string): Promise<boolean> {
     try {
-      // First, retrieve the team to verify it exists
-      const team = await this.getTeam(teamId);
-      if (!team) {
-        console.log(`❌ Team not found: ${teamId}`);
+      // First, retrieve the organization to verify it exists
+      const organization = await this.getOrganization(organizationId);
+      if (!organization) {
+        console.log(`❌ Organization not found: ${organizationId}`);
         return false;
       }
 
       // Hash the provided API token for comparison
       const hashedToken = await this.hashToken(apiToken);
 
-      // Check the secure team_api_tokens table
+      // Check the secure organization_api_tokens table
       const tokenResult = await this.env.DB.prepare(`
-        SELECT id, token_hash FROM team_api_tokens 
-        WHERE team_id = ? AND token_hash = ? AND active = 1
-      `).bind(teamId, hashedToken).first();
+        SELECT id, token_hash FROM organization_api_tokens 
+        WHERE organization_id = ? AND token_hash = ? AND active = 1
+      `).bind(organizationId, hashedToken).first();
 
       if (tokenResult) {
         // Update last_used_at timestamp
         await this.env.DB.prepare(`
-          UPDATE team_api_tokens SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?
+          UPDATE organization_api_tokens SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?
         `).bind(tokenResult.id).run();
         
-        console.log(`✅ API token validated from secure database for team: ${teamId}`);
+        console.log(`✅ API token validated from secure database for organization: ${organizationId}`);
         return true;
       }
 
-      console.log(`❌ Invalid API token for team: ${teamId}`);
+      console.log(`❌ Invalid API token for organization: ${organizationId}`);
       return false;
     } catch (error) {
-      console.error(`❌ Error validating team access for ${teamId}:`, error);
+      console.error(`❌ Error validating organization access for ${organizationId}:`, error);
       return false;
     }
   }
 
   /**
-   * Create a new API token for a team
+   * Create a new API token for a organization
    */
-  async createApiToken(teamId: string, tokenName: string, permissions: string[] = [], createdBy?: string): Promise<{ token: string; tokenId: string }> {
+  async createApiToken(organizationId: string, tokenName: string, permissions: string[] = [], createdBy?: string): Promise<{ token: string; tokenId: string }> {
     // Generate a secure random token
     const token = this.generateSecureToken();
     const tokenHash = await this.hashToken(token);
     const tokenId = this.generateULID();
 
     await this.env.DB.prepare(`
-      INSERT INTO team_api_tokens (id, team_id, token_name, token_hash, permissions, created_by, active)
+      INSERT INTO organization_api_tokens (id, organization_id, token_name, token_hash, permissions, created_by, active)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
       tokenId,
-      teamId,
+      organizationId,
       tokenName,
       tokenHash,
       JSON.stringify(permissions),
@@ -776,7 +767,7 @@ export class OrganizationService {
   async revokeApiToken(tokenId: string): Promise<{ success: boolean; alreadyRevoked?: boolean }> {
     // Try to revoke the token directly
     const result = await this.env.DB.prepare(`
-      UPDATE team_api_tokens SET active = 0 WHERE id = ? AND active = 1
+      UPDATE organization_api_tokens SET active = 0 WHERE id = ? AND active = 1
     `).bind(tokenId).run();
     
     // Check if rows were actually updated using meta.changes
@@ -787,7 +778,7 @@ export class OrganizationService {
     
     // No rows updated - check if token exists
     const token = await this.env.DB.prepare(`
-      SELECT id FROM team_api_tokens WHERE id = ?
+      SELECT id FROM organization_api_tokens WHERE id = ?
     `).bind(tokenId).first();
     
     if (!token) {
@@ -800,9 +791,9 @@ export class OrganizationService {
   }
 
   /**
-   * List active API tokens for a team
+   * List active API tokens for a organization
    */
-  async listApiTokens(teamId: string): Promise<Array<{
+  async listApiTokens(organizationId: string): Promise<Array<{
     id: string;
     tokenName: string;
     permissions: string[];
@@ -813,10 +804,10 @@ export class OrganizationService {
   }>> {
     const tokens = await this.env.DB.prepare(`
       SELECT id, token_name, permissions, created_at, last_used_at, expires_at, active
-      FROM team_api_tokens 
-      WHERE team_id = ? AND active = 1
+      FROM organization_api_tokens 
+      WHERE organization_id = ? AND active = 1
       ORDER BY created_at DESC
-    `).bind(teamId).all();
+    `).bind(organizationId).all();
 
     return tokens.results.map(row => ({
       id: row.id as string,
@@ -854,20 +845,20 @@ export class OrganizationService {
   }
 
   /**
-   * Validate an API key against the team's stored hash or plaintext key
+   * Validate an API key against the organization's stored hash or plaintext key
    * Prefers apiKeyHash for authentication when available
-   * @param teamId The team ID
+   * @param organizationId The organization ID
    * @param providedKey The API key to validate
    * @returns true if valid, false otherwise
    */
-  async validateApiKey(teamId: string, providedKey: string): Promise<boolean> {
+  async validateApiKey(organizationId: string, providedKey: string): Promise<boolean> {
     try {
-      const team = await this.getTeam(teamId);
-      if (!team?.config.blawbyApi?.enabled) {
+      const organization = await this.getOrganization(organizationId);
+      if (!organization?.config.blawbyApi?.enabled) {
         return false;
       }
 
-      const { apiKey, apiKeyHash } = team.config.blawbyApi;
+      const { apiKey, apiKeyHash } = organization.config.blawbyApi;
 
       // Prefer hash-based validation when available
       if (apiKeyHash && this.isValidApiKeyHash(apiKeyHash)) {
@@ -882,59 +873,59 @@ export class OrganizationService {
 
       return false;
     } catch (error) {
-      console.error(`❌ Error validating API key for team ${teamId}:`, error);
+      console.error(`❌ Error validating API key for organization ${organizationId}:`, error);
       return false;
     }
   }
 
   /**
    * Generate and store a hash for an existing API key
-   * This method can be used to migrate teams from plaintext to hashed API keys
+   * This method can be used to migrate organizations from plaintext to hashed API keys
    */
-  async generateApiKeyHash(teamId: string): Promise<boolean> {
+  async generateApiKeyHash(organizationId: string): Promise<boolean> {
     try {
-      const team = await this.getTeam(teamId);
-      if (!team || !team.config.blawbyApi?.apiKey) {
-        console.log(`❌ Team not found or no API key configured: ${teamId}`);
+      const organization = await this.getOrganization(organizationId);
+      if (!organization || !organization.config.blawbyApi?.apiKey) {
+        console.log(`❌ Organization not found or no API key configured: ${organizationId}`);
         return false;
       }
 
       // Generate hash for the existing API key (apiKey is guaranteed to be string here due to check above)
-      const apiKeyHash = await this.hashToken(team.config.blawbyApi.apiKey!);
+      const apiKeyHash = await this.hashToken(organization.config.blawbyApi.apiKey!);
       
       // Validate the generated hash
       if (!this.isValidApiKeyHash(apiKeyHash)) {
-        console.error(`❌ Generated invalid API key hash for team: ${teamId}`);
+        console.error(`❌ Generated invalid API key hash for organization: ${organizationId}`);
         return false;
       }
       
-      // Update the team config to include the hash and optionally nullify the plaintext key
+      // Update the organization config to include the hash and optionally nullify the plaintext key
       const updatedConfig = {
-        ...team.config,
+        ...organization.config,
         blawbyApi: {
-          ...team.config.blawbyApi,
+          ...organization.config.blawbyApi,
           apiKeyHash,
           // Optionally set apiKey to null after migration (uncomment when ready)
           // apiKey: null
         }
       };
 
-      // Update the team in the database
+      // Update the organization in the database
       const result = await this.env.DB.prepare(`
-        UPDATE teams SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-      `).bind(JSON.stringify(updatedConfig), teamId).run();
+        UPDATE organizations SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(JSON.stringify(updatedConfig), organizationId).run();
 
       // Check if rows were actually updated using meta.changes
       if (result.meta?.changes && result.meta.changes > 0) {
-        // Clear the cache for this team
-        this.clearCache(teamId);
-        console.log(`✅ API key hash generated and stored for team: ${teamId}`);
+        // Clear the cache for this organization
+        this.clearCache(organizationId);
+        console.log(`✅ API key hash generated and stored for organization: ${organizationId}`);
         return true;
       }
 
       // Log detailed error information for debugging
-      console.error(`❌ Failed to update team config for team ${teamId}:`, {
-        teamId,
+      console.error(`❌ Failed to update organization config for organization ${organizationId}:`, {
+        organizationId,
         result,
         updatePayload: {
           config: updatedConfig,
@@ -943,7 +934,7 @@ export class OrganizationService {
       });
       return false;
     } catch (error) {
-      console.error(`❌ Error generating API key hash for ${teamId}:`, error);
+      console.error(`❌ Error generating API key hash for ${organizationId}:`, error);
       return false;
     }
   }
@@ -964,11 +955,11 @@ export class OrganizationService {
     return `${timestamp.toString(36)}${random}`;
   }
 
-  clearCache(teamId?: string): void {
-    if (teamId) {
-      this.teamCache.delete(teamId);
+  clearCache(organizationId?: string): void {
+    if (organizationId) {
+      this.organizationCache.delete(organizationId);
     } else {
-      this.teamCache.clear();
+      this.organizationCache.clear();
     }
   }
 } 

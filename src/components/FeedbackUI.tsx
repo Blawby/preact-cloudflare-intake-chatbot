@@ -7,7 +7,7 @@ import { getFeedbackEndpoint } from '../config/api';
 interface FeedbackUIProps {
   messageId?: string;
   sessionId?: string;
-  teamId?: string;
+  organizationId?: string;
   onFeedbackSubmit?: (feedback: FeedbackData) => void;
 }
 
@@ -21,7 +21,7 @@ interface FeedbackData {
 const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({ 
   messageId, 
   sessionId, 
-  teamId, 
+  organizationId, 
   onFeedbackSubmit 
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -67,7 +67,7 @@ const FeedbackUI: FunctionComponent<FeedbackUIProps> = memo(({
         },
         body: JSON.stringify({
           sessionId,
-          teamId,
+          organizationId,
           ...feedbackData,
           intent: 'message_feedback'
         }),

@@ -63,7 +63,7 @@
 - `POST /api/organizations/{id}/matters` - Create matter
 - `GET /api/organizations/{id}/matters/{matterId}` - Get matter details
 - `PUT /api/organizations/{id}/matters/{matterId}` - Update matter
-- `POST /api/organizations/{id}/matters/{matterId}/assign` - Assign matter to team member
+- `POST /api/organizations/{id}/matters/{matterId}/assign` - Assign matter to organization member
 - `GET /api/organizations/{id}/matters/{matterId}/timeline` - Get matter timeline
 - `GET /api/organizations/{id}/matters/{matterId}/tasks` - Get matter tasks
 - `POST /api/organizations/{id}/matters/{matterId}/tasks` - Create matter task
@@ -219,7 +219,7 @@
 #### Enhanced Calendar & Scheduling
 - `GET /api/organizations/{id}/calendars/{calendarId}/conflicts` - Check for calendar conflicts
 - `POST /api/organizations/{id}/calendars/{calendarId}/events/recurring` - Create recurring event
-- `GET /api/organizations/{id}/calendars/team-availability` - Get team-wide availability
+- `GET /api/organizations/{id}/calendars/organization-availability` - Get organization-wide availability
 - `POST /api/organizations/{id}/calendars/{calendarId}/block-time` - Block time on calendar
 - `GET /api/organizations/{id}/calendars/{calendarId}/court-appearances` - List court appearances
 - `POST /api/organizations/{id}/calendars/{calendarId}/court-appearances` - Add court appearance
@@ -241,8 +241,8 @@
 - `POST /api/organizations/{id}/task-templates` - Create task template
 - `GET /api/organizations/{id}/task-templates` - List task templates
 - `POST /api/organizations/{id}/matters/{matterId}/apply-task-template` - Apply template to matter
-- `GET /api/organizations/{id}/team-members/{memberId}/tasks` - Get member's tasks
-- `GET /api/organizations/{id}/tasks/workload-balance` - Get workload across team
+- `GET /api/organizations/{id}/organization-members/{memberId}/tasks` - Get member's tasks
+- `GET /api/organizations/{id}/tasks/workload-balance` - Get workload across organization
 
 #### Expense Tracking & Management
 - `GET /api/organizations/{id}/expenses` - List expenses
@@ -506,10 +506,10 @@
 - `GET /api/organizations/{id}/analytics/cashflow/forecast` - Cash flow forecast
 - `GET /api/organizations/{id}/invoices/{invoiceId}/payment-probability` - Payment probability
 
-#### Team Performance Predictions
+#### organization Performance Predictions
 - `GET /api/organizations/{id}/analytics/attorney-utilization/forecast` - Utilization forecast
 - `GET /api/organizations/{id}/analytics/capacity-planning` - Capacity planning insights
-- `GET /api/organizations/{id}/team-members/{memberId}/burnout-risk` - Burnout risk assessment
+- `GET /api/organizations/{id}/organization-members/{memberId}/burnout-risk` - Burnout risk assessment
 - `GET /api/organizations/{id}/analytics/hiring-needs/predict` - Predict hiring needs
 
 #### Benchmarking & Insights
@@ -692,7 +692,7 @@
 ## Critical Path Summary
 
 **Must-Have for MVP (Phases 1-8)**: ~22 weeks
-1. Auth & team management (Better Auth)
+1. Auth & organization management (Better Auth)
 2. Billing & subscriptions (Stripe)
 3. Client & matter management
 4. File storage (Cloudflare R2)
@@ -1117,15 +1117,15 @@
 - `GET /api/organizations/{id}/appointments/{appointmentId}/join` - Get meeting link
 - `POST /api/organizations/{id}/appointments/{appointmentId}/reminder` - Send reminder
 
-### Team Collaboration & Communication
-- `GET /api/organizations/{id}/team-members` - List team members
-- `POST /api/organizations/{id}/team-members/invite` - Invite team member
-- `PUT /api/organizations/{id}/team-members/{memberId}/role` - Update member role
-- `GET /api/organizations/{id}/team-members/{memberId}/schedule` - Get member schedule
-- `GET /api/organizations/{id}/team-members/{memberId}/workload` - Get member workload
-- `POST /api/organizations/{id}/team-members/{memberId}/assign-task` - Assign task
-- `GET /api/organizations/{id}/team-members/{memberId}/time-entries` - Get member time entries
-- `GET /api/organizations/{id}/team-members/{memberId}/productivity` - Get productivity metrics
+### organization Collaboration & Communication
+- `GET /api/organizations/{id}/organization-members` - List organization members
+- `POST /api/organizations/{id}/organization-members/invite` - Invite organization member
+- `PUT /api/organizations/{id}/organization-members/{memberId}/role` - Update member role
+- `GET /api/organizations/{id}/organization-members/{memberId}/schedule` - Get member schedule
+- `GET /api/organizations/{id}/organization-members/{memberId}/workload` - Get member workload
+- `POST /api/organizations/{id}/organization-members/{memberId}/assign-task` - Assign task
+- `GET /api/organizations/{id}/organization-members/{memberId}/time-entries` - Get member time entries
+- `GET /api/organizations/{id}/organization-members/{memberId}/productivity` - Get productivity metrics
 
 ### Client Management & Profiles
 - `GET /api/organizations/{id}/clients` - List clients
@@ -1145,7 +1145,7 @@
 - `GET /api/organizations/{id}/matters/{matterId}` - Get matter details
 - `PUT /api/organizations/{id}/matters/{matterId}` - Update matter
 - `DELETE /api/organizations/{id}/matters/{matterId}` - Delete matter
-- `POST /api/organizations/{id}/matters/{matterId}/assign` - Assign matter to team member
+- `POST /api/organizations/{id}/matters/{matterId}/assign` - Assign matter to organization member
 - `GET /api/organizations/{id}/matters/{matterId}/timeline` - Get matter timeline
 - `POST /api/organizations/{id}/matters/{matterId}/milestones` - Create matter milestone
 - `GET /api/organizations/{id}/matters/{matterId}/assets` - Get matter assets
@@ -1773,12 +1773,12 @@
 - Search across all emails by matter, client, or content
 
 ### Enhanced Calendar & Conflict Detection
-- Real-time conflict detection across team calendars
+- Real-time conflict detection across organization calendars
 - Automatic court appearance tracking with deadline calculations
 - Recurring events (weekly meetings, monthly retainers)
 - Two-way sync with Google Calendar and Outlook
 - Time blocking and capacity planning
-- Team-wide availability views
+- organization-wide availability views
 - Court appearance alerts with travel time calculations
 
 ### Task Management with Dependencies
@@ -1786,7 +1786,7 @@
 - Critical path visualization
 - Recurring tasks (weekly case reviews, monthly reports)
 - Task templates by matter type
-- Workload balancing across team members
+- Workload balancing across organization members
 - Automatic task assignment based on availability
 - Reminders and escalations for overdue tasks
 

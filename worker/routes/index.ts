@@ -2,7 +2,7 @@ export { handleHealth } from './health';
 export { handleRoot } from './root';
 export { handleAgentStreamV2 as handleAgentStream } from './agent';
 export { handleForms } from './forms';
-export { handleTeams } from './teams';
+export { handleOrganizations } from './organizations';
 export { handleSessions } from './sessions';
 export { handleActivity } from './activity';
 

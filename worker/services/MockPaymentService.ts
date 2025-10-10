@@ -1,5 +1,5 @@
-import type { Env } from '../types';
-import type { PaymentRequest, PaymentResponse } from '../schemas/payment';
+import type { Env } from '../types.js';
+import type { PaymentRequest, PaymentResponse } from '../schemas/payment.js';
 
 export class MockPaymentService {
   private env: Env;
@@ -10,7 +10,7 @@ export class MockPaymentService {
 
   async createInvoice(paymentRequest: PaymentRequest): Promise<PaymentResponse> {
     try {
-      console.log('💰 [MOCK] Creating invoice for payment request: teamId=', paymentRequest.teamId, 'sessionId=', paymentRequest.sessionId);
+      console.log('💰 [MOCK] Creating invoice for payment request: organizationId=', paymentRequest.organizationId, 'sessionId=', paymentRequest.sessionId);
 
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -26,14 +26,14 @@ export class MockPaymentService {
         console.log('💰 [MOCK] Storing payment history in database...');
         const result = await this.env.DB.prepare(`
           INSERT INTO payment_history (
-            id, payment_id, team_id, customer_email, customer_name, customer_phone,
+            id, payment_id, organization_id, customer_email, customer_name, customer_phone,
             amount, status, event_type, matter_type, matter_description, invoice_url,
             metadata, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         `).bind(
           `ph_${Date.now()}`,
           paymentId,
-          paymentRequest.teamId,
+          paymentRequest.organizationId,
           paymentRequest.customerInfo.email,
           paymentRequest.customerInfo.name,
           paymentRequest.customerInfo.phone,

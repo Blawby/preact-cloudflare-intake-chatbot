@@ -1,5 +1,5 @@
 import type { ConversationContext, DocumentChecklist } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
 import { ConversationContextManager } from './conversationContextManager.js';
@@ -11,7 +11,7 @@ import { ConversationContextManager } from './conversationContextManager.js';
 export const documentChecklistMiddleware: PipelineMiddleware = {
   name: 'documentChecklistMiddleware',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
     // Guard against empty messages array
     if (!messages || messages.length === 0) {
       return { context };

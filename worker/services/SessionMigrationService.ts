@@ -24,7 +24,7 @@ export class SessionMigrationService {
       WHERE id IN (
         SELECT DISTINCT m.id 
         FROM matters m
-        JOIN conversations c ON c.team_id = m.team_id
+        JOIN conversations c ON c.organization_id = m.organization_id
         WHERE c.session_id = ? AND m.user_id IS NULL
       )
     `).bind(userId, sessionId).run();

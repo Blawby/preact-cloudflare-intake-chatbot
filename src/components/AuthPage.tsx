@@ -95,14 +95,14 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
           email: formData.email,
           password: formData.password, // Store password for validation (in production, this would be hashed)
           image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
-          teamId: null,
+          organizationId: null,
           role: 'user',
           phone: null,
           subscriptionTier: 'free' // Default to free tier
         };
         
         // Get existing users array or create new one
-        let existingUsers: Array<{id: string; name: string; email: string; password: string | null; image: string; teamId: string | null; role: string; phone: string | null; subscriptionTier: string}> = [];
+        let existingUsers: Array<{id: string; name: string; email: string; password: string | null; image: string; organizationId: string | null; role: string; phone: string | null; subscriptionTier: string}> = [];
         try {
           existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
         } catch (_error) {
@@ -213,7 +213,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
           email: 'user@gmail.com',
           password: null, // Google users don't have passwords
           image: 'https://i.pravatar.cc/300?u=google-user',
-          teamId: null,
+          organizationId: null,
           role: 'user',
           phone: null,
           subscriptionTier: 'free'
@@ -251,7 +251,7 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
           email: 'user@gmail.com',
           password: null, // Google users don't have passwords
           image: 'https://i.pravatar.cc/300?u=google-user',
-          teamId: null,
+          organizationId: null,
           role: 'user',
           phone: null,
           subscriptionTier: 'free'

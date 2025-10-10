@@ -44,7 +44,7 @@ export async function requireAuth(
   };
 }
 
-export async function requireTeamMember(
+export async function requireOrganizationMember(
   request: Request,
   env: Env,
   organizationId: string,

@@ -197,11 +197,11 @@ describe('Real API Integration Tests', () => {
         - 401k with 4% match
         
         RESPONSIBILITIES:
-        - Lead development team of 5 engineers
+        - Lead development organization of 5 engineers
         - Architect scalable solutions
         - Mentor junior developers
         - Participate in code reviews
-        - Attend weekly team meetings
+        - Attend weekly organization meetings
         
         TERMINATION:
         - 30 days notice required
@@ -216,7 +216,7 @@ describe('Real API Integration Tests', () => {
       const chatRequest = {
         message: "Can you please provide your full name?",
         sessionId: "test-session-" + Date.now(),
-        teamSlug: "north-carolina-legal-services",
+        organizationSlug: "north-carolina-legal-services",
         attachments: [
           {
             name: pdfFile.name,
@@ -295,7 +295,7 @@ describe('Real API Integration Tests', () => {
       const chatRequest = {
         message: "I received this eviction notice. What are my rights and what should I do?",
         sessionId: "test-session-" + Date.now(),
-        teamSlug: "north-carolina-legal-services",
+        organizationSlug: "north-carolina-legal-services",
         attachments: [
           {
             name: legalFile.name,

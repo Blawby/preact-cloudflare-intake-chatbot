@@ -25,7 +25,7 @@ describe('Chat API Integration Tests', () => {
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'Hello, I need legal help' }],
-          teamId: 'demo',
+          organizationId: 'demo',
           sessionId: 'test-session',
         }),
       });
@@ -53,7 +53,7 @@ describe('Chat API Integration Tests', () => {
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'I need help with a business contract dispute' }],
-          teamId: 'demo',
+          organizationId: 'demo',
           sessionId: 'test-session',
         }),
       });
@@ -81,19 +81,19 @@ describe('Chat API Integration Tests', () => {
     });
   });
 
-  describe('Teams Management', () => {
-    it('should return available teams', async () => {
+  describe('Organizations Management', () => {
+    it('should return available organizations', async () => {
       const mockResponse = {
         ok: true,
         status: 200,
         json: () => Promise.resolve([
-          { id: 'demo', name: 'Demo Team' },
+          { id: 'demo', name: 'Demo Organization' },
           { id: 'north-carolina-legal-services', name: 'North Carolina Legal Services' }
         ]),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
-      const response = await fetch('/api/teams');
+      const response = await fetch('/api/organizations');
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(Array.isArray(data)).toBe(true);

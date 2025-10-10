@@ -1,7 +1,7 @@
--- Update Blawby AI team configuration to include comprehensive legal services
+-- Update Blawby AI organization configuration to include comprehensive legal services
 -- This fixes the issue where Blawby AI was refusing to provide legal advice for Family Law matters
 
-UPDATE teams 
+UPDATE organizations 
 SET config = json_patch(config, json('{
   "availableServices": [
     "Family Law", 

@@ -1,15 +1,11 @@
 -- Better Auth Organization Tables Migration
--- Creates organization tables for multi-tenant lawyer team management
+-- Creates organization tables for multi-tenant lawyer organization management
 
--- Organizations table for Better Auth
-CREATE TABLE IF NOT EXISTS organizations (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  slug TEXT UNIQUE,
-  logo TEXT,
-  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
-  metadata TEXT -- JSON for additional team config
-);
+-- Organizations table for Better Auth (extends existing schema)
+-- Note: This assumes the base organizations table already exists from schema.sql
+-- We'll add Better Auth specific columns to the existing table
+ALTER TABLE organizations ADD COLUMN logo TEXT;
+ALTER TABLE organizations ADD COLUMN metadata TEXT; -- JSON for additional organization config
 
 -- Organization members (lawyers) with roles
 CREATE TABLE IF NOT EXISTS members (
@@ -33,19 +29,19 @@ CREATE TABLE IF NOT EXISTS invitations (
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
 
--- Client-Team relationships (clients interacting with teams)
-CREATE TABLE IF NOT EXISTS client_team_access (
+-- Client-Organization relationships (clients interacting with organizations)
+CREATE TABLE IF NOT EXISTS client_organization_access (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL, -- client user ID
-  team_id TEXT NOT NULL, -- references teams.id
+  organization_id TEXT NOT NULL, -- references organizations.id
   first_contact_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   last_activity_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
-  UNIQUE(user_id, team_id)
+  UNIQUE(user_id, organization_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_members_org ON members(organization_id);
 CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id);
 CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
-CREATE INDEX IF NOT EXISTS idx_client_team_access_user ON client_team_access(user_id);
-CREATE INDEX IF NOT EXISTS idx_client_team_access_team ON client_team_access(team_id);
+CREATE INDEX IF NOT EXISTS idx_client_organization_access_user ON client_organization_access(user_id);
+CREATE INDEX IF NOT EXISTS idx_client_organization_access_organization ON client_organization_access(organization_id);
 

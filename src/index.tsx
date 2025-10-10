@@ -10,7 +10,7 @@ import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
 import { useMessageHandling } from './hooks/useMessageHandling';
 import { useFileUpload } from './hooks/useFileUpload';
-import { useTeamConfig } from './hooks/useTeamConfig';
+import { useOrganizationConfig } from './hooks/useOrganizationConfig';
 import { useChatSession } from './hooks/useChatSession';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
@@ -43,21 +43,21 @@ function MainApp() {
 	const { navigate } = useNavigation();
 
 	// Use custom hooks
-	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
+	const { organizationId, organizationConfig, organizationNotFound, handleRetryOrganizationConfig } = useOrganizationConfig({
 		onError: (error) => {
-			// Handle team config error
+			// Handle organization config error
 			 
-			console.error('Team config error:', error);
+			console.error('Organization config error:', error);
 		}
 	});
 
 	const {
 		sessionId,
 		error: sessionError
-	} = useChatSession(teamId);
+	} = useChatSession(organizationId);
 
 	const { messages, sendMessage, handleContactFormSubmit, addMessage } = useMessageHandling({
-		teamId,
+		organizationId,
 		sessionId,
 		onError: (error) => {
 			// Handle message handling error
@@ -78,7 +78,7 @@ function MainApp() {
 		cancelUpload,
 		isReadyToUpload
 	} = useFileUpload({
-		teamId,
+		organizationId,
 		sessionId,
 		onError: (error) => {
 			// Handle file upload error
@@ -173,20 +173,20 @@ function MainApp() {
 	const isSessionReady = Boolean(sessionId);
 
 
-	// Add intro message when team config is loaded and no messages exist
+	// Add intro message when organization config is loaded and no messages exist
 	useEffect(() => {
-		if (teamConfig.introMessage && messages.length === 0) {
-			// Add intro message only (team profile is now a UI element)
+		if (organizationConfig.introMessage && messages.length === 0) {
+			// Add intro message only (organization profile is now a UI element)
 			const introMessage: ChatMessageUI = {
 				id: crypto.randomUUID(),
-				content: teamConfig.introMessage,
+				content: organizationConfig.introMessage,
 				isUser: false,
 				role: 'assistant',
 				timestamp: Date.now()
 			};
 			addMessage(introMessage);
 		}
-	}, [teamConfig.introMessage, messages.length, addMessage]);
+	}, [organizationConfig.introMessage, messages.length, addMessage]);
 
 	// Create stable callback references for keyboard handlers
 	const handleEscape = useCallback(() => {
@@ -358,18 +358,18 @@ function MainApp() {
 			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
 			
 			<AppLayout
-				teamNotFound={teamNotFound}
-				teamId={teamId}
-				onRetryTeamConfig={handleRetryTeamConfig}
+				organizationNotFound={organizationNotFound}
+				organizationId={organizationId}
+				onRetryOrganizationConfig={handleRetryOrganizationConfig}
 				currentTab={currentTab}
 				onTabChange={setCurrentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
 				isSettingsModalOpen={showSettingsModal}
-				teamConfig={{
-					name: teamConfig.name,
-					profileImage: teamConfig.profileImage,
-					description: teamConfig.description
+				organizationConfig={{
+					name: organizationConfig.name,
+					profileImage: organizationConfig.profileImage,
+					description: organizationConfig.description
 				}}
 				messages={messages}
 				onSendMessage={sendMessage}
@@ -382,15 +382,15 @@ function MainApp() {
 						messages={messages}
 						onSendMessage={sendMessage}
 						onContactFormSubmit={handleContactFormSubmit}
-						teamConfig={{
-							name: teamConfig.name,
-							profileImage: teamConfig.profileImage,
-							teamId,
-							description: teamConfig.description
+						organizationConfig={{
+							name: organizationConfig.name,
+							profileImage: organizationConfig.profileImage,
+							organizationId,
+							description: organizationConfig.description
 						}}
 						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
 						sessionId={sessionId}
-						teamId={teamId}
+						organizationId={organizationId}
 						onFeedbackSubmit={handleFeedbackSubmit}
 						previewFiles={previewFiles}
 						uploadingFiles={uploadingFiles}
@@ -463,7 +463,7 @@ function MainApp() {
 							name: 'New User',
 							email: 'user@example.com',
 							image: null,
-							teamId: null,
+							organizationId: null,
 							role: 'user',
 							phone: null,
 							subscriptionTier: tier
@@ -493,12 +493,12 @@ function MainApp() {
 
 // Main App component with routing
 export function App() {
-	// Use custom hooks for team config (needed for SEO)
-	const { teamConfig } = useTeamConfig({
+	// Use custom hooks for organization config (needed for SEO)
+	const { organizationConfig } = useOrganizationConfig({
 		onError: (error) => {
-			// Handle team config error
+			// Handle organization config error
 			 
-			console.error('Team config error:', error);
+			console.error('Organization config error:', error);
 		}
 	});
 
@@ -514,7 +514,7 @@ export function App() {
 		<LocationProvider>
 			<ToastProvider>
 				<SEOHead 
-					teamConfig={teamConfig}
+					organizationConfig={organizationConfig}
 					currentUrl={currentUrl}
 				/>
 				<Router>

@@ -2,7 +2,7 @@ import { env, applyD1Migrations, fetchMock } from "cloudflare:test";
 import type { Env } from '../worker/types';
 import { Currency } from '../worker/agents/legal-intake/index.js';
 
-// TypeScript interfaces for team configuration
+// TypeScript interfaces for organization configuration
 interface FeatureFlags {
   enablePaymentProcessing: boolean;
   enableMatterCreation: boolean;
@@ -24,7 +24,7 @@ interface MatterType {
   description: string;
 }
 
-interface TeamConfig {
+interface OrganizationConfig {
   features: FeatureFlags;
   legalAreas: string[];
   pricing: Pricing;
@@ -34,7 +34,7 @@ interface TeamConfig {
   matterTypes: Record<string, MatterType>;
 }
 
-interface TeamRecord {
+interface OrganizationRecord {
   id: string;
   slug: string;
   name: string;
@@ -44,7 +44,7 @@ interface TeamRecord {
 }
 
 // Base configuration constant
-const baseConfig: TeamConfig = {
+const baseConfig: OrganizationConfig = {
   features: {
     enablePaymentProcessing: true,
     enableMatterCreation: true
@@ -72,20 +72,20 @@ const baseConfig: TeamConfig = {
   }
 };
 
-// Team configurations constant
-const teamConfigs: Record<string, TeamRecord> = {
-  'test-team-1': {
-    id: 'test-team-1',
-    slug: 'test-team-1',
-    name: 'Test Team 1',
+// Organization configurations constant
+const organizationConfigs: Record<string, OrganizationRecord> = {
+  'test-organization-1': {
+    id: 'test-organization-1',
+    slug: 'test-organization-1',
+    name: 'Test Organization 1',
     config: JSON.stringify(baseConfig),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   },
-  'test-team-disabled': {
-    id: 'test-team-disabled',
-    slug: 'test-team-disabled',
-    name: 'Test Team Disabled',
+  'test-organization-disabled': {
+    id: 'test-organization-disabled',
+    slug: 'test-organization-disabled',
+    name: 'Test Organization Disabled',
     config: JSON.stringify({
       ...baseConfig,
       features: {
@@ -106,9 +106,9 @@ const teamConfigs: Record<string, TeamRecord> = {
   }
 };
 
-// Test team configuration function
-export function getTestTeamConfigForDB(teamId: string): TeamRecord {
-  return teamConfigs[teamId] ?? teamConfigs['test-team-1'];
+// Test organization configuration function
+export function getTestOrganizationConfigForDB(organizationId: string): OrganizationRecord {
+  return organizationConfigs[organizationId] ?? organizationConfigs['test-organization-1'];
 }
 
 // Type augmentation for cloudflare:test
@@ -119,10 +119,10 @@ declare module "cloudflare:test" {
 // Apply migrations to the test database
 await applyD1Migrations(env.DB, { migrationsFolder: "./migrations" });
 
-// Test team IDs for reuse across test setup
-const testTeams = [
-  'test-team-1',
-  'test-team-disabled', 
+// Test organization IDs for reuse across test setup
+const testOrganizations = [
+  'test-organization-1',
+  'test-organization-disabled', 
   'blawby-ai'
 ];
 
@@ -133,11 +133,11 @@ export async function seedTestData() {
   // Create test matter for conflict checking
   await env.DB.prepare(`
     INSERT OR IGNORE INTO matters (
-      id, team_id, client_name, matter_type, title, opposing_party, status
+      id, organization_id, client_name, matter_type, title, opposing_party, status
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     'conflict-test-matter',
-    'test-team-1',
+    'test-organization-1',
     'Existing Client',
     'family_law',
     'Existing Matter',
@@ -152,24 +152,24 @@ export async function seedTestData() {
 beforeAll(async () => {
   console.log('🧪 Setting up Workers test environment...');
   
-  // Ensure test teams are created
-  for (const teamId of testTeams) {
-    const teamConfig = getTestTeamConfigForDB(teamId);
+  // Ensure test organizations are created
+  for (const organizationId of testOrganizations) {
+    const organizationConfig = getTestOrganizationConfigForDB(organizationId);
     
-    // Insert test team into database
+    // Insert test organization into database
     await env.DB.prepare(`
-      INSERT OR REPLACE INTO teams (id, slug, name, config, created_at, updated_at)
+      INSERT OR REPLACE INTO organizations (id, slug, name, config, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `).bind(
-      teamConfig.id,
-      teamConfig.slug,
-      teamConfig.name,
-      teamConfig.config,
-      teamConfig.created_at,
-      teamConfig.updated_at
+      organizationConfig.id,
+      organizationConfig.slug,
+      organizationConfig.name,
+      organizationConfig.config,
+      organizationConfig.created_at,
+      organizationConfig.updated_at
     ).run();
     
-    console.log(`✅ Created test team in beforeAll: ${teamConfig.name} (${teamConfig.id})`);
+    console.log(`✅ Created test organization in beforeAll: ${organizationConfig.name} (${organizationConfig.id})`);
   }
   
   await seedTestData();
@@ -185,9 +185,9 @@ beforeAll(async () => {
       success: true, 
       matter: { id: 'test-matter-id' } 
     })
-    .get('https://staging.blawby.com/api/teams/*', { 
+    .get('https://staging.blawby.com/api/organizations/*', { 
       success: true, 
-      team: { id: 'test-team-1' } 
+      organization: { id: 'test-organization-1' } 
     });
   
   // Mock external AI calls if needed
@@ -217,11 +217,11 @@ afterAll(async () => {
 
 // Test utilities
 // biome-disable-line noExportsInTest
-export async function createTestMatter(teamId: string = 'test-team-1', overrides: Record<string, any> = {}) {
+export async function createTestMatter(organizationId: string = 'test-organization-1', overrides: Record<string, any> = {}) {
   const matterId = `test-matter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   const defaults = {
-    team_id: teamId,
+    organization_id: organizationId,
     client_name: 'Test Client',
     matter_type: 'family_law',
     title: 'Test Matter',
@@ -233,11 +233,11 @@ export async function createTestMatter(teamId: string = 'test-team-1', overrides
   
   await env.DB.prepare(`
     INSERT INTO matters (
-      id, team_id, client_name, matter_type, title, opposing_party, status
+      id, organization_id, client_name, matter_type, title, opposing_party, status
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     matterId,
-    data.team_id,
+    data.organization_id,
     data.client_name,
     data.matter_type,
     data.title,
@@ -249,55 +249,55 @@ export async function createTestMatter(teamId: string = 'test-team-1', overrides
 }
 
 // biome-disable-line noExportsInTest
-export async function enableParalegalForTeam(teamId: string) {
+export async function enableParalegalForOrganization(organizationId: string) {
   await env.DB.prepare(`
-    UPDATE teams 
+    UPDATE organizations 
     SET config = json_patch(config, '{"features": {"enableParalegalAgent": true}}')
     WHERE id = ?
-  `).bind(teamId).run();
+  `).bind(organizationId).run();
 }
 
 // biome-disable-line noExportsInTest
-export async function disableParalegalForTeam(teamId: string) {
+export async function disableParalegalForOrganization(organizationId: string) {
   await env.DB.prepare(`
-    UPDATE teams 
+    UPDATE organizations 
     SET config = json_patch(config, '{"features": {"enableParalegalAgent": false}}')
     WHERE id = ?
-  `).bind(teamId).run();
+  `).bind(organizationId).run();
 }
 
 // biome-disable-line noExportsInTest
 export function createAdvanceRequest(data: {
-  teamId?: string;
+  organizationId?: string;
   matterId?: string;
   type?: string;
   eventData?: any;
   idempotencyKey?: string;
 } = {}) {
   const {
-    teamId = 'test-team-1',
+    organizationId = 'test-organization-1',
     matterId = 'test-matter-1',
     type = 'user_input',
     eventData = { clientInfo: { name: 'John Doe' }, opposingParty: 'Test Corp' },
     idempotencyKey = `test-key-${Date.now()}`
   } = data;
 
-  return new Request(`https://do.local/paralegal/${teamId}/${matterId}/advance`, {
+  return new Request(`https://do.local/paralegal/${organizationId}/${matterId}/advance`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type,
       data: eventData,
       idempotencyKey,
-      teamId,
+      organizationId,
       matterId
     })
   });
 }
 
 // biome-disable-line noExportsInTest
-export function createStatusRequest(teamId: string = 'test-team-1', matterId: string = 'test-matter-1') {
-  return new Request(`https://do.local/paralegal/${teamId}/${matterId}/status`, {
+export function createStatusRequest(organizationId: string = 'test-organization-1', matterId: string = 'test-matter-1') {
+  return new Request(`https://do.local/paralegal/${organizationId}/${matterId}/status`, {
     method: 'GET'
   });
 }

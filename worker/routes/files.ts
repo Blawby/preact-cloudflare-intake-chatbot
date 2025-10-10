@@ -51,7 +51,7 @@ async function updateStatusWithRetry(
         Logger.error('ALERT: Critical status update failure', {
           statusId: statusUpdate.id,
           sessionId: statusUpdate.sessionId,
-          teamId: statusUpdate.teamId,
+          organizationId: statusUpdate.organizationId,
           status: statusUpdate.status,
           message: statusUpdate.message,
           error: lastError.message
@@ -80,7 +80,7 @@ async function updateStatusWithRetry(
 // File upload validation schema
 const fileUploadValidationSchema = z.object({
   file: z.instanceof(File, { message: 'File is required' }),
-  teamId: z.string().min(1, 'Team ID is required'),
+  organizationId: z.string().min(1, 'Organization ID is required'),
   sessionId: z.string().min(1, 'Session ID is required')
 });
 
@@ -147,20 +147,20 @@ function validateFile(file: File): { isValid: boolean; error?: string } {
   return { isValid: true };
 }
 
-async function storeFile(file: File, teamId: string, sessionId: string, env: Env): Promise<{ fileId: string; url: string; storageKey: string }> {
+async function storeFile(file: File, organizationId: string, sessionId: string, env: Env): Promise<{ fileId: string; url: string; storageKey: string }> {
   if (!env.FILES_BUCKET) {
     throw HttpErrors.internalServerError('File storage is not configured');
   }
 
   // Generate unique file ID
-  const fileId = `${teamId}-${sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const fileId = `${organizationId}-${sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const fileExtension = file.name.split('.').pop() || '';
-  const storageKey = `uploads/${teamId}/${sessionId}/${fileId}.${fileExtension}`;
+  const storageKey = `uploads/${organizationId}/${sessionId}/${fileId}.${fileExtension}`;
 
   Logger.info('Storing file:', {
     fileId,
     storageKey,
-    teamId,
+    organizationId,
     sessionId,
     fileName: file.name,
     fileSize: file.size,
@@ -177,7 +177,7 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
     },
     customMetadata: {
       originalName: file.name,
-      teamId,
+      organizationId,
       sessionId,
       uploadedAt: new Date().toISOString()
     }
@@ -189,7 +189,7 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
     try {
       await env.DOC_EVENTS.send({
         key: storageKey,
-        teamId,
+        organizationId,
         sessionId,
         mime: file.type,
         size: file.size
@@ -205,36 +205,36 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
 
   // Try to store file metadata in database, but don't fail if it doesn't work
   try {
-    // First check if the team exists, if not, create a minimal entry
-    const teamCheckStmt = env.DB.prepare('SELECT id FROM teams WHERE id = ? OR slug = ?');
-    const existingTeam = await teamCheckStmt.bind(teamId, teamId).first();
+    // First check if the organization exists, if not, create a minimal entry
+    const organizationCheckStmt = env.DB.prepare('SELECT id FROM organizations WHERE id = ? OR slug = ?');
+    const existingOrganization = await organizationCheckStmt.bind(organizationId, organizationId).first();
     
-    if (!existingTeam) {
-      console.log('Team not found in database, creating minimal entry:', teamId);
-      // Create a minimal team entry if it doesn't exist
-      const createTeamStmt = env.DB.prepare(`
-        INSERT OR IGNORE INTO teams (id, slug, name, config, created_at, updated_at) 
+    if (!existingOrganization) {
+      console.log('Organization not found in database, creating minimal entry:', organizationId);
+      // Create a minimal organization entry if it doesn't exist
+      const createOrganizationStmt = env.DB.prepare(`
+        INSERT OR IGNORE INTO organizations (id, slug, name, config, created_at, updated_at) 
         VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
       `);
-      await createTeamStmt.bind(
-        teamId,
-        teamId,
-        `Team ${teamId}`,
+      await createOrganizationStmt.bind(
+        organizationId,
+        organizationId,
+        `Organization ${organizationId}`,
         JSON.stringify({ aiModel: '@cf/openai/gpt-oss-20b', requiresPayment: false })
       ).run();
-      console.log('Team created in database:', teamId);
+      console.log('Organization created in database:', organizationId);
     }
 
     const stmt = env.DB.prepare(`
       INSERT INTO files (
-        id, team_id, session_id, original_name, file_name, file_path, 
+        id, organization_id, session_id, original_name, file_name, file_path, 
         file_type, file_size, mime_type, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
 
     await stmt.bind(
       fileId,
-      teamId,
+      organizationId,
       sessionId,
       file.name,
       `${fileId}.${fileExtension}`,
@@ -271,14 +271,14 @@ async function storeFile(file: File, teamId: string, sessionId: string, env: Env
         actorId: undefined, // Don't populate created_by_lawyer_id with sessionId
         metadata: {
           sessionId,
-          teamId,
+          organizationId,
           fileId,
           fileName: file.name,
           fileSize: file.size,
           fileType: file.type,
           storageKey
         }
-      }, teamId);
+      }, organizationId);
       
       Logger.info('Activity event created for file upload:', { fileId, fileName: file.name });
     } catch (error) {
@@ -315,11 +315,11 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       
       // Extract and validate required fields
       const file = formData.get('file') as File;
-      const teamId = formData.get('teamId') as string;
+      const organizationId = formData.get('organizationId') as string;
       const sessionId = formData.get('sessionId') as string;
 
       // Validate input
-      const validationResult = fileUploadValidationSchema.safeParse({ file, teamId, sessionId });
+      const validationResult = fileUploadValidationSchema.safeParse({ file, organizationId, sessionId });
       if (!validationResult.success) {
         throw HttpErrors.badRequest('Invalid upload data', validationResult.error.issues);
       }
@@ -330,12 +330,12 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         throw HttpErrors.badRequest(fileValidation.error!);
       }
 
-      const normalizedTeamId = teamId.trim();
+      const normalizedOrganizationId = organizationId.trim();
       const normalizedSessionId = sessionId.trim();
 
       // Validate that trimmed IDs are not empty
-      if (!normalizedTeamId) {
-        throw HttpErrors.badRequest('teamId cannot be empty after trimming');
+      if (!normalizedOrganizationId) {
+        throw HttpErrors.badRequest('organizationId cannot be empty after trimming');
       }
       if (!normalizedSessionId) {
         throw HttpErrors.badRequest('sessionId cannot be empty after trimming');
@@ -344,11 +344,11 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       const sessionResolution = await SessionService.resolveSession(env, {
         request,
         sessionId: normalizedSessionId,
-        teamId: normalizedTeamId,
+        organizationId: normalizedOrganizationId,
         createIfMissing: true
       });
 
-      const resolvedTeamId = sessionResolution.session.teamId;
+      const resolvedOrganizationId = sessionResolution.session.organizationId;
       const resolvedSessionId = sessionResolution.session.id;
 
       // Create initial status update for file processing
@@ -358,7 +358,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         statusId = await StatusService.createFileProcessingStatus(
           env,
           resolvedSessionId,
-          resolvedTeamId,
+          resolvedOrganizationId,
           file.name,
           'processing',
           10
@@ -375,7 +375,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       // Store file with error handling
       let fileId: string, url: string, storageKey: string;
       try {
-        const result = await storeFile(file, resolvedTeamId, resolvedSessionId, env);
+        const result = await storeFile(file, resolvedOrganizationId, resolvedSessionId, env);
         fileId = result.fileId;
         url = result.url;
         storageKey = result.storageKey;
@@ -386,7 +386,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
             await updateStatusWithRetry(env, {
               id: statusId,
               sessionId: resolvedSessionId,
-              teamId: resolvedTeamId,
+              organizationId: resolvedOrganizationId,
               type: 'file_processing',
               status: 'failed',
               message: `File ${file.name} upload failed: ${storeError.message}`,
@@ -407,7 +407,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
           await updateStatusWithRetry(env, {
             id: statusId,
             sessionId: resolvedSessionId,
-            teamId: resolvedTeamId,
+            organizationId: resolvedOrganizationId,
             type: 'file_processing',
             status: 'processing',
             message: `File ${file.name} uploaded successfully, starting analysis...`,
@@ -425,7 +425,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
-        teamId: resolvedTeamId,
+        organizationId: resolvedOrganizationId,
         sessionId: resolvedSessionId,
         url,
         statusId
@@ -444,7 +444,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
             body: {
               type: "analyze_uploaded_document",
               sessionId: resolvedSessionId,
-              teamId: resolvedTeamId,
+              organizationId: resolvedOrganizationId,
               statusId: statusId ?? undefined,
               file: {
                 key: storageKey,
@@ -471,7 +471,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
               await updateStatusWithRetry(env, {
                 id: statusId,
                 sessionId: resolvedSessionId,
-                teamId: resolvedTeamId,
+                organizationId: resolvedOrganizationId,
                 type: 'file_processing',
                 status: 'completed',
                 message: `Analysis of ${file.name} completed successfully`,
@@ -491,7 +491,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
               await updateStatusWithRetry(env, {
                 id: statusId,
                 sessionId: resolvedSessionId,
-                teamId: resolvedTeamId,
+                organizationId: resolvedOrganizationId,
                 type: 'file_processing',
                 status: 'failed',
                 message: `Analysis of ${file.name} failed: ${error.message}`,
@@ -574,13 +574,13 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       // Try to construct the file path from the fileId if we don't have database metadata
       let filePath = fileRecord?.file_path;
       if (!filePath) {
-        // Extract teamId and sessionId from fileId format: teamId-sessionId-timestamp-random
-        // The teamId can contain hyphens, so we need to be more careful about parsing
+        // Extract organizationId and sessionId from fileId format: organizationId-sessionId-timestamp-random
+        // The organizationId can contain hyphens, so we need to be more careful about parsing
         const lastHyphenIndex = fileId.lastIndexOf('-');
         const secondLastHyphenIndex = fileId.lastIndexOf('-', lastHyphenIndex - 1);
         
         if (lastHyphenIndex !== -1 && secondLastHyphenIndex !== -1) {
-          // The format is: teamId-sessionId-timestamp-random
+          // The format is: organizationId-sessionId-timestamp-random
           // We need to find where the sessionId ends and timestamp begins
           const parts = fileId.split('-');
           if (parts.length >= 4) {
@@ -588,20 +588,20 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
             const timestamp = parts[parts.length - 2];
             const randomString = parts[parts.length - 1];
             
-            // Everything before the timestamp is teamId-sessionId
-            const teamIdAndSessionId = parts.slice(0, -2).join('-');
+            // Everything before the timestamp is organizationId-sessionId
+            const organizationIdAndSessionId = parts.slice(0, -2).join('-');
             
             // Find the sessionId (it's a UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-            const sessionIdMatch = teamIdAndSessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+            const sessionIdMatch = organizationIdAndSessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
             
             if (sessionIdMatch) {
               const sessionId = sessionIdMatch[0];
-              const teamId = teamIdAndSessionId.substring(0, teamIdAndSessionId.length - sessionId.length - 1); // -1 for the hyphen
+              const organizationId = organizationIdAndSessionId.substring(0, organizationIdAndSessionId.length - sessionId.length - 1); // -1 for the hyphen
               
-              console.log('Parsed fileId:', { teamId, sessionId, timestamp, randomString });
+              console.log('Parsed fileId:', { organizationId, sessionId, timestamp, randomString });
               
               // Try to find the file in R2 with a pattern match
-              const prefix = `uploads/${teamId}/${sessionId}/${fileId}`;
+              const prefix = `uploads/${organizationId}/${sessionId}/${fileId}`;
               console.log('Looking for file with prefix:', prefix);
               // List objects with this prefix
               const objects = await env.FILES_BUCKET.list({ prefix });

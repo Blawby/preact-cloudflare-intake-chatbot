@@ -1,5 +1,5 @@
 import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
 import { PDFGenerationService } from '../services/PDFGenerationService.js';
@@ -11,7 +11,7 @@ import { PDFGenerationService } from '../services/PDFGenerationService.js';
 export const pdfGenerationMiddleware: PipelineMiddleware = {
   name: 'pdfGenerationMiddleware',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
     // Guard against empty messages array
     if (!messages || messages.length === 0) {
       return { context };
@@ -79,8 +79,8 @@ Would you like me to help you build a case draft first?`;
           urgency: context.caseDraft.urgency || 'normal'
         },
         clientName: context.contactInfo?.name,
-        teamName: teamConfig?.description || 'Legal Services',
-        teamBrandColor: teamConfig?.brandColor || '#334e68'
+        organizationName: organizationConfig?.description || 'Legal Services',
+        organizationBrandColor: organizationConfig?.brandColor || '#334e68'
       }, env);
 
       if (pdfResult.success && pdfResult.pdfBuffer) {

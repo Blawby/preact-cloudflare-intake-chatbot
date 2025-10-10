@@ -1,6 +1,6 @@
--- Migration: Teams to Better Auth Organizations
+-- Migration: Legacy Teams to Better Auth Organizations
 -- This migration replaces the legacy teams system with Better Auth organizations
--- Run this after ensuring all team data is backed up
+-- Run this after ensuring all organization data is backed up
 
 -- Step 1: Drop foreign key constraints that reference team_id
 -- Note: SQLite doesn't support DROP CONSTRAINT, so we'll recreate tables
@@ -130,11 +130,14 @@ FROM users;
 DROP TABLE users;
 ALTER TABLE users_new RENAME TO users;
 
--- Step 5: Drop legacy tables
+-- Step 5: Rename team_api_tokens to organization_api_tokens
+ALTER TABLE team_api_tokens RENAME TO organization_api_tokens;
+
+-- Step 6: Drop legacy tables
 DROP TABLE IF EXISTS teams;
 DROP TABLE IF EXISTS lawyers;
 
--- Step 6: Create indexes for new organization_id columns
+-- Step 7: Create indexes for new organization_id columns
 CREATE INDEX IF NOT EXISTS idx_conversations_organization ON conversations(organization_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id);
 CREATE INDEX IF NOT EXISTS idx_contact_forms_organization ON contact_forms(organization_id);
@@ -142,11 +145,11 @@ CREATE INDEX IF NOT EXISTS idx_services_organization ON services(organization_id
 CREATE INDEX IF NOT EXISTS idx_client_org_access_user ON client_organization_access(user_id);
 CREATE INDEX IF NOT EXISTS idx_client_org_access_org ON client_organization_access(organization_id);
 
--- Step 7: Create foreign key constraints (if supported)
+-- Step 8: Create foreign key constraints (if supported)
 -- Note: SQLite foreign keys are enabled via PRAGMA foreign_keys = ON
 -- The constraints will be enforced by the application layer
 
--- Step 8: Verify migration
+-- Step 9: Verify migration
 -- Check that all tables have organization_id instead of team_id
 -- Check that legacy tables are removed
 -- Check that indexes are created

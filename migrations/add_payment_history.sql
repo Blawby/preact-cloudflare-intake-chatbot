@@ -5,7 +5,7 @@ BEGIN TRANSACTION;
 CREATE TABLE IF NOT EXISTS payment_history (
   id TEXT PRIMARY KEY,
   payment_id TEXT UNIQUE NOT NULL,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   customer_email TEXT NOT NULL,
   customer_name TEXT,
   customer_phone TEXT,
@@ -20,11 +20,11 @@ CREATE TABLE IF NOT EXISTS payment_history (
   notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES teams(id)
+  FOREIGN KEY (organization_id) REFERENCES organizations(id)
 );
 
 -- Create index for faster queries
-CREATE INDEX IF NOT EXISTS idx_payment_history_team_id ON payment_history(team_id);
+CREATE INDEX IF NOT EXISTS idx_payment_history_organization_id ON payment_history(organization_id);
 CREATE INDEX IF NOT EXISTS idx_payment_history_customer_email ON payment_history(customer_email);
 CREATE INDEX IF NOT EXISTS idx_payment_history_status ON payment_history(status);
 CREATE INDEX IF NOT EXISTS idx_payment_history_created_at ON payment_history(created_at); 

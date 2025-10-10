@@ -25,7 +25,7 @@ interface RouteBody {
     role: 'user' | 'assistant' | 'system';
     content: string;
   }>;
-  teamId?: string;
+  organizationId?: string;
   sessionId?: string;
   aiProvider?: string;
   aiModel?: string;
@@ -48,14 +48,14 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
   if (request.method === 'GET') {
     const url = new URL(request.url);
     const sessionId = url.searchParams.get('sessionId');
-    const teamId = url.searchParams.get('teamId');
+    const organizationId = url.searchParams.get('organizationId');
     
     if (!sessionId) {
       throw HttpErrors.badRequest('sessionId parameter is required');
     }
 
-    if (!teamId) {
-      throw HttpErrors.badRequest('teamId parameter is required');
+    if (!organizationId) {
+      throw HttpErrors.badRequest('organizationId parameter is required');
     }
 
     // Create SSE response for status updates
@@ -69,12 +69,12 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
 
     // Register session subscription for real-time updates
     try {
-      await StatusService.subscribeSession(env, sessionId, teamId);
+      await StatusService.subscribeSession(env, sessionId, organizationId);
     } catch (error) {
       Logger.error('Failed to subscribe session for SSE updates', {
         error: error instanceof Error ? error.message : String(error),
         sessionId,
-        teamId,
+        organizationId,
         env: env ? 'present' : 'missing'
       });
       
@@ -240,7 +240,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     }
     
     const body = rawBody as RouteBody;
-    const { messages, teamId, sessionId, attachments = [], aiProvider, aiModel } = body;
+    const { messages, organizationId, sessionId, attachments = [], aiProvider, aiModel } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw HttpErrors.badRequest('No message content provided');
@@ -295,23 +295,23 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       ? sessionId.trim()
       : undefined;
 
-    let effectiveTeamId = typeof teamId === 'string' && teamId.trim().length > 0
-      ? teamId.trim()
+    let effectiveOrganizationId = typeof organizationId === 'string' && organizationId.trim().length > 0
+      ? organizationId.trim()
       : undefined;
 
-    if (!effectiveTeamId && trimmedSessionId) {
+    if (!effectiveOrganizationId && trimmedSessionId) {
       try {
         const priorSession = await SessionService.getSessionById(env, trimmedSessionId);
         if (priorSession) {
-          effectiveTeamId = priorSession.teamId;
+          effectiveOrganizationId = priorSession.organizationId;
         }
       } catch (lookupError) {
         console.warn('Failed to lookup existing session before resolution', lookupError);
       }
     }
 
-    if (!effectiveTeamId) {
-      throw HttpErrors.badRequest('teamId is required for agent interactions');
+    if (!effectiveOrganizationId) {
+      throw HttpErrors.badRequest('organizationId is required for agent interactions');
     }
 
     const providerOverride = typeof aiProvider === 'string' && aiProvider.trim().length > 0
@@ -324,16 +324,16 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const sessionResolution = await SessionService.resolveSession(env, {
       request,
       sessionId: trimmedSessionId,
-      teamId: effectiveTeamId,
+      organizationId: effectiveOrganizationId,
       createIfMissing: true
     });
 
     const resolvedSessionId = sessionResolution.session.id;
-    const resolvedTeamId = sessionResolution.session.teamId;
+    const resolvedOrganizationId = sessionResolution.session.organizationId;
 
-    // Security check: ensure session belongs to the requested team
-    if (resolvedTeamId !== effectiveTeamId) {
-      throw HttpErrors.forbidden('Session does not belong to the specified team');
+    // Security check: ensure session belongs to the requested organization
+    if (resolvedOrganizationId !== effectiveOrganizationId) {
+      throw HttpErrors.forbidden('Session does not belong to the specified organization');
     }
 
     if (sessionResolution.cookie) {
@@ -359,7 +359,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
 
       await SessionService.persistMessage(env, {
         sessionId: resolvedSessionId,
-        teamId: resolvedTeamId,
+        organizationId: resolvedOrganizationId,
         role: 'user',
         content: latestMessage.content,
         metadata,
@@ -369,16 +369,16 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       console.warn('Failed to persist chat message to D1', persistError);
     }
 
-    // Get team configuration
-    let teamConfig = null;
-    if (effectiveTeamId) {
+    // Get organization configuration
+    let organizationConfig = null;
+    if (effectiveOrganizationId) {
       try {
         const { AIService } = await import('../services/AIService.js');
         const aiService = new AIService(env.AI, env);
-        const rawTeamConfig = await aiService.getTeamConfig(effectiveTeamId);
-        teamConfig = rawTeamConfig;
+        const rawOrganizationConfig = await aiService.getOrganizationConfig(effectiveOrganizationId);
+        organizationConfig = rawOrganizationConfig;
       } catch (error) {
-        console.warn('Failed to get team config:', error);
+        console.warn('Failed to get organization config:', error);
       }
     }
 
@@ -386,7 +386,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const cloudflareLocation = getCloudflareLocation(request);
 
     // Load conversation context
-    const context = await ConversationContextManager.load(resolvedSessionId, resolvedTeamId, env);
+    const context = await ConversationContextManager.load(resolvedSessionId, resolvedOrganizationId, env);
 
     // Update context with the full conversation before running pipeline
     const updatedContext = ConversationContextManager.updateContext(context, normalizedMessages);
@@ -400,7 +400,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const pipelineResult = await runPipeline(
       normalizedMessages,
       updatedContext,
-      teamConfig,
+      organizationConfig,
       [
         createLoggingMiddleware(),
         contentPolicyFilter,
@@ -573,7 +573,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
           await runLegalIntakeAgentStream(
             env,
             formattedMessages,
-            effectiveTeamId,
+            effectiveOrganizationId,
             resolvedSessionId,
             cloudflareLocation,
             controller,
@@ -654,7 +654,7 @@ function isValidRouteBody(obj: unknown): obj is RouteBody {
   }
 
   // Optional fields validation
-  if (body.teamId !== undefined && typeof body.teamId !== 'string') return false;
+  if (body.organizationId !== undefined && typeof body.organizationId !== 'string') return false;
   if (body.sessionId !== undefined && typeof body.sessionId !== 'string') return false;
 
   if (body.aiProvider !== undefined && typeof body.aiProvider !== 'string') return false;

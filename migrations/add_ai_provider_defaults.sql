@@ -1,5 +1,5 @@
--- Add explicit AI provider/model metadata to existing team configs
-UPDATE teams
+-- Add explicit AI provider/model metadata to existing organization configs
+UPDATE organizations
 SET config = json_set(
         json_set(
             json_set(

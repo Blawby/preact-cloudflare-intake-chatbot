@@ -16,7 +16,7 @@ export interface AnalysisResult {
 
 export interface SessionRecord {
   id: string;
-  teamId: string;
+  organizationId: string;
   state: 'active' | 'closed' | 'archived';
   statusReason?: string | null;
   retentionHorizonDays: number;
@@ -38,7 +38,7 @@ export interface SessionResolution {
 
 export interface PersistedMessageInput {
   sessionId: string;
-  teamId: string;
+  organizationId: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   metadata?: unknown;
@@ -79,7 +79,7 @@ async function hashToken(token: string): Promise<string> {
 function mapSessionRow(row: Record<string, unknown>): SessionRecord {
   return {
     id: String(row.id),
-    teamId: String(row.team_id),
+    organizationId: String(row.organization_id),
     state: (row.state as SessionRecord['state']) ?? 'active',
     statusReason: (row.status_reason as string) ?? null,
     retentionHorizonDays: typeof row.retention_horizon_days === 'number'
@@ -129,7 +129,7 @@ export class SessionService {
 
   static async getSessionById(env: Env, sessionId: string): Promise<SessionRecord | null> {
     const stmt = env.DB.prepare(`
-      SELECT id, team_id, state, status_reason, retention_horizon_days, is_hold,
+      SELECT id, organization_id, state, status_reason, retention_horizon_days, is_hold,
              created_at, updated_at, last_active, closed_at, token_hash
         FROM chat_sessions
        WHERE id = ?
@@ -140,16 +140,16 @@ export class SessionService {
     return mapSessionRow(row);
   }
 
-  static async getSessionByToken(env: Env, rawToken: string, teamId: string): Promise<SessionRecord | null> {
+  static async getSessionByToken(env: Env, rawToken: string, organizationId: string): Promise<SessionRecord | null> {
     const tokenHashValue = await hashToken(rawToken);
     const stmt = env.DB.prepare(`
-      SELECT id, team_id, state, status_reason, retention_horizon_days, is_hold,
+      SELECT id, organization_id, state, status_reason, retention_horizon_days, is_hold,
              created_at, updated_at, last_active, closed_at, token_hash
         FROM chat_sessions
-       WHERE token_hash = ? AND team_id = ?
+       WHERE token_hash = ? AND organization_id = ?
        LIMIT 1
     `);
-    const row = await stmt.bind(tokenHashValue, teamId).first<Record<string, unknown>>();
+    const row = await stmt.bind(tokenHashValue, organizationId).first<Record<string, unknown>>();
     if (!row) return null;
     return mapSessionRow(row);
   }
@@ -176,12 +176,12 @@ export class SessionService {
   }
 
   static async createSession(env: Env, options: {
-    teamId: string;
+    organizationId: string;
     sessionId?: string;
     sessionToken?: string;
     retentionHorizonDays?: number;
   }): Promise<SessionResolution> {
-    const teamId = options.teamId.trim();
+    const organizationId = options.organizationId.trim();
     const sessionId = options.sessionId?.trim() ?? crypto.randomUUID();
     const providedToken = options.sessionToken?.trim() ?? null;
     const initialToken = providedToken ?? crypto.randomUUID();
@@ -191,7 +191,7 @@ export class SessionService {
 
     const insertStmt = env.DB.prepare(`
       INSERT INTO chat_sessions (
-        id, team_id, token_hash, state, status_reason, retention_horizon_days,
+        id, organization_id, token_hash, state, status_reason, retention_horizon_days,
         is_hold, created_at, updated_at, last_active
       ) VALUES (?, ?, ?, 'active', NULL, ?, 0, ?, ?, ?)
       ON CONFLICT(id) DO NOTHING
@@ -199,7 +199,7 @@ export class SessionService {
 
     const insertResult = await insertStmt.bind(
       sessionId,
-      teamId,
+      organizationId,
       initialTokenHash,
       retention,
       nowIso,
@@ -217,8 +217,8 @@ export class SessionService {
       throw new Error('Failed to persist session');
     }
 
-    if (session.teamId !== teamId) {
-      throw new Error(`Session ${sessionId} belongs to team ${session.teamId}, cannot be accessed by team ${teamId}`);
+    if (session.organizationId !== organizationId) {
+      throw new Error(`Session ${sessionId} belongs to organization ${session.organizationId}, cannot be accessed by organization ${organizationId}`);
     }
 
     if (isNew) {
@@ -259,7 +259,7 @@ export class SessionService {
                retention_horizon_days = ?,
                updated_at = ?,
                last_active = ?
-         WHERE id = ? AND team_id = ?
+         WHERE id = ? AND organization_id = ?
       `);
 
       await updateStmt.bind(
@@ -267,7 +267,7 @@ export class SessionService {
         nowIso,
         nowIso,
         sessionId,
-        teamId
+        organizationId
       ).run();
     }
 
@@ -288,12 +288,12 @@ export class SessionService {
     request?: Request;
     sessionId?: string;
     sessionToken?: string | null;
-    teamId: string;
+    organizationId: string;
     retentionHorizonDays?: number;
     createIfMissing?: boolean;
   }): Promise<SessionResolution> {
     try {
-      const normalizedTeam = options.teamId.trim();
+      const normalizedOrganization = options.organizationId.trim();
       let providedToken = options.sessionToken ?? null;
       if (!providedToken && options.request) {
         providedToken = this.getSessionTokenFromCookie(options.request);
@@ -303,13 +303,13 @@ export class SessionService {
 
       if (options.sessionId) {
         session = await this.getSessionById(env, options.sessionId);
-        if (session && session.teamId !== normalizedTeam) {
+        if (session && session.organizationId !== normalizedOrganization) {
           session = null;
         }
       }
 
       if (!session && providedToken) {
-        session = await this.getSessionByToken(env, providedToken, normalizedTeam);
+        session = await this.getSessionByToken(env, providedToken, normalizedOrganization);
       }
 
       if (!session) {
@@ -317,7 +317,7 @@ export class SessionService {
           throw new Error('Session not found and creation disabled');
         }
         const created = await this.createSession(env, {
-          teamId: normalizedTeam,
+          organizationId: normalizedOrganization,
           sessionId: options.sessionId,
           sessionToken: providedToken ?? undefined,
           retentionHorizonDays: options.retentionHorizonDays
@@ -347,11 +347,11 @@ export class SessionService {
       };
     } catch (error) {
       console.warn('[SessionService] Falling back to ephemeral session', {
-        teamId: options.teamId,
+        organizationId: options.organizationId,
         sessionId: options.sessionId,
         message: error instanceof Error ? error.message : String(error)
       });
-      return this.createEphemeralSession(options.teamId, {
+      return this.createEphemeralSession(options.organizationId, {
         sessionId: options.sessionId,
         sessionToken: options.sessionToken ?? undefined
       });
@@ -360,8 +360,8 @@ export class SessionService {
 
   static async persistMessage(env: Env, input: PersistedMessageInput): Promise<void> {
     const session = await this.getSessionById(env, input.sessionId);
-    if (!session || session.teamId !== input.teamId) {
-      throw new Error('Cannot persist message: session not found or team mismatch');
+    if (!session || session.organizationId !== input.organizationId) {
+      throw new Error('Cannot persist message: session not found or organization mismatch');
     }
 
     const messageId = input.messageId ?? crypto.randomUUID();
@@ -370,20 +370,20 @@ export class SessionService {
 
     const stmt = env.DB.prepare(`
       INSERT INTO chat_messages (
-        id, session_id, team_id, role, content, metadata, token_count, created_at
+        id, session_id, organization_id, role, content, metadata, token_count, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         content = excluded.content,
         metadata = excluded.metadata,
         token_count = excluded.token_count
-       WHERE chat_messages.team_id = excluded.team_id
+       WHERE chat_messages.organization_id = excluded.organization_id
          AND chat_messages.session_id = excluded.session_id
     `);
 
     await stmt.bind(
       messageId,
       input.sessionId,
-      input.teamId,
+      input.organizationId,
       input.role,
       input.content,
       metadata,
@@ -395,11 +395,11 @@ export class SessionService {
   /**
    * Send analysis status message to user
    */
-  static async sendAnalysisStatus(env: Env, sessionId: string, teamId: string, message: string): Promise<void> {
+  static async sendAnalysisStatus(env: Env, sessionId: string, organizationId: string, message: string): Promise<void> {
     try {
       await this.persistMessage(env, {
         sessionId,
-        teamId,
+        organizationId,
         role: 'assistant',
         content: message,
         metadata: { type: 'analysis_status' }
@@ -409,7 +409,7 @@ export class SessionService {
       const sanitizedMessage = message.length > 100 ? `${message.substring(0, 100)}...` : message;
       console.log(`📊 Analysis Status [${sessionId}]: ${sanitizedMessage}`);
     } catch (error) {
-      console.error(`Failed to send analysis status for session ${sessionId}, team ${teamId}:`, error);
+      console.error(`Failed to send analysis status for session ${sessionId}, organization ${organizationId}:`, error);
       throw new Error(`Failed to send analysis status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -417,7 +417,7 @@ export class SessionService {
   /**
    * Send analysis complete message to user
    */
-  static async sendAnalysisComplete(env: Env, sessionId: string, teamId: string, analysis: AnalysisResult): Promise<void> {
+  static async sendAnalysisComplete(env: Env, sessionId: string, organizationId: string, analysis: AnalysisResult): Promise<void> {
     // Initialize Logger with environment variables for Cloudflare Workers compatibility
     Logger.initialize({
       DEBUG: env.DEBUG,
@@ -444,7 +444,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
 
       await this.persistMessage(env, {
         sessionId,
-        teamId,
+        organizationId,
         role: 'assistant',
         content: formattedContent,
         metadata: { 
@@ -456,7 +456,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
       // Log success with sanitized data (no PII)
       Logger.info(`Analysis complete notification sent successfully`, {
         sessionId,
-        teamId,
+        organizationId,
         confidence: analysis.confidence,
         keyFactsCount: analysis.key_facts?.length || 0,
         hasSummary: !!analysis.summary,
@@ -467,7 +467,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
       // Dev-only detailed logging with PII protection
       Logger.debug(`Analysis complete detailed info`, {
         sessionId,
-        teamId,
+        organizationId,
         summaryPreview: analysis.summary ? analysis.summary.substring(0, 100) + '...' : undefined,
         confidence: analysis.confidence,
         keyFactsCount: analysis.key_facts?.length || 0,
@@ -482,7 +482,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
       // Log sanitized error message with context but no sensitive payloads
       Logger.error(`Failed to send analysis complete notification`, {
         sessionId,
-        teamId,
+        organizationId,
         errorType: error instanceof Error ? error.constructor.name : 'Unknown',
         errorMessage: error instanceof Error ? error.message : String(error)
       });
@@ -490,7 +490,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
       // Dev-only detailed error logging with PII protection
       Logger.debug(`Analysis complete error details`, {
         sessionId,
-        teamId,
+        organizationId,
         error: error instanceof Error ? {
           name: error.name,
           message: error.message,
@@ -504,7 +504,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
   }
 
   private static createEphemeralSession(
-    teamId: string,
+    organizationId: string,
     options: { sessionId?: string | null; sessionToken?: string }
   ): SessionResolution {
     const sessionId = options.sessionId && options.sessionId.trim().length > 0
@@ -517,7 +517,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
 
     const session: SessionRecord = {
       id: sessionId,
-      teamId: teamId.trim(),
+      organizationId: organizationId.trim(),
       state: 'active',
       statusReason: 'ephemeral_fallback',
       retentionHorizonDays: DEFAULT_RETENTION_DAYS,

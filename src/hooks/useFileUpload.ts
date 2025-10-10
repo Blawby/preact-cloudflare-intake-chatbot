@@ -28,17 +28,17 @@ interface UploadResponse {
 }
 
 interface UseFileUploadOptions {
-  teamId?: string;
+  organizationId?: string;
   sessionId?: string;
   onError?: (error: string) => void;
 }
 
 // Utility function to upload a file to backend
-async function uploadFileToBackend(file: File, teamId: string, sessionId: string, signal?: AbortSignal): Promise<UploadResponse> {
+async function uploadFileToBackend(file: File, organizationId: string, sessionId: string, signal?: AbortSignal): Promise<UploadResponse> {
   try {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('teamId', teamId);
+    formData.append('organizationId', organizationId);
     formData.append('sessionId', sessionId);
 
     const response = await fetch('/api/files/upload', {
@@ -63,24 +63,24 @@ async function uploadFileToBackend(file: File, teamId: string, sessionId: string
   }
 }
 
-export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptions) => {
+export const useFileUpload = ({ organizationId, sessionId, onError }: UseFileUploadOptions) => {
   const [previewFiles, setPreviewFiles] = useState<FileAttachment[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
   const abortControllers = useRef<Map<string, AbortController>>(new Map());
 
-  const resolvedTeamId = (teamId ?? '').trim();
+  const resolvedOrganizationId = (organizationId ?? '').trim();
   const resolvedSessionId = (sessionId ?? '').trim();
 
   // Check if we're ready to upload files
-  const isReadyToUpload = resolvedTeamId !== '' && resolvedSessionId !== '';
+  const isReadyToUpload = resolvedOrganizationId !== '' && resolvedSessionId !== '';
 
 
   // Upload files with progress tracking
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!isReadyToUpload) {
-      const error = `Cannot upload files yet. Waiting for session to initialize. teamId: "${resolvedTeamId}", sessionId: "${resolvedSessionId}"`;
+      const error = `Cannot upload files yet. Waiting for session to initialize. organizationId: "${resolvedOrganizationId}", sessionId: "${resolvedSessionId}"`;
       console.error(error);
       onError?.(error);
       return;
@@ -122,7 +122,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
 
       try {
         const result = await uploadWithProgress(upload.file, {
-          teamId: resolvedTeamId,
+          organizationId: resolvedOrganizationId,
           sessionId: resolvedSessionId,
           onProgress: (progress) => {
             setUploadingFiles(prev => prev.map(f => 
@@ -194,7 +194,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
       // This catch block ensures the function doesn't throw unhandled promise rejections
       console.warn('Some uploads failed:', error);
     }
-  }, [resolvedTeamId, resolvedSessionId, isReadyToUpload, onError]);
+  }, [resolvedOrganizationId, resolvedSessionId, isReadyToUpload, onError]);
 
   // Handle camera capture
   const handleCameraCapture = useCallback(async (file: File) => {
@@ -204,7 +204,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
   // Handle file selection (now uses the new upload progress system)
   const handleFileSelect = useCallback(async (files: File[]) => {
     if (!isReadyToUpload) {
-      const error = `Cannot upload files yet. Waiting for session to initialize. teamId: "${resolvedTeamId}", sessionId: "${resolvedSessionId}"`;
+      const error = `Cannot upload files yet. Waiting for session to initialize. organizationId: "${resolvedOrganizationId}", sessionId: "${resolvedSessionId}"`;
       console.error(error);
       onError?.(error);
       return [];
