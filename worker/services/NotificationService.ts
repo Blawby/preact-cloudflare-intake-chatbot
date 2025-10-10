@@ -1,9 +1,10 @@
 import { Logger } from '../utils/logger.js';
 import type { Env } from '../types.js';
+import type { Team } from './TeamService.js';
 
 export interface NotificationRequest {
   type: 'lawyer_review' | 'matter_created' | 'payment_required';
-  teamConfig: any;
+  teamConfig: Team | null;
   matterInfo?: {
     type: string;
     urgency?: string;
@@ -15,6 +16,24 @@ export interface NotificationRequest {
     email?: string;
     phone?: string;
   };
+}
+
+/**
+ * Safely extracts owner email from team configuration
+ * @param teamConfig - Team configuration object
+ * @returns Owner email string or undefined if not available
+ */
+function extractOwnerEmail(teamConfig: Team | null): string | undefined {
+  if (!teamConfig?.config?.ownerEmail) {
+    return undefined;
+  }
+  
+  const ownerEmail = teamConfig.config.ownerEmail;
+  if (typeof ownerEmail !== 'string' || ownerEmail.trim().length === 0) {
+    return undefined;
+  }
+  
+  return ownerEmail.trim();
 }
 
 export class NotificationService {
@@ -33,7 +52,7 @@ export class NotificationService {
       const { EmailService } = await import('./EmailService.js');
       const emailService = new EmailService(this.env.RESEND_API_KEY);
       
-      const ownerEmail = teamConfig?.config?.ownerEmail;
+      const ownerEmail = extractOwnerEmail(teamConfig);
       if (!ownerEmail) {
         Logger.info('No owner email configured for team - skipping lawyer review notification');
         return;
@@ -66,7 +85,7 @@ Please review this matter as soon as possible.`
       const { EmailService } = await import('./EmailService.js');
       const emailService = new EmailService(this.env.RESEND_API_KEY);
       
-      const ownerEmail = teamConfig?.config?.ownerEmail;
+      const ownerEmail = extractOwnerEmail(teamConfig);
       if (!ownerEmail) {
         Logger.info('No owner email configured for team - skipping matter creation notification');
         return;
@@ -100,7 +119,7 @@ Please review and take appropriate action.`
       const { EmailService } = await import('./EmailService.js');
       const emailService = new EmailService(this.env.RESEND_API_KEY);
       
-      const ownerEmail = teamConfig?.config?.ownerEmail;
+      const ownerEmail = extractOwnerEmail(teamConfig);
       if (!ownerEmail) {
         Logger.info('No owner email configured for team - skipping payment notification');
         return;

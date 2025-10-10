@@ -119,7 +119,7 @@ const Modal: FunctionComponent<ModalProps> = ({
                         {/* Handle for mobile drawer */}
                         {shouldUseDrawer && (
                             <div className="flex justify-center pt-4 pb-2">
-                                <div className="w-12 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                <div className="w-12 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
                             </div>
                         )}
                         

@@ -28,7 +28,7 @@ export const DropdownMenuTrigger = ({
   const { isOpen, handleOpenChange, dropdownId } = context;
 
   // Helper function to safely assign refs
-  const assignRef = (node: HTMLElement | null, targetRef: RefObject<HTMLElement | null>, forwardedRef?: any) => {
+  const assignRef = (node: HTMLElement | null, targetRef: RefObject<HTMLElement | null>, forwardedRef?: unknown) => {
     // Update the target ref
     if (targetRef) {
       (targetRef as RefObject<HTMLElement | null>).current = node;
@@ -88,8 +88,8 @@ export const DropdownMenuTrigger = ({
     }
 
     // Assert children is a VNode and extract props
-    const childElement = children as VNode<any>;
-    const childProps = childElement.props as any;
+    const childElement = children as VNode<Record<string, unknown>>;
+    const childProps = childElement.props as Record<string, unknown>;
 
     // Create merged ref function with proper typing
     const mergedRef = (element: HTMLElement | null) => {

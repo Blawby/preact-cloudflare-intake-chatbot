@@ -40,8 +40,11 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
     missingInfo.push('Supporting documents or evidence');
   }
   
+  // Cache service.toLowerCase() to avoid repeated calls
+  const serviceLower = (matterData.service || '').toLowerCase();
+  
   // Service-specific checks
-  if (matterData.service.toLowerCase().includes('family')) {
+  if (serviceLower.includes('family')) {
     if (!summaryLower.includes('child') && !summaryLower.includes('children') && !summaryLower.includes('custody')) {
       missingInfo.push('Information about children (if applicable)');
     }
@@ -50,7 +53,7 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
     }
   }
   
-  if (matterData.service.toLowerCase().includes('employment')) {
+  if (serviceLower.includes('employment')) {
     if (!summaryLower.includes('employer') && !summaryLower.includes('company') && !summaryLower.includes('workplace')) {
       missingInfo.push('Employer/company information');
     }
@@ -59,7 +62,7 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
     }
   }
   
-  if (matterData.service.toLowerCase().includes('business')) {
+  if (serviceLower.includes('business')) {
     if (!summaryLower.includes('business') && !summaryLower.includes('company') && !summaryLower.includes('entity')) {
       missingInfo.push('Business entity information');
     }
@@ -68,7 +71,7 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
     }
   }
   
-  if (matterData.service.toLowerCase().includes('tenant') || matterData.service.toLowerCase().includes('landlord')) {
+  if (serviceLower.includes('tenant') || serviceLower.includes('landlord')) {
     if (!summaryLower.includes('lease') && !summaryLower.includes('rental') && !summaryLower.includes('property')) {
       missingInfo.push('Lease or rental agreement details');
     }
@@ -77,7 +80,7 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
     }
   }
   
-  if (matterData.service.toLowerCase().includes('probate')) {
+  if (serviceLower.includes('probate')) {
     if (!summaryLower.includes('will') && !summaryLower.includes('estate') && !summaryLower.includes('inheritance')) {
       missingInfo.push('Will or estate information');
     }
@@ -86,7 +89,7 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
     }
   }
   
-  if (matterData.service.toLowerCase().includes('education') || matterData.service.toLowerCase().includes('special education')) {
+  if (serviceLower.includes('education') || serviceLower.includes('special education')) {
     if (!summaryLower.includes('school') && !summaryLower.includes('district') && !summaryLower.includes('education')) {
       missingInfo.push('School or district information');
     }
@@ -96,12 +99,15 @@ export function analyzeMissingInfo(matterData: MatterData): string[] {
   }
   
   // Check for urgency if not specified (optional property)
-  if (!(matterData as any).urgency || (matterData as any).urgency === 'unknown') {
+  // Cast matterData to Record<string, unknown> once and extract urgency
+  const matterDataRecord = matterData as Record<string, unknown>;
+  const urgency = matterDataRecord.urgency as string | undefined;
+  if (!urgency || urgency.toLowerCase() === 'unknown') {
     missingInfo.push('Matter urgency level');
   }
   
   // Check for jurisdiction if not specified (optional property)
-  if (!(matterData as any).jurisdiction) {
+  if (!matterDataRecord.jurisdiction) {
     missingInfo.push('Jurisdiction information');
   }
   

@@ -1,6 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
+import { z } from 'zod';
+
 // API endpoints - moved inline since api.ts was removed
 const getTeamsEndpoint = () => '/api/teams';
+
+// Zod schema for API response validation
+const TeamSchema = z.object({
+  slug: z.string().optional(),
+  id: z.string().optional(),
+  name: z.string().optional(),
+  config: z.record(z.string(), z.unknown()).optional()
+});
+
+const TeamsResponseSchema = z.object({
+  data: z.array(TeamSchema)
+});
 
 interface TeamConfig {
   name: string;
@@ -24,6 +38,29 @@ interface TeamConfig {
     previewUrl?: string | null;
   };
 }
+
+// Schema to validate and narrow the unknown config shape
+const TeamConfigSchema = z.object({
+  profileImage: z.string().nullable().optional(),
+  introMessage: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  availableServices: z.array(z.string()).optional(),
+  serviceQuestions: z.record(z.string(), z.array(z.string())).optional(),
+  jurisdiction: z.object({
+    type: z.enum(['national', 'state']).optional(),
+    description: z.string().optional(),
+    supportedStates: z.array(z.string()).optional(),
+    supportedCountries: z.array(z.string()).optional(),
+    primaryState: z.string().optional()
+  }).optional(),
+  voice: z.object({
+    enabled: z.boolean().optional(),
+    provider: z.enum(['cloudflare', 'elevenlabs', 'custom']).optional(),
+    voiceId: z.string().nullable().optional(),
+    displayName: z.string().nullable().optional(),
+    previewUrl: z.string().nullable().optional()
+  }).optional()
+});
 
 interface UseTeamConfigOptions {
   onError?: (error: string) => void;
@@ -102,40 +139,58 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
       const response = await fetch(getTeamsEndpoint(), { signal: controller.signal });
 
       if (response.ok) {
-        const teamsResponse = await response.json() as any;
-        const team = teamsResponse.data.find((t: any) => t.slug === currentTeamId || t.id === currentTeamId);
+        try {
+          const rawResponse = await response.json();
+          const teamsResponse = TeamsResponseSchema.parse(rawResponse);
+          const team = teamsResponse.data.find((t) => t.slug === currentTeamId || t.id === currentTeamId);
 
-        // Only add to fetched set after successful fetch
-        fetchedTeamIds.current.add(currentTeamId);
+          if (team) {
+            // Team exists, use its config or defaults
+            const parsedConfig = team.config ? TeamConfigSchema.safeParse(team.config) : { success: true, data: {} as z.infer<typeof TeamConfigSchema> };
+            const cfg = parsedConfig.success ? parsedConfig.data : {} as z.infer<typeof TeamConfigSchema>;
+            const normalizedJurisdiction: TeamConfig['jurisdiction'] = {
+              type: cfg.jurisdiction?.type ?? 'national',
+              description: cfg.jurisdiction?.description ?? 'Available nationwide',
+              supportedStates: cfg.jurisdiction?.supportedStates ?? ['all'],
+              supportedCountries: cfg.jurisdiction?.supportedCountries ?? ['US'],
+              primaryState: cfg.jurisdiction?.primaryState
+            };
 
-        if (team?.config) {
-          const config: TeamConfig = {
-            name: team.name || 'Blawby AI',
-            profileImage: team.config.profileImage || '/blawby-favicon-iframe.png',
-            introMessage: team.config.introMessage || null,
-            description: team.config.description || null,
-            availableServices: team.config.availableServices || [],
-            serviceQuestions: team.config.serviceQuestions || {},
-            jurisdiction: team.config.jurisdiction || {
-              type: 'national',
-              description: 'Available nationwide',
-              supportedStates: ['all'],
-              supportedCountries: ['US']
-            },
-            voice: {
-              enabled: Boolean(team.config.voice?.enabled),
-              provider: team.config.voice?.provider || 'cloudflare',
-              voiceId: team.config.voice?.voiceId || null,
-              displayName: team.config.voice?.displayName || null,
-              previewUrl: team.config.voice?.previewUrl || null
-            }
-          };
-          setTeamConfig(config);
-          setTeamNotFound(false);
-        } else {
+            const config: TeamConfig = {
+              name: team.name || 'Blawby AI',
+              profileImage: cfg.profileImage ?? '/blawby-favicon-iframe.png',
+              introMessage: cfg.introMessage ?? null,
+              description: cfg.description ?? null,
+              availableServices: cfg.availableServices ?? [],
+              serviceQuestions: cfg.serviceQuestions ?? {},
+              jurisdiction: normalizedJurisdiction,
+              voice: {
+                enabled: Boolean(cfg.voice?.enabled),
+                provider: cfg.voice?.provider ?? 'cloudflare',
+                voiceId: cfg.voice?.voiceId ?? null,
+                displayName: cfg.voice?.displayName ?? null,
+                previewUrl: cfg.voice?.previewUrl ?? null
+              }
+            };
+            setTeamConfig(config);
+            setTeamNotFound(false);
+            
+            // Only add to fetched set after successful config processing
+            fetchedTeamIds.current.add(currentTeamId);
+          } else {
+            // Team not found in the list - this indicates a 404-like scenario
+            setTeamNotFound(true);
+          }
+        } catch (parseError) {
+          console.error('Failed to parse teams response:', parseError);
           setTeamNotFound(true);
+          onError?.('Invalid team configuration data received');
         }
+      } else if (response.status === 404) {
+        // Only set team not found for actual 404 responses
+        setTeamNotFound(true);
       } else {
+        // For other HTTP errors, set team not found as well
         setTeamNotFound(true);
       }
     } catch (error) {
@@ -169,7 +224,7 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
     if (teamId) {
       fetchTeamConfig(teamId);
     }
-  }, [teamId]);
+  }, [teamId, fetchTeamConfig]);
 
   return {
     teamId,

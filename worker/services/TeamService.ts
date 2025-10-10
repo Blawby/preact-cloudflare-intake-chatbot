@@ -45,8 +45,9 @@ export interface TeamConfig {
   };
 }
 
-const LEGACY_AI_PROVIDER = 'legacy-llama';
-const DEFAULT_LLAMA_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
+const LEGACY_AI_PROVIDER = 'workers-ai';
+const DEFAULT_GPT_MODEL = '@cf/openai/gpt-oss-20b';
+
 
 const DEFAULT_AVAILABLE_SERVICES = [
   'Family Law',
@@ -72,12 +73,16 @@ function normalizeProvider(input?: string | null): string {
   return trimmed.length > 0 ? trimmed : LEGACY_AI_PROVIDER;
 }
 
-function sanitizeModel(model?: string | null): string | undefined {
+function sanitizeModel(model?: string | null, teamId?: string): string | undefined {
   if (!model) {
     return undefined;
   }
   const trimmed = model.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+  if (!trimmed.length) {
+    return undefined;
+  }
+
+  return trimmed;
 }
 
 function sanitizeFallbackList(value: unknown): string[] {
@@ -102,9 +107,9 @@ function buildFallbackList(baseModel: string, preferred?: string[], useDefaults:
     return [];
   }
   
-  // If normalized is empty and defaults are allowed, return DEFAULT_LLAMA_MODEL filtered against baseModel
+  // If normalized is empty and defaults are allowed, return DEFAULT_GPT_MODEL filtered against baseModel
   if (!normalized.length && useDefaults) {
-    return [DEFAULT_LLAMA_MODEL].filter(model => model !== baseModel);
+    return [DEFAULT_GPT_MODEL].filter(model => model !== baseModel);
   }
   
   // If normalized is empty and defaults are disabled, return empty array
@@ -119,8 +124,8 @@ function buildFallbackList(baseModel: string, preferred?: string[], useDefaults:
     }
   });
 
-  if (!unique.size && baseModel !== DEFAULT_LLAMA_MODEL && useDefaults) {
-    unique.add(DEFAULT_LLAMA_MODEL);
+  if (!unique.size && baseModel !== DEFAULT_GPT_MODEL && useDefaults) {
+    unique.add(DEFAULT_GPT_MODEL);
   }
 
   return Array.from(unique);
@@ -128,7 +133,7 @@ function buildFallbackList(baseModel: string, preferred?: string[], useDefaults:
 
 export function buildDefaultTeamConfig(env: Env): TeamConfig {
   const defaultProvider = normalizeProvider(env.AI_PROVIDER_DEFAULT);
-  const defaultModel = sanitizeModel(env.AI_MODEL_DEFAULT) ?? DEFAULT_LLAMA_MODEL;
+  const defaultModel = sanitizeModel(env.AI_MODEL_DEFAULT) ?? DEFAULT_GPT_MODEL;
   const fallbackFromEnv = sanitizeFallbackList(env.AI_MODEL_FALLBACK);
   const fallbackList = buildFallbackList(defaultModel, fallbackFromEnv);
 
@@ -367,7 +372,7 @@ export class TeamService {
       if (teamRow) {
         const rawConfig = this.decodeTeamConfig(teamRow.config as string);
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false);
+        const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false, teamId);
         
         const team: Team = {
           id: teamRow.id as string,
@@ -399,13 +404,14 @@ export class TeamService {
   /**
    * Validates and normalizes team configuration to ensure all required properties are present
    * @param strictValidation - if true, applies strict validation including placeholder email checks
+   * @param teamId - team ID for logging context
    */
-  private validateAndNormalizeConfig(config: TeamConfig | null | undefined, strictValidation: boolean = false): TeamConfig {
+  private validateAndNormalizeConfig(config: TeamConfig | null | undefined, strictValidation: boolean = false, teamId?: string): TeamConfig {
     const defaultConfig = this.getDefaultConfig();
     const sourceConfig = (config ?? {}) as TeamConfig;
 
     const aiProvider = normalizeProvider(sourceConfig.aiProvider ?? defaultConfig.aiProvider);
-    const aiModel = sanitizeModel(sourceConfig.aiModel) ?? defaultConfig.aiModel ?? DEFAULT_LLAMA_MODEL;
+    const aiModel = sanitizeModel(sourceConfig.aiModel, teamId) ?? defaultConfig.aiModel ?? DEFAULT_GPT_MODEL;
     const providedFallback = sourceConfig.aiModelFallback !== undefined
       ? sanitizeFallbackList(sourceConfig.aiModelFallback)
       : undefined;
@@ -447,7 +453,7 @@ export class TeamService {
     const now = new Date().toISOString();
     
     // Validate and normalize the team configuration
-    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config, true);
+    const normalizedConfig = this.validateAndNormalizeConfig(teamData.config, true, id);
     
     const team: Team = {
       ...teamData,
@@ -501,7 +507,7 @@ export class TeamService {
     // Validate and normalize the team configuration if it's being updated
     let normalizedConfig = existingTeam.config;
     if (mutableUpdates.config) {
-      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config, true);
+      normalizedConfig = this.validateAndNormalizeConfig(mutableUpdates.config, true, teamId);
     }
     
     const updatedTeam: Team = {
@@ -575,7 +581,7 @@ export class TeamService {
     return teams.results.map(row => {
       const rawConfig = this.decodeTeamConfig(row.config as string);
       const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
-      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false);
+      const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as TeamConfig, false, row.id as string);
       
       return {
         id: row.id as string,

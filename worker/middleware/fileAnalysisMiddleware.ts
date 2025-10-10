@@ -6,6 +6,14 @@ import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js'
 import { Logger } from '../utils/logger.js';
 
 /**
+ * Type adapter for file analysis - contains only the properties needed by analyzeFile
+ */
+type FileAnalysisEnv = {
+  FILES_BUCKET: Env['FILES_BUCKET'];
+  DB: Env['DB'];
+};
+
+/**
  * Timeout helper to prevent operations from hanging indefinitely
  */
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
@@ -55,22 +63,78 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         return { context };
       }
 
-      Logger.info('File attachments detected in middleware', {
-        sessionId: context.sessionId,
-        teamId: context.teamId,
-        attachmentCount: context.currentAttachments.length
+      // Only process attachments if the latest message indicates file analysis is needed
+      // This prevents processing stale attachments when user just says "hello"
+      const latestMessage = messages[messages.length - 1];
+      if (!latestMessage || latestMessage.role !== 'user') {
+        Logger.info('Skipping file analysis - no user message in current request', {
+          sessionId: context.sessionId,
+          teamId: context.teamId
+        });
+        return { context };
+      }
+
+      // Initialize processed files tracking if not exists
+      if (!context.processedFiles) {
+        context.processedFiles = [];
+      }
+
+      // Filter out already processed files to prevent duplicates
+      const attachments = context.currentAttachments.filter(attachment => {
+        const fileId = extractFileIdFromUrl(attachment.url);
+        if (!fileId) {
+          Logger.warn('Could not extract file ID from attachment URL', { url: attachment.url });
+          return false;
+        }
+        
+        if (context.processedFiles!.includes(fileId)) {
+          Logger.info('Skipping already processed file', {
+            sessionId: context.sessionId,
+            teamId: context.teamId,
+            fileId,
+            fileName: attachment.name
+          });
+          return false;
+        }
+        
+        return true;
       });
 
-      const attachments = context.currentAttachments;
+      if (attachments.length === 0) {
+        Logger.info('No new attachments to process after deduplication', {
+          sessionId: context.sessionId,
+          teamId: context.teamId
+        });
+        return { context };
+      }
+
+      // Process attachments when they exist in context.currentAttachments
+      // This ensures users see analysis results for newly uploaded files
+      Logger.info('Processing current attachments for file analysis', {
+        sessionId: context.sessionId,
+        teamId: context.teamId,
+        attachmentCount: attachments.length,
+        totalAttachments: context.currentAttachments.length
+      });
       const analysisResults = [];
 
       // Process each attachment
       for (const attachment of attachments) {
-      try {
         // Extract file ID from attachment URL
         const fileId = extractFileIdFromUrl(attachment.url);
         if (!fileId) {
           Logger.warn('Could not extract file ID from attachment URL', { url: attachment.url });
+          continue;
+        }
+
+        // Check for duplicates before starting analysis (allow retries on transient failures)
+        if (context.processedFiles!.includes(fileId)) {
+          Logger.info('Skipping already processed file', {
+            sessionId: context.sessionId,
+            teamId: context.teamId,
+            fileId,
+            fileName: attachment.name
+          });
           continue;
         }
 
@@ -85,48 +149,73 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           analysisType
         });
 
-        // Get appropriate analysis question
-        const analysisQuestion = getAnalysisQuestion(analysisType);
-        
-        // Perform file analysis with timeout protection (30 seconds)
-        const analysis = await withTimeout(
-          analyzeFile(env, fileId, analysisQuestion),
-          30000
-        );
-        
-        if (analysis && analysis.confidence > 0) {
-          analysisResults.push({
-            fileId,
-            fileName: attachment.name,
-            fileType: attachment.type,
-            analysisType,
-            ...analysis
-          });
+        try {
+          // Get appropriate analysis question
+          const analysisQuestion = getAnalysisQuestion(analysisType);
+          
+          // Create typed adapter with only the properties needed by analyzeFile
+          const fileAnalysisEnv: FileAnalysisEnv = {
+            FILES_BUCKET: env.FILES_BUCKET,
+            DB: env.DB
+          };
+          
+          // Perform file analysis with timeout protection (30 seconds)
+          const analysis = await withTimeout(
+            analyzeFile(fileAnalysisEnv, fileId, analysisQuestion),
+            30000
+          );
+          
+          if (analysis && (analysis.confidence as number) > 0) {
+            analysisResults.push({
+              fileId,
+              fileName: attachment.name,
+              fileType: attachment.type,
+              analysisType,
+              ...analysis
+            });
 
-          Logger.info('File analysis completed successfully', {
-            sessionId: context.sessionId,
-            teamId: context.teamId,
-            fileId,
-            fileName: attachment.name,
-            confidence: analysis.confidence,
-            summaryLength: analysis.summary?.length || 0
-          });
-        } else {
-          Logger.warn('File analysis failed or returned low confidence', {
-            sessionId: context.sessionId,
-            teamId: context.teamId,
-            fileId,
-            fileName: attachment.name,
-            confidence: analysis?.confidence || 0
-          });
-        }
-      } catch (error) {
+            Logger.info('File analysis completed successfully', {
+              sessionId: context.sessionId,
+              teamId: context.teamId,
+              fileId,
+              fileName: attachment.name,
+              confidence: analysis.confidence as number,
+              summaryLength: (analysis.summary as string)?.length || 0
+            });
+          } else {
+            Logger.warn('File analysis failed or returned low confidence', {
+              sessionId: context.sessionId,
+              teamId: context.teamId,
+              fileId,
+              fileName: attachment.name,
+              confidence: (analysis?.confidence as number) || 0
+            });
+          }
+
+          // Mark file as successfully processed only after analysis completes
+          context.processedFiles!.push(fileId);
+        } catch (error) {
         Logger.error('File analysis error in middleware', {
           sessionId: context.sessionId,
           teamId: context.teamId,
           fileName: attachment.name,
           error: error instanceof Error ? error.message : String(error)
         });
+        
+        // Add partial result with error message instead of silently failing
+        const fileId = extractFileIdFromUrl(attachment.url);
+        if (fileId) {
+          analysisResults.push({
+            fileId,
+            fileName: attachment.name,
+            fileType: attachment.type,
+            analysisType: determineAnalysisType(attachment),
+            confidence: 0,
+            summary: `I encountered an issue analyzing "${attachment.name}". This could be due to file format or content issues. Would you like to describe the document to me instead?`,
+            key_facts: [],
+            action_items: ['Describe the document content manually', 'Try uploading in a different format']
+          });
+        }
       }
     }
 
@@ -138,12 +227,22 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         analysisCount: analysisResults.length
       });
 
-      // Update context with file analysis results
+      // Update context with file analysis results and clear currentAttachments
       const updatedContext = {
         ...context,
+        currentAttachments: undefined, // Clear attachments after processing
         fileAnalysis: {
+          status: 'completed' as const,
+          files: attachments.map(attachment => ({
+            fileId: extractFileIdFromUrl(attachment.url) || '',
+            name: attachment.name,
+            type: attachment.type,
+            size: attachment.size,
+            url: attachment.url
+          })),
           results: analysisResults,
-          processedAt: new Date().toISOString(),
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
           totalFiles: analysisResults.length
         }
       };
@@ -169,8 +268,12 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       });
     }
 
-      // No successful analysis results - continue pipeline
-      return { context };
+      // No successful analysis results - clear attachments and continue pipeline
+      const updatedContext = {
+        ...context,
+        currentAttachments: undefined // Clear attachments even if no analysis results
+      };
+      return { context: updatedContext };
     } catch (error) {
       Logger.error('File analysis middleware error', {
         sessionId: context.sessionId,
@@ -178,8 +281,12 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         error: error instanceof Error ? error.message : String(error)
       });
       
-      // Continue pipeline on error
-      return { context };
+      // Clear attachments and continue pipeline on error
+      const updatedContext = {
+        ...context,
+        currentAttachments: undefined
+      };
+      return { context: updatedContext };
     }
   }
 };
@@ -263,7 +370,7 @@ function generateAnalysisResponse(analysisResults: AnalysisResult[]): string {
       });
     }
 
-    response += `\n**Confidence Level:** ${Math.round(result.confidence * 100)}%\n\n`;
+    // Confidence level removed from user display
   }
 
   response += "Based on this analysis, I can help you:\n";

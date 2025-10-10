@@ -1,6 +1,7 @@
 // Mock Pricing Data Service
 // Centralized pricing plans and features data for reuse throughout the app
 
+import { ComponentType } from 'preact';
 import { 
   BoltIcon, 
   DocumentIcon, 
@@ -21,7 +22,7 @@ import {
 import { type SubscriptionTier } from './mockUserData';
 
 export interface PricingFeature {
-  icon: any;
+  icon: ComponentType;
   text: string;
   description?: string;
 }
@@ -49,7 +50,7 @@ export interface PricingComparison {
     [key: string]: {
       name: string;
       description: string;
-      icon: any;
+      icon: ComponentType;
       tiers: {
         [key in SubscriptionTier]: boolean | string;
       };
@@ -346,7 +347,7 @@ class MockPricingDataService {
     feature: string;
     name: string;
     description: string;
-    icon: any;
+    icon: ComponentType;
     tiers: { [key in SubscriptionTier]: boolean | string };
   }> {
     return Object.entries(FEATURE_DEFINITIONS).map(([key, feature]) => ({
@@ -405,6 +406,6 @@ export const mockPricingDataService = new MockPricingDataService();
 
 // Development helper - expose to window for easy testing
 if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).mockPricingDataService = mockPricingDataService;
+   
+  (window as { mockPricingDataService?: MockPricingDataService }).mockPricingDataService = mockPricingDataService;
 }

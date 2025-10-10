@@ -15,7 +15,9 @@ import { fileAnalysisMiddleware } from '../middleware/fileAnalysisMiddleware.js'
 import { runLegalIntakeAgentStream } from '../agents/legal-intake/index.js';
 import { getCloudflareLocation } from '../utils/cloudflareLocationValidator.js';
 import { SessionService } from '../services/SessionService.js';
+import { StatusService } from '../services/StatusService.js';
 import { chunkResponseText } from '../utils/streaming.js';
+import { Logger } from '../utils/logger.js';
 
 // Interface for the request body
 interface RouteBody {
@@ -42,8 +44,184 @@ interface RouteBody {
  */
 export async function handleAgentStreamV2(request: Request, env: Env): Promise<Response> {
 
+  // Handle GET requests for SSE connections
+  if (request.method === 'GET') {
+    const url = new URL(request.url);
+    const sessionId = url.searchParams.get('sessionId');
+    const teamId = url.searchParams.get('teamId');
+    
+    if (!sessionId) {
+      throw HttpErrors.badRequest('sessionId parameter is required');
+    }
+
+    if (!teamId) {
+      throw HttpErrors.badRequest('teamId parameter is required');
+    }
+
+    // Create SSE response for status updates
+    const headers = new Headers({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Register session subscription for real-time updates
+    try {
+      await StatusService.subscribeSession(env, sessionId, teamId);
+    } catch (error) {
+      Logger.error('Failed to subscribe session for SSE updates', {
+        error: error instanceof Error ? error.message : String(error),
+        sessionId,
+        teamId,
+        env: env ? 'present' : 'missing'
+      });
+      
+      // Return error response with SSE error event
+      const errorEvent = `data: ${JSON.stringify({
+        type: 'error',
+        message: 'Failed to establish session subscription for real-time updates',
+        error: error instanceof Error ? error.message : String(error),
+        sessionId,
+        timestamp: Date.now()
+      })}\n\n`;
+      
+      return new Response(errorEvent, { headers });
+    }
+
+    // Create SSE stream with real-time status polling
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        let lastSeen = Date.now();
+        let isActive = true;
+        let errorCount = 0;
+        let pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+        const sendEvent = (event: unknown) => {
+          if (!isActive) return;
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          } catch (error) {
+            console.error('Failed to send SSE event:', error);
+            isActive = false;
+          }
+        };
+
+        // Send initial connection message
+        sendEvent({ 
+          type: 'connected', 
+          message: 'SSE connection established',
+          sessionId,
+          timestamp: Date.now()
+        });
+
+        // Self-scheduling async poll function with exponential backoff
+        const pollForUpdates = async () => {
+          if (!isActive) return;
+
+          try {
+            // Get recent status updates
+            const recentStatuses = await StatusService.getRecentStatuses(env, sessionId, lastSeen);
+            
+            if (recentStatuses.length > 0) {
+              // Send each status update as a separate event
+              for (const status of recentStatuses) {
+                sendEvent({
+                  type: 'status_update',
+                  data: {
+                    id: status.id,
+                    type: status.type,
+                    status: status.status,
+                    message: status.message,
+                    progress: status.progress,
+                    data: status.data,
+                    timestamp: status.updatedAt
+                  }
+                });
+              }
+              
+              // Update last seen timestamp safely to handle out-of-order timestamps
+              // Filter and normalize timestamps to avoid NaN from invalid values
+              const validTimestamps = [
+                lastSeen, // Include current lastSeen in candidate set
+                ...recentStatuses
+                  .map(s => s.updatedAt)
+                  .map(timestamp => typeof timestamp === 'string' ? Date.parse(timestamp) : Number(timestamp))
+                  .filter(timestamp => isFinite(timestamp))
+              ];
+              lastSeen = Math.max(...validTimestamps);
+              await StatusService.updateSubscriptionLastSeen(env, sessionId, lastSeen);
+            }
+
+            // Send periodic ping to keep connection alive
+            sendEvent({ 
+              type: 'ping', 
+              timestamp: Date.now(),
+              lastSeen
+            });
+
+            // Reset error count on successful poll
+            errorCount = 0;
+
+          } catch (error) {
+            console.error('Error polling status updates:', error);
+            errorCount++;
+            
+            sendEvent({
+              type: 'error',
+              message: 'Failed to fetch status updates',
+              timestamp: Date.now()
+            });
+          }
+
+          // Schedule next poll with exponential backoff on errors
+          if (isActive) {
+            const baseInterval = StatusService.getPollInterval(env);
+            const delay = errorCount > 0 
+              ? StatusService.calculateBackoffDelay(baseInterval, errorCount)
+              : baseInterval;
+            
+            pollTimeoutId = setTimeout(pollForUpdates, delay);
+          }
+        };
+
+        // Start the polling loop
+        pollForUpdates();
+
+        // Clean up on close
+        let cleanedUp = false;
+        const cleanup = () => {
+          if (cleanedUp) return;
+          cleanedUp = true;
+          isActive = false;
+          if (pollTimeoutId !== null) {
+            clearTimeout(pollTimeoutId);
+            pollTimeoutId = null;
+          }
+          StatusService.unsubscribeSession(env, sessionId).catch(error => {
+            console.error('Failed to unsubscribe session:', error);
+          });
+          try {
+            controller.close();
+          } catch (error) {
+            console.error('Failed to close controller:', error);
+          }
+        };
+
+        request.signal?.addEventListener('abort', cleanup);
+        
+        // Also cleanup after 1 hour to prevent long-running connections
+        setTimeout(cleanup, 60 * 60 * 1000);
+      }
+    });
+
+    return new Response(stream, { headers });
+  }
+
   if (request.method !== 'POST') {
-    throw HttpErrors.methodNotAllowed('Only POST method is allowed');
+    throw HttpErrors.methodNotAllowed('Only POST and GET methods are allowed');
   }
 
   // Set SSE headers for streaming
@@ -67,15 +245,50 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw HttpErrors.badRequest('No message content provided');
     }
+    
+    const normalizedMessages = messages.map(message => {
+      const rawRole = typeof message.role === 'string' ? message.role.trim().toLowerCase() : '';
+      const normalizedRole: 'user' | 'assistant' | 'system' = rawRole === 'user'
+        ? 'user'
+        : rawRole === 'system'
+          ? 'system'
+          : 'assistant';
 
-    const latestMessage = messages[messages.length - 1];
+      const content = typeof message.content === 'string' ? message.content : '';
+
+      return {
+        ...message,
+        role: normalizedRole,
+        content
+      };
+    });
+
+    let latestMessage = normalizedMessages[normalizedMessages.length - 1];
+
     if (!latestMessage?.content) {
-      throw HttpErrors.badRequest('No message content provided');
+      if (attachments.length > 0) {
+        latestMessage = {
+          ...latestMessage,
+          content: latestMessage?.content?.trim().length
+            ? latestMessage.content
+            : 'User uploaded new documents for review.'
+        };
+        normalizedMessages[normalizedMessages.length - 1] = latestMessage;
+      } else {
+        throw HttpErrors.badRequest('No message content provided');
+      }
     }
 
-    // Ensure the latest message is from a user
     if (latestMessage.role !== 'user') {
-      throw HttpErrors.badRequest('Latest message must be from user');
+      if (attachments.length > 0) {
+        latestMessage = {
+          ...latestMessage,
+          role: 'user'
+        };
+        normalizedMessages[normalizedMessages.length - 1] = latestMessage;
+      } else {
+        throw HttpErrors.badRequest('Latest message must be from user');
+      }
     }
 
     const trimmedSessionId = typeof sessionId === 'string' && sessionId.trim().length > 0
@@ -176,7 +389,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const context = await ConversationContextManager.load(resolvedSessionId, resolvedTeamId, env);
 
     // Update context with the full conversation before running pipeline
-    const updatedContext = ConversationContextManager.updateContext(context, messages);
+    const updatedContext = ConversationContextManager.updateContext(context, normalizedMessages);
     
     // Add current attachments to context for middleware processing
     if (attachments && attachments.length > 0) {
@@ -185,7 +398,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
 
     // Run through pipeline with full conversation history
     const pipelineResult = await runPipeline(
-      messages,
+      normalizedMessages,
       updatedContext,
       teamConfig,
       [
@@ -326,8 +539,8 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
           controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));
           
           // Convert messages to the format expected by the AI agent
-          const formattedMessages = messages.map(msg => ({
-            role: msg.role,
+        const formattedMessages = normalizedMessages.map(msg => ({
+            role: msg.role as 'user' | 'assistant' | 'system',
             content: msg.content
           }));
 

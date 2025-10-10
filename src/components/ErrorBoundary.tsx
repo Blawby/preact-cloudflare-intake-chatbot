@@ -24,18 +24,18 @@ export class ErrorBoundary extends Component<Props, State> {
         };
     }
 
-    componentDidCatch(error: Error, errorInfo: any) {
+    componentDidCatch(error: Error, errorInfo: unknown) {
         console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
 
     render() {
         if (this.state.hasError) {
             return this.props.fallback || (
-                <div class="p-4 m-4 border border-light-border dark:border-dark-border rounded-lg bg-light-input-bg dark:bg-dark-input-bg">
-                    <h2 class="text-red-600 mb-4">Something went wrong</h2>
-                    <details class="my-4">
-                        <summary class="cursor-pointer text-accent">Error details</summary>
-                        <pre class="mt-2 p-2 bg-light-bg dark:bg-dark-bg rounded overflow-x-auto">{this.state.error?.message}</pre>
+                <div className="p-4 m-4 border border-light-border dark:border-dark-border rounded-lg bg-light-input-bg dark:bg-dark-input-bg">
+                    <h2 className="text-red-600 mb-4">Something went wrong</h2>
+                    <details className="my-4">
+                        <summary className="cursor-pointer text-accent">Error details</summary>
+                        <pre className="mt-2 p-2 bg-light-bg dark:bg-dark-bg rounded overflow-x-auto">{this.state.error?.message}</pre>
                     </details>
                     <Button 
                         variant="primary"

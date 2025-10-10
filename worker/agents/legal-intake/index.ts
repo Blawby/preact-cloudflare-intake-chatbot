@@ -18,8 +18,8 @@ import { LegalIntakeLogger, LegalIntakeOperation } from './legalIntakeLogger.js'
 // CONSTANTS
 // ============================================================================
 
-const DEFAULT_AI_PROVIDER = 'legacy-llama';
-const DEFAULT_LEGACY_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const DEFAULT_AI_PROVIDER = 'workers-ai';
+const DEFAULT_LEGACY_MODEL = '@cf/openai/gpt-oss-20b';
 
 const BASE_AI_EXECUTION = {
   maxTokens: 500,
@@ -126,9 +126,6 @@ function deriveProviderForModel(model: string, preferredProvider: string): strin
   if (model.startsWith('@cf/gateway/') || model.startsWith('openai:')) {
     return 'gateway-openai';
   }
-  if (model.startsWith('@cf/meta/llama') || model.includes('llama')) {
-    return 'legacy-llama';
-  }
   return preferredProvider;
 }
 
@@ -162,6 +159,23 @@ function buildProviderPayload(
   provider: string
 ): Record<string, unknown> {
   const { messages, tools, max_tokens, temperature, stream } = basePayload;
+  
+  // For gpt-oss-20b, use the input format instead of messages format
+  if (provider === 'workers-ai' && messages.some(msg => msg.role === 'system')) {
+    // Convert messages to input format for gpt-oss-20b
+    const systemMessage = messages.find(msg => msg.role === 'system');
+    const userMessages = messages.filter(msg => msg.role !== 'system');
+    const conversationText = userMessages.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+    const input = systemMessage ? `${systemMessage.content}\n\n${conversationText}` : conversationText;
+    
+    return {
+      input,
+      max_tokens,
+      temperature,
+      stream: false // gpt-oss-20b streaming format requires different handling
+    };
+  }
+  
   if (provider === 'workers-ai' || provider === 'gateway-openai') {
     return {
       messages,
@@ -530,6 +544,22 @@ export interface RequestLawyerReviewParams {
 }
 
 
+// AnalyzeDocumentParams interface removed - using direct analyze endpoint instead
+
+type DocumentAnalysis = {
+  summary?: string;
+  key_facts?: string[];
+  entities?: {
+    people?: string[];
+    orgs?: string[];
+    dates?: string[];
+  };
+  action_items?: string[];
+  confidence?: number;
+  error?: string;
+};
+
+
 export interface CreatePaymentInvoiceParams {
   readonly invoice_id: string;
   readonly amount: number;
@@ -637,6 +667,9 @@ const requestLawyerReview: ToolDefinition = {
     additionalProperties: false
   }
 };
+
+
+// analyzeDocument tool removed - using direct analyze endpoint instead
 
 
 const createPaymentInvoice: ToolDefinition = {
@@ -1887,6 +1920,52 @@ async function handleRequestLawyerReview(
 }
 
 
+// handleAnalyzeDocument function removed - using direct analyze endpoint instead
+
+function formatDocumentAnalysisMessage(fileId: string, analysis: DocumentAnalysis): string {
+  const sections: string[] = [];
+
+  const displayName = fileId.length > 120 ? `${fileId.slice(0, 60)}…${fileId.slice(-20)}` : fileId;
+  sections.push(`Here’s what I found in **${displayName}**.`);
+
+  if (analysis.summary) {
+    sections.push(`**Summary:** ${analysis.summary}`);
+  }
+
+  if (Array.isArray(analysis.key_facts) && analysis.key_facts.length > 0) {
+    const facts = analysis.key_facts.slice(0, 5).map(fact => `• ${fact}`).join('\n');
+    sections.push(`**Key Facts:**\n${facts}`);
+  }
+
+  const people = analysis.entities?.people ?? [];
+  const orgs = analysis.entities?.orgs ?? [];
+  const dates = analysis.entities?.dates ?? [];
+
+  if (people.length || orgs.length || dates.length) {
+    const entityLines: string[] = [];
+    if (people.length) entityLines.push(`• People: ${people.join(', ')}`);
+    if (orgs.length) entityLines.push(`• Organizations: ${orgs.join(', ')}`);
+    if (dates.length) entityLines.push(`• Dates: ${dates.join(', ')}`);
+    sections.push(`**Entities:**\n${entityLines.join('\n')}`);
+  }
+
+  if (Array.isArray(analysis.action_items) && analysis.action_items.length > 0) {
+    const actions = analysis.action_items.slice(0, 5).map(item => `• ${item}`).join('\n');
+    sections.push(`**Recommended Next Steps:**\n${actions}`);
+  }
+
+  if (typeof analysis.confidence === 'number') {
+    const _confidencePct = Math.round(Math.max(0, Math.min(analysis.confidence, 1)) * 100);
+    // Confidence level removed from user display
+  }
+
+  if (sections.length === 1) {
+    sections.push('The document was analyzed but no additional structured insights were detected.');
+  }
+
+  return sections.join('\n\n');
+}
+
 async function handleCreatePaymentInvoice(
   parameters: Record<string, unknown>,
   env: Env,
@@ -2077,23 +2156,31 @@ const TOOL_HANDLERS = {
 // MAIN AGENT ORCHESTRATOR
 // ============================================================================
 
-function getAvailableTools(state: ConversationState, context: ConversationContext): ToolDefinition[] {
-  const allTools = [createMatter, showContactForm, requestLawyerReview, createPaymentInvoice];
+function getAvailableTools(state: ConversationState, context: ConversationContext, attachments: readonly FileAttachment[] = []): ToolDefinition[] {
+  const _hasAttachments = Array.isArray(attachments) && attachments.length > 0;
   
+  // Document analysis is now handled automatically by fileAnalysisMiddleware in the pipeline
+  // when attachments are detected, so no analysis tools are needed in the agent
+  // The analyzeDocument tool was removed because analysis happens automatically via:
+  // 1. fileAnalysisMiddleware processes attachments during pipeline execution
+  // 2. doc-processor consumer handles auto-analysis events for uploaded files
+  // 3. Analysis results are stored in context and available to the agent
+  const analysisTools: ToolDefinition[] = [];
+
   switch (state) {
     case ConversationState.GATHERING_INFORMATION:
-      return [];
+      return analysisTools;
     case ConversationState.QUALIFYING_LEAD:
-      return context.isQualifiedLead ? [showContactForm] : [];
+      return context.isQualifiedLead ? [...analysisTools, showContactForm] : analysisTools;
     case ConversationState.SHOWING_CONTACT_FORM:
-      return [showContactForm];
+      return [...analysisTools, showContactForm];
     case ConversationState.READY_TO_CREATE_MATTER:
     case ConversationState.CREATING_MATTER:
-      return [createMatter, showContactForm];
+      return [...analysisTools, createMatter, showContactForm];
     case ConversationState.COMPLETED:
-      return allTools;
+      return [...analysisTools, createMatter, showContactForm, requestLawyerReview, createPaymentInvoice];
     default:
-      return [];
+      return analysisTools;
   }
 }
 
@@ -2105,11 +2192,59 @@ function buildPromptMessages(messages: readonly AgentMessage[]): Array<{ role: '
 }
 
 function extractAIResponse(aiResult: unknown): string {
-  if (aiResult && typeof aiResult === 'object' && 'response' in aiResult) {
-    const response = (aiResult as Record<string, unknown>).response;
-    return typeof response === 'string' ? response : 
-      'I apologize, but I encountered an error processing your request.';
+  // Handle gpt-oss-20b response format - it returns the text directly as a string
+  if (typeof aiResult === 'string') {
+    return aiResult;
   }
+  
+  if (!aiResult || typeof aiResult !== 'object') {
+    return 'I apologize, but I encountered an error processing your request.';
+  }
+
+  const result = aiResult as Record<string, unknown>;
+  
+  // Handle simple response format
+  if ('response' in result && typeof result.response === 'string') {
+    return result.response;
+  }
+  
+  // Handle gpt-oss-20b response format with output array
+  if ('output' in result && Array.isArray(result.output)) {
+    const output = result.output as unknown[];
+    // Find the message object in the output array
+    const message = output.find((msg: unknown) => 
+      msg && typeof msg === 'object' && 'type' in msg && msg.type === 'message'
+    );
+    
+    if (message && typeof message === 'object' && 'content' in message) {
+      const messageContent = (message as Record<string, unknown>).content;
+      if (Array.isArray(messageContent)) {
+        // Find the output_text content
+        const outputText = messageContent.find((content: unknown) => 
+          content && typeof content === 'object' && 'type' in content && content.type === 'output_text'
+        );
+        
+        if (outputText && typeof outputText === 'object' && 'text' in outputText) {
+          const text = (outputText as Record<string, unknown>).text;
+          return typeof text === 'string' ? text : 'I apologize, but I encountered an error processing your request.';
+        }
+      }
+    }
+  }
+  
+  // Handle other common response fields
+  if ('output' in result && typeof result.output === 'string') {
+    return result.output;
+  }
+  
+  if ('content' in result && typeof result.content === 'string') {
+    return result.content;
+  }
+  
+  if ('text' in result && typeof result.text === 'string') {
+    return result.text;
+  }
+  
   return 'I apologize, but I encountered an error processing your request.';
 }
 
@@ -2201,7 +2336,7 @@ export async function runLegalIntakeAgentStream(
       return;
     }
 
-    const availableTools = getAvailableTools(context.state, context);
+    const availableTools = getAvailableTools(context.state, context, attachments);
     const systemPrompt = PromptBuilder.build(context, team, teamId);
 
     Logger.info('Conversation State:', {
@@ -2372,5 +2507,6 @@ export {
   showContactForm,
   requestLawyerReview,
   createPaymentInvoice,
+  formatDocumentAnalysisMessage,
   TOOL_HANDLERS
 };

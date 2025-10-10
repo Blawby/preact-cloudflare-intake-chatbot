@@ -13,7 +13,7 @@ export interface NotificationsPageProps {
 export const NotificationsPage = ({
   className = ''
 }: NotificationsPageProps) => {
-  const { showSuccess } = useToastContext();
+  const { showSuccess, showError } = useToastContext();
   const [settings, setSettings] = useState<MockNotificationSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation(['settings', 'common']);
@@ -27,8 +27,10 @@ export const NotificationsPage = ({
         const notificationSettings = mockUserDataService.getNotificationSettings();
         setSettings(notificationSettings);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to load notification settings:', error);
+        showError(
+          'Error',
+          t('settings:notifications.loadError')
+        );
       } finally {
         setLoading(false);
       }

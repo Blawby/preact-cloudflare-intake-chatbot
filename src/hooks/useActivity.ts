@@ -166,7 +166,7 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
       setError(errorMessage);
       // Log error for debugging in development
       if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-        // eslint-disable-next-line no-console
+         
         console.error('Activity fetch error:', err);
       }
     } finally {

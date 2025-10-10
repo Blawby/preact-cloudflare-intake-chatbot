@@ -22,7 +22,7 @@ interface VirtualMessageListProps {
     // Feedback props
     sessionId?: string;
     teamId?: string;
-    onFeedbackSubmit?: (feedback: any) => void;
+    onFeedbackSubmit?: (feedback: unknown) => void;
 }
 
 const BATCH_SIZE = 20;
@@ -57,7 +57,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
 
         // Dispatch scroll event for navbar visibility
         const currentScrollTop = element.scrollTop;
-        const lastScrollTop = (element as any).lastScrollTop || 0;
+        const lastScrollTop = (element as HTMLElement & { lastScrollTop?: number }).lastScrollTop || 0;
         const scrollDelta = Math.abs(currentScrollTop - lastScrollTop);
         
         if (scrollDelta > 0) {
@@ -66,7 +66,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             }));
         }
         
-        (element as any).lastScrollTop = currentScrollTop;
+        (element as HTMLElement & { lastScrollTop?: number }).lastScrollTop = currentScrollTop;
 
         // Load more messages when scrolling up
         if (element.scrollTop < SCROLL_THRESHOLD && startIndex > 0) {

@@ -43,10 +43,10 @@ describe('conversationalForm', () => {
     });
 
     it('should handle edge matters', () => {
-      expect(validateEmail(null as any)).toBe(false);
-      expect(validateEmail(undefined as any)).toBe(false);
-      expect(validateEmail(123 as any)).toBe(false);
-      expect(validateEmail({} as any)).toBe(false);
+      expect(validateEmail(null as unknown)).toBe(false);
+      expect(validateEmail(undefined as unknown)).toBe(false);
+      expect(validateEmail(123 as unknown)).toBe(false);
+      expect(validateEmail({} as unknown)).toBe(false);
     });
   });
 

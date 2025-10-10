@@ -102,7 +102,7 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
       }
 
       let query = 'SELECT * FROM payment_history';
-      let params: any[] = [];
+      let params: unknown[] = [];
       const conditions = [];
 
       if (teamId) {
@@ -160,7 +160,7 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
         WHERE created_at >= datetime('now', '-${period} days')
       `;
 
-      let params: any[] = [];
+      let params: unknown[] = [];
 
       if (teamId) {
         query += ' AND team_id = ?';

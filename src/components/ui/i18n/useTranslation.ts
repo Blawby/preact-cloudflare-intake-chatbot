@@ -3,7 +3,7 @@ import { useTranslation as useI18nTranslation } from 'react-i18next';
 export interface TranslationOptions {
   defaultValue?: string;
   count?: number;
-  interpolation?: Record<string, any>;
+  interpolation?: Record<string, unknown>;
 }
 
 export function useTranslation(namespace: string = 'common') {

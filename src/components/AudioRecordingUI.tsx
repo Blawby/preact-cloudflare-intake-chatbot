@@ -3,6 +3,12 @@ import { useEffect, useState, useRef } from 'preact/hooks';
 import { XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { Button } from './ui/Button';
 
+// Type-safe interface for AudioContext globals
+interface AudioContextGlobals {
+    AudioContext?: typeof AudioContext;
+    webkitAudioContext?: typeof AudioContext;
+}
+
 interface AudioRecordingUIProps {
     onCancel: () => void;
     onConfirm: () => void;
@@ -81,9 +87,18 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
         if (!isBrowser || !isRecording || !mediaStream) return;
 
         try {
-            // Initialize Audio Context
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            audioContextRef.current = new AudioContext();
+            // Initialize Audio Context - get constructor from globalThis to avoid shadowing
+            const audioGlobals = globalThis as unknown as AudioContextGlobals;
+            const AudioContextConstructor: typeof AudioContext | undefined = 
+                audioGlobals.AudioContext || audioGlobals.webkitAudioContext;
+            
+            if (!AudioContextConstructor) {
+                console.warn('AudioContext not supported in this browser');
+                animationFrameRef.current = fallbackVisualization();
+                return;
+            }
+            
+            audioContextRef.current = new AudioContextConstructor();
             
             // Create analyzer node
             analyserRef.current = audioContextRef.current.createAnalyser();
@@ -100,7 +115,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
         } catch (error) {
             console.error('Error setting up audio visualization:', error);
             // Fall back to fake visualization if Web Audio API fails
-            fallbackVisualization();
+            animationFrameRef.current = fallbackVisualization();
         }
         
         return () => {
@@ -202,12 +217,12 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
     };
 
     // Fallback to fake visualization if real audio analysis fails
-    const fallbackVisualization = () => {
+    const fallbackVisualization = (): number => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        if (!canvas) return 0;
 
         const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) return 0;
 
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -292,8 +307,8 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
             }
         };
         
-        // Start the animation loop
-        animationFrameRef.current = requestAnimationFrame(drawBars);
+        // Start the animation loop and return the animation frame ID
+        return requestAnimationFrame(drawBars);
     };
 
     const formatTime = (seconds: number): string => {

@@ -3,12 +3,14 @@
  * Sanitizes errors to prevent exposure of sensitive information
  */
 
+import { isProduction } from './environment';
+
 interface ErrorContext {
   component?: string;
   action?: string;
   userId?: string;
   sessionId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface SanitizedError {
@@ -23,7 +25,7 @@ interface SanitizedError {
  * Sanitizes error data to remove sensitive information
  */
 function sanitizeError(error: unknown, context: ErrorContext = {}, visited: WeakSet<object> = new WeakSet()): SanitizedError {
-  const isProduction = typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
+  const isProd = isProduction();
   
   // Extract safe error information
   let message = 'An unexpected error occurred';
@@ -35,8 +37,8 @@ function sanitizeError(error: unknown, context: ErrorContext = {}, visited: Weak
   } else if (typeof error === 'string') {
     message = error;
   } else if (error && typeof error === 'object') {
-    message = (error as any).message || message;
-    name = (error as any).name || name;
+    message = (error as { message?: string }).message || message;
+    name = (error as { name?: string }).name || name;
   }
 
   // Sanitize context to remove PII and sensitive data
@@ -44,7 +46,7 @@ function sanitizeError(error: unknown, context: ErrorContext = {}, visited: Weak
   for (const [key, value] of Object.entries(context)) {
     if (typeof value === 'string') {
       // Allow componentStack in development for debugging
-      if (key === 'componentStack' && !isProduction) {
+      if (key === 'componentStack' && !isProd) {
         sanitizedContext[key] = value;
       } else if (key.toLowerCase().includes('token') || 
           key.toLowerCase().includes('password') || 
@@ -102,7 +104,7 @@ function sanitizeError(error: unknown, context: ErrorContext = {}, visited: Weak
     name,
     timestamp: new Date().toISOString(),
     context: sanitizedContext,
-    isProduction
+    isProduction: isProd
   };
 }
 
@@ -111,8 +113,8 @@ function sanitizeError(error: unknown, context: ErrorContext = {}, visited: Weak
  */
 function isSentryAvailable(): boolean {
   return typeof window !== 'undefined' && 
-         typeof (window as any).Sentry !== 'undefined' &&
-         typeof (window as any).Sentry.captureException === 'function';
+         typeof (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, any> }) => void } }).Sentry !== 'undefined' &&
+         typeof (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, any> }) => void } }).Sentry?.captureException === 'function';
 }
 
 /**
@@ -140,7 +142,7 @@ export function handleError(
   // Always try to capture in Sentry if available
   if (isSentryAvailable()) {
     try {
-      (window as any).Sentry.captureException(error, {
+      (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, any> }) => void } }).Sentry?.captureException?.(error, {
         tags: {
           component: options.component,
           action: options.action
@@ -210,12 +212,12 @@ export function createErrorBoundaryHandler(componentName: string) {
 export function safeLog(
   level: 'log' | 'warn' | 'error' | 'info',
   message: string,
-  data?: any,
+  data?: unknown,
   options: { component?: string; force?: boolean } = {}
 ): void {
-  const isProduction = typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
+  const isProd = isProduction();
   
-  if (!isProduction || options.force) {
+  if (!isProd || options.force) {
     const prefix = options.component ? `[${options.component}]` : '';
     console[level](`${prefix} ${message}`, data);
   }

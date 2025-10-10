@@ -1,4 +1,5 @@
 import type { Env } from '../types';
+import { parseEnvBool } from '../utils/safeStringUtils.js';
 
 export async function rateLimit(env: Env, key: string, limit = 60, windowSec = 60): Promise<boolean> {
   // Guard clause: validate numeric parameters
@@ -11,7 +12,7 @@ export async function rateLimit(env: Env, key: string, limit = 60, windowSec = 6
   }
 
   // Check if we're in a test environment
-  const isTestEnv = env.NODE_ENV === 'test' || env.ENV_TEST === 'true';
+  const isTestEnv = env.NODE_ENV === 'test' || parseEnvBool(env.ENV_TEST);
 
   // Handle missing CHAT_SESSIONS
   if (!env.CHAT_SESSIONS) {

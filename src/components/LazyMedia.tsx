@@ -62,17 +62,17 @@ const LazyMedia: FunctionComponent<LazyMediaProps> = ({ src, type, alt = '', cla
             className={`lazy-media-container ${className} ${isLoaded ? 'loaded' : 'loading'}`}
         >
             {!isLoaded && (
-                <div class="media-placeholder">
-                    <div class="loading-indicator">
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
+                <div className="media-placeholder">
+                    <div className="loading-indicator">
+                        <span className="dot" />
+                        <span className="dot" />
+                        <span className="dot" />
                     </div>
                 </div>
             )}
             
             {error && (
-                <div class="media-error">
+                <div className="media-error">
                     <span>Failed to load media</span>
                 </div>
             )}
@@ -103,7 +103,7 @@ const LazyMedia: FunctionComponent<LazyMediaProps> = ({ src, type, alt = '', cla
                         controls
                         onLoadedData={handleLoad}
                         onError={handleError}
-                        class={isLoaded ? 'visible' : 'hidden'}
+                        className={isLoaded ? 'visible' : 'hidden'}
                     />
                 ) : isAudio ? (
                     <audio
@@ -111,10 +111,10 @@ const LazyMedia: FunctionComponent<LazyMediaProps> = ({ src, type, alt = '', cla
                         controls
                         onLoadedData={handleLoad}
                         onError={handleError}
-                        class={isLoaded ? 'visible' : 'hidden'}
+                        className={isLoaded ? 'visible' : 'hidden'}
                     />
                 ) : (
-                    <div class="unsupported-media">
+                    <div className="unsupported-media">
                         <a href={src} target="_blank" rel="noopener noreferrer">
                             Download File
                         </a>

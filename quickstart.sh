@@ -146,15 +146,8 @@ echo "👥 Setting up default teams..."
 EXISTING_TEAMS=$(wrangler d1 execute blawby-ai-chatbot --local --command "SELECT COUNT(*) as count FROM teams;" --json 2>/dev/null | jq -r '.[0].results[0].count' 2>/dev/null || echo "0")
 
 if [ "$EXISTING_TEAMS" -eq 0 ]; then
-    echo "  Creating default team..."
-    if wrangler d1 execute blawby-ai-chatbot --local --command "
-        INSERT INTO teams (id, slug, name, config, created_at, updated_at) 
-        VALUES ('01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'test-team', 'Test Team', '{\"jurisdiction\":\"CA\",\"practiceAreas\":[\"General Practice\"]}', strftime('%s', 'now'), strftime('%s', 'now'));" >/dev/null 2>&1; then
-        echo "✅ Default team created"
-    else
-        echo "❌ Failed to create default team"
-        exit 1
-    fi
+    echo "ERROR: no teams found after executing schema.sql; aborting" >&2
+    exit 1
 else
     echo "✅ Teams already exist"
 fi

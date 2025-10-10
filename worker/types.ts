@@ -11,6 +11,15 @@ export interface Env {
   PARALEGAL_TASKS: Queue;
   PAYMENT_API_KEY?: string;
   PAYMENT_API_URL?: string;
+  ADOBE_CLIENT_ID?: string;
+  ADOBE_CLIENT_SECRET?: string;
+  ADOBE_TECHNICAL_ACCOUNT_ID?: string;
+  ADOBE_TECHNICAL_ACCOUNT_EMAIL?: string;
+  ADOBE_ORGANIZATION_ID?: string;
+  ADOBE_IMS_BASE_URL?: string;
+  ADOBE_PDF_SERVICES_BASE_URL?: string;
+  ADOBE_SCOPE?: string;
+  ENABLE_ADOBE_EXTRACT?: string | boolean;
   
   // Cloudflare AI Configuration
   CLOUDFLARE_ACCOUNT_ID?: string;
@@ -35,6 +44,9 @@ export interface Env {
   DEBUG?: string;
   ENV_TEST?: string;
   IS_PRODUCTION?: string;
+  
+  // SSE Configuration
+  SSE_POLL_INTERVAL?: string;
   
 }
 
@@ -183,6 +195,7 @@ export interface FileAttachment {
   size: number;
   type: string;
   url: string;
+  storageKey?: string;
 }
 
 

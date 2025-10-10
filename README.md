@@ -62,7 +62,7 @@ Frontend (Preact) → Cloudflare Workers → AI Agent → Tool Handlers → Acti
 
 - **Frontend**: Preact, TypeScript, Tailwind CSS
 - **Backend**: Cloudflare Workers, D1 Database, KV Storage, R2 Object Storage
-- **AI**: Cloudflare Workers AI (Llama 3.1 8B)
+- **AI**: Cloudflare Workers AI (GPT-OSS 20B)
 - **Auth**: Better Auth with Google OAuth & Email/Password
 - **Deployment**: Cloudflare Workers
 
@@ -122,7 +122,7 @@ curl -X GET http://localhost:8787/api/teams
 curl -X POST http://localhost:8787/api/teams \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{"slug": "new-team", "name": "New Team", "config": {"aiModel": "llama"}}'
+  -d '{"slug": "new-team", "name": "New Team", "config": {"aiModel": "@cf/openai/gpt-oss-20b"}}'
 ```
 
 ## 🔒 **Security**
