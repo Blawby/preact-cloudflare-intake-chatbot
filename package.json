@@ -18,6 +18,8 @@
 		"type-check": "tsc --noEmit --skipLibCheck",
 		"lint:i18n": "node ./scripts/check-i18n.mjs",
 		"test": "vitest run",
+		"db:reset": "./scripts/reset-dev-db.sh",
+		"db:init": "wrangler d1 execute blawby-ai-chatbot --local --file worker/schema.sql",
 		"test:all": "npm run test",
 		"test:watch": "vitest --watch",
 		"test:ui": "vitest --ui",

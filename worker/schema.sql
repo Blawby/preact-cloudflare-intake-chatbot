@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
   organization_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
+  user_id TEXT,
   user_info JSON,
   status TEXT DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY,
   conversation_id TEXT NOT NULL,
   matter_id TEXT, -- Optional: link to specific matter for tighter integration
+  user_id TEXT,
   content TEXT NOT NULL,
   is_user BOOLEAN NOT NULL,
   metadata JSON,
@@ -85,6 +87,7 @@ CREATE TABLE IF NOT EXISTS lawyers (
 CREATE TABLE IF NOT EXISTS matters (
   id TEXT PRIMARY KEY,
   organization_id TEXT NOT NULL,
+  user_id TEXT,
   client_name TEXT NOT NULL,
   client_email TEXT,
   client_phone TEXT,
@@ -133,6 +136,7 @@ CREATE TABLE IF NOT EXISTS matter_events (
 CREATE TABLE IF NOT EXISTS files (
   id TEXT PRIMARY KEY,
   organization_id TEXT NOT NULL,
+  user_id TEXT,
   matter_id TEXT, -- Optional: link to specific matter
   session_id TEXT, -- Optional: link to chat session
   conversation_id TEXT, -- Optional: link to conversation
@@ -305,11 +309,7 @@ CREATE TABLE IF NOT EXISTS session_audit_events (
 
 CREATE INDEX IF NOT EXISTS idx_session_audit_events_session ON session_audit_events(session_id, created_at);
 
--- Insert sample lawyers
-INSERT OR IGNORE INTO lawyers (id, organization_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES
-('lawyer-1', 'test-organization', 'Sarah Johnson', 'sarah@testlawfirm.com', '555-0101', '["Family Law", "Divorce", "Child Custody"]', 'attorney', 35000, 'CA123456', 'CA'),
-('lawyer-2', 'test-organization', 'Michael Chen', 'michael@testlawfirm.com', '555-0102', '["Employment Law", "Workplace Discrimination"]', 'attorney', 40000, 'CA789012', 'CA'),
-('paralegal-1', 'test-organization', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL);
+-- Sample data removed - use seed scripts for development data
 
 -- ========================================
 -- BETTER AUTH TABLES (SECURE SCHEMA)
@@ -327,6 +327,28 @@ CREATE TABLE IF NOT EXISTS users (
   organization_id TEXT,
   role TEXT,
   phone TEXT
+);
+
+-- Organization members for Better Auth multi-tenancy
+CREATE TABLE IF NOT EXISTS members (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL, -- 'owner', 'admin', 'attorney', 'paralegal'
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  UNIQUE(organization_id, user_id)
+);
+
+-- Invitations for organization member onboarding
+CREATE TABLE IF NOT EXISTS invitations (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL,
+  status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'expired'
+  invited_by TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
 
 -- Sessions table for Better Auth
@@ -397,6 +419,18 @@ CREATE INDEX IF NOT EXISTS idx_accounts_provider_user ON accounts(provider_id, u
 CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value);
 CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires_at);
+
+-- Create indexes for organization membership tables
+CREATE INDEX IF NOT EXISTS idx_members_org ON members(organization_id);
+CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id);
+CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
+CREATE INDEX IF NOT EXISTS idx_invitations_organization ON invitations(organization_id);
+
+-- Create indexes for user_id columns
+CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_matters_user ON matters(user_id);
+CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
 
 -- Create a view for secure user authentication data
 -- This view can be used by the application to safely access user auth data

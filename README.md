@@ -26,11 +26,11 @@ A production-ready legal intake chatbot built with Cloudflare Workers AI, featur
 
 3. **Set up local database**
    ```bash
-   # Apply database schema
-   wrangler d1 execute blawby-ai-chatbot --local --file=./worker/schema.sql
+   # Reset database with consolidated schema (recommended for development)
+   npm run db:reset
    
-   # Apply Better Auth migrations
-   wrangler d1 execute blawby-ai-chatbot --local --file=./migrations/add_better_auth_organization.sql
+   # OR apply schema only (if database is empty)
+   npm run db:init
    ```
 
 4. **Start development**

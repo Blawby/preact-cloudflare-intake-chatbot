@@ -411,31 +411,6 @@ export class OrganizationService {
     return organization?.metadata || null;
   }
 
-  // Legacy method for backward compatibility during migration
-  async getOrganizationConfig(organizationId: string): Promise<OrganizationConfig | null> {
-    const organization = await this.getOrganization(organizationId);
-    if (!organization) return null;
-    
-    // Convert organization metadata to legacy organization config format
-    return {
-      aiProvider: organization.metadata.aiProvider,
-      aiModel: organization.metadata.aiModel,
-      aiModelFallback: organization.metadata.aiModelFallback,
-      consultationFee: organization.metadata.consultationFee,
-      requiresPayment: organization.metadata.requiresPayment,
-      ownerEmail: organization.metadata.ownerEmail,
-      availableServices: organization.metadata.availableServices,
-      serviceQuestions: organization.metadata.serviceQuestions,
-      domain: organization.metadata.domain,
-      description: organization.metadata.description,
-      paymentLink: organization.metadata.paymentLink,
-      brandColor: organization.metadata.brandColor,
-      accentColor: organization.metadata.accentColor,
-      introMessage: organization.metadata.introMessage,
-      profileImage: organization.metadata.profileImage,
-      voice: organization.metadata.voice
-    };
-  }
 
   async listOrganizations(userId?: string): Promise<Organization[]> {
     try {
@@ -449,7 +424,7 @@ export class OrganizationService {
           ORDER BY o.created_at DESC
         `).bind(userId).all();
         
-        return orgRows.map(row => {
+        return orgRows.results.map(row => {
           const rawMetadata = row.metadata ? JSON.parse(row.metadata as string) : {};
           const resolvedConfig = this.resolveEnvironmentVariables(rawMetadata);
           const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as OrganizationConfig, false, row.id);
@@ -470,13 +445,13 @@ export class OrganizationService {
       } else {
         // Get all organizations (for admin purposes)
         const orgRows = await this.env.DB.prepare(`
-          SELECT id, name, slug, logo, metadata, created_at
+          SELECT id, name, slug, domain, config, created_at
           FROM organizations
           ORDER BY created_at DESC
         `).all();
         
-        return orgRows.map(row => {
-          const rawMetadata = row.metadata ? JSON.parse(row.metadata as string) : {};
+        return orgRows.results.map(row => {
+          const rawMetadata = row.config ? JSON.parse(row.config as string) : {};
           const resolvedConfig = this.resolveEnvironmentVariables(rawMetadata);
           const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as OrganizationConfig, false, row.id);
           
