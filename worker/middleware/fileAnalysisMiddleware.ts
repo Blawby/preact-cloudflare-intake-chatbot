@@ -68,7 +68,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
 
       // Initialize processed files tracking if not exists
       if (!context.processedFiles) {
-        context.processedFiles = new Set<string>();
+        context.processedFiles = [];
       }
 
       // Filter out already processed files to prevent duplicates
@@ -79,7 +79,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           return false;
         }
         
-        if (context.processedFiles!.has(fileId)) {
+        if (context.processedFiles!.includes(fileId)) {
           Logger.info('Skipping already processed file', {
             sessionId: context.sessionId,
             teamId: context.teamId,
@@ -121,7 +121,9 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         }
 
         // Mark file as being processed to prevent duplicates
-        context.processedFiles!.add(fileId);
+        if (!context.processedFiles!.includes(fileId)) {
+          context.processedFiles!.push(fileId);
+        }
 
         // Determine analysis type based on file
         const analysisType = determineAnalysisType(attachment);

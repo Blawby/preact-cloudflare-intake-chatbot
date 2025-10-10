@@ -94,7 +94,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
             
             if (!AudioContextConstructor) {
                 console.warn('AudioContext not supported in this browser');
-                fallbackVisualization();
+                animationFrameRef.current = fallbackVisualization();
                 return;
             }
             
@@ -115,7 +115,7 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
         } catch (error) {
             console.error('Error setting up audio visualization:', error);
             // Fall back to fake visualization if Web Audio API fails
-            fallbackVisualization();
+            animationFrameRef.current = fallbackVisualization();
         }
         
         return () => {
@@ -217,12 +217,12 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
     };
 
     // Fallback to fake visualization if real audio analysis fails
-    const fallbackVisualization = () => {
+    const fallbackVisualization = (): number => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        if (!canvas) return 0;
 
         const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) return 0;
 
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -307,8 +307,8 @@ const AudioRecordingUI: FunctionComponent<AudioRecordingUIProps> = ({
             }
         };
         
-        // Start the animation loop
-        animationFrameRef.current = requestAnimationFrame(drawBars);
+        // Start the animation loop and return the animation frame ID
+        return requestAnimationFrame(drawBars);
     };
 
     const formatTime = (seconds: number): string => {

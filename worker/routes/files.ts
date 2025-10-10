@@ -6,6 +6,7 @@ import { ActivityService } from '../services/ActivityService';
 import { StatusService, type StatusUpdate } from '../services/StatusService.js';
 import { Logger } from '../utils/logger';
 import type { MessageBatch } from '@cloudflare/workers-types';
+import type { DocumentEvent, AutoAnalysisEvent } from '../types/events.js';
 
 /**
  * Updates status with retry logic and exponential backoff
@@ -75,27 +76,6 @@ async function updateStatusWithRetry(
   }
 }
 
-// Types for document processing
-interface DocumentEvent {
-  key: string;
-  teamId: string;
-  sessionId: string;
-  mime: string;
-  size: number;
-}
-
-interface AutoAnalysisEvent {
-  type: "analyze_uploaded_document";
-  sessionId: string;
-  teamId: string;
-  statusId?: string;
-  file: {
-    key: string;
-    name: string;
-    mime: string;
-    size: number;
-  };
-}
 
 // File upload validation schema
 const fileUploadValidationSchema = z.object({
@@ -465,7 +445,7 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
               type: "analyze_uploaded_document",
               sessionId: resolvedSessionId,
               teamId: resolvedTeamId,
-              statusId: statusId,
+              statusId: statusId ?? undefined,
               file: {
                 key: storageKey,
                 name: file.name,

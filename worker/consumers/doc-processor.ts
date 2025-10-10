@@ -5,27 +5,8 @@ import { AdobeDocumentService, type AdobeExtractSuccess } from '../services/Adob
 import { SessionService, type AnalysisResult } from '../services/SessionService.js';
 import { StatusService } from '../services/StatusService.js';
 import type { Env } from '../types.js';
+import type { DocumentEvent, AutoAnalysisEvent } from '../types/events.js';
 
-interface DocumentEvent {
-  key: string;
-  teamId: string;
-  sessionId: string;
-  mime: string;
-  size: number;
-}
-
-export interface AutoAnalysisEvent {
-  type: "analyze_uploaded_document";
-  sessionId: string;
-  teamId: string;
-  statusId?: string;
-  file: {
-    key: string;
-    name: string;
-    mime: string;
-    size: number;
-  };
-}
 
 
 export default {
@@ -351,6 +332,18 @@ async function performDocumentAnalysis(
       }
       analysis = await summarizeAdobeResult(env, adobeResult.details, sessionId, teamId, statusId);
     } else {
+      if (statusId && sessionId && teamId) {
+        await StatusService.setStatus(env, {
+          id: statusId,
+          sessionId,
+          teamId,
+          type: 'file_processing',
+          status: 'processing',
+          message: "🔄 Adobe extraction unavailable, using alternative analysis...",
+          progress: 75,
+          data: { fileName: key.split('/').pop() ?? key }
+        }, statusCreatedAt ?? undefined);
+      }
       console.warn('Adobe extract returned no data, falling back to legacy summarizer', {
         key,
         mime

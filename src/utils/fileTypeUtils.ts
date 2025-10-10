@@ -23,8 +23,14 @@ export interface FileTypeConfig {
   label: string;
 }
 
+// Safe extension extraction helper
+const getExtension = (name: string): string => {
+  const idx = name.lastIndexOf('.');
+  return idx !== -1 && idx < name.length - 1 ? name.slice(idx + 1).toLowerCase() : '';
+};
+
 export const getFileTypeConfig = (fileName: string, mimeType: string): FileTypeConfig => {
-  const extension = fileName.split('.').pop()?.toLowerCase() || '';
+  const extension = getExtension(fileName);
   
   // PDF files
   if (mimeType === 'application/pdf' || extension === 'pdf') {
@@ -115,7 +121,7 @@ export const isImageFile = (mimeType: string | null | undefined): boolean => {
  * Maps common file extensions to their corresponding MIME types
  */
 export const getMimeTypeFromFilename = (filename: string): string => {
-  const extension = filename.split('.').pop()?.toLowerCase() || '';
+  const extension = getExtension(filename);
   
   // Image types
   const imageTypes: Record<string, string> = {
@@ -169,7 +175,9 @@ export const getMimeTypeFromFilename = (filename: string): string => {
     'rtf': 'application/rtf',
     'odt': 'application/vnd.oasis.opendocument.text',
     'ods': 'application/vnd.oasis.opendocument.spreadsheet',
-    'odp': 'application/vnd.oasis.opendocument.presentation'
+    'odp': 'application/vnd.oasis.opendocument.presentation',
+    'csv': 'text/csv',
+    'tsv': 'text/tab-separated-values'
   };
   
   // Archive types

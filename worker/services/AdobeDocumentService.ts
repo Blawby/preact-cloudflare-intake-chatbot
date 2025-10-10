@@ -72,7 +72,7 @@ const FIVE_MINUTES_MS = 5 * 60 * 1000;
 const DEFAULT_IMS_BASE = 'https://ims-na1.adobelogin.com';
 const DEFAULT_PDF_BASE = 'https://pdf-services.adobe.io';
 const DEFAULT_SCOPE = 'openid,AdobeID,DCAPI';
-const MAX_POLL_ATTEMPTS = 60; // Increased from 20 to 60 (about 2-3 minutes)
+const MAX_POLL_ATTEMPTS = 60; // Increased from 20 to 60 (worst-case ~5 minutes: 60 attempts × ~5s, typical average ~2-3 minutes)
 const POLL_BASE_DELAY_MS = 2000; // Increased from 1000 to 2000ms
 
 // Timeout and retry configuration for external API calls

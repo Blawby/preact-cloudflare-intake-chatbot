@@ -90,7 +90,7 @@ export interface ConversationContext {
     reason: string;
   };
   // File processing deduplication
-  processedFiles?: Set<string>;
+  processedFiles?: string[];
   // Current request attachments for file analysis
   currentAttachments?: Array<{
     name: string;

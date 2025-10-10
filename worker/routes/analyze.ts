@@ -51,7 +51,7 @@ async function attemptAdobeExtract(
   question: string,
   env: Env,
   requestId?: string
-): Promise<AnalysisResult | null> {
+): Promise<ExtendedAnalysisResult | null> {
   log('debug', 'adobe_service_creation', { message: 'Creating Adobe service', requestId });
   const adobeService = new AdobeDocumentService(env);
   log('debug', 'adobe_service_created', { message: 'Adobe service created', requestId });
@@ -135,7 +135,18 @@ async function attemptAdobeExtract(
 
     log('info', 'adobe_extraction_success', { fileName: file.name, requestId });
     log('debug', 'adobe_extraction_success_details', { message: 'Adobe extraction successful, calling summarizeAdobeExtract', requestId });
-    return await summarizeAdobeExtract(extractResult.details, question, env, requestId || 'unknown');
+    const result = await summarizeAdobeExtract(extractResult.details, question, env, requestId || 'unknown');
+    // Ensure the result has the extended fields
+    return {
+      ...result,
+      adobeExtractTextLength: result.adobeExtractTextLength || extractResult.details.text?.length || 0,
+      adobeExtractTextPreview: result.adobeExtractTextPreview || extractResult.details.text?.substring(0, 200) || 'No text',
+      debug: {
+        ...result.debug,
+        adobeExtractTextLength: result.adobeExtractTextLength || extractResult.details.text?.length || 0,
+        adobeExtractTextPreview: result.adobeExtractTextPreview || extractResult.details.text?.substring(0, 200) || 'No text'
+      }
+    };
   } catch (error) {
     logWarning('analyze', 'adobe_extract_failed', 'Adobe extract failed, using fallback analysis path', {
       fileName: file.name,
@@ -158,7 +169,23 @@ async function attemptAdobeExtract(
         "Describe the document content manually",
         "Contact support if the issue persists"
       ],
-      confidence: 0.1
+      confidence: 0.1,
+      adobeExtractTextLength: 0,
+      adobeExtractTextPreview: 'No text',
+      debug: {
+        adobeEnabled: Boolean(env.ENABLE_ADOBE_EXTRACT),
+        adobeClientIdSet: !!env.ADOBE_CLIENT_ID,
+        adobeClientSecretSet: !!env.ADOBE_CLIENT_SECRET,
+        fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type),
+        analysisMethod: 'fallback',
+        debugTimestamp: new Date().toISOString(),
+        codeVersion: 'v2.3-debug',
+        summaryContainsUnable: true,
+        summaryContainsNotProvided: false,
+        summaryLength: 0,
+        adobeExtractTextLength: 0,
+        adobeExtractTextPreview: 'No text'
+      }
     };
   }
 }
