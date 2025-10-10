@@ -45,9 +45,10 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
   // Remove or escape potentially dangerous characters
   let sanitized = input
     // Remove null bytes and control characters (except newlines, tabs, carriage returns)
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu, '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
     // Remove potential prompt injection patterns (targeted approach)
-    .replace(/^(?:\s*)(?:system|user|assistant|prompt|instruct)\s*[:\-\|]/gim, '') // Role labels with separators
+    .replace(/^(?:\s*)(?:system|user|assistant|prompt|instruct)\s*[:\-|]/gim, '') // Role labels with separators
     .replace(/^(?:\s*)(?:ignore\s+previous|forget\s+all|reset\s+instructions?)/gim, '') // Malicious phrases
     // Replace special characters with HTML entities using single regex with proper character class
     .replace(/[&<>"'`\\]/g, (match) => htmlEntityMap[match] || match)
@@ -63,29 +64,6 @@ function sanitizeString(input: string | null | undefined, maxLength: number = 10
 }
 
 // Contact info validation functions removed - now handled by ContactForm component
-
-/**
- * Sanitizes location data
- */
-function sanitizeLocation(location: string | null | undefined): string | null {
-  if (!location || typeof location !== 'string') {
-    return null;
-  }
-
-  // More restrictive sanitization for location data
-  let sanitized = sanitizeString(location, 200);
-  if (!sanitized) {
-    return null;
-  }
-
-  // Remove potential coordinate injection patterns
-  sanitized = sanitized
-    .replace(/[0-9.-]+\s*,\s*[0-9.-]+/g, '[coordinates]') // Replace lat,lng patterns
-    .replace(/https?:\/\/[^\s]+/gi, '[url]') // Replace URLs
-    .replace(/www\.[^\s]+/gi, '[url]'); // Replace www URLs
-
-  return sanitized;
-}
 
 /**
  * System prompt template for case preparation assistant (Blawby AI)
@@ -329,7 +307,7 @@ export function buildContextSection(
 
   // Build context with only legal information
   const contextItems = [
-    `- Has Legal Issue: ${context?.hasLegalIssue && sanitizedLegalIssueType ? 'YES' : 'NO'} ${sanitizedLegalIssueType ? `(${sanitizedLegalIssueType})` : ''}`,
+    `- Has Legal Issue: ${(context?.hasLegalIssue && sanitizedLegalIssueType) ? 'YES' : 'NO'} ${sanitizedLegalIssueType ? `(${sanitizedLegalIssueType})` : ''}`,
     `- Has Description: ${sanitizedDescription ? 'YES' : 'NO'}`,
     `- Is Sensitive Matter: ${context?.isSensitiveMatter ? 'YES' : 'NO'}`,
     `- Is General Inquiry: ${context?.isGeneralInquiry ? 'YES' : 'NO'}`,

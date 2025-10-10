@@ -1,6 +1,7 @@
 import { ActivityService, type ActivityEvent } from '../services/ActivityService';
 import { SessionService } from '../services/SessionService';
 import { rateLimit, getClientId } from '../middleware/rateLimit';
+import { createRateLimitResponse } from '../errorHandler';
 import { HttpErrors, handleError } from '../errorHandler';
 import { parseJsonBody } from '../utils';
 import type { Env } from '../types';
@@ -23,20 +24,11 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
   // Rate limiting
   const clientId = getClientId(request);
   if (!(await rateLimit(env, clientId, 50, 60))) { // 50 requests per minute
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Rate limit exceeded. Please try again later.',
-      errorCode: 'RATE_LIMITED',
-      retryAfter: 60
-    }), {
-      status: 429,
-      headers: {
-        'Content-Type': 'application/json',
-        'Retry-After': '60',
-        'X-RateLimit-Limit': '50',
-        'X-RateLimit-Remaining': '0',
-        'X-RateLimit-Reset': String(Math.floor(Date.now() / 1000) + 60)
-      }
+    return createRateLimitResponse(60, {
+      limit: 50,
+      remaining: 0,
+      reset: Math.floor(Date.now() / 1000) + 60,
+      errorMessage: 'Rate limit exceeded. Please try again later.'
     });
   }
 

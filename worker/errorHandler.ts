@@ -92,19 +92,40 @@ export function createSuccessResponse<T>(data: T): Response {
   });
 }
 
-// Rate limiting helper (basic implementation)
-export function createRateLimitResponse(): Response {
+// Rate limiting helper with customizable options
+export function createRateLimitResponse(
+  retryAfter: number = 60,
+  options?: {
+    limit?: number;
+    remaining?: number;
+    reset?: number;
+    errorMessage?: string;
+  }
+): Response {
   const response: ApiResponse = {
     success: false,
-    error: 'Too many requests',
+    error: options?.errorMessage || 'Too many requests',
     errorCode: 'RATE_LIMIT_EXCEEDED'
   };
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Retry-After': String(retryAfter)
+  };
+
+  // Add X-RateLimit-* headers if provided
+  if (options?.limit !== undefined) {
+    headers['X-RateLimit-Limit'] = String(options.limit);
+  }
+  if (options?.remaining !== undefined) {
+    headers['X-RateLimit-Remaining'] = String(options.remaining);
+  }
+  if (options?.reset !== undefined) {
+    headers['X-RateLimit-Reset'] = String(options.reset);
+  }
+
   return new Response(JSON.stringify(response), {
     status: 429,
-    headers: {
-      'Content-Type': 'application/json',
-      'Retry-After': '60'
-    }
+    headers
   });
 } 
