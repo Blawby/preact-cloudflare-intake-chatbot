@@ -1,5 +1,5 @@
 import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
 import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
@@ -56,7 +56,7 @@ type AnalysisResult = {
 export const fileAnalysisMiddleware: PipelineMiddleware = {
   name: 'fileAnalysisMiddleware',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
     try {
       // Check if we have file attachments in the current request
       if (!context.currentAttachments || context.currentAttachments.length === 0) {
@@ -69,7 +69,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       if (!latestMessage || latestMessage.role !== 'user') {
         Logger.info('Skipping file analysis - no user message in current request', {
           sessionId: context.sessionId,
-          teamId: context.teamId
+          organizationId: context.organizationId
         });
         return { context };
       }
@@ -90,7 +90,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         if (context.processedFiles!.includes(fileId)) {
           Logger.info('Skipping already processed file', {
             sessionId: context.sessionId,
-            teamId: context.teamId,
+            organizationId: context.organizationId,
             fileId,
             fileName: attachment.name
           });
@@ -103,7 +103,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       if (attachments.length === 0) {
         Logger.info('No new attachments to process after deduplication', {
           sessionId: context.sessionId,
-          teamId: context.teamId
+          organizationId: context.organizationId
         });
         return { context };
       }
@@ -112,7 +112,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       // This ensures users see analysis results for newly uploaded files
       Logger.info('Processing current attachments for file analysis', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         attachmentCount: attachments.length,
         totalAttachments: context.currentAttachments.length
       });
@@ -131,7 +131,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         if (context.processedFiles!.includes(fileId)) {
           Logger.info('Skipping already processed file', {
             sessionId: context.sessionId,
-            teamId: context.teamId,
+            organizationId: context.organizationId,
             fileId,
             fileName: attachment.name
           });
@@ -143,7 +143,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         
         Logger.info('Processing file attachment', {
           sessionId: context.sessionId,
-          teamId: context.teamId,
+          organizationId: context.organizationId,
           fileId,
           fileName: attachment.name,
           analysisType
@@ -176,7 +176,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
 
             Logger.info('File analysis completed successfully', {
               sessionId: context.sessionId,
-              teamId: context.teamId,
+              organizationId: context.organizationId,
               fileId,
               fileName: attachment.name,
               confidence: analysis.confidence as number,
@@ -185,7 +185,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           } else {
             Logger.warn('File analysis failed or returned low confidence', {
               sessionId: context.sessionId,
-              teamId: context.teamId,
+              organizationId: context.organizationId,
               fileId,
               fileName: attachment.name,
               confidence: (analysis?.confidence as number) || 0
@@ -197,7 +197,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         } catch (error) {
         Logger.error('File analysis error in middleware', {
           sessionId: context.sessionId,
-          teamId: context.teamId,
+          organizationId: context.organizationId,
           fileName: attachment.name,
           error: error instanceof Error ? error.message : String(error)
         });
@@ -223,7 +223,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
     if (analysisResults.length > 0) {
       Logger.info('File analysis completed successfully, providing response', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         analysisCount: analysisResults.length
       });
 
@@ -252,7 +252,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
 
       Logger.info('Returning file analysis response from middleware', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         responseLength: response.length
       });
 
@@ -264,7 +264,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
     } else {
       Logger.info('No successful analysis results, continuing pipeline', {
         sessionId: context.sessionId,
-        teamId: context.teamId
+        organizationId: context.organizationId
       });
     }
 
@@ -277,7 +277,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
     } catch (error) {
       Logger.error('File analysis middleware error', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         error: error instanceof Error ? error.message : String(error)
       });
       
@@ -295,7 +295,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
  * Extract file ID from attachment URL
  */
 function extractFileIdFromUrl(url: string): string | null {
-  // Handle URLs like "/api/files/team-session-timestamp-random"
+  // Handle URLs like "/api/files/organization-session-timestamp-random"
   const urlParts = url.split('/api/files/');
   return urlParts.length > 1 ? urlParts[1] : null;
 }

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
 
-// Helper function to create a test team
-async function createTestTeam() {
-  const newTeam = {
-    slug: `test-team-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: 'Test Legal Team',
+// Helper function to create a test organization
+async function createTestOrganization() {
+  const newOrganization = {
+    slug: `test-organization-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: 'Test Legal Organization',
     config: {
       consultationFee: 150,
       requiresPayment: true,
@@ -20,50 +20,50 @@ async function createTestTeam() {
     }
   };
 
-  const response = await fetch(`${WORKER_URL}/api/teams`, {
+  const response = await fetch(`${WORKER_URL}/api/organizations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newTeam)
+    body: JSON.stringify(newOrganization)
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create test team: ${response.status} ${response.statusText}`);
+    throw new Error(`Failed to create test organization: ${response.status} ${response.statusText}`);
   }
 
   const responseData = await response.json();
   return responseData.data;
 }
 
-// Helper function to validate teams data and create test team if needed
-async function getValidTeamData() {
-  const teamsResponse = await fetch(`${WORKER_URL}/api/teams`);
-  const teamsData = await teamsResponse.json();
+// Helper function to validate organizations data and create test organization if needed
+async function getValidOrganizationData() {
+  const organizationsResponse = await fetch(`${WORKER_URL}/api/organizations`);
+  const organizationsData = await organizationsResponse.json();
   
   // Validate response structure
-  if (!teamsData || typeof teamsData !== 'object') {
-    throw new Error('Invalid teams response: response is not an object');
+  if (!organizationsData || typeof organizationsData !== 'object') {
+    throw new Error('Invalid organizations response: response is not an object');
   }
   
-  if (!teamsData.success) {
-    throw new Error(`Teams API request failed: ${teamsData.error || 'Unknown error'}`);
+  if (!organizationsData.success) {
+    throw new Error(`Organizations API request failed: ${organizationsData.error || 'Unknown error'}`);
   }
   
-  if (!Array.isArray(teamsData.data)) {
-    throw new Error('Invalid teams response: data is not an array');
+  if (!Array.isArray(organizationsData.data)) {
+    throw new Error('Invalid organizations response: data is not an array');
   }
   
-  if (teamsData.data.length === 0) {
-    console.log('⚠️  No teams found, creating a test team...');
-    const testTeam = await createTestTeam();
-    return { data: [testTeam] };
+  if (organizationsData.data.length === 0) {
+    console.log('⚠️  No organizations found, creating a test organization...');
+    const testOrganization = await createTestOrganization();
+    return { data: [testOrganization] };
   }
   
-  return teamsData;
+  return organizationsData;
 }
 
-describe('Teams API Integration Tests - Real Worker', () => {
+describe('Organizations API Integration Tests - Real Worker', () => {
   beforeAll(async () => {
-    console.log('🧪 Testing teams API against real worker at:', WORKER_URL);
+    console.log('🧪 Testing organizations API against real worker at:', WORKER_URL);
     
     // Verify worker is running
     try {
@@ -77,9 +77,9 @@ describe('Teams API Integration Tests - Real Worker', () => {
     }
   });
 
-  describe('GET /api/teams', () => {
-    it('should return all teams successfully', async () => {
-      const response = await fetch(`${WORKER_URL}/api/teams`, {
+  describe('GET /api/organizations', () => {
+    it('should return all organizations successfully', async () => {
+      const response = await fetch(`${WORKER_URL}/api/organizations`, {
         method: 'GET'
       });
       
@@ -90,18 +90,18 @@ describe('Teams API Integration Tests - Real Worker', () => {
       expect(Array.isArray(responseData.data)).toBe(true);
       expect(responseData.data.length).toBeGreaterThan(0);
       
-      // Verify team structure
-      const team = responseData.data[0];
-      expect(team).toHaveProperty('id');
-      expect(team).toHaveProperty('slug');
-      expect(team).toHaveProperty('name');
-      expect(team).toHaveProperty('config');
+      // Verify organization structure
+      const organization = responseData.data[0];
+      expect(organization).toHaveProperty('id');
+      expect(organization).toHaveProperty('slug');
+      expect(organization).toHaveProperty('name');
+      expect(organization).toHaveProperty('config');
       
-      console.log('📋 Found teams:', responseData.data.map(t => ({ id: t.id, slug: t.slug, name: t.name })));
+      console.log('📋 Found organizations:', responseData.data.map(t => ({ id: t.id, slug: t.slug, name: t.name })));
     });
 
     it('should handle CORS preflight requests', async () => {
-      const response = await fetch(`${WORKER_URL}/api/teams`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations`, {
         method: 'OPTIONS',
         headers: {
           'Origin': 'http://localhost:3000',
@@ -116,13 +116,13 @@ describe('Teams API Integration Tests - Real Worker', () => {
     });
   });
 
-  describe('GET /api/teams/{slugOrId}', () => {
-    it('should return specific team by ID', async () => {
-      // First get all teams to find a valid ID
-      const teamsData = await getValidTeamData();
-      const validTeamId = teamsData.data[0].id;
+  describe('GET /api/organizations/{slugOrId}', () => {
+    it('should return specific organization by ID', async () => {
+      // First get all organizations to find a valid ID
+      const organizationsData = await getValidOrganizationData();
+      const validOrganizationId = organizationsData.data[0].id;
       
-      const response = await fetch(`${WORKER_URL}/api/teams/${validTeamId}`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${validOrganizationId}`, {
         method: 'GET'
       });
       
@@ -130,18 +130,18 @@ describe('Teams API Integration Tests - Real Worker', () => {
       const responseData = await response.json();
       
       expect(responseData.success).toBe(true);
-      expect(responseData.data).toHaveProperty('id', validTeamId);
+      expect(responseData.data).toHaveProperty('id', validOrganizationId);
       expect(responseData.data).toHaveProperty('slug');
       expect(responseData.data).toHaveProperty('name');
       expect(responseData.data).toHaveProperty('config');
     });
 
-    it('should return specific team by slug', async () => {
-      // First get all teams to find a valid slug
-      const teamsData = await getValidTeamData();
-      const validTeamSlug = teamsData.data[0].slug;
+    it('should return specific organization by slug', async () => {
+      // First get all organizations to find a valid slug
+      const organizationsData = await getValidOrganizationData();
+      const validOrganizationSlug = organizationsData.data[0].slug;
       
-      const response = await fetch(`${WORKER_URL}/api/teams/${validTeamSlug}`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${validOrganizationSlug}`, {
         method: 'GET'
       });
       
@@ -149,14 +149,14 @@ describe('Teams API Integration Tests - Real Worker', () => {
       const responseData = await response.json();
       
       expect(responseData.success).toBe(true);
-      expect(responseData.data).toHaveProperty('slug', validTeamSlug);
+      expect(responseData.data).toHaveProperty('slug', validOrganizationSlug);
       expect(responseData.data).toHaveProperty('id');
       expect(responseData.data).toHaveProperty('name');
       expect(responseData.data).toHaveProperty('config');
     });
 
-    it('should return 404 for non-existent team', async () => {
-      const response = await fetch(`${WORKER_URL}/api/teams/non-existent-team`, {
+    it('should return 404 for non-existent organization', async () => {
+      const response = await fetch(`${WORKER_URL}/api/organizations/non-existent-organization`, {
         method: 'GET'
       });
       
@@ -168,11 +168,11 @@ describe('Teams API Integration Tests - Real Worker', () => {
     });
   });
 
-  describe('POST /api/teams', () => {
-    it('should create new team successfully', async () => {
-      const newTeam = {
-        slug: `test-team-${Date.now()}`,
-        name: 'Test Legal Team',
+  describe('POST /api/organizations', () => {
+    it('should create new organization successfully', async () => {
+      const newOrganization = {
+        slug: `test-organization-${Date.now()}`,
+        name: 'Test Legal Organization',
         config: {
           aiModel: '@cf/openai/gpt-oss-20b',
           consultationFee: 150,
@@ -188,10 +188,10 @@ describe('Teams API Integration Tests - Real Worker', () => {
         }
       };
 
-      const response = await fetch(`${WORKER_URL}/api/teams`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTeam)
+        body: JSON.stringify(newOrganization)
       });
       
       expect(response.status).toBe(201);
@@ -199,23 +199,23 @@ describe('Teams API Integration Tests - Real Worker', () => {
       
       expect(responseData.success).toBe(true);
       expect(responseData.data).toHaveProperty('id');
-      expect(responseData.data).toHaveProperty('slug', newTeam.slug);
-      expect(responseData.data).toHaveProperty('name', newTeam.name);
+      expect(responseData.data).toHaveProperty('slug', newOrganization.slug);
+      expect(responseData.data).toHaveProperty('name', newOrganization.name);
       expect(responseData.data).toHaveProperty('config');
       
-      console.log('✅ Created team:', responseData.data);
+      console.log('✅ Created organization:', responseData.data);
     }, 30000);
 
     it('should return 400 for missing required fields', async () => {
-      const invalidTeam = {
-        name: 'Team without slug'
+      const invalidOrganization = {
+        name: 'Organization without slug'
         // Missing slug
       };
 
-      const response = await fetch(`${WORKER_URL}/api/teams`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invalidTeam)
+        body: JSON.stringify(invalidOrganization)
       });
       
       expect(response.status).toBe(400);
@@ -226,34 +226,34 @@ describe('Teams API Integration Tests - Real Worker', () => {
     });
   });
 
-  describe('PUT /api/teams/{slugOrId}', () => {
-    it('should update team successfully', async () => {
-      // First create a team to update
-      const newTeam = {
+  describe('PUT /api/organizations/{slugOrId}', () => {
+    it('should update organization successfully', async () => {
+      // First create a organization to update
+      const newOrganization = {
         slug: `update-test-${Date.now()}`,
-        name: 'Team to Update',
+        name: 'Organization to Update',
         config: {}
       };
 
-      const createResponse = await fetch(`${WORKER_URL}/api/teams`, {
+      const createResponse = await fetch(`${WORKER_URL}/api/organizations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTeam)
+        body: JSON.stringify(newOrganization)
       });
       
-      const createdTeam = await createResponse.json();
-      const teamId = createdTeam.data.id;
+      const createdOrganization = await createResponse.json();
+      const organizationId = createdOrganization.data.id;
 
-      // Now update the team
+      // Now update the organization
       const updateData = {
-        name: 'Updated Team Name',
+        name: 'Updated Organization Name',
         config: {
-          ...newTeam.config,
+          ...newOrganization.config,
           consultationFee: 200
         }
       };
 
-      const response = await fetch(`${WORKER_URL}/api/teams/${teamId}`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData)
@@ -263,16 +263,16 @@ describe('Teams API Integration Tests - Real Worker', () => {
       const responseData = await response.json();
       
       expect(responseData.success).toBe(true);
-      expect(responseData.data).toHaveProperty('name', 'Updated Team Name');
+      expect(responseData.data).toHaveProperty('name', 'Updated Organization Name');
       expect(responseData.data).toHaveProperty('config');
     }, 30000);
 
-    it('should return 404 for non-existent team update', async () => {
+    it('should return 404 for non-existent organization update', async () => {
       const updateData = {
-        name: 'Updated Name'
+        name: 'Updated Organization Name'
       };
 
-      const response = await fetch(`${WORKER_URL}/api/teams/non-existent-id`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/non-existent-id`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData)
@@ -286,19 +286,19 @@ describe('Teams API Integration Tests - Real Worker', () => {
     });
   });
 
-  describe('DELETE /api/teams/{slugOrId}', () => {
-    it('should delete team successfully', async () => {
-      // First create a team to delete
+  describe('DELETE /api/organizations/{slugOrId}', () => {
+    it('should delete organization successfully', async () => {
+      // First create a organization to delete
       const createRequest = {
-        name: 'Test Team for Deletion',
-        slug: 'test-team-delete-' + Date.now(),
+        name: 'Test Organization for Deletion',
+        slug: 'test-organization-delete-' + Date.now(),
         config: {
           requiresPayment: false,
           consultationFee: 0
         }
       };
 
-      const createResponse = await fetch(`${WORKER_URL}/api/teams`, {
+      const createResponse = await fetch(`${WORKER_URL}/api/organizations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -310,25 +310,25 @@ describe('Teams API Integration Tests - Real Worker', () => {
       const createResult = await createResponse.json();
       expect(createResult.success).toBe(true);
       
-      const teamId = createResult.data.id;
-      console.log('🔍 Created team ID:', teamId);
-      console.log('🔍 Created team data:', JSON.stringify(createResult.data, null, 2));
+      const organizationId = createResult.data.id;
+      console.log('🔍 Created organization ID:', organizationId);
+      console.log('🔍 Created organization data:', JSON.stringify(createResult.data, null, 2));
       
-      // Add a small delay to ensure the team is fully created
+      // Add a small delay to ensure the organization is fully created
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Verify the team exists before trying to delete it
-      const verifyResponse = await fetch(`${WORKER_URL}/api/teams/${teamId}`, {
+      // Verify the organization exists before trying to delete it
+      const verifyResponse = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
         method: 'GET'
       });
       
       if (verifyResponse.status !== 200) {
         const verifyData = await verifyResponse.json();
-        throw new Error(`Team not found after creation! Verify Status: ${verifyResponse.status}, Data: ${JSON.stringify(verifyData, null, 2)}`);
+        throw new Error(`Organization not found after creation! Verify Status: ${verifyResponse.status}, Data: ${JSON.stringify(verifyData, null, 2)}`);
       }
       
-      // Now delete the team
-      const response = await fetch(`${WORKER_URL}/api/teams/${teamId}`, {
+      // Now delete the organization
+      const response = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -338,7 +338,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
       const responseData = await response.json();
       
       if (response.status !== 200) {
-        throw new Error(`Delete failed! Status: ${response.status}, TeamID: ${teamId}, Response: ${JSON.stringify(responseData, null, 2)}`);
+        throw new Error(`Delete failed! Status: ${response.status}, OrganizationID: ${organizationId}, Response: ${JSON.stringify(responseData, null, 2)}`);
       }
       
       expect(response.status).toBe(200);
@@ -346,8 +346,8 @@ describe('Teams API Integration Tests - Real Worker', () => {
       expect(responseData.message).toContain('deleted');
     });
 
-    it('should return 404 for non-existent team deletion', async () => {
-      const response = await fetch(`${WORKER_URL}/api/teams/non-existent-id`, {
+    it('should return 404 for non-existent organization deletion', async () => {
+      const response = await fetch(`${WORKER_URL}/api/organizations/non-existent-id`, {
         method: 'DELETE'
       });
       
@@ -361,7 +361,7 @@ describe('Teams API Integration Tests - Real Worker', () => {
 
   describe('Method Not Allowed', () => {
     it('should reject unsupported methods', async () => {
-      const response = await fetch(`${WORKER_URL}/api/teams`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'

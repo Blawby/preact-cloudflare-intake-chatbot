@@ -113,8 +113,8 @@ function sanitizeError(error: unknown, context: ErrorContext = {}, visited: Weak
  */
 function isSentryAvailable(): boolean {
   return typeof window !== 'undefined' && 
-         typeof (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, any> }) => void } }).Sentry !== 'undefined' &&
-         typeof (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, any> }) => void } }).Sentry?.captureException === 'function';
+         typeof (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, unknown> }) => void } }).Sentry !== 'undefined' &&
+         typeof (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, unknown> }) => void } }).Sentry?.captureException === 'function';
 }
 
 /**
@@ -142,7 +142,7 @@ export function handleError(
   // Always try to capture in Sentry if available
   if (isSentryAvailable()) {
     try {
-      (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, any> }) => void } }).Sentry?.captureException?.(error, {
+      (window as { Sentry?: { captureException?: (error: unknown, context?: { tags?: Record<string, string>; extra?: Record<string, unknown> }) => void } }).Sentry?.captureException?.(error, {
         tags: {
           component: options.component,
           action: options.action

@@ -7,7 +7,7 @@ import { Logo } from './ui/Logo';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from './ui/form';
 import { Input, EmailInput, PasswordInput } from './ui/input';
 import { handleError } from '../utils/errorHandler';
-// No authentication required - authClient removed
+import { authClient } from '../lib/authClient';
 
 interface AuthPageProps {
   mode?: 'signin' | 'signup';
@@ -85,113 +85,54 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
           return;
         }
 
-        // Simulate API call for new user registration
-        // Always create a new user for sign-up (like a real API would)
-        const userId = `mock-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        const mockUser = {
-          id: userId,
-          name: formData.name || formData.email.split('@')[0] || t('defaults.demoUserName'),
+        // Use Better Auth for sign-up
+        const result = await authClient.signUp.email({
           email: formData.email,
-          password: formData.password, // Store password for validation (in production, this would be hashed)
-          image: `https://i.pravatar.cc/300?u=${encodeURIComponent(formData.email)}`,
-          teamId: null,
-          role: 'user',
-          phone: null,
-          subscriptionTier: 'free' // Default to free tier
-        };
-        
-        // Get existing users array or create new one
-        let existingUsers: Array<{id: string; name: string; email: string; password: string | null; image: string; teamId: string | null; role: string; phone: string | null; subscriptionTier: string}> = [];
-        try {
-          existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-        } catch (_error) {
-          // Failed to parse existing users from localStorage
-          existingUsers = [];
-        }
-        
-        // Check if user with this email already exists (case-insensitive)
-        const emailExists = existingUsers.some(user => 
-          user.email && user.email.toLowerCase() === mockUser.email.toLowerCase()
-        );
-        
-        if (emailExists) {
-          // Account already exists, set error
-          setError(t('errors.accountExists'));
+          password: formData.password,
+          name: formData.name || formData.email.split('@')[0] || t('defaults.demoUserName'),
+        });
+
+        if (result.error) {
+          console.error('Sign-up error:', result.error);
+          setError(result.error.message || t('errors.unknownError'));
           setLoading(false);
           return;
         }
+
+        setMessage(t('messages.accountCreated'));
         
-        // Add new user to the array
-        existingUsers.push(mockUser);
-        
-        // Store updated users array
-        try {
-          localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
-        } catch (_error) {
-          // Failed to store users in localStorage
-          setError(t('errors.storageError'));
-          setLoading(false);
-          return;
-        }
-        
-        // Also store as single user for backward compatibility
-        try {
-          localStorage.setItem('mockUser', JSON.stringify(mockUser));
-        } catch (_error) {
-          // Failed to store user in localStorage
-          setError(t('errors.storageError'));
-          setLoading(false);
-          return;
-        }
-        
-        // Create user data without password for auth event
-        const { password: _password, ...userDataWithoutPassword } = mockUser;
-        
-        // Dispatch custom event to notify UserProfile component
-        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
-        
-                    setMessage(t('messages.accountCreated'));
-        
-        // Always show onboarding for new sign-ups
-        // New user registration, showing onboarding modal
+        // Show onboarding for new sign-ups
         setShowOnboarding(true);
       } else {
-        // Simulate API call for sign-in
-        // Read mock users from localStorage as an array
-        const mockUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-        
-        // Find user by email
-        const user = mockUsers.find((u: {email: string; password: string}) => u.email === formData.email);
-        
-        if (user) {
-          // Validate password (in production, this would be a secure hash comparison)
-          if (user.password === formData.password) {
-            // Create user data without password for auth event
-            const { password: _password, ...userDataWithoutPassword } = user;
-            
-            // Dispatch custom event to notify UserProfile component
-            window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
-            
-            setMessage(t('messages.signedIn'));
-            
-            // Redirect to home page after successful sign in, waiting for onSuccess if provided
-            await handleRedirect();
-          } else {
-            // Password mismatch - use generic error to avoid user enumeration
-            setError(t('errors.invalidCredentials'));
-            setLoading(false);
-            return;
-          }
-        } else {
-          // User not found - use generic error to avoid user enumeration
-          setError(t('errors.invalidCredentials'));
+        // Use Better Auth for sign-in
+        const result = await authClient.signIn.email({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (result.error) {
+          console.error('Sign-in error:', result.error);
+          setError(result.error.message || t('errors.invalidCredentials'));
           setLoading(false);
           return;
         }
+
+        setMessage(t('messages.signedIn'));
+        
+        // Redirect to home page after successful sign in
+        await handleRedirect();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.unknownError'));
+      console.error('Auth error:', err);
+      if (err instanceof Error) {
+        if (err.message.includes('fetch')) {
+          setError('Network error. Please check your connection and try again.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError(t('errors.unknownError'));
+      }
     } finally {
       setLoading(false);
     }
@@ -203,87 +144,32 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
     setMessage('');
 
     try {
-      if (isSignUp) {
-        // Sign-up mode: Create new Google user and show onboarding
-        const userId = `mock-user-google-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        const mockUser = {
-          id: userId,
-          name: t('defaults.googleUserName'),
-          email: 'user@gmail.com',
-          password: null, // Google users don't have passwords
-          image: 'https://i.pravatar.cc/300?u=google-user',
-          teamId: null,
-          role: 'user',
-          phone: null,
-          subscriptionTier: 'free'
-        };
-        
-        // Get existing users array or create new one
-        const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-        
-        // Add new user to the array
-        existingUsers.push(mockUser);
-        
-        // Store updated users array
-        localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
-        
-        // Also store as single user for backward compatibility
-        localStorage.setItem('mockUser', JSON.stringify(mockUser));
-        
-        // Create user data without password for auth event
-        const { password: _password, ...userDataWithoutPassword } = mockUser;
-        
-        // Dispatch custom event to notify UserProfile component
-        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
-        
-        setMessage(t('messages.googleSignedIn'));
-        
-        // Always show onboarding for new sign-ups
+      // Use Better Auth for Google OAuth
+      const result = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: window.location.origin + '/',
+      });
+
+      if (result.error) {
+        console.error('Google sign-in error:', result.error);
+        setError(result.error.message || t('errors.unknownError'));
         setLoading(false);
-        setShowOnboarding(true);
-      } else {
-        // Sign-in mode: Use existing mock user (simulate existing user)
-        // Create a mock existing Google user for sign-in
-        const existingMockUser = {
-          id: 'mock-user-google-existing',
-          name: t('defaults.googleUserName'),
-          email: 'user@gmail.com',
-          password: null, // Google users don't have passwords
-          image: 'https://i.pravatar.cc/300?u=google-user',
-          teamId: null,
-          role: 'user',
-          phone: null,
-          subscriptionTier: 'free'
-        };
-        
-        // Get existing users array or create new one
-        const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-        
-        // Check if this Google user already exists, if not add them
-        const existingGoogleUser = existingUsers.find((u: {email: string}) => u.email === 'user@gmail.com');
-        if (!existingGoogleUser) {
-          existingUsers.push(existingMockUser);
-          localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
-        }
-        
-        // Store the existing user data for backward compatibility
-        localStorage.setItem('mockUser', JSON.stringify(existingMockUser));
-        
-        // Create user data without password for auth event
-        const { password: _password, ...userDataWithoutPassword } = existingMockUser;
-        
-        // Dispatch custom event to notify UserProfile component
-        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userDataWithoutPassword }));
-        
-        setMessage(t('messages.googleSignedIn'));
-        
-        // Sign-in should NOT show onboarding - redirect to main app
-        setLoading(false);
-        await handleRedirect();
+        return;
       }
+
+      // Google OAuth will redirect, so we don't need to handle success here
+      // The redirect will be handled by Better Auth
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.unknownError'));
+      console.error('Google auth error:', err);
+      if (err instanceof Error) {
+        if (err.message.includes('fetch')) {
+          setError('Network error. Please check your connection and try again.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError(t('errors.unknownError'));
+      }
       setLoading(false);
     }
   };
@@ -311,10 +197,13 @@ const AuthPage = ({ mode = 'signin', onSuccess, redirectDelay = 1000 }: AuthPage
       };
       // Onboarding completed with redacted data
     }
+    
     // Persist onboarding completion flag before redirecting
     localStorage.setItem('onboardingCompleted', 'true');
+    
     // Close onboarding modal and redirect to main app
     setShowOnboarding(false);
+    
     // Redirect to main app where the welcome modal will show, waiting for onSuccess if provided
     await handleRedirect();
   };

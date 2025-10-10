@@ -27,7 +27,7 @@ export default [
       '.wrangler/tmp/**',
       '.wrangler/**',
       'public/sw.js', // Service worker file
-      'sync-teams.js', // Node.js script with different globals
+      'sync-organizations.js', // Node.js script with different globals
       'tailwind.config.js' // Config file with require()
     ]
   },

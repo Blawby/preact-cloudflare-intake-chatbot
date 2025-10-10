@@ -20,13 +20,13 @@ interface MatterProgressData {
 }
 
 interface MatterProgressProps {
-  teamId: string;
+  organizationId: string;
   matterId: string;
   visible?: boolean;
   onClose?: () => void;
 }
 
-export function MatterProgress({ teamId, matterId, visible = false, onClose }: MatterProgressProps) {
+export function MatterProgress({ organizationId, matterId, visible = false, onClose }: MatterProgressProps) {
   const [progressData, setProgressData] = useState<MatterProgressData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,13 +38,13 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
   }
 
   const fetchProgress = async () => {
-    if (!teamId || !matterId) return;
+    if (!organizationId || !matterId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/paralegal/${teamId}/${matterId}/status`, {
+      const response = await fetch(`/api/paralegal/${organizationId}/${matterId}/status`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -74,7 +74,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
 
     const interval = setInterval(fetchProgress, 10000); // Poll every 10 seconds
     return () => clearInterval(interval);
-  }, [teamId, matterId, visible]);
+  }, [organizationId, matterId, visible]);
 
   const getStageDisplayName = (stage: string): string => {
     const stageNames: Record<string, string> = {

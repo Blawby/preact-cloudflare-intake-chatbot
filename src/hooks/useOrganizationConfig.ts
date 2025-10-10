@@ -2,21 +2,21 @@ import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { z } from 'zod';
 
 // API endpoints - moved inline since api.ts was removed
-const getTeamsEndpoint = () => '/api/teams';
+const getOrganizationsEndpoint = () => '/api/organizations';
 
 // Zod schema for API response validation
-const TeamSchema = z.object({
+const OrganizationSchema = z.object({
   slug: z.string().optional(),
   id: z.string().optional(),
   name: z.string().optional(),
   config: z.record(z.string(), z.unknown()).optional()
 });
 
-const TeamsResponseSchema = z.object({
-  data: z.array(TeamSchema)
+const OrganizationsResponseSchema = z.object({
+  data: z.array(OrganizationSchema)
 });
 
-interface TeamConfig {
+interface OrganizationConfig {
   name: string;
   profileImage: string | null;
   introMessage: string | null;
@@ -40,7 +40,7 @@ interface TeamConfig {
 }
 
 // Schema to validate and narrow the unknown config shape
-const TeamConfigSchema = z.object({
+const OrganizationConfigSchema = z.object({
   profileImage: z.string().nullable().optional(),
   introMessage: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
@@ -62,15 +62,15 @@ const TeamConfigSchema = z.object({
   }).optional()
 });
 
-interface UseTeamConfigOptions {
+interface UseOrganizationConfigOptions {
   onError?: (error: string) => void;
 }
 
-export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
-  const [teamId, setTeamId] = useState<string>('');
-  const [teamNotFound, setTeamNotFound] = useState<boolean>(false);
+export const useOrganizationConfig = ({ onError }: UseOrganizationConfigOptions = {}) => {
+  const [organizationId, setOrganizationId] = useState<string>('');
+  const [organizationNotFound, setOrganizationNotFound] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [teamConfig, setTeamConfig] = useState<TeamConfig>({
+  const [organizationConfig, setOrganizationConfig] = useState<OrganizationConfig>({
     name: 'Blawby AI',
     profileImage: '/blawby-favicon-iframe.png',
     introMessage: null,
@@ -92,63 +92,63 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
     }
   });
 
-  // Use ref to track if we've already fetched for this teamId
-  const fetchedTeamIds = useRef<Set<string>>(new Set());
+  // Use ref to track if we've already fetched for this organizationId
+  const fetchedOrganizationIds = useRef<Set<string>>(new Set());
 
   // Parse URL parameters for configuration
   const parseUrlParams = useCallback(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const teamIdParam = urlParams.get('teamId');
+      const organizationIdParam = urlParams.get('organizationId');
       const hostname = window.location.hostname;
 
-      // Domain-based team routing
+      // Domain-based organization routing
       if (hostname === 'northcarolinalegalservices.blawby.com') {
-        setTeamId('north-carolina-legal-services');
+        setOrganizationId('north-carolina-legal-services');
         return;
       }
 
       // Check if we're on the root domain with no parameters - redirect to Blawby AI
       if (hostname === 'ai.blawby.com' &&
         window.location.pathname === '/' &&
-        !teamIdParam) {
+        !organizationIdParam) {
         // Redirect to Blawby AI
-        window.location.href = 'https://ai.blawby.com/?teamId=blawby-ai';
+        window.location.href = 'https://ai.blawby.com/?organizationId=blawby-ai';
         return;
       }
 
-      // Set teamId if available, otherwise default to blawby-ai
-      if (teamIdParam) {
-        setTeamId(teamIdParam);
+      // Set organizationId if available, otherwise default to blawby-ai
+      if (organizationIdParam) {
+        setOrganizationId(organizationIdParam);
       } else {
-        setTeamId('blawby-ai');
+        setOrganizationId('blawby-ai');
       }
     }
   }, []);
 
-  // Fetch team configuration
-  const fetchTeamConfig = useCallback(async (currentTeamId: string) => {
-    if (!currentTeamId || fetchedTeamIds.current.has(currentTeamId)) {
-      return; // Don't fetch if no teamId or if we've already fetched for this teamId
+  // Fetch organization configuration
+  const fetchOrganizationConfig = useCallback(async (currentOrganizationId: string) => {
+    if (!currentOrganizationId || fetchedOrganizationIds.current.has(currentOrganizationId)) {
+      return; // Don't fetch if no organizationId or if we've already fetched for this organizationId
     }
 
     setIsLoading(true);
 
     try {
       const controller = new AbortController();
-      const response = await fetch(getTeamsEndpoint(), { signal: controller.signal });
+      const response = await fetch(getOrganizationsEndpoint(), { signal: controller.signal });
 
       if (response.ok) {
         try {
           const rawResponse = await response.json();
-          const teamsResponse = TeamsResponseSchema.parse(rawResponse);
-          const team = teamsResponse.data.find((t) => t.slug === currentTeamId || t.id === currentTeamId);
+          const organizationsResponse = OrganizationsResponseSchema.parse(rawResponse);
+          const organization = organizationsResponse.data.find((t) => t.slug === currentOrganizationId || t.id === currentOrganizationId);
 
-          if (team) {
-            // Team exists, use its config or defaults
-            const parsedConfig = team.config ? TeamConfigSchema.safeParse(team.config) : { success: true, data: {} as z.infer<typeof TeamConfigSchema> };
-            const cfg = parsedConfig.success ? parsedConfig.data : {} as z.infer<typeof TeamConfigSchema>;
-            const normalizedJurisdiction: TeamConfig['jurisdiction'] = {
+          if (organization) {
+            // Organization exists, use its config or defaults
+            const parsedConfig = organization.config ? OrganizationConfigSchema.safeParse(organization.config) : { success: true, data: {} as z.infer<typeof OrganizationConfigSchema> };
+            const cfg = parsedConfig.success ? parsedConfig.data : {} as z.infer<typeof OrganizationConfigSchema>;
+            const normalizedJurisdiction: OrganizationConfig['jurisdiction'] = {
               type: cfg.jurisdiction?.type ?? 'national',
               description: cfg.jurisdiction?.description ?? 'Available nationwide',
               supportedStates: cfg.jurisdiction?.supportedStates ?? ['all'],
@@ -156,8 +156,8 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
               primaryState: cfg.jurisdiction?.primaryState
             };
 
-            const config: TeamConfig = {
-              name: team.name || 'Blawby AI',
+            const config: OrganizationConfig = {
+              name: organization.name || 'Blawby AI',
               profileImage: cfg.profileImage ?? '/blawby-favicon-iframe.png',
               introMessage: cfg.introMessage ?? null,
               description: cfg.description ?? null,
@@ -172,66 +172,66 @@ export const useTeamConfig = ({ onError }: UseTeamConfigOptions = {}) => {
                 previewUrl: cfg.voice?.previewUrl ?? null
               }
             };
-            setTeamConfig(config);
-            setTeamNotFound(false);
+            setOrganizationConfig(config);
+            setOrganizationNotFound(false);
             
             // Only add to fetched set after successful config processing
-            fetchedTeamIds.current.add(currentTeamId);
+            fetchedOrganizationIds.current.add(currentOrganizationId);
           } else {
-            // Team not found in the list - this indicates a 404-like scenario
-            setTeamNotFound(true);
+            // Organization not found in the list - this indicates a 404-like scenario
+            setOrganizationNotFound(true);
           }
         } catch (parseError) {
-          console.error('Failed to parse teams response:', parseError);
-          setTeamNotFound(true);
-          onError?.('Invalid team configuration data received');
+          console.error('Failed to parse organizations response:', parseError);
+          setOrganizationNotFound(true);
+          onError?.('Invalid organization configuration data received');
         }
       } else if (response.status === 404) {
-        // Only set team not found for actual 404 responses
-        setTeamNotFound(true);
+        // Only set organization not found for actual 404 responses
+        setOrganizationNotFound(true);
       } else {
-        // For other HTTP errors, set team not found as well
-        setTeamNotFound(true);
+        // For other HTTP errors, set organization not found as well
+        setOrganizationNotFound(true);
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         // Request was aborted, don't update state
         return;
       }
-      console.warn('Failed to fetch team config:', error);
-      setTeamNotFound(true);
-      onError?.('Failed to load team configuration');
+      console.warn('Failed to fetch organization config:', error);
+      setOrganizationNotFound(true);
+      onError?.('Failed to load organization configuration');
     } finally {
       setIsLoading(false);
     }
   }, [onError]);
 
-  // Retry function for team config
-  const handleRetryTeamConfig = useCallback(() => {
-    setTeamNotFound(false);
+  // Retry function for organization config
+  const handleRetryOrganizationConfig = useCallback(() => {
+    setOrganizationNotFound(false);
     // Remove from fetched set so we can retry
-    fetchedTeamIds.current.delete(teamId);
-    fetchTeamConfig(teamId);
-  }, [teamId, fetchTeamConfig]);
+    fetchedOrganizationIds.current.delete(organizationId);
+    fetchOrganizationConfig(organizationId);
+  }, [organizationId, fetchOrganizationConfig]);
 
   // Initialize URL parameters on mount
   useEffect(() => {
     parseUrlParams();
   }, [parseUrlParams]);
 
-  // Fetch team config when teamId changes
+  // Fetch organization config when organizationId changes
   useEffect(() => {
-    if (teamId) {
-      fetchTeamConfig(teamId);
+    if (organizationId) {
+      fetchOrganizationConfig(organizationId);
     }
-  }, [teamId, fetchTeamConfig]);
+  }, [organizationId, fetchOrganizationConfig]);
 
   return {
-    teamId,
-    teamConfig,
-    teamNotFound,
+    organizationId,
+    organizationConfig,
+    organizationNotFound,
     isLoading,
-    handleRetryTeamConfig,
-    setTeamId
+    handleRetryOrganizationConfig,
+    setOrganizationId
   };
 }; 

@@ -528,11 +528,10 @@ class MockUserDataService {
           return;
         }
 
-        // Clear all user data
+        // Clear UI-related mock data only (not auth data)
         this.resetToDefaults();
         
-        // Also clear any other user-related data
-        storage.removeItem('mockUser');
+        // Clear other non-auth user-related data
         storage.removeItem('conversations');
         storage.removeItem('chatHistory');
         storage.removeItem('uploadedFiles');

@@ -6,14 +6,14 @@ const API_CONFIG = {
   local: {
     baseUrl: 'http://localhost:8787',
     chatEndpoint: '/api/chat',
-    teamsEndpoint: '/api/teams',
+    organizationsEndpoint: '/api/organizations',
     healthEndpoint: '/api/health',
     matterCreationEndpoint: '/api/matter-creation'
   },
   deployed: {
     baseUrl: 'https://blawby-ai-chatbot.paulchrisluke.workers.dev',
     chatEndpoint: '/api/chat',
-    teamsEndpoint: '/api/teams',
+    organizationsEndpoint: '/api/organizations',
     healthEndpoint: '/api/health',
     matterCreationEndpoint: '/api/matter-creation'
   }
@@ -38,9 +38,9 @@ export const getFeedbackEndpoint = () => {
   return `${config.baseUrl}/api/feedback`;
 };
 
-export const getTeamsEndpoint = () => {
+export const getOrganizationsEndpoint = () => {
   const config = getApiConfig();
-  return `${config.baseUrl}${config.teamsEndpoint}`;
+  return `${config.baseUrl}${config.organizationsEndpoint}`;
 };
 
 export const getHealthEndpoint = () => {

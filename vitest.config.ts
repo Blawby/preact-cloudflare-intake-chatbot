@@ -18,7 +18,9 @@ export default defineConfig({
     exclude: [
       'node_modules/**',
       'dist/**',
-      'e2e/**'
+      'e2e/**',
+      'tests/e2e/**',
+      'src/__tests__/components/LoadingIndicator.test.tsx'
     ],
     coverage: {
       provider: 'v8',

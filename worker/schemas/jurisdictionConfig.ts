@@ -1,6 +1,6 @@
 /**
  * Jurisdiction Configuration Schema
- * Defines the geographic scope and service areas for legal teams
+ * Defines the geographic scope and service areas for legal organizations
  */
 
 export interface JurisdictionConfig {
@@ -194,13 +194,13 @@ export class JurisdictionValidator {
   static getJurisdictionWarning(
     userLocation: string,
     config: JurisdictionConfig,
-    teamName: string
+    organizationName: string
   ): string {
     if (config.outOfJurisdictionMessage) {
       return config.outOfJurisdictionMessage;
     }
     
-    const baseMessage = `I notice you're located in ${userLocation}. ${teamName} primarily serves clients in ${config.description}.`;
+    const baseMessage = `I notice you're located in ${userLocation}. ${organizationName} primarily serves clients in ${config.description}.`;
     
     if (config.allowOutOfJurisdiction) {
       return `${baseMessage} While I can provide general guidance, I recommend consulting with a local attorney in your area for state-specific legal matters. Would you like me to help you find local legal resources?`;

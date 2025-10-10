@@ -95,7 +95,7 @@ describe('Agent Route Integration - Real API', () => {
             isUser: true
           }
         ],
-        teamId: 'test-team-1',
+        organizationId: 'test-organization-1',
         sessionId: 'session-456',
         attachments: [
           {
@@ -141,7 +141,7 @@ describe('Agent Route Integration - Real API', () => {
             isUser: true
           }
         ],
-        teamId: 'test-team-1',
+        organizationId: 'test-organization-1',
         sessionId: 'session-456',
         attachments: []
       };
@@ -180,7 +180,7 @@ describe('Agent Route Integration - Real API', () => {
             isUser: true
           }
         ],
-        teamId: 'test-team-1',
+        organizationId: 'test-organization-1',
         sessionId: 'session-456'
         // No attachments field
       };
@@ -221,7 +221,7 @@ describe('Agent Route Integration - Real API', () => {
             isUser: true
           }
         ],
-        teamId: 'test-team-1',
+        organizationId: 'test-organization-1',
         sessionId: 'session-789',
         attachments: [
           {
@@ -270,7 +270,7 @@ describe('Agent Route Integration - Real API', () => {
       const requestBody = {
         // Missing required fields
         messages: [],
-        teamId: '',
+        organizationId: '',
         sessionId: ''
       };
 
@@ -328,7 +328,7 @@ describe('Agent Route Integration - Real API', () => {
             isUser: true
           }
         ],
-        teamId: 'test-team-1',
+        organizationId: 'test-organization-1',
         sessionId: 'session-123'
       };
 
@@ -343,18 +343,18 @@ describe('Agent Route Integration - Real API', () => {
     }, TEST_TIMEOUT);
   });
 
-  describe('POST /api/agent/stream with different team configurations', () => {
-    it('should work with different team IDs', async () => {
+  describe('POST /api/agent/stream with different organization configurations', () => {
+    it('should work with different organization IDs', async () => {
       const requestBody = {
         messages: [
           {
             role: 'user',
-            content: 'Hello from a different team',
+            content: 'Hello from a different organization',
             isUser: true
           }
         ],
-        teamId: 'blawby-ai',
-        sessionId: 'session-diff-team',
+        organizationId: 'blawby-ai',
+        sessionId: 'session-diff-organization',
         attachments: []
       };
 
@@ -383,7 +383,7 @@ describe('Agent Route Integration - Real API', () => {
       expect(completionEvent).toBeDefined();
     }, TEST_TIMEOUT);
 
-    it('should handle non-existent team gracefully', async () => {
+    it('should handle non-existent organization gracefully', async () => {
       const requestBody = {
         messages: [
           {
@@ -392,7 +392,7 @@ describe('Agent Route Integration - Real API', () => {
             isUser: true
           }
         ],
-        teamId: 'non-existent-team',
+        organizationId: 'non-existent-organization',
         sessionId: 'session-123',
         attachments: []
       };
@@ -405,7 +405,7 @@ describe('Agent Route Integration - Real API', () => {
         body: JSON.stringify(requestBody)
       });
 
-      // Should handle non-existent team gracefully by using default config
+      // Should handle non-existent organization gracefully by using default config
       expect(response.status).toBe(200);
       
       // Handle streaming response with longer timeout
@@ -435,7 +435,7 @@ describe('Agent Route Integration - Real API', () => {
             isUser: true
           }
         ],
-        teamId: 'test-team-1',
+        organizationId: 'test-organization-1',
         sessionId: 'session-large',
         attachments: []
       };
@@ -475,7 +475,7 @@ describe('Agent Route Integration - Real API', () => {
             isUser: true
           }
         ],
-        teamId: 'test-team-1',
+        organizationId: 'test-organization-1',
         sessionId: 'session-concurrent',
         attachments: []
       };

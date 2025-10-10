@@ -59,7 +59,7 @@ export interface LawyerSearchResults {
 
 export interface ConversationContext {
   sessionId: string;
-  teamId: string;
+  organizationId: string;
   establishedMatters: string[];
   jurisdiction: string | null;
   safetyFlags: string[];
@@ -136,8 +136,8 @@ export class ConversationContextManager {
   /**
    * Load conversation context from KV storage
    */
-  static async load(sessionId: string, teamId: string, env: Env): Promise<ConversationContext> {
-    const key = `${this.KV_PREFIX}${sessionId}:${teamId}`;
+  static async load(sessionId: string, organizationId: string, env: Env): Promise<ConversationContext> {
+    const key = `${this.KV_PREFIX}${sessionId}:${organizationId}`;
     
     try {
       const stored = await env.CHAT_SESSIONS.get(key);
@@ -152,14 +152,14 @@ export class ConversationContextManager {
     }
 
     // Return default context if not found
-    return this.createDefaultContext(sessionId, teamId);
+    return this.createDefaultContext(sessionId, organizationId);
   }
 
   /**
    * Save conversation context to KV storage
    */
   static async save(context: ConversationContext, env: Env): Promise<boolean> {
-    const key = `${this.KV_PREFIX}${context.sessionId}:${context.teamId}`;
+    const key = `${this.KV_PREFIX}${context.sessionId}:${context.organizationId}`;
     
     try {
       await env.CHAT_SESSIONS.put(key, JSON.stringify(context), {
@@ -175,10 +175,10 @@ export class ConversationContextManager {
   /**
    * Create default conversation context
    */
-  private static createDefaultContext(sessionId: string, teamId: string): ConversationContext {
+  private static createDefaultContext(sessionId: string, organizationId: string): ConversationContext {
     return {
       sessionId,
-      teamId,
+      organizationId,
       establishedMatters: [],
       jurisdiction: null,
       safetyFlags: [],

@@ -14,7 +14,7 @@ export async function handleRoot(request: Request, env: Env): Promise<Response> 
     <p>AI-powered legal assistance with matter building</p>
     <ul>
         <li><strong>POST</strong> /api/chat - AI conversations</li>
-        <li><strong>GET</strong> /api/teams - Available teams</li>
+        <li><strong>GET</strong> /api/organizations - Available organizations</li>
         <li><strong>POST</strong> /api/matter-creation - Matter building flow</li>
         <li><strong>POST</strong> /api/forms - Contact submissions</li>
 

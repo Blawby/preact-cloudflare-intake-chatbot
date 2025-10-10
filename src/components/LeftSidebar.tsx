@@ -16,14 +16,14 @@ interface LeftSidebarProps {
   onGoToMatter?: () => void;
   onClose?: () => void;
   matterStatus?: MatterStatus;
-  teamConfig?: {
+  organizationConfig?: {
     name: string;
     profileImage: string | null;
-    teamId: string;
+    organizationId: string;
   };
 }
 
-const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterStatus, teamConfig }: LeftSidebarProps) => {
+const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterStatus, organizationConfig }: LeftSidebarProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   // Mobile state - initialized as false to avoid SSR/client hydration mismatch
@@ -78,7 +78,7 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterS
         {shouldShowCollapsed ? (
           /* Collapsed state - Logo with hover hamburger menu */
           <div className="relative group w-full h-10 flex items-center justify-center">
-            {teamConfig?.profileImage && (
+            {organizationConfig?.profileImage && (
               <button
                 onClick={() => setIsCollapsed(false)}
                 className="w-8 h-8 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent-500"
@@ -86,8 +86,8 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterS
                 aria-label="Expand sidebar"
               >
                 <img 
-                  src={teamConfig.profileImage} 
-                  alt={teamConfig.name}
+                  src={organizationConfig.profileImage} 
+                  alt={organizationConfig.name}
                   className="w-full h-full object-cover"
                 />
               </button>
@@ -107,10 +107,10 @@ const LeftSidebar = ({ currentRoute, onGoToChats, onGoToMatter, onClose, matterS
         ) : (
           /* Expanded state - Logo and close/collapse button */
           <>
-            {teamConfig?.profileImage && (
+            {organizationConfig?.profileImage && (
               <img 
-                src={teamConfig.profileImage} 
-                alt={teamConfig.name}
+                src={organizationConfig.profileImage} 
+                alt={organizationConfig.name}
                 className="w-8 h-8 rounded-lg object-cover"
               />
             )}

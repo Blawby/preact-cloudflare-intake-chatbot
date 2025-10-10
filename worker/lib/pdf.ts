@@ -166,8 +166,8 @@ function extractKeyLegalInfo(text: string): string {
   
   // Extract dates
   const datePatterns = [
-    /(?:date|signed|effective|expires?):\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/gi,
-    /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/gi
+    /(?:date|signed|effective|expires?):\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/gi,
+    /(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/gi
   ];
   
   // Extract amounts

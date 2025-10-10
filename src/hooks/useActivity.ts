@@ -17,7 +17,7 @@ export interface ActivityEvent {
 export interface UseActivityOptions {
   matterId?: string;
   sessionId?: string;
-  teamId?: string;
+  organizationId?: string;
   limit?: number; // default 25, max 50
   since?: string; // ISO 8601 timestamp
   until?: string; // ISO 8601 timestamp
@@ -46,7 +46,7 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
   const {
     matterId,
     sessionId,
-    teamId,
+    organizationId,
     limit = 25,
     since,
     until,
@@ -70,7 +70,7 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
   const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams();
     
-    if (teamId) params.set('teamId', teamId);
+    if (organizationId) params.set('organizationId', organizationId);
     if (matterId) params.set('matterId', matterId);
     if (sessionId) params.set('sessionId', sessionId);
     if (limit) params.set('limit', limit.toString());
@@ -81,11 +81,11 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
     if (nextCursorRef.current) params.set('cursor', nextCursorRef.current);
     
     return params.toString();
-  }, [teamId, matterId, sessionId, limit, since, until, type, actorType]);
+  }, [organizationId, matterId, sessionId, limit, since, until, type, actorType]);
 
   const fetchActivity = useCallback(async (isLoadMore = false) => {
-    if (!teamId) {
-      setError('Team ID is required');
+    if (!organizationId) {
+      setError('Organization ID is required');
       return;
     }
 
@@ -172,7 +172,7 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
     } finally {
       setLoading(false);
     }
-  }, [teamId, buildQueryParams, etag, lastModified]);
+  }, [organizationId, buildQueryParams, etag, lastModified]);
 
   const refresh = useCallback(async () => {
     nextCursorRef.current = undefined;
@@ -197,10 +197,10 @@ export function useActivity(options: UseActivityOptions): UseActivityResult {
 
   // Initial load
   useEffect(() => {
-    if (teamId) {
+    if (organizationId) {
       refresh();
     }
-  }, [teamId, refresh]);
+  }, [organizationId, refresh]);
 
   // Auto refresh
   useEffect(() => {

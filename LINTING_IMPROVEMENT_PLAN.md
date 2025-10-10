@@ -18,7 +18,7 @@ This document outlines the plan to improve code quality by enforcing stricter li
 ## Incremental Warning Resolution Plan
 
 ### Sprint-based Approach
-**Goal**: Fix 20 warnings per sprint to gradually improve code quality without overwhelming the team.
+**Goal**: Fix 20 warnings per sprint to gradually improve code quality without overwhelming the organization.
 
 ### Phase 1: Assessment (Sprint 1)
 1. **Run current linting**: `npm run lint:check` to identify all warnings
@@ -109,7 +109,7 @@ const data: any = thirdPartyLibrary.getData();
 - **Medium-term**: Achieve 0 warnings in CI
 - **Long-term**: Maintain 0 warnings with strict rules
 
-## Team Guidelines
+## organization Guidelines
 1. **Pre-commit**: Run `npm run lint:fix` before committing
 2. **Code reviews**: Check for new warnings in PRs
 3. **CI/CD**: Ensure `lint:check` passes in all environments

@@ -3,7 +3,7 @@ import type { Env } from '../types.js';
 export interface StatusUpdate {
   id: string;
   sessionId: string;
-  teamId: string;
+  organizationId: string;
   type: 'file_processing' | 'document_analysis' | 'background_task' | 'system_notification' | 'matter_update';
   status: 'pending' | 'processing' | 'completed' | 'failed';
   message: string;
@@ -16,7 +16,7 @@ export interface StatusUpdate {
 
 export interface StatusSubscription {
   sessionId: string;
-  teamId: string;
+  organizationId: string;
   lastSeen: number;
 }
 
@@ -134,11 +134,11 @@ export class StatusService {
   static async subscribeSession(
     env: Env,
     sessionId: string,
-    teamId: string
+    organizationId: string
   ): Promise<void> {
     const subscription: StatusSubscription = {
       sessionId,
-      teamId,
+      organizationId,
       lastSeen: Date.now()
     };
 
@@ -251,7 +251,7 @@ export class StatusService {
   static async createFileProcessingStatus(
     env: Env,
     sessionId: string,
-    teamId: string,
+    organizationId: string,
     fileName: string,
     status: StatusUpdate['status'] = 'pending',
     progress?: number
@@ -261,7 +261,7 @@ export class StatusService {
     await StatusService.setStatus(env, {
       id: statusId,
       sessionId,
-      teamId,
+      organizationId,
       type: 'file_processing',
       status,
       message: `Processing ${fileName}...`,
@@ -278,14 +278,14 @@ export class StatusService {
   static async createDocumentAnalysisStatus(
     env: Env,
     sessionId: string,
-    teamId: string,
+    organizationId: string,
     fileName: string,
     status: StatusUpdate['status'] = 'processing',
     priority: number = 10
   ): Promise<string> {
     // Validate inputs
-    if (!sessionId || !teamId || !fileName) {
-      throw new Error('sessionId, teamId, and fileName are required');
+    if (!sessionId || !organizationId || !fileName) {
+      throw new Error('sessionId, organizationId, and fileName are required');
     }
     
     if (!['pending', 'processing', 'completed', 'failed'].includes(status)) {
@@ -302,7 +302,7 @@ export class StatusService {
     const statusUpdate: Omit<StatusUpdate, 'createdAt' | 'updatedAt' | 'expiresAt'> = {
       id: statusId,
       sessionId,
-      teamId,
+      organizationId,
       type: 'document_analysis',
       status,
       message: `Analyzing ${fileName}...`,
@@ -320,7 +320,7 @@ export class StatusService {
   static async createSystemNotification(
     env: Env,
     sessionId: string,
-    teamId: string,
+    organizationId: string,
     message: string,
     data?: Record<string, unknown>
   ): Promise<string> {
@@ -329,7 +329,7 @@ export class StatusService {
     await StatusService.setStatus(env, {
       id: statusId,
       sessionId,
-      teamId,
+      organizationId,
       type: 'system_notification',
       status: 'completed',
       message,

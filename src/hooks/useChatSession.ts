@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
+import { useOrganizationId } from '../contexts/OrganizationContext.js';
 
 const STORAGE_PREFIX = 'blawby_session:';
 
@@ -19,7 +20,20 @@ export interface ChatSessionState {
   clearStoredSession: () => void;
 }
 
-export function useChatSession(teamId: string): ChatSessionState {
+/**
+ * Hook that uses organization context instead of requiring organizationId parameter
+ * This is the preferred way to use chat sessions in components
+ */
+export function useChatSessionWithContext(): ChatSessionState {
+  const organizationId = useOrganizationId();
+  return useChatSession(organizationId);
+}
+
+/**
+ * Legacy hook that requires organizationId parameter
+ * @deprecated Use useChatSessionWithContext() instead
+ */
+export function useChatSession(organizationId: string): ChatSessionState {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
@@ -33,8 +47,8 @@ export function useChatSession(teamId: string): ChatSessionState {
   }, []);
 
   const getStorageKey = useCallback(() => {
-    return teamId ? `${STORAGE_PREFIX}${teamId}` : null;
-  }, [teamId]);
+    return organizationId ? `${STORAGE_PREFIX}${organizationId}` : null;
+  }, [organizationId]);
 
   const readStoredSessionId = useCallback(() => {
     if (typeof window === 'undefined') return null;
@@ -72,12 +86,12 @@ export function useChatSession(teamId: string): ChatSessionState {
   }, [writeStoredSessionId]);
 
   const performHandshake = useCallback(async (): Promise<SessionResponsePayload | void> => {
-    if (!teamId) {
+    if (!organizationId) {
       return;
     }
 
     const storedSessionId = readStoredSessionId();
-    const body: Record<string, unknown> = { teamId };
+    const body: Record<string, unknown> = { organizationId };
     if (storedSessionId) {
       body.sessionId = storedSessionId;
     }
@@ -133,10 +147,10 @@ export function useChatSession(teamId: string): ChatSessionState {
         setIsInitializing(false);
       }
     }
-  }, [teamId, readStoredSessionId, writeStoredSessionId]);
+  }, [organizationId, readStoredSessionId, writeStoredSessionId]);
 
   useEffect(() => {
-    if (!teamId) {
+    if (!organizationId) {
       clearStoredSession();
       return;
     }
@@ -154,7 +168,7 @@ export function useChatSession(teamId: string): ChatSessionState {
     return () => {
       cancelled = true;
     };
-  }, [teamId, performHandshake, clearStoredSession]);
+  }, [organizationId, performHandshake, clearStoredSession]);
 
   return {
     sessionId,

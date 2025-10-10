@@ -107,7 +107,7 @@ export class MatterCreationError extends LegalIntakeError {
   }
 
   public toUserResponse(): string {
-    return "I'm having trouble creating your matter. Please try again or contact our support team for assistance.";
+    return "I'm having trouble creating your matter. Please try again or contact our support organization for assistance.";
   }
 }
 

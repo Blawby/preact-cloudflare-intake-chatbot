@@ -25,15 +25,15 @@ export class AsyncAdobeAnalysis {
   static async startAnalysis(
     env: Env,
     sessionId: string,
-    teamId: string,
+    organizationId: string,
     attachments: AttachmentData[]
   ): Promise<void> {
     // Fire-and-forget - don't await this
-    AsyncAdobeAnalysis.processAttachments(env, sessionId, teamId, attachments)
+    AsyncAdobeAnalysis.processAttachments(env, sessionId, organizationId, attachments)
       .catch(error => {
         Logger.error('Async Adobe analysis failed', {
           sessionId,
-          teamId,
+          organizationId,
           error: error instanceof Error ? error.message : String(error)
         });
       });
@@ -45,11 +45,11 @@ export class AsyncAdobeAnalysis {
   private static async processAttachments(
     env: Env,
     sessionId: string,
-    teamId: string,
+    organizationId: string,
     attachments: AttachmentData[]
   ): Promise<void> {
     for (const attachment of attachments) {
-      await AsyncAdobeAnalysis.processSingleAttachment(env, sessionId, teamId, attachment);
+      await AsyncAdobeAnalysis.processSingleAttachment(env, sessionId, organizationId, attachment);
     }
   }
 
@@ -59,13 +59,13 @@ export class AsyncAdobeAnalysis {
   private static async processSingleAttachment(
     env: Env,
     sessionId: string,
-    teamId: string,
+    organizationId: string,
     attachment: AttachmentData
   ): Promise<void> {
     const statusId = await StatusService.createDocumentAnalysisStatus(
       env,
       sessionId,
-      teamId,
+      organizationId,
       attachment.fileName,
       'processing'
     );
@@ -78,7 +78,7 @@ export class AsyncAdobeAnalysis {
       await StatusService.setStatus(env, {
         id: statusId,
         sessionId,
-        teamId,
+        organizationId,
         type: 'document_analysis',
         status: 'processing',
         message: `🔍 Extracting content from ${attachment.fileName}...`,
@@ -93,7 +93,7 @@ export class AsyncAdobeAnalysis {
       await StatusService.setStatus(env, {
         id: statusId,
         sessionId,
-        teamId,
+        organizationId,
         type: 'document_analysis',
         status: 'completed',
         message: `✅ Analysis complete for ${attachment.fileName}`,
@@ -115,7 +115,7 @@ export class AsyncAdobeAnalysis {
 
       Logger.info('Async Adobe analysis completed successfully', {
         sessionId,
-        teamId,
+        organizationId,
         fileName: attachment.fileName,
         confidence: result.confidence as number
       });
@@ -125,7 +125,7 @@ export class AsyncAdobeAnalysis {
       await StatusService.setStatus(env, {
         id: statusId,
         sessionId,
-        teamId,
+        organizationId,
         type: 'document_analysis',
         status: 'failed',
         message: `❌ Analysis failed for ${attachment.fileName}: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -137,7 +137,7 @@ export class AsyncAdobeAnalysis {
 
       Logger.error('Async Adobe analysis failed for attachment', {
         sessionId,
-        teamId,
+        organizationId,
         fileName: attachment.fileName,
         error: error instanceof Error ? error.message : String(error)
       });

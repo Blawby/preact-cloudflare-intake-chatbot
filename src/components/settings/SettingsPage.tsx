@@ -66,8 +66,7 @@ export const SettingsPage = ({
     // Use the mock data service to properly clear all data
     mockUserDataService.resetToDefaults();
     
-    // Also clear the legacy mockUser key for backward compatibility
-    localStorage.removeItem('mockUser');
+    // Note: Auth data is now managed by Better Auth, not localStorage
     
     // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));

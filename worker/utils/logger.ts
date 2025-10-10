@@ -61,29 +61,29 @@ export class Logger {
   }
 
   /**
-   * Safely logs team configuration data by redacting sensitive information
+   * Safely logs organization configuration data by redacting sensitive information
    */
-  static logTeamConfig(team: Record<string, unknown>, includeConfig: boolean = false): void {
-    if (!team) {
-      this.warn('logTeamConfig called with null/undefined team');
+  static logOrganizationConfig(organization: Record<string, unknown>, includeConfig: boolean = false): void {
+    if (!organization) {
+      this.warn('logOrganizationConfig called with null/undefined organization');
       return;
     }
 
-    const safeTeamData = {
-      id: team.id,
-      slug: team.slug,
-      name: team.name,
-      createdAt: team.createdAt,
-      updatedAt: team.updatedAt
+    const safeOrganizationData = {
+      id: organization.id,
+      slug: organization.slug,
+      name: organization.name,
+      createdAt: organization.createdAt,
+      updatedAt: organization.updatedAt
     };
 
     if (includeConfig && this.isDebugEnabled()) {
       // Create a sanitized version of the config
-      const sanitizedConfig = this.sanitizeConfig(team.config);
-      (safeTeamData as Record<string, unknown>).config = sanitizedConfig;
+      const sanitizedConfig = this.sanitizeConfig(organization.config);
+      (safeOrganizationData as Record<string, unknown>).config = sanitizedConfig;
     }
 
-    this.info('Team data:', safeTeamData);
+    this.info('Organization data:', safeOrganizationData);
   }
 
   /**

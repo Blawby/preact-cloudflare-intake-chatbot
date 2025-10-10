@@ -1,5 +1,5 @@
 import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
 import { JurisdictionValidator as JurisdictionValidatorUtil, type JurisdictionConfig } from '../schemas/jurisdictionConfig.js';
@@ -11,8 +11,8 @@ import { JurisdictionValidator as JurisdictionValidatorUtil, type JurisdictionCo
 export const jurisdictionValidator: PipelineMiddleware = {
   name: 'jurisdictionValidator',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
-    const jurisdiction = teamConfig?.jurisdiction as JurisdictionConfig | undefined;
+  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
+    const jurisdiction = organizationConfig?.jurisdiction as JurisdictionConfig | undefined;
     
     // If no jurisdiction restrictions, allow all
     if (!jurisdiction) {
@@ -41,7 +41,7 @@ export const jurisdictionValidator: PipelineMiddleware = {
         const warning = JurisdictionValidatorUtil.getJurisdictionWarning(
           userLocation, 
           jurisdiction, 
-          'our legal team'
+          'our legal organization'
         );
         
         // Update context with jurisdiction warning

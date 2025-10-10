@@ -1,5 +1,5 @@
 import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { Env, AgentMessage } from '../types.js';
 
 export interface PipelineMiddleware {
@@ -7,7 +7,7 @@ export interface PipelineMiddleware {
   execute: (
     messages: AgentMessage[],
     context: ConversationContext,
-    teamConfig: TeamConfig,
+    organizationConfig: OrganizationConfig,
     env: Env
   ) => Promise<{ 
     context: ConversationContext; 
@@ -30,7 +30,7 @@ export interface PipelineResult {
 export async function runPipeline(
   messages: AgentMessage[],
   context: ConversationContext,
-  teamConfig: TeamConfig,
+  organizationConfig: OrganizationConfig,
   middlewares: PipelineMiddleware[],
   env: Env
 ): Promise<PipelineResult> {
@@ -40,7 +40,7 @@ export async function runPipeline(
 
   for (const middleware of middlewares) {
     try {
-      const result = await middleware.execute(messages, updatedContext, teamConfig, env);
+      const result = await middleware.execute(messages, updatedContext, organizationConfig, env);
       
       // Update context from this middleware
       updatedContext = result.context;
@@ -82,12 +82,12 @@ export async function runPipeline(
 export function createLoggingMiddleware(): PipelineMiddleware {
   return {
     name: 'logging',
-    execute: async (messages, context, teamConfig, env) => {
+    execute: async (messages, context, organizationConfig, env) => {
       // Null-safe access with defaults
       const latestMessage = messages[messages.length - 1];
       const safeMessage = latestMessage ? String(latestMessage.content || '').substring(0, 100) : '';
       const safeContext = context || {};
-      const safeTeamConfig = teamConfig || {};
+      const safeOrganizationConfig = organizationConfig || {};
       
       console.log('Pipeline execution:', {
         messageCount: messages.length,
@@ -97,8 +97,8 @@ export function createLoggingMiddleware(): PipelineMiddleware {
           userIntent: context.userIntent || 'unclear',
           sessionId: context.sessionId || 'unknown'
         },
-        teamConfig: {
-          availableServices: teamConfig.availableServices || []
+        organizationConfig: {
+          availableServices: organizationConfig.availableServices || []
         }
       });
       

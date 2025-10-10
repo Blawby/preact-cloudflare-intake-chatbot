@@ -1,10 +1,10 @@
 import { Logger } from '../utils/logger.js';
 import type { Env } from '../types.js';
-import type { Team } from './TeamService.js';
+import type { Organization } from './OrganizationService.js';
 
 export interface NotificationRequest {
   type: 'lawyer_review' | 'matter_created' | 'payment_required';
-  teamConfig: Team | null;
+  organizationConfig: Organization | null;
   matterInfo?: {
     type: string;
     urgency?: string;
@@ -19,16 +19,16 @@ export interface NotificationRequest {
 }
 
 /**
- * Safely extracts owner email from team configuration
- * @param teamConfig - Team configuration object
+ * Safely extracts owner email from organization configuration
+ * @param organizationConfig - Organization configuration object
  * @returns Owner email string or undefined if not available
  */
-function extractOwnerEmail(teamConfig: Team | null): string | undefined {
-  if (!teamConfig?.config?.ownerEmail) {
+function extractOwnerEmail(organizationConfig: Organization | null): string | undefined {
+  if (!organizationConfig?.config?.ownerEmail) {
     return undefined;
   }
   
-  const ownerEmail = teamConfig.config.ownerEmail;
+  const ownerEmail = organizationConfig.config.ownerEmail;
   if (typeof ownerEmail !== 'string' || ownerEmail.trim().length === 0) {
     return undefined;
   }
@@ -46,15 +46,15 @@ export class NotificationService {
   }
 
   async sendLawyerReviewNotification(request: NotificationRequest): Promise<void> {
-    const { teamConfig, matterInfo } = request;
+    const { organizationConfig, matterInfo } = request;
     
     try {
       const { EmailService } = await import('./EmailService.js');
       const emailService = new EmailService(this.env.RESEND_API_KEY);
       
-      const ownerEmail = extractOwnerEmail(teamConfig);
+      const ownerEmail = extractOwnerEmail(organizationConfig);
       if (!ownerEmail) {
-        Logger.info('No owner email configured for team - skipping lawyer review notification');
+        Logger.info('No owner email configured for organization - skipping lawyer review notification');
         return;
       }
 
@@ -79,15 +79,15 @@ Please review this matter as soon as possible.`
   }
 
   async sendMatterCreatedNotification(request: NotificationRequest): Promise<void> {
-    const { teamConfig, matterInfo, clientInfo } = request;
+    const { organizationConfig, matterInfo, clientInfo } = request;
     
     try {
       const { EmailService } = await import('./EmailService.js');
       const emailService = new EmailService(this.env.RESEND_API_KEY);
       
-      const ownerEmail = extractOwnerEmail(teamConfig);
+      const ownerEmail = extractOwnerEmail(organizationConfig);
       if (!ownerEmail) {
-        Logger.info('No owner email configured for team - skipping matter creation notification');
+        Logger.info('No owner email configured for organization - skipping matter creation notification');
         return;
       }
 
@@ -113,15 +113,15 @@ Please review and take appropriate action.`
   }
 
   async sendPaymentRequiredNotification(request: NotificationRequest): Promise<void> {
-    const { teamConfig, matterInfo, clientInfo } = request;
+    const { organizationConfig, matterInfo, clientInfo } = request;
     
     try {
       const { EmailService } = await import('./EmailService.js');
       const emailService = new EmailService(this.env.RESEND_API_KEY);
       
-      const ownerEmail = extractOwnerEmail(teamConfig);
+      const ownerEmail = extractOwnerEmail(organizationConfig);
       if (!ownerEmail) {
-        Logger.info('No owner email configured for team - skipping payment notification');
+        Logger.info('No owner email configured for organization - skipping payment notification');
         return;
       }
 

@@ -13,7 +13,7 @@ export interface PaymentRequest {
     urgency: string;
     opposingParty?: string;
   };
-  teamId: string;
+  organizationId: string;
   sessionId: string;
   invoiceId?: string;
   currency?: string;
@@ -58,7 +58,7 @@ export interface CustomerCreateRequest {
   zip?: string;
   currency?: string;
   status?: string;
-  team_id?: string;
+  organization_id?: string;
 }
 
 export interface CustomerCreateResponse {

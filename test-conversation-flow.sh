@@ -144,11 +144,11 @@ print_result() {
 }
 
 build_payload() {
-    local team_id=$1
+    local organization_id=$1
     local session_id=$2
     local messages_json=$3
 
-    local payload="{\"messages\": $messages_json,\"teamId\": \"$team_id\",\"sessionId\": \"$session_id\""
+    local payload="{\"messages\": $messages_json,\"organizationId\": \"$organization_id\",\"sessionId\": \"$session_id\""
 
     if [[ -n "$AI_PROVIDER" ]]; then
         payload+=" ,\"aiProvider\": \"$AI_PROVIDER\""
@@ -162,20 +162,20 @@ build_payload() {
 }
 
 make_request() {
-    local team_id=$1
+    local organization_id=$1
     local session_id=$2
     local messages_json=$3
     local test_name=$4
     local log_file="test-results/production-readiness/$LOG_DIR/$(echo "$test_name" | tr -cs 'A-Za-z0-9' '-').json"
     
     echo -e "${YELLOW}📤 Request: $test_name${NC}"
-    echo -e "${YELLOW}   Team: $team_id | Session: $session_id${NC}"
+    echo -e "${YELLOW}   Organization: $organization_id | Session: $session_id${NC}"
     if [[ -n "$AI_PROVIDER" || -n "$AI_MODEL" ]]; then
         echo -e "${YELLOW}   Overrides: provider=${AI_PROVIDER:-default} model=${AI_MODEL:-default}${NC}"
     fi
 
     local payload
-    payload=$(build_payload "$team_id" "$session_id" "$messages_json")
+    payload=$(build_payload "$organization_id" "$session_id" "$messages_json")
 
     local response
     if ! response=$(curl -s --max-time 30 "$BASE_URL/api/agent/stream" \
@@ -186,7 +186,7 @@ make_request() {
         echo -e "${RED}❌ Request failed (curl exit status $curl_status)${NC}"
         echo -e "${RED}   Test: $test_name${NC}"
         echo -e "${RED}   URL: $BASE_URL/api/agent/stream${NC}"
-        echo -e "${RED}   Team: $team_id | Session: $session_id${NC}"
+        echo -e "${RED}   Organization: $organization_id | Session: $session_id${NC}"
         # Clean up any temporary variables
         unset response payload
         exit 1
@@ -315,20 +315,20 @@ scenario_case_draft_public() {
     fi
 }
 
-scenario_case_build_team() {
-    echo -e "${BLUE}🧪 Team Mode Case Build${NC}"
-    resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-teamcase" \
+scenario_case_build_organization() {
+    echo -e "${BLUE}🧪 Organization Mode Case Build${NC}"
+    resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-orgcase" \
         '[{"role":"user","content":"I need help with employment law, I was fired"}]' \
-        "Team Mode Case Build")
-    if ! assert_no_raw_tool_call "$resp" "Team Mode Case Build"; then
+        "Organization Mode Case Build")
+    if ! assert_no_raw_tool_call "$resp" "Organization Mode Case Build"; then
         return
     fi
     
     if echo "$resp" | grep -qi "tell.*me.*more\|when.*were.*fired\|reason.*given\|documentation" && \
        ! echo "$resp" | grep -q '"type":"contact_form"'; then
-        print_result true "Team mode properly gathering info (QUALIFYING_LEAD state)"
+        print_result true "Organization mode properly gathering info (QUALIFYING_LEAD state)"
     else
-        print_result false "Team mode jumped to contact form too early"
+        print_result false "Organization mode jumped to contact form too early"
     fi
 }
 
@@ -365,17 +365,17 @@ scenario_skip_to_lawyer() {
         print_result false "Public skip failed"
     fi
     
-    resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-skipteam" \
+    resp=$(make_request "north-carolina-legal-services" "$SESSION_PREFIX-skiporg" \
         '[{"role":"user","content":"skip intake"}]' \
-        "Skip to Lawyer Team")
-    if ! assert_no_raw_tool_call "$resp" "Skip to Lawyer (Team)"; then
+        "Skip to Lawyer Organization")
+    if ! assert_no_raw_tool_call "$resp" "Skip to Lawyer (Organization)"; then
         return
     fi
     
     if echo "$resp" | grep -q '"type":"contact_form"'; then
-        print_result true "Team skip showed contact form"
+        print_result true "Organization skip showed contact form"
     else
-        print_result false "Team skip didn't show contact form"
+        print_result false "Organization skip didn't show contact form"
     fi
 }
 
@@ -452,8 +452,8 @@ scenario_contact_form_prefill() {
     
     local resp=$(make_request "north-carolina-legal-services" "$session_id" \
         "$initial_messages" \
-        "Team Contact Prefill")
-    if ! assert_no_raw_tool_call "$resp" "Team Contact Prefill"; then
+        "Organization Contact Prefill")
+    if ! assert_no_raw_tool_call "$resp" "Organization Contact Prefill"; then
         return
     fi
     
@@ -470,8 +470,8 @@ scenario_contact_form_prefill() {
     
     resp=$(make_request "north-carolina-legal-services" "$pdf_session" \
         "$pdf_messages" \
-        "Team Case Summary PDF")
-    if ! assert_no_raw_tool_call "$resp" "Team Case Summary PDF"; then
+        "Organization Case Summary PDF")
+    if ! assert_no_raw_tool_call "$resp" "Organization Case Summary PDF"; then
         return
     fi
     
@@ -625,7 +625,7 @@ scenario_greeting
 scenario_immediate_contact_request
 scenario_multi_turn
 scenario_case_draft_public
-scenario_case_build_team
+scenario_case_build_organization
 scenario_sensitive_matter
 scenario_skip_to_lawyer
 scenario_general_inquiry

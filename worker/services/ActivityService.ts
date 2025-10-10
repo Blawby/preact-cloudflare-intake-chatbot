@@ -36,7 +36,7 @@ export interface ActivityQueryResult {
 export class ActivityService {
   constructor(private env: Env) {}
 
-  async getMatterEvents(matterId: string, teamId: string): Promise<ActivityEvent[]> {
+  async getMatterEvents(matterId: string, organizationId: string): Promise<ActivityEvent[]> {
     const stmt = this.env.DB.prepare(`
       SELECT 
         id,
@@ -49,12 +49,12 @@ export class ActivityService {
         created_at
       FROM matter_events 
       WHERE matter_id = ? AND matter_id IN (
-        SELECT id FROM matters WHERE team_id = ?
+        SELECT id FROM matters WHERE organization_id = ?
       )
       ORDER BY event_date DESC, created_at DESC
     `);
     
-    const result = await stmt.bind(matterId, teamId).all();
+    const result = await stmt.bind(matterId, organizationId).all();
     const rows = result.results as Record<string, unknown>[];
     
     return rows.map(row => ({
@@ -72,7 +72,7 @@ export class ActivityService {
     }));
   }
 
-  async getSessionEvents(sessionId: string, teamId: string): Promise<ActivityEvent[]> {
+  async getSessionEvents(sessionId: string, organizationId: string): Promise<ActivityEvent[]> {
     const stmt = this.env.DB.prepare(`
       SELECT 
         id,
@@ -83,12 +83,12 @@ export class ActivityService {
         created_at
       FROM session_audit_events 
       WHERE session_id = ? AND session_id IN (
-        SELECT id FROM chat_sessions WHERE team_id = ?
+        SELECT id FROM chat_sessions WHERE organization_id = ?
       )
       ORDER BY created_at DESC
     `);
     
-    const result = await stmt.bind(sessionId, teamId).all();
+    const result = await stmt.bind(sessionId, organizationId).all();
     const rows = result.results as Record<string, unknown>[];
     
     return rows.map(row => ({
@@ -106,21 +106,21 @@ export class ActivityService {
     }));
   }
 
-  async getCombinedActivity(matterId?: string, sessionId?: string, teamId?: string): Promise<ActivityEvent[]> {
-    if (!teamId) {
-      throw new Error('Team ID is required for activity queries');
+  async getCombinedActivity(matterId?: string, sessionId?: string, organizationId?: string): Promise<ActivityEvent[]> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required for activity queries');
     }
 
-    const matterEvents = matterId ? await this.getMatterEvents(matterId, teamId) : [];
-    const sessionEvents = sessionId ? await this.getSessionEvents(sessionId, teamId) : [];
+    const matterEvents = matterId ? await this.getMatterEvents(matterId, organizationId) : [];
+    const sessionEvents = sessionId ? await this.getSessionEvents(sessionId, organizationId) : [];
     
     const combined = [...matterEvents, ...sessionEvents];
     return combined.sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
   }
 
-  async queryActivity(options: ActivityQueryOptions & { teamId: string }): Promise<ActivityQueryResult> {
+  async queryActivity(options: ActivityQueryOptions & { organizationId: string }): Promise<ActivityQueryResult> {
     const {
-      teamId,
+      organizationId,
       matterId,
       sessionId,
       limit = 25,
@@ -160,7 +160,7 @@ export class ActivityService {
           created_at
         FROM matter_events 
         WHERE (? IS NULL OR matter_id = ?)
-          AND matter_id IN (SELECT id FROM matters WHERE team_id = ?)
+          AND matter_id IN (SELECT id FROM matters WHERE organization_id = ?)
           AND (? IS NULL OR event_date >= ?)
           AND (? IS NULL OR event_date <= ?)
           AND (? IS NULL OR event_type IN (SELECT value FROM json_each(?)))
@@ -181,7 +181,7 @@ export class ActivityService {
           created_at
         FROM session_audit_events 
         WHERE (? IS NULL OR session_id = ?)
-          AND session_id IN (SELECT id FROM chat_sessions WHERE team_id = ?)
+          AND session_id IN (SELECT id FROM chat_sessions WHERE organization_id = ?)
           AND (? IS NULL OR created_at >= ?)
           AND (? IS NULL OR created_at <= ?)
           AND (? IS NULL OR event_type IN (SELECT value FROM json_each(?)))
@@ -200,9 +200,9 @@ export class ActivityService {
     const typeFilter = type ? JSON.stringify(type) : null;
     const params = [
       // Matter events filters - convert undefined to null for D1 compatibility
-      matterId ?? null, matterId ?? null, teamId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
+      matterId ?? null, matterId ?? null, organizationId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
       // Session events filters - convert undefined to null for D1 compatibility
-      sessionId ?? null, sessionId ?? null, teamId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
+      sessionId ?? null, sessionId ?? null, organizationId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
       // Cursor pagination - ensure null instead of undefined
       cursorData?.lastEventDate || null, cursorData?.lastEventDate || null, cursorData?.lastEventDate || null, 
       cursorData?.lastCreatedAt || null, cursorData?.lastCreatedAt || null, cursorData?.lastId || null,
@@ -246,7 +246,7 @@ export class ActivityService {
         WITH combined_events AS (
           SELECT id FROM matter_events 
           WHERE (? IS NULL OR matter_id = ?)
-            AND matter_id IN (SELECT id FROM matters WHERE team_id = ?)
+            AND matter_id IN (SELECT id FROM matters WHERE organization_id = ?)
             AND (? IS NULL OR event_date >= ?)
             AND (? IS NULL OR event_date <= ?)
             AND (? IS NULL OR event_type IN (SELECT value FROM json_each(?)))
@@ -256,7 +256,7 @@ export class ActivityService {
 
           SELECT id FROM session_audit_events 
           WHERE (? IS NULL OR session_id = ?)
-            AND session_id IN (SELECT id FROM chat_sessions WHERE team_id = ?)
+            AND session_id IN (SELECT id FROM chat_sessions WHERE organization_id = ?)
             AND (? IS NULL OR created_at >= ?)
             AND (? IS NULL OR created_at <= ?)
             AND (? IS NULL OR event_type IN (SELECT value FROM json_each(?)))
@@ -267,8 +267,8 @@ export class ActivityService {
       
       const countStmt = this.env.DB.prepare(countQuery);
       const countResult = await countStmt.bind(
-        matterId ?? null, matterId ?? null, teamId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
-        sessionId ?? null, sessionId ?? null, teamId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null
+        matterId ?? null, matterId ?? null, organizationId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null,
+        sessionId ?? null, sessionId ?? null, organizationId, since ?? null, since ?? null, until ?? null, until ?? null, typeFilter, typeFilter, actorType ?? null, actorType ?? null
       ).first() as Record<string, unknown> | null;
       
       total = Number(countResult?.total) || 0;
@@ -285,7 +285,7 @@ export class ActivityService {
     };
   }
 
-  async createEvent(event: Omit<ActivityEvent, 'id' | 'createdAt' | 'uid'>, _teamId: string): Promise<string> {
+  async createEvent(event: Omit<ActivityEvent, 'id' | 'createdAt' | 'uid'>, _organizationId: string): Promise<string> {
     const eventId = crypto.randomUUID();
     const now = new Date().toISOString();
     

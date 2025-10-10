@@ -3,6 +3,8 @@
 # 
 # Note: Non-sensitive configuration variables (like AI_MODEL_DEFAULT, ENABLE_WORKERS_AI, etc.)
 # are now managed in wrangler.toml instead of this file.
+# 
+# Updated for Better Auth organization migration - all "team" references changed to "organization"
 
 # API Keys and Tokens (SENSITIVE)
 BLAWBY_API_TOKEN=your_blawby_api_token_here

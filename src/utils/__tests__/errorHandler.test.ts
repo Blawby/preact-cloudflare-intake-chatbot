@@ -47,9 +47,9 @@ describe('errorHandler', () => {
   describe('handleError', () => {
     it('should capture error in Sentry when available', () => {
       const error = new Error('Test error');
-      const context = { component: 'TestComponent', action: 'test' };
+      const context = { component: 'TestComponent' };
 
-      handleError(error, context, { component: 'TestComponent' });
+      handleError(error, context, { component: 'TestComponent', action: 'test' });
 
       expect((global as MockWindow).window?.Sentry?.captureException).toHaveBeenCalledWith(
         error,
@@ -59,8 +59,7 @@ describe('errorHandler', () => {
             action: 'test'
           },
           extra: expect.objectContaining({
-            component: 'TestComponent',
-            action: 'test'
+            component: 'TestComponent'
           })
         }
       );

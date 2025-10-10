@@ -1,5 +1,5 @@
 import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import { LawyerSearchService } from '../services/LawyerSearchService.js';
 import type { LawyerSearchResponse } from '../schemas/lawyer';
@@ -30,13 +30,13 @@ interface MiddlewareResponse {
 
 /**
  * Skip to Lawyer Middleware - handles requests to skip intake and go directly to lawyers
- * Routes to contact form (team mode) or lawyer search (public mode)
+ * Routes to contact form (organization mode) or lawyer search (public mode)
  * Now conversation-aware: only triggers on explicit skip requests, not casual mentions
  */
 export const skipToLawyerMiddleware: PipelineMiddleware = {
   name: 'skipToLawyerMiddleware',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
     // Guard against empty messages array
     if (!messages || messages.length === 0) {
       return { context };
@@ -68,13 +68,13 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
       'lawyer now',
       'urgent lawyer',
       'immediate lawyer',
-      'contact your team',
-      'want to contact your team',
-      'contact the team',
-      'want to contact the team',
-      'connect with your team',
-      'speak to your team',
-      'talk to your team'
+      'contact your organization',
+      'want to contact your organization',
+      'contact the organization',
+      'want to contact the organization',
+      'connect with your organization',
+      'speak to your organization',
+      'talk to your organization'
     ];
 
     // Only check the latest message for skip requests to avoid false positives
@@ -109,11 +109,11 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
       return { context };
     }
 
-    // Determine if this is public mode or team mode based on teamId
-    const isPublicMode = determineMode(context.teamId);
+    // Determine if this is public mode or organization mode based on organizationId
+    const isPublicMode = determineMode(context.organizationId);
     
-    Logger.debug('[skipToLawyerMiddleware] Team config:', {
-      teamId: context.teamId,
+    Logger.debug('[skipToLawyerMiddleware] Organization config:', {
+      organizationId: context.organizationId,
       isPublicMode,
       messageCount: messages.length,
       hasEstablishedLegalContext
@@ -126,28 +126,28 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
       // Public mode: Trigger lawyer search
       return await handlePublicMode(matterInfo, context, env);
     } else {
-      // Team mode: Show contact form
-      return handleTeamMode(matterInfo, context);
+      // Organization mode: Show contact form
+      return handleOrganizationMode(matterInfo, context);
     }
   }
 };
 
 /**
- * Determine if this is public mode or team mode
+ * Determine if this is public mode or organization mode
  */
-function determineMode(teamId: string | null | undefined): boolean {
-  // Public mode: no team ID, or specific public teams
-  if (!teamId) {
+function determineMode(organizationId: string | null | undefined): boolean {
+  // Public mode: no organization ID, or specific public organizations
+  if (!organizationId) {
     return true;
   }
 
-  // Check if this is a public team (like blawby-ai)
-  const publicTeams = ['blawby-ai'];
-  if (publicTeams.includes(teamId)) {
+  // Check if this is a public organization (like blawby-ai)
+  const publicOrganizations = ['blawby-ai'];
+  if (publicOrganizations.includes(organizationId)) {
     return true;
   }
 
-  // Team mode: specific law firm teams
+  // Organization mode: specific law firm organizations
   return false;
 }
 
@@ -275,9 +275,9 @@ function handleQuotaExceededFallback(matterInfo: MatterInfo, context: Conversati
 }
 
 /**
- * Handle team mode - show contact form
+ * Handle organization mode - show contact form
  */
-function handleTeamMode(matterInfo: MatterInfo, context: ConversationContext): MiddlewareResponse {
+function handleOrganizationMode(matterInfo: MatterInfo, context: ConversationContext): MiddlewareResponse {
   // Check if location is required but not provided
   const _needsLocation = context.safetyFlags?.includes('location_required');
   

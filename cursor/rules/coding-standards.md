@@ -135,7 +135,7 @@ return handleError(error);
 LegalIntakeLogger.logBusinessOperation(
   correlationId,
   sessionId,
-  teamId,
+  organizationId,
   'matter_created',
   { matterType, matterId }
 );
@@ -320,7 +320,7 @@ const [formData, setFormData] = useState<FormData>({
 const result = await PaymentServiceFactory.processPayment(
   env,
   paymentRequest,
-  teamConfig
+  organizationConfig
 );
 
 // Handle responses consistently

@@ -1,8 +1,8 @@
 import { useEffect } from 'preact/hooks';
-import { TeamConfig } from '../../worker/types';
+import { OrganizationConfig } from '../../worker/types';
 
 interface SEOHeadProps {
-  teamConfig?: TeamConfig;
+  organizationConfig?: OrganizationConfig;
   pageTitle?: string;
   pageDescription?: string;
   pageImage?: string;
@@ -10,7 +10,7 @@ interface SEOHeadProps {
 }
 
 export function SEOHead({ 
-  teamConfig, 
+  organizationConfig, 
   pageTitle, 
   pageDescription, 
   pageImage, 
@@ -20,7 +20,7 @@ export function SEOHead({
   useEffect(() => {
     // Update document title
     const title = pageTitle || 
-      (teamConfig?.name ? `${teamConfig.name} - AI Legal Assistant` : 'Blawby AI - Intelligent Legal Assistant & Chat Interface');
+      (organizationConfig?.name ? `${organizationConfig.name} - AI Legal Assistant` : 'Blawby AI - Intelligent Legal Assistant & Chat Interface');
     document.title = title;
 
     // Update meta tags dynamically
@@ -47,22 +47,22 @@ export function SEOHead({
     // Update Open Graph tags
     updateMetaTag('og:title', title);
     updateMetaTag('og:description', pageDescription || 
-      (teamConfig?.description || 'Get instant legal guidance, document analysis, and matter creation with Blawby\'s AI-powered legal assistant. Available nationwide for legal professionals and individuals seeking legal information.'));
+      (organizationConfig?.description || 'Get instant legal guidance, document analysis, and matter creation with Blawby\'s AI-powered legal assistant. Available nationwide for legal professionals and individuals seeking legal information.'));
     updateMetaTag('og:url', currentUrl || window.location.href);
     updateMetaTag('og:image', pageImage || 
-      (teamConfig?.profileImage || 'https://ai.blawby.com/team-profile-demo.png'));
-    updateMetaTag('og:site_name', teamConfig?.name || 'Blawby AI');
+      (organizationConfig?.profileImage || 'https://ai.blawby.com/organization-profile-demo.png'));
+    updateMetaTag('og:site_name', organizationConfig?.name || 'Blawby AI');
 
     // Update Twitter tags
     updateMetaName('twitter:title', title);
     updateMetaName('twitter:description', pageDescription || 
-      (teamConfig?.description || 'Get instant legal guidance, document analysis, and matter creation with Blawby\'s AI-powered legal assistant. Available nationwide for legal professionals and individuals seeking legal information.'));
+      (organizationConfig?.description || 'Get instant legal guidance, document analysis, and matter creation with Blawby\'s AI-powered legal assistant. Available nationwide for legal professionals and individuals seeking legal information.'));
     updateMetaName('twitter:image', pageImage || 
-      (teamConfig?.profileImage || 'https://ai.blawby.com/team-profile-demo.png'));
+      (organizationConfig?.profileImage || 'https://ai.blawby.com/organization-profile-demo.png'));
 
     // Update standard meta tags
     updateMetaName('description', pageDescription || 
-      (teamConfig?.description || 'Get instant legal guidance, document analysis, and matter creation with Blawby\'s AI-powered legal assistant. Available nationwide for legal professionals and individuals seeking legal information.'));
+      (organizationConfig?.description || 'Get instant legal guidance, document analysis, and matter creation with Blawby\'s AI-powered legal assistant. Available nationwide for legal professionals and individuals seeking legal information.'));
 
     // Update canonical URL
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
@@ -73,7 +73,7 @@ export function SEOHead({
     }
     canonical.setAttribute('href', currentUrl || window.location.href);
 
-  }, [teamConfig, pageTitle, pageDescription, pageImage, currentUrl]);
+  }, [organizationConfig, pageTitle, pageDescription, pageImage, currentUrl]);
 
   return null; // This component doesn't render anything
 }

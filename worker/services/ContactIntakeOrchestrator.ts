@@ -3,7 +3,7 @@ import { PDFGenerationService } from './PDFGenerationService.js';
 import { NotificationService } from './NotificationService.js';
 import { Logger } from '../utils/logger.js';
 import type { Env } from '../types.js';
-import type { Team } from './TeamService.js';
+import type { Organization } from './OrganizationService.js';
 
 interface MatterSubmissionInput {
   matterType: string;
@@ -18,9 +18,9 @@ interface MatterSubmissionInput {
 
 interface OrchestrationOptions {
   env: Env;
-  teamConfig?: Team | null;
+  organizationConfig?: Organization | null;
   sessionId?: string;
-  teamId?: string;
+  organizationId?: string;
   correlationId?: string;
   matter: MatterSubmissionInput;
 }
@@ -74,24 +74,24 @@ function buildFallbackCaseDraft(
   };
 }
 
-function buildStorageKey(teamId: string | undefined, sessionId: string | undefined, filename: string): string {
-  const safeTeam = teamId ? teamId.replace(/[^a-zA-Z0-9-_]/g, '') : 'public';
+function buildStorageKey(organizationId: string | undefined, sessionId: string | undefined, filename: string): string {
+  const safeOrganization = organizationId ? organizationId.replace(/[^a-zA-Z0-9-_]/g, '') : 'public';
   const safeSession = sessionId ? sessionId.replace(/[^a-zA-Z0-9-_]/g, '') : 'anonymous';
-  return `case-submissions/${safeTeam}/${safeSession}/${filename}`;
+  return `case-submissions/${safeOrganization}/${safeSession}/${filename}`;
 }
 
 export class ContactIntakeOrchestrator {
   static async finalizeSubmission(options: OrchestrationOptions): Promise<OrchestrationResult> {
-    const { env, teamConfig, sessionId, teamId, matter, correlationId } = options;
+    const { env, organizationConfig, sessionId, organizationId, matter, correlationId } = options;
 
     let context: ConversationContext | null = null;
-    if (sessionId && teamId) {
+    if (sessionId && organizationId) {
       try {
-        context = await ConversationContextManager.load(sessionId, teamId, env);
+        context = await ConversationContextManager.load(sessionId, organizationId, env);
       } catch (error) {
         Logger.warn('[ContactIntakeOrchestrator] Failed to load conversation context', {
           sessionId,
-          teamId,
+          organizationId,
           error: error instanceof Error ? error.message : String(error)
         });
       }
@@ -119,9 +119,9 @@ export class ContactIntakeOrchestrator {
       context.lastUpdated = Date.now();
     }
 
-    const teamMeta = teamConfig?.config ?? {};
-    const teamName = (teamMeta.description || teamConfig?.name || 'Legal Services') as string;
-    const brandColor = teamMeta.brandColor || '#334e68';
+    const organizationMeta = organizationConfig?.config ?? {};
+    const organizationName = (organizationMeta.description || organizationConfig?.name || 'Legal Services') as string;
+    const brandColor = organizationMeta.brandColor || '#334e68';
 
     let pdfResult: OrchestrationResult['pdf'];
 
@@ -134,8 +134,8 @@ export class ContactIntakeOrchestrator {
         },
         clientName: matter.name,
         clientEmail: matter.email,
-        teamName,
-        teamBrandColor: brandColor
+        organizationName,
+        organizationBrandColor: brandColor
       }, env);
 
       if (pdfResponse.success && pdfResponse.pdfBuffer) {
@@ -147,7 +147,7 @@ export class ContactIntakeOrchestrator {
 
         if (env.FILES_BUCKET) {
           try {
-            storageKey = buildStorageKey(teamId, sessionId, filename);
+            storageKey = buildStorageKey(organizationId, sessionId, filename);
             await env.FILES_BUCKET.put(storageKey, pdfResponse.pdfBuffer, {
               httpMetadata: {
                 contentType: 'application/pdf'
@@ -157,7 +157,7 @@ export class ContactIntakeOrchestrator {
           } catch (storageError) {
             Logger.warn('[ContactIntakeOrchestrator] Failed to persist PDF to R2', {
               sessionId,
-              teamId,
+              organizationId,
               error: storageError instanceof Error ? storageError.message : String(storageError)
             });
           }
@@ -178,7 +178,7 @@ export class ContactIntakeOrchestrator {
     } catch (error) {
       Logger.warn('[ContactIntakeOrchestrator] PDF generation failed', {
         sessionId,
-        teamId,
+        organizationId,
         error: error instanceof Error ? error.message : String(error)
       });
     }
@@ -188,13 +188,13 @@ export class ContactIntakeOrchestrator {
       paymentSent: false
     };
 
-    if (teamConfig) {
+    if (organizationConfig) {
       try {
         const notificationService = new NotificationService(env);
 
         await notificationService.sendMatterCreatedNotification({
           type: 'matter_created',
-          teamConfig,
+          organizationConfig,
           matterInfo: {
             type: matter.matterType,
             urgency: matter.urgency,
@@ -208,10 +208,10 @@ export class ContactIntakeOrchestrator {
         });
         notifications.matterCreatedSent = true;
 
-        if (teamConfig.config?.requiresPayment) {
+        if (organizationConfig.config?.requiresPayment) {
           await notificationService.sendPaymentRequiredNotification({
             type: 'payment_required',
-            teamConfig,
+            organizationConfig,
             matterInfo: {
               type: matter.matterType,
               description: matter.description
@@ -227,20 +227,20 @@ export class ContactIntakeOrchestrator {
       } catch (error) {
         Logger.warn('[ContactIntakeOrchestrator] Notification dispatch failed', {
           sessionId,
-          teamId,
+          organizationId,
           correlationId,
           error: error instanceof Error ? error.message : String(error)
         });
       }
     }
 
-    if (context && sessionId && teamId) {
+    if (context && sessionId && organizationId) {
       try {
         await ConversationContextManager.save(context, env);
       } catch (error) {
         Logger.warn('[ContactIntakeOrchestrator] Failed to persist updated context', {
           sessionId,
-          teamId,
+          organizationId,
           error: error instanceof Error ? error.message : String(error)
         });
       }
