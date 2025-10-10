@@ -1,0 +1,19 @@
+{
+  "menu": {
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "upgrade": "Plan upgraden",
+    "upgradeShort": "Upgrade",
+    "help": "Hilfe erhalten",
+    "signOut": "Abmelden",
+    "signIn": "Anmelden"
+  },
+  "status": {
+    "signingOut": "Abmeldung...",
+    "loading": "Lädt..."
+  },
+  "aria": {
+    "userProfile": "Benutzerprofil für {{name}}",
+    "signInButton": "Melden Sie sich bei Ihrem Konto an"
+  }
+}

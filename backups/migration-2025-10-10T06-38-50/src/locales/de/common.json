@@ -1,0 +1,68 @@
+{
+  "app": {
+    "loading": "Lädt…"
+  },
+  "notifications": {
+    "settingsSavedTitle": "Einstellungen gespeichert",
+    "settingsSavedBody": "Ihre Präferenzen wurden aktualisiert."
+  },
+  "language": {
+    "auto": "Automatische Erkennung",
+    "en": "Englisch",
+    "vi": "Tiếng Việt",
+    "es": "Spanisch",
+    "fr": "Französisch",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語"
+  },
+  "onboarding": {
+    "title": "Willkommen bei Blawby AI",
+    "subtitle": "Lassen Sie uns Ihr Konto einrichten",
+    "step1": {
+      "title": "Erzählen Sie uns von sich",
+      "subtitle": "Helfen Sie uns, Ihre Erfahrung zu personalisieren",
+      "fullName": "Vollständiger Name",
+      "fullNamePlaceholder": "Geben Sie Ihren vollständigen Namen ein",
+      "birthday": "Geburtstag",
+      "birthdayPlaceholder": "TT.MM.JJJJ",
+      "termsAgreement": "Durch Klicken auf \"Weiter\" stimmen Sie unseren <termsLink>Bedingungen</termsLink> zu und haben unsere <privacyLink>Datenschutzrichtlinie</privacyLink> gelesen.",
+      "continue": "Weiter",
+      "required": "Dieses Feld ist erforderlich"
+    },
+    "step2": {
+      "title": "Wofür möchten Sie Blawby AI verwenden?",
+      "subtitle": "Dies hilft uns, relevantere Vorschläge zu liefern",
+      "options": {
+        "personal": "Persönliche Rechtsangelegenheiten",
+        "business": "Geschäftliche Rechtsangelegenheiten",
+        "research": "Rechtsrecherche",
+        "documents": "Dokumentenprüfung",
+        "other": "Sonstiges"
+      },
+      "otherPlaceholder": "Erzählen Sie uns mehr...",
+      "next": "Weiter",
+      "skip": "Überspringen"
+    },
+    "welcome": {
+      "title": "Blawby AI",
+      "subtitle": "Tipps für den Einstieg",
+      "tips": {
+        "askAway": {
+          "title": "Fragen Sie los",
+          "description": "Blawby AI kann rechtliche Fragen beantworten, Ihnen helfen, rechtliche Konzepte zu verstehen, Dokumente zu überprüfen und vieles mehr."
+        },
+        "privacy": {
+          "title": "Teilen Sie keine sensiblen Informationen",
+          "description": "Der Chat-Verlauf kann überprüft oder zur Verbesserung unserer Dienste verwendet werden. Erfahren Sie mehr über Ihre Auswahlmöglichkeiten in unserem <helpCenterLink>Hilfecenter</helpCenterLink>."
+        },
+        "accuracy": {
+          "title": "Überprüfen Sie Ihre Fakten",
+          "description": "Obwohl wir Schutzmaßnahmen haben, kann Blawby AI Ihnen ungenaue Informationen geben. Es ist nicht dazu gedacht, Rechtsberatung zu geben."
+        }
+      },
+      "helpCenter": "Hilfecenter",
+      "letsGo": "Okay, los geht's"
+    }
+  }
+}

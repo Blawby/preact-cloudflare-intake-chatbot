@@ -1,0 +1,2916 @@
+{
+  "timestamp": "2025-10-10T06:38:50.275Z",
+  "backupPath": "/Users/paulchrisluke/Repos2025/preact-cloudflare-intake-chatbot/blawby-ai-chatbot/backups/migration-2025-10-10T06-38-50",
+  "summary": {
+    "filesBackedUp": 322,
+    "filesVerified": 322,
+    "backupErrors": 0,
+    "verificationErrors": 0
+  },
+  "files": {
+    "worker/agents/legal-intake/errors.ts": {
+      "size": 6948,
+      "modified": "2025-10-10T04:08:59.272Z",
+      "checksum": "b823c51e342f5b8c7dd39bdb74cf596e60dd0e9461bdaa4c1b395d776d765782",
+      "backupChecksum": "b823c51e342f5b8c7dd39bdb74cf596e60dd0e9461bdaa4c1b395d776d765782",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/agents/legal-intake/index.ts": {
+      "size": 84007,
+      "modified": "2025-10-10T04:08:59.274Z",
+      "checksum": "4ddd74019e87cf908a0414190b2326d275f855ce0ee62746391fd8c19abf4bf1",
+      "backupChecksum": "4ddd74019e87cf908a0414190b2326d275f855ce0ee62746391fd8c19abf4bf1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/agents/legal-intake/legalIntakeLogger.ts": {
+      "size": 18609,
+      "modified": "2025-10-10T04:08:59.275Z",
+      "checksum": "22aa9d803031b664f4d78ef8f58f8893a64cf3cde269bc309a374b9584add0f2",
+      "backupChecksum": "22aa9d803031b664f4d78ef8f58f8893a64cf3cde269bc309a374b9584add0f2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/agents/legal-intake/promptTemplates.ts": {
+      "size": 19968,
+      "modified": "2025-10-10T04:10:12.135Z",
+      "checksum": "8c905f0541d9b11d679eeeab80b4a1a9bff49639019b0150f5a1f24d0d168ce2",
+      "backupChecksum": "8c905f0541d9b11d679eeeab80b4a1a9bff49639019b0150f5a1f24d0d168ce2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/auth/hooks.ts": {
+      "size": 2759,
+      "modified": "2025-10-10T06:31:30.676Z",
+      "checksum": "74dd94c90bd48788db077379821f52b0724da680a2f5b183ba6db9eb9329cd19",
+      "backupChecksum": "74dd94c90bd48788db077379821f52b0724da680a2f5b183ba6db9eb9329cd19",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/auth/index.ts": {
+      "size": 6440,
+      "modified": "2025-10-10T06:33:56.886Z",
+      "checksum": "6a7e1b389f084f42a3e3b4a58f2317bf3b8dbcce117959e0c1b56660125d8ab7",
+      "backupChecksum": "6a7e1b389f084f42a3e3b4a58f2317bf3b8dbcce117959e0c1b56660125d8ab7",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/consumers/doc-processor.ts": {
+      "size": 19376,
+      "modified": "2025-10-10T04:08:59.276Z",
+      "checksum": "e19128a4b5e5d57887f6586d03d6b993e12e35e3b92b081db3c3dd9703916cf3",
+      "backupChecksum": "e19128a4b5e5d57887f6586d03d6b993e12e35e3b92b081db3c3dd9703916cf3",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/db/auth.schema.ts": {
+      "size": 2943,
+      "modified": "2025-10-10T05:24:20.011Z",
+      "checksum": "98a880cf19b3e3955e99bbc97931de56314c0f97ca74e8e3d6505886715c31ea",
+      "backupChecksum": "98a880cf19b3e3955e99bbc97931de56314c0f97ca74e8e3d6505886715c31ea",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/errorHandler.ts": {
+      "size": 4351,
+      "modified": "2025-10-10T04:09:01.892Z",
+      "checksum": "af1e667f70c473c42065415b8435c776dc74f118c15d0794279287c0c3413479",
+      "backupChecksum": "af1e667f70c473c42065415b8435c776dc74f118c15d0794279287c0c3413479",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/index.ts": {
+      "size": 4498,
+      "modified": "2025-10-10T06:38:50.433Z",
+      "checksum": "13b2158605e9882e1566146fa5babce892816767749597ae8f3ef5a702e8d68b",
+      "backupChecksum": "13b2158605e9882e1566146fa5babce892816767749597ae8f3ef5a702e8d68b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/lib/pdf.ts": {
+      "size": 8218,
+      "modified": "2025-10-02T04:32:23.562Z",
+      "checksum": "682048db57aebaff0bba4ee460ca2b62a877d2b9ce277e34ccba507b64165890",
+      "backupChecksum": "682048db57aebaff0bba4ee460ca2b62a877d2b9ce277e34ccba507b64165890",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/auth.ts": {
+      "size": 4159,
+      "modified": "2025-10-10T06:33:56.886Z",
+      "checksum": "b545814153b71e42ce557209421b6da82025007a9d7bc2a3d93733faa1634d74",
+      "backupChecksum": "b545814153b71e42ce557209421b6da82025007a9d7bc2a3d93733faa1634d74",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/businessScopeValidator.ts": {
+      "size": 7893,
+      "modified": "2025-10-07T03:38:30.637Z",
+      "checksum": "a6ddf1412bf052204021692b50f14d24131470f8eb7a978c3722b4781840f160",
+      "backupChecksum": "a6ddf1412bf052204021692b50f14d24131470f8eb7a978c3722b4781840f160",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/caseDraftMiddleware.ts": {
+      "size": 6165,
+      "modified": "2025-10-02T04:22:16.683Z",
+      "checksum": "098d423803059931f82f8283f6ab725c4fc37b7a910dd5c98376530cd773e43b",
+      "backupChecksum": "098d423803059931f82f8283f6ab725c4fc37b7a910dd5c98376530cd773e43b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/contentPolicyFilter.ts": {
+      "size": 10029,
+      "modified": "2025-10-02T04:22:16.683Z",
+      "checksum": "32c3f9bc5235daf6154fdf0322feed1018e6726001abc578d7badb31f6105549",
+      "backupChecksum": "32c3f9bc5235daf6154fdf0322feed1018e6726001abc578d7badb31f6105549",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/conversationContextManager.ts": {
+      "size": 19031,
+      "modified": "2025-10-10T04:08:59.278Z",
+      "checksum": "27eefe0fd99ff593e6afd32279e04bcb65f747c1f90e406f51fa8e5d735f2218",
+      "backupChecksum": "27eefe0fd99ff593e6afd32279e04bcb65f747c1f90e406f51fa8e5d735f2218",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/cors.ts": {
+      "size": 7313,
+      "modified": "2025-10-10T06:38:50.434Z",
+      "checksum": "335a7631ab9300c08c5936e366b5461a2a4c2b3e0281e38e8c7641e368c794a1",
+      "backupChecksum": "335a7631ab9300c08c5936e366b5461a2a4c2b3e0281e38e8c7641e368c794a1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/documentChecklistMiddleware.ts": {
+      "size": 8728,
+      "modified": "2025-10-02T04:22:16.684Z",
+      "checksum": "ec1c008da25344046b45515b13b7e01c5673f3fc96fc581d2af5a4909c5dd4bc",
+      "backupChecksum": "ec1c008da25344046b45515b13b7e01c5673f3fc96fc581d2af5a4909c5dd4bc",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/fileAnalysisMiddleware.ts": {
+      "size": 13094,
+      "modified": "2025-10-10T04:08:59.279Z",
+      "checksum": "83f681d4f805e110223a275b2dd8232042dad345b40d6878d2598bb1ea4c891b",
+      "backupChecksum": "83f681d4f805e110223a275b2dd8232042dad345b40d6878d2598bb1ea4c891b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/jurisdictionValidator.ts": {
+      "size": 3606,
+      "modified": "2025-10-02T04:22:16.684Z",
+      "checksum": "627d396d2920da3ef73b66f2dccc6ca7d2482f02358c92ebd98d3631431f61fb",
+      "backupChecksum": "627d396d2920da3ef73b66f2dccc6ca7d2482f02358c92ebd98d3631431f61fb",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/pdfGenerationMiddleware.ts": {
+      "size": 4901,
+      "modified": "2025-10-02T04:22:16.684Z",
+      "checksum": "ca39b4e0ebbf5ff25beffca87014a9cedc4eeeb68c462a5eedc92b14d9d97d86",
+      "backupChecksum": "ca39b4e0ebbf5ff25beffca87014a9cedc4eeeb68c462a5eedc92b14d9d97d86",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/pipeline.ts": {
+      "size": 3110,
+      "modified": "2025-10-02T04:22:16.684Z",
+      "checksum": "4ebd075d85f19663b796de57994fb2cafb620927050e36df066956e681cf2d5d",
+      "backupChecksum": "4ebd075d85f19663b796de57994fb2cafb620927050e36df066956e681cf2d5d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/rateLimit.ts": {
+      "size": 1929,
+      "modified": "2025-10-10T04:08:59.284Z",
+      "checksum": "cf233a4ffbb02b06cf9c0aa65146dd855e25c8e6d2058e0c407d31d2a86db07d",
+      "backupChecksum": "cf233a4ffbb02b06cf9c0aa65146dd855e25c8e6d2058e0c407d31d2a86db07d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/middleware/skipToLawyerMiddleware.ts": {
+      "size": 10642,
+      "modified": "2025-10-02T04:22:16.685Z",
+      "checksum": "9a99dca2726c47a1551d444fd8f4b4886b3142594d2e22e43e5f4eff9db2ad8e",
+      "backupChecksum": "9a99dca2726c47a1551d444fd8f4b4886b3142594d2e22e43e5f4eff9db2ad8e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/activity.ts": {
+      "size": 13123,
+      "modified": "2025-10-10T04:09:01.893Z",
+      "checksum": "4b54e3ac8b80bfcb1e12956d5ad2fd3792e31197acfb500563c517696819f0c7",
+      "backupChecksum": "4b54e3ac8b80bfcb1e12956d5ad2fd3792e31197acfb500563c517696819f0c7",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/agent.ts": {
+      "size": 23890,
+      "modified": "2025-10-10T06:38:50.435Z",
+      "checksum": "e4965a700fd63f72be5c11c24b9c89c6c9ec06c55199f169e64df24332c244f8",
+      "backupChecksum": "e4965a700fd63f72be5c11c24b9c89c6c9ec06c55199f169e64df24332c244f8",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/analyze.ts": {
+      "size": 26034,
+      "modified": "2025-10-10T04:10:12.139Z",
+      "checksum": "4ddc49f465a54d93148fcde6d66843749ce6276a5cd984b2b509a0e6c56c7b3c",
+      "backupChecksum": "4ddc49f465a54d93148fcde6d66843749ce6276a5cd984b2b509a0e6c56c7b3c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/auth.ts": {
+      "size": 1397,
+      "modified": "2025-10-10T05:39:06.268Z",
+      "checksum": "9a693d795a04a55225f4dfe03cfb2db35bad844893a310b9ef76f7e01cbc4fdf",
+      "backupChecksum": "9a693d795a04a55225f4dfe03cfb2db35bad844893a310b9ef76f7e01cbc4fdf",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/debug.ts": {
+      "size": 4603,
+      "modified": "2025-10-10T04:08:59.288Z",
+      "checksum": "74be13336022fc864cc23100112edb40d9fab58bedd058f80644a7b0f18e6440",
+      "backupChecksum": "74be13336022fc864cc23100112edb40d9fab58bedd058f80644a7b0f18e6440",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/files.ts": {
+      "size": 24120,
+      "modified": "2025-10-10T06:38:50.436Z",
+      "checksum": "3e26a7c2b89601a0847c5aa1d203ac3dc2ca3dc3ed4cc290c1faa895870c3cb4",
+      "backupChecksum": "3e26a7c2b89601a0847c5aa1d203ac3dc2ca3dc3ed4cc290c1faa895870c3cb4",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/forms.ts": {
+      "size": 719,
+      "modified": "2025-10-10T06:38:50.437Z",
+      "checksum": "28f50e6fe3e485893ee25485dc891a009db5a94227190fa73f6bbc354d060b8d",
+      "backupChecksum": "28f50e6fe3e485893ee25485dc891a009db5a94227190fa73f6bbc354d060b8d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/health.ts": {
+      "size": 231,
+      "modified": "2025-10-02T04:22:16.686Z",
+      "checksum": "29be8a49eaaf56b275ba555c012a3577867a221ef6c068015d38c5828aace912",
+      "backupChecksum": "29be8a49eaaf56b275ba555c012a3577867a221ef6c068015d38c5828aace912",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/index.ts": {
+      "size": 557,
+      "modified": "2025-10-07T13:09:16.020Z",
+      "checksum": "fc842b741aab4a39bdb1ceee78c480de7902e1479ab2924d97aff40cc5ed8280",
+      "backupChecksum": "fc842b741aab4a39bdb1ceee78c480de7902e1479ab2924d97aff40cc5ed8280",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/payment.ts": {
+      "size": 11777,
+      "modified": "2025-10-10T04:08:59.290Z",
+      "checksum": "4ab323e7c1753b2cf46355192b959a2dac6f4c3e0fc441098c087c70a700b407",
+      "backupChecksum": "4ab323e7c1753b2cf46355192b959a2dac6f4c3e0fc441098c087c70a700b407",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/pdf.ts": {
+      "size": 6625,
+      "modified": "2025-10-10T04:08:59.290Z",
+      "checksum": "4af18f5dba826bf85614ebd759c522bbaf1f19af57a059d5b846757588c5b645",
+      "backupChecksum": "4af18f5dba826bf85614ebd759c522bbaf1f19af57a059d5b846757588c5b645",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/review.ts": {
+      "size": 2217,
+      "modified": "2025-10-02T04:22:16.687Z",
+      "checksum": "164d813701b8c4306f5dd8c388cc9ca6b7868ed7a0ed3645cdb54339b0b70d53",
+      "backupChecksum": "164d813701b8c4306f5dd8c388cc9ca6b7868ed7a0ed3645cdb54339b0b70d53",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/root.ts": {
+      "size": 1082,
+      "modified": "2025-10-02T04:22:16.687Z",
+      "checksum": "93c5b49377d5ff1d8908398fa0c5efa751f681282f9c6e5f201451f0e0a60992",
+      "backupChecksum": "93c5b49377d5ff1d8908398fa0c5efa751f681282f9c6e5f201451f0e0a60992",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/sessions.ts": {
+      "size": 5346,
+      "modified": "2025-10-02T04:32:23.564Z",
+      "checksum": "afe50a49f54f74a7c43c78f235af33627c287944471d1c2d4ca5910052d185d7",
+      "backupChecksum": "afe50a49f54f74a7c43c78f235af33627c287944471d1c2d4ca5910052d185d7",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/status.ts": {
+      "size": 1261,
+      "modified": "2025-10-10T04:08:59.290Z",
+      "checksum": "6ebe9ed46722b0639a6485f20089065fce9e994350451872f7e2a22021da80dd",
+      "backupChecksum": "6ebe9ed46722b0639a6485f20089065fce9e994350451872f7e2a22021da80dd",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/routes/teams.ts": {
+      "size": 16057,
+      "modified": "2025-10-10T06:38:50.437Z",
+      "checksum": "9f9e3f30f6cd8fe6029e76843670ad839423222ba8862d9df81dce4fd7a78736",
+      "backupChecksum": "9f9e3f30f6cd8fe6029e76843670ad839423222ba8862d9df81dce4fd7a78736",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/schema.sql": {
+      "size": 20593,
+      "modified": "2025-10-10T04:08:59.291Z",
+      "checksum": "f8ab20a9f9948908b91d4b584c79f275eed7dc44a32a104aebc9d85a36b88e9b",
+      "backupChecksum": "f8ab20a9f9948908b91d4b584c79f275eed7dc44a32a104aebc9d85a36b88e9b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/schemas/index.ts": {
+      "size": 315,
+      "modified": "2025-10-02T04:22:16.691Z",
+      "checksum": "46843469476f0f2e258de088182ba566817c1e598b536872d11955a6e0447a1c",
+      "backupChecksum": "46843469476f0f2e258de088182ba566817c1e598b536872d11955a6e0447a1c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/schemas/jurisdictionConfig.ts": {
+      "size": 8121,
+      "modified": "2025-10-02T04:22:16.691Z",
+      "checksum": "d96fb65edd3994f6c2a9a97afe133d090a9f2c050df341c3fe7175cffcb9c265",
+      "backupChecksum": "d96fb65edd3994f6c2a9a97afe133d090a9f2c050df341c3fe7175cffcb9c265",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/schemas/lawyer.ts": {
+      "size": 690,
+      "modified": "2025-10-02T04:22:16.691Z",
+      "checksum": "60de2717117382a9f0bde8676e0003f91f46bdf4489334cf0196f24d290326ab",
+      "backupChecksum": "60de2717117382a9f0bde8676e0003f91f46bdf4489334cf0196f24d290326ab",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/schemas/legal.ts": {
+      "size": 1326,
+      "modified": "2025-10-02T04:22:16.691Z",
+      "checksum": "c15101c23810cd6d50bdf3876f916a2605f299271817361c152e92ce99928db8",
+      "backupChecksum": "c15101c23810cd6d50bdf3876f916a2605f299271817361c152e92ce99928db8",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/schemas/payment.ts": {
+      "size": 1871,
+      "modified": "2025-10-02T04:22:16.691Z",
+      "checksum": "71a605385c41a6c10efd4a2ff8236bce3b8aab33f2356dd80bfed4d27ee1b880",
+      "backupChecksum": "71a605385c41a6c10efd4a2ff8236bce3b8aab33f2356dd80bfed4d27ee1b880",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/schemas/validation.ts": {
+      "size": 4623,
+      "modified": "2025-10-10T04:08:59.292Z",
+      "checksum": "3507068ba0c08d3ddd7e376d0f8bddfff23dc6356f65059272a6995660f5b479",
+      "backupChecksum": "3507068ba0c08d3ddd7e376d0f8bddfff23dc6356f65059272a6995660f5b479",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/AIService.ts": {
+      "size": 3052,
+      "modified": "2025-10-10T04:09:01.894Z",
+      "checksum": "b917e5aa6009939b7cfc31d4f793f84f3a9e3c84c155d330b49c0607987b88d2",
+      "backupChecksum": "b917e5aa6009939b7cfc31d4f793f84f3a9e3c84c155d330b49c0607987b88d2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/ActivityService.ts": {
+      "size": 13636,
+      "modified": "2025-10-10T04:08:59.293Z",
+      "checksum": "7424af17de0ce180b870cc7109f93fb0f23a9e297dd421d20c2e11ceab2c6478",
+      "backupChecksum": "7424af17de0ce180b870cc7109f93fb0f23a9e297dd421d20c2e11ceab2c6478",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/AdobeDocumentService.ts": {
+      "size": 18213,
+      "modified": "2025-10-10T04:08:59.293Z",
+      "checksum": "32ebc82025292506a7d1543903ed0bd6d233053ec0a7ac372cb48e9799e84188",
+      "backupChecksum": "32ebc82025292506a7d1543903ed0bd6d233053ec0a7ac372cb48e9799e84188",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/AsyncAdobeAnalysis.ts": {
+      "size": 5378,
+      "modified": "2025-10-10T04:08:59.293Z",
+      "checksum": "4257931752cf69444adce3c3da9d22aa7d5b4bd4217cea16c21e181ab5d1eb76",
+      "backupChecksum": "4257931752cf69444adce3c3da9d22aa7d5b4bd4217cea16c21e181ab5d1eb76",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/ContactIntakeOrchestrator.ts": {
+      "size": 7837,
+      "modified": "2025-10-02T04:22:16.697Z",
+      "checksum": "9af0472a83efe8fe745d477c4284752ce2cb4ad8c0b8d2cf3cf598d7895a6b1f",
+      "backupChecksum": "9af0472a83efe8fe745d477c4284752ce2cb4ad8c0b8d2cf3cf598d7895a6b1f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/DocumentRequirementService.ts": {
+      "size": 11710,
+      "modified": "2025-10-02T04:22:16.699Z",
+      "checksum": "88125f4be1932b370c9f539784d15a8b2c21084d2f9cbf415836c21b91c1a865",
+      "backupChecksum": "88125f4be1932b370c9f539784d15a8b2c21084d2f9cbf415836c21b91c1a865",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/EmailService.ts": {
+      "size": 883,
+      "modified": "2025-10-02T04:22:16.700Z",
+      "checksum": "348dc37b14b1fd79c72eb32c964e1d277b3354832c8196a196ed0ad3c7223617",
+      "backupChecksum": "348dc37b14b1fd79c72eb32c964e1d277b3354832c8196a196ed0ad3c7223617",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/LawyerSearchService.ts": {
+      "size": 9458,
+      "modified": "2025-10-02T04:22:16.700Z",
+      "checksum": "9c39770ed4ba24d58923356894204500c3efc037b90f72f2dc26ff0d3ef80d45",
+      "backupChecksum": "9c39770ed4ba24d58923356894204500c3efc037b90f72f2dc26ff0d3ef80d45",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/MockPaymentService.ts": {
+      "size": 3349,
+      "modified": "2025-10-02T04:22:16.703Z",
+      "checksum": "4ba1483af01da36e317a7a1fa531927b66df6ed6e331d7d0e8fb16b71ca3fbff",
+      "backupChecksum": "4ba1483af01da36e317a7a1fa531927b66df6ed6e331d7d0e8fb16b71ca3fbff",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/NotificationService.ts": {
+      "size": 4882,
+      "modified": "2025-10-10T04:08:59.294Z",
+      "checksum": "9f39de289adb76c3f300f582dc133b6d92e3dfcb509a8d97baf9df00cc3dfc68",
+      "backupChecksum": "9f39de289adb76c3f300f582dc133b6d92e3dfcb509a8d97baf9df00cc3dfc68",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/OrganizationService.ts": {
+      "size": 33613,
+      "modified": "2025-10-10T06:31:30.677Z",
+      "checksum": "98055fe8b4bda30992fd86630601527ba08875965d9b99184242b0d24ef533eb",
+      "backupChecksum": "98055fe8b4bda30992fd86630601527ba08875965d9b99184242b0d24ef533eb",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/PDFGenerationService.ts": {
+      "size": 21482,
+      "modified": "2025-10-02T04:22:16.703Z",
+      "checksum": "36403d0f3d4d0ec202e220e6db2d34c234184c5768c6c5059ee75cbcb28b0c9e",
+      "backupChecksum": "36403d0f3d4d0ec202e220e6db2d34c234184c5768c6c5059ee75cbcb28b0c9e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/PaymentService.ts": {
+      "size": 29853,
+      "modified": "2025-10-02T04:22:16.703Z",
+      "checksum": "b023b87f801008a017b40da2c46079a2865f68c5d5bbe0d2c18fd047e8e9745e",
+      "backupChecksum": "b023b87f801008a017b40da2c46079a2865f68c5d5bbe0d2c18fd047e8e9745e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/PaymentServiceFactory.ts": {
+      "size": 2728,
+      "modified": "2025-10-10T04:08:59.294Z",
+      "checksum": "40b043848dfdfb8c577019c55e7f747d5f12eebd47659c7335d092452f3c41b6",
+      "backupChecksum": "40b043848dfdfb8c577019c55e7f747d5f12eebd47659c7335d092452f3c41b6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/ReviewService.ts": {
+      "size": 5105,
+      "modified": "2025-10-02T04:22:16.704Z",
+      "checksum": "94efbf98690664c651ced8d908c7266bde91a1652b81f1e518563357de95c545",
+      "backupChecksum": "94efbf98690664c651ced8d908c7266bde91a1652b81f1e518563357de95c545",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/SessionMigrationService.ts": {
+      "size": 1588,
+      "modified": "2025-10-10T06:14:07.850Z",
+      "checksum": "e3b16b63b3855b6c9e50bb78c9a2ecd460bdf80d34ec406e914524b63b95e077",
+      "backupChecksum": "e3b16b63b3855b6c9e50bb78c9a2ecd460bdf80d34ec406e914524b63b95e077",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/SessionService.ts": {
+      "size": 17586,
+      "modified": "2025-10-10T06:38:50.438Z",
+      "checksum": "5f526ed2958ef48482a275a5aff3b3bbe404b5a9462ececcc3bdcc4bca35c243",
+      "backupChecksum": "5f526ed2958ef48482a275a5aff3b3bbe404b5a9462ececcc3bdcc4bca35c243",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/StatusService.ts": {
+      "size": 9878,
+      "modified": "2025-10-10T04:08:59.295Z",
+      "checksum": "34d1c29a1f7cb10777d8b8c3cd2c7c33178a1f39c2864606c03650063f513647",
+      "backupChecksum": "34d1c29a1f7cb10777d8b8c3cd2c7c33178a1f39c2864606c03650063f513647",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/TeamService.ts": {
+      "size": 28669,
+      "modified": "2025-10-10T06:38:50.438Z",
+      "checksum": "f8cef444713381ead6831afd697662c0ebaa58b127420ae766df6ec76467a653",
+      "backupChecksum": "f8cef444713381ead6831afd697662c0ebaa58b127420ae766df6ec76467a653",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/services/ValidationService.ts": {
+      "size": 5937,
+      "modified": "2025-10-02T04:22:16.704Z",
+      "checksum": "9c2b6e4c7f95b22cd06b47469e3a4d30b24c6cca1fe215886926542ba9b06bc6",
+      "backupChecksum": "9c2b6e4c7f95b22cd06b47469e3a4d30b24c6cca1fe215886926542ba9b06bc6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/types/events.ts": {
+      "size": 378,
+      "modified": "2025-10-10T04:08:59.296Z",
+      "checksum": "35c7b9c46ec1a9b63524ad48af76dc0f5d26417a24e03bd359508e0317ff7a24",
+      "backupChecksum": "35c7b9c46ec1a9b63524ad48af76dc0f5d26417a24e03bd359508e0317ff7a24",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/types.ts": {
+      "size": 8275,
+      "modified": "2025-10-10T06:38:50.439Z",
+      "checksum": "4280cd21cf87bd801424a364ab67660c178c73f17f5970c154b0f266c7bd293f",
+      "backupChecksum": "4280cd21cf87bd801424a364ab67660c178c73f17f5970c154b0f266c7bd293f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/cloudflareLocationValidator.ts": {
+      "size": 9033,
+      "modified": "2025-10-02T04:22:16.706Z",
+      "checksum": "cef43d695d67e5a2241f22fdc8da1661a54044c4d11cfdb6588f9e66d4d3e67c",
+      "backupChecksum": "cef43d695d67e5a2241f22fdc8da1661a54044c4d11cfdb6588f9e66d4d3e67c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/contactInfoUtils.ts": {
+      "size": 7124,
+      "modified": "2025-10-10T04:08:59.298Z",
+      "checksum": "a6793fa149bbfb3336bf313c813d4e9ed7baec5744d9b718e26b42ad7c9c1161",
+      "backupChecksum": "a6793fa149bbfb3336bf313c813d4e9ed7baec5744d9b718e26b42ad7c9c1161",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/fileAnalysisUtils.ts": {
+      "size": 10010,
+      "modified": "2025-10-10T04:08:59.298Z",
+      "checksum": "ad980b000a9c772b2a4468991670681159795ee5035b40fa69065adbd421a518",
+      "backupChecksum": "ad980b000a9c772b2a4468991670681159795ee5035b40fa69065adbd421a518",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/lawyerSearchErrors.ts": {
+      "size": 633,
+      "modified": "2025-10-02T04:22:16.707Z",
+      "checksum": "2a081d3ca7e80a9c8468837d722565421e749d571c66baea940a5a6e4baa6a5c",
+      "backupChecksum": "2a081d3ca7e80a9c8468837d722565421e749d571c66baea940a5a6e4baa6a5c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/locationValidator.ts": {
+      "size": 13235,
+      "modified": "2025-10-02T04:22:16.707Z",
+      "checksum": "2b93a1e75c973be1a071ba7d1761c3d3d3e67a49415ef6be9f1fa94a83969473",
+      "backupChecksum": "2b93a1e75c973be1a071ba7d1761c3d3d3e67a49415ef6be9f1fa94a83969473",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/logger.ts": {
+      "size": 4354,
+      "modified": "2025-10-10T04:08:59.299Z",
+      "checksum": "fd683acd4b6966055bb5d70cac358deda23b120443feae2e384eead1663dd4ad",
+      "backupChecksum": "fd683acd4b6966055bb5d70cac358deda23b120443feae2e384eead1663dd4ad",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/logging.ts": {
+      "size": 2815,
+      "modified": "2025-10-10T04:08:59.299Z",
+      "checksum": "41bc837438a989714a1073eaf677785f1606f46594cceabda0fffce1246416d9",
+      "backupChecksum": "41bc837438a989714a1073eaf677785f1606f46594cceabda0fffce1246416d9",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/messageTemplates.ts": {
+      "size": 5052,
+      "modified": "2025-10-02T04:22:16.707Z",
+      "checksum": "a1c118bb8a479d32655f2cf80f4ff77f45e450618c05f5bcd90abd073d461d2b",
+      "backupChecksum": "a1c118bb8a479d32655f2cf80f4ff77f45e450618c05f5bcd90abd073d461d2b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/piiSanitizer.ts": {
+      "size": 12176,
+      "modified": "2025-10-02T04:22:16.707Z",
+      "checksum": "e38d47e5ce69ab4755091f420f9fc63807824876abca088c829cedeaa0d1756f",
+      "backupChecksum": "e38d47e5ce69ab4755091f420f9fc63807824876abca088c829cedeaa0d1756f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/responseUtils.ts": {
+      "size": 1355,
+      "modified": "2025-10-02T04:22:16.708Z",
+      "checksum": "6e64382cb959f16ad702161e3f78a00a9a10049b766b433c33f647139a16846d",
+      "backupChecksum": "6e64382cb959f16ad702161e3f78a00a9a10049b766b433c33f647139a16846d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/retry.ts": {
+      "size": 3266,
+      "modified": "2025-10-02T04:22:16.708Z",
+      "checksum": "67e3e8df7b64c9a328b488e8096534d1512c6ad341f7e2320b84b7878714cfe1",
+      "backupChecksum": "67e3e8df7b64c9a328b488e8096534d1512c6ad341f7e2320b84b7878714cfe1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/safeStringUtils.ts": {
+      "size": 2843,
+      "modified": "2025-10-10T04:08:59.299Z",
+      "checksum": "7ca9ca4cb98f454d52333cdb9715be28d0e10d06a13bec4370826ec81e6bdced",
+      "backupChecksum": "7ca9ca4cb98f454d52333cdb9715be28d0e10d06a13bec4370826ec81e6bdced",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/streaming.ts": {
+      "size": 3991,
+      "modified": "2025-10-07T03:38:30.640Z",
+      "checksum": "5f5d5721ae6c1f71c11670fb631d9cf51b671ca578f333020dd8874309b04433",
+      "backupChecksum": "5f5d5721ae6c1f71c11670fb631d9cf51b671ca578f333020dd8874309b04433",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/toolCallParser.ts": {
+      "size": 11689,
+      "modified": "2025-10-02T04:22:16.708Z",
+      "checksum": "daa4410fbabd680f81c31bf911e3e56825bd74f6990b23bc5e93e5cdab7689c8",
+      "backupChecksum": "daa4410fbabd680f81c31bf911e3e56825bd74f6990b23bc5e93e5cdab7689c8",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/toolConfig.ts": {
+      "size": 679,
+      "modified": "2025-10-02T04:22:16.708Z",
+      "checksum": "7454cbdb8594b6f0242a59da9b168f189f5a4e4cd6943bf74c096c6a1cd4c77e",
+      "backupChecksum": "7454cbdb8594b6f0242a59da9b168f189f5a4e4cd6943bf74c096c6a1cd4c77e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/toolUsageMonitor.ts": {
+      "size": 6418,
+      "modified": "2025-10-02T04:22:16.708Z",
+      "checksum": "3f8c2925336fb73a7f322145891bd7b1a25bbde8b05556143da7dd149eeaf882",
+      "backupChecksum": "3f8c2925336fb73a7f322145891bd7b1a25bbde8b05556143da7dd149eeaf882",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils/validationErrors.ts": {
+      "size": 199,
+      "modified": "2025-10-07T03:38:30.640Z",
+      "checksum": "c86563fc6e23eac648cd6a1b8ff61c44896177b5f431887d2b548288df51f388",
+      "backupChecksum": "c86563fc6e23eac648cd6a1b8ff61c44896177b5f431887d2b548288df51f388",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "worker/utils.ts": {
+      "size": 4008,
+      "modified": "2025-10-10T04:08:59.297Z",
+      "checksum": "35c0766902c5c6b244987e5f7dcd1b2472144d9f0af4298ebd8161605c64c406",
+      "backupChecksum": "35c0766902c5c6b244987e5f7dcd1b2472144d9f0af4298ebd8161605c64c406",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/__tests__/components/LoadingIndicator.test.tsx": {
+      "size": 1316,
+      "modified": "2025-10-02T04:37:39.932Z",
+      "checksum": "6e5ea12d152facf1a7c131bb468837cdab4a92dea462a2b28dd84c193e22ca5c",
+      "backupChecksum": "6e5ea12d152facf1a7c131bb468837cdab4a92dea462a2b28dd84c193e22ca5c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/__tests__/components/ui/validation/useFormValidation.test.ts": {
+      "size": 13469,
+      "modified": "2025-10-06T05:53:28.560Z",
+      "checksum": "c48537b6ff71ebc62172b2f6cca708452b7c0e188ebd2ef315698f8011c4b796",
+      "backupChecksum": "c48537b6ff71ebc62172b2f6cca708452b7c0e188ebd2ef315698f8011c4b796",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/__tests__/setup.ts": {
+      "size": 1217,
+      "modified": "2025-10-02T04:33:44.880Z",
+      "checksum": "1c298e0fe2565ab64471b49229a078dd0fb458d950cef376ec9b44cb54d040b2",
+      "backupChecksum": "1c298e0fe2565ab64471b49229a078dd0fb458d950cef376ec9b44cb54d040b2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/__tests__/utils/conversationalForm.test.ts": {
+      "size": 3062,
+      "modified": "2025-10-10T04:08:59.200Z",
+      "checksum": "efe26f63df416789fdee6b7e7a17d810da0ca504f0cf0d460e4593b40aba9105",
+      "backupChecksum": "efe26f63df416789fdee6b7e7a17d810da0ca504f0cf0d460e4593b40aba9105",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/__tests__/utils/dateTime.test.ts": {
+      "size": 3215,
+      "modified": "2025-10-02T04:33:44.880Z",
+      "checksum": "9424cd3eb3f177c0cc687a64463f696c33b4566fcbd9db79fa5f69cab99bd893",
+      "backupChecksum": "9424cd3eb3f177c0cc687a64463f696c33b4566fcbd9db79fa5f69cab99bd893",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/__tests__/utils/test-utils.tsx": {
+      "size": 1634,
+      "modified": "2025-10-10T04:08:59.201Z",
+      "checksum": "ced5fa05eaabeebb39373027d11658f6e1017a5e2f0318ecf73ece6aa6e2683e",
+      "backupChecksum": "ced5fa05eaabeebb39373027d11658f6e1017a5e2f0318ecf73ece6aa6e2683e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/AIThinkingIndicator.tsx": {
+      "size": 1971,
+      "modified": "2025-10-03T03:57:19.999Z",
+      "checksum": "bb08255e6cfefee4f3e822f0a964db02da5b6831367ab14cc9fbd0ee51f6730b",
+      "backupChecksum": "bb08255e6cfefee4f3e822f0a964db02da5b6831367ab14cc9fbd0ee51f6730b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ActivityTimeline.tsx": {
+      "size": 6176,
+      "modified": "2025-10-10T04:08:59.201Z",
+      "checksum": "adb2e14b969109d0f9f2cf5237f64c25e67e72e5bd840c50fe7b1e4e7baad987",
+      "backupChecksum": "adb2e14b969109d0f9f2cf5237f64c25e67e72e5bd840c50fe7b1e4e7baad987",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/AppLayout.tsx": {
+      "size": 12652,
+      "modified": "2025-10-09T03:30:34.069Z",
+      "checksum": "da6350353ce81f79f103cca242b7947e79c5761339d13f81a9a5017ff0f1ce48",
+      "backupChecksum": "da6350353ce81f79f103cca242b7947e79c5761339d13f81a9a5017ff0f1ce48",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/AudioRecordingUI.tsx": {
+      "size": 14864,
+      "modified": "2025-10-10T04:08:59.202Z",
+      "checksum": "e2267ccce1196ef72f9c1dd7996c9787b3776d27e8a09449a43dd0c41ea7b30a",
+      "backupChecksum": "e2267ccce1196ef72f9c1dd7996c9787b3776d27e8a09449a43dd0c41ea7b30a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/AuthPage.tsx": {
+      "size": 21778,
+      "modified": "2025-10-10T06:38:50.431Z",
+      "checksum": "68d2311c09f3251366892f503ec2ca72a7a1b581b130d95712d3b9cddc90a86a",
+      "backupChecksum": "68d2311c09f3251366892f503ec2ca72a7a1b581b130d95712d3b9cddc90a86a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/BottomNavigation.tsx": {
+      "size": 908,
+      "modified": "2025-10-02T04:37:39.881Z",
+      "checksum": "487fa0060a7bf094b834229b27c67e41fe0a9069a70bd49eeb0c45b6ac410589",
+      "backupChecksum": "487fa0060a7bf094b834229b27c67e41fe0a9069a70bd49eeb0c45b6ac410589",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/CameraModal.tsx": {
+      "size": 6145,
+      "modified": "2025-10-02T04:48:25.951Z",
+      "checksum": "79ffba802d10f0e153cfdd8b2a4ad27e08a43637ad0b262ee1e591b167472f8f",
+      "backupChecksum": "79ffba802d10f0e153cfdd8b2a4ad27e08a43637ad0b262ee1e591b167472f8f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ChatContainer.tsx": {
+      "size": 5485,
+      "modified": "2025-10-10T04:08:59.204Z",
+      "checksum": "37ab88ffccbb46b5a92ee682857269aa7c45bcd8f952249f078ddd42beae305a",
+      "backupChecksum": "37ab88ffccbb46b5a92ee682857269aa7c45bcd8f952249f078ddd42beae305a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ChatMarkdown.tsx": {
+      "size": 1753,
+      "modified": "2025-10-03T03:57:20.000Z",
+      "checksum": "676165af841d900f5ef0e2f98899f1afdfc348783e9ab0e1de8c4ea0cebff1d5",
+      "backupChecksum": "676165af841d900f5ef0e2f98899f1afdfc348783e9ab0e1de8c4ea0cebff1d5",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ContactForm.tsx": {
+      "size": 9831,
+      "modified": "2025-10-10T04:08:59.205Z",
+      "checksum": "588391a0f0f78545b5047228389c81ee419bc24be34efe86f9854d897342b02d",
+      "backupChecksum": "588391a0f0f78545b5047228389c81ee419bc24be34efe86f9854d897342b02d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ContactOptionsModal.tsx": {
+      "size": 8356,
+      "modified": "2025-10-04T13:41:52.522Z",
+      "checksum": "1ef7ba27af34823932c5ab10e2d99918ce664e549c236cc5a1fed9b73334e25c",
+      "backupChecksum": "1ef7ba27af34823932c5ab10e2d99918ce664e549c236cc5a1fed9b73334e25c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/DebugOverlay.tsx": {
+      "size": 8985,
+      "modified": "2025-10-04T13:41:52.523Z",
+      "checksum": "e8103897cdc71d7d9ac0867a248c81a26ff840b048bbca1ed41b30e906ac58a7",
+      "backupChecksum": "e8103897cdc71d7d9ac0867a248c81a26ff840b048bbca1ed41b30e906ac58a7",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/DocumentChecklist.tsx": {
+      "size": 8488,
+      "modified": "2025-10-10T04:08:59.209Z",
+      "checksum": "a5574dea8c522db1e51a184103be00c402f536981456a8ad11f5dfa730b679cf",
+      "backupChecksum": "a5574dea8c522db1e51a184103be00c402f536981456a8ad11f5dfa730b679cf",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/DragDropOverlay.tsx": {
+      "size": 1934,
+      "modified": "2025-10-04T13:41:52.523Z",
+      "checksum": "f7adac9ac03a8a872a1e7dd15a374999092befcab8f6d3761353b3b61aa87fd1",
+      "backupChecksum": "f7adac9ac03a8a872a1e7dd15a374999092befcab8f6d3761353b3b61aa87fd1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ErrorBoundary.tsx": {
+      "size": 1675,
+      "modified": "2025-10-10T04:08:59.214Z",
+      "checksum": "79ad63c279fae7786af93e5dbb010f8bbd6fe44c79be8dde4f8713ed6ab6e26c",
+      "backupChecksum": "79ad63c279fae7786af93e5dbb010f8bbd6fe44c79be8dde4f8713ed6ab6e26c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/FeatureComparisonTable.tsx": {
+      "size": 2517,
+      "modified": "2025-10-02T09:17:17.081Z",
+      "checksum": "0597e6ad55d522fd4cbeafac8f32c9c504ffdeb298e1d35e7efd66f758e4b15a",
+      "backupChecksum": "0597e6ad55d522fd4cbeafac8f32c9c504ffdeb298e1d35e7efd66f758e4b15a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/FeedbackUI.tsx": {
+      "size": 5939,
+      "modified": "2025-10-10T04:08:59.215Z",
+      "checksum": "3b267763acff2db21988a73d3d410a101a1fc2be4d19eb67b48a149751575322",
+      "backupChecksum": "3b267763acff2db21988a73d3d410a101a1fc2be4d19eb67b48a149751575322",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/FileMenu.tsx": {
+      "size": 9033,
+      "modified": "2025-10-04T13:41:52.523Z",
+      "checksum": "f8a7a0ed75e58253c45660e2792824768d41d32d363f2490b6b9562284c984fe",
+      "backupChecksum": "f8a7a0ed75e58253c45660e2792824768d41d32d363f2490b6b9562284c984fe",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/LawyerSearchResults.tsx": {
+      "size": 8962,
+      "modified": "2025-10-02T04:52:30.377Z",
+      "checksum": "b94bcd43b3145875ef81e62590004db0eea9b3d279f488b7f3a783dc0f872fee",
+      "backupChecksum": "b94bcd43b3145875ef81e62590004db0eea9b3d279f488b7f3a783dc0f872fee",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/LazyMedia.tsx": {
+      "size": 4105,
+      "modified": "2025-10-10T04:08:59.217Z",
+      "checksum": "61ac2e3cc4d2953ab2335338c8d49673ad196ab87d293d4da37dfeaf6941244b",
+      "backupChecksum": "61ac2e3cc4d2953ab2335338c8d49673ad196ab87d293d4da37dfeaf6941244b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/LeftSidebar.tsx": {
+      "size": 7295,
+      "modified": "2025-10-04T13:41:52.524Z",
+      "checksum": "db2395a3423973d56356405a26aefa6335ecee5170598423b935b7df3172f73b",
+      "backupChecksum": "db2395a3423973d56356405a26aefa6335ecee5170598423b935b7df3172f73b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/LoadingIndicator.tsx": {
+      "size": 479,
+      "modified": "2025-10-10T04:08:59.218Z",
+      "checksum": "1d5731ff25a099d8deb68e9b263f4fb89c8802da999cfd76fff6102d95708ea4",
+      "backupChecksum": "1d5731ff25a099d8deb68e9b263f4fb89c8802da999cfd76fff6102d95708ea4",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/MatterCanvas.tsx": {
+      "size": 2199,
+      "modified": "2025-10-10T04:08:59.220Z",
+      "checksum": "a5fddcb5b7d2f52522ccf34600b7ba8d6d61bb82e4c94bd000b16a828b552619",
+      "backupChecksum": "a5fddcb5b7d2f52522ccf34600b7ba8d6d61bb82e4c94bd000b16a828b552619",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/MatterProgress.tsx": {
+      "size": 10181,
+      "modified": "2025-10-10T04:08:59.221Z",
+      "checksum": "095dcb915e6089923fc5f02e4809fb85ce6a061210a703116e44588d5e607246",
+      "backupChecksum": "095dcb915e6089923fc5f02e4809fb85ce6a061210a703116e44588d5e607246",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/MatterTab.tsx": {
+      "size": 6603,
+      "modified": "2025-10-02T04:52:30.377Z",
+      "checksum": "a2740c6a1d5d82ba5742d5ecf5d8ea48254b972264074ba01974a890de53ec83",
+      "backupChecksum": "a2740c6a1d5d82ba5742d5ecf5d8ea48254b972264074ba01974a890de53ec83",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/MediaContent.tsx": {
+      "size": 2682,
+      "modified": "2025-10-02T04:48:25.979Z",
+      "checksum": "c700144bb98e647b1ccd98ad20420ffec2539f2bbad3ab9fe2b993f21aadb4db",
+      "backupChecksum": "c700144bb98e647b1ccd98ad20420ffec2539f2bbad3ab9fe2b993f21aadb4db",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/MediaControls.tsx": {
+      "size": 4756,
+      "modified": "2025-10-02T04:48:25.951Z",
+      "checksum": "18a4480976e64d93d7d6cfc9637ff6e15462c837fb5b3379e9d39bcbb55392e5",
+      "backupChecksum": "18a4480976e64d93d7d6cfc9637ff6e15462c837fb5b3379e9d39bcbb55392e5",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/MediaSidebar.tsx": {
+      "size": 7559,
+      "modified": "2025-10-10T04:08:59.222Z",
+      "checksum": "f057331b8cde62cf4b0e9d3ac86d7999a92d880de061b9a074b56502c41822f2",
+      "backupChecksum": "f057331b8cde62cf4b0e9d3ac86d7999a92d880de061b9a074b56502c41822f2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/Message.tsx": {
+      "size": 14291,
+      "modified": "2025-10-10T04:08:59.222Z",
+      "checksum": "2ee96b28ead59bbe3d11d8d0f182b499eead0b210e4d7d22250bc319f23dff6d",
+      "backupChecksum": "2ee96b28ead59bbe3d11d8d0f182b499eead0b210e4d7d22250bc319f23dff6d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/MessageComposer.tsx": {
+      "size": 5962,
+      "modified": "2025-10-10T04:08:59.223Z",
+      "checksum": "7c00e6eee584f3d159ce477087dbf8dc1e77b4236e6c697c3abb0e8249814134",
+      "backupChecksum": "7c00e6eee584f3d159ce477087dbf8dc1e77b4236e6c697c3abb0e8249814134",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/MobileTopNav.tsx": {
+      "size": 1696,
+      "modified": "2025-10-03T01:25:43.726Z",
+      "checksum": "ac288a67cb18e67e1ad66c1d3c2390d607369cbf8f4d3c9ae2bfb026c0d4b197",
+      "backupChecksum": "ac288a67cb18e67e1ad66c1d3c2390d607369cbf8f4d3c9ae2bfb026c0d4b197",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/Modal.tsx": {
+      "size": 7220,
+      "modified": "2025-10-10T04:44:12.456Z",
+      "checksum": "21990ae2d522277ca54fc5d8e1a8ba8e2fcb7d7c6ab33e3ae54fec6f3c28d317",
+      "backupChecksum": "21990ae2d522277ca54fc5d8e1a8ba8e2fcb7d7c6ab33e3ae54fec6f3c28d317",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/PaymentContent.tsx": {
+      "size": 2919,
+      "modified": "2025-10-04T13:41:52.526Z",
+      "checksum": "85eaff89a98d6c74ec6d49f476f556cde8533a98711f4c82e9809689a0eb7752",
+      "backupChecksum": "85eaff89a98d6c74ec6d49f476f556cde8533a98711f4c82e9809689a0eb7752",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/PaymentEmbed.tsx": {
+      "size": 2986,
+      "modified": "2025-10-04T13:41:52.526Z",
+      "checksum": "3465fd56ac6fe1efe4c656ebef7c10062b641c196b13c68cb5cfec95c1e7dffc",
+      "backupChecksum": "3465fd56ac6fe1efe4c656ebef7c10062b641c196b13c68cb5cfec95c1e7dffc",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/PricingComparison.tsx": {
+      "size": 4808,
+      "modified": "2025-10-10T04:08:59.224Z",
+      "checksum": "c1695c1b3531036b85e6d8ba8ffbbae4d28a0622b983be7c9e64e8741a1598f0",
+      "backupChecksum": "c1695c1b3531036b85e6d8ba8ffbbae4d28a0622b983be7c9e64e8741a1598f0",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/PricingModal.tsx": {
+      "size": 18179,
+      "modified": "2025-10-10T04:26:45.574Z",
+      "checksum": "cefb16d8f3afd6dcf61273868b6a3b7496e72502d78ac4f396f71f12c53be44e",
+      "backupChecksum": "cefb16d8f3afd6dcf61273868b6a3b7496e72502d78ac4f396f71f12c53be44e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/PrivacySupportSidebar.tsx": {
+      "size": 1733,
+      "modified": "2025-10-02T04:52:30.377Z",
+      "checksum": "db913d8710d28a4e4e0ecfff43d642e3a430512b635356c9fa732c3970aa9648",
+      "backupChecksum": "db913d8710d28a4e4e0ecfff43d642e3a430512b635356c9fa732c3970aa9648",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/SEOHead.tsx": {
+      "size": 3323,
+      "modified": "2025-10-04T13:41:52.528Z",
+      "checksum": "2e88bcd6041c8ba5795e6592d7d5625e830b8f06d418ad8097c50d1c4f9b14a3",
+      "backupChecksum": "2e88bcd6041c8ba5795e6592d7d5625e830b8f06d418ad8097c50d1c4f9b14a3",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/TeamNotFound.tsx": {
+      "size": 2271,
+      "modified": "2025-10-04T13:41:52.528Z",
+      "checksum": "3e08ebf268b0abb3bd56fc7076e898520e12693b5e5d2d4e41d3247fa7db02fa",
+      "backupChecksum": "3e08ebf268b0abb3bd56fc7076e898520e12693b5e5d2d4e41d3247fa7db02fa",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/TeamProfile.tsx": {
+      "size": 2094,
+      "modified": "2025-10-06T05:53:28.562Z",
+      "checksum": "a817a30ac229b994f863769a07db8f4f85d1911eb0e591cc3287b4cd274a691c",
+      "backupChecksum": "a817a30ac229b994f863769a07db8f4f85d1911eb0e591cc3287b4cd274a691c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/Toast.tsx": {
+      "size": 3436,
+      "modified": "2025-10-02T09:17:17.084Z",
+      "checksum": "c99f7fb351549267642b0e5559c8bcc99b00225ee18e5f51aa1d015aceccd822",
+      "backupChecksum": "c99f7fb351549267642b0e5559c8bcc99b00225ee18e5f51aa1d015aceccd822",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ToastContainer.tsx": {
+      "size": 745,
+      "modified": "2025-10-02T04:37:39.809Z",
+      "checksum": "5549d1d26c6218bdd4108033b97ba3e7c77eade060d8e0e3b5ca3e44d1dd6e4e",
+      "backupChecksum": "5549d1d26c6218bdd4108033b97ba3e7c77eade060d8e0e3b5ca3e44d1dd6e4e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/UserProfile.tsx": {
+      "size": 11707,
+      "modified": "2025-10-10T06:38:50.431Z",
+      "checksum": "00fbf8329e812d286bc40d54482b2bde7d61dc23b5037fcf6c5a6cc88482a0ca",
+      "backupChecksum": "00fbf8329e812d286bc40d54482b2bde7d61dc23b5037fcf6c5a6cc88482a0ca",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/VirtualMessageList.tsx": {
+      "size": 7173,
+      "modified": "2025-10-10T04:08:59.225Z",
+      "checksum": "3ea08588ce3a40f797b3e178b776a744e59778eb048338c9ebe074c3018eacad",
+      "backupChecksum": "3ea08588ce3a40f797b3e178b776a744e59778eb048338c9ebe074c3018eacad",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/onboarding/OnboardingModal.tsx": {
+      "size": 5184,
+      "modified": "2025-10-10T04:08:59.225Z",
+      "checksum": "285601270a3cd8213fedc47c20d4db6b540b4b616fc549000900fbeb91eedb93",
+      "backupChecksum": "285601270a3cd8213fedc47c20d4db6b540b4b616fc549000900fbeb91eedb93",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/onboarding/PersonalInfoStep.tsx": {
+      "size": 6427,
+      "modified": "2025-10-06T05:53:28.563Z",
+      "checksum": "f3c3e3af75a349811f26bcb7563cfa4660172643f5141e4353f868f621c65fb5",
+      "backupChecksum": "f3c3e3af75a349811f26bcb7563cfa4660172643f5141e4353f868f621c65fb5",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/onboarding/UseCaseStep.tsx": {
+      "size": 7290,
+      "modified": "2025-10-06T05:53:28.563Z",
+      "checksum": "5998e2906e5d0e105a086f3de2eaded05dc9ec98825f16f2bced562e022ecb4c",
+      "backupChecksum": "5998e2906e5d0e105a086f3de2eaded05dc9ec98825f16f2bced562e022ecb4c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/onboarding/WelcomeModal.tsx": {
+      "size": 3882,
+      "modified": "2025-10-03T06:11:01.352Z",
+      "checksum": "6e7b81c7da6d4f4f8dcf5755eb45beefe44cb598f4e3e3e854071360f95040a6",
+      "backupChecksum": "6e7b81c7da6d4f4f8dcf5755eb45beefe44cb598f4e3e3e854071360f95040a6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/onboarding/WelcomeStep.tsx": {
+      "size": 4809,
+      "modified": "2025-10-03T06:11:01.353Z",
+      "checksum": "c35aa5d3a2a0b7a1f4d9e342da0e3c40d79accfb4e24334a496f4c2a4dd55cb1",
+      "backupChecksum": "c35aa5d3a2a0b7a1f4d9e342da0e3c40d79accfb4e24334a496f4c2a4dd55cb1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/SettingsLayout.tsx": {
+      "size": 4222,
+      "modified": "2025-10-04T13:41:52.531Z",
+      "checksum": "305bd867357a7574407df717c0c09503cbc920c159e40ccc4f49c8844ba5ebfb",
+      "backupChecksum": "305bd867357a7574407df717c0c09503cbc920c159e40ccc4f49c8844ba5ebfb",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/SettingsPage.tsx": {
+      "size": 9005,
+      "modified": "2025-10-04T13:41:52.531Z",
+      "checksum": "b3ab4885bcd57ec08f9657ef5a804b6740439a3cc55919696f7589bca94c0ca4",
+      "backupChecksum": "b3ab4885bcd57ec08f9657ef5a804b6740439a3cc55919696f7589bca94c0ca4",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/hooks/useSettingsData.ts": {
+      "size": 3127,
+      "modified": "2025-10-02T04:32:23.559Z",
+      "checksum": "6e312b5915ad7a6a772305f8b85225e011973ad99f8d346d6b4ff90bc4f64e61",
+      "backupChecksum": "6e312b5915ad7a6a772305f8b85225e011973ad99f8d346d6b4ff90bc4f64e61",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/hooks/useSettingsNavigation.ts": {
+      "size": 2627,
+      "modified": "2025-10-04T13:41:52.532Z",
+      "checksum": "aef796e14d9fc2b21245210fcff965cf6bed3c575f28b02d33d952c71806944f",
+      "backupChecksum": "aef796e14d9fc2b21245210fcff965cf6bed3c575f28b02d33d952c71806944f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/hooks/useUserProfile.ts": {
+      "size": 8732,
+      "modified": "2025-10-02T04:32:23.559Z",
+      "checksum": "01b274375b2bd5975f7e4ee3c63c67ffddf57a9a707aa4e9ef0ed35cd5981433",
+      "backupChecksum": "01b274375b2bd5975f7e4ee3c63c67ffddf57a9a707aa4e9ef0ed35cd5981433",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/pages/AccountPage.tsx": {
+      "size": 27664,
+      "modified": "2025-10-10T04:08:59.226Z",
+      "checksum": "793ea5334e83058dcede125bd740899d898d9a0d9338f2cc549341904de1f19d",
+      "backupChecksum": "793ea5334e83058dcede125bd740899d898d9a0d9338f2cc549341904de1f19d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/pages/GeneralPage.tsx": {
+      "size": 8166,
+      "modified": "2025-10-10T04:08:59.226Z",
+      "checksum": "57f31caaa9e98d850a4bceae8690213314f25c7fff44de326a4394771cc54a7b",
+      "backupChecksum": "57f31caaa9e98d850a4bceae8690213314f25c7fff44de326a4394771cc54a7b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/pages/HelpPage.tsx": {
+      "size": 8424,
+      "modified": "2025-10-04T13:41:52.533Z",
+      "checksum": "551a6f08da034d5ebdf67f9647f1c26af59567b92accbd127a205c51a06ce90e",
+      "backupChecksum": "551a6f08da034d5ebdf67f9647f1c26af59567b92accbd127a205c51a06ce90e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/pages/MFAEnrollmentPage.tsx": {
+      "size": 9339,
+      "modified": "2025-10-02T10:27:29.386Z",
+      "checksum": "666de7985b1197f7b1a49b2c015a5572dbfd019bd2bb0753c5272b3acf087440",
+      "backupChecksum": "666de7985b1197f7b1a49b2c015a5572dbfd019bd2bb0753c5272b3acf087440",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/pages/NotificationsPage.tsx": {
+      "size": 8127,
+      "modified": "2025-10-10T04:08:59.227Z",
+      "checksum": "ac56ba03fcbf51f38f3dcb9cc7cd43a831930b23295de6b6ec0e384879fa7c43",
+      "backupChecksum": "ac56ba03fcbf51f38f3dcb9cc7cd43a831930b23295de6b6ec0e384879fa7c43",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/settings/pages/SecurityPage.tsx": {
+      "size": 17740,
+      "modified": "2025-10-10T04:08:59.228Z",
+      "checksum": "e9bc2e23a96fc90669cf588bbfe809e91520a47c9aa642adbff143c2aa34d184",
+      "backupChecksum": "e9bc2e23a96fc90669cf588bbfe809e91520a47c9aa642adbff143c2aa34d184",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/Accordion.tsx": {
+      "size": 6255,
+      "modified": "2025-10-02T04:41:26.618Z",
+      "checksum": "448cb83910657f8a5d778f657529d7406346a4aaa179b65b66b8be81d64d0f93",
+      "backupChecksum": "448cb83910657f8a5d778f657529d7406346a4aaa179b65b66b8be81d64d0f93",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/Button.tsx": {
+      "size": 4696,
+      "modified": "2025-10-10T04:08:59.228Z",
+      "checksum": "edd7a4e09a152673977434aa95c15a2fbc8e7273aa44373e15594b6207932054",
+      "backupChecksum": "edd7a4e09a152673977434aa95c15a2fbc8e7273aa44373e15594b6207932054",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/Logo.tsx": {
+      "size": 910,
+      "modified": "2025-10-03T06:11:01.353Z",
+      "checksum": "1be198c5e8c7a73d6f5f4415f076edb5f9214506c64f9e185f3d60b99cc31cb0",
+      "backupChecksum": "1be198c5e8c7a73d6f5f4415f076edb5f9214506c64f9e185f3d60b99cc31cb0",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/SidebarNavigation.tsx": {
+      "size": 13031,
+      "modified": "2025-10-03T01:25:43.731Z",
+      "checksum": "d93379465717f5acff91482f21f191e4d9c4ad980c833d19cd6ee06cb4d17cda",
+      "backupChecksum": "d93379465717f5acff91482f21f191e4d9c4ad980c833d19cd6ee06cb4d17cda",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/accessibility/ariaLabels.ts": {
+      "size": 3592,
+      "modified": "2025-10-06T05:53:28.565Z",
+      "checksum": "3e979dbccb91f527446032b07ab1cc9685f8a91224271d019f83313a075caf5f",
+      "backupChecksum": "3e979dbccb91f527446032b07ab1cc9685f8a91224271d019f83313a075caf5f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/accessibility/index.ts": {
+      "size": 30,
+      "modified": "2025-10-06T05:53:28.565Z",
+      "checksum": "4ab886fae2f909d0b9e6e19fac8178bc689b589d80cc3303d31c116b49cef6c8",
+      "backupChecksum": "4ab886fae2f909d0b9e6e19fac8178bc689b589d80cc3303d31c116b49cef6c8",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/dropdown/DropdownMenu.tsx": {
+      "size": 2668,
+      "modified": "2025-10-06T05:53:28.565Z",
+      "checksum": "0937eb52fedfc3764957a560d188b36fdf4f42cc31337d4ef4711b5527614098",
+      "backupChecksum": "0937eb52fedfc3764957a560d188b36fdf4f42cc31337d4ef4711b5527614098",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/dropdown/DropdownMenuCheckboxItem.tsx": {
+      "size": 2012,
+      "modified": "2025-10-06T05:53:28.566Z",
+      "checksum": "07f32f1616fbc1e13fc3e2f5b8c35c3f9bb41760004e3da9068378c1cb77ae6c",
+      "backupChecksum": "07f32f1616fbc1e13fc3e2f5b8c35c3f9bb41760004e3da9068378c1cb77ae6c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/dropdown/DropdownMenuContent.tsx": {
+      "size": 2347,
+      "modified": "2025-10-06T05:53:28.566Z",
+      "checksum": "84b6b6f7bc0005ee02e6cf6bb620e7cfb97d300abeac37b20af35764ff5e449b",
+      "backupChecksum": "84b6b6f7bc0005ee02e6cf6bb620e7cfb97d300abeac37b20af35764ff5e449b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/dropdown/DropdownMenuItem.tsx": {
+      "size": 863,
+      "modified": "2025-10-06T05:53:28.566Z",
+      "checksum": "f83e00808b4427f9880727540cf554fa911b83936c486ae3a70dbdea48973559",
+      "backupChecksum": "f83e00808b4427f9880727540cf554fa911b83936c486ae3a70dbdea48973559",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/dropdown/DropdownMenuTrigger.tsx": {
+      "size": 4760,
+      "modified": "2025-10-10T04:08:59.229Z",
+      "checksum": "e72d17349ce2c108a6e937131a74d0093a685aa28073073d652d91584d2477d3",
+      "backupChecksum": "e72d17349ce2c108a6e937131a74d0093a685aa28073073d652d91584d2477d3",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/dropdown/index.ts": {
+      "size": 641,
+      "modified": "2025-10-06T05:53:28.566Z",
+      "checksum": "47f50ee440270954a411b8fa611984efbb53125848ac99a4ee82814f263b7054",
+      "backupChecksum": "47f50ee440270954a411b8fa611984efbb53125848ac99a4ee82814f263b7054",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/form/Form.tsx": {
+      "size": 8343,
+      "modified": "2025-10-06T05:53:28.567Z",
+      "checksum": "a048b2b425fa04a82bf07a7de67fc082937df0abb81d8fbf6df6bee1a8ed0c5c",
+      "backupChecksum": "a048b2b425fa04a82bf07a7de67fc082937df0abb81d8fbf6df6bee1a8ed0c5c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/form/FormControl.tsx": {
+      "size": 357,
+      "modified": "2025-10-06T05:53:28.567Z",
+      "checksum": "0bc7148ab9d7ba4aa625ae0fea8d17e3a741d0fa040b3f8ce52dd170f9edced8",
+      "backupChecksum": "0bc7148ab9d7ba4aa625ae0fea8d17e3a741d0fa040b3f8ce52dd170f9edced8",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/form/FormDescription.tsx": {
+      "size": 420,
+      "modified": "2025-10-06T05:53:28.568Z",
+      "checksum": "703c4ba36cefcbc09133dabd7c4f8a5ada47f766650cab0872d5ce02ab0d197a",
+      "backupChecksum": "703c4ba36cefcbc09133dabd7c4f8a5ada47f766650cab0872d5ce02ab0d197a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/form/FormField.tsx": {
+      "size": 1089,
+      "modified": "2025-10-06T05:53:28.568Z",
+      "checksum": "72f449d65f43627d47b91de2233c7374649ae8916abbaec7bd2345d0b90ce14c",
+      "backupChecksum": "72f449d65f43627d47b91de2233c7374649ae8916abbaec7bd2345d0b90ce14c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/form/FormItem.tsx": {
+      "size": 349,
+      "modified": "2025-10-06T05:53:28.568Z",
+      "checksum": "74675ad48e5585e7efe764de00b1ff2ec3f59667f3d60d22056e9b47e379d289",
+      "backupChecksum": "74675ad48e5585e7efe764de00b1ff2ec3f59667f3d60d22056e9b47e379d289",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/form/FormLabel.tsx": {
+      "size": 610,
+      "modified": "2025-10-06T05:53:28.568Z",
+      "checksum": "a2e73264e59b52c20ea69cabc2a752f60fb6e278c414fb1d4e330c86d783fe18",
+      "backupChecksum": "a2e73264e59b52c20ea69cabc2a752f60fb6e278c414fb1d4e330c86d783fe18",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/form/FormMessage.tsx": {
+      "size": 839,
+      "modified": "2025-10-06T05:53:28.568Z",
+      "checksum": "f8290ebc769bbf5964910ad3d8e1836a3a7357b0e1cee6cabf3487c518391305",
+      "backupChecksum": "f8290ebc769bbf5964910ad3d8e1836a3a7357b0e1cee6cabf3487c518391305",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/form/index.ts": {
+      "size": 738,
+      "modified": "2025-10-06T05:53:28.568Z",
+      "checksum": "ade1490a2e9bb9b35889b597a480f31e787d57201a90bf19cfb302f1922983b6",
+      "backupChecksum": "ade1490a2e9bb9b35889b597a480f31e787d57201a90bf19cfb302f1922983b6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/i18n/index.ts": {
+      "size": 69,
+      "modified": "2025-10-06T05:53:28.568Z",
+      "checksum": "43aa7ce422bef4ec4571ddb96a5168e40034e4e49c0c4f8e4626a11fa60fa892",
+      "backupChecksum": "43aa7ce422bef4ec4571ddb96a5168e40034e4e49c0c4f8e4626a11fa60fa892",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/i18n/translationKeys.ts": {
+      "size": 2800,
+      "modified": "2025-10-06T05:53:28.569Z",
+      "checksum": "cff6e93571bca915f5f451899642b1e9a06ac987721710b4d85fe3df69d3b1fe",
+      "backupChecksum": "cff6e93571bca915f5f451899642b1e9a06ac987721710b4d85fe3df69d3b1fe",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/i18n/useTranslation.ts": {
+      "size": 1240,
+      "modified": "2025-10-10T04:08:59.230Z",
+      "checksum": "38b769261d286778b8bef181deae4e9264b4a21b8ac825fb14697d3e3d22c426",
+      "backupChecksum": "38b769261d286778b8bef181deae4e9264b4a21b8ac825fb14697d3e3d22c426",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/index.ts": {
+      "size": 339,
+      "modified": "2025-10-06T05:53:28.569Z",
+      "checksum": "6a1da89cf0bb36e36e2058957783b3ff41d3b8a86cb530808951d9b697317fe4",
+      "backupChecksum": "6a1da89cf0bb36e36e2058957783b3ff41d3b8a86cb530808951d9b697317fe4",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/Checkbox.tsx": {
+      "size": 4662,
+      "modified": "2025-10-10T04:08:59.230Z",
+      "checksum": "dd14b44d727dca125dbe03fda09697a0cdda192f6a750fb7fcfb5f83fcdbfe3e",
+      "backupChecksum": "dd14b44d727dca125dbe03fda09697a0cdda192f6a750fb7fcfb5f83fcdbfe3e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/DatePicker.tsx": {
+      "size": 3335,
+      "modified": "2025-10-06T05:53:28.569Z",
+      "checksum": "9ee1f7edeed513f09f902fe247b04cd5116831ef8796bb00eba5eecb21a17637",
+      "backupChecksum": "9ee1f7edeed513f09f902fe247b04cd5116831ef8796bb00eba5eecb21a17637",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/EmailInput.tsx": {
+      "size": 5721,
+      "modified": "2025-10-06T05:53:28.569Z",
+      "checksum": "45e2e86760a578173f82a2f1745662c2cab60d62bb9d3e710d6cbffbc939210c",
+      "backupChecksum": "45e2e86760a578173f82a2f1745662c2cab60d62bb9d3e710d6cbffbc939210c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/FileInput.tsx": {
+      "size": 8511,
+      "modified": "2025-10-06T05:53:28.570Z",
+      "checksum": "db233a51ea034309a635ce1a6ff79acc15166e4bbbe784093ce3388cca1f2ef7",
+      "backupChecksum": "db233a51ea034309a635ce1a6ff79acc15166e4bbbe784093ce3388cca1f2ef7",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/Input.tsx": {
+      "size": 5308,
+      "modified": "2025-10-06T05:53:28.570Z",
+      "checksum": "67d83ff1817341c16a7db3ea3c2085fe0bf9219013da5792ab5e3b8baeceb813",
+      "backupChecksum": "67d83ff1817341c16a7db3ea3c2085fe0bf9219013da5792ab5e3b8baeceb813",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/LocationInput.tsx": {
+      "size": 4117,
+      "modified": "2025-10-06T05:53:28.570Z",
+      "checksum": "413003f0a39f8e42e1f01873ea5affee516ff8407501ecbf0987eb5df0c239f5",
+      "backupChecksum": "413003f0a39f8e42e1f01873ea5affee516ff8407501ecbf0987eb5df0c239f5",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/NumberInput.tsx": {
+      "size": 7559,
+      "modified": "2025-10-06T05:53:28.570Z",
+      "checksum": "9b4998e908ea291af13d9a755b17bc3ec4af89833357e0f72446c73d17d95550",
+      "backupChecksum": "9b4998e908ea291af13d9a755b17bc3ec4af89833357e0f72446c73d17d95550",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/PasswordInput.tsx": {
+      "size": 7016,
+      "modified": "2025-10-06T05:53:28.570Z",
+      "checksum": "c11964bed09ec92cb38163e49cee35e8d9d766a691c8f7bd166c6100017f74bd",
+      "backupChecksum": "c11964bed09ec92cb38163e49cee35e8d9d766a691c8f7bd166c6100017f74bd",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/PhoneInput.tsx": {
+      "size": 11746,
+      "modified": "2025-10-06T05:53:28.570Z",
+      "checksum": "14d36389339cd8143cebc93891b01f74947afe39566f16dd2452a2621989b012",
+      "backupChecksum": "14d36389339cd8143cebc93891b01f74947afe39566f16dd2452a2621989b012",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/RadioGroup.tsx": {
+      "size": 4829,
+      "modified": "2025-10-06T05:53:28.571Z",
+      "checksum": "f494658b3080ae22383858e97b257ec5e7b4e83a130cfc7717779663bb35dbb9",
+      "backupChecksum": "f494658b3080ae22383858e97b257ec5e7b4e83a130cfc7717779663bb35dbb9",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/Select.tsx": {
+      "size": 11689,
+      "modified": "2025-10-06T05:53:28.571Z",
+      "checksum": "ff1a5eb725bebafe4bf2d4e790f54ac62cacd51403dad79ca3f586d8a06c9974",
+      "backupChecksum": "ff1a5eb725bebafe4bf2d4e790f54ac62cacd51403dad79ca3f586d8a06c9974",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/Switch.tsx": {
+      "size": 2144,
+      "modified": "2025-10-06T05:53:28.571Z",
+      "checksum": "d8d78c3ab983ff8cd64c092f2c53780739f9dc0edc565c19732de7cfe03fcb3d",
+      "backupChecksum": "d8d78c3ab983ff8cd64c092f2c53780739f9dc0edc565c19732de7cfe03fcb3d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/Textarea.tsx": {
+      "size": 7524,
+      "modified": "2025-10-06T05:53:28.571Z",
+      "checksum": "a4ec580a7cbf3810fbbf2fd7764953763bb602e4298233d6cc0782bbdb3bca4f",
+      "backupChecksum": "a4ec580a7cbf3810fbbf2fd7764953763bb602e4298233d6cc0782bbdb3bca4f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/URLInput.tsx": {
+      "size": 11619,
+      "modified": "2025-10-10T04:08:59.231Z",
+      "checksum": "c221dd6cb566a733e40a4d03e45e098a4e2959ef646f90d8cebf02220d8c775a",
+      "backupChecksum": "c221dd6cb566a733e40a4d03e45e098a4e2959ef646f90d8cebf02220d8c775a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/input/index.ts": {
+      "size": 1320,
+      "modified": "2025-10-06T05:53:28.571Z",
+      "checksum": "3880e7daf31ed81d828bba497f28b629d2dd413f06361f69da6e32b5f110c22a",
+      "backupChecksum": "3880e7daf31ed81d828bba497f28b629d2dd413f06361f69da6e32b5f110c22a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/layout/FormItem.tsx": {
+      "size": 741,
+      "modified": "2025-10-06T05:53:28.572Z",
+      "checksum": "e30df170ad7a38b148b3282a22dd9f5c3c9292e8a2daefb57a80de8c10ceb6b6",
+      "backupChecksum": "e30df170ad7a38b148b3282a22dd9f5c3c9292e8a2daefb57a80de8c10ceb6b6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/layout/IconContainer.tsx": {
+      "size": 611,
+      "modified": "2025-10-06T05:53:28.572Z",
+      "checksum": "a53f60a391a4c2a5bb43f27eb12fc468c6b7666b13bea0948b54d60eeba6fcb3",
+      "backupChecksum": "a53f60a391a4c2a5bb43f27eb12fc468c6b7666b13bea0948b54d60eeba6fcb3",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/layout/LoadingSpinner.tsx": {
+      "size": 897,
+      "modified": "2025-10-06T05:53:28.572Z",
+      "checksum": "63b40e8b619de5f50de958bbbca7d41ca50e7cf73b87838ea1a84dd1fd415cd0",
+      "backupChecksum": "63b40e8b619de5f50de958bbbca7d41ca50e7cf73b87838ea1a84dd1fd415cd0",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/layout/SectionDivider.tsx": {
+      "size": 562,
+      "modified": "2025-10-06T05:53:28.572Z",
+      "checksum": "763d3dfc607951552707ed81cd85c5559f862c3ecb583937a69c9631442ebe25",
+      "backupChecksum": "763d3dfc607951552707ed81cd85c5559f862c3ecb583937a69c9631442ebe25",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/layout/index.ts": {
+      "size": 433,
+      "modified": "2025-10-06T05:53:28.572Z",
+      "checksum": "9a3990aa2e9f0c18f8160af11c449282efbd6d9711595833a24b1bd61a178785",
+      "backupChecksum": "9a3990aa2e9f0c18f8160af11c449282efbd6d9711595833a24b1bd61a178785",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/atoms/FileIcon.tsx": {
+      "size": 1027,
+      "modified": "2025-10-10T04:08:59.231Z",
+      "checksum": "b43d191596e1d631ce097df7fd0663bd7d5d3517ef1182cef53e723239b2bc90",
+      "backupChecksum": "b43d191596e1d631ce097df7fd0663bd7d5d3517ef1182cef53e723239b2bc90",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/atoms/ProgressRing.tsx": {
+      "size": 2122,
+      "modified": "2025-10-10T04:08:59.231Z",
+      "checksum": "46669e9f460276112a13697520805c12895d60cd8e80cb7b5137cdd0465e736d",
+      "backupChecksum": "46669e9f460276112a13697520805c12895d60cd8e80cb7b5137cdd0465e736d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/atoms/RemoveButton.tsx": {
+      "size": 1463,
+      "modified": "2025-10-10T04:08:59.231Z",
+      "checksum": "2d14cd6033dc7ae8343618f5ee22d556ceebb73523534e5eaaa74de9eabc7eb8",
+      "backupChecksum": "2d14cd6033dc7ae8343618f5ee22d556ceebb73523534e5eaaa74de9eabc7eb8",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/atoms/StatusOverlay.tsx": {
+      "size": 1834,
+      "modified": "2025-10-10T04:08:59.231Z",
+      "checksum": "1f9c6613cac341aa2cbd8b75b677327062ccf8ec27cd7f69127ea59d84f89ea9",
+      "backupChecksum": "1f9c6613cac341aa2cbd8b75b677327062ccf8ec27cd7f69127ea59d84f89ea9",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/molecules/FileCard.tsx": {
+      "size": 3239,
+      "modified": "2025-10-10T04:08:59.232Z",
+      "checksum": "db7ede10d2b844df180e22dc9dd800fe032ffd31ccf104e4d0cf1eb4a1f054c0",
+      "backupChecksum": "db7ede10d2b844df180e22dc9dd800fe032ffd31ccf104e4d0cf1eb4a1f054c0",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/molecules/FileIconWithStatus.tsx": {
+      "size": 2030,
+      "modified": "2025-10-10T04:08:59.232Z",
+      "checksum": "435bad07c14cb91ae9a9ec6f6a0e9dfe482332d99a88bc459dd4af5b2068fe2d",
+      "backupChecksum": "435bad07c14cb91ae9a9ec6f6a0e9dfe482332d99a88bc459dd4af5b2068fe2d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/molecules/FileInfo.tsx": {
+      "size": 997,
+      "modified": "2025-10-10T04:08:59.232Z",
+      "checksum": "1aab51febe38a2512865546c1e01c535761688866c1f167bd1a44e49ab832d1b",
+      "backupChecksum": "1aab51febe38a2512865546c1e01c535761688866c1f167bd1a44e49ab832d1b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/molecules/FileUploadStatus.tsx": {
+      "size": 1996,
+      "modified": "2025-10-10T04:08:59.232Z",
+      "checksum": "7b30a52b2cd7f1ba2a8c278658358902bf97a141cbaf8bf6921b3ae6405e2ba2",
+      "backupChecksum": "7b30a52b2cd7f1ba2a8c278658358902bf97a141cbaf8bf6921b3ae6405e2ba2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/upload/organisms/FileDisplay.tsx": {
+      "size": 1504,
+      "modified": "2025-10-10T04:08:59.232Z",
+      "checksum": "e2b3a89191c05f357995bf488051063160ddd359eae5daa001764ac496fe7f00",
+      "backupChecksum": "e2b3a89191c05f357995bf488051063160ddd359eae5daa001764ac496fe7f00",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/validation/defaultValues.ts": {
+      "size": 2311,
+      "modified": "2025-10-06T05:53:28.572Z",
+      "checksum": "1b56c4d1baabe3645ebc668ca2ee871d41bc3167462a5406bc1a1803eb901062",
+      "backupChecksum": "1b56c4d1baabe3645ebc668ca2ee871d41bc3167462a5406bc1a1803eb901062",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/validation/index.ts": {
+      "size": 97,
+      "modified": "2025-10-06T05:53:28.572Z",
+      "checksum": "4232becf37dcdab4d9fcfbf87fac752b2f09187598c336fe655231a9370985e7",
+      "backupChecksum": "4232becf37dcdab4d9fcfbf87fac752b2f09187598c336fe655231a9370985e7",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/validation/schemas.ts": {
+      "size": 4190,
+      "modified": "2025-10-06T05:53:28.573Z",
+      "checksum": "b7abb369655ad4af691e1d9245262983157c5a447921181cf4948494c8c1a4fb",
+      "backupChecksum": "b7abb369655ad4af691e1d9245262983157c5a447921181cf4948494c8c1a4fb",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/components/ui/validation/useFormValidation.ts": {
+      "size": 3804,
+      "modified": "2025-10-10T04:08:59.233Z",
+      "checksum": "f4c1af4e2bbb15bc33546fd9e69d05cacadbea0b83022b93ed4dfdad8dbcc8f3",
+      "backupChecksum": "f4c1af4e2bbb15bc33546fd9e69d05cacadbea0b83022b93ed4dfdad8dbcc8f3",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/config/api.ts": {
+      "size": 1460,
+      "modified": "2025-10-02T04:33:44.891Z",
+      "checksum": "f4aba2fa7436a2631028cf232f7866623530394de6a23007dbbfe77acea53749",
+      "backupChecksum": "f4aba2fa7436a2631028cf232f7866623530394de6a23007dbbfe77acea53749",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/config/features.ts": {
+      "size": 3483,
+      "modified": "2025-10-03T03:57:20.001Z",
+      "checksum": "401a3283eb89ca1f61e43cc4ceaa59dfcebe88a5ddca3f965155cd8c8f0a4e90",
+      "backupChecksum": "401a3283eb89ca1f61e43cc4ceaa59dfcebe88a5ddca3f965155cd8c8f0a4e90",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/contexts/ToastContext.tsx": {
+      "size": 1219,
+      "modified": "2025-10-02T04:37:39.779Z",
+      "checksum": "52b09ab8bddb8154efb1d507ea0eb4ff54138603ebff1bf86399b653fa0758ad",
+      "backupChecksum": "52b09ab8bddb8154efb1d507ea0eb4ff54138603ebff1bf86399b653fa0758ad",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useActivity.ts": {
+      "size": 6859,
+      "modified": "2025-10-10T04:08:59.240Z",
+      "checksum": "65e48438951144ba909a1218e5b3dee630a5859b37b18dd3e51d634cd2529c3f",
+      "backupChecksum": "65e48438951144ba909a1218e5b3dee630a5859b37b18dd3e51d634cd2529c3f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useChatScroll.ts": {
+      "size": 5311,
+      "modified": "2025-10-04T13:41:52.539Z",
+      "checksum": "c5237b9f25497a181dd7de07d619d72af23c956bf58e95da177d038ed5cafbd2",
+      "backupChecksum": "c5237b9f25497a181dd7de07d619d72af23c956bf58e95da177d038ed5cafbd2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useChatSession.ts": {
+      "size": 4586,
+      "modified": "2025-10-02T04:22:16.661Z",
+      "checksum": "3c4a1a2d2c48fd7c6dae644eaeda7936b10818062e0199a250db2fe34716644d",
+      "backupChecksum": "3c4a1a2d2c48fd7c6dae644eaeda7936b10818062e0199a250db2fe34716644d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useFileUpload.ts": {
+      "size": 11669,
+      "modified": "2025-10-10T04:08:59.242Z",
+      "checksum": "1df6d2fc4649a98d4d318c60e470006eb586eeae5521fcaa749998ca113d1260",
+      "backupChecksum": "1df6d2fc4649a98d4d318c60e470006eb586eeae5521fcaa749998ca113d1260",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useMatterState.ts": {
+      "size": 7298,
+      "modified": "2025-10-02T04:22:16.662Z",
+      "checksum": "648fc9bfbf7251edc024bcc80d0864dc16fe454ac38e0e887f71fbd6b7bb699b",
+      "backupChecksum": "648fc9bfbf7251edc024bcc80d0864dc16fe454ac38e0e887f71fbd6b7bb699b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useMessageHandling.ts": {
+      "size": 23118,
+      "modified": "2025-10-10T04:08:59.246Z",
+      "checksum": "d5771cdf2efcd5f61ca5709212bef8e204588582d7f9ab9579a649061d1fbacf",
+      "backupChecksum": "d5771cdf2efcd5f61ca5709212bef8e204588582d7f9ab9579a649061d1fbacf",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useTeamConfig.ts": {
+      "size": 8137,
+      "modified": "2025-10-10T04:08:59.247Z",
+      "checksum": "b1bc73d99620a32e687554b1cb9622e18d20bed9a59f476e8c3414ca668bd7fe",
+      "backupChecksum": "b1bc73d99620a32e687554b1cb9622e18d20bed9a59f476e8c3414ca668bd7fe",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useTheme.ts": {
+      "size": 2390,
+      "modified": "2025-10-04T13:41:52.539Z",
+      "checksum": "3a40d4f796c65fa87786b8b5e2bda2c6e9a25399a13e125c8b87e7358368f0e2",
+      "backupChecksum": "3a40d4f796c65fa87786b8b5e2bda2c6e9a25399a13e125c8b87e7358368f0e2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useToast.ts": {
+      "size": 1366,
+      "modified": "2025-10-02T04:22:16.665Z",
+      "checksum": "79084ed6684f866f139b644c3920ebec02f489bfc1ef96b5425db69cd82945b6",
+      "backupChecksum": "79084ed6684f866f139b644c3920ebec02f489bfc1ef96b5425db69cd82945b6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/hooks/useUniqueId.ts": {
+      "size": 469,
+      "modified": "2025-10-06T05:53:28.573Z",
+      "checksum": "65aadae44cf0a550b5a2edd25e570bb665be7fb43a2318196fa3a2f941dceef6",
+      "backupChecksum": "65aadae44cf0a550b5a2edd25e570bb665be7fb43a2318196fa3a2f941dceef6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/i18n/index.ts": {
+      "size": 3341,
+      "modified": "2025-10-07T03:38:30.629Z",
+      "checksum": "718aafb04dbd7fdfc85c4d455e438abb10e234ae1e91c6d9318f7d87ab72172f",
+      "backupChecksum": "718aafb04dbd7fdfc85c4d455e438abb10e234ae1e91c6d9318f7d87ab72172f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/index.tsx": {
+      "size": 16562,
+      "modified": "2025-10-10T06:38:50.432Z",
+      "checksum": "fbd3948b3545c7fe65b5654a7ea2ad40deaf68e4a9de84c98916ae2b9182ad1e",
+      "backupChecksum": "fbd3948b3545c7fe65b5654a7ea2ad40deaf68e4a9de84c98916ae2b9182ad1e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/lib/authClient.ts": {
+      "size": 590,
+      "modified": "2025-10-10T05:12:24.454Z",
+      "checksum": "59a365a94b25061b9f4d04cac945f7874ab12f398a420960e304e43beddaef18",
+      "backupChecksum": "59a365a94b25061b9f4d04cac945f7874ab12f398a420960e304e43beddaef18",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/de/auth.json": {
+      "size": 2498,
+      "modified": "2025-10-07T03:38:30.629Z",
+      "checksum": "1395279db3c1d47d8240232de8a681da2a74aa893f8c5cfb87f47f47fd95390d",
+      "backupChecksum": "1395279db3c1d47d8240232de8a681da2a74aa893f8c5cfb87f47f47fd95390d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/de/common.json": {
+      "size": 2635,
+      "modified": "2025-10-07T03:38:30.630Z",
+      "checksum": "947f8d382da81d0373c2fbbcdd65cd197f3a5fa779ffd32fb06c74f552dd8aa6",
+      "backupChecksum": "947f8d382da81d0373c2fbbcdd65cd197f3a5fa779ffd32fb06c74f552dd8aa6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/de/profile.json": {
+      "size": 427,
+      "modified": "2025-10-07T03:38:30.630Z",
+      "checksum": "73f674c43aa068dbcaab4469f935b6f2eee14911163ffebe5d9e3bdf3c25467a",
+      "backupChecksum": "73f674c43aa068dbcaab4469f935b6f2eee14911163ffebe5d9e3bdf3c25467a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/de/settings.json": {
+      "size": 13124,
+      "modified": "2025-10-07T03:38:30.630Z",
+      "checksum": "d317f94bcd41704524acda2d6e51e53d75bbde3206ea994a2f838fd71a277ef2",
+      "backupChecksum": "d317f94bcd41704524acda2d6e51e53d75bbde3206ea994a2f838fd71a277ef2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/en/auth.json": {
+      "size": 2381,
+      "modified": "2025-10-07T03:38:30.630Z",
+      "checksum": "54a2402efe4a230a3a4753811bee36265de29f31363f3b54d36c31146cfbaee8",
+      "backupChecksum": "54a2402efe4a230a3a4753811bee36265de29f31363f3b54d36c31146cfbaee8",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/en/common.json": {
+      "size": 4979,
+      "modified": "2025-10-06T05:53:28.573Z",
+      "checksum": "8d0c08f3a15b0ce1f94448bb97a92f56cac5a736d5f701227885d838123cfd21",
+      "backupChecksum": "8d0c08f3a15b0ce1f94448bb97a92f56cac5a736d5f701227885d838123cfd21",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/en/profile.json": {
+      "size": 405,
+      "modified": "2025-10-07T03:38:30.630Z",
+      "checksum": "43db0f03760e801576630ad91d000a1538efb7bdd3e68b7721c716590ea74629",
+      "backupChecksum": "43db0f03760e801576630ad91d000a1538efb7bdd3e68b7721c716590ea74629",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/en/settings.json": {
+      "size": 11733,
+      "modified": "2025-10-06T05:53:28.574Z",
+      "checksum": "a0e99e78f92f2efe9f0581706270dfbb3166e64d0a72a413aefda506b8ad2e47",
+      "backupChecksum": "a0e99e78f92f2efe9f0581706270dfbb3166e64d0a72a413aefda506b8ad2e47",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/es/auth.json": {
+      "size": 2639,
+      "modified": "2025-10-07T03:38:30.630Z",
+      "checksum": "57c881e3643d4db5510142310f56fa857c7bf86828f879016a17954e390531c4",
+      "backupChecksum": "57c881e3643d4db5510142310f56fa857c7bf86828f879016a17954e390531c4",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/es/common.json": {
+      "size": 5087,
+      "modified": "2025-10-06T06:12:33.831Z",
+      "checksum": "c4f26da6c2176ec438d55a09fa933c24edda375ca1e5b4b67e6530c5629dec69",
+      "backupChecksum": "c4f26da6c2176ec438d55a09fa933c24edda375ca1e5b4b67e6530c5629dec69",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/es/profile.json": {
+      "size": 452,
+      "modified": "2025-10-07T03:38:30.631Z",
+      "checksum": "f5c3c689787f461186e61d256e3b04247d5ff663512185f63974991882b55ec6",
+      "backupChecksum": "f5c3c689787f461186e61d256e3b04247d5ff663512185f63974991882b55ec6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/es/settings.json": {
+      "size": 12497,
+      "modified": "2025-10-07T03:38:30.631Z",
+      "checksum": "cf90b19626a26beb03994eddc34f64dc177d15942e2cfe8be18a8d09f7a2860c",
+      "backupChecksum": "cf90b19626a26beb03994eddc34f64dc177d15942e2cfe8be18a8d09f7a2860c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/fr/auth.json": {
+      "size": 2446,
+      "modified": "2025-10-07T03:38:30.631Z",
+      "checksum": "8bb7fa4f498f72c93f3c4168bdde23846c8fbde85dea2d1d0fe629bcef60a648",
+      "backupChecksum": "8bb7fa4f498f72c93f3c4168bdde23846c8fbde85dea2d1d0fe629bcef60a648",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/fr/common.json": {
+      "size": 2595,
+      "modified": "2025-10-07T03:38:30.631Z",
+      "checksum": "5b423b98db291b32efc75a89028320e7e9a2e2353f1743e8c59e0f8f37808262",
+      "backupChecksum": "5b423b98db291b32efc75a89028320e7e9a2e2353f1743e8c59e0f8f37808262",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/fr/profile.json": {
+      "size": 472,
+      "modified": "2025-10-07T03:38:30.632Z",
+      "checksum": "97cd53d428da2cb6383ec7bf372b54710ec5e30c4b9da1cb46796c087bed43d0",
+      "backupChecksum": "97cd53d428da2cb6383ec7bf372b54710ec5e30c4b9da1cb46796c087bed43d0",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/fr/settings.json": {
+      "size": 13510,
+      "modified": "2025-10-07T03:38:30.632Z",
+      "checksum": "85165c546b0fd0dd24961ac98927fb2dc13fd5188fce4384b375972d9bd9fd0a",
+      "backupChecksum": "85165c546b0fd0dd24961ac98927fb2dc13fd5188fce4384b375972d9bd9fd0a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/ja/auth.json": {
+      "size": 2807,
+      "modified": "2025-10-07T03:38:30.632Z",
+      "checksum": "9b6c6e938a7fd71892879a6f5e65bf9dbb3521d7f4e66e4872ef51ecfd369d34",
+      "backupChecksum": "9b6c6e938a7fd71892879a6f5e65bf9dbb3521d7f4e66e4872ef51ecfd369d34",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/ja/common.json": {
+      "size": 2890,
+      "modified": "2025-10-07T03:38:30.632Z",
+      "checksum": "367c958501d384d1c6cc5bdb805edd6ed5747d7b117b5aed539daa47c29115ea",
+      "backupChecksum": "367c958501d384d1c6cc5bdb805edd6ed5747d7b117b5aed539daa47c29115ea",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/ja/profile.json": {
+      "size": 522,
+      "modified": "2025-10-07T03:38:30.632Z",
+      "checksum": "640a581f160bf100aed4c5d8e907ac4b3bdc5ff75b2b730a3ed97dc9ebd3d274",
+      "backupChecksum": "640a581f160bf100aed4c5d8e907ac4b3bdc5ff75b2b730a3ed97dc9ebd3d274",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/ja/settings.json": {
+      "size": 14600,
+      "modified": "2025-10-07T03:38:30.633Z",
+      "checksum": "8db7f141f4bdb709c906c59f3b015cfc7837f7d936b9f98c1b4c6d4744d6e4ca",
+      "backupChecksum": "8db7f141f4bdb709c906c59f3b015cfc7837f7d936b9f98c1b4c6d4744d6e4ca",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/vi/auth.json": {
+      "size": 2655,
+      "modified": "2025-10-07T03:38:30.633Z",
+      "checksum": "5d91de1cb6dcca9a4d529e487c1ec054c1d23d01f52c9174969a2ac39c5a706b",
+      "backupChecksum": "5d91de1cb6dcca9a4d529e487c1ec054c1d23d01f52c9174969a2ac39c5a706b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/vi/common.json": {
+      "size": 2954,
+      "modified": "2025-10-07T03:38:30.633Z",
+      "checksum": "f31229ca2817ec2c91760adb64ac98ceef121796ba7e1bbc4fe1f07a6e22850d",
+      "backupChecksum": "f31229ca2817ec2c91760adb64ac98ceef121796ba7e1bbc4fe1f07a6e22850d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/vi/profile.json": {
+      "size": 481,
+      "modified": "2025-10-07T03:38:30.633Z",
+      "checksum": "f31bd3fd656d8c4789fd8f26a70ad1d3f55e4ebc66e877675f25f32a37b6b9ca",
+      "backupChecksum": "f31bd3fd656d8c4789fd8f26a70ad1d3f55e4ebc66e877675f25f32a37b6b9ca",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/vi/settings.json": {
+      "size": 13855,
+      "modified": "2025-10-07T03:38:30.633Z",
+      "checksum": "19956a1b588dc49847aacefa3433fdf56c9f17ad926faea17420e97b9116ad14",
+      "backupChecksum": "19956a1b588dc49847aacefa3433fdf56c9f17ad926faea17420e97b9116ad14",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/zh/auth.json": {
+      "size": 2153,
+      "modified": "2025-10-07T03:38:30.633Z",
+      "checksum": "defd159b989abf4bf6c50076416663910ce9f9a618bbf4606ba6bf9a2f9fa634",
+      "backupChecksum": "defd159b989abf4bf6c50076416663910ce9f9a618bbf4606ba6bf9a2f9fa634",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/zh/common.json": {
+      "size": 2282,
+      "modified": "2025-10-07T03:38:30.633Z",
+      "checksum": "b4ab839c750d1241c0749035e91030c6f76498e55943d13a5a56249d914e85d4",
+      "backupChecksum": "b4ab839c750d1241c0749035e91030c6f76498e55943d13a5a56249d914e85d4",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/zh/profile.json": {
+      "size": 414,
+      "modified": "2025-10-07T03:38:30.633Z",
+      "checksum": "1573089ce2e3d10f9ee954ea52f7f2e5615c523800f29d65378ae58b213a0393",
+      "backupChecksum": "1573089ce2e3d10f9ee954ea52f7f2e5615c523800f29d65378ae58b213a0393",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/locales/zh/settings.json": {
+      "size": 11235,
+      "modified": "2025-10-07T03:38:30.634Z",
+      "checksum": "4cea07d1022ed511de48f2db0535201b447c98ab4b7e6ff5862a8c72159e3941",
+      "backupChecksum": "4cea07d1022ed511de48f2db0535201b447c98ab4b7e6ff5862a8c72159e3941",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/services/upload/UploadTransport.ts": {
+      "size": 6906,
+      "modified": "2025-10-10T04:08:59.253Z",
+      "checksum": "6c15b7ab6aabfc8994d392d4800c06d50eb2b1d80c7d7c0bd599fdd037af01fb",
+      "backupChecksum": "6c15b7ab6aabfc8994d392d4800c06d50eb2b1d80c7d7c0bd599fdd037af01fb",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/types/matter.ts": {
+      "size": 896,
+      "modified": "2025-10-02T04:22:16.668Z",
+      "checksum": "fe9831dcb6e16615fcaf22e24dde6cb412571e00f09bdec160c2e3a22d44c634",
+      "backupChecksum": "fe9831dcb6e16615fcaf22e24dde6cb412571e00f09bdec160c2e3a22d44c634",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/__tests__/deepEqual.test.ts": {
+      "size": 2310,
+      "modified": "2025-10-06T05:53:28.575Z",
+      "checksum": "a477633d224498eed73668f8ce421a2dfb8d639a6fa4438a4d0e2eb71af8bafc",
+      "backupChecksum": "a477633d224498eed73668f8ce421a2dfb8d639a6fa4438a4d0e2eb71af8bafc",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/__tests__/errorHandler.test.ts": {
+      "size": 7468,
+      "modified": "2025-10-10T04:08:59.254Z",
+      "checksum": "109b0654783dce2f61697e892cd548469cdbf3c6d0929410d4d727baff28481a",
+      "backupChecksum": "109b0654783dce2f61697e892cd548469cdbf3c6d0929410d4d727baff28481a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/cn.ts": {
+      "size": 197,
+      "modified": "2025-10-02T09:17:17.095Z",
+      "checksum": "12089aa6dd8723dc48af52e11618a4077ff06a708d87faed9839d8f77855e66f",
+      "backupChecksum": "12089aa6dd8723dc48af52e11618a4077ff06a708d87faed9839d8f77855e66f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/constants.ts": {
+      "size": 290,
+      "modified": "2025-10-02T09:17:17.095Z",
+      "checksum": "069d49a8f2206522ba5a39c11beacad420b615cfb22f8dac5d91d1f1251fa483",
+      "backupChecksum": "069d49a8f2206522ba5a39c11beacad420b615cfb22f8dac5d91d1f1251fa483",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/conversationalForm.ts": {
+      "size": 5731,
+      "modified": "2025-10-02T04:33:44.891Z",
+      "checksum": "79949848bd91da2a42ebd3d22f8806f203d19e65f2439dffa8336ace9006720d",
+      "backupChecksum": "79949848bd91da2a42ebd3d22f8806f203d19e65f2439dffa8336ace9006720d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/dateTime.ts": {
+      "size": 2087,
+      "modified": "2025-10-02T04:27:23.808Z",
+      "checksum": "f440d9552ee72691a6338e6ad83192f22c6af8f41d3762e4f3a3eed021d7836b",
+      "backupChecksum": "f440d9552ee72691a6338e6ad83192f22c6af8f41d3762e4f3a3eed021d7836b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/debounce.ts": {
+      "size": 1417,
+      "modified": "2025-10-10T04:08:59.258Z",
+      "checksum": "88b002236b55dd141b82b0d271ab4aea7430521d2ff0b5063ddb465ed1abf15f",
+      "backupChecksum": "88b002236b55dd141b82b0d271ab4aea7430521d2ff0b5063ddb465ed1abf15f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/deepEqual.ts": {
+      "size": 3601,
+      "modified": "2025-10-06T05:53:28.575Z",
+      "checksum": "087fc0c2aaed3241246f905c5d83aeb96db8918acd8cc9f4a8cd8b6a9c6f5ec1",
+      "backupChecksum": "087fc0c2aaed3241246f905c5d83aeb96db8918acd8cc9f4a8cd8b6a9c6f5ec1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/environment.ts": {
+      "size": 1291,
+      "modified": "2025-10-10T04:08:59.261Z",
+      "checksum": "0cfdcf288bc35b60591602c93d047034d3a248467482f27f410577e5f2faa5c0",
+      "backupChecksum": "0cfdcf288bc35b60591602c93d047034d3a248467482f27f410577e5f2faa5c0",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/errorHandler.ts": {
+      "size": 6861,
+      "modified": "2025-10-10T04:08:59.262Z",
+      "checksum": "6413be310711fc76fb0572a8812c338003e61ae66870ab799df130565c92e8fa",
+      "backupChecksum": "6413be310711fc76fb0572a8812c338003e61ae66870ab799df130565c92e8fa",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/fileTypeUtils.ts": {
+      "size": 5986,
+      "modified": "2025-10-10T04:08:59.263Z",
+      "checksum": "a211f2f58056108bcef81fa2a7ac16adedac95d586fd2bffea2a051150453192",
+      "backupChecksum": "a211f2f58056108bcef81fa2a7ac16adedac95d586fd2bffea2a051150453192",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/forms.ts": {
+      "size": 4359,
+      "modified": "2025-10-10T04:08:59.264Z",
+      "checksum": "8b404232b29c69b227fefbf0cb3da31bbd57d8663955e81680b3bddae48ee097",
+      "backupChecksum": "8b404232b29c69b227fefbf0cb3da31bbd57d8663955e81680b3bddae48ee097",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/keyboard.ts": {
+      "size": 1435,
+      "modified": "2025-10-02T04:22:16.668Z",
+      "checksum": "7bc574af4ce2e9c834274f84f79d51e1cad5550688585f57ec54aebfb4d8ba06",
+      "backupChecksum": "7bc574af4ce2e9c834274f84f79d51e1cad5550688585f57ec54aebfb4d8ba06",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/matterAnalysis.ts": {
+      "size": 5786,
+      "modified": "2025-10-10T04:08:59.264Z",
+      "checksum": "e80c581939a17db1d19efbd1a05a6701dc8e5bd138835f17a863857047199a4f",
+      "backupChecksum": "e80c581939a17db1d19efbd1a05a6701dc8e5bd138835f17a863857047199a4f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/mediaAggregation.ts": {
+      "size": 4369,
+      "modified": "2025-10-10T04:08:59.265Z",
+      "checksum": "8d5f1b189429c88d742bffa8e6d960463301cdf48189825ca3183b413fd67517",
+      "backupChecksum": "8d5f1b189429c88d742bffa8e6d960463301cdf48189825ca3183b413fd67517",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/mockPricingData.ts": {
+      "size": 12095,
+      "modified": "2025-10-10T04:08:59.266Z",
+      "checksum": "fb6b9fdc317cc8c097912110804d75566167ff46e9fddb9989f4cf2fcc58a8b1",
+      "backupChecksum": "fb6b9fdc317cc8c097912110804d75566167ff46e9fddb9989f4cf2fcc58a8b1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/mockUserData.ts": {
+      "size": 19936,
+      "modified": "2025-10-10T04:08:59.267Z",
+      "checksum": "ac361af71c05f192722b17628ca493da2a6ea7557d4cc433f76875ab8c5e4317",
+      "backupChecksum": "ac361af71c05f192722b17628ca493da2a6ea7557d4cc433f76875ab8c5e4317",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/navigation.ts": {
+      "size": 1154,
+      "modified": "2025-10-04T13:41:52.540Z",
+      "checksum": "7ce72bfca1ef96e293af9484980bd7d971cd4918b21155b47a1afb46852fbe0a",
+      "backupChecksum": "7ce72bfca1ef96e293af9484980bd7d971cd4918b21155b47a1afb46852fbe0a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "src/utils/urlValidation.ts": {
+      "size": 1148,
+      "modified": "2025-10-02T04:22:16.669Z",
+      "checksum": "c952caed719d836b1983ca801dabdf0dc9ac28a0b5a86af83799701d8f3c5ce2",
+      "backupChecksum": "c952caed719d836b1983ca801dabdf0dc9ac28a0b5a86af83799701d8f3c5ce2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/e2e/auth.spec.ts": {
+      "size": 6450,
+      "modified": "2025-10-10T06:14:07.854Z",
+      "checksum": "48df24eb4d4023017049af03ccb36fd7db6487ab9e7621d23d55adb9c8147ade",
+      "backupChecksum": "48df24eb4d4023017049af03ccb36fd7db6487ab9e7621d23d55adb9c8147ade",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/helpers/index.ts": {
+      "size": 93,
+      "modified": "2025-10-02T04:22:16.670Z",
+      "checksum": "31444c5463e18f7df580091bc0e2cf9800fb83f4aa1cf6ad6081eb112c5dfa89",
+      "backupChecksum": "31444c5463e18f7df580091bc0e2cf9800fb83f4aa1cf6ad6081eb112c5dfa89",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/agent-route.test.ts": {
+      "size": 16063,
+      "modified": "2025-10-02T04:22:16.672Z",
+      "checksum": "4558074f7a3b699fc5a881878aad1c0b34af3a5933edc2c62556dd6001476bf6",
+      "backupChecksum": "4558074f7a3b699fc5a881878aad1c0b34af3a5933edc2c62556dd6001476bf6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/blawby-api.test.ts": {
+      "size": 15000,
+      "modified": "2025-10-02T04:22:16.673Z",
+      "checksum": "d124e28e74cf0b6eafc002ccc247d5e1c06094fe312a6b45ac4790abaaa0212a",
+      "backupChecksum": "d124e28e74cf0b6eafc002ccc247d5e1c06094fe312a6b45ac4790abaaa0212a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/case-creation.test.ts": {
+      "size": 7523,
+      "modified": "2025-10-02T04:33:44.891Z",
+      "checksum": "de12779b8716b8d47e941ec405207326d9928f66bd24a55ae070f74e3fde4e4d",
+      "backupChecksum": "de12779b8716b8d47e941ec405207326d9928f66bd24a55ae070f74e3fde4e4d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/chat.test.ts": {
+      "size": 3930,
+      "modified": "2025-10-02T04:33:44.891Z",
+      "checksum": "dff7b4a9aaf0bb17f4670097b832176caca5130bcf95e3192d140dd58f4507a1",
+      "backupChecksum": "dff7b4a9aaf0bb17f4670097b832176caca5130bcf95e3192d140dd58f4507a1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/file-upload.test.ts": {
+      "size": 6665,
+      "modified": "2025-10-02T04:33:44.892Z",
+      "checksum": "5df634bff5972d21b4d195533be63de4c96b85df773ce3053ce0eb68fd4b79fa",
+      "backupChecksum": "5df634bff5972d21b4d195533be63de4c96b85df773ce3053ce0eb68fd4b79fa",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/legal-intake-analysis.test.ts": {
+      "size": 10166,
+      "modified": "2025-10-02T04:22:16.673Z",
+      "checksum": "b4d841e3d305688a1a28c9cafa8faf815f3c46cf803318007668f28b44b3d6f6",
+      "backupChecksum": "b4d841e3d305688a1a28c9cafa8faf815f3c46cf803318007668f28b44b3d6f6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/payment.test.ts": {
+      "size": 6056,
+      "modified": "2025-10-02T04:22:16.673Z",
+      "checksum": "066d4900361163fc4c3cd571e85e36efc5029aa7b44e56ed4568a5df1e9aa5c5",
+      "backupChecksum": "066d4900361163fc4c3cd571e85e36efc5029aa7b44e56ed4568a5df1e9aa5c5",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/real-api-integration.test.ts": {
+      "size": 13876,
+      "modified": "2025-10-07T03:38:30.635Z",
+      "checksum": "d6d80ddc0711be1f7c2261e330761acc54c8a7fce4ccc11ed7f10c6306e7c840",
+      "backupChecksum": "d6d80ddc0711be1f7c2261e330761acc54c8a7fce4ccc11ed7f10c6306e7c840",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/api/teams.test.ts": {
+      "size": 12626,
+      "modified": "2025-10-10T04:08:59.269Z",
+      "checksum": "69ede4ea294cf95542a0dd17d51a1c40d530fba8814d4d3f45e42501693cf061",
+      "backupChecksum": "69ede4ea294cf95542a0dd17d51a1c40d530fba8814d4d3f45e42501693cf061",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/integration/services/TeamService.integration.test.ts": {
+      "size": 18328,
+      "modified": "2025-10-10T04:08:59.269Z",
+      "checksum": "1b0aba4ac3c0afa08fba21f3069390e29b240f9c8d061ad3f39dac7e0e383b41",
+      "backupChecksum": "1b0aba4ac3c0afa08fba21f3069390e29b240f9c8d061ad3f39dac7e0e383b41",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/setup-node.ts": {
+      "size": 1206,
+      "modified": "2025-10-02T04:22:16.674Z",
+      "checksum": "3d268273fd312b7bc672aa4e89f46aa67381e08e019213b71a8bb7494f5445fc",
+      "backupChecksum": "3d268273fd312b7bc672aa4e89f46aa67381e08e019213b71a8bb7494f5445fc",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/setup-real-api.ts": {
+      "size": 5644,
+      "modified": "2025-10-02T04:22:16.675Z",
+      "checksum": "b615c3475e2cea3002f1bfac6d468e1bece6454e19e67f5d9925fcc2027df0cb",
+      "backupChecksum": "b615c3475e2cea3002f1bfac6d468e1bece6454e19e67f5d9925fcc2027df0cb",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/setup-workers.ts": {
+      "size": 8278,
+      "modified": "2025-10-02T04:22:16.675Z",
+      "checksum": "ed336a30a3ac5c01b04c1f1e1adb2ee654a9c68529b5af871ec063ecc5a71ff7",
+      "backupChecksum": "ed336a30a3ac5c01b04c1f1e1adb2ee654a9c68529b5af871ec063ecc5a71ff7",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/setup.ts": {
+      "size": 1248,
+      "modified": "2025-10-02T04:22:16.675Z",
+      "checksum": "dfdf98374ed3693f850592151bdb86b40b7a053d4080951f6781debbee89e22d",
+      "backupChecksum": "dfdf98374ed3693f850592151bdb86b40b7a053d4080951f6781debbee89e22d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/unit/middleware/cors.test.ts": {
+      "size": 12507,
+      "modified": "2025-10-07T03:38:30.637Z",
+      "checksum": "a80d42b78339500d18039ab9711e9caf7bd7fcf6ee5577f1d0af4e211c6c5c94",
+      "backupChecksum": "a80d42b78339500d18039ab9711e9caf7bd7fcf6ee5577f1d0af4e211c6c5c94",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/unit/middleware/rateLimit.test.ts": {
+      "size": 2984,
+      "modified": "2025-10-02T04:22:16.676Z",
+      "checksum": "d27fc619ff1d195fe0cefdad2b6ae8c344cbb8cc5a3bd2f82aefcd2802c3610b",
+      "backupChecksum": "d27fc619ff1d195fe0cefdad2b6ae8c344cbb8cc5a3bd2f82aefcd2802c3610b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/unit/utils/dateTime.test.ts": {
+      "size": 3222,
+      "modified": "2025-10-02T04:22:16.676Z",
+      "checksum": "305fed6905596de06e50458b73d819122176a279367616599f3fdf82cff8446d",
+      "backupChecksum": "305fed6905596de06e50458b73d819122176a279367616599f3fdf82cff8446d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/unit/utils/piiSanitizer.test.ts": {
+      "size": 11825,
+      "modified": "2025-10-02T04:22:16.676Z",
+      "checksum": "8b978130dee53990e014017f4111f43b03ef15b996f5185faa7394c521c28e23",
+      "backupChecksum": "8b978130dee53990e014017f4111f43b03ef15b996f5185faa7394c521c28e23",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/unit/utils/retry.test.ts": {
+      "size": 5188,
+      "modified": "2025-10-02T04:22:16.677Z",
+      "checksum": "d78e2dd434a4e7aa920d3501edfef12bfdbd1a39eaef02626174473816fa0ae2",
+      "backupChecksum": "d78e2dd434a4e7aa920d3501edfef12bfdbd1a39eaef02626174473816fa0ae2",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/unit/utils/streaming.test.ts": {
+      "size": 5582,
+      "modified": "2025-10-03T03:57:20.003Z",
+      "checksum": "5cf71c9e440df7a84dd1b7f72f96ab3dc80557d1321f2b274eb187f1fc22fbe0",
+      "backupChecksum": "5cf71c9e440df7a84dd1b7f72f96ab3dc80557d1321f2b274eb187f1fc22fbe0",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/unit/worker/locationValidator.test.ts": {
+      "size": 4503,
+      "modified": "2025-10-02T04:22:16.677Z",
+      "checksum": "66d68b8ebb309ed8d0f5ed39b3f8962044c0e06bb0a007f1123ce09a7019e766",
+      "backupChecksum": "66d68b8ebb309ed8d0f5ed39b3f8962044c0e06bb0a007f1123ce09a7019e766",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tests/unit/worker/services/PDFGenerationService.test.ts": {
+      "size": 8429,
+      "modified": "2025-10-02T04:22:16.678Z",
+      "checksum": "f4553f5f9c8b011d0af50bfb81c43be6dc87669d10a410b0bac5fc293326ac7f",
+      "backupChecksum": "f4553f5f9c8b011d0af50bfb81c43be6dc87669d10a410b0bac5fc293326ac7f",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/00000000_base_schema.sql": {
+      "size": 11520,
+      "modified": "2025-10-10T04:08:59.196Z",
+      "checksum": "a7954bcf40529b7a6c56991ce640a804ebe060727732f8089b0d601b4b7a3fe1",
+      "backupChecksum": "a7954bcf40529b7a6c56991ce640a804ebe060727732f8089b0d601b4b7a3fe1",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/add_ai_provider_defaults.sql": {
+      "size": 912,
+      "modified": "2025-10-10T04:08:59.196Z",
+      "checksum": "08495824033f51d5496d8daca52cc1e82d03962db6c7fd85d867c7e7dd719a65",
+      "backupChecksum": "08495824033f51d5496d8daca52cc1e82d03962db6c7fd85d867c7e7dd719a65",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/add_better_auth_organization.sql": {
+      "size": 1877,
+      "modified": "2025-10-10T05:02:49.766Z",
+      "checksum": "c70be47a932de5d6394b85f79639c9218b1b49b7c32a249f4683b487ff5f0d48",
+      "backupChecksum": "c70be47a932de5d6394b85f79639c9218b1b49b7c32a249f4683b487ff5f0d48",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/add_nc_legal_jurisdiction.sql": {
+      "size": 711,
+      "modified": "2025-10-09T06:59:44.925Z",
+      "checksum": "96a60b0fc170aeb5e385107864ff94f52f3715223931ce50e208f5d8c997ef45",
+      "backupChecksum": "96a60b0fc170aeb5e385107864ff94f52f3715223931ce50e208f5d8c997ef45",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/add_payment_history.sql": {
+      "size": 1517,
+      "modified": "2025-10-09T06:59:44.925Z",
+      "checksum": "01ca057ebc9078f08699dbb5c314658f39eecbc0b6a4365c534df0ee4b8b261d",
+      "backupChecksum": "01ca057ebc9078f08699dbb5c314658f39eecbc0b6a4365c534df0ee4b8b261d",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/add_priority_column_from_urgency.sql": {
+      "size": 1286,
+      "modified": "2025-10-09T06:59:44.926Z",
+      "checksum": "899cf1709d54c0f94d2b171024998ab90b1efbeafc331810346d23b6801d9b7a",
+      "backupChecksum": "899cf1709d54c0f94d2b171024998ab90b1efbeafc331810346d23b6801d9b7a",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/add_team_api_tokens.sql": {
+      "size": 974,
+      "modified": "2025-10-09T06:59:44.927Z",
+      "checksum": "e0c70e4f7bc2fac7f9aff15ec996a2a4fa9cbf7a69d66fa86a6005325742ce8b",
+      "backupChecksum": "e0c70e4f7bc2fac7f9aff15ec996a2a4fa9cbf7a69d66fa86a6005325742ce8b",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/add_user_columns.sql": {
+      "size": 773,
+      "modified": "2025-10-10T05:02:36.873Z",
+      "checksum": "6dd3345bc4e9cdaa470bb96b22c656f90ce548e586e786cf73749deb9b0f2ed6",
+      "backupChecksum": "6dd3345bc4e9cdaa470bb96b22c656f90ce548e586e786cf73749deb9b0f2ed6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/migrate_teams_to_organizations.sql": {
+      "size": 6034,
+      "modified": "2025-10-10T06:26:29.920Z",
+      "checksum": "5e9400c60319d91814effd16ffc143ac7d9280b35af169b8cef66399567be031",
+      "backupChecksum": "5e9400c60319d91814effd16ffc143ac7d9280b35af169b8cef66399567be031",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/remove_scheduling_tables.sql": {
+      "size": 374,
+      "modified": "2025-10-09T06:59:44.927Z",
+      "checksum": "759f5e8849e2b344998e43479d9ad9e36d1ed69ff39337ff4a11a272792edac9",
+      "backupChecksum": "759f5e8849e2b344998e43479d9ad9e36d1ed69ff39337ff4a11a272792edac9",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "migrations/update_blawby_ai_services.sql": {
+      "size": 3398,
+      "modified": "2025-10-09T06:59:44.927Z",
+      "checksum": "536136c96323730c3149d1018dbf01b7b71b04d0cda0e6c1ed0b039ef3f4ef50",
+      "backupChecksum": "536136c96323730c3149d1018dbf01b7b71b04d0cda0e6c1ed0b039ef3f4ef50",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "scripts/audit-teams-migration.js": {
+      "size": 13245,
+      "modified": "2025-10-10T06:36:10.477Z",
+      "checksum": "e89394c828cb55b155a5004eb935caefdbf37134ea6996adcc971f78a13b48d9",
+      "backupChecksum": "e89394c828cb55b155a5004eb935caefdbf37134ea6996adcc971f78a13b48d9",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "scripts/backup-before-migration.js": {
+      "size": 10919,
+      "modified": "2025-10-10T06:37:26.178Z",
+      "checksum": "0b914a93035dc57df14369bf8e6469365394d2782a75ffedc982582f2a195cc6",
+      "backupChecksum": "0b914a93035dc57df14369bf8e6469365394d2782a75ffedc982582f2a195cc6",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "scripts/dev.sh": {
+      "size": 1422,
+      "modified": "2025-10-02T04:33:44.880Z",
+      "checksum": "48b77c55eb214b90b6c01a6c92d3eeb6159be4cffebd184e57ca91699397d9e8",
+      "backupChecksum": "48b77c55eb214b90b6c01a6c92d3eeb6159be4cffebd184e57ca91699397d9e8",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "package.json": {
+      "size": 2705,
+      "modified": "2025-10-10T06:38:50.430Z",
+      "checksum": "8136fa05d870b54c99b186ce2174a76ae4ab71a6611eb8a7c78c5c0d2fa2a42c",
+      "backupChecksum": "8136fa05d870b54c99b186ce2174a76ae4ab71a6611eb8a7c78c5c0d2fa2a42c",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "package-lock.json": {
+      "size": 546653,
+      "modified": "2025-10-10T06:38:50.429Z",
+      "checksum": "14225b3af9f12017ebf4204a834fcbcdbf0b7d2fdc11df695e4e24e43c870b56",
+      "backupChecksum": "14225b3af9f12017ebf4204a834fcbcdbf0b7d2fdc11df695e4e24e43c870b56",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tsconfig.json": {
+      "size": 874,
+      "modified": "2025-10-10T04:08:59.270Z",
+      "checksum": "fdc7054948a75feda84725f264b1dd6a499b2d36f8159c8a3bcd136a80adf42e",
+      "backupChecksum": "fdc7054948a75feda84725f264b1dd6a499b2d36f8159c8a3bcd136a80adf42e",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "vite.config.ts": {
+      "size": 6853,
+      "modified": "2025-10-04T13:41:52.541Z",
+      "checksum": "321460e6d2affe958a939770ef606cb7aa2b682958bfff1d9c7b504e4bd0fe38",
+      "backupChecksum": "321460e6d2affe958a939770ef606cb7aa2b682958bfff1d9c7b504e4bd0fe38",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "tailwind.config.js": {
+      "size": 3134,
+      "modified": "2025-10-10T04:08:59.268Z",
+      "checksum": "30ccb785a7f4160e695806646db9187f0b1158328aa2bb383bf486bf044085ef",
+      "backupChecksum": "30ccb785a7f4160e695806646db9187f0b1158328aa2bb383bf486bf044085ef",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "wrangler.toml": {
+      "size": 5019,
+      "modified": "2025-10-10T06:38:50.439Z",
+      "checksum": "aa2202652118290b09b84f2d7cb4d9bb5aecef2659279175b6f494652a67f1e4",
+      "backupChecksum": "aa2202652118290b09b84f2d7cb4d9bb5aecef2659279175b6f494652a67f1e4",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "eslint.config.js": {
+      "size": 14965,
+      "modified": "2025-10-10T04:08:59.194Z",
+      "checksum": "88460bc4348ab0c2f8f3648a8f2d029763279e49ae2949701e429b469e4691f0",
+      "backupChecksum": "88460bc4348ab0c2f8f3648a8f2d029763279e49ae2949701e429b469e4691f0",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "vitest.config.ts": {
+      "size": 1433,
+      "modified": "2025-10-10T04:08:59.271Z",
+      "checksum": "7a3022ff66d8ee4229bd3cbe8eab843af30f4ddcab70cefc750cf84001959dcb",
+      "backupChecksum": "7a3022ff66d8ee4229bd3cbe8eab843af30f4ddcab70cefc750cf84001959dcb",
+      "verified": true,
+      "success": true,
+      "error": null
+    },
+    "playwright.config.ts": {
+      "size": 540,
+      "modified": "2025-10-10T05:13:43.830Z",
+      "checksum": "cf8b18c5e1861383655cd5e3a33d00f3b6055e136873754a0306e841571aa8a0",
+      "backupChecksum": "cf8b18c5e1861383655cd5e3a33d00f3b6055e136873754a0306e841571aa8a0",
+      "verified": true,
+      "success": true,
+      "error": null
+    }
+  },
+  "errors": [],
+  "gitStash": {
+    "success": true,
+    "stashMessage": "teams-to-organizations-migration-backup-2025-10-10T06-38-50",
+    "hadChanges": true
+  }
+}

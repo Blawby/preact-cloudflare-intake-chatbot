@@ -1,0 +1,48 @@
+{
+	"compilerOptions": {
+		"target": "ES2020",
+		"lib": [
+			"ES2020",
+			"DOM"
+		],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"noEmit": true,
+		"allowJs": true,
+		"checkJs": true,
+		"resolveJsonModule": true,
+		"downlevelIteration": true,
+		"baseUrl": ".",
+		/* Preact Config */
+		"jsx": "react-jsx",
+		"jsxImportSource": "preact",
+		"skipLibCheck": true,
+		"paths": {
+			"react": [
+				"./node_modules/preact/compat/"
+			],
+			"react-dom": [
+				"./node_modules/preact/compat/"
+			],
+			"react/jsx-runtime": [
+				"./node_modules/preact/jsx-runtime/"
+			],
+			"@i18n": [
+				"./src/i18n/index.ts"
+			],
+			"@locales/*": [
+				"./src/locales/*"
+			],
+			"worker_threads": [
+				"./tests/stubs/worker_threads.ts"
+			],
+			"node:worker_threads": [
+				"./tests/stubs/worker_threads.ts"
+			]
+		}
+	},
+	"include": [
+		"node_modules/vite/client.d.ts",
+		"**/*"
+	]
+}

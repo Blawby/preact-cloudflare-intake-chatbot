@@ -1,0 +1,26 @@
+Teams to Organizations Migration - Warnings
+Generated: 2025-10-10T06:36:14.837Z
+
+FILES WITH MIXED NAMING (REQUIRE MANUAL REVIEW):
+- worker/db/auth.schema.ts: Contains both team and organization references
+- worker/routes/agent.ts: Contains both team and organization references
+- tests/integration/api/legal-intake-analysis.test.ts: Contains both team and organization references
+- migrations/add_better_auth_organization.sql: Contains both team and organization references
+
+FILES WITH HIGH REFERENCE COUNTS (REQUIRE CAREFUL REVIEW):
+- worker/routes/teams.ts: 78 references
+- worker/agents/legal-intake/index.ts: 68 references
+- worker/services/SessionService.ts: 67 references
+- worker/routes/files.ts: 60 references
+- worker/consumers/doc-processor.ts: 42 references
+- worker/schema.sql: 42 references
+- tests/integration/services/TeamService.integration.test.ts: 38 references
+- worker/services/PaymentService.ts: 37 references
+- worker/routes/activity.ts: 35 references
+- tests/setup-workers.ts: 34 references
+- worker/middleware/fileAnalysisMiddleware.ts: 33 references
+- worker/services/ActivityService.ts: 28 references
+- worker/services/AIService.ts: 26 references
+- worker/routes/sessions.ts: 23 references
+- src/hooks/useTeamConfig.ts: 23 references
+- migrations/00000000_base_schema.sql: 23 references
