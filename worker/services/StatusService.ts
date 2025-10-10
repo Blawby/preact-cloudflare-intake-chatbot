@@ -299,17 +299,14 @@ export class StatusService {
     const statusId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     const now = Date.now();
     
-    const statusUpdate: StatusUpdate = {
+    const statusUpdate: Omit<StatusUpdate, 'createdAt' | 'updatedAt' | 'expiresAt'> = {
       id: statusId,
       sessionId,
       teamId,
       type: 'document_analysis',
       status,
       message: `Analyzing ${fileName}...`,
-      data: { fileName, priority },
-      createdAt: now,
-      updatedAt: now,
-      expiresAt: now + (StatusService.STATUS_TTL * 1000)
+      data: { fileName, priority }
     };
     
     await StatusService.setStatus(env, statusUpdate, now);

@@ -130,16 +130,29 @@ if ('type' in msg.body && msg.body.type === "analyze_uploaded_document") {
 
 ## IMPLEMENTATION STEPS
 
-### Step 1: Make the Fix (5-10 minutes)
-- Add `statusId?: string;` to the AutoAnalysisEvent interface in `worker/routes/files.ts` (line 97)
-- Add `statusId: statusId,` to the auto-analysis event body in `worker/routes/files.ts` (line 470)
+### Step 1: Core StatusId Propagation (Original Plan)
+- Add `statusId?: string;` to the AutoAnalysisEvent interface in `worker/routes/files.ts` (line 91)
+- Add `statusId: statusId,` to the auto-analysis event body in `worker/routes/files.ts` (line 468)
 - No changes needed in doc-processor - it already supports and uses the statusId properly
 
-### Step 2: Test (5 minutes)
+### Step 2: Timestamp Preservation (Additional Feature)
+- Add `statusCreatedAt` variable to track original timestamp (line 376)
+- Retrieve original timestamp using `StatusService.getStatusCreatedAt()` (line 388)
+- Enhance `updateStatusWithRetry()` function with optional `createdAt` parameter (line 23)
+- Propagate `statusCreatedAt` to all `updateStatusWithRetry()` calls (lines 415, 436, 500, 520)
+
+### Step 3: Environment-Based Processing (Additional Feature)
+- Add `NODE_ENV === 'development'` check for inline processing (line 458)
+- Implement inline processing for development environments (lines 459-527)
+- Add production queue-only logging (line 533)
+
+### Step 4: Test (5 minutes)
 - Upload a file without message
 - Verify auto-analysis starts immediately
 - Verify status updates work via SSE using the same statusId from file upload
 - Verify analysis results appear
+- Verify timestamp consistency across status updates
+- Test in both development and production environments
 
 ## TESTING CHECKLIST
 
@@ -152,10 +165,24 @@ if ('type' in msg.body && msg.body.type === "analyze_uploaded_document") {
 
 ## ROLLBACK PLAN
 
-If issues occur:
-1. Remove the `statusId?: string;` line from the AutoAnalysisEvent interface in `worker/routes/files.ts`
-2. Remove the `statusId: statusId,` line from the auto-analysis event body in `worker/routes/files.ts`
-3. System reverts to current behavior (doc-processor will fall back to basic status messaging)
+If issues occur, rollback in reverse order:
+
+### Rollback Step 1: Remove Environment-Based Processing
+1. Remove the `NODE_ENV === 'development'` check and inline processing block (lines 458-534)
+2. Remove production queue-only logging (line 533)
+
+### Rollback Step 2: Remove Timestamp Preservation
+1. Remove `statusCreatedAt` variable declaration (line 376)
+2. Remove `StatusService.getStatusCreatedAt()` call (line 388)
+3. Remove `createdAt` parameter from `updateStatusWithRetry()` function signature (line 23)
+4. Remove `statusCreatedAt` parameter from all `updateStatusWithRetry()` calls (lines 415, 436, 500, 520)
+
+### Rollback Step 3: Remove Core StatusId Propagation
+1. Remove the `statusId?: string;` line from the AutoAnalysisEvent interface in `worker/routes/files.ts` (line 91)
+2. Remove the `statusId: statusId,` line from the auto-analysis event body in `worker/routes/files.ts` (line 468)
+
+### Complete Rollback
+System reverts to original behavior (doc-processor will fall back to basic status messaging without timestamp preservation or environment-based processing)
 
 ## SUCCESS METRICS
 
@@ -163,19 +190,97 @@ If issues occur:
 - **Performance**: Real-time status updates during Adobe processing
 - **Reliability**: Works in both dev and production environments
 - **Cost**: No increase in Adobe API calls (same analysis, just triggered earlier)
+- **Timestamp Consistency**: All status updates maintain original creation timestamp
+- **Environment Optimization**: Development gets immediate processing, production uses proper queue scaling
+- **Audit Trail**: Clear chronological ordering of all status updates for debugging and monitoring
 
 ---
+
+## IMPLEMENTED FEATURES
+
+### Core StatusId Propagation (Original Plan)
+1. **Interface Update**: Added `statusId?: string;` to AutoAnalysisEvent interface
+2. **Event Body Update**: Added `statusId: statusId,` to auto-analysis event body
+
+### Timestamp Preservation (Additional Feature)
+3. **Status CreatedAt Retrieval**: Added `StatusService.getStatusCreatedAt()` to preserve original timestamp
+4. **Enhanced updateStatusWithRetry**: Added optional `createdAt` parameter to maintain chronological consistency
+5. **Timestamp Propagation**: All status updates now preserve the original `createdAt` timestamp
+
+### Environment-Based Processing (Additional Feature)
+6. **Development Inline Processing**: Added `NODE_ENV === 'development'` check for inline processing
+7. **Production Queue-Only**: Production environments use queue-based processing exclusively
+
+## TIMESTAMP PRESERVATION FEATURE
+
+### Problem Solved
+Status updates were creating new timestamps on each update, breaking chronological ordering and making it difficult to track when the original file processing started.
+
+### Implementation Details
+1. **Status Creation**: When initial status is created, `statusCreatedAt` is retrieved using `StatusService.getStatusCreatedAt()`
+2. **Timestamp Propagation**: The `createdAt` timestamp is passed to all subsequent `updateStatusWithRetry()` calls
+3. **Enhanced Function Signature**: `updateStatusWithRetry()` now accepts optional `createdAt?: number` parameter
+4. **Consistent Ordering**: All status updates for the same file processing session maintain the original creation timestamp
+
+### Code Changes
+```typescript
+// Retrieve original timestamp
+statusCreatedAt = await StatusService.getStatusCreatedAt(env, statusId);
+
+// Preserve timestamp in all updates
+await updateStatusWithRetry(env, statusUpdate, 3, 1000, statusCreatedAt ?? undefined);
+```
+
+### Benefits
+- **Audit Trail**: Clear chronological ordering of status updates
+- **Debugging**: Easier to track processing timeline
+- **Consistency**: All related status updates share the same creation time
+- **Monitoring**: Better visibility into processing duration and patterns
+
+## ENVIRONMENT-BASED PROCESSING FEATURE
+
+### Problem Solved
+Development environments needed immediate processing for testing, while production environments should use queue-based processing to avoid duplicate processing and ensure proper scaling.
+
+### Implementation Details
+1. **Environment Detection**: Uses `env.NODE_ENV === 'development'` to determine processing mode
+2. **Development Mode**: Inline processing bypasses queue for immediate testing
+3. **Production Mode**: Queue-based processing only, no inline processing
+4. **Duplicate Prevention**: Prevents double-processing in production environments
+
+### Code Changes
+```typescript
+// Environment-based processing decision
+if (env.NODE_ENV === 'development') {
+  // Inline processing for development
+  docProcessor.queue(mockBatch, env).then(async () => {
+    // Handle completion
+  });
+} else {
+  // Production uses queue-based processing only
+  Logger.info('Skipping inline processing - using queue-based processing only');
+}
+```
+
+### Benefits
+- **Development Efficiency**: Immediate processing for faster testing cycles
+- **Production Reliability**: Proper queue-based processing for scalability
+- **No Duplicates**: Prevents double-processing in production
+- **Environment Consistency**: Appropriate processing mode for each environment
 
 ## WHY THIS WORKS
 
 1. **Uses Existing Infrastructure**: All the background processing, status updates, and SSE streaming already work
-2. **Minimal Change**: Only 2 lines needed - interface update and event body update
-3. **Backward Compatible**: The statusId is optional in the AutoAnalysisEvent interface
-4. **Production Ready**: Works in both dev and production environments
-5. **Real-time Updates**: Users see progress during Adobe processing using the same statusId
-6. **No Blocking**: Adobe processing happens in background, doesn't block chat
-7. **Consistent Flow**: Single statusId tracks the entire file processing lifecycle from upload to analysis completion
+2. **Minimal Core Change**: Only 2 lines needed for basic statusId propagation
+3. **Enhanced Timestamp Consistency**: Preserves original status creation time across all updates
+4. **Backward Compatible**: The statusId is optional in the AutoAnalysisEvent interface
+5. **Production Ready**: Works in both dev and production environments with appropriate processing modes
+6. **Real-time Updates**: Users see progress during Adobe processing using the same statusId
+7. **No Blocking**: Adobe processing happens in background, doesn't block chat
+8. **Consistent Flow**: Single statusId tracks the entire file processing lifecycle from upload to analysis completion
+9. **Chronological Accuracy**: Status updates maintain proper timestamp ordering for audit trails
 
-The key insight: **The doc-processor is already correctly implemented to use the provided statusId. You just need to:**
-1. **Add the statusId field to the interface** (1 line)
-2. **Pass the statusId from the upload handler to the auto-analysis event** (1 line)
+The key insight: **The doc-processor is already correctly implemented to use the provided statusId. The implementation includes:**
+1. **Core statusId propagation** (interface + event body)
+2. **Timestamp preservation** (createdAt retrieval and propagation)
+3. **Environment-aware processing** (development inline vs production queue)

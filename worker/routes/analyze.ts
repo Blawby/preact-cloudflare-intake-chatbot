@@ -227,8 +227,7 @@ async function summarizeAdobeExtract(
   const res = await (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run('@cf/openai/gpt-oss-20b', {
     input: `${systemPrompt}\n\n${userPrompt}`,
     max_tokens: 800,
-    temperature: 0.1,
-    user_request_id: requestId || 'unknown'
+    temperature: 0.1
   });
 
   logAIProcessing('analyze', 'response.meta', {

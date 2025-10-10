@@ -98,22 +98,39 @@ async function fetchWithTimeout(
   options: Parameters<typeof fetch>[1] & { signal?: AbortSignal }, 
   timeoutMs: number
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+  
+  // Handle caller's signal if provided
+  let callerAbortListener: (() => void) | undefined;
   
   try {
+    // If caller's signal is already aborted, abort timeout controller immediately
+    if (options.signal?.aborted) {
+      timeoutController.abort();
+    } else if (options.signal) {
+      // Add listener to abort timeout controller when caller aborts
+      callerAbortListener = () => timeoutController.abort();
+      options.signal.addEventListener('abort', callerAbortListener, { once: true });
+    }
+    
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal
+      signal: timeoutController.signal
     });
-    clearTimeout(timeoutId);
+    
     return response;
   } catch (error) {
-    clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error(`Request timeout after ${timeoutMs}ms`);
     }
     throw error;
+  } finally {
+    // Clean up timeout and listener to prevent leaks
+    clearTimeout(timeoutId);
+    if (callerAbortListener && options.signal) {
+      options.signal.removeEventListener('abort', callerAbortListener);
+    }
   }
 }
 
@@ -253,7 +270,7 @@ export class AdobeDocumentService {
       const expiresIn = typeof data.expires_in === 'number' ? data.expires_in * 1000 : 3600 * 1000;
       const token = {
         accessToken: data.access_token,
-        expiresAt: Date.now() + Math.max(expiresIn - FIVE_MINUTES_MS, 0)
+        expiresAt: Date.now() + Math.max(expiresIn - FIVE_MINUTES_MS, 60_000)
       };
 
       Logger.info('Adobe IMS access token obtained successfully', { 
