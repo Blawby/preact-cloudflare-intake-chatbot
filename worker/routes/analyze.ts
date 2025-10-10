@@ -1,6 +1,7 @@
 import type { Env } from '../types';
 import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
+import { createRateLimitResponse } from '../errorHandler';
 import { withAIRetry } from '../utils/retry.js';
 
 interface AnalysisResult {
@@ -340,13 +341,8 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
   // Rate limiting for analysis endpoint
   const clientId = getClientId(request);
   if (!(await rateLimit(env, clientId, 30, 60))) { // 30 requests per minute
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Rate limit exceeded. Please try again later.',
-      errorCode: 'RATE_LIMITED'
-    }), {
-      status: 429,
-      headers: { 'Content-Type': 'application/json' }
+    return createRateLimitResponse(60, {
+      errorMessage: 'Rate limit exceeded. Please try again later.'
     });
   }
 

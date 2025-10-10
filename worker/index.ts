@@ -15,7 +15,6 @@ import {
   handlePDF,
   handleDebug
 } from './routes';
-import { createRateLimitResponse } from './errorHandler';
 import { Env } from './types';
 import { handleError, HttpErrors } from './errorHandler';
 import { withCORS, getCorsConfig } from './middleware/cors';
@@ -23,7 +22,6 @@ import docProcessor from './consumers/doc-processor';
 
 // Basic request validation
 function validateRequest(request: Request): boolean {
-  const url = new URL(request.url);
   
   // Check for reasonable request size (10MB limit)
   const contentLength = request.headers.get('content-length');
@@ -46,7 +44,7 @@ function validateRequest(request: Request): boolean {
   return true;
 }
 
-async function handleRequestInternal(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleRequestInternal(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
 

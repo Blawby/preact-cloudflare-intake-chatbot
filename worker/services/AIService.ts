@@ -25,7 +25,9 @@ export class AIService {
     const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
     try {
-      const result = await this.ai.run(model, {
+      // Type assertion to handle dynamic model strings - matches pattern used in analyze.ts
+      const runModel = this.ai.run.bind(this.ai) as (model: string, payload: Record<string, unknown>) => Promise<unknown>;
+      const result = await runModel(model, {
         messages,
         max_tokens: 500,
         temperature: 0.1, // Reduced from 0.4 to 0.1 for more factual responses
