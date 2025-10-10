@@ -265,8 +265,8 @@ export default {
   }
 }
 
-const MAX_TEXT_CHARS = 20000;
-const MAX_STRUCTURED_CHARS = 6000;
+const MAX_TEXT_CHARS = 10000; // Reduced from 20000 to avoid Adobe API limits
+const MAX_STRUCTURED_CHARS = 3000; // Reduced from 6000 to avoid Adobe API limits
 
 async function performDocumentAnalysis(
   env: Env,

@@ -23,7 +23,7 @@
 - `GET /api/organizations/{id}/settings` - Get organization settings
 - `PUT /api/organizations/{id}/settings` - Update organization settings
 
-**Dependencies**: Better Auth setup, PostgreSQL with RLS, basic multi-tenancy
+**Dependencies**: Better Auth setup, cloudflare with RLS, basic multi-tenancy
 
 ---
 
@@ -1739,7 +1739,7 @@
 - Multi-tenancy: Row-level security enforced via Better Auth
 - Organizations are isolated data silos
 - Assets stored with organization-scoped paths in Cloudflare R2
-- Database: PostgreSQL with organization_id foreign keys
+- Database: cloudflare with organization_id foreign keys
 - Real-time: WebSocket connections scoped to organization
 
 ### Chatbot Capabilities

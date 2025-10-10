@@ -219,8 +219,9 @@ async function summarizeAdobeExtract(
     };
   }
   
-  const truncatedText = rawText.length > 20000
-    ? `${rawText.slice(0, 20000)}...`
+  // Reduce text size to avoid Adobe API limits
+  const truncatedText = rawText.length > 10000
+    ? `${rawText.slice(0, 10000)}...`
     : rawText;
     
   log('debug', 'truncated_text_details', {
@@ -229,10 +230,11 @@ async function summarizeAdobeExtract(
     requestId
   });
 
+  // Reduce structured payload size to avoid Adobe API limits
   const structuredPayload = JSON.stringify({
-    tables: extract.tables ?? [],
-    elements: extract.elements ?? []
-  }).slice(0, 6000);
+    tables: (extract.tables ?? []).slice(0, 2), // Limit to first 2 tables
+    elements: (extract.elements ?? []).slice(0, 10) // Limit to first 10 elements
+  }).slice(0, 3000); // Reduce from 6000 to 3000 characters
 
   const systemPrompt = [
     'You are a legal intake analyst receiving structured output from Adobe PDF Services.',

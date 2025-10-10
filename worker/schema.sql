@@ -254,6 +254,7 @@ CREATE TABLE IF NOT EXISTS organization_api_tokens (
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id TEXT PRIMARY KEY,
   organization_id TEXT NOT NULL,
+  user_id TEXT,
   token_hash TEXT,
   state TEXT NOT NULL DEFAULT 'active',
   status_reason TEXT,
@@ -269,12 +270,14 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_team_state ON chat_sessions(organization_id, state);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_last_active ON chat_sessions(last_active);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_token_hash_organization ON chat_sessions(token_hash, organization_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_user ON chat_sessions(user_id);
 
 -- Chat messages table for storing conversation messages
 CREATE TABLE IF NOT EXISTS chat_messages (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
   organization_id TEXT NOT NULL,
+  user_id TEXT,
   role TEXT NOT NULL,
   content TEXT NOT NULL,
   metadata TEXT,
@@ -284,6 +287,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_organization ON chat_messages(organization_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id);
 
 -- Session summaries table for AI-generated summaries
 CREATE TABLE IF NOT EXISTS session_summaries (
@@ -389,6 +393,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   access_token_expires_at INTEGER,
   refresh_token_expires_at INTEGER,
   scope TEXT,
+  password TEXT, -- For credential-based authentication
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   -- Critical: Prevent duplicate provider accounts

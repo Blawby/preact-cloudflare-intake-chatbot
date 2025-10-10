@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
+import { useOrganizationId } from '../contexts/OrganizationContext.js';
 
 const STORAGE_PREFIX = 'blawby_session:';
 
@@ -19,6 +20,19 @@ export interface ChatSessionState {
   clearStoredSession: () => void;
 }
 
+/**
+ * Hook that uses organization context instead of requiring organizationId parameter
+ * This is the preferred way to use chat sessions in components
+ */
+export function useChatSessionWithContext(): ChatSessionState {
+  const organizationId = useOrganizationId();
+  return useChatSession(organizationId);
+}
+
+/**
+ * Legacy hook that requires organizationId parameter
+ * @deprecated Use useChatSessionWithContext() instead
+ */
 export function useChatSession(organizationId: string): ChatSessionState {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);

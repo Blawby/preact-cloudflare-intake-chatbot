@@ -175,10 +175,10 @@ export function createProductionCorsOptions(allowedDomains: string[]): CorsOptio
  */
 export function createDevelopmentCorsOptions(): CorsOptions {
   return {
-    allowedOrigins: '*',
+    allowedOrigins: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000'],
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    allowCredentials: false, // Do not allow credentials for security
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+    allowCredentials: true, // Allow credentials for Better Auth in development
     maxAge: 86400,
     exposeHeaders: ['Content-Disposition', 'Content-Length']
   };

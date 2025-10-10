@@ -3,7 +3,7 @@ import { organizationClient } from "better-auth/client/plugins";
 import { cloudflareClient } from "better-auth-cloudflare/client";
 
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8787",
+  baseURL: import.meta.env.VITE_API_URL || window.location.origin, // Use current origin for proxy
   plugins: [organizationClient(), cloudflareClient()],
   fetchOptions: {
     credentials: "include", // Important for CORS

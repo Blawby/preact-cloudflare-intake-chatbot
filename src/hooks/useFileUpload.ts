@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 import { FileAttachment } from '../../worker/types';
 import { uploadWithProgress, validateFile, type UploadResult } from '../services/upload/UploadTransport';
+import { useOrganizationId } from '../contexts/OrganizationContext.js';
 
 export type FileStatus = 
   | 'uploading'      // Browser → Workers
@@ -33,6 +34,15 @@ interface UseFileUploadOptions {
   onError?: (error: string) => void;
 }
 
+/**
+ * Hook that uses organization context instead of requiring organizationId parameter
+ * This is the preferred way to use file upload in components
+ */
+export const useFileUploadWithContext = ({ sessionId, onError }: Omit<UseFileUploadOptions, 'organizationId'>) => {
+  const organizationId = useOrganizationId();
+  return useFileUpload({ organizationId, sessionId, onError });
+};
+
 // Utility function to upload a file to backend
 async function uploadFileToBackend(file: File, organizationId: string, sessionId: string, signal?: AbortSignal): Promise<UploadResponse> {
   try {
@@ -63,6 +73,10 @@ async function uploadFileToBackend(file: File, organizationId: string, sessionId
   }
 }
 
+/**
+ * Legacy hook that requires organizationId parameter
+ * @deprecated Use useFileUploadWithContext() instead
+ */
 export const useFileUpload = ({ organizationId, sessionId, onError }: UseFileUploadOptions) => {
   const [previewFiles, setPreviewFiles] = useState<FileAttachment[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);

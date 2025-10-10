@@ -198,6 +198,19 @@ export interface ValidatedRequest<T = unknown> {
   env: Env;
 }
 
+// Organization context types
+export interface OrganizationContext {
+  organizationId: string;
+  source: 'auth' | 'session' | 'url' | 'default';
+  sessionId?: string;
+  isAuthenticated: boolean;
+  userId?: string;
+}
+
+export interface RequestWithOrganizationContext extends Request {
+  organizationContext?: OrganizationContext;
+}
+
 // UI-specific types that extend base types
 export interface FileAttachment {
   id: string;

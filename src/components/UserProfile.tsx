@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { UserIcon, Cog6ToothIcon, SparklesIcon, QuestionMarkCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
-// No authentication required - authClient removed
+import { authClient } from '../lib/authClient';
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService } from '../utils/mockPricingData';
-import { mockUserDataService } from '../utils/mockUserData';
 import { debounce } from '../utils/debounce';
 import { useTranslation } from 'react-i18next';
 
@@ -48,34 +47,17 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     const debouncedResizeHandler = debounce(checkMobile, 100);
     window.addEventListener('resize', debouncedResizeHandler);
     
-    // Listen for storage changes (when user logs in/out in another tab)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'mockUser') {
-        checkAuthStatus();
-      }
-    };
-    
-    // Listen for custom auth state changes (same tab)
+    // Listen for auth state changes (Better Auth handles cross-tab sync automatically)
     const handleAuthStateChange = (e: CustomEvent) => {
-      if (e.detail) {
-        const userWithTier = {
-          ...e.detail,
-          subscriptionTier: e.detail.subscriptionTier || 'free'
-        };
-        setUser(userWithTier);
-      } else {
-        // User logged out, clear the user state
-        setUser(null);
-      }
+      // Re-check auth status when auth state changes
+      checkAuthStatus();
     };
     
-    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
     
     return () => {
       window.removeEventListener('resize', debouncedResizeHandler);
       debouncedResizeHandler.cancel();
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
     };
   }, []);
@@ -99,23 +81,32 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
 
   const checkAuthStatus = async () => {
-    // Check if user is "logged in" - only consider signed in if mockUser exists in localStorage
-    const mockUser = localStorage.getItem('mockUser');
-    if (mockUser) {
-      try {
-        const userData = JSON.parse(mockUser);
-        // Ensure subscription tier is set (default to 'free' if not present)
+    try {
+      // Get session from Better Auth
+      const session = await authClient.getSession();
+      
+      if (session?.data?.user) {
+        // User is authenticated, create user object with subscription tier
         const userWithTier = {
-          ...userData,
-          subscriptionTier: userData.subscriptionTier || 'free'
+          id: session.data.user.id,
+          name: session.data.user.name,
+          email: session.data.user.email,
+          image: session.data.user.image,
+          organizationId: null, // Will be populated from organization context if needed
+          role: 'user', // Default role
+          phone: null,
+          subscriptionTier: 'free' as SubscriptionTier // Default to free tier
         };
         setUser(userWithTier);
-      } catch (_error) {
-        localStorage.removeItem('mockUser');
+      } else {
+        // No session means user is signed out
         setUser(null);
       }
-    } else {
-      // No mockUser in localStorage means user is signed out
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      if (error instanceof Error && error.message.includes('fetch')) {
+        console.warn('Network error checking auth status - user may be offline');
+      }
       setUser(null);
     }
     setLoading(false);
@@ -158,19 +149,26 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     navigate('/settings/help');
   };
 
-  const handleLogoutClick = () => {
+  const handleLogoutClick = async () => {
     setShowDropdown(false);
-    // Use the mock data service to properly clear all data
-    mockUserDataService.resetToDefaults();
     
-    // Also clear the legacy mockUser key for backward compatibility
-    localStorage.removeItem('mockUser');
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
-    
-    // Refresh the page to update the UI
-    window.location.reload();
+    try {
+      // Sign out using Better Auth
+      await authClient.signOut();
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
+      
+      // Refresh the page to update the UI
+      window.location.reload();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      if (error instanceof Error && error.message.includes('fetch')) {
+        console.warn('Network error during sign out - forcing page reload');
+      }
+      // Still refresh the page to clear any cached state
+      window.location.reload();
+    }
   };
 
 

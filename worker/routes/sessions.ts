@@ -3,6 +3,7 @@ import { HttpErrors } from '../errorHandler.js';
 import type { Env } from '../types.js';
 import { SessionService } from '../services/SessionService.js';
 import { sessionRequestBodySchema } from '../schemas/validation.js';
+import { withOrganizationContext, getOrganizationId } from '../middleware/organizationContext.js';
 
 async function normalizeOrganizationId(env: Env, organizationId?: string | null): Promise<string> {
   if (!organizationId) {
@@ -68,7 +69,20 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     }
     
     const body = validationResult.data;
-    const organizationId = await normalizeOrganizationId(env, body.organizationId);
+    
+    // Determine organization ID: body takes precedence over URL param
+    let organizationId: string;
+    if (body.organizationId) {
+      // Use organization from request body
+      organizationId = await normalizeOrganizationId(env, body.organizationId);
+    } else {
+      // Use organization context middleware to extract from URL/cookies
+      const requestWithContext = await withOrganizationContext(request, env, {
+        requireOrganization: true,
+        allowUrlOverride: true
+      });
+      organizationId = await normalizeOrganizationId(env, getOrganizationId(requestWithContext));
+    }
 
     const resolution = await SessionService.resolveSession(env, {
       request,
@@ -104,6 +118,13 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     if (!sessionId) {
       throw HttpErrors.badRequest('Session ID is required');
     }
+    
+    // Use organization context middleware
+    const requestWithContext = await withOrganizationContext(request, env, {
+      requireOrganization: false, // Allow fallback for GET requests
+      defaultOrganizationId: 'public'
+    });
+    
     let session: Awaited<ReturnType<typeof SessionService.getSessionById>>;
     try {
       session = await SessionService.getSessionById(env, sessionId);
@@ -116,7 +137,7 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     }
 
     if (!session) {
-      const fallbackOrganizationId = await normalizeOrganizationId(env, url.searchParams.get('organizationId') ?? 'public');
+      const fallbackOrganizationId = await normalizeOrganizationId(env, getOrganizationId(requestWithContext));
       const fallback = {
         sessionId,
         organizationId: fallbackOrganizationId,
@@ -132,9 +153,10 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
       return createJsonResponse(fallback);
     }
 
-    const organizationIdParam = url.searchParams.get('organizationId');
-    if (organizationIdParam) {
-      const requestedOrganization = await normalizeOrganizationId(env, organizationIdParam);
+    // Validate organization access using context
+    const contextOrganizationId = getOrganizationId(requestWithContext);
+    if (contextOrganizationId !== 'public') {
+      const requestedOrganization = await normalizeOrganizationId(env, contextOrganizationId);
       if (requestedOrganization !== session.organizationId) {
         throw HttpErrors.notFound('Session not found for requested organization');
       }

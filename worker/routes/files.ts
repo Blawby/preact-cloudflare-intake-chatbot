@@ -7,6 +7,7 @@ import { StatusService, type StatusUpdate } from '../services/StatusService.js';
 import { Logger } from '../utils/logger';
 import type { MessageBatch } from '@cloudflare/workers-types';
 import type { DocumentEvent, AutoAnalysisEvent } from '../types/events.js';
+import { withOrganizationContext, getOrganizationId } from '../middleware/organizationContext.js';
 
 /**
  * Updates status with retry logic and exponential backoff
@@ -330,7 +331,20 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         throw HttpErrors.badRequest(fileValidation.error!);
       }
 
-      const normalizedOrganizationId = organizationId.trim();
+      // Determine organization ID: form data takes precedence over URL param
+      let normalizedOrganizationId: string;
+      if (organizationId?.trim()) {
+        // Use organization from form data
+        normalizedOrganizationId = organizationId.trim();
+      } else {
+        // Use organization context middleware to extract from URL/cookies
+        const requestWithContext = await withOrganizationContext(request, env, {
+          requireOrganization: true,
+          allowUrlOverride: true
+        });
+        normalizedOrganizationId = getOrganizationId(requestWithContext);
+      }
+      
       const normalizedSessionId = sessionId.trim();
 
       // Validate that trimmed IDs are not empty

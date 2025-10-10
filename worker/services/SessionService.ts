@@ -284,6 +284,51 @@ export class SessionService {
     };
   }
 
+  /**
+   * Simplified session resolution that can derive organization from session ID
+   * This is useful when you have a session ID but don't know the organization
+   */
+  static async resolveSessionById(env: Env, options: {
+    request?: Request;
+    sessionId: string;
+    sessionToken?: string | null;
+    retentionHorizonDays?: number;
+    createIfMissing?: boolean;
+  }): Promise<SessionResolution> {
+    try {
+      let providedToken = options.sessionToken ?? null;
+      if (!providedToken && options.request) {
+        providedToken = this.getSessionTokenFromCookie(options.request);
+      }
+
+      // First, try to get the session by ID to determine organization
+      let session = await this.getSessionById(env, options.sessionId);
+      
+      if (session) {
+        // Session exists, use its organization
+        const resolution = await this.resolveSession(env, {
+          request: options.request,
+          sessionId: options.sessionId,
+          sessionToken: providedToken,
+          organizationId: session.organizationId,
+          retentionHorizonDays: options.retentionHorizonDays,
+          createIfMissing: false
+        });
+        return resolution;
+      }
+
+      // Session doesn't exist, but we can't create without organization
+      if (options.createIfMissing === false) {
+        throw new Error('Session not found and creation disabled');
+      }
+      
+      throw new Error('Session not found and organization cannot be determined for creation');
+    } catch (error) {
+      console.error('Session resolution by ID failed:', error);
+      throw error;
+    }
+  }
+
   static async resolveSession(env: Env, options: {
     request?: Request;
     sessionId?: string;

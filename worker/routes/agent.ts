@@ -62,9 +62,8 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const headers = new Headers({
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control'
+      'Connection': 'keep-alive'
+      // CORS headers will be added by the global CORS middleware
     });
 
     // Register session subscription for real-time updates
@@ -229,6 +228,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive'
+    // CORS headers will be added by the global CORS middleware
   });
 
   try {

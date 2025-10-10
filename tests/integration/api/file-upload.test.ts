@@ -1,215 +1,255 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-// Mock fetch for these tests
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+describe('File Upload API Integration - Real API', () => {
+  const BASE_URL = 'http://localhost:8787';
 
-describe('File Upload API Integration Tests', () => {
-  beforeEach(() => {
-    mockFetch.mockClear();
-  });
-
-  describe('File Upload', () => {
-    it('should upload a text file successfully', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          fileId: 'test-file-id-123',
-          fileName: 'test-document.txt',
-          fileSize: 1024,
-          message: 'File uploaded successfully'
-        }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
+  describe('File Upload Functionality', () => {
+    it('should upload a text file', async () => {
       const formData = new FormData();
-      formData.append('file', new Blob(['Test content'], { type: 'text/plain' }), 'test-document.txt');
-      formData.append('organizationId', 'demo');
-      formData.append('sessionId', 'test-session');
-
-      const response = await fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('fileId');
-      expect(data).toHaveProperty('fileName');
-      expect(data.fileName).toBe('test-document.txt');
-    });
-
-    it('should handle PDF file upload', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          fileId: 'test-pdf-id-456',
-          fileName: 'test-document.pdf',
-          fileSize: 2048,
-          message: 'PDF uploaded successfully'
-        }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
-      const formData = new FormData();
-      formData.append('file', new Blob(['PDF content'], { type: 'application/pdf' }), 'test-document.pdf');
-      formData.append('organizationId', 'demo');
-      formData.append('sessionId', 'test-session');
-
-      const response = await fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('fileId');
-      expect(data.fileName).toBe('test-document.pdf');
-    });
-
-    it('should reject files that are too large', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 413,
-        json: () => Promise.resolve({ error: 'File too large' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
-      const formData = new FormData();
-      formData.append('file', new Blob(['x'.repeat(10 * 1024 * 1024)], { type: 'text/plain' }), 'large-file.txt');
-      formData.append('organizationId', 'demo');
-      formData.append('sessionId', 'test-session');
-
-      const response = await fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      expect(response.status).toBe(413);
-    });
-
-    it('should reject unsupported file types', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 415,
-        json: () => Promise.resolve({ error: 'Unsupported file type' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
-      const formData = new FormData();
-      formData.append('file', new Blob(['executable content'], { type: 'application/x-executable' }), 'test.exe');
-      formData.append('organizationId', 'demo');
-      formData.append('sessionId', 'test-session');
-
-      const response = await fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      expect(response.status).toBe(415);
-    });
-  });
-
-  describe('File Download', () => {
-    it('should download uploaded file', async () => {
-      const mockUploadResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({
-          fileId: 'test-file-id-123',
-          fileName: 'test-document.txt',
-        }),
-      };
-
-      const mockDownloadResponse = {
-        ok: true,
-        status: 200,
-        text: () => Promise.resolve('This file will be downloaded for testing.'),
-      };
-
-      mockFetch
-        .mockResolvedValueOnce(mockUploadResponse)
-        .mockResolvedValueOnce(mockDownloadResponse);
-
-      // First upload a file
-      const formData = new FormData();
-      formData.append('file', new Blob(['This file will be downloaded for testing.'], { type: 'text/plain' }), 'test-document.txt');
-      formData.append('organizationId', 'demo');
-      formData.append('sessionId', 'test-session');
-
-      const uploadResponse = await fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      expect(uploadResponse.status).toBe(200);
-      const uploadData = await uploadResponse.json();
-      const fileId = uploadData.fileId;
-
-      // Then download the file
-      const downloadResponse = await fetch(`/api/files/${fileId}`);
-      expect(downloadResponse.status).toBe(200);
+      formData.append('file', new Blob(['Test content for file upload'], { type: 'text/plain' }), 'test.txt');
+      formData.append('organizationId', 'blawby-ai');
+      formData.append('sessionId', 'test-upload-session-text');
       
-      const downloadedContent = await downloadResponse.text();
-      expect(downloadedContent).toBe('This file will be downloaded for testing.');
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
+      expect(result.data).toHaveProperty('fileName', 'test.txt');
+      expect(result.data).toHaveProperty('fileSize');
+      expect(result.data).toHaveProperty('fileType', 'text/plain');
     });
 
-    it('should handle non-existent file download', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 404,
-        json: () => Promise.resolve({ error: 'File not found' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+    it('should upload a PDF file', async () => {
+      // Create a simple PDF blob (this will be a fake PDF for testing)
+      const pdfContent = '%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n/Contents 4 0 R\n>>\nendobj\n4 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 12 Tf\n72 720 Td\n(Test PDF Content) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000204 00000 n \ntrailer\n<<\n/Size 5\n/Root 1 0 R\n>>\nstartxref\n297\n%%EOF';
+      
+      const formData = new FormData();
+      formData.append('file', new Blob([pdfContent], { type: 'application/pdf' }), 'test.pdf');
+      formData.append('organizationId', 'blawby-ai');
+      formData.append('sessionId', 'test-upload-session-pdf');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
+      expect(result.data).toHaveProperty('fileName', 'test.pdf');
+      expect(result.data).toHaveProperty('fileSize');
+      expect(result.data).toHaveProperty('fileType', 'application/pdf');
+    });
 
-      const response = await fetch('/api/files/non-existent-file-id');
-      expect(response.status).toBe(404);
+    it('should upload a document file', async () => {
+      const formData = new FormData();
+      formData.append('file', new Blob(['Legal document content'], { type: 'application/msword' }), 'document.doc');
+      formData.append('organizationId', 'blawby-ai');
+      formData.append('sessionId', 'test-upload-session-doc');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
+      expect(result.data).toHaveProperty('fileName', 'document.doc');
+      expect(result.data).toHaveProperty('fileSize');
+      expect(result.data).toHaveProperty('fileType', 'application/msword');
+    });
+
+    it('should upload an image file', async () => {
+      // Create a simple 1x1 pixel PNG
+      const pngData = new Uint8Array([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+        0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+        0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, 0x00, 0x00, 0x00,
+        0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0xD7, 0x63, 0xF8, 0x00, 0x00, 0x00,
+        0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x37, 0x6E, 0xF9, 0x24, 0x00,
+        0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+      ]);
+      
+      const formData = new FormData();
+      formData.append('file', new Blob([pngData], { type: 'image/png' }), 'test.png');
+      formData.append('organizationId', 'blawby-ai');
+      formData.append('sessionId', 'test-upload-session-image');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
+      expect(result.data).toHaveProperty('fileName', 'test.png');
+      expect(result.data).toHaveProperty('fileSize');
+      expect(result.data).toHaveProperty('fileType', 'image/png');
+    });
+
+    it('should handle file upload with metadata', async () => {
+      const formData = new FormData();
+      formData.append('file', new Blob(['Contract content'], { type: 'text/plain' }), 'contract.txt');
+      formData.append('organizationId', 'blawby-ai');
+      formData.append('sessionId', 'test-upload-session-metadata');
+      formData.append('description', 'Legal contract for review');
+      formData.append('category', 'contract');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
+      expect(result.data).toHaveProperty('fileName', 'contract.txt');
+      expect(result.data).toHaveProperty('fileSize');
+      expect(result.data).toHaveProperty('fileType', 'text/plain');
+    });
+
+    it('should handle large file upload', async () => {
+      // Create a larger text file (1MB)
+      const largeContent = 'A'.repeat(1024 * 1024); // 1MB of 'A' characters
+      
+      const formData = new FormData();
+      formData.append('file', new Blob([largeContent], { type: 'text/plain' }), 'large-file.txt');
+      formData.append('organizationId', 'blawby-ai');
+      formData.append('sessionId', 'test-upload-session-large');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
+      expect(result.data).toHaveProperty('fileName', 'large-file.txt');
+      expect(result.data).toHaveProperty('fileSize');
+      expect(result.data.fileSize).toBeGreaterThan(1000000); // Should be over 1MB
+    });
+
+    it('should handle file upload with special characters in filename', async () => {
+      const formData = new FormData();
+      formData.append('file', new Blob(['Special chars content'], { type: 'text/plain' }), 'test-file (1).txt');
+      formData.append('organizationId', 'blawby-ai');
+      formData.append('sessionId', 'test-upload-session-special');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
+      expect(result.data).toHaveProperty('fileName');
+      expect(result.data).toHaveProperty('fileSize');
+    });
+
+    it('should handle file upload with organization-specific settings', async () => {
+      const formData = new FormData();
+      formData.append('file', new Blob(['Organization specific content'], { type: 'text/plain' }), 'org-specific.txt');
+      formData.append('organizationId', 'north-carolina-legal-services');
+      formData.append('sessionId', 'test-upload-session-org');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
+      expect(result.data).toHaveProperty('fileName', 'org-specific.txt');
+      expect(result.data).toHaveProperty('fileSize');
+      expect(result.data).toHaveProperty('fileType', 'text/plain');
     });
   });
 
-  describe('Error Handling', () => {
-    it('should handle missing file in upload', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({ error: 'No file provided' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
+  describe('File Upload Error Handling', () => {
+    it('should handle missing file', async () => {
       const formData = new FormData();
-      formData.append('organizationId', 'demo');
-      formData.append('sessionId', 'test-session');
-      // No file appended
-
-      const response = await fetch('/api/files/upload', {
+      formData.append('organizationId', 'blawby-ai');
+      formData.append('sessionId', 'test-upload-session-no-file');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
         method: 'POST',
-        body: formData,
+        body: formData
       });
-
+      
+      expect(response.ok).toBe(false);
       expect(response.status).toBe(400);
     });
 
     it('should handle missing organization ID', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 422,
-        json: () => Promise.resolve({ error: 'Missing organization ID' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
       const formData = new FormData();
       formData.append('file', new Blob(['Test content'], { type: 'text/plain' }), 'test.txt');
-      formData.append('sessionId', 'test-session');
-      // No organizationId
-
-      const response = await fetch('/api/files/upload', {
+      formData.append('sessionId', 'test-upload-session-no-org');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
         method: 'POST',
-        body: formData,
+        body: formData
       });
+      
+      expect(response.ok).toBe(false);
+      expect(response.status).toBe(400);
+    });
 
-      expect(response.status).toBe(422);
+    it('should handle missing session ID', async () => {
+      const formData = new FormData();
+      formData.append('file', new Blob(['Test content'], { type: 'text/plain' }), 'test.txt');
+      formData.append('organizationId', 'blawby-ai');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      expect(response.ok).toBe(false);
+      expect(response.status).toBe(400);
+    });
+
+    it('should handle invalid organization ID', async () => {
+      const formData = new FormData();
+      formData.append('file', new Blob(['Test content'], { type: 'text/plain' }), 'test.txt');
+      formData.append('organizationId', 'invalid-organization');
+      formData.append('sessionId', 'test-upload-session-invalid-org');
+      
+      const response = await fetch(`${BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      // The API creates a minimal organization entry if it doesn't exist, so this should succeed
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('fileId');
     });
   });
-}); 
+});

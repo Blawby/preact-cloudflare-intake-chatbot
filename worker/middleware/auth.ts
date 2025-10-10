@@ -1,5 +1,5 @@
 import { Env } from "../types";
-import { getAuth } from "../auth";
+import { getAuth } from "../auth/index";
 import { HttpErrors } from "../errorHandler";
 
 export interface AuthenticatedUser {

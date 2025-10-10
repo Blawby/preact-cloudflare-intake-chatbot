@@ -67,10 +67,12 @@ export function safeToUpperCase(value: unknown): string {
  * @returns boolean value
  */
 export function parseEnvBool(value: string | undefined, defaultValue: boolean = false): boolean {
-  if (value === undefined) {
+  if (value === undefined || value === null) {
     return defaultValue;
   }
   
-  const normalized = value.toLowerCase().trim();
+  // Convert to string if it's not already
+  const stringValue = typeof value === 'string' ? value : String(value);
+  const normalized = stringValue.toLowerCase().trim();
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
 }

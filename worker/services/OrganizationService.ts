@@ -1,7 +1,7 @@
 import { Env } from '../types.js';
 import { ValidationService } from './ValidationService.js';
 import { ValidationError } from '../utils/validationErrors.js';
-import { getAuth } from '../auth/index.js';
+// import { getAuth } from '../auth/index.js'; // Unused import
 
 export type OrganizationVoiceProvider = 'cloudflare' | 'elevenlabs' | 'custom';
 
@@ -85,7 +85,7 @@ function normalizeProvider(input?: string | null): string {
   return trimmed.length > 0 ? trimmed : LEGACY_AI_PROVIDER;
 }
 
-function sanitizeModel(model?: string | null, organizationId?: string): string | undefined {
+function sanitizeModel(model?: string | null, _organizationId?: string): string | undefined {
   if (!model) {
     return undefined;
   }
@@ -168,15 +168,6 @@ export function buildDefaultOrganizationConfig(env: Env): OrganizationConfig {
       provider: 'cloudflare'
     }
   };
-}
-
-export interface Organization {
-  id: string;
-  slug: string;
-  name: string;
-  config: OrganizationConfig;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export class OrganizationService {
@@ -369,28 +360,25 @@ export class OrganizationService {
     }
 
     try {
-      // Query Better Auth organizations table
+      // Query Better Auth organizations table - support both ID and slug lookups
       console.log('Querying database for organization...');
       const orgRow = await this.env.DB.prepare(
-        'SELECT id, name, slug, logo, metadata, created_at FROM organizations WHERE id = ?'
-      ).bind(organizationId).first();
+        'SELECT id, name, slug, domain, config, created_at FROM organizations WHERE id = ? OR slug = ?'
+      ).bind(organizationId, organizationId).first();
       
       if (orgRow) {
-        const rawMetadata = orgRow.metadata ? JSON.parse(orgRow.metadata as string) : {};
-        const resolvedConfig = this.resolveEnvironmentVariables(rawMetadata);
+        const rawConfig = orgRow.config ? JSON.parse(orgRow.config as string) : {};
+        const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
         const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as OrganizationConfig, false, organizationId);
         
         const organization: Organization = {
           id: orgRow.id as string,
           name: orgRow.name as string,
           slug: orgRow.slug as string,
-          logo: orgRow.logo as string | undefined,
-          metadata: {
-            type: rawMetadata.type || 'personal',
-            ...normalizedConfig,
-            createdFrom: rawMetadata.createdFrom,
-            createdAt: rawMetadata.createdAt
-          }
+          domain: orgRow.domain as string | undefined,
+          config: normalizedConfig,
+          createdAt: new Date(orgRow.created_at as string).getTime(),
+          updatedAt: new Date(orgRow.updated_at as string).getTime(),
         };
         
         console.log('Found organization:', { id: organization.id, slug: organization.slug, name: organization.name });
@@ -408,7 +396,7 @@ export class OrganizationService {
 
   async getOrganizationConfig(organizationId: string): Promise<OrganizationConfig | null> {
     const organization = await this.getOrganization(organizationId);
-    return organization?.metadata || null;
+    return organization?.config || null;
   }
 
 
@@ -417,7 +405,7 @@ export class OrganizationService {
       if (userId) {
         // Get organizations where user is a member
         const orgRows = await this.env.DB.prepare(`
-          SELECT o.id, o.name, o.slug, o.logo, o.metadata, o.created_at
+          SELECT o.id, o.name, o.slug, o.domain, o.config, o.created_at
           FROM organizations o
           INNER JOIN members m ON o.id = m.organization_id
           WHERE m.user_id = ?
@@ -425,21 +413,18 @@ export class OrganizationService {
         `).bind(userId).all();
         
         return orgRows.results.map(row => {
-          const rawMetadata = row.metadata ? JSON.parse(row.metadata as string) : {};
-          const resolvedConfig = this.resolveEnvironmentVariables(rawMetadata);
-          const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as OrganizationConfig, false, row.id);
+          const rawConfig = row.config ? JSON.parse(row.config as string) : {};
+          const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
+          const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as OrganizationConfig, false, row.id as string);
           
           return {
             id: row.id as string,
             name: row.name as string,
             slug: row.slug as string,
-            logo: row.logo as string | undefined,
-            metadata: {
-              type: rawMetadata.type || 'personal',
-              ...normalizedConfig,
-              createdFrom: rawMetadata.createdFrom,
-              createdAt: rawMetadata.createdAt
-            }
+            domain: row.domain as string | undefined,
+            config: normalizedConfig,
+            createdAt: new Date(row.created_at as string).getTime(),
+            updatedAt: new Date(row.updated_at as string).getTime(),
           };
         });
       } else {
@@ -451,21 +436,18 @@ export class OrganizationService {
         `).all();
         
         return orgRows.results.map(row => {
-          const rawMetadata = row.config ? JSON.parse(row.config as string) : {};
-          const resolvedConfig = this.resolveEnvironmentVariables(rawMetadata);
-          const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as OrganizationConfig, false, row.id);
+          const rawConfig = row.config ? JSON.parse(row.config as string) : {};
+          const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
+          const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as OrganizationConfig, false, row.id as string);
           
           return {
             id: row.id as string,
             name: row.name as string,
             slug: row.slug as string,
-            logo: row.logo as string | undefined,
-            metadata: {
-              type: rawMetadata.type || 'personal',
-              ...normalizedConfig,
-              createdFrom: rawMetadata.createdFrom,
-              createdAt: rawMetadata.createdAt
-            }
+            domain: row.domain as string | undefined,
+            config: normalizedConfig,
+            createdAt: new Date(row.created_at as string).getTime(),
+            updatedAt: new Date(row.updated_at as string).getTime(),
           };
         });
       }
@@ -534,8 +516,8 @@ export class OrganizationService {
       ...organizationData,
       config: normalizedConfig,
       id,
-      createdAt: now,
-      updatedAt: now
+      createdAt: new Date(now).getTime(),
+      updatedAt: new Date(now).getTime()
     };
 
     console.log('OrganizationService.createOrganization: Attempting to insert organization:', { id: organization.id, slug: organization.slug, name: organization.name });
@@ -589,7 +571,7 @@ export class OrganizationService {
       ...existingOrganization,
       ...mutableUpdates,
       config: normalizedConfig,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().getTime()
     };
 
     await this.env.DB.prepare(`

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
 import { ChatMessageUI, FileAttachment } from '../../worker/types';
 import { ContactData } from '../components/ContactForm';
+import { useOrganizationId } from '../contexts/OrganizationContext.js';
 
 // Tool name to user-friendly message mapping
 const TOOL_LOADING_MESSAGES: Record<string, string> = {
@@ -57,6 +58,19 @@ interface UseMessageHandlingOptions {
   onError?: (error: string) => void;
 }
 
+/**
+ * Hook that uses organization context instead of requiring organizationId parameter
+ * This is the preferred way to use message handling in components
+ */
+export const useMessageHandlingWithContext = ({ sessionId, onError }: Omit<UseMessageHandlingOptions, 'organizationId'>) => {
+  const organizationId = useOrganizationId();
+  return useMessageHandling({ organizationId, sessionId, onError });
+};
+
+/**
+ * Legacy hook that requires organizationId parameter
+ * @deprecated Use useMessageHandlingWithContext() instead
+ */
 export const useMessageHandling = ({ organizationId, sessionId, onError }: UseMessageHandlingOptions) => {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const abortControllerRef = useRef<globalThis.AbortController | null>(null);
@@ -432,7 +446,14 @@ ${matterData.opposing_party ? `- Opposing Party: ${matterData.opposing_party}` :
         reader.releaseLock();
       }
     } catch (error) {
-      console.error('Streaming error:', error);
+      console.error('Chat streaming error details:', {
+        error,
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        isAuthError: error instanceof Error && error.message.includes('Authentication'),
+        isError10000: error instanceof Error && error.message.includes('10000')
+      });
       throw error;
     }
   }, [organizationId, sessionId, onError, updateAIMessage]);
@@ -492,11 +513,26 @@ ${matterData.opposing_party ? `- Opposing Party: ${matterData.opposing_party}` :
         return; // Don't show error message for user-initiated cancellation
       }
       
-      console.error('Error sending message:', error);
+      console.error('Error sending message details:', {
+        error,
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        isAuthError: error instanceof Error && error.message.includes('Authentication'),
+        isError10000: error instanceof Error && error.message.includes('10000')
+      });
+      
+      // Provide better error messages for auth-related issues
+      let errorMessage = "I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact us directly if the issue persists.";
+      if (error instanceof Error) {
+        if (error.message.includes('10000') || error.message.includes('Authentication')) {
+          errorMessage = 'Please sign in to continue chatting';
+        }
+      }
       
       // Update placeholder with error message using the existing placeholderId
       updateAIMessage(placeholderId, { 
-        content: "I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact us directly if the issue persists.",
+        content: errorMessage,
         isLoading: false 
       });
       

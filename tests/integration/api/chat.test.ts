@@ -1,125 +1,388 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import { WORKER_URL } from '../../setup-real-api';
 
-// Mock fetch for these tests
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Helper function to handle streaming responses
+async function handleStreamingResponse(response: Response, timeoutMs: number = 30000) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body reader available');
+  }
+  
+  let responseData = '';
+  let done = false;
+  const startTime = Date.now();
+  
+  while (!done) {
+    // Calculate remaining timeout for this read operation
+    const elapsed = Date.now() - startTime;
+    const remainingTimeout = Math.max(0, timeoutMs - elapsed);
+    
+    if (remainingTimeout === 0) {
+      reader.cancel();
+      reader.releaseLock();
+      throw new Error(`Streaming response timeout after ${timeoutMs}ms`);
+    }
+    
+    // Race the read operation against a timeout
+    const readPromise = reader.read();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Read timeout after ${remainingTimeout}ms`)), remainingTimeout);
+    });
+    
+    try {
+      const { value, done: streamDone } = await Promise.race([readPromise, timeoutPromise]);
+      done = streamDone;
+      if (value) {
+        responseData += new TextDecoder().decode(value);
+      }
+    } catch (error) {
+      reader.cancel();
+      reader.releaseLock();
+      throw new Error(`Streaming response timeout after ${timeoutMs}ms: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    // Check if we have a completion event
+    if (responseData.includes('"type":"complete"')) {
+      break;
+    }
+  }
+  
+  reader.releaseLock();
+  
+  // Parse SSE data
+  const events = responseData
+    .split('\n\n')
+    .filter(chunk => chunk.trim().startsWith('data: '))
+    .map(chunk => {
+      const jsonStr = chunk.replace('data: ', '').trim();
+      try {
+        return JSON.parse(jsonStr);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+  
+  return events;
+}
 
-describe('Chat API Integration Tests', () => {
-  beforeEach(() => {
-    mockFetch.mockClear();
-  });
+describe('Chat API Integration - Real API', () => {
+  const BASE_URL = WORKER_URL;
 
   describe('Basic Chat Functionality', () => {
     it('should handle basic chat messages', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ message: 'Hello! How can I help you with your legal matter?' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${BASE_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Hello, I need legal help' }],
-          organizationId: 'demo',
-          sessionId: 'test-session',
+          organizationId: 'blawby-ai',
+          sessionId: 'test-chat-session-basic',
+          messages: [
+            { role: 'user', content: 'Hello, I need legal help' }
+          ]
         }),
       });
 
+      expect(response.ok).toBe(true);
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('message');
-      expect(typeof data.message).toBe('string');
+      
+      // Parse streaming response
+      const events = await handleStreamingResponse(response);
+      expect(events.length).toBeGreaterThan(0);
+      
+      // Should have at least a connected event and text response
+      const hasConnected = events.some(event => event.type === 'connected');
+      const hasText = events.some(event => event.type === 'text');
+      
+      expect(hasConnected || hasText).toBe(true);
     });
 
     it('should handle chat with matter intent', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ 
-          message: 'I understand you need help with a business contract dispute. Let me guide you through our matter creation process.' 
-        }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${BASE_URL}/api/agent/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: 'I need help with a business contract dispute' }],
-          organizationId: 'demo',
-          sessionId: 'test-session',
+          organizationId: 'blawby-ai',
+          sessionId: 'test-chat-session-matter',
+          messages: [
+            { role: 'user', content: 'I need help with a business contract dispute' }
+          ]
         }),
       });
 
+      expect(response.ok).toBe(true);
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('message');
-      expect(data.message).toContain('business') || expect(data.message).toContain('contract');
+      
+      // Read the streaming response
+      const reader = response.body?.getReader();
+      expect(reader).toBeDefined();
+      
+      let hasResponse = false;
+      
+      if (reader) {
+        const decoder = new TextDecoder();
+        let done = false;
+        
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          
+          if (value) {
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim());
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'text' || data.type === 'contact_form' || data.type === 'tool_call') {
+                    hasResponse = true;
+                    break;
+                  }
+                } catch (e) {
+                  // Ignore parsing errors for incomplete chunks
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      expect(hasResponse).toBe(true);
     });
-  });
 
-  describe('Health Check', () => {
-    it('should return health status', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ status: 'healthy', timestamp: new Date().toISOString() }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+    it('should handle multi-turn conversation', async () => {
+      const response = await fetch(`${BASE_URL}/api/agent/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          organizationId: 'blawby-ai',
+          sessionId: 'test-chat-session-multiturn',
+          messages: [
+            { role: 'user', content: 'I was fired from my job' },
+            { role: 'assistant', content: 'I understand, can you tell me more about the situation?' },
+            { role: 'user', content: 'My boss accused me of stealing but I did not do it' }
+          ]
+        }),
+      });
 
-      const response = await fetch('/api/health');
+      expect(response.ok).toBe(true);
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty('status');
+      
+      // Read the streaming response
+      const reader = response.body?.getReader();
+      expect(reader).toBeDefined();
+      
+      let hasResponse = false;
+      
+      if (reader) {
+        const decoder = new TextDecoder();
+        let done = false;
+        
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          
+          if (value) {
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim());
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'text' || data.type === 'contact_form' || data.type === 'tool_call') {
+                    hasResponse = true;
+                    break;
+                  }
+                } catch (e) {
+                  // Ignore parsing errors for incomplete chunks
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      expect(hasResponse).toBe(true);
     });
-  });
 
-  describe('Organizations Management', () => {
-    it('should return available organizations', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve([
-          { id: 'demo', name: 'Demo Organization' },
-          { id: 'north-carolina-legal-services', name: 'North Carolina Legal Services' }
-        ]),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
+    it('should handle urgent legal request', async () => {
+      const response = await fetch(`${BASE_URL}/api/agent/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          organizationId: 'north-carolina-legal-services',
+          sessionId: 'test-chat-session-urgent',
+          messages: [
+            { role: 'user', content: 'I need a lawyer immediately, I was arrested' }
+          ]
+        }),
+      });
 
-      const response = await fetch('/api/organizations');
+      expect(response.ok).toBe(true);
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(Array.isArray(data)).toBe(true);
-      expect(data.length).toBeGreaterThan(0);
+      
+      // Read the streaming response
+      const reader = response.body?.getReader();
+      expect(reader).toBeDefined();
+      
+      let hasContactForm = false;
+      let hasToolCall = false;
+      
+      if (reader) {
+        const decoder = new TextDecoder();
+        let done = false;
+        
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          
+          if (value) {
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim());
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'contact_form') {
+                    hasContactForm = true;
+                  }
+                  if (data.type === 'tool_call') {
+                    hasToolCall = true;
+                  }
+                } catch (e) {
+                  // Ignore parsing errors for incomplete chunks
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Urgent requests should trigger contact form or tool call
+      expect(hasContactForm || hasToolCall).toBe(true);
+    });
+
+    it('should handle general legal inquiry', async () => {
+      const response = await fetch(`${BASE_URL}/api/agent/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          organizationId: 'blawby-ai',
+          sessionId: 'test-chat-session-general',
+          messages: [
+            { role: 'user', content: 'What services do you offer?' }
+          ]
+        }),
+      });
+
+      expect(response.ok).toBe(true);
+      expect(response.status).toBe(200);
+      
+      // Read the streaming response
+      const reader = response.body?.getReader();
+      expect(reader).toBeDefined();
+      
+      let hasTextResponse = false;
+      
+      if (reader) {
+        const decoder = new TextDecoder();
+        let done = false;
+        
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          
+          if (value) {
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim());
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'text') {
+                    hasTextResponse = true;
+                    break;
+                  }
+                } catch (e) {
+                  // Ignore parsing errors for incomplete chunks
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      expect(hasTextResponse).toBe(true);
+    });
+
+    it('should handle skip to lawyer request', async () => {
+      const response = await fetch(`${BASE_URL}/api/agent/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          organizationId: 'blawby-ai',
+          sessionId: 'test-chat-session-skip',
+          messages: [
+            { role: 'user', content: 'Skip intake, I need a family lawyer' }
+          ]
+        }),
+      });
+
+      expect(response.ok).toBe(true);
+      expect(response.status).toBe(200);
+      
+      // Read the streaming response
+      const reader = response.body?.getReader();
+      expect(reader).toBeDefined();
+      
+      let hasResponse = false;
+      
+      if (reader) {
+        const decoder = new TextDecoder();
+        let done = false;
+        
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          
+          if (value) {
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim());
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'text' || data.type === 'contact_form' || data.type === 'tool_call') {
+                    hasResponse = true;
+                    break;
+                  }
+                } catch (e) {
+                  // Ignore parsing errors for incomplete chunks
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      expect(hasResponse).toBe(true);
     });
   });
-
-  describe('Error Handling', () => {
-    it('should handle network errors', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'));
-
-      await expect(fetch('/api/chat')).rejects.toThrow('Network error');
-    });
-
-    it('should handle server errors', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ error: 'Internal server error' }),
-      };
-      mockFetch.mockResolvedValue(mockResponse);
-
-      const response = await fetch('/api/chat');
-      expect(response.status).toBe(500);
-      const data = await response.json();
-      expect(data).toHaveProperty('error');
-    });
-  });
-}); 
+});

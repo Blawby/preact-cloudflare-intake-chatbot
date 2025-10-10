@@ -1,20 +1,20 @@
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 import { withCloudflare } from "better-auth-cloudflare";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "../types";
 import * as authSchema from "../db/auth.schema";
 import { EmailService } from "../services/EmailService.js";
-import { handlePostSignup } from "./hooks.js";
+
+// Organization plugin will use default roles for now
 
 // Create auth instance for CLI schema generation (without env)
 export const auth = betterAuth({
   ...withCloudflare(
     {
-      autoDetectIpAddress: true,
-      geolocationTracking: true,
-      cf: true,
+      autoDetectIpAddress: false,
+      geolocationTracking: false,
+      cf: false,
       // No d1 config for CLI generation
     },
     {
@@ -37,14 +37,7 @@ export const auth = betterAuth({
         },
       },
       plugins: [
-        organization({
-          roles: {
-            owner: ["*"],
-            admin: ["member:invite", "member:remove", "matter:*", "client:view"],
-            attorney: ["matter:*", "client:view"],
-            paralegal: ["matter:view", "client:view"],
-          },
-        }),
+        organization(),
       ],
     }
   ),
@@ -55,14 +48,16 @@ let authInstance: ReturnType<typeof betterAuth> | null = null;
 
 export async function getAuth(env: Env) {
   if (!authInstance) {
+    console.log('🔧 Initializing Better Auth with D1 database...');
     const db = drizzle(env.DB, { schema: authSchema });
+    console.log('✅ Drizzle database instance created');
     
     authInstance = betterAuth({
       ...withCloudflare(
         {
-          autoDetectIpAddress: true,
-          geolocationTracking: true,
-          cf: true,
+          autoDetectIpAddress: env.NODE_ENV === 'production',
+          geolocationTracking: env.NODE_ENV === 'production',
+          cf: env.NODE_ENV === 'production',
           d1: {
             db,
             options: {
@@ -72,7 +67,7 @@ export async function getAuth(env: Env) {
           },
           // R2 for profile images only
           r2: {
-            bucket: env.FILES_BUCKET,
+            bucket: env.FILES_BUCKET as unknown as import("better-auth-cloudflare").R2Bucket, // Type assertion to resolve compatibility
             maxFileSize: 5 * 1024 * 1024, // 5MB
             allowedTypes: [".jpg", ".jpeg", ".png", ".webp"],
             additionalFields: {
@@ -93,7 +88,7 @@ export async function getAuth(env: Env) {
             "http://localhost:8787",
           ].filter(Boolean),
           advanced: {
-            cookies: {
+            defaultCookieAttributes: {
               sameSite: "lax",
               secure: false, // Set to false for localhost development
             },
@@ -103,7 +98,7 @@ export async function getAuth(env: Env) {
           },
           emailAndPassword: {
             enabled: true,
-            requireEmailVerification: true, // Enabled for production
+            requireEmailVerification: env.NODE_ENV === 'production', // Only require verification in production
             sendResetPassword: async ({ user, url }) => {
               try {
                 const emailService = new EmailService(env.RESEND_API_KEY);
@@ -119,7 +114,9 @@ export async function getAuth(env: Env) {
                 // Don't throw - let the user continue even if email fails
               }
             },
-            sendEmailVerification: async ({ user, url }) => {
+          },
+          emailVerification: {
+            sendVerificationEmail: async ({ user, url }) => {
               try {
                 const emailService = new EmailService(env.RESEND_API_KEY);
                 await emailService.send({
@@ -143,36 +140,8 @@ export async function getAuth(env: Env) {
             },
           },
           plugins: [
-            organization({
-              roles: {
-                owner: ["*"],
-                admin: ["member:invite", "member:remove", "matter:*", "client:view"],
-                attorney: ["matter:*", "client:view"],
-                paralegal: ["matter:view", "client:view"],
-              },
-            }),
-          ],
-          // Add hooks for organization auto-creation
-          hooks: {
-            after: [
-              {
-                matcher: (context) => {
-                  // Match signup and email verification events
-                  return context.path === "/sign-up" || context.path === "/verify-email";
-                },
-                handler: async (context) => {
-                  if (context.user && context.user.emailVerified) {
-                    console.log(`Running post-signup hook for user ${context.user.id}`);
-                    await handlePostSignup(
-                      context.user.id,
-                      context.user.name || 'User',
-                      env
-                    );
-                  }
-                }
-              }
-            ]
-          }
+            organization(),
+          ]
         }
       )
     });

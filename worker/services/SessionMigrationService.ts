@@ -38,6 +38,13 @@ export class SessionMigrationService {
       ) AND user_id IS NULL
     `).bind(userId, sessionId).run();
 
+    // Migrate chat_sessions
+    await env.DB.prepare(`
+      UPDATE chat_sessions 
+      SET user_id = ? 
+      WHERE id = ? AND user_id IS NULL
+    `).bind(userId, sessionId).run();
+
     // Migrate chat_messages
     await env.DB.prepare(`
       UPDATE chat_messages 

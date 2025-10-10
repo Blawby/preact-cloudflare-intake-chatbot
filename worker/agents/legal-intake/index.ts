@@ -242,61 +242,29 @@ function shouldShowContactFormPreemptively(
   organization: Organization | null,
   messages: readonly AgentMessage[]
 ): boolean {
-  const nameValue = context.contactInfo?.name?.trim() ?? '';
-  const emailValue = context.contactInfo?.email?.trim() ?? '';
-  const phoneValue = context.contactInfo?.phone?.trim() ?? '';
-  const locationValue = context.contactInfo?.location?.trim() ?? '';
-
-  const hasName = nameValue.length > 0 && !hasPlaceholderValue(nameValue);
-  const emailUsable = emailValue.length > 0
-    && !ValidationService.hasPlaceholderValues(undefined, emailValue)
-    && !hasPlaceholderValue(emailValue);
-  const phoneUsable = phoneValue.length > 0
-    && !ValidationService.hasPlaceholderValues(phoneValue)
-    && !hasPlaceholderValue(phoneValue);
-  const hasReachableContact = emailUsable || phoneUsable;
-
-  const requiresLocation = organization?.config?.jurisdiction?.type === 'state';
-  const hasValidLocation = !requiresLocation
-    || (locationValue.length > 0 && !hasPlaceholderValue(locationValue) && ValidationService.validateLocation(locationValue));
-
-  // Always check for lawyer requests first, regardless of contact info
+  // Only check for explicit contact requests in the last message
   const lastUserEntry = [...messages].reverse().find(msg => msg.role === 'user' || (msg as { isUser?: boolean }).isUser);
   const lastUserMessage = lastUserEntry?.content?.toLowerCase() ?? '';
 
   if (lastUserMessage) {
-    const userRequestingMatter = /(create\s+(?:a\s+)?matter|create\s+it\s+now|open\s+(?:a\s+)?case|file\s+(?:a\s+)?case|speak\s+to\s+lawyer|talk\s+to\s+lawyer|skip\s+intake|(?:i\s+)?need\s+a\s+lawyer(?:\s+asap)?)/i;
-    if (userRequestingMatter.test(lastUserMessage)) {
+    // Only trigger for explicit lawyer/contact requests
+    const explicitContactRequest = /(create\s+(?:a\s+)?matter|create\s+it\s+now|open\s+(?:a\s+)?case|file\s+(?:a\s+)?case|speak\s+to\s+lawyer|talk\s+to\s+lawyer|skip\s+intake|(?:i\s+)?need\s+a\s+lawyer(?:\s+asap)?|contact\s+(?:you|me|form)|want\s+to\s+contact|get\s+in\s+touch)/i;
+    if (explicitContactRequest.test(lastUserMessage)) {
       return true;
     }
 
-    // Also trigger for general lawyer requests even without specific legal issue
-    const generalLawyerRequest = /(need\s+(?:a\s+)?lawyer|want\s+(?:a\s+)?lawyer|looking\s+for\s+(?:a\s+)?lawyer|find\s+(?:a\s+)?lawyer|get\s+(?:a\s+)?lawyer)/i;
-    if (generalLawyerRequest.test(lastUserMessage)) {
-      return true;
-    }
-
+    // Check for very specific contact requests only
     const trimmed = lastUserMessage.trim();
-    if (trimmed === 'contact' || trimmed === 'contact you' || trimmed === 'contact me') {
+    if (trimmed === 'contact' || trimmed === 'contact you' || trimmed === 'contact me' || trimmed === 'contact form') {
       return true;
     }
   }
 
-  const missingRequiredInfo = !hasName || !hasReachableContact || !hasValidLocation;
-  if (!missingRequiredInfo) {
-    return false;
-  }
-
-  const shouldEscalate = context.state === ConversationState.READY_TO_CREATE_MATTER
-    || context.state === ConversationState.SHOWING_CONTACT_FORM
-    || context.isSensitiveMatter
-    || context.shouldCreateMatter
-    || context.isQualifiedLead;
-
-  if (shouldEscalate) {
+  // Don't trigger based on context state alone - let the AI have a conversation first
+  // Only trigger if we're already in the contact form state
+  if (context.state === ConversationState.SHOWING_CONTACT_FORM) {
     return true;
   }
-
 
   return false;
 }
