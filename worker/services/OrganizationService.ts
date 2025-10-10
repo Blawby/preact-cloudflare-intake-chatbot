@@ -500,32 +500,6 @@ export class OrganizationService {
     }
   }
 
-  // Legacy method for backward compatibility
-  async listOrganizations(): Promise<Organization[]> {
-    const organizations = await this.listOrganizations();
-    return organizations.map(org => ({
-      id: org.id,
-      name: org.name,
-      config: {
-        aiProvider: org.metadata.aiProvider,
-        aiModel: org.metadata.aiModel,
-        aiModelFallback: org.metadata.aiModelFallback,
-        consultationFee: org.metadata.consultationFee,
-        requiresPayment: org.metadata.requiresPayment,
-        ownerEmail: org.metadata.ownerEmail,
-        availableServices: org.metadata.availableServices,
-        serviceQuestions: org.metadata.serviceQuestions,
-        domain: org.metadata.domain,
-        description: org.metadata.description,
-        paymentLink: org.metadata.paymentLink,
-        brandColor: org.metadata.brandColor,
-        accentColor: org.metadata.accentColor,
-        introMessage: org.metadata.introMessage,
-        profileImage: org.metadata.profileImage,
-        voice: org.metadata.voice
-      }
-    }));
-  }
 
   /**
    * Validates and normalizes organization configuration to ensure all required properties are present

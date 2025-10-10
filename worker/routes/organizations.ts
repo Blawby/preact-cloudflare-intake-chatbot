@@ -181,7 +181,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 }
 
 async function listOrganizations(organizationService: OrganizationService): Promise<Response> {
-  const organizations = await organizationService.listOrganizations();
+  const organizations = await organizationService.listOrganizations(); // This will get all organizations when called without userId
   
   return new Response(
     JSON.stringify({ 
