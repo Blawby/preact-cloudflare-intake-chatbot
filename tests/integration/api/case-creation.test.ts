@@ -1,6 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
 
+// Helper function to parse SSE events from response data
+function parseSSEEvents(responseData: string) {
+  return responseData
+    .split('\n\n')
+    .filter(chunk => chunk.trim().startsWith('data: '))
+    .map(chunk => {
+      const jsonStr = chunk.replace('data: ', '').trim();
+      try {
+        return JSON.parse(jsonStr);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
 // Helper function to handle streaming responses
 async function handleStreamingResponse(response: Response, timeoutMs: number = 30000) {
   const reader = response.body?.getReader();
@@ -41,29 +57,19 @@ async function handleStreamingResponse(response: Response, timeoutMs: number = 3
       throw new Error(`Streaming response timeout after ${timeoutMs}ms: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
     
-    // Check if we have a completion event
-    if (responseData.includes('"type":"complete"')) {
+    // Check if we have a completion event by parsing SSE events
+    const events = parseSSEEvents(responseData);
+    
+    // Check if any parsed event has type === "complete"
+    if (events.some(event => event.type === 'complete')) {
       break;
     }
   }
   
   reader.releaseLock();
   
-  // Parse SSE data
-  const events = responseData
-    .split('\n\n')
-    .filter(chunk => chunk.trim().startsWith('data: '))
-    .map(chunk => {
-      const jsonStr = chunk.replace('data: ', '').trim();
-      try {
-        return JSON.parse(jsonStr);
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
-  
-  return events;
+  // Parse final SSE data and return all events
+  return parseSSEEvents(responseData);
 }
 
 describe('Matter Creation API Integration - Real API', () => {
@@ -92,12 +98,27 @@ describe('Matter Creation API Integration - Real API', () => {
       const events = await handleStreamingResponse(response);
       expect(events.length).toBeGreaterThan(0);
       
-      // Should have at least a connected event and some response
-      const hasConnected = events.some(event => event.type === 'connected');
-      const hasText = events.some(event => event.type === 'text');
-      const hasMatterCanvas = events.some(event => event.type === 'matter_canvas');
+      // For employment law, expect both text response and matter canvas
+      const textEvents = events.filter(event => event.type === 'text');
+      const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
       
-      expect(hasConnected || hasText || hasMatterCanvas).toBe(true);
+      expect(textEvents.length).toBeGreaterThan(0);
+      expect(matterCanvasEvents.length).toBeGreaterThan(0);
+      
+      // Validate text event structure
+      const textEvent = textEvents[0];
+      expect(textEvent).toHaveProperty('type', 'text');
+      expect(textEvent).toHaveProperty('content');
+      expect(typeof textEvent.content).toBe('string');
+      expect(textEvent.content.length).toBeGreaterThan(0);
+      
+      // Validate matter canvas event structure
+      const matterCanvasEvent = matterCanvasEvents[0];
+      expect(matterCanvasEvent).toHaveProperty('type', 'matter_canvas');
+      expect(matterCanvasEvent).toHaveProperty('data');
+      expect(matterCanvasEvent.data).toHaveProperty('matter');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('type');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('description');
     });
 
     it('should handle matter creation with contact form', async () => {
@@ -124,12 +145,26 @@ describe('Matter Creation API Integration - Real API', () => {
       const events = await handleStreamingResponse(response);
       expect(events.length).toBeGreaterThan(0);
       
-      // Should have at least a connected event and some response
-      const hasConnected = events.some(event => event.type === 'connected');
-      const hasText = events.some(event => event.type === 'text');
-      const hasMatterCanvas = events.some(event => event.type === 'matter_canvas');
+      // For divorce/contact form, expect text response and contact form
+      const textEvents = events.filter(event => event.type === 'text');
+      const contactFormEvents = events.filter(event => event.type === 'contact_form');
       
-      expect(hasConnected || hasText || hasMatterCanvas).toBe(true);
+      expect(textEvents.length).toBeGreaterThan(0);
+      expect(contactFormEvents.length).toBeGreaterThan(0);
+      
+      // Validate text event structure
+      const textEvent = textEvents[0];
+      expect(textEvent).toHaveProperty('type', 'text');
+      expect(textEvent).toHaveProperty('content');
+      expect(typeof textEvent.content).toBe('string');
+      expect(textEvent.content.length).toBeGreaterThan(0);
+      
+      // Validate contact form event structure
+      const contactFormEvent = contactFormEvents[0];
+      expect(contactFormEvent).toHaveProperty('type', 'contact_form');
+      expect(contactFormEvent).toHaveProperty('data');
+      expect(contactFormEvent.data).toHaveProperty('fields');
+      expect(Array.isArray(contactFormEvent.data.fields)).toBe(true);
     });
 
     it('should handle business law matter creation', async () => {
@@ -154,12 +189,27 @@ describe('Matter Creation API Integration - Real API', () => {
       const events = await handleStreamingResponse(response);
       expect(events.length).toBeGreaterThan(0);
       
-      // Should have at least a connected event and some response
-      const hasConnected = events.some(event => event.type === 'connected');
-      const hasText = events.some(event => event.type === 'text');
-      const hasMatterCanvas = events.some(event => event.type === 'matter_canvas');
+      // For business law, expect both text response and matter canvas
+      const textEvents = events.filter(event => event.type === 'text');
+      const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
       
-      expect(hasConnected || hasText || hasMatterCanvas).toBe(true);
+      expect(textEvents.length).toBeGreaterThan(0);
+      expect(matterCanvasEvents.length).toBeGreaterThan(0);
+      
+      // Validate text event structure
+      const textEvent = textEvents[0];
+      expect(textEvent).toHaveProperty('type', 'text');
+      expect(textEvent).toHaveProperty('content');
+      expect(typeof textEvent.content).toBe('string');
+      expect(textEvent.content.length).toBeGreaterThan(0);
+      
+      // Validate matter canvas event structure
+      const matterCanvasEvent = matterCanvasEvents[0];
+      expect(matterCanvasEvent).toHaveProperty('type', 'matter_canvas');
+      expect(matterCanvasEvent).toHaveProperty('data');
+      expect(matterCanvasEvent.data).toHaveProperty('matter');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('type');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('description');
     });
 
     it('should handle criminal law matter creation', async () => {
@@ -184,14 +234,36 @@ describe('Matter Creation API Integration - Real API', () => {
       const events = await handleStreamingResponse(response);
       expect(events.length).toBeGreaterThan(0);
       
-      // Should have at least a connected event and some response
-      const hasConnected = events.some(event => event.type === 'connected');
-      const hasText = events.some(event => event.type === 'text');
-      const hasContactForm = events.some(event => event.type === 'contact_form');
-      const hasToolCall = events.some(event => event.type === 'tool_call');
-      const hasMatterCanvas = events.some(event => event.type === 'matter_canvas');
+      // For criminal law, expect text response, contact form, and matter canvas
+      const textEvents = events.filter(event => event.type === 'text');
+      const contactFormEvents = events.filter(event => event.type === 'contact_form');
+      const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
       
-      expect(hasConnected || hasText || hasContactForm || hasToolCall || hasMatterCanvas).toBe(true);
+      expect(textEvents.length).toBeGreaterThan(0);
+      expect(contactFormEvents.length).toBeGreaterThan(0);
+      expect(matterCanvasEvents.length).toBeGreaterThan(0);
+      
+      // Validate text event structure
+      const textEvent = textEvents[0];
+      expect(textEvent).toHaveProperty('type', 'text');
+      expect(textEvent).toHaveProperty('content');
+      expect(typeof textEvent.content).toBe('string');
+      expect(textEvent.content.length).toBeGreaterThan(0);
+      
+      // Validate contact form event structure
+      const contactFormEvent = contactFormEvents[0];
+      expect(contactFormEvent).toHaveProperty('type', 'contact_form');
+      expect(contactFormEvent).toHaveProperty('data');
+      expect(contactFormEvent.data).toHaveProperty('fields');
+      expect(Array.isArray(contactFormEvent.data.fields)).toBe(true);
+      
+      // Validate matter canvas event structure
+      const matterCanvasEvent = matterCanvasEvents[0];
+      expect(matterCanvasEvent).toHaveProperty('type', 'matter_canvas');
+      expect(matterCanvasEvent).toHaveProperty('data');
+      expect(matterCanvasEvent.data).toHaveProperty('matter');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('type');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('description');
     });
 
     it('should handle personal injury matter creation', async () => {
@@ -216,14 +288,36 @@ describe('Matter Creation API Integration - Real API', () => {
       const events = await handleStreamingResponse(response);
       expect(events.length).toBeGreaterThan(0);
       
-      // Should have at least a connected event and some response
-      const hasConnected = events.some(event => event.type === 'connected');
-      const hasText = events.some(event => event.type === 'text');
-      const hasContactForm = events.some(event => event.type === 'contact_form');
-      const hasToolCall = events.some(event => event.type === 'tool_call');
-      const hasMatterCanvas = events.some(event => event.type === 'matter_canvas');
+      // For personal injury, expect text response, contact form, and matter canvas
+      const textEvents = events.filter(event => event.type === 'text');
+      const contactFormEvents = events.filter(event => event.type === 'contact_form');
+      const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
       
-      expect(hasConnected || hasText || hasContactForm || hasToolCall || hasMatterCanvas).toBe(true);
+      expect(textEvents.length).toBeGreaterThan(0);
+      expect(contactFormEvents.length).toBeGreaterThan(0);
+      expect(matterCanvasEvents.length).toBeGreaterThan(0);
+      
+      // Validate text event structure
+      const textEvent = textEvents[0];
+      expect(textEvent).toHaveProperty('type', 'text');
+      expect(textEvent).toHaveProperty('content');
+      expect(typeof textEvent.content).toBe('string');
+      expect(textEvent.content.length).toBeGreaterThan(0);
+      
+      // Validate contact form event structure
+      const contactFormEvent = contactFormEvents[0];
+      expect(contactFormEvent).toHaveProperty('type', 'contact_form');
+      expect(contactFormEvent).toHaveProperty('data');
+      expect(contactFormEvent.data).toHaveProperty('fields');
+      expect(Array.isArray(contactFormEvent.data.fields)).toBe(true);
+      
+      // Validate matter canvas event structure
+      const matterCanvasEvent = matterCanvasEvents[0];
+      expect(matterCanvasEvent).toHaveProperty('type', 'matter_canvas');
+      expect(matterCanvasEvent).toHaveProperty('data');
+      expect(matterCanvasEvent.data).toHaveProperty('matter');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('type');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('description');
     });
 
     it('should handle contract review matter creation', async () => {
@@ -248,14 +342,36 @@ describe('Matter Creation API Integration - Real API', () => {
       const events = await handleStreamingResponse(response);
       expect(events.length).toBeGreaterThan(0);
       
-      // Should have at least a connected event and some response
-      const hasConnected = events.some(event => event.type === 'connected');
-      const hasText = events.some(event => event.type === 'text');
-      const hasContactForm = events.some(event => event.type === 'contact_form');
-      const hasToolCall = events.some(event => event.type === 'tool_call');
-      const hasMatterCanvas = events.some(event => event.type === 'matter_canvas');
+      // For contract review, expect text response, contact form, and matter canvas
+      const textEvents = events.filter(event => event.type === 'text');
+      const contactFormEvents = events.filter(event => event.type === 'contact_form');
+      const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
       
-      expect(hasConnected || hasText || hasContactForm || hasToolCall || hasMatterCanvas).toBe(true);
+      expect(textEvents.length).toBeGreaterThan(0);
+      expect(contactFormEvents.length).toBeGreaterThan(0);
+      expect(matterCanvasEvents.length).toBeGreaterThan(0);
+      
+      // Validate text event structure
+      const textEvent = textEvents[0];
+      expect(textEvent).toHaveProperty('type', 'text');
+      expect(textEvent).toHaveProperty('content');
+      expect(typeof textEvent.content).toBe('string');
+      expect(textEvent.content.length).toBeGreaterThan(0);
+      
+      // Validate contact form event structure
+      const contactFormEvent = contactFormEvents[0];
+      expect(contactFormEvent).toHaveProperty('type', 'contact_form');
+      expect(contactFormEvent).toHaveProperty('data');
+      expect(contactFormEvent.data).toHaveProperty('fields');
+      expect(Array.isArray(contactFormEvent.data.fields)).toBe(true);
+      
+      // Validate matter canvas event structure
+      const matterCanvasEvent = matterCanvasEvents[0];
+      expect(matterCanvasEvent).toHaveProperty('type', 'matter_canvas');
+      expect(matterCanvasEvent).toHaveProperty('data');
+      expect(matterCanvasEvent.data).toHaveProperty('matter');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('type');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('description');
     });
 
     it('should handle intellectual property matter creation', async () => {
@@ -280,14 +396,36 @@ describe('Matter Creation API Integration - Real API', () => {
       const events = await handleStreamingResponse(response);
       expect(events.length).toBeGreaterThan(0);
       
-      // Should have at least a connected event and some response
-      const hasConnected = events.some(event => event.type === 'connected');
-      const hasText = events.some(event => event.type === 'text');
-      const hasContactForm = events.some(event => event.type === 'contact_form');
-      const hasToolCall = events.some(event => event.type === 'tool_call');
-      const hasMatterCanvas = events.some(event => event.type === 'matter_canvas');
+      // For intellectual property, expect text response, contact form, and matter canvas
+      const textEvents = events.filter(event => event.type === 'text');
+      const contactFormEvents = events.filter(event => event.type === 'contact_form');
+      const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
       
-      expect(hasConnected || hasText || hasContactForm || hasToolCall || hasMatterCanvas).toBe(true);
+      expect(textEvents.length).toBeGreaterThan(0);
+      expect(contactFormEvents.length).toBeGreaterThan(0);
+      expect(matterCanvasEvents.length).toBeGreaterThan(0);
+      
+      // Validate text event structure
+      const textEvent = textEvents[0];
+      expect(textEvent).toHaveProperty('type', 'text');
+      expect(textEvent).toHaveProperty('content');
+      expect(typeof textEvent.content).toBe('string');
+      expect(textEvent.content.length).toBeGreaterThan(0);
+      
+      // Validate contact form event structure
+      const contactFormEvent = contactFormEvents[0];
+      expect(contactFormEvent).toHaveProperty('type', 'contact_form');
+      expect(contactFormEvent).toHaveProperty('data');
+      expect(contactFormEvent.data).toHaveProperty('fields');
+      expect(Array.isArray(contactFormEvent.data.fields)).toBe(true);
+      
+      // Validate matter canvas event structure
+      const matterCanvasEvent = matterCanvasEvents[0];
+      expect(matterCanvasEvent).toHaveProperty('type', 'matter_canvas');
+      expect(matterCanvasEvent).toHaveProperty('data');
+      expect(matterCanvasEvent.data).toHaveProperty('matter');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('type');
+      expect(matterCanvasEvent.data.matter).toHaveProperty('description');
     });
   });
 });

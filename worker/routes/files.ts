@@ -206,24 +206,37 @@ async function storeFile(file: File, organizationId: string, sessionId: string, 
 
   // Try to store file metadata in database, but don't fail if it doesn't work
   try {
-    // First check if the organization exists, if not, create a minimal entry
+    // Check if the organization exists - this is required for file operations
     const organizationCheckStmt = env.DB.prepare('SELECT id FROM organizations WHERE id = ? OR slug = ?');
     const existingOrganization = await organizationCheckStmt.bind(organizationId, organizationId).first();
     
     if (!existingOrganization) {
-      console.log('Organization not found in database, creating minimal entry:', organizationId);
-      // Create a minimal organization entry if it doesn't exist
-      const createOrganizationStmt = env.DB.prepare(`
-        INSERT OR IGNORE INTO organizations (id, slug, name, config, created_at, updated_at) 
-        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-      `);
-      await createOrganizationStmt.bind(
+      // Log anomaly for monitoring and alerting
+      Logger.error('Organization not found during file upload - this indicates a data integrity issue', {
         organizationId,
+        sessionId,
+        fileId,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        timestamp: new Date().toISOString(),
+        anomaly: 'missing_organization_during_file_upload',
+        severity: 'high'
+      });
+
+      // Emit monitoring metric/alert
+      // In production, this would integrate with your monitoring system (e.g., DataDog, New Relic, etc.)
+      console.error('🚨 MONITORING ALERT: Missing organization during file upload', {
         organizationId,
-        `Organization ${organizationId}`,
-        JSON.stringify({ aiModel: '@cf/openai/gpt-oss-20b', requiresPayment: false })
-      ).run();
-      console.log('Organization created in database:', organizationId);
+        sessionId,
+        fileId,
+        alertType: 'missing_organization',
+        severity: 'high',
+        timestamp: new Date().toISOString()
+      });
+
+      // Return clear error response
+      throw new Error(`Organization '${organizationId}' not found. Please ensure the organization exists before uploading files. Use the proper organization creation flow via POST /api/organizations or contact your system administrator.`);
     }
 
     const stmt = env.DB.prepare(`
@@ -318,6 +331,10 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
       const file = formData.get('file') as File;
       const organizationId = formData.get('organizationId') as string;
       const sessionId = formData.get('sessionId') as string;
+      
+      // Extract optional metadata fields
+      const description = formData.get('description') as string | null;
+      const category = formData.get('category') as string | null;
 
       // Validate input
       const validationResult = fileUploadValidationSchema.safeParse({ file, organizationId, sessionId });
@@ -331,8 +348,20 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         throw HttpErrors.badRequest(fileValidation.error!);
       }
 
+      // Create a simple request for middleware with organizationId in URL
+      const middlewareUrl = new URL(request.url);
+      if (organizationId) {
+        middlewareUrl.searchParams.set('organizationId', organizationId);
+      }
+
+      // Create a lightweight request for middleware (no body needed)
+      const middlewareRequest = new Request(middlewareUrl.toString(), {
+        method: 'GET', // Middleware doesn't need the POST body
+        headers: request.headers
+      });
+
       // Always use organization context middleware to get authoritative organization ID
-      const requestWithContext = await withOrganizationContext(request, env, {
+      const requestWithContext = await withOrganizationContext(middlewareRequest, env, {
         requireOrganization: true,
         allowUrlOverride: true
       });
@@ -536,7 +565,15 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
           fileSize: file.size,
           url,
           statusId,
-          message: 'File uploaded successfully'
+          message: 'File uploaded successfully',
+          // Include metadata fields if provided
+          ...(description && { description }),
+          ...(category && { category }),
+          // Also include in metadata object for backward compatibility
+          metadata: {
+            ...(description && { description }),
+            ...(category && { category })
+          }
         }
       };
 

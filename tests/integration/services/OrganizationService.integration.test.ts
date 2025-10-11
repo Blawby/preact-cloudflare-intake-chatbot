@@ -4,6 +4,10 @@ import { ApiResponse } from '../../../worker/types.js';
 import { Organization } from '../../../worker/services/OrganizationService.js';
 
 describe('OrganizationService Integration - Real API', () => {
+  // Test organization data for deterministic testing
+  let testOrganization1: Organization;
+  let testOrganization2: Organization;
+
   beforeAll(async () => {
     console.log('🧪 Testing OrganizationService against real worker at:', WORKER_URL);
     
@@ -14,9 +18,119 @@ describe('OrganizationService Integration - Real API', () => {
         throw new Error(`Worker health check failed: ${healthResponse.status}`);
       }
       console.log('✅ Worker is running and healthy');
-    } catch (error) {
+    } catch (_error) {
       throw new Error(`Worker is not running at ${WORKER_URL}. Please ensure wrangler dev is started.`);
     }
+
+    // Create deterministic test organizations
+    const timestamp = Date.now();
+    
+    // Create first test organization
+    const org1Data = {
+      slug: `test-org-1-${timestamp}`,
+      name: 'Test Organization 1',
+      config: {
+        consultationFee: 0,
+        requiresPayment: false,
+        ownerEmail: 'test1@example.com',
+        availableServices: ['Legal Consultation'],
+        jurisdiction: {
+          type: 'national',
+          description: 'Test jurisdiction 1',
+          supportedStates: ['all'],
+          supportedCountries: ['US']
+        },
+        domain: 'test1.example.com',
+        description: 'Test organization 1 description',
+        brandColor: '#000000',
+        accentColor: '#ffffff',
+        introMessage: 'Hello from test organization 1!'
+      }
+    };
+
+    const org1Response = await fetch(`${WORKER_URL}/api/organizations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(org1Data)
+    });
+
+    if (!org1Response.ok) {
+      throw new Error(`Failed to create test organization 1: ${org1Response.status}`);
+    }
+
+    const org1Result = await org1Response.json() as ApiResponse<Organization>;
+    if (!org1Result.success || !org1Result.data) {
+      throw new Error(`Test organization 1 creation failed: ${JSON.stringify(org1Result)}`);
+    }
+    testOrganization1 = org1Result.data;
+
+    // Create second test organization
+    const org2Data = {
+      slug: `test-org-2-${timestamp}`,
+      name: 'Test Organization 2',
+      config: {
+        consultationFee: 50,
+        requiresPayment: true,
+        ownerEmail: 'test2@example.com',
+        availableServices: ['Legal Consultation', 'Document Review'],
+        jurisdiction: {
+          type: 'state',
+          description: 'Test jurisdiction 2',
+          supportedStates: ['CA', 'NY'],
+          supportedCountries: ['US']
+        },
+        domain: 'test2.example.com',
+        description: 'Test organization 2 description',
+        brandColor: '#0066cc',
+        accentColor: '#ffffff',
+        introMessage: 'Hello from test organization 2!'
+      }
+    };
+
+    const org2Response = await fetch(`${WORKER_URL}/api/organizations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(org2Data)
+    });
+
+    if (!org2Response.ok) {
+      throw new Error(`Failed to create test organization 2: ${org2Response.status}`);
+    }
+
+    const org2Result = await org2Response.json() as ApiResponse<Organization>;
+    if (!org2Result.success || !org2Result.data) {
+      throw new Error(`Test organization 2 creation failed: ${JSON.stringify(org2Result)}`);
+    }
+    testOrganization2 = org2Result.data;
+
+    console.log('✅ Created test organizations:', {
+      org1: { id: testOrganization1.id, slug: testOrganization1.slug },
+      org2: { id: testOrganization2.id, slug: testOrganization2.slug }
+    });
+  });
+
+  afterAll(async () => {
+    // Clean up test organizations
+    const cleanupPromises = [];
+    
+    if (testOrganization1?.id) {
+      cleanupPromises.push(
+        fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`, {
+          method: 'DELETE'
+        }).catch(err => console.warn('Failed to cleanup test organization 1:', err))
+      );
+    }
+    
+    if (testOrganization2?.id) {
+      cleanupPromises.push(
+        fetch(`${WORKER_URL}/api/organizations/${testOrganization2.id}`, {
+          method: 'DELETE'
+        }).catch(err => console.warn('Failed to cleanup test organization 2:', err))
+      );
+    }
+
+    await Promise.all(cleanupPromises);
+    console.log('✅ Cleaned up test organizations');
   });
 
   describe('GET /api/organizations', () => {
@@ -28,51 +142,47 @@ describe('OrganizationService Integration - Real API', () => {
       
       expect(result.success).toBe(true);
       expect(Array.isArray(result.data)).toBe(true);
-      expect(result.data!.length).toBeGreaterThan(0);
+      expect(result.data!.length).toBeGreaterThanOrEqual(2); // At least our 2 test organizations
       
-      // Verify organization structure
-      const organization = result.data![0];
-      expect(organization).toHaveProperty('id');
-      expect(organization).toHaveProperty('slug');
-      expect(organization).toHaveProperty('name');
-      expect(organization).toHaveProperty('config');
+      // Verify our test organizations are in the response
+      const organizationIds = result.data!.map(org => org.id);
+      expect(organizationIds).toContain(testOrganization1.id);
+      expect(organizationIds).toContain(testOrganization2.id);
+      
+      // Verify organization structure using our test data
+      const testOrg1InResponse = result.data!.find(org => org.id === testOrganization1.id);
+      expect(testOrg1InResponse).toBeDefined();
+      expect(testOrg1InResponse).toHaveProperty('id', testOrganization1.id);
+      expect(testOrg1InResponse).toHaveProperty('slug', testOrganization1.slug);
+      expect(testOrg1InResponse).toHaveProperty('name', testOrganization1.name);
+      expect(testOrg1InResponse).toHaveProperty('config');
     });
   });
 
   describe('GET /api/organizations/{id}', () => {
     it('should return organization by ID', async () => {
-      // First get all organizations to find a valid ID
-      const organizationsResponse = await fetch(`${WORKER_URL}/api/organizations`);
-      const organizationsData = await organizationsResponse.json() as ApiResponse<Organization[]>;
-      const validOrganizationId = organizationsData.data![0].id;
-      
-      const response = await fetch(`${WORKER_URL}/api/organizations/${validOrganizationId}`);
+      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`);
       
       expect(response.status).toBe(200);
       const result = await response.json() as ApiResponse<Organization>;
       
       expect(result.success).toBe(true);
-      expect(result.data).toHaveProperty('id', validOrganizationId);
-      expect(result.data).toHaveProperty('slug');
-      expect(result.data).toHaveProperty('name');
+      expect(result.data).toHaveProperty('id', testOrganization1.id);
+      expect(result.data).toHaveProperty('slug', testOrganization1.slug);
+      expect(result.data).toHaveProperty('name', testOrganization1.name);
       expect(result.data).toHaveProperty('config');
     });
 
     it('should return organization by slug', async () => {
-      // First get all organizations to find a valid slug
-      const organizationsResponse = await fetch(`${WORKER_URL}/api/organizations`);
-      const organizationsData = await organizationsResponse.json() as ApiResponse<Organization[]>;
-      const validOrganizationSlug = organizationsData.data![0].slug;
-      
-      const response = await fetch(`${WORKER_URL}/api/organizations/${validOrganizationSlug}`);
+      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization2.slug}`);
       
       expect(response.status).toBe(200);
       const result = await response.json() as ApiResponse<Organization>;
       
       expect(result.success).toBe(true);
-      expect(result.data).toHaveProperty('slug', validOrganizationSlug);
-      expect(result.data).toHaveProperty('id');
-      expect(result.data).toHaveProperty('name');
+      expect(result.data).toHaveProperty('slug', testOrganization2.slug);
+      expect(result.data).toHaveProperty('id', testOrganization2.id);
+      expect(result.data).toHaveProperty('name', testOrganization2.name);
       expect(result.data).toHaveProperty('config');
     });
 
@@ -305,45 +415,65 @@ describe('OrganizationService Integration - Real API', () => {
 
   describe('Organization configuration validation', () => {
     it('should validate organization configuration structure', async () => {
-      const organizationsResponse = await fetch(`${WORKER_URL}/api/organizations`);
-      const organizationsData = await organizationsResponse.json() as ApiResponse<Organization[]>;
-      const organization = organizationsData.data![0];
+      // Test with our deterministic test organization
+      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`);
+      const result = await response.json() as ApiResponse<Organization>;
+      
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      
+      const organization = result.data!;
 
       // Verify config has required fields
-      expect(organization.config).toHaveProperty('aiModel');
       expect(organization.config).toHaveProperty('consultationFee');
       expect(organization.config).toHaveProperty('requiresPayment');
-      // ownerEmail is optional in the config - it may or may not be present
-      if (organization.config.ownerEmail !== undefined) {
-        expect(typeof organization.config.ownerEmail).toBe('string');
-      }
+      expect(organization.config).toHaveProperty('ownerEmail');
       expect(organization.config).toHaveProperty('availableServices');
       expect(organization.config).toHaveProperty('jurisdiction');
+      
+      // Verify specific values from our test data
+      expect(organization.config.consultationFee).toBe(0);
+      expect(organization.config.requiresPayment).toBe(false);
+      expect(organization.config.ownerEmail).toBe('test1@example.com');
+      expect(Array.isArray(organization.config.availableServices)).toBe(true);
+      expect(organization.config.availableServices).toContain('Legal Consultation');
     });
 
     it('should handle organizations with different configurations', async () => {
-      const organizationsResponse = await fetch(`${WORKER_URL}/api/organizations`);
-      const organizationsData = await organizationsResponse.json() as ApiResponse<Organization[]>;
-
-      // Test that different organizations can have different configurations
-      const organizations = organizationsData.data!;
-      expect(organizations.length).toBeGreaterThan(0);
-
-      // Each organization should have a unique ID
-      const ids = organizations.map(t => t.id);
-      expect(new Set(ids).size).toBe(ids.length);
+      // Test that our two test organizations have different configurations
+      const response1 = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`);
+      const response2 = await fetch(`${WORKER_URL}/api/organizations/${testOrganization2.id}`);
       
-      // Note: Slugs may have duplicates from test runs, but IDs should always be unique
-      // This is expected behavior in a test environment with accumulated test data
+      const result1 = await response1.json() as ApiResponse<Organization>;
+      const result2 = await response2.json() as ApiResponse<Organization>;
+      
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+      
+      const org1 = result1.data!;
+      const org2 = result2.data!;
+
+      // Verify they have different configurations
+      expect(org1.id).not.toBe(org2.id);
+      expect(org1.slug).not.toBe(org2.slug);
+      expect(org1.config.consultationFee).not.toBe(org2.config.consultationFee);
+      expect(org1.config.requiresPayment).not.toBe(org2.config.requiresPayment);
+      expect(org1.config.ownerEmail).not.toBe(org2.config.ownerEmail);
+      
+      // Verify specific differences
+      expect(org1.config.consultationFee).toBe(0);
+      expect(org2.config.consultationFee).toBe(50);
+      expect(org1.config.requiresPayment).toBe(false);
+      expect(org2.config.requiresPayment).toBe(true);
     });
   });
 
   describe('API Token Management', () => {
-    let testOrganizationId: string;
     let createdToken: { token: string; tokenId: string };
+    let apiTokenTestOrgId: string;
 
     beforeAll(async () => {
-      // Create a test organization for API token tests
+      // Create a test organization specifically for API token tests with blawbyApi config
       const newOrganization = {
         slug: `api-token-test-${Date.now()}`,
         name: 'API Token Test Organization',
@@ -373,16 +503,24 @@ describe('OrganizationService Integration - Real API', () => {
         body: JSON.stringify(newOrganization)
       });
 
+      if (!createResponse.ok) {
+        throw new Error(`Failed to create API token test organization: ${createResponse.status}`);
+      }
+
       const createdOrganization = await createResponse.json() as ApiResponse<Organization>;
-      testOrganizationId = createdOrganization.data!.id;
+      if (!createdOrganization.success || !createdOrganization.data) {
+        throw new Error(`API token test organization creation failed: ${JSON.stringify(createdOrganization)}`);
+      }
+      
+      apiTokenTestOrgId = createdOrganization.data.id;
     });
 
     afterAll(async () => {
-      // Clean up test organization
-      if (testOrganizationId) {
-        await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}`, {
+      // Clean up API token test organization
+      if (apiTokenTestOrgId) {
+        await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}`, {
           method: 'DELETE'
-        });
+        }).catch(err => console.warn('Failed to cleanup API token test organization:', err));
       }
     });
 
@@ -390,7 +528,7 @@ describe('OrganizationService Integration - Real API', () => {
       const tokenName = 'Test API Token';
       const permissions = ['read', 'write'];
 
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}/tokens`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}/tokens`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -416,7 +554,7 @@ describe('OrganizationService Integration - Real API', () => {
         throw new Error('No token created for validation test');
       }
 
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}/validate-token`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}/validate-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -432,7 +570,7 @@ describe('OrganizationService Integration - Real API', () => {
     });
 
     it('should reject invalid API token', async () => {
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}/validate-token`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}/validate-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -448,7 +586,7 @@ describe('OrganizationService Integration - Real API', () => {
     });
 
     it('should list API tokens for organization', async () => {
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}/tokens`);
+      const response = await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}/tokens`);
 
       expect(response.status).toBe(200);
       const result = await response.json() as ApiResponse<Array<{ id: string; tokenName: string; permissions: string[]; createdAt: string; active: boolean }>>;
@@ -470,7 +608,7 @@ describe('OrganizationService Integration - Real API', () => {
         throw new Error('No token created for revocation test');
       }
 
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}/tokens/${createdToken.tokenId}`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}/tokens/${createdToken.tokenId}`, {
         method: 'DELETE'
       });
 
@@ -482,7 +620,7 @@ describe('OrganizationService Integration - Real API', () => {
     });
 
     it('should validate API key hash functionality', async () => {
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}/validate-api-key`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}/validate-api-key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -498,7 +636,7 @@ describe('OrganizationService Integration - Real API', () => {
     });
 
     it('should reject invalid API key', async () => {
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}/validate-api-key`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}/validate-api-key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -514,7 +652,7 @@ describe('OrganizationService Integration - Real API', () => {
     });
 
     it('should generate API key hash for existing key', async () => {
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganizationId}/generate-hash`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${apiTokenTestOrgId}/generate-hash`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

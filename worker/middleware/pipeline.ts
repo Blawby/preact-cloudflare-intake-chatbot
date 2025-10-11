@@ -22,6 +22,20 @@ export interface PipelineResult {
   middlewareUsed: string[];
 }
 
+// Union type for all possible middleware types
+export type AnyMiddleware = PipelineMiddleware | {
+  name: string;
+  execute: (
+    messages: AgentMessage[],
+    context: ConversationContext,
+    env: Env
+  ) => Promise<{ 
+    context: ConversationContext; 
+    response?: string;
+    shouldStop?: boolean;
+  }>;
+};
+
 /**
  * Runs a conversation through a pipeline of middleware functions
  * Each middleware can update context and optionally provide a response
@@ -31,7 +45,7 @@ export async function runPipeline(
   messages: AgentMessage[],
   context: ConversationContext,
   organizationConfig: OrganizationConfig,
-  middlewares: PipelineMiddleware[],
+  middlewares: AnyMiddleware[],
   env: Env
 ): Promise<PipelineResult> {
   let updatedContext = context;
@@ -40,7 +54,14 @@ export async function runPipeline(
 
   for (const middleware of middlewares) {
     try {
-      const result = await middleware.execute(messages, updatedContext, organizationConfig, env);
+      let result;
+      
+      // Special handling for documentChecklistMiddleware which doesn't use organizationConfig
+      if (middleware.name === 'documentChecklistMiddleware') {
+        result = await (middleware as any).execute(messages, updatedContext, env);
+      } else {
+        result = await (middleware as PipelineMiddleware).execute(messages, updatedContext, organizationConfig, env);
+      }
       
       // Update context from this middleware
       updatedContext = result.context;

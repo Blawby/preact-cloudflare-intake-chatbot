@@ -53,17 +53,54 @@ export async function requireOrganizationMember(
   const authContext = await requireAuth(request, env);
   const auth = await getAuth(env);
 
-  // TODO: Implement proper organization membership checking
-  // The Better Auth organization plugin API methods may not be fully available yet.
-  // For now, we'll return a basic auth context without role checking.
-  // This should be updated when the Better Auth organization API is stable.
-  
-  console.warn('Organization membership check not implemented - using basic auth context');
-  
-  return {
-    ...authContext,
-    memberRole: "paralegal", // Default role for now
-  };
+  // 1. Validate organizationId
+  if (!organizationId || typeof organizationId !== 'string' || organizationId.trim() === '') {
+    throw HttpErrors.badRequest("Invalid or missing organizationId");
+  }
+
+  // 2. Fetch user's membership for the organization using direct database query
+  try {
+    const membershipResult = await env.DB.prepare(`
+      SELECT role FROM organization_members 
+      WHERE organization_id = ? AND user_id = ?
+    `).bind(organizationId, authContext.user.id).first();
+    
+    // 3. Check if user has membership
+    if (!membershipResult) {
+      throw HttpErrors.forbidden("User is not a member of this organization");
+    }
+
+    const userRole = membershipResult.role as string;
+
+    // 4. Enforce role requirements if minimumRole is specified
+    if (minimumRole) {
+      const roleHierarchy: Record<string, number> = {
+        'paralegal': 1,
+        'attorney': 2,
+        'admin': 3,
+        'owner': 4
+      };
+
+      const userRoleLevel = roleHierarchy[userRole] || 0;
+      const requiredRoleLevel = roleHierarchy[minimumRole] || 0;
+
+      if (userRoleLevel < requiredRoleLevel) {
+        throw HttpErrors.forbidden(`Insufficient permissions. Required role: ${minimumRole}, user role: ${userRole}`);
+      }
+    }
+
+    // 5. Return authContext with actual memberRole
+    return {
+      ...authContext,
+      memberRole: userRole,
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('403')) {
+      throw error; // Re-throw HTTP errors
+    }
+    console.error('Error checking organization membership:', error);
+    throw HttpErrors.internalServerError("Failed to verify organization membership");
+  }
 }
 
 export async function optionalAuth(

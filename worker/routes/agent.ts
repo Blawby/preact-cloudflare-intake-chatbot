@@ -71,7 +71,7 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
     const headers = new Headers({
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
+      'Connection': 'keep-alive',
       // CORS headers will be added by the global CORS middleware
     });
 

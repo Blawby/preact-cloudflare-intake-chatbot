@@ -36,7 +36,7 @@ interface MiddlewareResponse {
 export const skipToLawyerMiddleware: PipelineMiddleware = {
   name: 'skipToLawyerMiddleware',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, _organizationConfig: OrganizationConfig, env: Env) => {
     // Guard against empty messages array
     if (!messages || messages.length === 0) {
       return { context };

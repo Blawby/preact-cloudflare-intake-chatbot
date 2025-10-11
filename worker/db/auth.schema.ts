@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey, unique } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -6,7 +6,7 @@ export const users = sqliteTable("users", {
   emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
   name: text("name"),
   image: text("image"),
-  organizationId: text("organization_id").references(() => organizations.id),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
@@ -33,10 +33,25 @@ export const accounts = sqliteTable("accounts", {
   accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp" }),
   refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp" }),
   scope: text("scope"),
-  password: text("password"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
+}, (table) => ({
+  // Prevent duplicate provider accounts per user
+  uniqueProviderAccount: unique("unique_provider_account").on(table.providerId, table.accountId),
+  // Ensure one account per provider per user
+  uniqueProviderUser: unique("unique_provider_user").on(table.providerId, table.userId),
+}));
+
+export const passwords = sqliteTable("passwords", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  hashedPassword: text("hashed_password").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => ({
+  // Ensure one password per user
+  uniqueUser: unique("unique_user_password").on(table.userId),
+}));
 
 export const verifications = sqliteTable("verifications", {
   id: text("id").primaryKey(),
@@ -51,7 +66,7 @@ export const verifications = sqliteTable("verifications", {
 export const organizations = sqliteTable("organizations", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
-  slug: text("slug").unique(),
+  slug: text("slug").notNull().unique(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

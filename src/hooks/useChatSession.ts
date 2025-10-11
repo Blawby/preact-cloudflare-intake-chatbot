@@ -47,7 +47,43 @@ export function useChatSession(organizationId: string): ChatSessionState {
   }, []);
 
   const getStorageKey = useCallback(() => {
-    return organizationId ? `${STORAGE_PREFIX}${organizationId}` : null;
+    if (!organizationId) return null;
+    
+    const newKey = `${STORAGE_PREFIX}${organizationId}`;
+    
+    // One-time migration from old teamId-based storage key
+    if (typeof window !== 'undefined') {
+      try {
+        // Check if new key already exists - if so, no migration needed
+        const existingNewValue = window.localStorage.getItem(newKey);
+        if (existingNewValue) {
+          return newKey;
+        }
+        
+        // Try to find and migrate from old teamId-based key
+        // Since we don't have direct access to teamId, we'll check for any old keys
+        // that match the old pattern and migrate them
+        const oldKeyPattern = /^blawby_session:.*$/;
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && oldKeyPattern.test(key) && key !== newKey) {
+            const oldValue = window.localStorage.getItem(key);
+            if (oldValue) {
+              // Found an old session, migrate it to the new key
+              window.localStorage.setItem(newKey, oldValue);
+              // Remove the old key to clean up
+              window.localStorage.removeItem(key);
+              console.log(`Migrated session from ${key} to ${newKey}`);
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to migrate session storage:', error);
+      }
+    }
+    
+    return newKey;
   }, [organizationId]);
 
   const readStoredSessionId = useCallback(() => {

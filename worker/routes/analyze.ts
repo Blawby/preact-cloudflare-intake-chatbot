@@ -14,6 +14,40 @@ import { parseEnvBool } from '../utils/safeStringUtils.js';
 import { createRateLimitResponse } from '../errorHandler';
 import { withAIRetry } from '../utils/retry.js';
 
+// Legal keywords for relevance scoring
+const LEGAL_KEYWORDS = [
+  'contract', 'agreement', 'payment', 'amount', 'date', 'party', 'obligation', 
+  'liability', 'damages', 'settlement', 'court', 'judge', 'plaintiff', 'defendant', 
+  'signature', 'witness'
+];
+
+// Safe JSON serialization utility to prevent OOM and handle cyclic objects
+function safeStringify(obj: any, maxLength: number = 10000): string {
+  try {
+    const seen = new WeakSet();
+    const replacer = (key: string, value: any) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
+      }
+      return value;
+    };
+    
+    const result = JSON.stringify(obj, replacer);
+    
+    // Truncate if too long to prevent OOM
+    if (result.length > maxLength) {
+      return result.substring(0, maxLength) + '...[truncated]';
+    }
+    
+    return result;
+  } catch (error) {
+    return '<unserializable-table>';
+  }
+}
+
 // Helper functions for prioritizing tables and elements by relevance
 function calculateTableRelevance(table: any, documentText: string): number {
   let score = 0;
@@ -23,11 +57,10 @@ function calculateTableRelevance(table: any, documentText: string): number {
     score += Math.min(table.rows.length * 0.1, 2); // Cap at 2 points
   }
   
-  // Check for legal keywords in table content
-  const legalKeywords = ['contract', 'agreement', 'payment', 'amount', 'date', 'party', 'obligation', 'liability', 'damages', 'settlement', 'court', 'judge', 'plaintiff', 'defendant'];
-  const tableText = JSON.stringify(table).toLowerCase();
+  // Check for legal keywords in table content - use safe serialization
+  const tableText = safeStringify(table).toLowerCase();
   
-  legalKeywords.forEach(keyword => {
+  LEGAL_KEYWORDS.forEach(keyword => {
     if (tableText.includes(keyword)) {
       score += 1;
     }
@@ -55,10 +88,9 @@ function calculateElementRelevance(element: any, documentText: string): number {
   }
   
   // Check for legal keywords in element content
-  const legalKeywords = ['contract', 'agreement', 'payment', 'amount', 'date', 'party', 'obligation', 'liability', 'damages', 'settlement', 'court', 'judge', 'plaintiff', 'defendant', 'signature', 'witness'];
   const elementText = (element.text || '').toLowerCase();
   
-  legalKeywords.forEach(keyword => {
+  LEGAL_KEYWORDS.forEach(keyword => {
     if (elementText.includes(keyword)) {
       score += 1;
     }
@@ -287,9 +319,19 @@ async function summarizeAdobeExtract(
     };
   }
   
+  // Helper function to safely parse integer environment variables
+  const parseEnvInt = (value: string | undefined, defaultValue: number, minValue: number = 1, maxValue: number = Number.MAX_SAFE_INTEGER): number => {
+    const parsed = parseInt(value || defaultValue.toString(), 10);
+    if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
+      return defaultValue;
+    }
+    // Clamp to sensible bounds
+    return Math.max(minValue, Math.min(maxValue, parsed));
+  };
+
   // Reduce text size to avoid Cloudflare AI token/character limits
   // Make the limit configurable and increase from 10k to 20k characters
-  const maxTextLength = parseInt(env.AI_MAX_TEXT_LENGTH || '20000', 10);
+  const maxTextLength = parseEnvInt(env.AI_MAX_TEXT_LENGTH, 20000, 1000, 100000);
   const truncatedText = rawText.length > maxTextLength
     ? `${rawText.slice(0, maxTextLength)}...`
     : rawText;
@@ -312,9 +354,9 @@ async function summarizeAdobeExtract(
 
   // Reduce structured payload size to avoid Cloudflare AI limits
   // Make limits configurable and implement prioritization
-  const maxTables = parseInt(env.AI_MAX_TABLES || '5', 10);
-  const maxElements = parseInt(env.AI_MAX_ELEMENTS || '20', 10);
-  const maxStructuredPayloadLength = parseInt(env.AI_MAX_STRUCTURED_PAYLOAD_LENGTH || '6000', 10);
+  const maxTables = parseEnvInt(env.AI_MAX_TABLES, 5, 1, 100);
+  const maxElements = parseEnvInt(env.AI_MAX_ELEMENTS, 20, 1, 1000);
+  const maxStructuredPayloadLength = parseEnvInt(env.AI_MAX_STRUCTURED_PAYLOAD_LENGTH, 6000, 1000, 50000);
   
   // Prioritize tables and elements by relevance/importance
   const prioritizedTables = (extract.tables ?? [])
@@ -335,10 +377,72 @@ async function summarizeAdobeExtract(
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
     .slice(0, maxElements);
   
-  const structuredPayload = JSON.stringify({
-    tables: prioritizedTables,
-    elements: prioritizedElements
-  }).slice(0, maxStructuredPayloadLength);
+  // Build structured payload with proper truncation to ensure valid JSON
+  const buildTruncatedStructuredPayload = (tables: any[], elements: any[], maxLength: number): string => {
+    let currentTables = [...tables];
+    let currentElements = [...elements];
+    let payload = '';
+    let attempts = 0;
+    const maxAttempts = 10; // Prevent infinite loops
+    
+    do {
+      const structuredObject = {
+        tables: currentTables,
+        elements: currentElements
+      };
+      
+      payload = JSON.stringify(structuredObject);
+      attempts++;
+      
+      if (payload.length <= maxLength || attempts >= maxAttempts) {
+        break;
+      }
+      
+      // Truncation strategy: reduce arrays first, then trim string fields
+      if (currentTables.length > 1) {
+        // Remove least relevant tables (they're already sorted by relevance)
+        currentTables = currentTables.slice(0, Math.max(1, Math.floor(currentTables.length * 0.8)));
+      } else if (currentElements.length > 1) {
+        // Remove least relevant elements
+        currentElements = currentElements.slice(0, Math.max(1, Math.floor(currentElements.length * 0.8)));
+      } else {
+        // If we're down to 1 table and 1 element, try trimming string fields
+        if (currentTables.length > 0 && currentElements.length > 0) {
+          // Trim string fields in the remaining table and element
+          currentTables = currentTables.map(table => {
+            if (typeof table === 'object' && table !== null) {
+              const trimmedTable = { ...table };
+              Object.keys(trimmedTable).forEach(key => {
+                if (typeof trimmedTable[key] === 'string' && trimmedTable[key].length > 100) {
+                  trimmedTable[key] = trimmedTable[key].substring(0, 100) + '...';
+                }
+              });
+              return trimmedTable;
+            }
+            return table;
+          });
+          
+          currentElements = currentElements.map(element => {
+            if (typeof element === 'object' && element !== null) {
+              const trimmedElement = { ...element };
+              Object.keys(trimmedElement).forEach(key => {
+                if (typeof trimmedElement[key] === 'string' && trimmedElement[key].length > 100) {
+                  trimmedElement[key] = trimmedElement[key].substring(0, 100) + '...';
+                }
+              });
+              return trimmedElement;
+            }
+            return element;
+          });
+        }
+        break; // Exit if we can't reduce further
+      }
+    } while (payload.length > maxLength && attempts < maxAttempts);
+    
+    return payload;
+  };
+  
+  const structuredPayload = buildTruncatedStructuredPayload(prioritizedTables, prioritizedElements, maxStructuredPayloadLength);
   
   // Log when limits are hit for telemetry
   const originalTablesCount = (extract.tables ?? []).length;
@@ -362,11 +466,15 @@ async function summarizeAdobeExtract(
     });
   }
   
-  if (JSON.stringify({ tables: extract.tables, elements: extract.elements }).length > maxStructuredPayloadLength) {
-    log('warn', 'structured_payload_limit_hit', {
-      originalLength: JSON.stringify({ tables: extract.tables, elements: extract.elements }).length,
+  // Log structured payload truncation events
+  const originalStructuredLength = JSON.stringify({ tables: extract.tables, elements: extract.elements }).length;
+  if (originalStructuredLength > maxStructuredPayloadLength) {
+    log('warn', 'structured_payload_truncation_applied', {
+      originalLength: originalStructuredLength,
+      truncatedLength: structuredPayload.length,
       limitedLength: maxStructuredPayloadLength,
       contextId: requestId,
+      truncationRatio: (structuredPayload.length / originalStructuredLength).toFixed(3),
       dataLoss: true
     });
   }

@@ -13,8 +13,22 @@ export const auth = betterAuth({
   ...withCloudflare(
     {
       // No d1 config for CLI generation
+      // Disable geolocation and IP detection features for CLI generation
+      autoDetectIpAddress: false,
+      geolocationTracking: false,
     },
     {
+      // Mock cf context for compatibility (features are disabled)
+      cf: {
+        country: 'US',
+        city: 'Local',
+        region: 'Local',
+        timezone: 'UTC',
+        latitude: '0',
+        longitude: '0',
+        asn: 0,
+        asOrganization: 'Local Development'
+      },
       secret: "dummy-secret-for-cli",
       baseURL: "http://localhost:8787",
       trustedOrigins: [
@@ -50,9 +64,14 @@ export async function getAuth(env: Env) {
       throw new Error('BETTER_AUTH_SECRET required in production');
     }
     
-    console.log('🔧 Initializing Better Auth with D1 database...');
     const db = drizzle(env.DB, { schema: authSchema });
-    console.log('✅ Drizzle database instance created');
+    
+    // Ensure we always have a valid baseURL with a sane default for local development
+    const baseUrl = env.BETTER_AUTH_URL || env.CLOUDFLARE_PUBLIC_URL || "http://localhost:8787";
+    
+    // Feature flags for geolocation and IP detection (default to disabled)
+    const enableGeolocation = env.ENABLE_AUTH_GEOLOCATION === 'true';
+    const enableIpDetection = env.ENABLE_AUTH_IP_DETECTION === 'true';
     
     authInstance = betterAuth({
       ...withCloudflare(
@@ -77,10 +96,24 @@ export async function getAuth(env: Env) {
               },
             },
           } : {}),
+          // Feature flags for geolocation and IP detection
+          autoDetectIpAddress: enableIpDetection,
+          geolocationTracking: enableGeolocation,
         },
         {
+          // Mock cf context for compatibility (features are disabled by default)
+          cf: {
+            country: 'US',
+            city: 'Local',
+            region: 'Local',
+            timezone: 'UTC',
+            latitude: '0',
+            longitude: '0',
+            asn: 0,
+            asOrganization: 'Local Development'
+          },
           secret: env.BETTER_AUTH_SECRET,
-          baseURL: env.BETTER_AUTH_URL || env.CLOUDFLARE_PUBLIC_URL,
+          baseURL: baseUrl,
           trustedOrigins: [
             env.BETTER_AUTH_URL || "",
             env.CLOUDFLARE_PUBLIC_URL || "",
@@ -137,7 +170,7 @@ export async function getAuth(env: Env) {
             google: {
               clientId: env.GOOGLE_CLIENT_ID || "",
               clientSecret: env.GOOGLE_CLIENT_SECRET || "",
-              redirectURI: `${env.BETTER_AUTH_URL || env.CLOUDFLARE_PUBLIC_URL}/api/auth/callback/google`,
+              redirectURI: `${baseUrl}/api/auth/callback/google`,
             },
           },
           plugins: [

@@ -1,10 +1,36 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
 
+// Type definitions for API responses
+interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+interface OrganizationData {
+  id: string;
+  slug: string;
+  name: string;
+  config: {
+    consultationFee: number;
+    requiresPayment: boolean;
+    ownerEmail: string;
+    availableServices: string[];
+    jurisdiction: {
+      type: string;
+      description: string;
+      supportedStates: string[];
+      supportedCountries: string[];
+    };
+  };
+}
+
 // Helper function to create a test organization
 async function createTestOrganization() {
   const newOrganization = {
-    slug: `test-organization-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    slug: `test-organization-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
     name: 'Test Legal Organization',
     config: {
       consultationFee: 150,
@@ -30,14 +56,14 @@ async function createTestOrganization() {
     throw new Error(`Failed to create test organization: ${response.status} ${response.statusText}`);
   }
 
-  const responseData = await response.json();
+  const responseData = await response.json() as ApiResponse<OrganizationData>;
   return responseData.data;
 }
 
 // Helper function to validate organizations data and create test organization if needed
 async function getValidOrganizationData() {
   const organizationsResponse = await fetch(`${WORKER_URL}/api/organizations`);
-  const organizationsData = await organizationsResponse.json();
+  const organizationsData = await organizationsResponse.json() as ApiResponse<OrganizationData[]>;
   
   // Validate response structure
   if (!organizationsData || typeof organizationsData !== 'object') {
@@ -61,6 +87,40 @@ async function getValidOrganizationData() {
   return organizationsData;
 }
 
+// Helper function to wait for organization to exist with deterministic polling
+async function waitForOrganizationToExist(organizationId: string, maxWaitTime = 5000, pollInterval = 100): Promise<void> {
+  const startTime = Date.now();
+  
+  while (Date.now() - startTime < maxWaitTime) {
+    try {
+      const verifyResponse = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
+        method: 'GET'
+      });
+      
+      if (verifyResponse.status === 200) {
+        // Organization exists, we can proceed
+        return;
+      }
+      
+      // If not found, wait and try again
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    } catch (_error) {
+      // On error, wait and try again
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+  }
+  
+  // If we get here, the timeout was reached
+  const verifyResponse = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
+    method: 'GET'
+  });
+  
+  if (verifyResponse.status !== 200) {
+    const verifyData = await verifyResponse.json() as ApiResponse<OrganizationData>;
+    throw new Error(`Organization not found after creation! Timeout reached after ${maxWaitTime}ms. Verify Status: ${verifyResponse.status}, Data: ${JSON.stringify(verifyData, null, 2)}`);
+  }
+}
+
 describe('Organizations API Integration Tests - Real Worker', () => {
   beforeAll(async () => {
     console.log('🧪 Testing organizations API against real worker at:', WORKER_URL);
@@ -72,7 +132,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
         throw new Error(`Worker health check failed: ${healthResponse.status}`);
       }
       console.log('✅ Worker is running and healthy');
-    } catch (error) {
+    } catch (_error) {
       throw new Error(`Worker is not running at ${WORKER_URL}. Please start with: npx wrangler dev`);
     }
   });
@@ -84,11 +144,11 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(200);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData[]>;
       
       expect(responseData.success).toBe(true);
       expect(Array.isArray(responseData.data)).toBe(true);
-      expect(responseData.data.length).toBeGreaterThan(0);
+      expect(responseData.data?.length).toBeGreaterThan(0);
       
       // Verify organization structure
       const organization = responseData.data[0];
@@ -97,7 +157,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       expect(organization).toHaveProperty('name');
       expect(organization).toHaveProperty('config');
       
-      console.log('📋 Found organizations:', responseData.data.map(t => ({ id: t.id, slug: t.slug, name: t.name })));
+      console.log('📋 Found organizations:', responseData.data?.map(t => ({ id: t.id, slug: t.slug, name: t.name })));
     });
 
     it('should handle CORS preflight requests', async () => {
@@ -127,7 +187,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(200);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       expect(responseData.success).toBe(true);
       expect(responseData.data).toHaveProperty('id', validOrganizationId);
@@ -146,7 +206,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(200);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       expect(responseData.success).toBe(true);
       expect(responseData.data).toHaveProperty('slug', validOrganizationSlug);
@@ -161,7 +221,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(404);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       expect(responseData.success).toBe(false);
       expect(responseData).toHaveProperty('error');
@@ -195,7 +255,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(201);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       expect(responseData.success).toBe(true);
       expect(responseData.data).toHaveProperty('id');
@@ -219,7 +279,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(400);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       expect(responseData.success).toBe(false);
       expect(responseData).toHaveProperty('error');
@@ -241,7 +301,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
         body: JSON.stringify(newOrganization)
       });
       
-      const createdOrganization = await createResponse.json();
+      const createdOrganization = await createResponse.json() as ApiResponse<OrganizationData>;
       const organizationId = createdOrganization.data.id;
 
       // Now update the organization
@@ -260,7 +320,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(200);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       expect(responseData.success).toBe(true);
       expect(responseData.data).toHaveProperty('name', 'Updated Organization Name');
@@ -279,7 +339,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(404);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       expect(responseData.success).toBe(false);
       expect(responseData).toHaveProperty('error');
@@ -307,25 +367,15 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(createResponse.status).toBe(201);
-      const createResult = await createResponse.json();
+      const createResult = await createResponse.json() as ApiResponse<OrganizationData>;
       expect(createResult.success).toBe(true);
       
       const organizationId = createResult.data.id;
       console.log('🔍 Created organization ID:', organizationId);
       console.log('🔍 Created organization data:', JSON.stringify(createResult.data, null, 2));
       
-      // Add a small delay to ensure the organization is fully created
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Verify the organization exists before trying to delete it
-      const verifyResponse = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
-        method: 'GET'
-      });
-      
-      if (verifyResponse.status !== 200) {
-        const verifyData = await verifyResponse.json();
-        throw new Error(`Organization not found after creation! Verify Status: ${verifyResponse.status}, Data: ${JSON.stringify(verifyData, null, 2)}`);
-      }
+      // Wait for organization to be available with deterministic polling
+      await waitForOrganizationToExist(organizationId);
       
       // Now delete the organization
       const response = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
@@ -335,7 +385,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
         }
       });
       
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       if (response.status !== 200) {
         throw new Error(`Delete failed! Status: ${response.status}, OrganizationID: ${organizationId}, Response: ${JSON.stringify(responseData, null, 2)}`);
@@ -352,7 +402,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       expect(response.status).toBe(404);
-      const responseData = await response.json();
+      const responseData = await response.json() as ApiResponse<OrganizationData>;
       
       expect(responseData.success).toBe(false);
       expect(responseData).toHaveProperty('error');

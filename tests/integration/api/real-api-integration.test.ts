@@ -94,7 +94,7 @@ describe('Real API Integration Tests', () => {
       });
 
       console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers as any));
+      console.log('Response headers:', Object.fromEntries(response.headers));
 
       expect(response.status).toBe(200);
 
@@ -103,26 +103,29 @@ describe('Real API Integration Tests', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
-      expect(result.data!.analysis).toBeDefined();
-      expect(result.data!.analysis.summary).toBeDefined();
-      expect(result.data!.analysis.key_facts).toBeDefined();
-      expect(result.data!.analysis.entities).toBeDefined();
-      expect(result.data!.analysis.action_items).toBeDefined();
-      expect(result.data!.analysis.confidence).toBeDefined();
+      
+      // Safe type assertion after confirming data exists
+      const data = result.data as AnalysisData;
+      expect(data.analysis).toBeDefined();
+      expect(data.analysis.summary).toBeDefined();
+      expect(data.analysis.key_facts).toBeDefined();
+      expect(data.analysis.entities).toBeDefined();
+      expect(data.analysis.action_items).toBeDefined();
+      expect(data.analysis.confidence).toBeDefined();
 
       // Verify the analysis contains expected content
       // Note: Fake PDF blobs won't have extractable text, so we expect low confidence
-      expect(result.data!.analysis.summary).toBeDefined();
-      expect(Array.isArray(result.data!.analysis.key_facts)).toBe(true);
+      expect(data.analysis.summary).toBeDefined();
+      expect(Array.isArray(data.analysis.key_facts)).toBe(true);
       // Adobe can't extract text from fake PDF blobs, so confidence will be very low or 0
-      expect(result.data!.analysis.confidence).toBeGreaterThanOrEqual(0);
+      expect(data.analysis.confidence).toBeGreaterThanOrEqual(0);
       // The analysis should indicate the PDF content is not accessible or provide a reasonable response
-      expect(result.data!.analysis.summary.length).toBeGreaterThan(10);
+      expect(data.analysis.summary.length).toBeGreaterThan(10);
       
       // Log what was actually extracted for debugging
-      console.log('PDF Analysis - Summary:', result.data!.analysis.summary);
-      console.log('PDF Analysis - People found:', result.data!.analysis.entities.people);
-      console.log('PDF Analysis - Key facts:', result.data!.analysis.key_facts);
+      console.log('PDF Analysis - Summary:', data.analysis.summary);
+      console.log('PDF Analysis - People found:', data.analysis.entities?.people);
+      console.log('PDF Analysis - Key facts:', data.analysis.key_facts);
     }, 60000); // 60 second timeout for real API call
 
     it('should analyze a real text file using actual Cloudflare AI', async () => {
@@ -177,18 +180,22 @@ describe('Real API Integration Tests', () => {
       console.log('Text file analysis response:', JSON.stringify(result, null, 2));
 
       expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      
+      // Safe type assertion after confirming data exists
+      const data = result.data as AnalysisData;
       // Text analysis should extract the key information from the legal document
-      expect(result.data!.analysis.summary).toBeDefined();
-      expect(result.data!.analysis.summary.length).toBeGreaterThan(10);
-      expect(Array.isArray(result.data!.analysis.key_facts)).toBe(true);
-      expect(result.data!.analysis.confidence).toBeGreaterThanOrEqual(0);
+      expect(data.analysis.summary).toBeDefined();
+      expect(data.analysis.summary.length).toBeGreaterThan(10);
+      expect(Array.isArray(data.analysis.key_facts)).toBe(true);
+      expect(data.analysis.confidence).toBeGreaterThanOrEqual(0);
       
       // If the analysis is successful, it should contain the key entities
-      if (result.data!.analysis.entities.people.length > 0) {
-        expect(result.data!.analysis.entities.people).toContain('Jane Smith');
+      if (data.analysis.entities?.people && data.analysis.entities.people.length > 0) {
+        expect(data.analysis.entities.people).toContain('Jane Smith');
       }
-      if (result.data!.analysis.entities.orgs.length > 0) {
-        expect(result.data!.analysis.entities.orgs).toContain('TechCorp');
+      if (data.analysis.entities?.orgs && data.analysis.entities.orgs.length > 0) {
+        expect(data.analysis.entities.orgs).toContain('TechCorp');
       }
     }, 60000);
 
@@ -282,11 +289,15 @@ describe('Real API Integration Tests', () => {
       
       if (response.status === 200) {
         expect(result.success).toBe(true);
-        expect(result.data!.response).toBeDefined();
-        expect(result.data!.workflow).toBeDefined();
+        expect(result.data).toBeDefined();
+        
+        // Safe type assertion after confirming data exists
+        const data = result.data as ChatData;
+        expect(data.response).toBeDefined();
+        expect(data.workflow).toBeDefined();
         
         // The AI should ask for the user's name as per the validation flow
-        expect(result.data!.response).toContain('name');
+        expect(data.response).toContain('name');
       } else {
         // If we get an error, log it for debugging
         console.log('Chat API error:', result);
@@ -361,10 +372,14 @@ describe('Real API Integration Tests', () => {
       
       if (response.status === 200) {
         expect(result.success).toBe(true);
-        expect(result.data!.response).toBeDefined();
+        expect(result.data).toBeDefined();
+        
+        // Safe type assertion after confirming data exists
+        const data = result.data as ChatData;
+        expect(data.response).toBeDefined();
         
         // The response should mention eviction or tenant rights
-        expect(result.data!.response.toLowerCase()).toMatch(/eviction|tenant|rights|notice/);
+        expect(data.response.toLowerCase()).toMatch(/eviction|tenant|rights|notice/);
       } else {
         // If we get an error, log it for debugging
         console.log('Legal consultation error:', result);

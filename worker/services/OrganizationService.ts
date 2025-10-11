@@ -55,6 +55,7 @@ export interface OrganizationConfig {
     organizationUlid?: string;       // Organization identifier for API calls
     apiUrl?: string;
   };
+  testMode?: boolean;  // Organization-level testing flag for notifications and other features
 }
 
 const LEGACY_AI_PROVIDER = 'workers-ai';

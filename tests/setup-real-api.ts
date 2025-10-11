@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import { vi, beforeAll, afterAll } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
 import { setTimeout as setTimeoutPromise } from 'timers/promises';
@@ -63,7 +63,207 @@ if (typeof FileReader !== 'undefined') {
     onload: null,
     onerror: null,
     onloadend: null,
-  }));
+  })) as any;
+  
+  // Add static properties
+  (global.FileReader as any).EMPTY = 0;
+  (global.FileReader as any).LOADING = 1;
+  (global.FileReader as any).DONE = 2;
+}
+
+// Helper function to kill processes on a specific port (cross-platform)
+async function killProcessesOnPort(port: number): Promise<void> {
+  const isWindows = process.platform === 'win32';
+  
+  return new Promise<void>((resolve, reject) => {
+    let command: string;
+    let args: string[];
+    
+    if (isWindows) {
+      // Windows: use netstat to find PIDs, then taskkill to kill them
+      command = 'netstat';
+      args = ['-ano'];
+    } else {
+      // Unix-like: use lsof to find PIDs
+      command = 'lsof';
+      args = ['-ti', `:${port}`];
+    }
+    
+    const findProcess = spawn(command, args, { stdio: 'pipe' });
+    let output = '';
+    let hasOutput = false;
+    
+    // Set up timeout to ensure promise always resolves
+    const timeout = setTimeout(() => {
+      if (!hasOutput) {
+        console.log(`⏰ No processes found on port ${port} (timeout)`);
+        resolve();
+      }
+    }, 5000);
+    
+    findProcess.stdout?.on('data', async (data) => {
+      hasOutput = true;
+      output += data.toString();
+    });
+    
+    findProcess.stdout?.on('end', async () => {
+      clearTimeout(timeout);
+      await handleProcessOutput(output, port, isWindows);
+      resolve();
+    });
+    
+    findProcess.stdout?.on('close', async () => {
+      clearTimeout(timeout);
+      await handleProcessOutput(output, port, isWindows);
+      resolve();
+    });
+    
+    findProcess.on('exit', async (code) => {
+      clearTimeout(timeout);
+      if (code !== 0 && hasOutput) {
+        // Command failed but we got some output, try to process it
+        await handleProcessOutput(output, port, isWindows);
+      }
+      resolve();
+    });
+    
+    findProcess.on('error', (error) => {
+      clearTimeout(timeout);
+      console.warn(`⚠️ Failed to find processes on port ${port}:`, error.message);
+      resolve(); // Don't reject - this is not critical
+    });
+  });
+}
+
+// Helper function to handle process output and kill processes
+async function handleProcessOutput(output: string, port: number, isWindows: boolean): Promise<void> {
+  if (!output.trim()) {
+    console.log(`✅ No processes found on port ${port}`);
+    return;
+  }
+  
+  let pids: string[] = [];
+  
+  if (isWindows) {
+    // Parse netstat output to find PIDs listening on the port
+    const lines = output.split('\n');
+    for (const line of lines) {
+      if (line.includes(`:${port}`) && line.includes('LISTENING')) {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && pid !== '0' && !pids.includes(pid)) {
+          pids.push(pid);
+        }
+      }
+    }
+  } else {
+    // Parse lsof output (just PIDs)
+    pids = output.trim().split('\n').filter(Boolean);
+  }
+  
+  if (pids.length === 0) {
+    console.log(`✅ No processes found on port ${port}`);
+    return;
+  }
+  
+  console.log(`🔪 Killing existing processes on port ${port}: ${pids.join(', ')}`);
+  
+  // Kill each process
+  await Promise.all(pids.map(pid => killProcess(pid, isWindows)));
+}
+
+// Helper function to kill a single process
+async function killProcess(pid: string, isWindows: boolean): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const command = isWindows ? 'taskkill' : 'kill';
+    const args = isWindows ? ['/PID', pid, '/F'] : ['-9', pid];
+    
+    const killProcess = spawn(command, args, { stdio: 'pipe' });
+    
+    // Set up timeout to ensure promise always resolves
+    const timeout = setTimeout(() => {
+      console.warn(`⏰ Timeout killing process ${pid}`);
+      resolve();
+    }, 3000);
+    
+    killProcess.on('exit', (code) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        console.log(`✅ Killed process ${pid}`);
+      } else {
+        console.warn(`⚠️ Failed to kill process ${pid} (exit code: ${code})`);
+      }
+      resolve();
+    });
+    
+    killProcess.on('error', (error) => {
+      clearTimeout(timeout);
+      console.warn(`⚠️ Error killing process ${pid}:`, error.message);
+      resolve();
+    });
+  });
+}
+
+// Helper function to wait for port to be free with retry loop
+async function waitForPortToBeFree(port: number, timeoutMs: number = 10000): Promise<void> {
+  const startTime = Date.now();
+  const pollInterval = 200; // Check every 200ms
+  
+  while (Date.now() - startTime < timeoutMs) {
+    if (await isPortFree(port)) {
+      console.log(`✅ Port ${port} is now free`);
+      return;
+    }
+    await setTimeoutPromise(pollInterval);
+  }
+  
+  throw new Error(`Port ${port} is still in use after ${timeoutMs}ms`);
+}
+
+// Helper function to check if port is free
+async function isPortFree(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const isWindows = process.platform === 'win32';
+    const command = isWindows ? 'netstat' : 'lsof';
+    const args = isWindows ? ['-ano'] : ['-ti', `:${port}`];
+    
+    const checkProcess = spawn(command, args, { stdio: 'pipe' });
+    let output = '';
+    
+    const timeout = setTimeout(() => {
+      resolve(true); // Assume free if no response
+    }, 2000);
+    
+    checkProcess.stdout?.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    checkProcess.stdout?.on('end', () => {
+      clearTimeout(timeout);
+      if (isWindows) {
+        // Check if any line contains our port in LISTENING state
+        const isInUse = output.split('\n').some(line => 
+          line.includes(`:${port}`) && line.includes('LISTENING')
+        );
+        resolve(!isInUse);
+      } else {
+        // lsof returns PIDs if port is in use, empty if free
+        resolve(!output.trim());
+      }
+    });
+    
+    checkProcess.on('exit', (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) {
+        resolve(true); // Assume free if command failed
+      }
+    });
+    
+    checkProcess.on('error', () => {
+      clearTimeout(timeout);
+      resolve(true); // Assume free if command failed
+    });
+  });
 }
 
 // Helper function to start wrangler dev
@@ -98,35 +298,17 @@ async function startWranglerDev(): Promise<void> {
   
   try {
     // Kill any existing processes on the port first
-    try {
-      await new Promise<void>((resolve) => {
-        const killProcess = spawn('lsof', ['-ti', `:${WORKER_PORT}`], { stdio: 'pipe' });
-        killProcess.stdout?.on('data', async (data) => {
-          const pids = data.toString().trim().split('\n').filter(Boolean);
-          if (pids.length > 0) {
-            console.log(`🔪 Killing existing processes on port ${WORKER_PORT}: ${pids.join(', ')}`);
-            await Promise.all(pids.map(pid => 
-              new Promise<void>((resolve) => {
-                const kill = spawn('kill', ['-9', pid], { stdio: 'pipe' });
-                kill.on('exit', () => resolve());
-                kill.on('error', () => resolve()); // Ignore errors
-              })
-            ));
-          }
-          resolve();
-        });
-        killProcess.on('exit', () => resolve());
-        killProcess.on('error', () => resolve()); // Ignore errors
-      });
-      // Wait a moment for processes to fully terminate
-      await setTimeoutPromise(2000);
-    } catch (error) {
-      // Ignore errors in cleanup
-    }
+    await killProcessesOnPort(WORKER_PORT);
+    // Wait for port to be free with retry loop
+    await waitForPortToBeFree(WORKER_PORT);
+  } catch (error) {
+    console.warn('⚠️ Port cleanup failed:', error);
+    // Continue anyway - the server might still start successfully
+  }
 
-    wranglerProcess = spawn('./scripts/load-dev-vars.sh', ['wrangler', 'dev', '--port', WORKER_PORT.toString(), '--local'], {
+  try {
+    wranglerProcess = spawn('wrangler', ['dev', '--port', WORKER_PORT.toString(), '--local'], {
       stdio: 'pipe',
-      shell: true,
       env: { ...process.env, NODE_ENV: 'test' }
     });
 
@@ -214,7 +396,7 @@ async function stopWranglerDev(): Promise<void> {
     wranglerProcess!.kill('SIGTERM');
     
     // Force kill after 5 seconds if graceful shutdown fails
-    setTimeout(5000).then(() => {
+    setTimeout(() => {
       if (wranglerProcess) {
         wranglerProcess.kill('SIGKILL');
         wranglerProcess = null;

@@ -25,17 +25,20 @@ async function handleStreamingResponse(response: Response, timeoutMs: number = 3
     
     // Race the read operation against a timeout
     const readPromise = reader.read();
+    let timeoutId: ReturnType<typeof setTimeout>;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Read timeout after ${remainingTimeout}ms`)), remainingTimeout);
+      timeoutId = setTimeout(() => reject(new Error(`Read timeout after ${remainingTimeout}ms`)), remainingTimeout);
     });
     
     try {
       const { value, done: streamDone } = await Promise.race([readPromise, timeoutPromise]);
+      clearTimeout(timeoutId);
       done = streamDone;
       if (value) {
         responseData += new TextDecoder().decode(value);
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       reader.cancel();
       reader.releaseLock();
       throw new Error(`Streaming response timeout after ${timeoutMs}ms: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -26,6 +26,8 @@ export interface Env {
   BETTER_AUTH_URL?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  ENABLE_AUTH_GEOLOCATION?: string;
+  ENABLE_AUTH_IP_DETECTION?: string;
   
   // Cloudflare AI Configuration
   CLOUDFLARE_ACCOUNT_ID?: string;
@@ -56,6 +58,9 @@ export interface Env {
   DEBUG?: string;
   ENV_TEST?: string;
   IS_PRODUCTION?: string;
+  
+  // Domain configuration
+  DOMAIN?: string;
   
   // SSE Configuration
   SSE_POLL_INTERVAL?: string;
@@ -116,7 +121,7 @@ export interface Matter {
 export interface Organization {
   id: string;
   name: string;
-  slug?: string;
+  slug: string;
   domain?: string;
   metadata?: Record<string, unknown>;
   config: {

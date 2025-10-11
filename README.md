@@ -35,7 +35,14 @@ A production-ready legal intake chatbot built with Cloudflare Workers AI, featur
 
 4. **Start development**
    ```bash
-   npm run dev:full  # Both frontend and worker
+   # Option 1: Start both frontend and worker
+   npm run dev:full
+   
+   # Option 2: Start worker only
+   wrangler dev --port 8787
+   
+   # Option 3: Start frontend only
+   npm run dev
    ```
 
 5. **Deploy to Cloudflare**
@@ -114,6 +121,8 @@ Copy `.dev.vars.example` to `.dev.vars` and add your API keys:
 - `CLOUDFLARE_API_TOKEN` - Cloudflare operations API key
 - `RESEND_API_KEY` - Email notifications API key
 
+**Note:** Wrangler automatically loads `.dev.vars` during local development - no additional setup required.
+
 ### Internationalization
 
 - The app boots with English (`en`) and supports Spanish (`es`) out of the box. Locale assets live in `src/locales/<locale>/<namespace>.json`.
@@ -147,6 +156,35 @@ User authentication and organization membership is handled by Better Auth:
 - Rate limiting (60 requests/minute)
 - Input sanitization
 - Secure session management with Better Auth
+
+## 🔧 **Troubleshooting**
+
+### Common Issues
+
+**Port 8787 already in use:**
+```bash
+# Kill existing processes on port 8787
+npm run dev:worker:clean
+```
+
+**Environment variables not loading:**
+- Ensure `.dev.vars` exists and contains your API keys
+- Wrangler automatically loads `.dev.vars` - no custom scripts needed
+
+**Database connection issues:**
+```bash
+# Reset local database
+npm run db:reset
+```
+
+**Worker not starting:**
+```bash
+# Check wrangler installation
+wrangler --version
+
+# Start with verbose logging
+wrangler dev --port 8787 --log-level debug
+```
 
 ## 🤝 **Contributing**
 

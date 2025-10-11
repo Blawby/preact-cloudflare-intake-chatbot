@@ -141,7 +141,7 @@ function getScopeViolationResponse(
   availableServices: string[], 
   organizationConfig: OrganizationConfig
 ): string {
-  const organizationName = 'our legal organization';
+  const organizationName = organizationConfig?.description || 'our legal organization';
   const matterList = unavailableMatters.join(', ');
   const availableList = availableServices.join(', ');
 
@@ -157,7 +157,7 @@ Would you like me to:
  * Get response for general legal requests when organization doesn't offer General Consultation
  */
 function getGeneralLegalResponse(availableServices: string[], organizationConfig: OrganizationConfig): string {
-  const organizationName = 'our legal organization';
+  const organizationName = organizationConfig?.description || 'our legal organization';
   const availableList = availableServices.join(', ');
 
   return `I'd be happy to help you with your legal needs! ${organizationName} specializes in ${availableList}.
@@ -173,7 +173,7 @@ This will help me determine if we can assist you directly or connect you with th
  * Get referral response for out-of-scope matters
  */
 function getReferralResponse(matterType: string, organizationConfig: OrganizationConfig): string {
-  const organizationName = 'our legal organization';
+  const organizationName = organizationConfig?.description || 'our legal organization';
   
   return `While ${organizationName} doesn't handle ${matterType} matters, I can help you find a qualified attorney who specializes in this area. 
 

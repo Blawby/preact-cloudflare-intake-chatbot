@@ -5,6 +5,10 @@
 
 echo "🚀 Starting Blawby AI Chatbot Development Environment"
 echo ""
+echo "⚠️  DEPRECATION NOTICE: This script is deprecated."
+echo "   Please use 'npm run dev:full' instead for the standard development workflow."
+echo "   This script will be removed in a future version."
+echo ""
 
 # Check if wrangler is installed
 if ! command -v wrangler &> /dev/null; then

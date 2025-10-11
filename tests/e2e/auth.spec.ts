@@ -48,8 +48,11 @@ test.describe('Better Auth Integration', () => {
     await page.fill('input[placeholder="Confirm your password"]', testPassword);
     await page.click('button:has-text("Create account")');
     
-    // Wait for success
-    await page.waitForTimeout(2000);
+    // Wait for success message or redirect
+    await Promise.race([
+      page.waitForURL('/', { timeout: 15000 }),
+      page.waitForSelector('text=/Account created|Welcome/', { timeout: 15000 })
+    ]);
     
     // Sign out (if needed)
     const cookies = await context.cookies();
@@ -94,7 +97,7 @@ test.describe('Better Auth Integration', () => {
     await expect(page).not.toHaveURL(/\/auth/);
   });
 
-  test('should migrate anonymous session to authenticated user', async ({ page }) => {
+  test('should allow chat after authentication', async ({ page }) => {
     // Start anonymous chat
     await page.goto('/');
     await page.fill('[data-testid="message-input"]', 'Anonymous message');
@@ -127,29 +130,11 @@ test.describe('Better Auth Integration', () => {
     // Wait for page to load completely
     await page.waitForLoadState('networkidle');
     
-    // Send another message to trigger session migration
-    await page.fill('[data-testid="message-input"]', 'Test migration');
+    // Send a message after authentication to verify chat still works
+    await page.fill('[data-testid="message-input"]', 'Post-auth message');
     await page.click('button[type="submit"]');
     
-    // Wait for the new message to appear
-    await expect(page.locator('text=Test migration')).toBeVisible({ timeout: 10000 });
-    
-    // Wait a bit more for any async operations to complete
-    await page.waitForTimeout(3000);
-    
-    // Check if the anonymous message is visible (it might be in the chat history)
-    // If not visible, that's okay - the migration might have worked but the UI might not show old messages
-    const anonymousMessageVisible = await page.locator('text=Anonymous message').isVisible();
-    
-    if (anonymousMessageVisible) {
-      console.log('✅ Anonymous message is visible - session migration working');
-    } else {
-      console.log('ℹ️ Anonymous message not visible - this might be expected behavior');
-      // The migration might have worked but the UI might not display old messages
-      // This is acceptable as long as the new message works
-    }
-    
-    // The test passes if we can send a new message after authentication
-    // This indicates the session migration didn't break the chat functionality
+    // Verify the new message appears
+    await expect(page.locator('text=Post-auth message')).toBeVisible({ timeout: 10000 });
   });
 });

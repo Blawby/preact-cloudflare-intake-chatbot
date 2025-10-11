@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'preact/compat';
+import { createContext, useContext, useMemo, type ReactNode } from 'preact/compat';
 import { useOrganizationConfig } from '../hooks/useOrganizationConfig.js';
 
 export interface OrganizationContextValue {
@@ -54,13 +54,13 @@ export function OrganizationProvider({ children, onError }: OrganizationProvider
     }
   });
 
-  const contextValue: OrganizationContextValue = {
+  const contextValue = useMemo(() => ({
     organizationId,
     organizationConfig,
     organizationNotFound,
     isLoading,
     handleRetryOrganizationConfig
-  };
+  }), [organizationId, organizationConfig, organizationNotFound, isLoading, handleRetryOrganizationConfig]);
 
   return (
     <OrganizationContext.Provider value={contextValue}>

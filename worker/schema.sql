@@ -318,6 +318,8 @@ CREATE INDEX IF NOT EXISTS idx_session_audit_events_session ON session_audit_eve
 -- ========================================
 -- BETTER AUTH TABLES (SECURE SCHEMA)
 -- ========================================
+-- Note: Geolocation and IP detection features are disabled by default
+-- Set ENABLE_AUTH_GEOLOCATION=true and ENABLE_AUTH_IP_DETECTION=true to enable
 
 -- Users table for Better Auth
 CREATE TABLE IF NOT EXISTS users (
@@ -393,7 +395,6 @@ CREATE TABLE IF NOT EXISTS accounts (
   access_token_expires_at INTEGER,
   refresh_token_expires_at INTEGER,
   scope TEXT,
-  password TEXT, -- For credential-based authentication
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   -- Critical: Prevent duplicate provider accounts

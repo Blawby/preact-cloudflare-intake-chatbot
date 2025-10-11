@@ -14,3 +14,6 @@ export const THEME = {
 
 // Matter analysis constants
 export const SUMMARY_MIN_LENGTH = 50;
+
+// Organization constants
+export const DEFAULT_ORGANIZATION_ID = '01K0TNGNKTM4Q0AG0XF0A8ST0Q'; // blawby-ai organization ID

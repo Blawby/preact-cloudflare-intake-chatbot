@@ -178,26 +178,7 @@
 
 ---
 
-### Phase 8: Basic Chatbot (Weeks 18-22)
-**Goal**: Deploy simple AI chatbot with basic tools
-
-- `GET /api/organizations/{id}/chatbots` - List organization chatbots
-- `POST /api/organizations/{id}/chatbots` - Create new chatbot
-- `GET /api/organizations/{id}/chatbots/{chatbotId}` - Get chatbot configuration
-- `PUT /api/organizations/{id}/chatbots/{chatbotId}` - Update chatbot configuration
-- `POST /api/organizations/{id}/chatbots/{chatbotId}/deploy` - Deploy chatbot
-- `GET /api/organizations/{id}/chatbots/{chatbotId}/tools` - List available chatbot tools
-- `PUT /api/organizations/{id}/chatbots/{chatbotId}/tools` - Configure chatbot tools
-- `POST /api/public/chat/sessions` - Create anonymous chat session
-- `POST /api/public/chat/sessions/{sessionId}/messages` - Send message
-- `GET /api/public/chat/sessions/{sessionId}/messages` - Get chat history
-- `POST /api/public/chat/sessions/{sessionId}/assets/upload` - Upload asset to chat
-
-**Dependencies**: Phase 6, Phase 7 complete
-
----
-
-### Phase 8.5: Quick Wins - Essential Features (Weeks 22-26)
+### Phase 9: Quick Wins - Essential Features (Weeks 22-26)
 **Goal**: Add table-stakes features that competitors have
 
 #### Email Integration
@@ -277,7 +258,7 @@
 
 ---
 
-### Phase 9: Custom Domains & SSL (Weeks 26-28)
+### Phase 10: Custom Domains & SSL (Weeks 26-28)
 **Goal**: Organizations can use their own domains
 
 - `GET /api/organizations/{id}/domains` - List organization domains
@@ -297,7 +278,7 @@
 
 ---
 
-### Phase 10: Time Tracking & Billing (Weeks 24-27)
+### Phase 11: Time Tracking & Billing (Weeks 28-31)
 **Goal**: Track billable time and create invoices
 
 - `GET /api/organizations/{id}/time-tracking/entries` - List time entries
@@ -319,7 +300,7 @@
 
 ---
 
-### Phase 11: Adobe PDF Integration (Weeks 27-29)
+### Phase 12: Adobe PDF Integration (Weeks 31-33)
 **Goal**: Automated document analysis
 
 - `POST /api/organizations/{id}/documents/{documentId}/extract` - Extract text and structure from PDF
@@ -335,7 +316,7 @@
 
 ---
 
-### Phase 12: Lawyer Search Integration (Weeks 29-31)
+### Phase 13: Lawyer Search Integration (Weeks 33-35)
 **Goal**: Connect users with lawyers via external API
 
 - `GET /api/public/lawyers/search` - Search for lawyers by criteria
@@ -353,97 +334,7 @@
 
 ---
 
-### Phase 13: Advanced Chatbot Tools (Weeks 31-34)
-**Goal**: Chatbot can schedule, update matters, analyze docs
-
-- Enhanced chatbot with document analysis capability
-- Enhanced chatbot with lawyer recommendation
-- Scheduling integration
-- Matter update capabilities
-- Document request workflows
-- Task creation from chat
-
-**Dependencies**: Phase 8, Phase 11, Phase 12 complete
-
----
-
-### Phase 9: Custom Domains & SSL (Weeks 26-28)
-**Goal**: Organizations can use their own domains
-
-- `GET /api/organizations/{id}/domains` - List organization domains
-- `POST /api/organizations/{id}/domains` - Add custom domain
-- `GET /api/organizations/{id}/domains/{domainId}` - Get domain details
-- `POST /api/organizations/{id}/domains/{domainId}/verify` - Verify domain ownership
-- `GET /api/organizations/{id}/domains/{domainId}/verification-status` - Get verification status
-- `GET /api/organizations/{id}/domains/{domainId}/ssl` - Get SSL certificate status
-- `POST /api/organizations/{id}/domains/{domainId}/ssl/provision` - Provision SSL certificate
-- `GET /api/organizations/{id}/domains/{domainId}/dns/instructions` - Get DNS setup instructions
-- `GET /api/admin/cloudflare/zones` - List Cloudflare zones
-- `POST /api/admin/cloudflare/zones` - Create Cloudflare zone
-- `POST /api/admin/cloudflare/zones/{zoneId}/dns` - Create DNS record
-- `POST /api/admin/cloudflare/zones/{zoneId}/ssl/certificate` - Generate SSL certificate
-
-**Dependencies**: Phase 6 complete, Cloudflare API integration
-
----
-
-### Phase 10: Time Tracking & Billing (Weeks 28-31)
-**Goal**: Track billable time and create invoices
-
-- `GET /api/organizations/{id}/time-tracking/entries` - List time entries
-- `POST /api/organizations/{id}/time-tracking/entries` - Create time entry
-- `PUT /api/organizations/{id}/time-tracking/entries/{entryId}` - Update time entry
-- `DELETE /api/organizations/{id}/time-tracking/entries/{entryId}` - Delete time entry
-- `POST /api/organizations/{id}/time-tracking/entries/{entryId}/approve` - Approve time entry
-- `GET /api/organizations/{id}/time-tracking/summary` - Get time summary
-- `GET /api/organizations/{id}/time-tracking/trackers` - List active time trackers
-- `POST /api/organizations/{id}/time-tracking/trackers/start` - Start time tracking
-- `POST /api/organizations/{id}/time-tracking/trackers/{trackerId}/stop` - Stop time tracking
-- `GET /api/organizations/{id}/billing/models` - List billing models
-- `POST /api/organizations/{id}/billing/models` - Create billing model
-- `GET /api/organizations/{id}/retainers` - List retainers
-- `POST /api/organizations/{id}/retainers` - Create retainer
-- `POST /api/organizations/{id}/retainers/{retainerId}/fund` - Add funds to retainer
-
-**Dependencies**: Phase 5 complete
-
----
-
-### Phase 11: Adobe PDF Integration (Weeks 31-33)
-**Goal**: Automated document analysis
-
-- `POST /api/organizations/{id}/documents/{documentId}/extract` - Extract text and structure from PDF
-- `GET /api/organizations/{id}/documents/{documentId}/extract/status` - Get extraction job status
-- `GET /api/organizations/{id}/documents/{documentId}/extract/result` - Get extraction results
-- `POST /api/organizations/{id}/documents/{documentId}/analyze` - Analyze PDF structure
-- `GET /api/organizations/{id}/documents/{documentId}/analyze/tables` - Extract tables from PDF
-- `GET /api/organizations/{id}/documents/{documentId}/analyze/text` - Get extracted text
-- `POST /api/organizations/{id}/documents/{documentId}/ocr` - Perform OCR on scanned documents
-- `POST /api/organizations/{id}/documents/batch-extract` - Batch extract multiple PDFs
-
-**Dependencies**: Phase 4 complete, Adobe PDF Services API
-
----
-
-### Phase 12: Lawyer Search Integration (Weeks 33-35)
-**Goal**: Connect users with lawyers via external API
-
-- `GET /api/public/lawyers/search` - Search for lawyers by criteria
-- `GET /api/public/lawyers/{lawyerId}` - Get lawyer profile
-- `GET /api/public/lawyers/{lawyerId}/reviews` - Get lawyer reviews
-- `GET /api/public/lawyers/filter` - Filter lawyers by practice area, location
-- `GET /api/public/lawyers/practice-areas` - Get available practice areas
-- `POST /api/public/chat/sessions/{sessionId}/recommend-lawyers` - Get lawyer recommendations
-- `POST /api/public/chat/sessions/{sessionId}/match-lawyer` - Match user with lawyers
-- `POST /api/organizations/{id}/chatbots/{chatbotId}/lawyer-search/enable` - Enable lawyer search
-- `GET /api/organizations/{id}/lawyer-network` - Get organization's lawyer network
-- `POST /api/organizations/{id}/lawyer-network/add` - Add lawyer to referral network
-
-**Dependencies**: Phase 8 complete, external lawyer search API
-
----
-
-### Phase 13: AI Legal Assistant (Weeks 35-40)
+### Phase 14: AI Legal Assistant (Weeks 35-40)
 **Goal**: Advanced AI capabilities for lawyers
 
 #### Document Drafting & Assembly
@@ -477,11 +368,11 @@
 - `POST /api/organizations/{id}/chatbots/{chatbotId}/ai/knowledge-base` - Configure AI knowledge base
 - `PUT /api/organizations/{id}/chatbots/{chatbotId}/ai/training-data` - Add training data
 
-**Dependencies**: Phase 11, Phase 12 complete, OpenAI/Claude API
+**Dependencies**: Phase 12, Phase 13 complete, OpenAI/Claude API
 
 ---
 
-### Phase 14: Predictive Analytics (Weeks 40-44)
+### Phase 15: Predictive Analytics (Weeks 40-44)
 **Goal**: Data-driven insights and predictions
 
 #### Matter Predictions
@@ -518,11 +409,11 @@
 - `GET /api/organizations/{id}/analytics/trends` - Identify practice trends
 - `GET /api/organizations/{id}/analytics/anomaly-detection` - Detect unusual patterns
 
-**Dependencies**: Phase 3, Phase 10 complete, sufficient historical data
+**Dependencies**: Phase 3, Phase 11 complete, sufficient historical data
 
 ---
 
-### Phase 15: Advanced Workflow Automation (Weeks 44-48)
+### Phase 16: Advanced Workflow Automation (Weeks 44-48)
 **Goal**: Intelligent automation and natural language workflows
 
 #### Natural Language Workflow Creation
@@ -570,11 +461,11 @@
 - `POST /api/organizations/{id}/automation/integrations/slack` - Post to Slack action
 - `POST /api/organizations/{id}/automation/integrations/calendar` - Create calendar event action
 
-**Dependencies**: Phase 3, Phase 13 complete
+**Dependencies**: Phase 3, Phase 14 complete
 
 ---
 
-### Phase 16: Client Portal (Weeks 48-51)
+### Phase 17: Client Portal (Weeks 48-51)
 **Goal**: Secure client access to case information
 
 - `GET /api/organizations/{id}/client-portal/settings` - Get portal settings
@@ -590,39 +481,7 @@
 
 ---
 
-### Phase 15: Trust Accounting (Weeks 37-40)
-**Goal**: IOLTA compliance for client funds
-
-- `GET /api/organizations/{id}/trust-accounts` - List trust accounts
-- `POST /api/organizations/{id}/trust-accounts` - Create trust account
-- `POST /api/organizations/{id}/trust-accounts/{accountId}/deposit` - Deposit to trust
-- `POST /api/organizations/{id}/trust-accounts/{accountId}/withdrawal` - Withdraw from trust
-- `GET /api/organizations/{id}/trust-accounts/{accountId}/transactions` - Get trust transactions
-- `POST /api/organizations/{id}/trust-accounts/{accountId}/reconcile` - Perform reconciliation
-- `GET /api/organizations/{id}/trust-accounts/compliance-report` - Get compliance report
-- `GET /api/organizations/{id}/trust-accounts/three-way-reconciliation` - Three-way reconciliation
-
-**Dependencies**: Phase 5, Phase 10 complete
-
----
-
-### Phase 16: Workflows & Automation (Weeks 40-43)
-**Goal**: Automate repetitive tasks
-
-- `GET /api/organizations/{id}/workflow-templates` - List workflow templates
-- `POST /api/organizations/{id}/workflow-templates` - Create workflow template
-- `GET /api/organizations/{id}/matters/{matterId}/workflow` - Get matter workflow
-- `PUT /api/organizations/{id}/matters/{matterId}/workflow/stage` - Update matter stage
-- `POST /api/organizations/{id}/workflow-templates/{templateId}/automation` - Add automation rule
-- `GET /api/organizations/{id}/event-rules` - List event rules
-- `POST /api/organizations/{id}/event-rules` - Create event rule
-- `POST /api/organizations/{id}/event-rules/{ruleId}/enable` - Enable event rule
-
-**Dependencies**: Phase 3 complete
-
----
-
-### Phase 17: Deadline Management (Weeks 43-45)
+### Phase 18: Deadline Management (Weeks 51-53)
 **Goal**: Track court deadlines and statutes
 
 - `GET /api/organizations/{id}/deadlines` - List all deadlines
@@ -638,7 +497,7 @@
 
 ---
 
-### Phase 18: E-Signature (Weeks 45-47)
+### Phase 19: E-Signature (Weeks 53-55)
 **Goal**: Document signing workflow
 
 - `POST /api/organizations/{id}/documents/{documentId}/e-sign/request` - Request e-signature
@@ -653,7 +512,7 @@
 
 ---
 
-### Phase 19: Analytics & Reporting (Weeks 47-50)
+### Phase 20: Analytics & Reporting (Weeks 55-58)
 **Goal**: Business intelligence and insights
 
 - `GET /api/organizations/{id}/analytics` - Get analytics with resource filters
@@ -671,7 +530,7 @@
 
 ---
 
-### Phase 20: Advanced Features (Weeks 50+)
+### Phase 21: Advanced Features (Weeks 58+)
 **Goal**: Polish and advanced capabilities
 
 - Court integration & e-filing
@@ -709,11 +568,11 @@
 - Mobile API endpoints
 
 **Differentiation Features (Phases 11-15)**: AI-first approach
-- Phase 11: Adobe PDF analysis
-- Phase 12: Lawyer search integration
-- Phase 13: AI Legal Assistant (document drafting, case analysis)
-- Phase 14: Predictive Analytics (matter predictions, client churn, financial forecasting)
-- Phase 15: Advanced Workflow Automation (natural language workflows, AI triggers)
+- Phase 12: Adobe PDF analysis
+- Phase 13: Lawyer search integration
+- Phase 14: AI Legal Assistant (document drafting, case analysis)
+- Phase 15: Predictive Analytics (matter predictions, client churn, financial forecasting)
+- Phase 16: Advanced Workflow Automation (natural language workflows, AI triggers)
 
 **Revenue-Generating Features**: Phases 2, 5, 10, 17 (Billing, payments, time tracking, trust accounting)
 
@@ -1753,9 +1612,9 @@
   - Create tasks
   - **Search and recommend lawyers** (via external lawyer search API)
   - **Analyze uploaded documents** (via Adobe PDF Extract API)
-  - **Draft documents with AI assistance** (Phase 13)
-  - **Suggest legal strategies and arguments** (Phase 13)
-  - **Predict matter outcomes and costs** (Phase 14)
+  - **Draft documents with AI assistance** (Phase 14)
+  - **Suggest legal strategies and arguments** (Phase 14)
+  - **Predict matter outcomes and costs** (Phase 15)
 - Chatbot does NOT provide legal advice to avoid unauthorized practice of law
 - All chatbot interactions logged for compliance
 

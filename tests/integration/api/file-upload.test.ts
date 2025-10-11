@@ -1,5 +1,25 @@
 import { describe, it, expect } from 'vitest';
 
+// Type definitions for API responses
+interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+interface FileUploadData {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  description?: string;
+  category?: string;
+  metadata?: {
+    description?: string;
+    category?: string;
+  };
+}
+
 describe('File Upload API Integration - Real API', () => {
   const BASE_URL = 'http://localhost:8787';
 
@@ -7,7 +27,7 @@ describe('File Upload API Integration - Real API', () => {
     it('should upload a text file', async () => {
       const formData = new FormData();
       formData.append('file', new Blob(['Test content for file upload'], { type: 'text/plain' }), 'test.txt');
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       formData.append('sessionId', 'test-upload-session-text');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
@@ -16,7 +36,7 @@ describe('File Upload API Integration - Real API', () => {
       });
       
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');
@@ -31,7 +51,7 @@ describe('File Upload API Integration - Real API', () => {
       
       const formData = new FormData();
       formData.append('file', new Blob([pdfContent], { type: 'application/pdf' }), 'test.pdf');
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       formData.append('sessionId', 'test-upload-session-pdf');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
@@ -40,7 +60,7 @@ describe('File Upload API Integration - Real API', () => {
       });
       
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');
@@ -52,7 +72,7 @@ describe('File Upload API Integration - Real API', () => {
     it('should upload a document file', async () => {
       const formData = new FormData();
       formData.append('file', new Blob(['Legal document content'], { type: 'application/msword' }), 'document.doc');
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       formData.append('sessionId', 'test-upload-session-doc');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
@@ -61,7 +81,7 @@ describe('File Upload API Integration - Real API', () => {
       });
       
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');
@@ -83,7 +103,7 @@ describe('File Upload API Integration - Real API', () => {
       
       const formData = new FormData();
       formData.append('file', new Blob([pngData], { type: 'image/png' }), 'test.png');
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       formData.append('sessionId', 'test-upload-session-image');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
@@ -92,7 +112,7 @@ describe('File Upload API Integration - Real API', () => {
       });
       
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');
@@ -104,7 +124,7 @@ describe('File Upload API Integration - Real API', () => {
     it('should handle file upload with metadata', async () => {
       const formData = new FormData();
       formData.append('file', new Blob(['Contract content'], { type: 'text/plain' }), 'contract.txt');
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       formData.append('sessionId', 'test-upload-session-metadata');
       formData.append('description', 'Legal contract for review');
       formData.append('category', 'contract');
@@ -115,13 +135,29 @@ describe('File Upload API Integration - Real API', () => {
       });
       
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');
       expect(result.data).toHaveProperty('fileName', 'contract.txt');
       expect(result.data).toHaveProperty('fileSize');
       expect(result.data).toHaveProperty('fileType', 'text/plain');
+      
+      // Assert metadata fields are returned and match sent values
+      expect(result.data).toHaveProperty('description', 'Legal contract for review');
+      expect(result.data).toHaveProperty('category', 'contract');
+      
+      // Assert metadata field types
+      expect(typeof result.data.description).toBe('string');
+      expect(typeof result.data.category).toBe('string');
+      
+      // Assert metadata fields are present in any returned metadata object
+      if (result.data.metadata) {
+        expect(result.data.metadata).toHaveProperty('description', 'Legal contract for review');
+        expect(result.data.metadata).toHaveProperty('category', 'contract');
+        expect(typeof result.data.metadata.description).toBe('string');
+        expect(typeof result.data.metadata.category).toBe('string');
+      }
     });
 
     it('should handle large file upload', async () => {
@@ -130,7 +166,7 @@ describe('File Upload API Integration - Real API', () => {
       
       const formData = new FormData();
       formData.append('file', new Blob([largeContent], { type: 'text/plain' }), 'large-file.txt');
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       formData.append('sessionId', 'test-upload-session-large');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
@@ -139,7 +175,7 @@ describe('File Upload API Integration - Real API', () => {
       });
       
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');
@@ -151,7 +187,7 @@ describe('File Upload API Integration - Real API', () => {
     it('should handle file upload with special characters in filename', async () => {
       const formData = new FormData();
       formData.append('file', new Blob(['Special chars content'], { type: 'text/plain' }), 'test-file (1).txt');
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       formData.append('sessionId', 'test-upload-session-special');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
@@ -160,7 +196,7 @@ describe('File Upload API Integration - Real API', () => {
       });
       
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');
@@ -171,7 +207,7 @@ describe('File Upload API Integration - Real API', () => {
     it('should handle file upload with organization-specific settings', async () => {
       const formData = new FormData();
       formData.append('file', new Blob(['Organization specific content'], { type: 'text/plain' }), 'org-specific.txt');
-      formData.append('organizationId', 'north-carolina-legal-services');
+      formData.append('organizationId', '01K0TNGNKNJEP8EPKHXAQV4S0R');
       formData.append('sessionId', 'test-upload-session-org');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
@@ -180,7 +216,7 @@ describe('File Upload API Integration - Real API', () => {
       });
       
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');
@@ -193,7 +229,7 @@ describe('File Upload API Integration - Real API', () => {
   describe('File Upload Error Handling', () => {
     it('should handle missing file', async () => {
       const formData = new FormData();
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       formData.append('sessionId', 'test-upload-session-no-file');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
@@ -222,7 +258,7 @@ describe('File Upload API Integration - Real API', () => {
     it('should handle missing session ID', async () => {
       const formData = new FormData();
       formData.append('file', new Blob(['Test content'], { type: 'text/plain' }), 'test.txt');
-      formData.append('organizationId', 'blawby-ai');
+      formData.append('organizationId', '01K0TNGNKTM4Q0AG0XF0A8ST0Q');
       
       const response = await fetch(`${BASE_URL}/api/files/upload`, {
         method: 'POST',
@@ -246,7 +282,7 @@ describe('File Upload API Integration - Real API', () => {
       
       // The API creates a minimal organization entry if it doesn't exist, so this should succeed
       expect(response.ok).toBe(true);
-      const result = await response.json();
+      const result = await response.json() as ApiResponse<FileUploadData>;
       expect(result).toHaveProperty('success', true);
       expect(result).toHaveProperty('data');
       expect(result.data).toHaveProperty('fileId');

@@ -3,6 +3,22 @@ const getFormsEndpoint = () => '/api/forms';
 const getOrganizationsEndpoint = () => '/api/organizations';
 import { ChatMessageUI } from '../../worker/types';
 
+// Type definitions for organization data
+interface Organization {
+  slug?: string;
+  id?: string;
+  name?: string;
+  config?: {
+    requiresPayment?: boolean;
+    consultationFee?: number;
+    paymentLink?: string;
+  };
+}
+
+interface OrganizationsResponse {
+  data: Array<Organization>;
+}
+
 // Utility function to format form data for submission
 export function formatFormData(formData: Record<string, unknown>, organizationId: string) {
   return {
@@ -43,7 +59,7 @@ export async function submitContactForm(
       try {
         const organizationsResponse = await fetch(getOrganizationsEndpoint());
         if (organizationsResponse.ok) {
-          const organizationsJson = await organizationsResponse.json() as { data: Array<{ slug?: string; id?: string; name?: string; config?: { requiresPayment?: boolean; consultationFee?: number; paymentLink?: string } }> };
+          const organizationsJson = await organizationsResponse.json() as OrganizationsResponse;
           organizationConfig = organizationsJson.data.find((organization) => organization.slug === organizationId || organization.id === organizationId);
         }
       } catch (error) {

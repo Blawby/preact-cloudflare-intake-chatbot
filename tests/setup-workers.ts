@@ -252,7 +252,7 @@ export async function createTestMatter(organizationId: string = 'test-organizati
 export async function enableParalegalForOrganization(organizationId: string) {
   await env.DB.prepare(`
     UPDATE organizations 
-    SET config = json_patch(config, '{"features": {"enableParalegalAgent": true}}')
+    SET config = json_set(config, '$.features.enableParalegalAgent', true)
     WHERE id = ?
   `).bind(organizationId).run();
 }
@@ -261,7 +261,7 @@ export async function enableParalegalForOrganization(organizationId: string) {
 export async function disableParalegalForOrganization(organizationId: string) {
   await env.DB.prepare(`
     UPDATE organizations 
-    SET config = json_patch(config, '{"features": {"enableParalegalAgent": false}}')
+    SET config = json_set(config, '$.features.enableParalegalAgent', false)
     WHERE id = ?
   `).bind(organizationId).run();
 }

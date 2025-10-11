@@ -1,4 +1,5 @@
 import { FaceSmileIcon, CheckBadgeIcon } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
 interface OrganizationProfileProps {
 	name: string;
@@ -17,6 +18,7 @@ export default function OrganizationProfile({
 	variant = 'sidebar',
 	showVerified = true 
 }: OrganizationProfileProps) {
+	const { t } = useTranslation('organization');
 	const isWelcome = variant === 'welcome';
 	
 	return (
@@ -26,7 +28,7 @@ export default function OrganizationProfile({
 				{profileImage ? (
 					<img 
 						src={profileImage} 
-						alt={`${name} logo`}
+						alt={t('profile.logoAlt', { name })}
 						className={`rounded-lg object-cover ${isWelcome ? 'w-16 h-16' : 'w-12 h-12'}`}
 					/>
 				) : (
@@ -40,13 +42,13 @@ export default function OrganizationProfile({
 			<div className="flex items-center justify-center gap-2 w-full">
 				<h3 className="text-base sm:text-lg lg:text-xl font-semibold text-center m-0 text-gray-900 dark:text-white leading-tight truncate min-w-0" title={name}>{name}</h3>
 				{showVerified && variant === 'welcome' && (
-					<CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white flex-shrink-0" aria-label="Verified" title="Verified" />
+					<CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white flex-shrink-0" aria-label={t('profile.verified')} title={t('profile.verified')} />
 				)}
 			</div>
 
 			{/* Organization Slug */}
 			<div className="text-center w-full">
-				<span className="text-sm sm:text-base lg:text-lg font-medium text-[#d4af37] truncate block" title={`@${organizationId}`}>@{organizationId}</span>
+				<span className="text-sm sm:text-base lg:text-lg font-medium text-[#d4af37] truncate block" title={t('profile.slug', { id: organizationId })}>@{organizationId}</span>
 			</div>
 
 			{/* Organization Description - Only show for welcome variant */}

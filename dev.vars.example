@@ -26,6 +26,15 @@ ADOBE_ORGANIZATION_ID=your_organization_id@AdobeOrg
 BETTER_AUTH_SECRET=your_better_auth_secret_here
 BETTER_AUTH_URL=http://localhost:8787
 
+# Better Auth Feature Flags (NON-SENSITIVE)
+# Set to 'true' to enable geolocation and IP detection features
+# Note: These features require proper Cloudflare context and are disabled by default
+ENABLE_AUTH_GEOLOCATION=false
+ENABLE_AUTH_IP_DETECTION=false
+
+# Domain Configuration (NON-SENSITIVE)
+# DOMAIN=localhost  # Set this in .dev.vars for local development
+
 # Google OAuth Configuration (SENSITIVE)
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here

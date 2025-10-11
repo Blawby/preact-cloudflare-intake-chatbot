@@ -11,8 +11,16 @@ export interface OrganizationContext {
   userId?: string;
 }
 
+export interface OptionalOrganizationContext {
+  organizationId: string | null;
+  source: 'auth' | 'session' | 'url' | 'default' | 'none';
+  sessionId?: string;
+  isAuthenticated: boolean;
+  userId?: string;
+}
+
 export interface RequestWithOrganizationContext extends Request {
-  organizationContext?: OrganizationContext;
+  organizationContext?: OrganizationContext | OptionalOrganizationContext;
 }
 
 /**
@@ -30,7 +38,7 @@ export async function extractOrganizationContext(
     defaultOrganizationId?: string;
     allowUrlOverride?: boolean;
   } = {}
-): Promise<OrganizationContext> {
+): Promise<OrganizationContext | OptionalOrganizationContext> {
   const {
     requireOrganization = true,
     defaultOrganizationId,
@@ -56,6 +64,9 @@ export async function extractOrganizationContext(
           const targetOrgId = urlOrganizationId ?? defaultOrganizationId;
           if (!targetOrgId) {
             // No organization ID available, skip session resolution
+            if (requireOrganization) {
+              throw HttpErrors.badRequest('Organization context is required but could not be determined');
+            }
             return {
               organizationId: null,
               source: 'none',
@@ -108,6 +119,9 @@ export async function extractOrganizationContext(
       const targetOrgId = urlOrganizationId ?? defaultOrganizationId;
       if (!targetOrgId) {
         // No organization ID available, return without session resolution
+        if (requireOrganization) {
+          throw HttpErrors.badRequest('Organization context is required but could not be determined');
+        }
         return {
           organizationId: null,
           source: 'none',
@@ -189,7 +203,7 @@ export async function withOrganizationContext(
 /**
  * Helper to get organization context from a request that has been processed by the middleware
  */
-export function getOrganizationContext(request: Request): OrganizationContext {
+export function getOrganizationContext(request: Request): OrganizationContext | OptionalOrganizationContext {
   const req = request as RequestWithOrganizationContext;
   if (!req.organizationContext) {
     throw new Error('Request has not been processed by organization context middleware');
@@ -201,7 +215,11 @@ export function getOrganizationContext(request: Request): OrganizationContext {
  * Helper to get just the organization ID from context
  */
 export function getOrganizationId(request: Request): string {
-  return getOrganizationContext(request).organizationId;
+  const context = getOrganizationContext(request);
+  if (context.organizationId === null) {
+    throw new Error('Organization ID is null - this should not happen when requireOrganization is true');
+  }
+  return context.organizationId;
 }
 
 /**

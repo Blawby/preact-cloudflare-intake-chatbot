@@ -655,7 +655,7 @@ For more granular control, implement organization-level testing flags:
 
 ```typescript
 // Check if organization is in test mode
-const organizationConfig = await this.getorganizationConfig(organizationId);
+const organizationConfig = await this.getOrganizationConfig(organizationId);
 if (organizationConfig.testMode) {
   console.log('🧪 organization in test mode - logging notification instead of sending');
   return;
@@ -1187,7 +1187,32 @@ export async function handleLiveNotifications(request: Request, env: Env) {
   }
   
   const userId = session.user.id;
-  const organizationId = session.user.organizationId; // From Better Auth context
+  
+  // Get user's organizations using Better Auth organization plugin
+  let organizationId: string;
+  try {
+    const userOrgs = await betterAuth.listUserOrganizations({
+      userId: session.user.id
+    });
+    
+    if (!userOrgs || userOrgs.length === 0) {
+      return new Response('No organizations found for user', { status: 403 });
+    }
+    
+    // Select primary organization (first one) or implement custom logic for multiple orgs
+    // For now, we'll use the first organization as the primary
+    organizationId = userOrgs[0].organizationId;
+    
+    // If user has multiple organizations, you might want to:
+    // 1. Check for a "primary" organization flag
+    // 2. Use organization with highest role (owner > admin > member)
+    // 3. Allow user to select organization via request parameter
+    // 4. Use organization from request context/headers
+    
+  } catch (error) {
+    console.error('Failed to retrieve user organizations:', error);
+    return new Response('Failed to retrieve organization context', { status: 500 });
+  }
   
   // Create SSE connection scoped to authenticated user
   const stream = new ReadableStream({

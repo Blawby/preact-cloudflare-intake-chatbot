@@ -2707,6 +2707,8 @@ type AiIMultimodalEmbeddingsOutput = {
     data: number[][];
     shape: number[];
 };
+// Legacy alias for backwards compatibility
+type AiMultimodalEmbeddingsOutput = AiIMultimodalEmbeddingsOutput;
 declare abstract class BaseAiMultimodalEmbeddings {
     inputs: AiMultimodalEmbeddingsInput;
     postProcessedOutputs: AiIMultimodalEmbeddingsOutput;
