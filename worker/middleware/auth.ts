@@ -1,6 +1,7 @@
-import { Env } from "../types";
+import { Env, HttpError } from "../types";
 import { getAuth } from "../auth/index";
 import { HttpErrors } from "../errorHandler";
+import { organizationMembershipSchema } from "../schemas/validation";
 
 export interface AuthenticatedUser {
   id: string;
@@ -22,7 +23,7 @@ export async function requireAuth(
   request: Request,
   env: Env
 ): Promise<AuthContext> {
-  const auth = await getAuth(env);
+  const auth = await getAuth(env, request);
   const session = await auth.api.getSession({ headers: request.headers });
 
   if (!session || !session.user) {
@@ -51,7 +52,7 @@ export async function requireOrganizationMember(
   minimumRole?: "owner" | "admin" | "attorney" | "paralegal"
 ): Promise<AuthContext & { memberRole: string }> {
   const authContext = await requireAuth(request, env);
-  const auth = await getAuth(env);
+  const auth = await getAuth(env, request);
 
   // 1. Validate organizationId
   if (!organizationId || typeof organizationId !== 'string' || organizationId.trim() === '') {
@@ -65,14 +66,24 @@ export async function requireOrganizationMember(
       WHERE organization_id = ? AND user_id = ?
     `).bind(organizationId, authContext.user.id).first();
     
-    // 3. Check if user has membership
+    // 3. Check if user has membership and validate the result
     if (!membershipResult) {
       throw HttpErrors.forbidden("User is not a member of this organization");
     }
 
-    const userRole = membershipResult.role as string;
+    // 4. Validate the membership result structure and role
+    const validatedMembership = organizationMembershipSchema.safeParse(membershipResult);
+    if (!validatedMembership.success) {
+      console.error('Invalid membership result structure:', {
+        membershipResult,
+        errors: validatedMembership.error.issues
+      });
+      throw HttpErrors.forbidden("User is not a member of this organization");
+    }
 
-    // 4. Enforce role requirements if minimumRole is specified
+    const userRole = validatedMembership.data.role;
+
+    // 5. Enforce role requirements if minimumRole is specified
     if (minimumRole) {
       const roleHierarchy: Record<string, number> = {
         'paralegal': 1,
@@ -81,21 +92,30 @@ export async function requireOrganizationMember(
         'owner': 4
       };
 
-      const userRoleLevel = roleHierarchy[userRole] || 0;
-      const requiredRoleLevel = roleHierarchy[minimumRole] || 0;
+      // Validate that userRole exists in hierarchy
+      const userRoleLevel = roleHierarchy[userRole];
+      if (userRoleLevel === undefined) {
+        throw HttpErrors.forbidden(`Invalid user role: ${userRole}. User has an unknown role in this organization.`);
+      }
+
+      // Validate that minimumRole exists in hierarchy
+      const requiredRoleLevel = roleHierarchy[minimumRole];
+      if (requiredRoleLevel === undefined) {
+        throw HttpErrors.internalServerError(`Invalid configured minimum role: ${minimumRole}. This is a developer configuration error.`);
+      }
 
       if (userRoleLevel < requiredRoleLevel) {
         throw HttpErrors.forbidden(`Insufficient permissions. Required role: ${minimumRole}, user role: ${userRole}`);
       }
     }
 
-    // 5. Return authContext with actual memberRole
+    // 6. Return authContext with actual memberRole
     return {
       ...authContext,
       memberRole: userRole,
     };
   } catch (error) {
-    if (error instanceof Error && error.message.includes('403')) {
+    if (error instanceof HttpError) {
       throw error; // Re-throw HTTP errors
     }
     console.error('Error checking organization membership:', error);

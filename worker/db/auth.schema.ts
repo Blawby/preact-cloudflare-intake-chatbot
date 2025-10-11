@@ -36,7 +36,7 @@ export const accounts = sqliteTable("accounts", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 }, (table) => ({
-  // Prevent duplicate provider accounts per user
+  // Prevent the same external provider account from being linked to multiple local users
   uniqueProviderAccount: unique("unique_provider_account").on(table.providerId, table.accountId),
   // Ensure one account per provider per user
   uniqueProviderUser: unique("unique_provider_user").on(table.providerId, table.userId),

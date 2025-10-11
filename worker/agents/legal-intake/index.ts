@@ -885,7 +885,7 @@ class ContextDetector {
 // ============================================================================
 
 class PromptBuilder {
-  static build(context: ConversationContext, organization: Organization | null, organizationId?: string | null): string {
+  static build(context: ConversationContext, organization: Organization | null, _organizationId?: string | null): string {
     const organizationName = organization?.name || 'our law firm';
     const publicMode = isPublicMode(organization);
     const requiresLocation = organization?.config?.jurisdiction?.type === 'state';
@@ -1081,6 +1081,9 @@ class SSEController {
 
   async complete(): Promise<void> {
     await this.emit({ type: 'complete' });
+    
+    // Add small delay to ensure event flushes before closing
+    await sleep(50);
     
     if (this.controller) {
       try {
@@ -1528,6 +1531,12 @@ class ToolExecutor {
         return;
       }
 
+      // Special handling for matter creation
+      if (toolCall.name === 'create_matter' && toolResult.success) {
+        await this.handleMatterCreation(toolResult);
+        return;
+      }
+
       const finalResponse = this.extractToolResponse(toolResult);
       
       if (!toolResult.success && toolCall.name === 'create_matter') {
@@ -1589,6 +1598,36 @@ class ToolExecutor {
         initialValues: contactFormResponse?.contactForm?.initialValues
       }
     });
+  }
+
+  private async handleMatterCreation(toolResult: ToolResult): Promise<void> {
+    const matterData = (toolResult.data && typeof toolResult.data === 'object')
+      ? toolResult.data as Record<string, unknown>
+      : {};
+
+    // Emit matter_canvas event
+    await this.sse.emit({
+      type: 'matter_canvas',
+      data: {
+        matterId: `matter-${Date.now()}`,
+        matterNumber: `CASE-${Date.now()}`,
+        service: matterData.matter_type || 'Legal Consultation',
+        matterSummary: matterData.description || 'Legal matter created',
+        answers: {
+          name: matterData.name || '',
+          email: matterData.email || '',
+          phone: matterData.phone || '',
+          location: matterData.location || '',
+          opposingParty: matterData.opposing_party || '',
+          matterType: matterData.matter_type || '',
+          description: matterData.description || ''
+        }
+      }
+    });
+
+    // Emit the final response
+    const finalResponse = this.extractToolResponse(toolResult);
+    await this.sse.final(finalResponse);
   }
 
   private extractToolResponse(toolResult: ToolResult): string {

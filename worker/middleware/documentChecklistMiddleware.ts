@@ -1,26 +1,14 @@
 import type { ConversationContext, DocumentChecklist } from './conversationContextManager.js';
 import type { Env, AgentMessage } from '../types.js';
+import type { SimpleMiddleware } from './pipeline.js';
 import { ConversationContextManager } from './conversationContextManager.js';
-
-// Custom interface for documentChecklistMiddleware since it doesn't use organizationConfig
-interface DocumentChecklistMiddleware {
-  name: string;
-  execute: (
-    messages: AgentMessage[],
-    context: ConversationContext,
-    env: Env
-  ) => Promise<{ 
-    context: ConversationContext; 
-    response?: string;
-    shouldStop?: boolean;
-  }>;
-}
 
 /**
  * Document Checklist Middleware - handles document gathering requests
  * Detects when users want to see document checklists and provides relevant document lists
  */
-export const documentChecklistMiddleware: DocumentChecklistMiddleware = {
+export const documentChecklistMiddleware: SimpleMiddleware = {
+  kind: 'simple',
   name: 'documentChecklistMiddleware',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, env: Env) => {
@@ -264,7 +252,7 @@ function generateDocumentChecklist(matterType: string): Array<{
 /**
  * Generate response for document checklist
  */
-function generateDocumentResponse(matterType: string, documents: any[]): string {
+function generateDocumentResponse(matterType: string, documents: { required: boolean; document_type: string; description: string }[]): string {
   const requiredDocs = documents.filter(doc => doc.required);
   const optionalDocs = documents.filter(doc => !doc.required);
 

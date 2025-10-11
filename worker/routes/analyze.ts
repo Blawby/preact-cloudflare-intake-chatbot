@@ -1,7 +1,7 @@
 import type { Env } from '../types';
-import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { HttpErrors, createSuccessResponse } from '../errorHandler';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
-import { AdobeDocumentService, type AdobeExtractSuccess } from '../services/AdobeDocumentService.js';
+import { AdobeDocumentService, type AdobeExtractSuccess, type IAdobeExtractor } from '../services/AdobeDocumentService.js';
 import { type AnalysisResult } from '../services/SessionService.js';
 import { 
   log, 
@@ -12,7 +12,6 @@ import {
 } from '../utils/logging.js';
 import { parseEnvBool } from '../utils/safeStringUtils.js';
 import { createRateLimitResponse } from '../errorHandler';
-import { withAIRetry } from '../utils/retry.js';
 
 // Legal keywords for relevance scoring
 const LEGAL_KEYWORDS = [
@@ -22,10 +21,10 @@ const LEGAL_KEYWORDS = [
 ];
 
 // Safe JSON serialization utility to prevent OOM and handle cyclic objects
-function safeStringify(obj: any, maxLength: number = 10000): string {
+function safeStringify(obj: unknown, maxLength: number = 10000): string {
   try {
     const seen = new WeakSet();
-    const replacer = (key: string, value: any) => {
+    const replacer = (key: string, value: unknown) => {
       if (typeof value === 'object' && value !== null) {
         if (seen.has(value)) {
           return '[Circular]';
@@ -43,13 +42,13 @@ function safeStringify(obj: any, maxLength: number = 10000): string {
     }
     
     return result;
-  } catch (error) {
+  } catch (_error) {
     return '<unserializable-table>';
   }
 }
 
 // Helper functions for prioritizing tables and elements by relevance
-function calculateTableRelevance(table: any, documentText: string): number {
+function calculateTableRelevance(table: { rows?: unknown[]; [key: string]: unknown }, _documentText: string): number {
   let score = 0;
   
   // Base score for table size (larger tables often more important)
@@ -79,7 +78,7 @@ function calculateTableRelevance(table: any, documentText: string): number {
   return score;
 }
 
-function calculateElementRelevance(element: any, documentText: string): number {
+function calculateElementRelevance(element: { text?: string; [key: string]: unknown }, _documentText: string): number {
   let score = 0;
   
   // Base score for element size
@@ -118,6 +117,8 @@ function calculateElementRelevance(element: any, documentText: string): number {
 interface ExtendedAnalysisResult extends AnalysisResult {
   adobeExtractTextLength?: number;
   adobeExtractTextPreview?: string;
+  extraction_failed?: boolean;
+  extraction_method?: string;
   debug?: {
     adobeEnabled: boolean;
     adobeClientIdSet: boolean;
@@ -155,8 +156,14 @@ async function attemptAdobeExtract(
   requestId?: string
 ): Promise<ExtendedAnalysisResult | null> {
   log('debug', 'adobe_service_creation', { message: 'Creating Adobe service', requestId });
-  const adobeService = new AdobeDocumentService(env);
-  log('debug', 'adobe_service_created', { message: 'Adobe service created', requestId });
+  
+  // Use mock extractor if available (for testing), otherwise use real Adobe service
+  const adobeService: IAdobeExtractor = env.ADOBE_EXTRACTOR_SERVICE || new AdobeDocumentService(env);
+  log('debug', 'adobe_service_created', { 
+    message: 'Adobe service created', 
+    isMock: !!env.ADOBE_EXTRACTOR_SERVICE,
+    requestId 
+  });
   log('debug', 'adobe_service_enabled_check', { isEnabled: adobeService.isEnabled(), requestId });
   
   const eligibleTypes = new Set([
@@ -362,7 +369,7 @@ async function summarizeAdobeExtract(
   const prioritizedTables = (extract.tables ?? [])
     .map((table, index) => ({
       ...(typeof table === 'object' && table !== null ? table : {}),
-      relevanceScore: calculateTableRelevance(table, rawText),
+      relevanceScore: calculateTableRelevance(table as { rows?: unknown[]; [key: string]: unknown }, rawText),
       originalIndex: index
     }))
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
@@ -371,14 +378,14 @@ async function summarizeAdobeExtract(
   const prioritizedElements = (extract.elements ?? [])
     .map((element, index) => ({
       ...(typeof element === 'object' && element !== null ? element : {}),
-      relevanceScore: calculateElementRelevance(element, rawText),
+      relevanceScore: calculateElementRelevance(element as { text?: string; [key: string]: unknown }, rawText),
       originalIndex: index
     }))
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
     .slice(0, maxElements);
   
   // Build structured payload with proper truncation to ensure valid JSON
-  const buildTruncatedStructuredPayload = (tables: any[], elements: any[], maxLength: number): string => {
+  const buildTruncatedStructuredPayload = (tables: unknown[], elements: unknown[], maxLength: number): string => {
     let currentTables = [...tables];
     let currentElements = [...elements];
     let payload = '';
@@ -439,15 +446,30 @@ async function summarizeAdobeExtract(
       }
     } while (payload.length > maxLength && attempts < maxAttempts);
     
+    // Post-loop check: detect if truncation failed due to max attempts reached
+    // This function uses best-effort semantics - it tries to fit within limits but may exceed them
+    if (payload.length > maxLength) {
+      const errorMsg = `Payload truncation failed: finalLength=${payload.length}, maxLength=${maxLength}, attempts=${attempts}`;
+      logError(requestId, 'analyze.payload.truncation_failed', new Error(errorMsg), {
+        finalLength: payload.length,
+        maxLength,
+        attempts
+      });
+      throw new Error(errorMsg);
+    }
+    
     return payload;
   };
+  
+  // Calculate original structured length from prioritized data (before truncation)
+  const originalStructuredLength = JSON.stringify({ tables: prioritizedTables, elements: prioritizedElements }).length;
   
   const structuredPayload = buildTruncatedStructuredPayload(prioritizedTables, prioritizedElements, maxStructuredPayloadLength);
   
   // Log when limits are hit for telemetry
   const originalTablesCount = (extract.tables ?? []).length;
   const originalElementsCount = (extract.elements ?? []).length;
-  
+
   if (originalTablesCount > maxTables) {
     log('warn', 'table_limit_hit', {
       originalCount: originalTablesCount,
@@ -467,7 +489,6 @@ async function summarizeAdobeExtract(
   }
   
   // Log structured payload truncation events
-  const originalStructuredLength = JSON.stringify({ tables: extract.tables, elements: extract.elements }).length;
   if (originalStructuredLength > maxStructuredPayloadLength) {
     log('warn', 'structured_payload_truncation_applied', {
       originalLength: originalStructuredLength,
@@ -799,7 +820,14 @@ export async function analyzeWithCloudflareAI(
     requestId
   });
   
-  return await analyzeWithGenericAI(file, question, env, requestId);
+  const fallbackResult = await analyzeWithGenericAI(file, question, env, requestId);
+  
+  // Add extraction_failed flag to indicate Adobe extraction didn't work
+  return {
+    ...fallbackResult,
+    extraction_failed: true,
+    extraction_method: 'generic_ai_fallback'
+  } as ExtendedAnalysisResult;
 }
 
 export async function handleAnalyze(request: Request, env: Env): Promise<Response> {
@@ -927,6 +955,32 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
 
   } catch (error) {
     logError('analyze', 'analysis_error', error as Error, {});
-    return handleError(error);
+    
+    // For analysis errors, return 200 with error information instead of 503
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const fallbackAnalysis: ExtendedAnalysisResult = {
+      summary: "Document analysis encountered an error. Please try again or contact support if the issue persists.",
+      key_facts: ["Analysis failed due to an internal error"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: ["Retry the analysis", "Contact support if the issue persists"],
+      confidence: 0.0,
+      extraction_failed: true,
+      extraction_method: 'error_fallback',
+      error: errorMessage
+    };
+
+    return createSuccessResponse({
+      analysis: fallbackAnalysis,
+      metadata: {
+        fileName: 'unknown',
+        fileType: 'unknown',
+        fileSize: 0,
+        question: 'Analysis failed',
+        timestamp: new Date().toISOString(),
+        isAdobeEligible: false,
+        error: errorMessage
+      },
+      disclaimer: "Blawby provides general information, not legal advice. No attorney-client relationship is formed. For advice, consult a licensed attorney in your jurisdiction."
+    });
   }
 }

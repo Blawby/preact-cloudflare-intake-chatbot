@@ -158,6 +158,40 @@ async function storeFile(file: File, organizationId: string, sessionId: string, 
   const fileExtension = file.name.split('.').pop() || '';
   const storageKey = `uploads/${organizationId}/${sessionId}/${fileId}.${fileExtension}`;
 
+  // Check if the organization exists - this is required for file operations
+  // This check MUST happen before any R2 upload to prevent orphaned files
+  const organizationCheckStmt = env.DB.prepare('SELECT id FROM organizations WHERE id = ? OR slug = ?');
+  const existingOrganization = await organizationCheckStmt.bind(organizationId, organizationId).first();
+  
+  if (!existingOrganization) {
+    // Log anomaly for monitoring and alerting
+    Logger.error('Organization not found during file upload - this indicates a data integrity issue', {
+      organizationId,
+      sessionId,
+      fileId,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      timestamp: new Date().toISOString(),
+      anomaly: 'missing_organization_during_file_upload',
+      severity: 'high'
+    });
+
+    // Emit monitoring metric/alert
+    // In production, this would integrate with your monitoring system (e.g., DataDog, New Relic, etc.)
+    console.error('🚨 MONITORING ALERT: Missing organization during file upload', {
+      organizationId,
+      sessionId,
+      fileId,
+      alertType: 'missing_organization',
+      severity: 'high',
+      timestamp: new Date().toISOString()
+    });
+
+    // Return clear error response
+    throw new Error(`Organization '${organizationId}' not found. Please ensure the organization exists before uploading files. Use the proper organization creation flow via POST /api/organizations or contact your system administrator.`);
+  }
+
   Logger.info('Storing file:', {
     fileId,
     storageKey,
@@ -206,39 +240,6 @@ async function storeFile(file: File, organizationId: string, sessionId: string, 
 
   // Try to store file metadata in database, but don't fail if it doesn't work
   try {
-    // Check if the organization exists - this is required for file operations
-    const organizationCheckStmt = env.DB.prepare('SELECT id FROM organizations WHERE id = ? OR slug = ?');
-    const existingOrganization = await organizationCheckStmt.bind(organizationId, organizationId).first();
-    
-    if (!existingOrganization) {
-      // Log anomaly for monitoring and alerting
-      Logger.error('Organization not found during file upload - this indicates a data integrity issue', {
-        organizationId,
-        sessionId,
-        fileId,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        timestamp: new Date().toISOString(),
-        anomaly: 'missing_organization_during_file_upload',
-        severity: 'high'
-      });
-
-      // Emit monitoring metric/alert
-      // In production, this would integrate with your monitoring system (e.g., DataDog, New Relic, etc.)
-      console.error('🚨 MONITORING ALERT: Missing organization during file upload', {
-        organizationId,
-        sessionId,
-        fileId,
-        alertType: 'missing_organization',
-        severity: 'high',
-        timestamp: new Date().toISOString()
-      });
-
-      // Return clear error response
-      throw new Error(`Organization '${organizationId}' not found. Please ensure the organization exists before uploading files. Use the proper organization creation flow via POST /api/organizations or contact your system administrator.`);
-    }
-
     const stmt = env.DB.prepare(`
       INSERT INTO files (
         id, organization_id, session_id, original_name, file_name, file_path, 

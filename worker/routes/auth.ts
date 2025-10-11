@@ -2,7 +2,7 @@ import { Env } from "../types";
 import { getAuth } from "../auth/index";
 
 export async function handleAuth(request: Request, env: Env): Promise<Response> {
-  const auth = await getAuth(env);
+  const auth = await getAuth(env, request);
   
   // Get origin from request
   const origin = request.headers.get("origin") || "";

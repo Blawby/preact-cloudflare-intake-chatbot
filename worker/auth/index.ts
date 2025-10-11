@@ -57,7 +57,7 @@ export const auth = betterAuth({
 // Lazy initialization to handle async D1 access
 let authInstance: ReturnType<typeof betterAuth> | null = null;
 
-export async function getAuth(env: Env) {
+export async function getAuth(env: Env, request?: Request) {
   if (!authInstance) {
     // Fail-fast guard for production environment
     if (env.NODE_ENV === 'production' && !env.BETTER_AUTH_SECRET) {
@@ -72,6 +72,51 @@ export async function getAuth(env: Env) {
     // Feature flags for geolocation and IP detection (default to disabled)
     const enableGeolocation = env.ENABLE_AUTH_GEOLOCATION === 'true';
     const enableIpDetection = env.ENABLE_AUTH_IP_DETECTION === 'true';
+    
+    // Determine CF context based on environment and feature flags
+    let cfContext: {
+      country?: string;
+      city?: string;
+      region?: string;
+      timezone?: string;
+      latitude?: string;
+      longitude?: string;
+      asn?: number;
+      asOrganization?: string;
+    } | undefined = undefined;
+    
+    // Check if we're in CLI mode (no request context available)
+    const isCliMode = !request;
+    
+    if (isCliMode) {
+      // CLI mode: always use mock for compatibility
+      cfContext = {
+        country: 'US',
+        city: 'Local',
+        region: 'Local',
+        timezone: 'UTC',
+        latitude: '0',
+        longitude: '0',
+        asn: 0,
+        asOrganization: 'Local Development'
+      };
+    } else if (enableGeolocation || enableIpDetection) {
+      // Runtime with feature flags enabled: use real CF context from request
+      // Don't set cfContext - let the platform-provided request.cf be used
+      cfContext = undefined;
+    } else {
+      // Runtime with feature flags disabled: use mock as fallback
+      cfContext = {
+        country: 'US',
+        city: 'Local',
+        region: 'Local',
+        timezone: 'UTC',
+        latitude: '0',
+        longitude: '0',
+        asn: 0,
+        asOrganization: 'Local Development'
+      };
+    }
     
     authInstance = betterAuth({
       ...withCloudflare(
@@ -101,17 +146,8 @@ export async function getAuth(env: Env) {
           geolocationTracking: enableGeolocation,
         },
         {
-          // Mock cf context for compatibility (features are disabled by default)
-          cf: {
-            country: 'US',
-            city: 'Local',
-            region: 'Local',
-            timezone: 'UTC',
-            latitude: '0',
-            longitude: '0',
-            asn: 0,
-            asOrganization: 'Local Development'
-          },
+          // Conditional CF context based on environment and feature flags
+          ...(cfContext ? { cf: cfContext } : {}),
           secret: env.BETTER_AUTH_SECRET,
           baseURL: baseUrl,
           trustedOrigins: [

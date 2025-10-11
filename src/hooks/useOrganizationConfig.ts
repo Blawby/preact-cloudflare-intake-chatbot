@@ -236,8 +236,9 @@ export const useOrganizationConfig = ({ onError }: UseOrganizationConfigOptions 
       // Clear the current request ref and reset loading state
       if (currentRequestRef.current?.organizationId === currentOrganizationId) {
         currentRequestRef.current = null;
+        // Only clear loading state if no newer request replaced this one
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
   }, [onError]);
 

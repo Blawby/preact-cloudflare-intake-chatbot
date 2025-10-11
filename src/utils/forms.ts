@@ -76,18 +76,27 @@ export async function submitContactForm(
         // Show matter canvas focus message
         confirmationContent = `✅ Perfect! Your complete matter information has been submitted successfully and updated below.`;
       } else {
-        // Regular form submission
-        if (organizationConfig?.config?.requiresPayment) {
-          const fee = organizationConfig.config.consultationFee;
-          const paymentLink = organizationConfig.config.paymentLink;
-          
+      // Regular form submission
+      if (organizationConfig?.config?.requiresPayment) {
+        const fee = organizationConfig.config?.consultationFee ?? 0;
+        const paymentLink = organizationConfig.config?.paymentLink ?? '';
+        const organizationName = organizationConfig.name ?? 'our firm';
+        
+        // Validate that we have the required payment information
+        if (fee <= 0 || !paymentLink) {
+          console.warn('Payment required but missing fee or payment link:', { fee, paymentLink });
+          confirmationContent = `✅ Thank you! Your information has been submitted successfully.\n\n` +
+            `A lawyer will review your matter and contact you within 24 hours regarding payment details. ` +
+            `Thank you for choosing ${organizationName}!`;
+        } else {
           confirmationContent = `✅ Thank you! Your information has been submitted successfully.\n\n` +
             `💰 **Consultation Fee**: $${fee}\n\n` +
             `To proceed with your consultation, please complete the payment first. ` +
             `This helps us prioritize your matter and ensures we can provide you with the best legal assistance.\n\n` +
             `🔗 **Payment Link**: ${paymentLink}\n\n` +
             `Once payment is completed, a lawyer will review your matter and contact you within 24 hours. ` +
-            `Thank you for choosing ${organizationConfig.name}!`;
+            `Thank you for choosing ${organizationName}!`;
+        }
         } else {
           confirmationContent = `✅ Your information has been submitted successfully! A lawyer will review your matter and contact you within 24 hours. Thank you for choosing our firm.`;
         }

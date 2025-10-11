@@ -17,8 +17,7 @@ export function OrganizationNotFound({ organizationId, onRetry }: OrganizationNo
           {t('notFound.title')}
         </h1>
         <p className="mb-10 text-base sm:text-lg leading-relaxed text-light-text dark:text-dark-text">
-          {t('notFound.description.prefix')} "<strong className="font-semibold">{organizationId}</strong>". 
-          {t('notFound.description.suffix')}
+          {t('notFound.description.prefix')} &quot;<strong className="font-semibold">{organizationId}</strong>&quot;. {t('notFound.description.suffix')}
         </p>
         <ul className="mb-10 text-left text-sm sm:text-base leading-relaxed text-light-text dark:text-dark-text">
           <li className="mb-2">• {t('notFound.reasons.incorrectId')}</li>
@@ -52,4 +51,4 @@ export function OrganizationNotFound({ organizationId, onRetry }: OrganizationNo
       </div>
     </div>
   );
-} 
+}

@@ -76,7 +76,9 @@ export class DocumentRequirementService {
       console.log(`Created ${requirements.requirements.length} document requirements for matter ${matterId}`);
     } catch (error) {
       console.error('Failed to create document requirements:', error);
-      try { await this.env.DB.prepare('ROLLBACK').run(); } catch {}
+      try { await this.env.DB.prepare('ROLLBACK').run(); } catch (_rollbackError) {
+        // Ignore rollback errors as the main error is more important
+      }
       throw error;
     }
   }
@@ -108,7 +110,15 @@ export class DocumentRequirementService {
   /**
    * Get the current status of document requirements for a matter
    */
-  async getMatterRequirementStatus(matterId: string): Promise<any[]> {
+  async getMatterRequirementStatus(matterId: string): Promise<{
+    document_type: string;
+    description: string;
+    required: boolean;
+    status: string;
+    file_id: string | null;
+    due_date: string | null;
+    updated_at: string;
+  }[]> {
     try {
       const stmt = this.env.DB.prepare(`
         SELECT document_type, description, required, status, file_id, due_date, updated_at

@@ -567,14 +567,14 @@
 - Expense tracking with receipt OCR
 - Mobile API endpoints
 
-**Differentiation Features (Phases 11-15)**: AI-first approach
+**Differentiation Features (Phases 12-16)**: AI-first approach
 - Phase 12: Adobe PDF analysis
 - Phase 13: Lawyer search integration
 - Phase 14: AI Legal Assistant (document drafting, case analysis)
 - Phase 15: Predictive Analytics (matter predictions, client churn, financial forecasting)
 - Phase 16: Advanced Workflow Automation (natural language workflows, AI triggers)
 
-**Revenue-Generating Features**: Phases 2, 5, 10, 17 (Billing, payments, time tracking, trust accounting)
+**Revenue-Generating Features**: Phases 2, 5, 11, 17 (Billing, payments, time tracking, trust accounting)
 
 **Enterprise Features**: Better Auth SSO/SAML, advanced permissions, audit logging
 

@@ -101,29 +101,14 @@ async function killProcessesOnPort(port: number): Promise<void> {
       }
     }, 5000);
     
-    findProcess.stdout?.on('data', async (data) => {
+    findProcess.stdout?.on('data', (data) => {
       hasOutput = true;
       output += data.toString();
-    });
-    
-    findProcess.stdout?.on('end', async () => {
-      clearTimeout(timeout);
-      await handleProcessOutput(output, port, isWindows);
-      resolve();
     });
     
     findProcess.stdout?.on('close', async () => {
       clearTimeout(timeout);
       await handleProcessOutput(output, port, isWindows);
-      resolve();
-    });
-    
-    findProcess.on('exit', async (code) => {
-      clearTimeout(timeout);
-      if (code !== 0 && hasOutput) {
-        // Command failed but we got some output, try to process it
-        await handleProcessOutput(output, port, isWindows);
-      }
       resolve();
     });
     
@@ -309,6 +294,7 @@ async function startWranglerDev(): Promise<void> {
   try {
     wranglerProcess = spawn('wrangler', ['dev', '--port', WORKER_PORT.toString(), '--local'], {
       stdio: 'pipe',
+      shell: true,
       env: { ...process.env, NODE_ENV: 'test' }
     });
 

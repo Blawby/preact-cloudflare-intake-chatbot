@@ -20,6 +20,7 @@ export interface Env {
   ADOBE_PDF_SERVICES_BASE_URL?: string;
   ADOBE_SCOPE?: string;
   ENABLE_ADOBE_EXTRACT?: string | boolean;
+  ADOBE_EXTRACTOR_SERVICE?: import('./services/AdobeDocumentService.js').IAdobeExtractor; // Optional mock extractor for testing
   
   // Better Auth Configuration
   BETTER_AUTH_SECRET?: string;

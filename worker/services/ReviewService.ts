@@ -46,7 +46,7 @@ export class ReviewService {
         ORDER BY m.created_at DESC
       `).bind(organizationId).all();
 
-      return matters.results?.map((matter: any) => ({
+      return matters.results?.map((matter: { [key: string]: unknown }) => ({
         id: matter.id,
         matterNumber: matter.matter_number,
         service: matter.service,
@@ -138,10 +138,10 @@ export class ReviewService {
       `).bind(organizationId).first();
 
       return {
-        total: (stats as any)?.total || 0,
-        pending: (stats as any)?.pending || 0,
-        approved: (stats as any)?.approved || 0,
-        rejected: (stats as any)?.rejected || 0
+        total: (stats as { total?: number })?.total || 0,
+        pending: (stats as { pending?: number })?.pending || 0,
+        approved: (stats as { approved?: number })?.approved || 0,
+        rejected: (stats as { rejected?: number })?.rejected || 0
       };
     } catch (error) {
       console.error('Failed to get review stats:', error);

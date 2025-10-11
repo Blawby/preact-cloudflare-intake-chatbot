@@ -444,7 +444,7 @@ export class PDFGenerationService {
       };
 
       // Helper function to add text with word wrapping and page overflow protection
-      const addText = (text: string, font: any, size: number, color: any, maxWidth?: number) => {
+      const addText = (text: string, font: unknown, size: number, color: unknown, maxWidth?: number) => {
         // Check for page overflow before adding text (will add new page if needed)
         if (checkPageOverflow()) {
           // yPosition already reset; align local cursor
@@ -543,7 +543,7 @@ export class PDFGenerationService {
       // Add parties section
       if (content.parties && content.parties.length > 0) {
         addSectionHeader('PARTIES INVOLVED');
-        content.parties.forEach((party: any, index: number) => {
+        content.parties.forEach((party: { role: string; name?: string; relationship?: string }, _index: number) => {
           const partyText = `${party.role}: ${party.name || 'Name not provided'}${party.relationship ? ` (${party.relationship})` : ''}`;
           addText(partyText, font, fontSize, rgb(0, 0, 0), width - 100);
         });
@@ -595,7 +595,17 @@ export class PDFGenerationService {
   /**
    * Extract structured content from options (more reliable than HTML parsing)
    */
-  private static extractContentFromOptions(options: PDFGenerationOptions): any {
+  private static extractContentFromOptions(options: PDFGenerationOptions): {
+    title: string;
+    date: string;
+    clientName: string;
+    organizationName: string;
+    summary: string;
+    parties: { role: string; name?: string; relationship?: string }[];
+    documents: { name: string; description?: string }[];
+    timeline: { date: string; event: string }[];
+    [key: string]: unknown;
+  } {
     const { caseDraft, clientName, organizationName } = options;
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',

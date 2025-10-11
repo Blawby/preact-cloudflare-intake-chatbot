@@ -6,6 +6,14 @@ export const emailSchema = z.string().email();
 export const phoneSchema = z.string().optional();
 export const timestampSchema = z.number().int().positive();
 
+// Organization role schema
+export const organizationRoleSchema = z.enum(['owner', 'admin', 'attorney', 'paralegal']);
+
+// Organization membership result schema
+export const organizationMembershipSchema = z.object({
+  role: organizationRoleSchema
+});
+
 // Chat schemas
 export const chatMessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),

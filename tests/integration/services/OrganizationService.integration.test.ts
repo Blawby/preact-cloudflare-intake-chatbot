@@ -25,83 +25,118 @@ describe('OrganizationService Integration - Real API', () => {
     // Create deterministic test organizations
     const timestamp = Date.now();
     
-    // Create first test organization
-    const org1Data = {
-      slug: `test-org-1-${timestamp}`,
-      name: 'Test Organization 1',
-      config: {
-        consultationFee: 0,
-        requiresPayment: false,
-        ownerEmail: 'test1@example.com',
-        availableServices: ['Legal Consultation'],
-        jurisdiction: {
-          type: 'national',
-          description: 'Test jurisdiction 1',
-          supportedStates: ['all'],
-          supportedCountries: ['US']
-        },
-        domain: 'test1.example.com',
-        description: 'Test organization 1 description',
-        brandColor: '#000000',
-        accentColor: '#ffffff',
-        introMessage: 'Hello from test organization 1!'
+    try {
+      // Create first test organization
+      const org1Data = {
+        slug: `test-org-1-${timestamp}`,
+        name: 'Test Organization 1',
+        config: {
+          consultationFee: 0,
+          requiresPayment: false,
+          ownerEmail: 'test1@example.com',
+          availableServices: ['Legal Consultation'],
+          jurisdiction: {
+            type: 'national',
+            description: 'Test jurisdiction 1',
+            supportedStates: ['all'],
+            supportedCountries: ['US']
+          },
+          domain: 'test1.example.com',
+          description: 'Test organization 1 description',
+          brandColor: '#000000',
+          accentColor: '#ffffff',
+          introMessage: 'Hello from test organization 1!'
+        }
+      };
+
+      const org1Response = await fetch(`${WORKER_URL}/api/organizations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(org1Data)
+      });
+
+      if (!org1Response.ok) {
+        throw new Error(`Failed to create test organization 1: ${org1Response.status}`);
       }
-    };
 
-    const org1Response = await fetch(`${WORKER_URL}/api/organizations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(org1Data)
-    });
-
-    if (!org1Response.ok) {
-      throw new Error(`Failed to create test organization 1: ${org1Response.status}`);
-    }
-
-    const org1Result = await org1Response.json() as ApiResponse<Organization>;
-    if (!org1Result.success || !org1Result.data) {
-      throw new Error(`Test organization 1 creation failed: ${JSON.stringify(org1Result)}`);
-    }
-    testOrganization1 = org1Result.data;
-
-    // Create second test organization
-    const org2Data = {
-      slug: `test-org-2-${timestamp}`,
-      name: 'Test Organization 2',
-      config: {
-        consultationFee: 50,
-        requiresPayment: true,
-        ownerEmail: 'test2@example.com',
-        availableServices: ['Legal Consultation', 'Document Review'],
-        jurisdiction: {
-          type: 'state',
-          description: 'Test jurisdiction 2',
-          supportedStates: ['CA', 'NY'],
-          supportedCountries: ['US']
-        },
-        domain: 'test2.example.com',
-        description: 'Test organization 2 description',
-        brandColor: '#0066cc',
-        accentColor: '#ffffff',
-        introMessage: 'Hello from test organization 2!'
+      const org1Result = await org1Response.json() as ApiResponse<Organization>;
+      if (!org1Result.success || !org1Result.data) {
+        throw new Error(`Test organization 1 creation failed: ${JSON.stringify(org1Result)}`);
       }
-    };
+      testOrganization1 = org1Result.data;
 
-    const org2Response = await fetch(`${WORKER_URL}/api/organizations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(org2Data)
-    });
+      // Create second test organization
+      const org2Data = {
+        slug: `test-org-2-${timestamp}`,
+        name: 'Test Organization 2',
+        config: {
+          consultationFee: 50,
+          requiresPayment: true,
+          ownerEmail: 'test2@example.com',
+          availableServices: ['Legal Consultation', 'Document Review'],
+          jurisdiction: {
+            type: 'state',
+            description: 'Test jurisdiction 2',
+            supportedStates: ['CA', 'NY'],
+            supportedCountries: ['US']
+          },
+          domain: 'test2.example.com',
+          description: 'Test organization 2 description',
+          brandColor: '#0066cc',
+          accentColor: '#ffffff',
+          introMessage: 'Hello from test organization 2!'
+        }
+      };
 
-    if (!org2Response.ok) {
-      throw new Error(`Failed to create test organization 2: ${org2Response.status}`);
+      const org2Response = await fetch(`${WORKER_URL}/api/organizations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(org2Data)
+      });
+
+      if (!org2Response.ok) {
+        throw new Error(`Failed to create test organization 2: ${org2Response.status}`);
+      }
+
+      const org2Result = await org2Response.json() as ApiResponse<Organization>;
+      if (!org2Result.success || !org2Result.data) {
+        throw new Error(`Test organization 2 creation failed: ${JSON.stringify(org2Result)}`);
+      }
+      testOrganization2 = org2Result.data;
+    } catch (error) {
+      // Clean up any successfully created organizations before rethrowing
+      const cleanupPromises = [];
+      
+      if (testOrganization1?.id) {
+        cleanupPromises.push(
+          fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`, {
+            method: 'DELETE'
+          }).catch(deleteErr => 
+            console.warn('Failed to cleanup test organization 1 during error recovery:', deleteErr)
+          )
+        );
+      }
+      
+      if (testOrganization2?.id) {
+        cleanupPromises.push(
+          fetch(`${WORKER_URL}/api/organizations/${testOrganization2.id}`, {
+            method: 'DELETE'
+          }).catch(deleteErr => 
+            console.warn('Failed to cleanup test organization 2 during error recovery:', deleteErr)
+          )
+        );
+      }
+
+      // Wait for all cleanup operations to complete
+      await Promise.all(cleanupPromises);
+      
+      // Reset the variables to prevent afterAll from trying to clean up again
+      testOrganization1 = undefined;
+      testOrganization2 = undefined;
+      
+      // Rethrow the original error so the test setup still fails
+      throw error;
     }
-
-    const org2Result = await org2Response.json() as ApiResponse<Organization>;
-    if (!org2Result.success || !org2Result.data) {
-      throw new Error(`Test organization 2 creation failed: ${JSON.stringify(org2Result)}`);
-    }
-    testOrganization2 = org2Result.data;
 
     console.log('✅ Created test organizations:', {
       org1: { id: testOrganization1.id, slug: testOrganization1.slug },

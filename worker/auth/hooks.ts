@@ -56,15 +56,27 @@ async function retryAddMember(
     try {
       console.log(`🔄 Attempting to add member (attempt ${attempt}/${maxRetries}) for org ${organizationId}, user ${userId}`);
       
-      // Add member directly to the database
+      // Check if membership already exists to prevent duplicates
+      const existingMember = await env.DB.prepare(`
+        SELECT id FROM members 
+        WHERE organization_id = ? AND user_id = ?
+      `).bind(organizationId, userId).first();
+      
+      if (existingMember) {
+        console.log(`ℹ️ Member ${userId} already exists in organization ${organizationId}, skipping insertion`);
+        return;
+      }
+      
+      // Add member directly to the database with proper Unix timestamp
       const result = await env.DB.prepare(`
-        INSERT INTO organization_members (organization_id, user_id, role, created_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO members (id, organization_id, user_id, role, created_at)
+        VALUES (?, ?, ?, ?, ?)
       `).bind(
+        crypto.randomUUID(), // Generate a proper UUID for the id field
         organizationId,
         userId,
         role,
-        Date.now()
+        Math.floor(Date.now() / 1000) // Convert to Unix timestamp (seconds since epoch)
       ).run();
       
       if (!result.success) {
@@ -126,7 +138,7 @@ export async function createPersonalOrganizationOnSignup(
     
     // Check if user already has an organization by querying the database directly
     const existingMembership = await env.DB.prepare(`
-      SELECT organization_id FROM organization_members 
+      SELECT organization_id FROM members 
       WHERE user_id = ?
     `).bind(userId).all();
     

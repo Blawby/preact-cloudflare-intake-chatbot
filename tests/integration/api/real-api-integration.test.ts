@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
 
 // Type definitions for API responses
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -23,13 +23,13 @@ interface AnalysisData {
 
 interface ChatData {
   response: string;
-  workflow?: any;
+  workflow?: { [key: string]: unknown };
 }
 
 // Real API integration tests - these test the local development worker
 
 // Helper function to make HTTP requests with proper error handling
-async function makeRequest(url: string, options: RequestInit = {}) {
+async function _makeRequest(url: string, options: RequestInit = {}) {
   try {
     const response = await fetch(url, options);
     return response;
@@ -94,7 +94,6 @@ describe('Real API Integration Tests', () => {
       });
 
       console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers));
 
       expect(response.status).toBe(200);
 
@@ -212,11 +211,11 @@ describe('Real API Integration Tests', () => {
         body: formData
       });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(200);
 
-      const result = await response.json() as ApiResponse;
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('not supported');
+      const result = await response.json() as ApiResponse<{ analysis: { extraction_failed: boolean } }>;
+      expect(result.success).toBe(true);
+      expect(result.data?.analysis?.extraction_failed).toBe(true);
     }, 30000);
   });
 
@@ -398,11 +397,11 @@ describe('Real API Integration Tests', () => {
         body: formData
       });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(200);
 
-      const result = await response.json() as ApiResponse;
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('file');
+      const result = await response.json() as ApiResponse<{ analysis: { extraction_failed: boolean } }>;
+      expect(result.success).toBe(true);
+      expect(result.data?.analysis?.extraction_failed).toBe(true);
     }, 30000);
 
     it('should handle files that are too large', async () => {

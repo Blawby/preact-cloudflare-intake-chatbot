@@ -1,25 +1,25 @@
 {
   "notFound": {
-    "title": "Organization Not Found",
+    "title": "Organisation nicht gefunden",
     "description": {
-      "prefix": "We couldn't find the organization",
-      "suffix": "This could be because:"
+      "prefix": "Wir konnten die Organisation nicht finden",
+      "suffix": "Das könnte folgende Gründe haben:"
     },
     "reasons": {
-      "incorrectId": "The organization ID might be incorrect",
-      "movedOrRemoved": "The organization may have been moved or removed",
-      "outdatedLink": "You might have an outdated link"
+      "incorrectId": "Die Organisations-ID könnte falsch sein",
+      "movedOrRemoved": "Die Organisation wurde möglicherweise verschoben oder entfernt",
+      "outdatedLink": "Sie haben möglicherweise einen veralteten Link"
     },
     "helpText": {
-      "prefix": "Please check the URL or try again. If you continue to have issues, please visit",
-      "middle": "or contact us on",
-      "suffix": "for support."
+      "prefix": "Bitte überprüfen Sie die URL oder versuchen Sie es erneut. Wenn Sie weiterhin Probleme haben, besuchen Sie",
+      "middle": "oder kontaktieren Sie uns auf",
+      "suffix": "für Support."
     },
     "helpLink": "blawby.com/help",
     "githubLink": "GitHub",
     "actions": {
-      "tryAgain": "Try Again",
-      "goToHome": "Go to Home"
+      "tryAgain": "Erneut versuchen",
+      "goToHome": "Zur Startseite"
     }
   }
 }

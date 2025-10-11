@@ -1,25 +1,25 @@
 {
   "notFound": {
-    "title": "Organization Not Found",
+    "title": "未找到组织",
     "description": {
-      "prefix": "We couldn't find the organization",
-      "suffix": "This could be because:"
+      "prefix": "我们无法找到该组织",
+      "suffix": "这可能是因为："
     },
     "reasons": {
-      "incorrectId": "The organization ID might be incorrect",
-      "movedOrRemoved": "The organization may have been moved or removed",
-      "outdatedLink": "You might have an outdated link"
+      "incorrectId": "组织 ID 可能不正确",
+      "movedOrRemoved": "该组织可能已被移动或删除",
+      "outdatedLink": "您可能有一个过时的链接"
     },
     "helpText": {
-      "prefix": "Please check the URL or try again. If you continue to have issues, please visit",
-      "middle": "or contact us on",
-      "suffix": "for support."
+      "prefix": "请检查 URL 或重试。如果您仍然遇到问题，请访问",
+      "middle": "或在",
+      "suffix": "上联系我们获取支持。"
     },
     "helpLink": "blawby.com/help",
     "githubLink": "GitHub",
     "actions": {
-      "tryAgain": "Try Again",
-      "goToHome": "Go to Home"
+      "tryAgain": "重试",
+      "goToHome": "返回首页"
     }
   }
 }

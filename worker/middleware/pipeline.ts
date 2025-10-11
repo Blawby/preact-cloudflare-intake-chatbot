@@ -2,7 +2,8 @@ import type { ConversationContext } from './conversationContextManager.js';
 import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { Env, AgentMessage } from '../types.js';
 
-export interface PipelineMiddleware {
+export interface StandardMiddleware {
+  kind: 'standard';
   name: string;
   execute: (
     messages: AgentMessage[],
@@ -16,14 +17,8 @@ export interface PipelineMiddleware {
   }>;
 }
 
-export interface PipelineResult {
-  context: ConversationContext;
-  response: string;
-  middlewareUsed: string[];
-}
-
-// Union type for all possible middleware types
-export type AnyMiddleware = PipelineMiddleware | {
+export interface SimpleMiddleware {
+  kind: 'simple';
   name: string;
   execute: (
     messages: AgentMessage[],
@@ -34,7 +29,28 @@ export type AnyMiddleware = PipelineMiddleware | {
     response?: string;
     shouldStop?: boolean;
   }>;
-};
+}
+
+// Discriminated union for all possible middleware types
+export type AnyMiddleware = StandardMiddleware | SimpleMiddleware;
+
+// Type predicates for type narrowing
+export function isStandardMiddleware(middleware: AnyMiddleware): middleware is StandardMiddleware {
+  return middleware.kind === 'standard';
+}
+
+export function isSimpleMiddleware(middleware: AnyMiddleware): middleware is SimpleMiddleware {
+  return middleware.kind === 'simple';
+}
+
+// Legacy type alias for backward compatibility
+export type PipelineMiddleware = StandardMiddleware;
+
+export interface PipelineResult {
+  context: ConversationContext;
+  response: string;
+  middlewareUsed: string[];
+}
 
 /**
  * Runs a conversation through a pipeline of middleware functions
@@ -56,11 +72,14 @@ export async function runPipeline(
     try {
       let result;
       
-      // Special handling for documentChecklistMiddleware which doesn't use organizationConfig
-      if (middleware.name === 'documentChecklistMiddleware') {
-        result = await (middleware as any).execute(messages, updatedContext, env);
+      // Type-safe narrowing using discriminated union
+      if (isSimpleMiddleware(middleware)) {
+        result = await middleware.execute(messages, updatedContext, env);
+      } else if (isStandardMiddleware(middleware)) {
+        result = await middleware.execute(messages, updatedContext, organizationConfig, env);
       } else {
-        result = await (middleware as PipelineMiddleware).execute(messages, updatedContext, organizationConfig, env);
+        // This should never happen with proper typing, but provides a fallback
+        throw new Error(`Unknown middleware type: ${JSON.stringify(middleware)}`);
       }
       
       // Update context from this middleware
@@ -100,8 +119,9 @@ export async function runPipeline(
 /**
  * Creates a middleware that logs pipeline execution
  */
-export function createLoggingMiddleware(): PipelineMiddleware {
+export function createLoggingMiddleware(): StandardMiddleware {
   return {
+    kind: 'standard',
     name: 'logging',
     execute: async (messages, context, organizationConfig, env) => {
       // Null-safe access with defaults

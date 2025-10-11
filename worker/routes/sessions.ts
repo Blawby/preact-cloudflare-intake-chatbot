@@ -4,14 +4,15 @@ import type { Env } from '../types.js';
 import { SessionService } from '../services/SessionService.js';
 import { sessionRequestBodySchema } from '../schemas/validation.js';
 import { withOrganizationContext, getOrganizationId } from '../middleware/organizationContext.js';
+import { DEFAULT_ORGANIZATION_ID } from '../../src/utils/constants.js';
 
 async function normalizeOrganizationId(env: Env, organizationId?: string | null): Promise<string> {
   if (!organizationId) {
-    throw HttpErrors.badRequest('organizationId is required');
+    return DEFAULT_ORGANIZATION_ID; // Use default instead of throwing error
   }
   const trimmed = organizationId.trim();
   if (!trimmed) {
-    throw HttpErrors.badRequest('organizationId cannot be empty');
+    return DEFAULT_ORGANIZATION_ID; // Use default instead of throwing error
   }
 
   // Try to find organization by ID (ULID) first, then by slug
@@ -78,10 +79,12 @@ export async function handleSessions(request: Request, env: Env): Promise<Respon
     } else {
       // Use organization context middleware to extract from URL/cookies
       const requestWithContext = await withOrganizationContext(request, env, {
-        requireOrganization: true,
-        allowUrlOverride: true
+        requireOrganization: false,  // Allow fallback to default
+        allowUrlOverride: true,
+        defaultOrganizationId: DEFAULT_ORGANIZATION_ID
       });
-      organizationId = await normalizeOrganizationId(env, getOrganizationId(requestWithContext));
+      const contextOrgId = getOrganizationId(requestWithContext) || DEFAULT_ORGANIZATION_ID;
+      organizationId = await normalizeOrganizationId(env, contextOrgId);
     }
 
     const resolution = await SessionService.resolveSession(env, {

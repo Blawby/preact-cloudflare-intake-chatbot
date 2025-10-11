@@ -57,6 +57,12 @@ async function createTestOrganization() {
   }
 
   const responseData = await response.json() as ApiResponse<OrganizationData>;
+  
+  // Validate response data structure
+  if (!responseData || responseData.data == null) {
+    throw new Error(`Invalid API response: expected data property but got ${JSON.stringify(responseData)}`);
+  }
+  
   return responseData.data;
 }
 
@@ -302,6 +308,12 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       const createdOrganization = await createResponse.json() as ApiResponse<OrganizationData>;
+      
+      // Verify the response structure before accessing nested properties
+      expect(createdOrganization).toBeDefined();
+      expect(createdOrganization.data).toBeDefined();
+      expect(createdOrganization.data).not.toBeNull();
+      
       const organizationId = createdOrganization.data.id;
 
       // Now update the organization
@@ -369,6 +381,8 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       expect(createResponse.status).toBe(201);
       const createResult = await createResponse.json() as ApiResponse<OrganizationData>;
       expect(createResult.success).toBe(true);
+      expect(createResult.data).toBeDefined();
+      expect(createResult.data).not.toBeNull();
       
       const organizationId = createResult.data.id;
       console.log('🔍 Created organization ID:', organizationId);
