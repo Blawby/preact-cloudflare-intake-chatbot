@@ -142,8 +142,11 @@ function determineMode(organizationId: string | null | undefined): boolean {
   }
 
   // Check if this is a public organization (like blawby-ai)
-  const publicOrganizations = ['blawby-ai'];
-  if (publicOrganizations.includes(organizationId)) {
+  // Note: This is a simplified check - in a real implementation, you'd want to
+  // fetch the organization by ID and check its slug, but for now we'll use
+  // a hardcoded list of known public organization IDs
+  const publicOrganizationIds = ['01K0TNGNKTM4Q0AG0XF0A8ST0Q']; // blawby-ai organization ID
+  if (publicOrganizationIds.includes(organizationId)) {
     return true;
   }
 

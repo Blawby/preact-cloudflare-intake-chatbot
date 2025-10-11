@@ -176,7 +176,7 @@ function MainApp() {
 
 	// Add intro message when organization config is loaded and no messages exist
 	useEffect(() => {
-		if (organizationConfig.introMessage && messages.length === 0) {
+		if (organizationConfig && organizationConfig.introMessage && messages.length === 0) {
 			// Add intro message only (organization profile is now a UI element)
 			const introMessage: ChatMessageUI = {
 				id: crypto.randomUUID(),
@@ -187,7 +187,7 @@ function MainApp() {
 			};
 			addMessage(introMessage);
 		}
-	}, [organizationConfig.introMessage, messages.length, addMessage]);
+	}, [organizationConfig?.introMessage, messages.length, addMessage]);
 
 	// Create stable callback references for keyboard handlers
 	const handleEscape = useCallback(() => {
@@ -368,9 +368,9 @@ function MainApp() {
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
 				isSettingsModalOpen={showSettingsModal}
 				organizationConfig={{
-					name: organizationConfig.name,
-					profileImage: organizationConfig.profileImage,
-					description: organizationConfig.description
+					name: organizationConfig?.name ?? '',
+					profileImage: organizationConfig?.profileImage ?? null,
+					description: organizationConfig?.description ?? ''
 				}}
 				messages={messages}
 				onSendMessage={sendMessage}
@@ -384,10 +384,10 @@ function MainApp() {
 						onSendMessage={sendMessage}
 						onContactFormSubmit={handleContactFormSubmit}
 						organizationConfig={{
-							name: organizationConfig.name,
-							profileImage: organizationConfig.profileImage,
+							name: organizationConfig?.name ?? '',
+							profileImage: organizationConfig?.profileImage ?? null,
 							organizationId,
-							description: organizationConfig.description
+							description: organizationConfig?.description ?? ''
 						}}
 						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
 						sessionId={sessionId}
@@ -478,19 +478,11 @@ function MainApp() {
 
 // Main App component with routing
 export function App() {
-	// Get reactive location for client-side navigation
-	const location = useLocation();
-	
-	// Create reactive currentUrl that updates on navigation
-	const currentUrl = typeof window !== 'undefined' 
-		? `${window.location.origin}${location.url}`
-		: undefined;
-
 	return (
 		<LocationProvider>
 			<OrganizationProvider onError={(error) => console.error('Organization config error:', error)}>
 				<ToastProvider>
-					<AppWithSEO currentUrl={currentUrl} />
+					<AppWithSEO />
 				</ToastProvider>
 			</OrganizationProvider>
 		</LocationProvider>
@@ -498,8 +490,14 @@ export function App() {
 }
 
 // Component that uses organization context for SEO
-function AppWithSEO({ currentUrl }: { currentUrl?: string }) {
+function AppWithSEO() {
 	const { organizationConfig } = useOrganization();
+	const location = useLocation();
+	
+	// Create reactive currentUrl that updates on navigation
+	const currentUrl = typeof window !== 'undefined' 
+		? `${window.location.origin}${location.url}`
+		: undefined;
 	
 	return (
 		<>

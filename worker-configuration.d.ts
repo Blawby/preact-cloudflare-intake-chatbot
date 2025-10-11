@@ -2708,8 +2708,8 @@ type AiIMultimodalEmbeddingsOutput = {
     shape: number[];
 };
 declare abstract class BaseAiMultimodalEmbeddings {
-    inputs: AiImageTextToTextInput;
-    postProcessedOutputs: AiImageTextToTextOutput;
+    inputs: AiMultimodalEmbeddingsInput;
+    postProcessedOutputs: AiIMultimodalEmbeddingsOutput;
 }
 type AiObjectDetectionInput = {
     image: number[];
@@ -2860,7 +2860,7 @@ type UsageTags = {
 };
 type AiTextGenerationOutput = {
     response?: string;
-    tool_calls?: AiTextGenerationToolLegacyOutput[] & AiTextGenerationToolOutput[];
+    tool_calls?: (AiTextGenerationToolLegacyOutput | AiTextGenerationToolOutput)[];
     usage?: UsageTags;
 };
 declare abstract class BaseAiTextGeneration {

@@ -67,7 +67,7 @@ const CACHE_CONFIG = {
   MAX_SIZE: 100
 } as const;
 
-const PUBLIC_ORGANIZATION_IDS = new Set(['blawby-ai']);
+const PUBLIC_ORGANIZATION_SLUGS = new Set(['blawby-ai']);
 
 function resolveAIExecutionPlan(
   env: Env,
@@ -662,8 +662,9 @@ const createPaymentInvoice: ToolDefinition = {
 // UTILITY FUNCTIONS
 // ============================================================================
 
-function isPublicMode(organizationId?: string | null): boolean {
-  return !organizationId || PUBLIC_ORGANIZATION_IDS.has(organizationId);
+function isPublicMode(organization?: Organization | null): boolean {
+  if (!organization) return true;
+  return PUBLIC_ORGANIZATION_SLUGS.has(organization.slug || '');
 }
 
 function hasPlaceholderValue(value: string | undefined | null): boolean {
@@ -886,7 +887,7 @@ class ContextDetector {
 class PromptBuilder {
   static build(context: ConversationContext, organization: Organization | null, organizationId?: string | null): string {
     const organizationName = organization?.name || 'our law firm';
-    const publicMode = isPublicMode(organizationId);
+    const publicMode = isPublicMode(organization);
     const requiresLocation = organization?.config?.jurisdiction?.type === 'state';
     
     const locationRequirement = requiresLocation ? 

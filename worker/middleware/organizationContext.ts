@@ -52,11 +52,23 @@ export async function extractOrganizationContext(
       const sessionToken = SessionService.getSessionTokenFromCookie(request);
       if (sessionToken) {
         try {
+          // Compute target organization ID and ensure it's defined
+          const targetOrgId = urlOrganizationId ?? defaultOrganizationId;
+          if (!targetOrgId) {
+            // No organization ID available, skip session resolution
+            return {
+              organizationId: null,
+              source: 'none',
+              isAuthenticated: true,
+              userId: authContext.user.id
+            };
+          }
+          
           // Try to resolve session by token to get organization
           const sessionResolution = await SessionService.resolveSession(env, {
             request,
             sessionToken,
-            organizationId: urlOrganizationId || defaultOrganizationId,
+            organizationId: targetOrgId,
             createIfMissing: false
           });
 
@@ -93,7 +105,16 @@ export async function extractOrganizationContext(
   if (sessionToken) {
     try {
       // Try to resolve session with URL param or default
-      const targetOrgId = urlOrganizationId || defaultOrganizationId;
+      const targetOrgId = urlOrganizationId ?? defaultOrganizationId;
+      if (!targetOrgId) {
+        // No organization ID available, return without session resolution
+        return {
+          organizationId: null,
+          source: 'none',
+          isAuthenticated: false
+        };
+      }
+      
       const sessionResolution = await SessionService.resolveSession(env, {
         request,
         sessionToken,

@@ -389,7 +389,7 @@ export function buildSystemPrompt(
   let template = SYSTEM_PROMPT_TEMPLATE; // Default to legal intake specialist
   
   // Use case preparation template for Blawby AI
-  if (organizationId === 'blawby-ai' || organizationName === 'Blawby AI' || organizationConfig?.slug === 'blawby-ai') {
+  if (organizationConfig?.slug === 'blawby-ai' || organizationName?.toLowerCase() === 'blawby ai') {
     template = CASE_PREPARATION_PROMPT_TEMPLATE;
   }
   

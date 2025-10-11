@@ -1,9 +1,17 @@
 #!/bin/bash
+set -e
+
+# Check if schema file exists before proceeding
+if [ ! -f "worker/schema.sql" ]; then
+    echo "❌ Error: worker/schema.sql not found!"
+    echo "Please ensure the schema file exists before running this script."
+    exit 1
+fi
+
 echo "🗑️  Dropping all tables..."
 wrangler d1 execute blawby-ai-chatbot --local --command "
 DROP TABLE IF EXISTS invitations;
 DROP TABLE IF EXISTS members;
-DROP TABLE IF EXISTS client_organization_access;
 DROP TABLE IF EXISTS organization_api_tokens;
 DROP TABLE IF EXISTS payment_history;
 DROP TABLE IF EXISTS ai_feedback;

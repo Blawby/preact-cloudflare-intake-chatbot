@@ -14,6 +14,74 @@ import { parseEnvBool } from '../utils/safeStringUtils.js';
 import { createRateLimitResponse } from '../errorHandler';
 import { withAIRetry } from '../utils/retry.js';
 
+// Helper functions for prioritizing tables and elements by relevance
+function calculateTableRelevance(table: any, documentText: string): number {
+  let score = 0;
+  
+  // Base score for table size (larger tables often more important)
+  if (table.rows && Array.isArray(table.rows)) {
+    score += Math.min(table.rows.length * 0.1, 2); // Cap at 2 points
+  }
+  
+  // Check for legal keywords in table content
+  const legalKeywords = ['contract', 'agreement', 'payment', 'amount', 'date', 'party', 'obligation', 'liability', 'damages', 'settlement', 'court', 'judge', 'plaintiff', 'defendant'];
+  const tableText = JSON.stringify(table).toLowerCase();
+  
+  legalKeywords.forEach(keyword => {
+    if (tableText.includes(keyword)) {
+      score += 1;
+    }
+  });
+  
+  // Bonus for tables with monetary values
+  if (/\$[\d,]+\.?\d*/.test(tableText)) {
+    score += 1.5;
+  }
+  
+  // Bonus for tables with dates
+  if (/\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}/.test(tableText)) {
+    score += 1;
+  }
+  
+  return score;
+}
+
+function calculateElementRelevance(element: any, documentText: string): number {
+  let score = 0;
+  
+  // Base score for element size
+  if (element.text && element.text.length > 0) {
+    score += Math.min(element.text.length / 100, 2); // Cap at 2 points
+  }
+  
+  // Check for legal keywords in element content
+  const legalKeywords = ['contract', 'agreement', 'payment', 'amount', 'date', 'party', 'obligation', 'liability', 'damages', 'settlement', 'court', 'judge', 'plaintiff', 'defendant', 'signature', 'witness'];
+  const elementText = (element.text || '').toLowerCase();
+  
+  legalKeywords.forEach(keyword => {
+    if (elementText.includes(keyword)) {
+      score += 1;
+    }
+  });
+  
+  // Bonus for elements with monetary values
+  if (/\$[\d,]+\.?\d*/.test(elementText)) {
+    score += 1.5;
+  }
+  
+  // Bonus for elements with dates
+  if (/\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}/.test(elementText)) {
+    score += 1;
+  }
+  
+  // Bonus for signature-related elements
+  if (elementText.includes('signature') || elementText.includes('signed') || elementText.includes('witness')) {
+    score += 2;
+  }
+  
+  return score;
+}
+
 // Extended AnalysisResult for debugging purposes
 interface ExtendedAnalysisResult extends AnalysisResult {
   adobeExtractTextLength?: number;
@@ -219,10 +287,22 @@ async function summarizeAdobeExtract(
     };
   }
   
-  // Reduce text size to avoid Adobe API limits
-  const truncatedText = rawText.length > 10000
-    ? `${rawText.slice(0, 10000)}...`
+  // Reduce text size to avoid Cloudflare AI token/character limits
+  // Make the limit configurable and increase from 10k to 20k characters
+  const maxTextLength = parseInt(env.AI_MAX_TEXT_LENGTH || '20000', 10);
+  const truncatedText = rawText.length > maxTextLength
+    ? `${rawText.slice(0, maxTextLength)}...`
     : rawText;
+    
+  // Log truncation events for monitoring
+  if (rawText.length > maxTextLength) {
+    log('warn', 'text_truncation_applied', {
+      originalLength: rawText.length,
+      truncatedLength: maxTextLength,
+      contextId: requestId,
+      truncationRatio: (maxTextLength / rawText.length).toFixed(3)
+    });
+  }
     
   log('debug', 'truncated_text_details', {
     truncatedTextLength: truncatedText.length,
@@ -230,11 +310,66 @@ async function summarizeAdobeExtract(
     requestId
   });
 
-  // Reduce structured payload size to avoid Adobe API limits
+  // Reduce structured payload size to avoid Cloudflare AI limits
+  // Make limits configurable and implement prioritization
+  const maxTables = parseInt(env.AI_MAX_TABLES || '5', 10);
+  const maxElements = parseInt(env.AI_MAX_ELEMENTS || '20', 10);
+  const maxStructuredPayloadLength = parseInt(env.AI_MAX_STRUCTURED_PAYLOAD_LENGTH || '6000', 10);
+  
+  // Prioritize tables and elements by relevance/importance
+  const prioritizedTables = (extract.tables ?? [])
+    .map((table, index) => ({
+      ...(typeof table === 'object' && table !== null ? table : {}),
+      relevanceScore: calculateTableRelevance(table, rawText),
+      originalIndex: index
+    }))
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, maxTables);
+    
+  const prioritizedElements = (extract.elements ?? [])
+    .map((element, index) => ({
+      ...(typeof element === 'object' && element !== null ? element : {}),
+      relevanceScore: calculateElementRelevance(element, rawText),
+      originalIndex: index
+    }))
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, maxElements);
+  
   const structuredPayload = JSON.stringify({
-    tables: (extract.tables ?? []).slice(0, 2), // Limit to first 2 tables
-    elements: (extract.elements ?? []).slice(0, 10) // Limit to first 10 elements
-  }).slice(0, 3000); // Reduce from 6000 to 3000 characters
+    tables: prioritizedTables,
+    elements: prioritizedElements
+  }).slice(0, maxStructuredPayloadLength);
+  
+  // Log when limits are hit for telemetry
+  const originalTablesCount = (extract.tables ?? []).length;
+  const originalElementsCount = (extract.elements ?? []).length;
+  
+  if (originalTablesCount > maxTables) {
+    log('warn', 'table_limit_hit', {
+      originalCount: originalTablesCount,
+      limitedCount: maxTables,
+      contextId: requestId,
+      dataLoss: true
+    });
+  }
+  
+  if (originalElementsCount > maxElements) {
+    log('warn', 'element_limit_hit', {
+      originalCount: originalElementsCount,
+      limitedCount: maxElements,
+      contextId: requestId,
+      dataLoss: true
+    });
+  }
+  
+  if (JSON.stringify({ tables: extract.tables, elements: extract.elements }).length > maxStructuredPayloadLength) {
+    log('warn', 'structured_payload_limit_hit', {
+      originalLength: JSON.stringify({ tables: extract.tables, elements: extract.elements }).length,
+      limitedLength: maxStructuredPayloadLength,
+      contextId: requestId,
+      dataLoss: true
+    });
+  }
 
   const systemPrompt = [
     'You are a legal intake analyst receiving structured output from Adobe PDF Services.',

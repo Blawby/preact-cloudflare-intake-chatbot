@@ -58,6 +58,15 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
       throw HttpErrors.badRequest('organizationId parameter is required');
     }
 
+    // Verify session ownership before subscribing
+    const session = await SessionService.getSessionById(env, sessionId);
+    if (!session) {
+      throw HttpErrors.badRequest('Session not found');
+    }
+    if (session.organizationId !== organizationId) {
+      throw HttpErrors.forbidden('Session does not belong to the specified organization');
+    }
+
     // Create SSE response for status updates
     const headers = new Headers({
       'Content-Type': 'text/event-stream',

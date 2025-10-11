@@ -45,6 +45,12 @@ export interface Env {
   ENABLE_WORKERS_AI?: boolean;   // Use boolean for feature flags
   ENABLE_GATEWAY_OPENAI?: boolean;
   
+  // AI processing limits (configurable)
+  AI_MAX_TEXT_LENGTH?: string;
+  AI_MAX_TABLES?: string;
+  AI_MAX_ELEMENTS?: string;
+  AI_MAX_STRUCTURED_PAYLOAD_LENGTH?: string;
+  
   // Environment flags
   NODE_ENV?: string;
   DEBUG?: string;

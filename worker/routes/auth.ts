@@ -16,16 +16,29 @@ export async function handleAuth(request: Request, env: Env): Promise<Response> 
 
   // Handle OPTIONS preflight
   if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Max-Age": "86400",
-      },
-    });
+    // Only allow CORS for recognized origins - no fallback to allowedOrigins[0]
+    if (allowedOrigins.includes(origin)) {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": origin,
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
+          "Access-Control-Allow-Credentials": "true",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    } else {
+      // Reject unrecognized origins with 403
+      return new Response(null, {
+        status: 403,
+        headers: {
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    }
   }
 
   // Handle auth request

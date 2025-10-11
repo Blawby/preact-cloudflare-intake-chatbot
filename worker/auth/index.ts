@@ -12,9 +12,6 @@ import { EmailService } from "../services/EmailService.js";
 export const auth = betterAuth({
   ...withCloudflare(
     {
-      autoDetectIpAddress: false,
-      geolocationTracking: false,
-      cf: false,
       // No d1 config for CLI generation
     },
     {
@@ -48,6 +45,11 @@ let authInstance: ReturnType<typeof betterAuth> | null = null;
 
 export async function getAuth(env: Env) {
   if (!authInstance) {
+    // Fail-fast guard for production environment
+    if (env.NODE_ENV === 'production' && !env.BETTER_AUTH_SECRET) {
+      throw new Error('BETTER_AUTH_SECRET required in production');
+    }
+    
     console.log('🔧 Initializing Better Auth with D1 database...');
     const db = drizzle(env.DB, { schema: authSchema });
     console.log('✅ Drizzle database instance created');
@@ -55,9 +57,6 @@ export async function getAuth(env: Env) {
     authInstance = betterAuth({
       ...withCloudflare(
         {
-          autoDetectIpAddress: env.NODE_ENV === 'production',
-          geolocationTracking: env.NODE_ENV === 'production',
-          cf: env.NODE_ENV === 'production',
           d1: {
             db,
             options: {
@@ -65,17 +64,19 @@ export async function getAuth(env: Env) {
               debugLogs: true,
             },
           },
-          // R2 for profile images only
-          r2: {
-            bucket: env.FILES_BUCKET as unknown as import("better-auth-cloudflare").R2Bucket, // Type assertion to resolve compatibility
-            maxFileSize: 5 * 1024 * 1024, // 5MB
-            allowedTypes: [".jpg", ".jpeg", ".png", ".webp"],
-            additionalFields: {
-              category: { type: "string", required: false },
-              isPublic: { type: "boolean", required: false },
-              description: { type: "string", required: false },
+          // R2 for profile images only (only if FILES_BUCKET is available)
+          ...(env.FILES_BUCKET ? {
+            r2: {
+              bucket: env.FILES_BUCKET as unknown as import("better-auth-cloudflare").R2Bucket, // Type assertion to resolve compatibility
+              maxFileSize: 5 * 1024 * 1024, // 5MB
+              allowedTypes: [".jpg", ".jpeg", ".png", ".webp"],
+              additionalFields: {
+                category: { type: "string", required: false },
+                isPublic: { type: "boolean", required: false },
+                description: { type: "string", required: false },
+              },
             },
-          },
+          } : {}),
         },
         {
           secret: env.BETTER_AUTH_SECRET,
@@ -90,7 +91,7 @@ export async function getAuth(env: Env) {
           advanced: {
             defaultCookieAttributes: {
               sameSite: "lax",
-              secure: false, // Set to false for localhost development
+              secure: env.NODE_ENV === 'production', // Secure in production
             },
             crossSubDomainCookies: {
               enabled: true,

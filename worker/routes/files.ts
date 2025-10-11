@@ -81,7 +81,7 @@ async function updateStatusWithRetry(
 // File upload validation schema
 const fileUploadValidationSchema = z.object({
   file: z.instanceof(File, { message: 'File is required' }),
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: z.string().optional(), // Make organizationId optional to allow organization-context fallback
   sessionId: z.string().min(1, 'Session ID is required')
 });
 
@@ -331,19 +331,19 @@ export async function handleFiles(request: Request, env: Env): Promise<Response>
         throw HttpErrors.badRequest(fileValidation.error!);
       }
 
-      // Determine organization ID: form data takes precedence over URL param
-      let normalizedOrganizationId: string;
-      if (organizationId?.trim()) {
-        // Use organization from form data
-        normalizedOrganizationId = organizationId.trim();
-      } else {
-        // Use organization context middleware to extract from URL/cookies
-        const requestWithContext = await withOrganizationContext(request, env, {
-          requireOrganization: true,
-          allowUrlOverride: true
-        });
-        normalizedOrganizationId = getOrganizationId(requestWithContext);
+      // Always use organization context middleware to get authoritative organization ID
+      const requestWithContext = await withOrganizationContext(request, env, {
+        requireOrganization: true,
+        allowUrlOverride: true
+      });
+      const contextOrganizationId = getOrganizationId(requestWithContext);
+      
+      // Compare submitted organizationId with context-derived ID and reject if they differ
+      if (organizationId?.trim() && organizationId.trim() !== contextOrganizationId) {
+        throw HttpErrors.badRequest('Submitted organizationId does not match authenticated organization context');
       }
+      
+      const normalizedOrganizationId = contextOrganizationId;
       
       const normalizedSessionId = sessionId.trim();
 
