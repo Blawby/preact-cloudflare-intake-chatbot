@@ -198,28 +198,13 @@ describe('Agent Route Integration - Real API', () => {
       // Verify substantial content
       expect(fullText.length).toBeGreaterThan(50);
       
-      // Verify the analysis contains specific content from the PDF file
-      // Note: This may fail if file analysis middleware is not working properly
-      // For now, we'll log the response and make this assertion more lenient
+      // Strictly verify that the response contains actual file analysis content
+      // This test will fail if file analysis middleware is not working properly
       console.log('📄 Full response text:', fullText);
       
-      // Check if the response indicates file analysis was attempted
-      // Look for specific indicators that the file was actually analyzed
-      const hasFileAnalysis = fullText.toLowerCase().includes('native vs platform') ||
-                             fullText.toLowerCase().includes('revenue impact') ||
-                             (fullText.toLowerCase().includes('analyzed your uploaded document') && fullText.toLowerCase().includes('slide deck'));
-      
-      if (hasFileAnalysis) {
-        console.log('✅ File analysis appears to be working');
-        // Verify the response contains actual PDF content
-        expect(fullText.toLowerCase()).toMatch(/native.*platform.*revenue/);
-      } else {
-        console.log('⚠️  File analysis may not be working - agent gave generic response');
-        console.log('   This indicates the file analysis middleware needs to be fixed');
-        console.log('   Full response:', fullText);
-        // For now, just verify we got a response (this indicates the test infrastructure is working)
-        expect(fullText.length).toBeGreaterThan(10);
-      }
+      // Assert that the response contains specific content from the PDF file
+      expect(fullText.toLowerCase()).toMatch(/native.*platform.*revenue/);
+      console.log('✅ File analysis working - response contains expected PDF content');
       
       // Check for expected content keywords
       const hasExpectedContent = 

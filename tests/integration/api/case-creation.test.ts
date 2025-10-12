@@ -65,6 +65,9 @@ function validateAgentResponse(
   // Normalize event text (handle both text and content properties)
   const fullText = textEvents.map(e => e.text || e.content || '').join(' ').toLowerCase();
   
+  // Assert that the concatenated text actually contains content
+  expect(fullText.trim().length).toBeGreaterThan(0);
+  
   // Check if the agent is calling tools by examining actual event arrays
   const hasToolCall = toolCallEvents.length > 0 || toolResultEvents.length > 0;
   
@@ -73,8 +76,10 @@ function validateAgentResponse(
     debugLog('Agent is calling tools (detected via event arrays)');
   } else {
     debugLog('Agent responded conversationally without tool calls');
-    expect(fullText).toMatch(/legal|law|help|matter|assist|attorney|counsel|case/);
   }
+  
+  // Always validate that fullText matches expected legal keywords regardless of tool calls
+  expect(fullText).toMatch(/legal|law|help|matter|assist|attorney|counsel|case/);
   
   return { fullText, hasToolCall };
 }

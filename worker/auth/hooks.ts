@@ -74,7 +74,8 @@ async function retryAddMember(
       }
       
       // Check if the insert was applied or ignored due to conflict
-      if ((result as { changes?: number }).changes === 0) {
+      const changes = result.meta?.changes ?? undefined;
+      if (changes === 0) {
         console.log(`ℹ️ Member ${userId} already exists in organization ${organizationId}, insert was ignored`);
         return;
       }
