@@ -5,8 +5,8 @@ import { Organization } from '../../../worker/services/OrganizationService.js';
 
 describe('OrganizationService Integration - Real API', () => {
   // Test organization data for deterministic testing
-  let testOrganization1: Organization;
-  let testOrganization2: Organization;
+  let testOrganization1: Organization | undefined;
+  let testOrganization2: Organization | undefined;
 
   // Helper function to clean up test organizations
   async function cleanupTestOrganizations(): Promise<void> {
@@ -139,8 +139,8 @@ describe('OrganizationService Integration - Real API', () => {
     }
 
     console.log('✅ Created test organizations:', {
-      org1: { id: testOrganization1.id, slug: testOrganization1.slug },
-      org2: { id: testOrganization2.id, slug: testOrganization2.slug }
+      org1: { id: testOrganization1!.id, slug: testOrganization1!.slug },
+      org2: { id: testOrganization2!.id, slug: testOrganization2!.slug }
     });
   });
 
@@ -163,43 +163,43 @@ describe('OrganizationService Integration - Real API', () => {
       
       // Verify our test organizations are in the response
       const organizationIds = result.data!.map(org => org.id);
-      expect(organizationIds).toContain(testOrganization1.id);
-      expect(organizationIds).toContain(testOrganization2.id);
+      expect(organizationIds).toContain(testOrganization1!.id);
+      expect(organizationIds).toContain(testOrganization2!.id);
       
       // Verify organization structure using our test data
-      const testOrg1InResponse = result.data!.find(org => org.id === testOrganization1.id);
+      const testOrg1InResponse = result.data!.find(org => org.id === testOrganization1!.id);
       expect(testOrg1InResponse).toBeDefined();
-      expect(testOrg1InResponse).toHaveProperty('id', testOrganization1.id);
-      expect(testOrg1InResponse).toHaveProperty('slug', testOrganization1.slug);
-      expect(testOrg1InResponse).toHaveProperty('name', testOrganization1.name);
+      expect(testOrg1InResponse).toHaveProperty('id', testOrganization1!.id);
+      expect(testOrg1InResponse).toHaveProperty('slug', testOrganization1!.slug);
+      expect(testOrg1InResponse).toHaveProperty('name', testOrganization1!.name);
       expect(testOrg1InResponse).toHaveProperty('config');
     });
   });
 
   describe('GET /api/organizations/{id}', () => {
     it('should return organization by ID', async () => {
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`);
+      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1!.id}`);
       
       expect(response.status).toBe(200);
       const result = await response.json() as ApiResponse<Organization>;
       
       expect(result.success).toBe(true);
-      expect(result.data).toHaveProperty('id', testOrganization1.id);
-      expect(result.data).toHaveProperty('slug', testOrganization1.slug);
-      expect(result.data).toHaveProperty('name', testOrganization1.name);
+      expect(result.data).toHaveProperty('id', testOrganization1!.id);
+      expect(result.data).toHaveProperty('slug', testOrganization1!.slug);
+      expect(result.data).toHaveProperty('name', testOrganization1!.name);
       expect(result.data).toHaveProperty('config');
     });
 
     it('should return organization by slug', async () => {
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization2.slug}`);
+      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization2!.slug}`);
       
       expect(response.status).toBe(200);
       const result = await response.json() as ApiResponse<Organization>;
       
       expect(result.success).toBe(true);
-      expect(result.data).toHaveProperty('slug', testOrganization2.slug);
-      expect(result.data).toHaveProperty('id', testOrganization2.id);
-      expect(result.data).toHaveProperty('name', testOrganization2.name);
+      expect(result.data).toHaveProperty('slug', testOrganization2!.slug);
+      expect(result.data).toHaveProperty('id', testOrganization2!.id);
+      expect(result.data).toHaveProperty('name', testOrganization2!.name);
       expect(result.data).toHaveProperty('config');
     });
 
@@ -433,7 +433,7 @@ describe('OrganizationService Integration - Real API', () => {
   describe('Organization configuration validation', () => {
     it('should validate organization configuration structure', async () => {
       // Test with our deterministic test organization
-      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`);
+      const response = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1!.id}`);
       const result = await response.json() as ApiResponse<Organization>;
       
       expect(result.success).toBe(true);
@@ -458,8 +458,8 @@ describe('OrganizationService Integration - Real API', () => {
 
     it('should handle organizations with different configurations', async () => {
       // Test that our two test organizations have different configurations
-      const response1 = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`);
-      const response2 = await fetch(`${WORKER_URL}/api/organizations/${testOrganization2.id}`);
+      const response1 = await fetch(`${WORKER_URL}/api/organizations/${testOrganization1!.id}`);
+      const response2 = await fetch(`${WORKER_URL}/api/organizations/${testOrganization2!.id}`);
       
       const result1 = await response1.json() as ApiResponse<Organization>;
       const result2 = await response2.json() as ApiResponse<Organization>;

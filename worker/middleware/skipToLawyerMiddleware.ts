@@ -135,6 +135,35 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
 };
 
 /**
+ * Retry utility with exponential backoff
+ */
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  maxAttempts: number = 3,
+  baseDelay: number = 100
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (attempt === maxAttempts) {
+        throw lastError;
+      }
+      
+      // Exponential backoff: 100ms, 200ms, 400ms, etc.
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError!;
+}
+
+/**
  * Determine if this is public mode or organization mode
  */
 async function determineMode(organizationId: string | null | undefined, env: Env): Promise<boolean> {
@@ -144,22 +173,41 @@ async function determineMode(organizationId: string | null | undefined, env: Env
   }
 
   try {
-    // Fetch the organization by ID to check its slug
+    // Fetch the organization by ID to check its slug with retry logic
     const organizationService = new OrganizationService(env);
-    const organization = await organizationService.getOrganization(organizationId);
+    const organization = await retryWithBackoff(
+      () => organizationService.getOrganization(organizationId),
+      3, // max attempts
+      100 // base delay in ms
+    );
+    
+    // Explicit handling: if organization lookup completed successfully but returned no org
+    if (!organization) {
+      Logger.warn('[skipToLawyerMiddleware] Organization lookup completed but returned null/undefined', {
+        organizationId,
+        context: 'determineMode'
+      });
+      return true; // Public mode for missing organizations
+    }
     
     // Check if this is a public organization (like blawby-ai)
-    if (organization?.slug === 'blawby-ai') {
+    if (organization.slug === 'blawby-ai') {
       return true;
     }
+    
+    // Organization mode: specific law firm organizations
+    return false;
+    
   } catch (error) {
-    console.warn('Failed to fetch organization for mode determination:', error);
-    // Fall back to public mode if lookup fails
-    return true;
+    Logger.error('[skipToLawyerMiddleware] Failed to fetch organization for mode determination after retries', {
+      organizationId,
+      error: error instanceof Error ? error.message : String(error),
+      context: 'determineMode'
+    });
+    
+    // Return false (organization mode) on fetch errors - do NOT default to public mode
+    return false;
   }
-
-  // Organization mode: specific law firm organizations
-  return false;
 }
 
 /**
