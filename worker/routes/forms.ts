@@ -22,8 +22,15 @@ export async function handleForms(request: Request, env: Env): Promise<Response>
       throw HttpErrors.badRequest('organizationId query parameter is required');
     }
 
-    // Require at least admin membership to read submissions
-    await requireOrgMember(request, env, organizationId, 'admin');
+    // Resolve organization by ID or slug to get canonical numeric ID
+    const organizationService = new OrganizationService(env);
+    const organization = await organizationService.getOrganization(organizationId);
+    if (!organization) {
+      throw HttpErrors.notFound('Organization not found');
+    }
+
+    // Require at least admin membership to read submissions using canonical ID
+    await requireOrgMember(request, env, organization.id, 'admin');
 
     const forms = await env.DB.prepare(
       `SELECT id,
@@ -38,11 +45,9 @@ export async function handleForms(request: Request, env: Env): Promise<Response>
               created_at as createdAt,
               updated_at as updatedAt
          FROM contact_forms
-        WHERE organization_id = ? OR organization_id = (
-          SELECT id FROM organizations WHERE slug = ?
-        )
+        WHERE organization_id = ?
         ORDER BY created_at DESC`
-    ).bind(organizationId, organizationId).all();
+    ).bind(organization.id).all();
 
     // Future Preact usage: fetch this endpoint inside an org dashboard to render submissions.
     return createSuccessResponse({

@@ -73,7 +73,7 @@ function sanitizeOrganizationResponse(organization: Organization): Organization 
   return {
     ...organization,
     config: {
-      ...organization.config,
+      ...(organization.config ?? {}),
       blawbyApi: organization.config?.blawbyApi
         ? {
             enabled: organization.config.blawbyApi.enabled,
@@ -610,7 +610,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
     if (path.endsWith('/accept-invitation') && request.method === 'POST') {
       const { user } = await requireAuth(request, env);
-      const invitationId = new URL(request.url).pathname.split('/')[3];
+      const invitationId = pathSegments[1];
 
       if (!invitationId) {
         throw HttpErrors.badRequest('Invitation ID is required');

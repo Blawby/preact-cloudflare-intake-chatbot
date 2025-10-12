@@ -253,14 +253,6 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
 
       if (paymentRecord) {
         organizationId = paymentRecord.organizationId;
-
-        await env.DB.prepare(
-          `UPDATE payment_history
-              SET status = ?,
-                  event_type = ?,
-                  updated_at = datetime('now')
-            WHERE payment_id = ?`
-        ).bind(body.status, `payment.${body.status}`, body.paymentId).run();
       }
 
       if (!organizationId) {
@@ -275,6 +267,17 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
       }
 
       await requireOrgOwner(request, env, organization.id);
+
+      // Update payment history after verifying organization ownership
+      if (paymentRecord) {
+        await env.DB.prepare(
+          `UPDATE payment_history
+              SET status = ?,
+                  event_type = ?,
+                  updated_at = datetime('now')
+            WHERE payment_id = ?`
+        ).bind(body.status, `payment.${body.status}`, body.paymentId).run();
+      }
 
       const updatedConfig: OrganizationConfig = {
         ...organization.config,
