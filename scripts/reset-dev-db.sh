@@ -11,6 +11,7 @@ fi
 echo "🗑️  Dropping all tables..."
 wrangler d1 execute blawby-ai-chatbot --local --command "
 DROP TABLE IF EXISTS invitations;
+DROP TABLE IF EXISTS organization_events;
 DROP TABLE IF EXISTS members;
 DROP TABLE IF EXISTS organization_api_tokens;
 DROP TABLE IF EXISTS payment_history;

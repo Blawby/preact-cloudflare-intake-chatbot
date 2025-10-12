@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "../types";
 import * as authSchema from "../db/auth.schema";
 import { EmailService } from "../services/EmailService.js";
+import { handlePostSignup } from "./hooks.js";
 
 // Organization plugin will use default roles for now
 
@@ -234,7 +235,28 @@ export async function getAuth(env: Env, request?: Request) {
           },
           plugins: [
             organization(),
-          ]
+          ],
+          databaseHooks: {
+            user: {
+              create: {
+                after: async (user) => {
+                  const fallbackName = user.email?.split("@")?.[0] || "New User";
+                  const displayName = typeof user.name === "string" && user.name.trim().length > 0
+                    ? user.name
+                    : fallbackName;
+
+                  try {
+                    await handlePostSignup(user.id, displayName, env);
+                  } catch (error) {
+                    console.error("❌ Failed to run post-signup provisioning hook:", {
+                      error: error instanceof Error ? error.message : String(error),
+                      userId: user.id,
+                    });
+                  }
+                },
+              },
+            },
+          }
         }
       )
     });
@@ -242,4 +264,3 @@ export async function getAuth(env: Env, request?: Request) {
   
   return authInstance;
 }
-

@@ -182,6 +182,16 @@ describe('Organizations API Integration Tests - Real Worker', () => {
     });
   });
 
+  describe('GET /api/organizations/me', () => {
+    it('should require authentication', async () => {
+      const response = await fetch(`${WORKER_URL}/api/organizations/me`, {
+        method: 'GET',
+      });
+
+      expect(response.status).toBe(401);
+    });
+  });
+
   describe('GET /api/organizations/{slugOrId}', () => {
     it('should return specific organization by ID', async () => {
       // First get all organizations to find a valid ID
@@ -293,8 +303,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
   });
 
   describe('PUT /api/organizations/{slugOrId}', () => {
-    it('should update organization successfully', async () => {
-      // First create a organization to update
+    it('should require authentication to update organization', async () => {
       const newOrganization = {
         slug: `update-test-${Date.now()}`,
         name: 'Organization to Update',
@@ -308,21 +317,12 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       });
       
       const createdOrganization = await createResponse.json() as ApiResponse<OrganizationData>;
-      
-      // Verify the response structure before accessing nested properties
-      expect(createdOrganization).toBeDefined();
       expect(createdOrganization.data).toBeDefined();
-      expect(createdOrganization.data).not.toBeNull();
-      
-      const organizationId = createdOrganization.data.id;
+      const organizationId = createdOrganization.data?.id;
+      expect(organizationId).toBeDefined();
 
-      // Now update the organization
       const updateData = {
-        name: 'Updated Organization Name',
-        config: {
-          ...newOrganization.config,
-          consultationFee: 200
-        }
+        name: 'Updated Organization Name'
       };
 
       const response = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
@@ -331,13 +331,8 @@ describe('Organizations API Integration Tests - Real Worker', () => {
         body: JSON.stringify(updateData)
       });
       
-      expect(response.status).toBe(200);
-      const responseData = await response.json() as ApiResponse<OrganizationData>;
-      
-      expect(responseData.success).toBe(true);
-      expect(responseData.data).toHaveProperty('name', 'Updated Organization Name');
-      expect(responseData.data).toHaveProperty('config');
-    }, 30000);
+      expect(response.status).toBe(401);
+    });
 
     it('should return 404 for non-existent organization update', async () => {
       const updateData = {
@@ -359,8 +354,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
   });
 
   describe('DELETE /api/organizations/{slugOrId}', () => {
-    it('should delete organization successfully', async () => {
-      // First create a organization to delete
+    it('should require authentication to delete organization', async () => {
       const createRequest = {
         name: 'Test Organization for Deletion',
         slug: 'test-organization-delete-' + Date.now(),
@@ -380,18 +374,12 @@ describe('Organizations API Integration Tests - Real Worker', () => {
       
       expect(createResponse.status).toBe(201);
       const createResult = await createResponse.json() as ApiResponse<OrganizationData>;
-      expect(createResult.success).toBe(true);
       expect(createResult.data).toBeDefined();
-      expect(createResult.data).not.toBeNull();
+      const organizationId = createResult.data?.id;
+      expect(organizationId).toBeDefined();
       
-      const organizationId = createResult.data.id;
-      console.log('🔍 Created organization ID:', organizationId);
-      console.log('🔍 Created organization data:', JSON.stringify(createResult.data, null, 2));
+      await waitForOrganizationToExist(organizationId as string);
       
-      // Wait for organization to be available with deterministic polling
-      await waitForOrganizationToExist(organizationId);
-      
-      // Now delete the organization
       const response = await fetch(`${WORKER_URL}/api/organizations/${organizationId}`, {
         method: 'DELETE',
         headers: {
@@ -399,15 +387,7 @@ describe('Organizations API Integration Tests - Real Worker', () => {
         }
       });
       
-      const responseData = await response.json() as ApiResponse<OrganizationData>;
-      
-      if (response.status !== 200) {
-        throw new Error(`Delete failed! Status: ${response.status}, OrganizationID: ${organizationId}, Response: ${JSON.stringify(responseData, null, 2)}`);
-      }
-      
-      expect(response.status).toBe(200);
-      expect(responseData.success).toBe(true);
-      expect(responseData.message).toContain('deleted');
+      expect(response.status).toBe(401);
     });
 
     it('should return 404 for non-existent organization deletion', async () => {
@@ -440,4 +420,3 @@ describe('Organizations API Integration Tests - Real Worker', () => {
     });
   });
 });
-
