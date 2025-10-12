@@ -610,7 +610,20 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
     if (path.endsWith('/accept-invitation') && request.method === 'POST') {
       const { user } = await requireAuth(request, env);
-      const invitationId = pathSegments[1];
+      
+      // Find the index of 'accept-invitation' in the path segments
+      const acceptInvitationIndex = pathSegments.indexOf('accept-invitation');
+      
+      // Validate path structure: ensure 'accept-invitation' exists and has a preceding segment
+      if (acceptInvitationIndex === -1) {
+        throw HttpErrors.badRequest('Invalid path: accept-invitation segment not found');
+      }
+      
+      if (acceptInvitationIndex === 0) {
+        throw HttpErrors.badRequest('Invalid path: no invitation ID provided before accept-invitation');
+      }
+      
+      const invitationId = pathSegments[acceptInvitationIndex - 1];
 
       if (!invitationId) {
         throw HttpErrors.badRequest('Invitation ID is required');
