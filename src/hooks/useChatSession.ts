@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
+import { useOrganizationId } from '../contexts/OrganizationContext.js';
 
 const STORAGE_PREFIX = 'blawby_session:';
 
@@ -19,7 +20,20 @@ export interface ChatSessionState {
   clearStoredSession: () => void;
 }
 
-export function useChatSession(teamId: string): ChatSessionState {
+/**
+ * Hook that uses organization context instead of requiring organizationId parameter
+ * This is the preferred way to use chat sessions in components
+ */
+export function useChatSessionWithContext(): ChatSessionState {
+  const organizationId = useOrganizationId();
+  return useChatSession(organizationId);
+}
+
+/**
+ * Legacy hook that requires organizationId parameter
+ * @deprecated Use useChatSessionWithContext() instead
+ */
+export function useChatSession(organizationId: string): ChatSessionState {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
@@ -33,8 +47,62 @@ export function useChatSession(teamId: string): ChatSessionState {
   }, []);
 
   const getStorageKey = useCallback(() => {
-    return teamId ? `${STORAGE_PREFIX}${teamId}` : null;
-  }, [teamId]);
+    if (!organizationId) return null;
+    
+    const newKey = `${STORAGE_PREFIX}${organizationId}`;
+    const migrationFlag = `${STORAGE_PREFIX}_migrated`;
+    
+    // One-time migration from old teamId-based storage key
+    if (typeof window !== 'undefined') {
+      try {
+        // Check if new key already exists - if so, no migration needed
+        const existingNewValue = window.localStorage.getItem(newKey);
+        if (existingNewValue) {
+          return newKey;
+        }
+        
+        // Check if migration has already been attempted
+        const migrationAttempted = window.localStorage.getItem(migrationFlag);
+        if (migrationAttempted) {
+          return newKey;
+        }
+        
+        // Try to find and migrate from old teamId-based key
+        // Use startsWith for initial scan, then tighten to exact pattern
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && key.startsWith(STORAGE_PREFIX) && key !== newKey && key !== migrationFlag) {
+            // Tighten pattern to exact old-key shape (prefix + UUID pattern)
+            const oldKeyPattern = /^blawby_session:[a-f0-9-]{36}$/;
+            if (oldKeyPattern.test(key)) {
+              const oldValue = window.localStorage.getItem(key);
+              if (oldValue) {
+                // Found an old session, migrate it to the new key
+                window.localStorage.setItem(newKey, oldValue);
+                // Remove the old key to clean up
+                window.localStorage.removeItem(key);
+                console.log(`Migrated session from ${key} to ${newKey}`);
+                break; // Short-circuit on first match
+              }
+            }
+          }
+        }
+        
+        // Set migration flag after attempt (successful or not) to avoid repeated scans
+        window.localStorage.setItem(migrationFlag, 'true');
+      } catch (error) {
+        console.warn('Failed to migrate session storage:', error);
+        // Set flag even on error to avoid repeated failed attempts
+        try {
+          window.localStorage.setItem(migrationFlag, 'true');
+        } catch (flagError) {
+          console.warn('Failed to set migration flag:', flagError);
+        }
+      }
+    }
+    
+    return newKey;
+  }, [organizationId]);
 
   const readStoredSessionId = useCallback(() => {
     if (typeof window === 'undefined') return null;
@@ -72,12 +140,12 @@ export function useChatSession(teamId: string): ChatSessionState {
   }, [writeStoredSessionId]);
 
   const performHandshake = useCallback(async (): Promise<SessionResponsePayload | void> => {
-    if (!teamId) {
+    if (!organizationId) {
       return;
     }
 
     const storedSessionId = readStoredSessionId();
-    const body: Record<string, unknown> = { teamId };
+    const body: Record<string, unknown> = { organizationId };
     if (storedSessionId) {
       body.sessionId = storedSessionId;
     }
@@ -133,10 +201,10 @@ export function useChatSession(teamId: string): ChatSessionState {
         setIsInitializing(false);
       }
     }
-  }, [teamId, readStoredSessionId, writeStoredSessionId]);
+  }, [organizationId, readStoredSessionId, writeStoredSessionId]);
 
   useEffect(() => {
-    if (!teamId) {
+    if (!organizationId) {
       clearStoredSession();
       return;
     }
@@ -154,7 +222,7 @@ export function useChatSession(teamId: string): ChatSessionState {
     return () => {
       cancelled = true;
     };
-  }, [teamId, performHandshake, clearStoredSession]);
+  }, [organizationId, performHandshake, clearStoredSession]);
 
   return {
     sessionId,

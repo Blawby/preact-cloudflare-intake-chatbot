@@ -1,7 +1,7 @@
 import type { Env } from '../types';
-import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { HttpErrors, createSuccessResponse } from '../errorHandler';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
-import { AdobeDocumentService, type AdobeExtractSuccess } from '../services/AdobeDocumentService.js';
+import { AdobeDocumentService, type AdobeExtractSuccess, type IAdobeExtractor } from '../services/AdobeDocumentService.js';
 import { type AnalysisResult } from '../services/SessionService.js';
 import { 
   log, 
@@ -12,12 +12,115 @@ import {
 } from '../utils/logging.js';
 import { parseEnvBool } from '../utils/safeStringUtils.js';
 import { createRateLimitResponse } from '../errorHandler';
-import { withAIRetry } from '../utils/retry.js';
+
+// Legal keywords for relevance scoring
+const LEGAL_KEYWORDS = [
+  'contract', 'agreement', 'payment', 'amount', 'date', 'party', 'obligation', 
+  'liability', 'damages', 'settlement', 'court', 'judge', 'plaintiff', 'defendant', 
+  'signature', 'witness'
+];
+
+// Safe JSON serialization utility to prevent OOM and handle cyclic objects
+function safeStringify(obj: unknown, maxLength: number = 10000): string {
+  try {
+    const seen = new WeakSet();
+    const replacer = (key: string, value: unknown) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
+      }
+      return value;
+    };
+    
+    const result = JSON.stringify(obj, replacer);
+    
+    // Truncate if too long to prevent OOM
+    if (result.length > maxLength) {
+      return result.substring(0, maxLength) + '...[truncated]';
+    }
+    
+    return result;
+  } catch (_error) {
+    return '<unserializable-table>';
+  }
+}
+
+// Helper functions for prioritizing tables and elements by relevance
+function calculateTableRelevance(table: { rows?: unknown[]; [key: string]: unknown }, _documentText: string): number {
+  let score = 0;
+  
+  // Base score for table size (larger tables often more important)
+  if (table.rows && Array.isArray(table.rows)) {
+    score += Math.min(table.rows.length * 0.1, 2); // Cap at 2 points
+  }
+  
+  // Check for legal keywords in table content - use safe serialization
+  const tableText = safeStringify(table).toLowerCase();
+  
+  LEGAL_KEYWORDS.forEach(keyword => {
+    if (tableText.includes(keyword)) {
+      score += 1;
+    }
+  });
+  
+  // Bonus for tables with monetary values
+  if (/\$[\d,]+\.?\d*/.test(tableText)) {
+    score += 1.5;
+  }
+  
+  // Bonus for tables with dates
+  if (/\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}/.test(tableText)) {
+    score += 1;
+  }
+  
+  return score;
+}
+
+function calculateElementRelevance(element: { text?: string; [key: string]: unknown }, _documentText: string): number {
+  let score = 0;
+  
+  // Base score for element size
+  if (element.text && element.text.length > 0) {
+    score += Math.min(element.text.length / 100, 2); // Cap at 2 points
+  }
+  
+  // Check for legal keywords in element content
+  const elementText = (element.text || '').toLowerCase();
+  
+  LEGAL_KEYWORDS.forEach(keyword => {
+    if (elementText.includes(keyword)) {
+      score += 1;
+    }
+  });
+  
+  // Bonus for elements with monetary values
+  if (/\$[\d,]+\.?\d*/.test(elementText)) {
+    score += 1.5;
+  }
+  
+  // Bonus for elements with dates
+  if (/\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}/.test(elementText)) {
+    score += 1;
+  }
+  
+  // Bonus for signature-related elements
+  if (elementText.includes('signature') || elementText.includes('signed') || elementText.includes('witness')) {
+    score += 2;
+  }
+  
+  return score;
+}
 
 // Extended AnalysisResult for debugging purposes
 interface ExtendedAnalysisResult extends AnalysisResult {
   adobeExtractTextLength?: number;
   adobeExtractTextPreview?: string;
+  extraction_failed?: boolean;
+  extraction_method?: string;
+  truncationFailed?: boolean;
+  truncationNote?: string;
   debug?: {
     adobeEnabled: boolean;
     adobeClientIdSet: boolean;
@@ -55,8 +158,14 @@ async function attemptAdobeExtract(
   requestId?: string
 ): Promise<ExtendedAnalysisResult | null> {
   log('debug', 'adobe_service_creation', { message: 'Creating Adobe service', requestId });
-  const adobeService = new AdobeDocumentService(env);
-  log('debug', 'adobe_service_created', { message: 'Adobe service created', requestId });
+  
+  // Use mock extractor if available (for testing), otherwise use real Adobe service
+  const adobeService: IAdobeExtractor = env.ADOBE_EXTRACTOR_SERVICE || new AdobeDocumentService(env);
+  log('debug', 'adobe_service_created', { 
+    message: 'Adobe service created', 
+    isMock: !!env.ADOBE_EXTRACTOR_SERVICE,
+    requestId 
+  });
   log('debug', 'adobe_service_enabled_check', { isEnabled: adobeService.isEnabled(), requestId });
   
   const eligibleTypes = new Set([
@@ -219,9 +328,32 @@ async function summarizeAdobeExtract(
     };
   }
   
-  const truncatedText = rawText.length > 20000
-    ? `${rawText.slice(0, 20000)}...`
+  // Helper function to safely parse integer environment variables
+  const parseEnvInt = (value: string | undefined, defaultValue: number, minValue: number = 1, maxValue: number = Number.MAX_SAFE_INTEGER): number => {
+    const parsed = parseInt(value || defaultValue.toString(), 10);
+    if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
+      return defaultValue;
+    }
+    // Clamp to sensible bounds
+    return Math.max(minValue, Math.min(maxValue, parsed));
+  };
+
+  // Reduce text size to avoid Cloudflare AI token/character limits
+  // Make the limit configurable and increase from 10k to 20k characters
+  const maxTextLength = parseEnvInt(env.AI_MAX_TEXT_LENGTH, 20000, 1000, 100000);
+  const truncatedText = rawText.length > maxTextLength
+    ? `${rawText.slice(0, maxTextLength)}...`
     : rawText;
+    
+  // Log truncation events for monitoring
+  if (rawText.length > maxTextLength) {
+    log('warn', 'text_truncation_applied', {
+      originalLength: rawText.length,
+      truncatedLength: maxTextLength,
+      contextId: requestId,
+      truncationRatio: (maxTextLength / rawText.length).toFixed(3)
+    });
+  }
     
   log('debug', 'truncated_text_details', {
     truncatedTextLength: truncatedText.length,
@@ -229,10 +361,149 @@ async function summarizeAdobeExtract(
     requestId
   });
 
-  const structuredPayload = JSON.stringify({
-    tables: extract.tables ?? [],
-    elements: extract.elements ?? []
-  }).slice(0, 6000);
+  // Reduce structured payload size to avoid Cloudflare AI limits
+  // Make limits configurable and implement prioritization
+  const maxTables = parseEnvInt(env.AI_MAX_TABLES, 5, 1, 100);
+  const maxElements = parseEnvInt(env.AI_MAX_ELEMENTS, 20, 1, 1000);
+  const maxStructuredPayloadLength = parseEnvInt(env.AI_MAX_STRUCTURED_PAYLOAD_LENGTH, 6000, 1000, 50000);
+  
+  // Prioritize tables and elements by relevance/importance
+  const prioritizedTables = (extract.tables ?? [])
+    .map((table, index) => ({
+      ...(typeof table === 'object' && table !== null ? table : {}),
+      relevanceScore: calculateTableRelevance(table as { rows?: unknown[]; [key: string]: unknown }, rawText),
+      originalIndex: index
+    }))
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, maxTables);
+    
+  const prioritizedElements = (extract.elements ?? [])
+    .map((element, index) => ({
+      ...(typeof element === 'object' && element !== null ? element : {}),
+      relevanceScore: calculateElementRelevance(element as { text?: string; [key: string]: unknown }, rawText),
+      originalIndex: index
+    }))
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, maxElements);
+  
+  // Build structured payload with proper truncation to ensure valid JSON
+  const buildTruncatedStructuredPayload = (tables: unknown[], elements: unknown[], maxLength: number): { payload: string; truncationFailed: boolean } => {
+    let currentTables = [...tables];
+    let currentElements = [...elements];
+    let payload = '';
+    let attempts = 0;
+    let truncationFailed = false;
+    const maxAttempts = 10; // Prevent infinite loops
+    
+    do {
+      const structuredObject = {
+        tables: currentTables,
+        elements: currentElements
+      };
+      
+      payload = JSON.stringify(structuredObject);
+      attempts++;
+      
+      if (payload.length <= maxLength || attempts >= maxAttempts) {
+        break;
+      }
+      
+      // Truncation strategy: reduce arrays first, then trim string fields
+      if (currentTables.length > 1) {
+        // Remove least relevant tables (they're already sorted by relevance)
+        currentTables = currentTables.slice(0, Math.max(1, Math.floor(currentTables.length * 0.8)));
+      } else if (currentElements.length > 1) {
+        // Remove least relevant elements
+        currentElements = currentElements.slice(0, Math.max(1, Math.floor(currentElements.length * 0.8)));
+      } else {
+        // If we're down to 1 table and 1 element, try trimming string fields
+        if (currentTables.length > 0 && currentElements.length > 0) {
+          // Trim string fields in the remaining table and element
+          currentTables = currentTables.map(table => {
+            if (typeof table === 'object' && table !== null) {
+              const trimmedTable = { ...table };
+              Object.keys(trimmedTable).forEach(key => {
+                if (typeof trimmedTable[key] === 'string' && trimmedTable[key].length > 100) {
+                  trimmedTable[key] = trimmedTable[key].substring(0, 100) + '...';
+                }
+              });
+              return trimmedTable;
+            }
+            return table;
+          });
+          
+          currentElements = currentElements.map(element => {
+            if (typeof element === 'object' && element !== null) {
+              const trimmedElement = { ...element };
+              Object.keys(trimmedElement).forEach(key => {
+                if (typeof trimmedElement[key] === 'string' && trimmedElement[key].length > 100) {
+                  trimmedElement[key] = trimmedElement[key].substring(0, 100) + '...';
+                }
+              });
+              return trimmedElement;
+            }
+            return element;
+          });
+        }
+        break; // Exit if we can't reduce further
+      }
+    } while (payload.length > maxLength && attempts < maxAttempts);
+    
+    // Post-loop check: detect if truncation failed due to max attempts reached
+    // This function uses best-effort semantics - it tries to fit within limits but may exceed them
+    if (payload.length > maxLength) {
+      truncationFailed = true;
+      const warningMsg = `Payload truncation failed: finalLength=${payload.length}, maxLength=${maxLength}, attempts=${attempts}`;
+      logWarning(requestId, 'analyze.payload.truncation_failed', warningMsg, {
+        finalLength: payload.length,
+        maxLength,
+        attempts
+      });
+      // Return the oversized payload with a note that truncation failed
+      // The caller should handle this gracefully
+    }
+    
+    return { payload, truncationFailed };
+  };
+  
+  // Calculate original structured length from prioritized data (before truncation)
+  const originalStructuredLength = JSON.stringify({ tables: prioritizedTables, elements: prioritizedElements }).length;
+  
+  const { payload: structuredPayload, truncationFailed } = buildTruncatedStructuredPayload(prioritizedTables, prioritizedElements, maxStructuredPayloadLength);
+  
+  // Log when limits are hit for telemetry
+  const originalTablesCount = (extract.tables ?? []).length;
+  const originalElementsCount = (extract.elements ?? []).length;
+
+  if (originalTablesCount > maxTables) {
+    log('warn', 'table_limit_hit', {
+      originalCount: originalTablesCount,
+      limitedCount: maxTables,
+      contextId: requestId,
+      dataLoss: true
+    });
+  }
+  
+  if (originalElementsCount > maxElements) {
+    log('warn', 'element_limit_hit', {
+      originalCount: originalElementsCount,
+      limitedCount: maxElements,
+      contextId: requestId,
+      dataLoss: true
+    });
+  }
+  
+  // Log structured payload truncation events
+  if (originalStructuredLength > maxStructuredPayloadLength) {
+    log('warn', 'structured_payload_truncation_applied', {
+      originalLength: originalStructuredLength,
+      truncatedLength: structuredPayload.length,
+      limitedLength: maxStructuredPayloadLength,
+      contextId: requestId,
+      truncationRatio: (structuredPayload.length / originalStructuredLength).toFixed(3),
+      dataLoss: true
+    });
+  }
 
   const systemPrompt = [
     'You are a legal intake analyst receiving structured output from Adobe PDF Services.',
@@ -266,6 +537,12 @@ async function summarizeAdobeExtract(
   const extendedResult = result as ExtendedAnalysisResult;
   extendedResult.adobeExtractTextLength = rawText.length;
   extendedResult.adobeExtractTextPreview = rawText.substring(0, 200);
+  
+  // Add truncation failure information if applicable
+  if (truncationFailed) {
+    extendedResult.truncationFailed = true;
+    extendedResult.truncationNote = "Payload truncation failed - some data may be incomplete due to size limits";
+  }
   
   return extendedResult;
 }
@@ -364,38 +641,24 @@ function safeJson(response: unknown): AnalysisResult {
 // Hardened JSON extraction that handles truncated/concatenated responses
 function extractValidJson(input: string): AnalysisResult {
   try {
-    // Normalize to string
-    let text = typeof input === "string" ? input : JSON.stringify(input);
-    
-    // Pre-clean: remove junk before first { and after last }
-    text = text
-      .replace(/^[^{]+/, "")       // remove junk before first {
-      .replace(/}[^}]*$/, "}");     // remove junk after last }
+    const raw = typeof input === "string" ? input : JSON.stringify(input);
 
-    // Find first full balanced JSON object
-    const firstBrace = text.indexOf("{");
-    const lastBrace = text.lastIndexOf("}");
-    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    // Find the first JSON object in the string, accounting for quoted braces and escapes.
+    const jsonBlock = extractFirstJsonObject(raw);
+    if (!jsonBlock) {
       throw new Error("No JSON object boundaries found");
     }
 
-    const jsonCandidate = text.slice(firstBrace, lastBrace + 1);
-
-    try {
-      const parsed = JSON.parse(jsonCandidate);
-      if (parsed && typeof parsed === "object" && parsed.summary) {
-        log('debug', 'safe_json_valid_parsed', { phase: 'extractValidJson' });
-        return parsed;
-      }
-    } catch (_innerErr) {
-      // fallback: trim to before any trailing garbage after a closing brace
-      const trimmed = jsonCandidate.replace(/}[^}]*$/, "}");
-      logWarning('analyze', 'safe_json_retry_parse', 'Retrying JSON parse after trim', { phase: 'extractValidJson' });
-      return JSON.parse(trimmed);
+    const parsed = JSON.parse(jsonBlock);
+    if (parsed && typeof parsed === "object" && parsed.summary) {
+      log('debug', 'safe_json_valid_parsed', { phase: 'extractValidJson' });
+      return parsed;
     }
+
+    throw new Error("Parsed JSON does not contain expected structure");
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    logError('analyze', 'safe_json_final_fallback', new Error(errorMessage), { phase: 'extractValidJson' });
+    logError('analyze', 'safe_json_final_fallback', new Error(errorMessage), { phase: 'extractValidJson', snippet: String(input).slice(0, 200) });
   }
 
   // Final fallback — return structured failure
@@ -406,6 +669,52 @@ function extractValidJson(input: string): AnalysisResult {
     action_items: ["Review document format and retry analysis"],
     confidence: 0.3,
   };
+}
+
+/**
+ * Extracts the first complete JSON object from a string, handling escaped characters.
+ */
+function extractFirstJsonObject(text: string): string | null {
+  let start = text.indexOf("{");
+  if (start === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === "{") {
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          return text.slice(start, i + 1);
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 
@@ -554,7 +863,14 @@ export async function analyzeWithCloudflareAI(
     requestId
   });
   
-  return await analyzeWithGenericAI(file, question, env, requestId);
+  const fallbackResult = await analyzeWithGenericAI(file, question, env, requestId);
+  
+  // Add extraction_failed flag to indicate Adobe extraction didn't work
+  return {
+    ...fallbackResult,
+    extraction_failed: true,
+    extraction_method: 'generic_ai_fallback'
+  } as ExtendedAnalysisResult;
 }
 
 export async function handleAnalyze(request: Request, env: Env): Promise<Response> {
@@ -682,6 +998,32 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
 
   } catch (error) {
     logError('analyze', 'analysis_error', error as Error, {});
-    return handleError(error);
+    
+    // For analysis errors, return 200 with error information instead of 503
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const fallbackAnalysis: ExtendedAnalysisResult = {
+      summary: "Document analysis encountered an error. Please try again or contact support if the issue persists.",
+      key_facts: ["Analysis failed due to an internal error"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: ["Retry the analysis", "Contact support if the issue persists"],
+      confidence: 0.0,
+      extraction_failed: true,
+      extraction_method: 'error_fallback',
+      error: errorMessage
+    };
+
+    return createSuccessResponse({
+      analysis: fallbackAnalysis,
+      metadata: {
+        fileName: 'unknown',
+        fileType: 'unknown',
+        fileSize: 0,
+        question: 'Analysis failed',
+        timestamp: new Date().toISOString(),
+        isAdobeEligible: false,
+        error: errorMessage
+      },
+      disclaimer: "Blawby provides general information, not legal advice. No attorney-client relationship is formed. For advice, consult a licensed attorney in your jurisdiction."
+    });
   }
 }

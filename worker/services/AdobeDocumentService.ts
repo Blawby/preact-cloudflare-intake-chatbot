@@ -41,6 +41,12 @@ export interface AdobeExtractResult {
   status?: number;
 }
 
+// Interface for Adobe extraction to support dependency injection
+export interface IAdobeExtractor {
+  isEnabled(): boolean;
+  extractFromBuffer(fileName: string, mimeType: string, buffer: ArrayBuffer): Promise<AdobeExtractResult>;
+}
+
 interface AdobeAssetResponse {
   assetID: string;
   uploadUri: string;
@@ -84,7 +90,7 @@ const PDF_API_TIMEOUT_MS = 15000; // 15 seconds timeout for PDF API requests
 const PDF_API_RETRY_ATTEMPTS = 3;
 const PDF_API_RETRY_BASE_DELAY = 1000; // 1 second base delay
 
-const DEFAULT_EXTRACT_PARAMS = {
+const _DEFAULT_EXTRACT_PARAMS = {
   elementsToExtract: ['text', 'tables'],
   renditionsToGenerate: [],
   includeStyling: false
@@ -142,7 +148,7 @@ async function fetchWithTimeout(
  * 4. Start an extract job referencing the asset
  * 5. Poll for completion and download the structured results ZIP
  */
-export class AdobeDocumentService {
+export class AdobeDocumentService implements IAdobeExtractor {
   private static tokenCache: AdobeToken | null = null;
   private static inFlightToken: Promise<AdobeToken> | null = null;
 
@@ -215,9 +221,9 @@ export class AdobeDocumentService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unexpected Adobe extract error'
-      };
-    }
+    };
   }
+}
 
   private getConfig(): AdobeConfig {
     const clientId = this.env.ADOBE_CLIENT_ID?.trim();
@@ -563,5 +569,112 @@ export class AdobeDocumentService {
 
   private async wait(ms: number): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
+/**
+ * Mock Adobe extractor for testing - returns predictable test data
+ * without making network calls to Adobe services
+ */
+export class MockAdobeExtractor implements IAdobeExtractor {
+  isEnabled(): boolean {
+    return true; // Always enabled in tests
+  }
+
+  async extractFromBuffer(
+    fileName: string,
+    mimeType: string,
+    _buffer: ArrayBuffer
+  ): Promise<AdobeExtractResult> {
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Return mock extracted content based on file type
+    const mockText = this.generateMockText(fileName, mimeType, _buffer);
+    const mockTables = this.generateMockTables();
+    const mockElements = this.generateMockElements();
+
+    return {
+      success: true,
+      details: {
+        text: mockText,
+        tables: mockTables,
+        elements: mockElements
+      }
+    };
+  }
+
+  private generateMockText(fileName: string, mimeType: string, buffer: ArrayBuffer): string {
+    if (mimeType === 'application/pdf') {
+      return `Mock PDF Extraction Results for ${fileName}
+
+This is a mock extracted text from PDF for testing purposes. The document appears to be a legal contract or agreement.
+
+Key Information:
+- Document Type: Legal Contract
+- Parties: John Smith and Jane Doe
+- Date: January 15, 2024
+- Amount: $50,000
+- Terms: 12 months
+
+This mock extraction simulates what Adobe PDF Services would return for testing the analysis pipeline without requiring actual Adobe credentials.`;
+    }
+
+    if (mimeType === 'text/plain') {
+      return `Mock Text File Content for ${fileName}
+
+This is mock extracted text from a text file for testing purposes.
+
+Legal Document Analysis:
+- Client: Test Client
+- Case Type: Contract Review
+- Date: January 15, 2024
+- Status: Pending Review
+
+This content is used for testing the analysis pipeline.`;
+    }
+
+    return `Mock extracted content from ${fileName} (${mimeType})
+
+This is a mock extraction result for testing purposes. The document has been processed and key information extracted.
+
+Document Details:
+- File: ${fileName}
+- Type: ${mimeType}
+- Size: ${buffer.byteLength} bytes
+- Extracted: Mock content for testing`;
+  }
+
+  private generateMockTables(): unknown[] {
+    return [
+      {
+        rows: [
+          ['Item', 'Description', 'Amount'],
+          ['Legal Fees', 'Contract Review', '$2,500'],
+          ['Filing Fees', 'Court Filing', '$500'],
+          ['Total', '', '$3,000']
+        ]
+      }
+    ];
+  }
+
+  private generateMockElements(): unknown[] {
+    return [
+      {
+        text: 'CONTRACT AGREEMENT',
+        type: 'heading',
+        confidence: 0.95
+      },
+      {
+        text: 'This agreement is entered into on January 15, 2024',
+        type: 'paragraph',
+        confidence: 0.90
+      },
+      {
+        text: 'John Smith',
+        type: 'signature',
+        confidence: 0.85
+      }
+    ];
   }
 }

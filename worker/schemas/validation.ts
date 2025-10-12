@@ -6,6 +6,14 @@ export const emailSchema = z.string().email();
 export const phoneSchema = z.string().optional();
 export const timestampSchema = z.number().int().positive();
 
+// Organization role schema
+export const organizationRoleSchema = z.enum(['owner', 'admin', 'attorney', 'paralegal']);
+
+// Organization membership result schema
+export const organizationMembershipSchema = z.object({
+  role: organizationRoleSchema
+});
+
 // Chat schemas
 export const chatMessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
@@ -20,7 +28,7 @@ export const chatRequestSchema = z.object({
     content: z.string().min(1)
   })).min(1),
   sessionId: idSchema.optional(),
-  teamId: idSchema.optional(),
+  organizationId: idSchema.optional(),
   context: z.record(z.any()).optional()
 });
 
@@ -32,7 +40,7 @@ export const chatResponseSchema = z.object({
 
 // Matter creation schemas
 export const matterCreationSchema = z.object({
-  teamId: idSchema,
+  organizationId: idSchema,
   title: z.string().min(1).max(255),
   description: z.string().min(1),
   status: z.enum(['draft', 'active', 'closed']).default('draft'),
@@ -46,8 +54,8 @@ export const matterUpdateSchema = z.object({
   metadata: z.record(z.unknown()).optional()
 });
 
-// Team schemas
-export const teamConfigSchema = z.object({
+// Organization schemas
+export const organizationConfigSchema = z.object({
   aiModel: z.string().min(1),
   consultationFee: z.number().min(0),
   requiresPayment: z.boolean(),
@@ -71,15 +79,15 @@ export const teamConfigSchema = z.object({
 
 });
 
-export const teamSchema = z.object({
+export const organizationSchema = z.object({
   id: idSchema,
   name: z.string().min(1),
-  config: teamConfigSchema
+  config: organizationConfigSchema
 });
 
 // Form schemas
 export const contactFormSchema = z.object({
-  teamId: idSchema,
+  organizationId: idSchema,
   email: emailSchema,
   phoneNumber: z.string().min(1),
   matterDetails: z.string().min(1),
@@ -90,7 +98,7 @@ export const contactFormSchema = z.object({
 
 // File upload schemas
 export const fileUploadSchema = z.object({
-  teamId: idSchema,
+  organizationId: idSchema,
   filename: z.string().min(1),
   contentType: z.string().min(1),
   size: z.number().int().positive(),
@@ -99,7 +107,7 @@ export const fileUploadSchema = z.object({
 
 // Feedback schemas
 export const feedbackSchema = z.object({
-  teamId: idSchema,
+  organizationId: idSchema,
   sessionId: idSchema,
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(500).optional()
@@ -110,7 +118,7 @@ export const feedbackSchema = z.object({
 // Session schemas
 export const sessionSchema = z.object({
   id: idSchema,
-  teamId: idSchema,
+  organizationId: idSchema,
   messages: z.array(chatMessageSchema),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
@@ -119,7 +127,7 @@ export const sessionSchema = z.object({
 
 // Export schemas
 export const exportRequestSchema = z.object({
-  teamId: idSchema,
+  organizationId: idSchema,
   sessionId: idSchema.optional(),
   format: z.enum(['json', 'csv', 'pdf']).default('json'),
   dateRange: z.object({
@@ -134,13 +142,13 @@ export const paginationSchema = z.object({
   limit: z.string().transform(val => parseInt(val, 10)).pipe(z.number().int().min(1).max(100)).default('20')
 });
 
-export const teamIdQuerySchema = z.object({
-  teamId: idSchema
+export const organizationIdQuerySchema = z.object({
+  organizationId: idSchema
 });
 
 // Session request body schema
 export const sessionRequestBodySchema = z.object({
-  teamId: z.string().min(1).optional(),
+  organizationId: z.string().min(1).optional(),
   sessionId: z.string().min(1).optional(),
   sessionToken: z.string().min(1).optional(),
   retentionHorizonDays: z.number().int().positive().optional()

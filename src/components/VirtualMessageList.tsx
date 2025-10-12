@@ -1,7 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState, useCallback, useLayoutEffect, useMemo } from 'preact/hooks';
 import Message from './Message';
-import TeamProfile from './TeamProfile';
+import OrganizationProfile from './OrganizationProfile';
 import { memo } from 'preact/compat';
 import { debounce } from '../utils/debounce';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -10,10 +10,10 @@ import { ContactData } from './ContactForm';
 
 interface VirtualMessageListProps {
     messages: ChatMessageUI[];
-    teamConfig?: {
+    organizationConfig?: {
         name: string;
         profileImage: string | null;
-        teamId: string;
+        organizationId: string;
         description?: string | null;
     };
     onOpenSidebar?: () => void;
@@ -21,7 +21,7 @@ interface VirtualMessageListProps {
 
     // Feedback props
     sessionId?: string;
-    teamId?: string;
+    organizationId?: string;
     onFeedbackSubmit?: (feedback: unknown) => void;
 }
 
@@ -31,11 +31,11 @@ const DEBOUNCE_DELAY = 50;
 
 const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
     messages,
-    teamConfig,
+    organizationConfig,
     onOpenSidebar,
     onContactFormSubmit,
     sessionId,
-    teamId,
+    organizationId,
     onFeedbackSubmit
 }) => {
     const listRef = useRef<HTMLDivElement>(null);
@@ -133,14 +133,14 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
             className="flex-1 overflow-y-auto p-4 pt-16 lg:pt-4 pb-20 scroll-smooth w-full scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
             ref={listRef}
         >
-            {/* Team Profile Header - Fixed at top of scrollable area */}
-            {teamConfig && (
+            {/* Organization Profile Header - Fixed at top of scrollable area */}
+            {organizationConfig && (
                 <div className="flex flex-col items-center py-8 px-4 pb-6 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg mb-4">
-                    <TeamProfile
-                        name={teamConfig.name}
-                        profileImage={teamConfig.profileImage}
-                        teamId={teamId}
-                        description={teamConfig.description}
+                    <OrganizationProfile
+                        name={organizationConfig.name}
+                        profileImage={organizationConfig.profileImage}
+                        organizationId={organizationId}
+                        description={organizationConfig.description}
                         variant="welcome"
                         showVerified={true}
                     />
@@ -163,7 +163,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         paymentEmbed={message.paymentEmbed}
                         contactForm={message.contactForm}
                         generatedPDF={message.generatedPDF}
-                        teamConfig={teamConfig}
+                        organizationConfig={organizationConfig}
                         onOpenSidebar={onOpenSidebar}
                         onContactFormSubmit={onContactFormSubmit}
                         isLoading={message.isLoading}
@@ -171,7 +171,7 @@ const VirtualMessageList: FunctionComponent<VirtualMessageListProps> = ({
                         toolMessage={message.toolMessage}
                         id={message.id}
                         sessionId={sessionId}
-                        teamId={teamId}
+                        organizationId={organizationId}
                         onFeedbackSubmit={onFeedbackSubmit}
                     />
                 ))}

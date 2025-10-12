@@ -4,32 +4,32 @@ import type { UnstableDevWorker } from 'wrangler';
 import { WORKER_URL } from '../../setup-real-api.js';
 
 /**
- * SECURITY NOTE: The teams API must not return plaintext credentials.
+ * SECURITY NOTE: The organizations API must not return plaintext credentials.
  * This test loads credentials from environment variables to avoid
  * exfiltrating secrets at runtime. Never rely on API endpoints for
  * secret retrieval in tests or production code.
  */
 describe('Payment API Integration - Real Worker Tests', () => {
   let worker: UnstableDevWorker;
-  let apiCredentials: { apiToken?: string; teamUlid?: string } = {};
+  let apiCredentials: { apiToken?: string; organizationUlid?: string } = {};
 
   beforeAll(async () => {
     // Load API credentials from environment variables (secure approach)
     const apiToken = process.env.BLAWBY_API_TOKEN;
-    const teamUlid = process.env.BLAWBY_TEAM_ULID;
+    const organizationUlid = process.env.BLAWBY_ORGANIZATION_ULID;
     
     // Validate credentials before using them
     if (
       apiToken && typeof apiToken === 'string' && apiToken.trim() !== '' &&
-      teamUlid && typeof teamUlid === 'string' && teamUlid.trim() !== ''
+      organizationUlid && typeof organizationUlid === 'string' && organizationUlid.trim() !== ''
     ) {
-      apiCredentials = { apiToken: apiToken, teamUlid: teamUlid };
+      apiCredentials = { apiToken: apiToken, organizationUlid: organizationUlid };
       console.log('✅ Retrieved API credentials for payment test from environment variables');
-      console.log(`   Team ULID: ${apiCredentials.teamUlid}`);
+      console.log(`   Organization ULID: ${apiCredentials.organizationUlid}`);
       console.log(`   API Token: ${apiCredentials.apiToken ? '***' + apiCredentials.apiToken.slice(-4) : 'NOT SET'}`);
     } else {
       console.warn('⚠️  Blawby API credentials not available in environment variables');
-      console.warn('   Set BLAWBY_API_TOKEN and BLAWBY_TEAM_ULID for real API testing');
+      console.warn('   Set BLAWBY_API_TOKEN and BLAWBY_ORGANIZATION_ULID for real API testing');
       console.warn('   Tests will be skipped if credentials are not provided');
     }
 
@@ -41,7 +41,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
         RESEND_API_KEY: 'test-resend-key',
         BLAWBY_API_URL: 'https://staging.blawby.com',
         BLAWBY_API_TOKEN: apiCredentials.apiToken || 'test-token',
-        BLAWBY_TEAM_ULID: apiCredentials.teamUlid || 'test-team-ulid'
+        BLAWBY_ORGANIZATION_ULID: apiCredentials.organizationUlid || 'test-organization-ulid'
       }
     });
   });
@@ -56,7 +56,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
     // Skip if no valid credentials
     if (!apiCredentials.apiToken || apiCredentials.apiToken === 'test-token') {
       console.log('⏭️  Skipping payment test - no valid API credentials');
-      console.log('   Set BLAWBY_API_TOKEN and BLAWBY_TEAM_ULID environment variables for real API testing');
+      console.log('   Set BLAWBY_API_TOKEN and BLAWBY_ORGANIZATION_ULID environment variables for real API testing');
       return;
     }
 
@@ -73,7 +73,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
         urgency: 'high',
         opposingParty: 'ABC Company'
       },
-      teamId: apiCredentials.teamUlid || 'blawby-ai',
+      organizationId: apiCredentials.organizationUlid || 'blawby-ai',
       sessionId: 'session-123'
     };
 
@@ -115,7 +115,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
         description: 'Terminated for downloading porn on work laptop',
         urgency: 'high'
       },
-      teamId: apiCredentials.teamUlid || 'blawby-ai',
+      organizationId: apiCredentials.organizationUlid || 'blawby-ai',
       sessionId: 'session-123'
     };
 
@@ -146,7 +146,7 @@ describe('Payment API Integration - Real Worker Tests', () => {
         type: '',
         description: ''
       },
-      teamId: apiCredentials.teamUlid || 'blawby-ai',
+      organizationId: apiCredentials.organizationUlid || 'blawby-ai',
       sessionId: 'session-123'
     };
 

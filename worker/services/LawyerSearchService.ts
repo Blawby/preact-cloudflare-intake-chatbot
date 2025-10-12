@@ -79,7 +79,7 @@ export class LawyerSearchService {
         throw new LawyerSearchError(`Lawyer search service is temporarily unavailable. Please try again in a few minutes.`, response.status);
       }
 
-      const data = await response.json() as any;
+      const data = await response.json() as { lawyers?: unknown[]; [key: string]: unknown };
       Logger.debug('[LawyerSearchService] API response:', data);
 
       // Transform the response to match our interface
@@ -167,7 +167,7 @@ export class LawyerSearchService {
   /**
    * Transform raw lawyer data to LawyerProfile interface with fallback mapping
    */
-  private static mapToLawyerProfile(raw: any): LawyerProfile {
+  private static mapToLawyerProfile(raw: { [key: string]: unknown }): LawyerProfile {
     return {
       id: raw.id || raw.lawyer_id,
       name: raw.name || raw.full_name,
@@ -232,7 +232,7 @@ export class LawyerSearchService {
         throw new Error(`Lawyer details API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json() as any;
+      const data = await response.json() as { [key: string]: unknown };
       Logger.debug('[LawyerSearchService] Lawyer details response:', data);
 
       // Transform the response

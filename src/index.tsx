@@ -8,10 +8,11 @@ import AppLayout from './components/AppLayout';
 import AuthPage from './components/AuthPage';
 import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
-import { useMessageHandling } from './hooks/useMessageHandling';
-import { useFileUpload } from './hooks/useFileUpload';
-import { useTeamConfig } from './hooks/useTeamConfig';
-import { useChatSession } from './hooks/useChatSession';
+import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
+import { useMessageHandlingWithContext } from './hooks/useMessageHandling';
+import { useFileUploadWithContext } from './hooks/useFileUpload';
+import { useOrganizationConfig } from './hooks/useOrganizationConfig';
+import { useChatSessionWithContext } from './hooks/useChatSession';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
 // Settings components
@@ -20,6 +21,7 @@ import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
 import WelcomeModal from './components/onboarding/WelcomeModal';
 import { debounce } from './utils/debounce';
+import { authClient } from './lib/authClient';
 import './index.css';
 import { i18n, initI18n } from './i18n';
 
@@ -42,22 +44,15 @@ function MainApp() {
 	const location = useLocation();
 	const { navigate } = useNavigation();
 
-	// Use custom hooks
-	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
-		onError: (error) => {
-			// Handle team config error
-			 
-			console.error('Team config error:', error);
-		}
-	});
+	// Use organization context
+	const { organizationId, organizationConfig, organizationNotFound, handleRetryOrganizationConfig } = useOrganization();
 
 	const {
 		sessionId,
 		error: sessionError
-	} = useChatSession(teamId);
+	} = useChatSessionWithContext();
 
-	const { messages, sendMessage, handleContactFormSubmit, addMessage } = useMessageHandling({
-		teamId,
+	const { messages, sendMessage, handleContactFormSubmit, addMessage } = useMessageHandlingWithContext({
 		sessionId,
 		onError: (error) => {
 			// Handle message handling error
@@ -77,8 +72,7 @@ function MainApp() {
 		clearPreviewFiles,
 		cancelUpload,
 		isReadyToUpload
-	} = useFileUpload({
-		teamId,
+	} = useFileUploadWithContext({
 		sessionId,
 		onError: (error) => {
 			// Handle file upload error
@@ -152,16 +146,23 @@ function MainApp() {
 			}
 		};
 
-		// Check current user tier from localStorage
-		const mockUser = localStorage.getItem('mockUser');
-		if (mockUser) {
+		// Check current user tier from auth session
+		const checkUserTier = async () => {
 			try {
-				const userData = JSON.parse(mockUser);
-				setCurrentUserTier(userData.subscriptionTier || 'free');
-			} catch (_error) {
-				// Ignore parsing errors
+				const session = await authClient.getSession();
+				if (session?.data?.user) {
+					// For now, default to 'free' tier - this could be extended to fetch from user profile
+					setCurrentUserTier('free');
+				} else {
+					setCurrentUserTier('free');
+				}
+			} catch (error) {
+				console.error('Error checking user session:', error);
+				setCurrentUserTier('free');
 			}
-		}
+		};
+		
+		checkUserTier();
 
 		window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
 		
@@ -173,20 +174,20 @@ function MainApp() {
 	const isSessionReady = Boolean(sessionId);
 
 
-	// Add intro message when team config is loaded and no messages exist
+	// Add intro message when organization config is loaded and no messages exist
 	useEffect(() => {
-		if (teamConfig.introMessage && messages.length === 0) {
-			// Add intro message only (team profile is now a UI element)
+		if (organizationConfig && organizationConfig.introMessage && messages.length === 0) {
+			// Add intro message only (organization profile is now a UI element)
 			const introMessage: ChatMessageUI = {
 				id: crypto.randomUUID(),
-				content: teamConfig.introMessage,
+				content: organizationConfig.introMessage,
 				isUser: false,
 				role: 'assistant',
 				timestamp: Date.now()
 			};
 			addMessage(introMessage);
 		}
-	}, [teamConfig.introMessage, messages.length, addMessage]);
+	}, [organizationConfig?.introMessage, messages.length, addMessage]);
 
 	// Create stable callback references for keyboard handlers
 	const handleEscape = useCallback(() => {
@@ -358,18 +359,18 @@ function MainApp() {
 			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
 			
 			<AppLayout
-				teamNotFound={teamNotFound}
-				teamId={teamId}
-				onRetryTeamConfig={handleRetryTeamConfig}
+				organizationNotFound={organizationNotFound}
+				organizationId={organizationId}
+				onRetryOrganizationConfig={handleRetryOrganizationConfig}
 				currentTab={currentTab}
 				onTabChange={setCurrentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
 				isSettingsModalOpen={showSettingsModal}
-				teamConfig={{
-					name: teamConfig.name,
-					profileImage: teamConfig.profileImage,
-					description: teamConfig.description
+				organizationConfig={{
+					name: organizationConfig?.name ?? '',
+					profileImage: organizationConfig?.profileImage ?? null,
+					description: organizationConfig?.description ?? ''
 				}}
 				messages={messages}
 				onSendMessage={sendMessage}
@@ -382,15 +383,15 @@ function MainApp() {
 						messages={messages}
 						onSendMessage={sendMessage}
 						onContactFormSubmit={handleContactFormSubmit}
-						teamConfig={{
-							name: teamConfig.name,
-							profileImage: teamConfig.profileImage,
-							teamId,
-							description: teamConfig.description
+						organizationConfig={{
+							name: organizationConfig?.name ?? '',
+							profileImage: organizationConfig?.profileImage ?? null,
+							organizationId,
+							description: organizationConfig?.description ?? ''
 						}}
 						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
 						sessionId={sessionId}
-						teamId={teamId}
+						organizationId={organizationId}
 						onFeedbackSubmit={handleFeedbackSubmit}
 						previewFiles={previewFiles}
 						uploadingFiles={uploadingFiles}
@@ -432,46 +433,30 @@ function MainApp() {
 					window.location.hash = '';
 				}}
 				currentTier={currentUserTier}
-				onUpgrade={(tier) => {
+				onUpgrade={async (tier) => {
 					// Update user's subscription tier
-					const mockUser = localStorage.getItem('mockUser');
-					if (mockUser) {
-						try {
-							const userData = JSON.parse(mockUser);
-							userData.subscriptionTier = tier;
-							localStorage.setItem('mockUser', JSON.stringify(userData));
+					try {
+						const session = await authClient.getSession();
+						if (session?.data?.user) {
+							// For now, just update the local state
+							// In a real implementation, this would make an API call to update the user's subscription
+							setCurrentUserTier(tier);
 							
 							// Dispatch event to notify other components
-							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
-						} catch (_error) {
-							 
-							console.error('Failed to parse mockUser data:', _error);
-							// Create a fresh user object with the new subscription tier
-							const freshUserData = {
-								subscriptionTier: tier,
-								// Add other default user properties as needed
-							};
-							localStorage.setItem('mockUser', JSON.stringify(freshUserData));
-							
-							// Dispatch event with the fresh user data
-							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: freshUserData }));
+							window.dispatchEvent(new CustomEvent('authStateChanged', { 
+								detail: { 
+									...session.data.user, 
+									subscriptionTier: tier 
+								} 
+							}));
+						} else {
+							// User not authenticated, just update local state
+							setCurrentUserTier(tier);
 						}
-					} else {
-						// No existing user - create a fallback user record for first-time users
-						const fallbackUserData = {
-							id: `fallback-user-${Date.now()}`,
-							name: 'New User',
-							email: 'user@example.com',
-							image: null,
-							teamId: null,
-							role: 'user',
-							phone: null,
-							subscriptionTier: tier
-						};
-						localStorage.setItem('mockUser', JSON.stringify(fallbackUserData));
-						
-						// Dispatch event with the fallback user data
-						window.dispatchEvent(new CustomEvent('authStateChanged', { detail: fallbackUserData }));
+					} catch (error) {
+						console.error('Error updating subscription tier:', error);
+						// Still update local state as fallback
+						setCurrentUserTier(tier);
 					}
 					
 					// Always ensure these cleanup operations run
@@ -493,37 +478,39 @@ function MainApp() {
 
 // Main App component with routing
 export function App() {
-	// Use custom hooks for team config (needed for SEO)
-	const { teamConfig } = useTeamConfig({
-		onError: (error) => {
-			// Handle team config error
-			 
-			console.error('Team config error:', error);
-		}
-	});
+	return (
+		<LocationProvider>
+			<OrganizationProvider onError={(error) => console.error('Organization config error:', error)}>
+				<ToastProvider>
+					<AppWithSEO />
+				</ToastProvider>
+			</OrganizationProvider>
+		</LocationProvider>
+	);
+}
 
-	// Get reactive location for client-side navigation
+// Component that uses organization context for SEO
+function AppWithSEO() {
+	const { organizationConfig } = useOrganization();
 	const location = useLocation();
 	
 	// Create reactive currentUrl that updates on navigation
 	const currentUrl = typeof window !== 'undefined' 
 		? `${window.location.origin}${location.url}`
 		: undefined;
-
+	
 	return (
-		<LocationProvider>
-			<ToastProvider>
-				<SEOHead 
-					teamConfig={teamConfig}
-					currentUrl={currentUrl}
-				/>
-				<Router>
-					<Route path="/auth" component={AuthPage} />
-					<Route path="/settings/*" component={MainApp} />
-					<Route default component={MainApp} />
-				</Router>
-			</ToastProvider>
-		</LocationProvider>
+		<>
+			<SEOHead 
+				organizationConfig={organizationConfig}
+				currentUrl={currentUrl}
+			/>
+			<Router>
+				<Route path="/auth" component={AuthPage} />
+				<Route path="/settings/*" component={MainApp} />
+				<Route default component={MainApp} />
+			</Router>
+		</>
 	);
 }
 

@@ -1,5 +1,5 @@
 import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
 
@@ -29,12 +29,13 @@ const GENERAL_LEGAL_PATTERNS = [
 
 /**
  * Business Scope Validator - handles service availability and scope validation
- * This is where we check if the team offers the services the user needs
+ * This is where we check if the organization offers the services the user needs
  */
 export const businessScopeValidator: PipelineMiddleware = {
+  kind: 'standard',
   name: 'businessScopeValidator',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
     // Guard clause: ensure we have at least one message
     if (!messages || messages.length === 0) {
       console.warn('businessScopeValidator: No messages provided');
@@ -42,9 +43,9 @@ export const businessScopeValidator: PipelineMiddleware = {
     }
     
     const latestMessage = messages[messages.length - 1];
-    const availableServices = teamConfig?.availableServices || [];
+    const availableServices = organizationConfig?.availableServices || [];
     
-    // If team offers General Consultation, allow most requests
+    // If organization offers General Consultation, allow most requests
     if (availableServices.includes('General Consultation')) {
       return { context };
     }
@@ -56,7 +57,7 @@ export const businessScopeValidator: PipelineMiddleware = {
       );
 
       if (hasRelevantService) {
-        // User is asking about a service the team offers - allow
+        // User is asking about a service the organization offers - allow
         return { context };
       }
     }
@@ -70,17 +71,17 @@ export const businessScopeValidator: PipelineMiddleware = {
       );
 
       if (hasRelevantService) {
-        // Current message is about a service the team offers - allow
+        // Current message is about a service the organization offers - allow
         return { context };
       }
 
-      // Current message is about a service the team doesn't offer
+      // Current message is about a service the organization doesn't offer
       const unavailableMatters = currentMessageMatters.filter(matter => 
         !availableServices.includes(matter)
       );
 
       if (unavailableMatters.length > 0) {
-        const response = getScopeViolationResponse(unavailableMatters, availableServices, teamConfig);
+        const response = getScopeViolationResponse(unavailableMatters, availableServices, organizationConfig);
         
         return {
           context,
@@ -97,7 +98,7 @@ export const businessScopeValidator: PipelineMiddleware = {
 
     // Check for general legal requests when no specific matter is established
     if (isGeneralLegalRequest(latestMessage.content) && context.establishedMatters.length === 0) {
-      const response = getGeneralLegalResponse(availableServices, teamConfig);
+      const response = getGeneralLegalResponse(availableServices, organizationConfig);
       
       return {
         context,
@@ -139,13 +140,13 @@ function isGeneralLegalRequest(message: string): boolean {
 function getScopeViolationResponse(
   unavailableMatters: string[], 
   availableServices: string[], 
-  teamConfig: TeamConfig
+  organizationConfig: OrganizationConfig
 ): string {
-  const teamName = 'our legal team';
+  const organizationName = organizationConfig?.description || 'your organization';
   const matterList = unavailableMatters.join(', ');
   const availableList = availableServices.join(', ');
 
-  return `I understand you're dealing with a ${matterList} matter. While ${teamName} specializes in ${availableList}, I'd be happy to help you find a lawyer who specializes in ${matterList}. 
+  return `I understand you're dealing with a ${matterList} matter. While ${organizationName} specializes in ${availableList}, I'd be happy to help you find a lawyer who specializes in ${matterList}. 
 
 Would you like me to:
 1. Help you with a different legal matter that we do handle?
@@ -154,13 +155,13 @@ Would you like me to:
 }
 
 /**
- * Get response for general legal requests when team doesn't offer General Consultation
+ * Get response for general legal requests when organization doesn't offer General Consultation
  */
-function getGeneralLegalResponse(availableServices: string[], teamConfig: TeamConfig): string {
-  const teamName = 'our legal team';
+function getGeneralLegalResponse(availableServices: string[], organizationConfig: OrganizationConfig): string {
+  const organizationName = organizationConfig?.description || 'your organization';
   const availableList = availableServices.join(', ');
 
-  return `I'd be happy to help you with your legal needs! ${teamName} specializes in ${availableList}.
+  return `I'd be happy to help you with your legal needs! ${organizationName} specializes in ${availableList}.
 
 To better assist you, could you tell me:
 1. What type of legal issue are you dealing with?
@@ -172,10 +173,10 @@ This will help me determine if we can assist you directly or connect you with th
 /**
  * Get referral response for out-of-scope matters
  */
-function getReferralResponse(matterType: string, teamConfig: TeamConfig): string {
-  const teamName = 'our legal team';
+function getReferralResponse(matterType: string, organizationConfig: OrganizationConfig): string {
+  const organizationName = organizationConfig?.description || 'your organization';
   
-  return `While ${teamName} doesn't handle ${matterType} matters, I can help you find a qualified attorney who specializes in this area. 
+  return `While ${organizationName} doesn't handle ${matterType} matters, I can help you find a qualified attorney who specializes in this area. 
 
 Here are some resources:
 - State Bar Association referral services

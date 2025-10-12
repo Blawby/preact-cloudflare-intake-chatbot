@@ -51,7 +51,7 @@
 // Producer (files.ts)
 await env.DOC_EVENTS.send({
   key: storageKey,
-  teamId,
+  organizationId,
   sessionId,
   mime: file.type,
   size: file.size
@@ -105,7 +105,7 @@ await env.NOTIFICATION_QUEUE.send({
   recipient: ownerEmail,
   template: 'matter_created',
   data: { matterInfo, clientInfo },
-  teamId,
+  organizationId,
   sessionId
 });
 
@@ -153,7 +153,7 @@ await env.LIVE_NOTIFICATION_QUEUE.send({
   type: 'live',
   notificationType: 'matter_update',
   userId: userId,
-  teamId: teamId,
+  organizationId: organizationId,
   sessionId: sessionId,
   data: { matterId, status, message },
   priority: 'high'
@@ -205,9 +205,9 @@ await env.PUSH_NOTIFICATION_QUEUE.send({
   payload: {
     title: 'Urgent Legal Matter',
     body: 'New urgent matter requires attention',
-    data: { matterId, teamId, url: '/matters/123' }
+    data: { matterId, organizationId, url: '/matters/123' }
   },
-  teamId,
+  organizationId,
   userId
 });
 
@@ -649,15 +649,15 @@ VAPID_PRIVATE_KEY=your_vapid_private_key_here
 NOTIFICATION_WEBHOOK_SECRET=your_webhook_secret_here
 ```
 
-**Alternative: Team-Level Testing Mode**
+**Alternative: organization-Level Testing Mode**
 
-For more granular control, implement team-level testing flags:
+For more granular control, implement organization-level testing flags:
 
 ```typescript
-// Check if team is in test mode
-const teamConfig = await this.getTeamConfig(teamId);
-if (teamConfig.testMode) {
-  console.log('🧪 Team in test mode - logging notification instead of sending');
+// Check if organization is in test mode
+const organizationConfig = await this.getOrganizationConfig(organizationId);
+if (organizationConfig.testMode) {
+  console.log('🧪 organization in test mode - logging notification instead of sending');
   return;
 }
 ```
@@ -714,7 +714,7 @@ PUSH_NOTIFICATION_QUEUE: {
 ```typescript
 // Live notification with offline fallback
 async sendLiveNotification(notification: LiveNotification) {
-  const onlineUsers = await this.getOnlineUsers(notification.teamId);
+  const onlineUsers = await this.getOnlineUsers(notification.organizationId);
   
   // Send to online users via SSE
   for (const user of onlineUsers) {
@@ -722,7 +722,7 @@ async sendLiveNotification(notification: LiveNotification) {
   }
   
   // Store for offline users in KV
-  const offlineUsers = await this.getOfflineUsers(notification.teamId);
+  const offlineUsers = await this.getOfflineUsers(notification.organizationId);
   for (const user of offlineUsers) {
     await this.env.CHAT_SESSIONS.put(
       `live_notification:${user.id}:${Date.now()}`,
@@ -759,7 +759,7 @@ async sendPushNotification(subscription: PushSubscription, payload: any) {
 
 ### Notification Preference Granularity
 
-**Decision: Multi-level granularity (user + team + global)**
+**Decision: Multi-level granularity (user + organization + global)**
 
 **Schema Design:**
 ```sql
@@ -767,24 +767,24 @@ async sendPushNotification(subscription: PushSubscription, payload: any) {
 CREATE TABLE notification_preferences (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   notification_type TEXT NOT NULL, -- 'matter_update', 'payment_received', etc.
   channel TEXT NOT NULL, -- 'email', 'push', 'live'
   enabled BOOLEAN NOT NULL DEFAULT true,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, team_id, notification_type, channel)
+  UNIQUE(user_id, organization_id, notification_type, channel)
 );
 
--- Team-level preferences (fallback)
-CREATE TABLE team_notification_settings (
+-- Organization-level preferences (fallback)
+CREATE TABLE organization_notification_settings (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   notification_type TEXT NOT NULL,
   channel TEXT NOT NULL,
   enabled BOOLEAN NOT NULL DEFAULT true,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(team_id, notification_type, channel)
+  UNIQUE(organization_id, notification_type, channel)
 );
 
 -- Global defaults (lowest priority)
@@ -793,14 +793,14 @@ CREATE TABLE team_notification_settings (
 
 **Preference Resolution Logic:**
 ```typescript
-async getNotificationPreference(userId: string, teamId: string, type: string, channel: string): Promise<boolean> {
+async getNotificationPreference(userId: string, organizationId: string, type: string, channel: string): Promise<boolean> {
   // 1. Check user preference
-  const userPref = await this.getUserPreference(userId, teamId, type, channel);
+  const userPref = await this.getUserPreference(userId, organizationId, type, channel);
   if (userPref !== null) return userPref;
   
-  // 2. Check team preference
-  const teamPref = await this.getTeamPreference(teamId, type, channel);
-  if (teamPref !== null) return teamPref;
+  // 2. Check organization preference
+  const organizationPref = await this.getOrganizationPreference(organizationId, type, channel);
+  if (organizationPref !== null) return organizationPref;
   
   // 3. Return global default
   return this.getGlobalDefault(type, channel);
@@ -846,7 +846,7 @@ async getNotificationPreference(userId: string, teamId: string, type: string, ch
 CREATE TABLE notification_logs (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   notification_type TEXT NOT NULL,
   channel TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -890,9 +890,9 @@ async getUnreadCount(userId: string): Promise<number> {
 ```typescript
 interface NotificationBatch {
   userId: string;
-  teamId: string;
+  organizationId: string;
   notifications: Notification[];
-  batchKey: string; // e.g., "matter_123", "team_updates"
+  batchKey: string; // e.g., "matter_123", "organization_updates"
   maxBatchSize: number;
   batchWindowMs: number;
 }
@@ -902,7 +902,7 @@ async batchNotifications(notifications: Notification[]): Promise<NotificationBat
   const batches = new Map<string, Notification[]>();
   
   for (const notification of notifications) {
-    const batchKey = `${notification.userId}_${notification.teamId}_${notification.type}`;
+    const batchKey = `${notification.userId}_${notification.organizationId}_${notification.type}`;
     if (!batches.has(batchKey)) {
       batches.set(batchKey, []);
     }
@@ -911,7 +911,7 @@ async batchNotifications(notifications: Notification[]): Promise<NotificationBat
   
   return Array.from(batches.entries()).map(([key, notifs]) => ({
     userId: notifs[0].userId,
-    teamId: notifs[0].teamId,
+    organizationId: notifs[0].organizationId,
     notifications: notifs,
     batchKey: key,
     maxBatchSize: 5,
@@ -979,9 +979,9 @@ function generateContentHash(notification: Notification): string {
 **Deduplication Key:**
 ```typescript
 function generateDeduplicationKey(notification: Notification): string {
-  const { userId, teamId, type, matterId } = notification;
+  const { userId, organizationId, type, matterId } = notification;
   const contentHash = generateContentHash(notification);
-  return `${userId}_${teamId}_${type}_${matterId}_${contentHash}`;
+  return `${userId}_${organizationId}_${type}_${matterId}_${contentHash}`;
 }
 
 // Check for duplicates within time window
@@ -1012,19 +1012,19 @@ async checkForDuplicates(key: string, windowMs: number = 300000): Promise<boolea
 **Important**: The notification system uses Better Auth's organization plugin API methods. The following non-existent methods have been replaced with proper plugin API calls:
 
 **Replaced Methods:**
-- ❌ `betterAuth.userHasTeamAccess(userId, teamId)` 
-- ❌ `betterAuth.userHasRole(userId, teamId, role)`
-- ❌ `session.user.teamId` (not provided by getSession)
+- ❌ `betterAuth.userHasorganizationAccess(userId, organizationId)` 
+- ❌ `betterAuth.userHasRole(userId, organizationId, role)`
+- ❌ `session.user.organizationId` (not provided by getSession)
 
 **Correct Plugin API Usage:**
-- ✅ `betterAuth.listMembers(teamId)` - Get all team members
-- ✅ `betterAuth.getActiveMemberRole(userId, teamId)` - Get user's role in team
-- ✅ Retrieve organization IDs via plugin methods instead of session.user.teamId
+- ✅ `betterAuth.listMembers(organizationId)` - Get all organization members
+- ✅ `betterAuth.getActiveMemberRole(userId, organizationId)` - Get user's role in organization
+- ✅ Retrieve organization IDs via plugin methods instead of session.user.organizationId
 
-**Team Access Verification Pattern:**
+**organization Access Verification Pattern:**
 ```typescript
-// Verify user has access to the team using organization plugin
-const memberships = await betterAuth.listMembers(teamId);
+// Verify user has access to the organization using organization plugin
+const memberships = await betterAuth.listMembers(organizationId);
 const hasAccess = memberships.some(member => member.userId === session.user.id);
 if (!hasAccess) {
   return new Response('Forbidden', { status: 403 });
@@ -1033,8 +1033,8 @@ if (!hasAccess) {
 
 **Role Checking Pattern:**
 ```typescript
-// Check if user is team admin using organization plugin
-const memberRole = await betterAuth.getActiveMemberRole(session.user.id, teamId);
+// Check if user is organization admin using organization plugin
+const memberRole = await betterAuth.getActiveMemberRole(session.user.id, organizationId);
 const isAdmin = memberRole === 'admin' || memberRole === 'owner';
 if (!isAdmin) {
   return new Response('Forbidden - Admin role required', { status: 403 });
@@ -1043,14 +1043,14 @@ if (!isAdmin) {
 
 **Getting User's Organizations:**
 ```typescript
-// Get user's organizations (replaces session.user.teamId)
+// Get user's organizations (replaces session.user.organizationId)
 const userOrgs = await betterAuth.listUserOrganizations(session.user.id);
-const teamIds = userOrgs.map(org => org.organizationId);
+const organizationIds = userOrgs.map(org => org.organizationId);
 ```
 
 ### Prerequisites
-- Better Auth organizations/teams must be configured before implementing notifications
-- User identity and team membership must be established
+- Better Auth organizations/organizations must be configured before implementing notifications
+- User identity and organization membership must be established
 - Role-based permissions system must be in place
 
 ### Core Integration Points
@@ -1062,18 +1062,18 @@ const teamIds = userOrgs.map(org => org.organizationId);
 // All notification targeting uses Better Auth IDs
 interface NotificationTarget {
   userId: string;        // Better Auth user.id
-  teamId: string;        // Better Auth organization/team.id
+  organizationId: string; // Better Auth organization.id
   email: string;         // Better Auth verified email
   roles: string[];       // Better Auth user roles
 }
 
 // Notification service validates against Better Auth
 class NotificationService {
-  async validateNotificationTarget(userId: string, teamId: string): Promise<boolean> {
+  async validateNotificationTarget(userId: string, organizationId: string): Promise<boolean> {
     const user = await this.betterAuth.getUser(userId);
-    const teamMembership = await this.betterAuth.getTeamMembership(userId, teamId);
+    const organizationMembership = await this.betterAuth.getOrganizationMembership(userId, organizationId);
     
-    return user && teamMembership && user.verified;
+    return user && organizationMembership && user.verified;
   }
 }
 ```
@@ -1084,16 +1084,16 @@ class NotificationService {
 ```typescript
 // Define notification permissions by role
 const NOTIFICATION_PERMISSIONS = {
-  'team:admin': ['system_alert', 'team_update', 'matter_update', 'payment_received'],
-  'team:member': ['matter_update', 'payment_received'],
-  'team:viewer': ['matter_update'],
+  'organization:admin': ['system_alert', 'organization_update', 'matter_update', 'payment_received'],
+  'organization:member': ['matter_update', 'payment_received'],
+  'organization:viewer': ['matter_update'],
   'client': ['matter_update', 'payment_received']
 };
 
 // Check permissions before enqueueing
 async enqueueNotification(notification: Notification) {
   const user = await this.betterAuth.getUser(notification.userId);
-  const userRoles = await this.betterAuth.getUserRoles(notification.userId, notification.teamId);
+  const userRoles = await this.betterAuth.getUserRoles(notification.userId, notification.organizationId);
   
   // Check if user has permission for this notification type
   const hasPermission = userRoles.some(role => 
@@ -1118,29 +1118,29 @@ async enqueueNotification(notification: Notification) {
 CREATE TABLE notification_preferences (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,           -- Better Auth user.id
-  team_id TEXT NOT NULL,           -- Better Auth organization.id
+  organization_id TEXT NOT NULL,           -- Better Auth organization.id
   notification_type TEXT NOT NULL,
   channel TEXT NOT NULL,
   enabled BOOLEAN NOT NULL DEFAULT true,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES better_auth_users(id) ON DELETE CASCADE,
-  FOREIGN KEY (team_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
-  UNIQUE(user_id, team_id, notification_type, channel)
+  FOREIGN KEY (organization_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
+  UNIQUE(user_id, organization_id, notification_type, channel)
 );
 
 -- Push subscriptions tied to Better Auth users
 CREATE TABLE push_subscriptions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,           -- Better Auth user.id
-  team_id TEXT NOT NULL,           -- Better Auth organization.id
+  organization_id TEXT NOT NULL,           -- Better Auth organization.id
   endpoint TEXT NOT NULL,
   p256dh_key TEXT NOT NULL,
   auth_key TEXT NOT NULL,
   user_agent TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES better_auth_users(id) ON DELETE CASCADE,
-  FOREIGN KEY (team_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (organization_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
   UNIQUE(user_id, endpoint)
 );
 
@@ -1148,7 +1148,7 @@ CREATE TABLE push_subscriptions (
 CREATE TABLE notification_logs (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,           -- Better Auth user.id
-  team_id TEXT NOT NULL,           -- Better Auth organization.id
+  organization_id TEXT NOT NULL,           -- Better Auth organization.id
   notification_type TEXT NOT NULL,
   channel TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -1157,21 +1157,21 @@ CREATE TABLE notification_logs (
   read_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES better_auth_users(id) ON DELETE CASCADE,
-  FOREIGN KEY (team_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (organization_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
   INDEX(user_id, read_at),
   INDEX(user_id, created_at)
 );
 
--- Team-level notification settings
-CREATE TABLE team_notification_settings (
+-- organization-level notification settings
+CREATE TABLE organization_notification_settings (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,           -- Better Auth organization.id
+  organization_id TEXT NOT NULL,           -- Better Auth organization.id
   notification_type TEXT NOT NULL,
   channel TEXT NOT NULL,
   enabled BOOLEAN NOT NULL DEFAULT true,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
-  UNIQUE(team_id, notification_type, channel)
+  FOREIGN KEY (organization_id) REFERENCES better_auth_organizations(id) ON DELETE CASCADE,
+  UNIQUE(organization_id, notification_type, channel)
 );
 ```
 
@@ -1187,13 +1187,38 @@ export async function handleLiveNotifications(request: Request, env: Env) {
   }
   
   const userId = session.user.id;
-  const teamId = session.user.teamId; // From Better Auth context
+  
+  // Get user's organizations using Better Auth organization plugin
+  let organizationId: string;
+  try {
+    const userOrgs = await betterAuth.listUserOrganizations({
+      userId: session.user.id
+    });
+    
+    if (!userOrgs || userOrgs.length === 0) {
+      return new Response('No organizations found for user', { status: 403 });
+    }
+    
+    // Select primary organization (first one) or implement custom logic for multiple orgs
+    // For now, we'll use the first organization as the primary
+    organizationId = userOrgs[0].organizationId;
+    
+    // If user has multiple organizations, you might want to:
+    // 1. Check for a "primary" organization flag
+    // 2. Use organization with highest role (owner > admin > member)
+    // 3. Allow user to select organization via request parameter
+    // 4. Use organization from request context/headers
+    
+  } catch (error) {
+    console.error('Failed to retrieve user organizations:', error);
+    return new Response('Failed to retrieve organization context', { status: 500 });
+  }
   
   // Create SSE connection scoped to authenticated user
   const stream = new ReadableStream({
     start(controller) {
       // Subscribe to user-specific notification stream
-      const subscription = notificationStream.subscribe(userId, teamId, (notification) => {
+      const subscription = notificationStream.subscribe(userId, organizationId, (notification) => {
         controller.enqueue(`data: ${JSON.stringify(notification)}\n\n`);
       });
       
@@ -1226,10 +1251,10 @@ export async function handlePushSubscription(request: Request, env: Env) {
     return new Response('Unauthorized', { status: 401 });
   }
   
-  const { subscription, teamId } = await request.json();
+  const { subscription, organizationId } = await request.json();
   
-  // Verify user has access to the team using organization plugin
-  const memberships = await betterAuth.listMembers(teamId);
+  // Verify user has access to the organization using organization plugin
+  const memberships = await betterAuth.listMembers(organizationId);
   const hasAccess = memberships.some(member => member.userId === session.user.id);
   if (!hasAccess) {
     return new Response('Forbidden', { status: 403 });
@@ -1238,12 +1263,12 @@ export async function handlePushSubscription(request: Request, env: Env) {
   // Store subscription with Better Auth user ID
   await env.DB.prepare(`
     INSERT OR REPLACE INTO push_subscriptions 
-    (id, user_id, team_id, endpoint, p256dh_key, auth_key, user_agent)
+    (id, user_id, organization_id, endpoint, p256dh_key, auth_key, user_agent)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     crypto.randomUUID(),
     session.user.id,        // Better Auth user ID
-    teamId,                 // Better Auth team ID
+    organizationId,                 // Better Auth organization ID
     subscription.endpoint,
     subscription.keys.p256dh,
     subscription.keys.auth,
@@ -1265,21 +1290,21 @@ export async function getUserNotificationPreferences(request: Request, env: Env)
     return new Response('Unauthorized', { status: 401 });
   }
   
-  const { teamId } = await request.json();
+  const { organizationId } = await request.json();
   
-  // Verify user has access to the team using organization plugin
-  const memberships = await betterAuth.listMembers(teamId);
+  // Verify user has access to the organization using organization plugin
+  const memberships = await betterAuth.listMembers(organizationId);
   const hasAccess = memberships.some(member => member.userId === session.user.id);
   if (!hasAccess) {
     return new Response('Forbidden', { status: 403 });
   }
   
-  // Get user's preferences for this team
+  // Get user's preferences for this organization
   const preferences = await env.DB.prepare(`
     SELECT notification_type, channel, enabled
     FROM notification_preferences
-    WHERE user_id = ? AND team_id = ?
-  `).bind(session.user.id, teamId).all();
+    WHERE user_id = ? AND organization_id = ?
+  `).bind(session.user.id, organizationId).all();
   
   return new Response(JSON.stringify({ preferences }));
 }
@@ -1291,10 +1316,10 @@ export async function updateNotificationPreferences(request: Request, env: Env) 
     return new Response('Unauthorized', { status: 401 });
   }
   
-  const { teamId, preferences } = await request.json();
+  const { organizationId, preferences } = await request.json();
   
-  // Verify user has access to the team using organization plugin
-  const memberships = await betterAuth.listMembers(teamId);
+  // Verify user has access to the organization using organization plugin
+  const memberships = await betterAuth.listMembers(organizationId);
   const hasAccess = memberships.some(member => member.userId === session.user.id);
   if (!hasAccess) {
     return new Response('Forbidden', { status: 403 });
@@ -1304,12 +1329,12 @@ export async function updateNotificationPreferences(request: Request, env: Env) 
   for (const pref of preferences) {
     await env.DB.prepare(`
       INSERT OR REPLACE INTO notification_preferences
-      (id, user_id, team_id, notification_type, channel, enabled)
+      (id, user_id, organization_id, notification_type, channel, enabled)
       VALUES (?, ?, ?, ?, ?, ?)
     `).bind(
       crypto.randomUUID(),
       session.user.id,        // Better Auth user ID
-      teamId,                 // Better Auth team ID
+      organizationId,                 // Better Auth organization ID
       pref.notification_type,
       pref.channel,
       pref.enabled
@@ -1322,33 +1347,33 @@ export async function updateNotificationPreferences(request: Request, env: Env) 
 
 #### 7. Admin Override Capabilities
 
-**Team Admin Notification Management:**
+**organization Admin Notification Management:**
 ```typescript
-// Team admin can manage team-wide notification settings
-export async function updateTeamNotificationSettings(request: Request, env: Env) {
+// organization admin can manage organization-wide notification settings
+export async function updateorganizationNotificationSettings(request: Request, env: Env) {
   const session = await betterAuth.getSession(request);
   if (!session?.user) {
     return new Response('Unauthorized', { status: 401 });
   }
   
-  const { teamId, settings } = await request.json();
+  const { organizationId, settings } = await request.json();
   
-  // Check if user is team admin using organization plugin
-  const memberRole = await betterAuth.getActiveMemberRole(session.user.id, teamId);
+  // Check if user is organization admin using organization plugin
+  const memberRole = await betterAuth.getActiveMemberRole(session.user.id, organizationId);
   const isAdmin = memberRole === 'admin' || memberRole === 'owner';
   if (!isAdmin) {
     return new Response('Forbidden - Admin role required', { status: 403 });
   }
   
-  // Update team-wide settings
+  // Update organization-wide settings
   for (const setting of settings) {
     await env.DB.prepare(`
-      INSERT OR REPLACE INTO team_notification_settings
-      (id, team_id, notification_type, channel, enabled)
+      INSERT OR REPLACE INTO organization_notification_settings
+      (id, organization_id, notification_type, channel, enabled)
       VALUES (?, ?, ?, ?, ?)
     `).bind(
       crypto.randomUUID(),
-      teamId,
+      organizationId,
       setting.notification_type,
       setting.channel,
       setting.enabled
@@ -1362,9 +1387,9 @@ export async function updateTeamNotificationSettings(request: Request, env: Env)
 ### Implementation Order with Better Auth
 
 1. **Setup Better Auth Organizations** (Prerequisite)
-   - Configure teams/organizations
+   - Configure organizations/organizations
    - Set up role-based permissions
-   - Establish user-team relationships
+   - Establish user-organization relationships
 
 2. **Update Database Schema**
    - Add Better Auth foreign key constraints
@@ -1374,25 +1399,25 @@ export async function updateTeamNotificationSettings(request: Request, env: Env)
 3. **Implement Authentication Middleware**
    - Session validation for all notification endpoints
    - Permission checks before notification operations
-   - Team access verification
+   - organization access verification
 
 4. **Build Notification Services**
-   - Integrate Better Auth user/team resolution
+   - Integrate Better Auth user/organization resolution
    - Implement role-based notification filtering
    - Add permission validation to queue consumers
 
 5. **Create Frontend Components**
    - Use Better Auth session for user context
-   - Implement team-scoped preference management
+   - Implement organization-scoped preference management
    - Add admin override capabilities
 
 ### Security Benefits
 
 - **Identity Verification**: All notifications tied to verified Better Auth users
 - **Permission Enforcement**: Role-based access control for notification types
-- **Team Isolation**: Users can only access notifications for their teams
+- **organization Isolation**: Users can only access notifications for their organizations
 - **Session Security**: Live notifications scoped to authenticated sessions
-- **Admin Controls**: Team admins can manage notification policies
+- **Admin Controls**: organization admins can manage notification policies
 - **Data Integrity**: Foreign key constraints prevent orphaned notifications
 
 ## Testing Strategy

@@ -21,7 +21,7 @@ export interface UploadResult {
 }
 
 export interface UploadOptions {
-  teamId: string;
+  organizationId: string;
   sessionId: string;
   onProgress?: (progress: UploadProgress) => void;
   onSuccess?: (result: UploadResult) => void;
@@ -40,7 +40,7 @@ export async function uploadWithProgress(
   file: File,
   options: UploadOptions
 ): Promise<UploadResult> {
-  const { teamId, sessionId, onProgress, onSuccess, onError, signal } = options;
+  const { organizationId, sessionId, onProgress, onSuccess, onError, signal } = options;
 
   return new Promise((resolve, reject) => {
     // Preflight abort check - if already aborted, don't create XHR
@@ -107,7 +107,7 @@ export async function uploadWithProgress(
               fileType: response.data.fileType,
               fileSize: response.data.fileSize,
               url: response.data.url,
-              storageKey: response.data.storageKey || `${teamId}/${sessionId}/${response.data.fileId}`
+              storageKey: response.data.storageKey || `${organizationId}/${sessionId}/${response.data.fileId}`
             };
 
             // Final progress update to 100%
@@ -173,7 +173,7 @@ export async function uploadWithProgress(
     // Build FormData (matches existing endpoint format)
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('teamId', teamId);
+    formData.append('organizationId', organizationId);
     formData.append('sessionId', sessionId);
 
     // Send request to existing endpoint

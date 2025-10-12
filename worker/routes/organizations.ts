@@ -1,4 +1,4 @@
-import { TeamService, TeamConfig } from '../services/TeamService.js';
+import { OrganizationService, OrganizationConfig } from '../services/OrganizationService.js';
 import { Env } from '../types.js';
 import { ValidationError } from '../utils/validationErrors.js';
 
@@ -50,29 +50,29 @@ function createErrorResponse(
   );
 }
 
-export async function handleTeams(request: Request, env: Env): Promise<Response> {
+export async function handleOrganizations(request: Request, env: Env): Promise<Response> {
 
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/teams', '');
+  const path = url.pathname.replace('/api/organizations', '');
   
 
 
   try {
-    const teamService = new TeamService(env);
+    const organizationService = new OrganizationService(env);
 
     // Handle API token management routes
     if (path.includes('/tokens')) {
       const pathParts = path.split('/').filter(part => part.length > 0);
       if (pathParts.length >= 2 && pathParts[1] === 'tokens') {
-        const teamId = pathParts[0];
+        const organizationId = pathParts[0];
         
-        // Validate that the team exists
-        const team = await teamService.getTeam(teamId);
-        if (!team) {
+        // Validate that the organization exists
+        const organization = await organizationService.getOrganization(organizationId);
+        if (!organization) {
                       return new Response(
               JSON.stringify({ 
                 success: false, 
-                error: 'Team not found' 
+                error: 'Organization not found' 
               }), 
               { 
                 status: 404, 
@@ -82,26 +82,26 @@ export async function handleTeams(request: Request, env: Env): Promise<Response>
         }
         
         if (pathParts.length === 2) {
-          // /{teamId}/tokens
+          // /{organizationId}/tokens
           switch (request.method) {
             case 'GET':
-              return await listTeamTokens(teamService, teamId);
+              return await listOrganizationTokens(organizationService, organizationId);
             case 'POST':
-              return await createTeamToken(teamService, teamId, request);
+              return await createOrganizationToken(organizationService, organizationId, request);
           }
         } else if (pathParts.length === 3) {
-          // /{teamId}/tokens/{tokenId}
+          // /{organizationId}/tokens/{tokenId}
           const tokenId = pathParts[2];
           switch (request.method) {
             case 'DELETE':
-              return await revokeTeamToken(teamService, teamId, tokenId);
+              return await revokeOrganizationToken(organizationService, organizationId, tokenId);
           }
         }
       }
     }
 
-    // Helper function to extract teamId from path and validate method
-    const extractTeamIdForRoute = (path: string, suffix: string, method: string): string | null => {
+    // Helper function to extract organizationId from path and validate method
+    const extractOrganizationIdForRoute = (path: string, suffix: string, method: string): string | null => {
       const pathParts = path.split('/').filter(part => part.length > 0);
       if (pathParts.length >= 2 && pathParts[1] === suffix && method === 'POST') {
         return pathParts[0];
@@ -110,51 +110,51 @@ export async function handleTeams(request: Request, env: Env): Promise<Response>
     };
 
     // Handle API key validation routes
-    const validateTokenTeamId = extractTeamIdForRoute(path, 'validate-token', request.method);
-    if (validateTokenTeamId) {
-      return await validateTeamToken(teamService, validateTokenTeamId, request);
+    const validateTokenOrganizationId = extractOrganizationIdForRoute(path, 'validate-token', request.method);
+    if (validateTokenOrganizationId) {
+      return await validateOrganizationToken(organizationService, validateTokenOrganizationId, request);
     }
 
     // Handle API key validation routes
-    const validateApiKeyTeamId = extractTeamIdForRoute(path, 'validate-api-key', request.method);
-    if (validateApiKeyTeamId) {
-      return await validateApiKey(teamService, validateApiKeyTeamId, request);
+    const validateApiKeyOrganizationId = extractOrganizationIdForRoute(path, 'validate-api-key', request.method);
+    if (validateApiKeyOrganizationId) {
+      return await validateApiKey(organizationService, validateApiKeyOrganizationId, request);
     }
 
     // Handle API key hash generation routes
-    const generateHashTeamId = extractTeamIdForRoute(path, 'generate-hash', request.method);
-    if (generateHashTeamId) {
-      return await generateApiKeyHash(teamService, generateHashTeamId);
+    const generateHashOrganizationId = extractOrganizationIdForRoute(path, 'generate-hash', request.method);
+    if (generateHashOrganizationId) {
+      return await generateApiKeyHash(organizationService, generateHashOrganizationId);
     }
 
     switch (request.method) {
       case 'GET':
         if (path === '' || path === '/') {
-          return await listTeams(teamService);
+          return await listOrganizations(organizationService);
         } else {
-          const teamId = path.substring(1);
-          return await getTeam(teamService, teamId);
+          const organizationId = path.substring(1);
+          return await getOrganization(organizationService, organizationId);
         }
       
       case 'POST':
         if (path === '' || path === '/') {
-          return await createTeam(teamService, request);
+          return await createOrganization(organizationService, request);
         }
         break;
       
       case 'PUT':
         if (path.startsWith('/')) {
-          const teamId = path.substring(1);
-          return await updateTeam(teamService, teamId, request);
+          const organizationId = path.substring(1);
+          return await updateOrganization(organizationService, organizationId, request);
         }
         break;
       
       case 'DELETE':
         console.log('DELETE case matched, path:', path);
         if (path.startsWith('/')) {
-          const teamId = path.substring(1);
-          console.log('DELETE teamId:', teamId);
-          return await deleteTeam(teamService, teamId);
+          const organizationId = path.substring(1);
+          console.log('DELETE organizationId:', organizationId);
+          return await deleteOrganization(organizationService, organizationId);
         }
         console.log('DELETE path does not start with /');
         break;
@@ -166,7 +166,7 @@ export async function handleTeams(request: Request, env: Env): Promise<Response>
     });
 
   } catch (error) {
-    console.error('Team API error:', error);
+    console.error('Organization API error:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
@@ -180,13 +180,13 @@ export async function handleTeams(request: Request, env: Env): Promise<Response>
   }
 }
 
-async function listTeams(teamService: TeamService): Promise<Response> {
-  const teams = await teamService.listTeams();
+async function listOrganizations(organizationService: OrganizationService): Promise<Response> {
+  const organizations = await organizationService.listOrganizations(); // This will get all organizations when called without userId
   
   return new Response(
     JSON.stringify({ 
       success: true, 
-      data: teams 
+      data: organizations 
     }), 
     { 
       headers: { 'Content-Type': 'application/json' } 
@@ -194,14 +194,14 @@ async function listTeams(teamService: TeamService): Promise<Response> {
   );
 }
 
-async function getTeam(teamService: TeamService, teamId: string): Promise<Response> {
-  const team = await teamService.getTeam(teamId);
+async function getOrganization(organizationService: OrganizationService, organizationId: string): Promise<Response> {
+  const organization = await organizationService.getOrganization(organizationId);
   
-  if (!team) {
+  if (!organization) {
           return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Team not found' 
+          error: 'Organization not found' 
         }), 
         { 
           status: 404, 
@@ -211,14 +211,14 @@ async function getTeam(teamService: TeamService, teamId: string): Promise<Respon
   }
 
   // Redact sensitive data from the response
-  const sanitizedTeam = {
-    ...team,
+  const sanitizedOrganization = {
+    ...organization,
     config: {
-      ...team.config,
-      blawbyApi: team.config?.blawbyApi ? {
-        enabled: team.config.blawbyApi.enabled,
-        apiUrl: team.config.blawbyApi.apiUrl
-        // Note: apiKey, apiKeyHash, and teamUlid are intentionally excluded for security
+      ...organization.config,
+      blawbyApi: organization.config?.blawbyApi ? {
+        enabled: organization.config.blawbyApi.enabled,
+        apiUrl: organization.config.blawbyApi.apiUrl
+        // Note: apiKey, apiKeyHash, and organizationUlid are intentionally excluded for security
       } : undefined
     }
   };
@@ -226,7 +226,7 @@ async function getTeam(teamService: TeamService, teamId: string): Promise<Respon
   return new Response(
     JSON.stringify({ 
       success: true, 
-      data: sanitizedTeam 
+      data: sanitizedOrganization 
     }), 
     { 
       headers: { 'Content-Type': 'application/json' } 
@@ -234,13 +234,13 @@ async function getTeam(teamService: TeamService, teamId: string): Promise<Respon
   );
 }
 
-async function createTeam(teamService: TeamService, request: Request): Promise<Response> {
+async function createOrganization(organizationService: OrganizationService, request: Request): Promise<Response> {
   let body;
   try {
     body = await request.json() as {
       slug: string;
       name: string;
-      config: TeamConfig;
+      config: OrganizationConfig;
     };
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
@@ -262,13 +262,13 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
     );
   }
 
-  // Check if team with slug already exists
-  const existingTeam = await teamService.getTeam(body.slug);
-  if (existingTeam) {
+  // Check if organization with slug already exists
+  const existingOrganization = await organizationService.getOrganization(body.slug);
+  if (existingOrganization) {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Team with this slug already exists' 
+          error: 'Organization with this slug already exists'
       }), 
       { 
         status: 409, 
@@ -278,7 +278,7 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
   }
 
   try {
-    const team = await teamService.createTeam({
+    const organization = await organizationService.createOrganization({
       slug: body.slug,
       name: body.name,
       config: body.config
@@ -287,7 +287,7 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
     return new Response(
       JSON.stringify({ 
         success: true, 
-        data: team 
+        data: organization 
       }), 
       { 
         status: 201,
@@ -295,11 +295,11 @@ async function createTeam(teamService: TeamService, request: Request): Promise<R
       }
     );
   } catch (error) {
-    return createErrorResponse(error, 'createTeam', 'Failed to create team');
+    return createErrorResponse(error, 'createOrganization', 'Failed to create organization');
   }
 }
 
-async function updateTeam(teamService: TeamService, teamId: string, request: Request): Promise<Response> {
+async function updateOrganization(organizationService: OrganizationService, organizationId: string, request: Request): Promise<Response> {
   let body;
   try {
     body = await request.json();
@@ -310,13 +310,13 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
   }
   
   try {
-    const updatedTeam = await teamService.updateTeam(teamId, body);
+    const updatedOrganization = await organizationService.updateOrganization(organizationId, body);
     
-    if (!updatedTeam) {
+    if (!updatedOrganization) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Team not found' 
+          error: 'Organization not found' 
         }), 
         { 
           status: 404, 
@@ -328,25 +328,25 @@ async function updateTeam(teamService: TeamService, teamId: string, request: Req
     return new Response(
       JSON.stringify({ 
         success: true, 
-        data: updatedTeam 
+        data: updatedOrganization 
       }), 
       { 
         headers: { 'Content-Type': 'application/json' } 
       }
     );
   } catch (error) {
-    return createErrorResponse(error, 'updateTeam', 'Failed to update team');
+    return createErrorResponse(error, 'updateOrganization', 'Failed to update organization');
   }
 }
 
-async function deleteTeam(teamService: TeamService, teamId: string): Promise<Response> {
-  const deleted = await teamService.deleteTeam(teamId);
+async function deleteOrganization(organizationService: OrganizationService, organizationId: string): Promise<Response> {
+  const deleted = await organizationService.deleteOrganization(organizationId);
   
   if (!deleted) {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Team not found' 
+        error: 'Organization not found' 
       }), 
       { 
         status: 404, 
@@ -358,7 +358,7 @@ async function deleteTeam(teamService: TeamService, teamId: string): Promise<Res
   return new Response(
     JSON.stringify({ 
       success: true, 
-      message: 'Team deleted successfully' 
+      message: 'Organization deleted successfully' 
     }), 
     { 
       headers: { 'Content-Type': 'application/json' } 
@@ -366,8 +366,8 @@ async function deleteTeam(teamService: TeamService, teamId: string): Promise<Res
   );
 }
 
-async function listTeamTokens(teamService: TeamService, teamId: string): Promise<Response> {
-  const tokens = await teamService.listApiTokens(teamId);
+async function listOrganizationTokens(organizationService: OrganizationService, organizationId: string): Promise<Response> {
+  const tokens = await organizationService.listApiTokens(organizationId);
   
   return new Response(
     JSON.stringify({ 
@@ -380,7 +380,7 @@ async function listTeamTokens(teamService: TeamService, teamId: string): Promise
   );
 }
 
-async function createTeamToken(teamService: TeamService, teamId: string, request: Request): Promise<Response> {
+async function createOrganizationToken(organizationService: OrganizationService, organizationId: string, request: Request): Promise<Response> {
   let body;
   try {
     body = await request.json() as {
@@ -439,7 +439,7 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
   const permissions = body.permissions || [];
   const createdBy = body.createdBy || 'api';
 
-  const result = await teamService.createApiToken(teamId, body.tokenName, permissions, createdBy);
+  const result = await organizationService.createApiToken(organizationId, body.tokenName, permissions, createdBy);
 
   return new Response(
     JSON.stringify({ 
@@ -459,16 +459,16 @@ async function createTeamToken(teamService: TeamService, teamId: string, request
   );
 }
 
-async function revokeTeamToken(
-  teamService: TeamService,
-  teamId: string,
+async function revokeOrganizationToken(
+  organizationService: OrganizationService,
+  organizationId: string,
   tokenId: string
 ): Promise<Response> {
-  // First verify the token belongs to this team
-  const tokens = await teamService.listApiTokens(teamId);
-  const tokenBelongsToTeam = tokens.some(token => token.id === tokenId);
+  // First verify the token belongs to this organization
+  const tokens = await organizationService.listApiTokens(organizationId);
+  const tokenBelongsToOrganization = tokens.some(token => token.id === tokenId);
 
-  if (!tokenBelongsToTeam) {
+  if (!tokenBelongsToOrganization) {
     return new Response(
       JSON.stringify({
         success: false,
@@ -481,7 +481,7 @@ async function revokeTeamToken(
     );
   }
 
-  const result = await teamService.revokeApiToken(tokenId);
+  const result = await organizationService.revokeApiToken(tokenId);
 
   if (!result.success) {
     return new Response(
@@ -511,9 +511,9 @@ async function revokeTeamToken(
   );
 }
 
-async function validateTeamToken(
-  teamService: TeamService,
-  teamId: string,
+async function validateOrganizationToken(
+  organizationService: OrganizationService,
+  organizationId: string,
   request: Request
 ): Promise<Response> {
   let body;
@@ -540,7 +540,7 @@ async function validateTeamToken(
     );
   }
 
-  const isValid = await teamService.validateTeamAccess(teamId, body.token);
+  const isValid = await organizationService.validateOrganizationAccess(organizationId, body.token);
 
   return new Response(
     JSON.stringify({ 
@@ -554,8 +554,8 @@ async function validateTeamToken(
 }
 
 async function validateApiKey(
-  teamService: TeamService,
-  teamId: string,
+  organizationService: OrganizationService,
+  organizationId: string,
   request: Request
 ): Promise<Response> {
   let body;
@@ -582,7 +582,7 @@ async function validateApiKey(
     );
   }
 
-  const isValid = await teamService.validateApiKey(teamId, body.apiKey);
+  const isValid = await organizationService.validateApiKey(organizationId, body.apiKey);
 
   return new Response(
     JSON.stringify({ 
@@ -596,10 +596,10 @@ async function validateApiKey(
 }
 
 async function generateApiKeyHash(
-  teamService: TeamService,
-  teamId: string
+  organizationService: OrganizationService,
+  organizationId: string
 ): Promise<Response> {
-  const success = await teamService.generateApiKeyHash(teamId);
+  const success = await organizationService.generateApiKeyHash(organizationId);
 
   if (!success) {
     return new Response(

@@ -1,5 +1,5 @@
 import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import type { Env, AgentMessage } from '../types.js';
 import { analyzeFile, getAnalysisQuestion } from '../utils/fileAnalysisUtils.js';
@@ -11,6 +11,25 @@ import { Logger } from '../utils/logger.js';
 type FileAnalysisEnv = {
   FILES_BUCKET: Env['FILES_BUCKET'];
   DB: Env['DB'];
+  AI: Env['AI'];
+  ENABLE_ADOBE_EXTRACT: Env['ENABLE_ADOBE_EXTRACT'];
+  ADOBE_CLIENT_ID: Env['ADOBE_CLIENT_ID'];
+  ADOBE_CLIENT_SECRET: Env['ADOBE_CLIENT_SECRET'];
+  ADOBE_TECHNICAL_ACCOUNT_ID: Env['ADOBE_TECHNICAL_ACCOUNT_ID'];
+  ADOBE_TECHNICAL_ACCOUNT_EMAIL: Env['ADOBE_TECHNICAL_ACCOUNT_EMAIL'];
+  ADOBE_ORGANIZATION_ID: Env['ADOBE_ORGANIZATION_ID'];
+  ADOBE_IMS_BASE_URL: Env['ADOBE_IMS_BASE_URL'];
+  ADOBE_PDF_SERVICES_BASE_URL: Env['ADOBE_PDF_SERVICES_BASE_URL'];
+  ADOBE_SCOPE: Env['ADOBE_SCOPE'];
+  CLOUDFLARE_ACCOUNT_ID: Env['CLOUDFLARE_ACCOUNT_ID'];
+  CLOUDFLARE_API_TOKEN: Env['CLOUDFLARE_API_TOKEN'];
+  CLOUDFLARE_PUBLIC_URL: Env['CLOUDFLARE_PUBLIC_URL'];
+  AI_MODEL_DEFAULT: Env['AI_MODEL_DEFAULT'];
+  AI_MAX_TEXT_LENGTH: Env['AI_MAX_TEXT_LENGTH'];
+  AI_MAX_TABLES: Env['AI_MAX_TABLES'];
+  AI_MAX_ELEMENTS: Env['AI_MAX_ELEMENTS'];
+  AI_MAX_STRUCTURED_PAYLOAD_LENGTH: Env['AI_MAX_STRUCTURED_PAYLOAD_LENGTH'];
+  DEBUG: Env['DEBUG'];
 };
 
 /**
@@ -54,9 +73,10 @@ type AnalysisResult = {
  * Updates conversation context with analysis results for downstream middleware
  */
 export const fileAnalysisMiddleware: PipelineMiddleware = {
+  kind: 'standard',
   name: 'fileAnalysisMiddleware',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, teamConfig: TeamConfig, env: Env) => {
+  execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
     try {
       // Check if we have file attachments in the current request
       if (!context.currentAttachments || context.currentAttachments.length === 0) {
@@ -69,7 +89,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       if (!latestMessage || latestMessage.role !== 'user') {
         Logger.info('Skipping file analysis - no user message in current request', {
           sessionId: context.sessionId,
-          teamId: context.teamId
+          organizationId: context.organizationId
         });
         return { context };
       }
@@ -90,7 +110,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         if (context.processedFiles!.includes(fileId)) {
           Logger.info('Skipping already processed file', {
             sessionId: context.sessionId,
-            teamId: context.teamId,
+            organizationId: context.organizationId,
             fileId,
             fileName: attachment.name
           });
@@ -103,7 +123,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       if (attachments.length === 0) {
         Logger.info('No new attachments to process after deduplication', {
           sessionId: context.sessionId,
-          teamId: context.teamId
+          organizationId: context.organizationId
         });
         return { context };
       }
@@ -112,13 +132,15 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
       // This ensures users see analysis results for newly uploaded files
       Logger.info('Processing current attachments for file analysis', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         attachmentCount: attachments.length,
         totalAttachments: context.currentAttachments.length
       });
+      
       const analysisResults = [];
 
-      // Process each attachment
+      // Process each attachment synchronously for chat requests
+      // This ensures the AI agent waits for analysis to complete before responding
       for (const attachment of attachments) {
         // Extract file ID from attachment URL
         const fileId = extractFileIdFromUrl(attachment.url);
@@ -131,7 +153,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         if (context.processedFiles!.includes(fileId)) {
           Logger.info('Skipping already processed file', {
             sessionId: context.sessionId,
-            teamId: context.teamId,
+            organizationId: context.organizationId,
             fileId,
             fileName: attachment.name
           });
@@ -141,9 +163,9 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         // Determine analysis type based on file
         const analysisType = determineAnalysisType(attachment);
         
-        Logger.info('Processing file attachment', {
+        Logger.info('Processing file attachment synchronously', {
           sessionId: context.sessionId,
-          teamId: context.teamId,
+          organizationId: context.organizationId,
           fileId,
           fileName: attachment.name,
           analysisType
@@ -156,15 +178,36 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           // Create typed adapter with only the properties needed by analyzeFile
           const fileAnalysisEnv: FileAnalysisEnv = {
             FILES_BUCKET: env.FILES_BUCKET,
-            DB: env.DB
+            DB: env.DB,
+            AI: env.AI,
+            ENABLE_ADOBE_EXTRACT: env.ENABLE_ADOBE_EXTRACT,
+            ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID,
+            ADOBE_CLIENT_SECRET: env.ADOBE_CLIENT_SECRET,
+            ADOBE_TECHNICAL_ACCOUNT_ID: env.ADOBE_TECHNICAL_ACCOUNT_ID,
+            ADOBE_TECHNICAL_ACCOUNT_EMAIL: env.ADOBE_TECHNICAL_ACCOUNT_EMAIL,
+            ADOBE_ORGANIZATION_ID: env.ADOBE_ORGANIZATION_ID,
+            ADOBE_IMS_BASE_URL: env.ADOBE_IMS_BASE_URL,
+            ADOBE_PDF_SERVICES_BASE_URL: env.ADOBE_PDF_SERVICES_BASE_URL,
+            ADOBE_SCOPE: env.ADOBE_SCOPE,
+            CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
+            CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN,
+            CLOUDFLARE_PUBLIC_URL: env.CLOUDFLARE_PUBLIC_URL,
+            AI_MODEL_DEFAULT: env.AI_MODEL_DEFAULT,
+            AI_MAX_TEXT_LENGTH: env.AI_MAX_TEXT_LENGTH,
+            AI_MAX_TABLES: env.AI_MAX_TABLES,
+            AI_MAX_ELEMENTS: env.AI_MAX_ELEMENTS,
+            AI_MAX_STRUCTURED_PAYLOAD_LENGTH: env.AI_MAX_STRUCTURED_PAYLOAD_LENGTH,
+            DEBUG: env.DEBUG
           };
           
-          // Perform file analysis with timeout protection (30 seconds)
+          // CRITICAL FIX: Perform file analysis synchronously with proper awaiting
+          // This ensures the middleware blocks until analysis completes
           const analysis = await withTimeout(
             analyzeFile(fileAnalysisEnv, fileId, analysisQuestion),
             30000
           );
           
+          // Only add results with meaningful confidence (> 0)
           if (analysis && (analysis.confidence as number) > 0) {
             analysisResults.push({
               fileId,
@@ -176,7 +219,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
 
             Logger.info('File analysis completed successfully', {
               sessionId: context.sessionId,
-              teamId: context.teamId,
+              organizationId: context.organizationId,
               fileId,
               fileName: attachment.name,
               confidence: analysis.confidence as number,
@@ -185,45 +228,46 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
           } else {
             Logger.warn('File analysis failed or returned low confidence', {
               sessionId: context.sessionId,
-              teamId: context.teamId,
+              organizationId: context.organizationId,
               fileId,
               fileName: attachment.name,
-              confidence: (analysis?.confidence as number) || 0
+              confidence: (analysis?.confidence as number) || 0,
+              analysisResult: analysis
             });
           }
 
           // Mark file as successfully processed only after analysis completes
           context.processedFiles!.push(fileId);
         } catch (error) {
-        Logger.error('File analysis error in middleware', {
-          sessionId: context.sessionId,
-          teamId: context.teamId,
-          fileName: attachment.name,
-          error: error instanceof Error ? error.message : String(error)
-        });
-        
-        // Add partial result with error message instead of silently failing
-        const fileId = extractFileIdFromUrl(attachment.url);
-        if (fileId) {
-          analysisResults.push({
-            fileId,
+          Logger.error('File analysis error in middleware', {
+            sessionId: context.sessionId,
+            organizationId: context.organizationId,
             fileName: attachment.name,
-            fileType: attachment.type,
-            analysisType: determineAnalysisType(attachment),
-            confidence: 0,
-            summary: `I encountered an issue analyzing "${attachment.name}". This could be due to file format or content issues. Would you like to describe the document to me instead?`,
-            key_facts: [],
-            action_items: ['Describe the document content manually', 'Try uploading in a different format']
+            error: error instanceof Error ? error.message : String(error)
           });
+          
+          // Add partial result with error message instead of silently failing
+          const fileId = extractFileIdFromUrl(attachment.url);
+          if (fileId) {
+            analysisResults.push({
+              fileId,
+              fileName: attachment.name,
+              fileType: attachment.type,
+              analysisType: determineAnalysisType(attachment),
+              confidence: 0,
+              summary: `I encountered an issue analyzing "${attachment.name}". This could be due to file format or content issues. Would you like to describe the document to me instead?`,
+              key_facts: [],
+              action_items: ['Describe the document content manually', 'Try uploading in a different format']
+            });
+          }
         }
       }
-    }
 
-    // If we have analysis results, update context and provide response
+    // Only return a response if we have successful analysis results (confidence > 0)
     if (analysisResults.length > 0) {
       Logger.info('File analysis completed successfully, providing response', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         analysisCount: analysisResults.length
       });
 
@@ -252,7 +296,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
 
       Logger.info('Returning file analysis response from middleware', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         responseLength: response.length
       });
 
@@ -264,7 +308,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
     } else {
       Logger.info('No successful analysis results, continuing pipeline', {
         sessionId: context.sessionId,
-        teamId: context.teamId
+        organizationId: context.organizationId
       });
     }
 
@@ -277,7 +321,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
     } catch (error) {
       Logger.error('File analysis middleware error', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         error: error instanceof Error ? error.message : String(error)
       });
       
@@ -295,7 +339,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
  * Extract file ID from attachment URL
  */
 function extractFileIdFromUrl(url: string): string | null {
-  // Handle URLs like "/api/files/team-session-timestamp-random"
+  // Handle URLs like "/api/files/organization-session-timestamp-random"
   const urlParts = url.split('/api/files/');
   return urlParts.length > 1 ? urlParts[1] : null;
 }

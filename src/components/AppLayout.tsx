@@ -2,12 +2,12 @@ import { FunctionComponent } from 'preact';
 import { useRef, useEffect, useState, useLayoutEffect } from 'preact/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ErrorBoundary } from './ErrorBoundary';
-import { TeamNotFound } from './TeamNotFound';
+import { OrganizationNotFound } from './OrganizationNotFound';
 import LeftSidebar from './LeftSidebar';
 import MobileTopNav from './MobileTopNav';
 import MediaSidebar from './MediaSidebar';
 import PrivacySupportSidebar from './PrivacySupportSidebar';
-import TeamProfile from './TeamProfile';
+import OrganizationProfile from './OrganizationProfile';
 import { DebugOverlay } from './DebugOverlay';
 import { features } from '../config/features';
 import { ChatMessageUI, FileAttachment } from '../../worker/types';
@@ -27,15 +27,15 @@ const messages = {
 };
 
 interface AppLayoutProps {
-  teamNotFound: boolean;
-  teamId: string;
-  onRetryTeamConfig: () => void;
+  organizationNotFound: boolean;
+  organizationId: string;
+  onRetryOrganizationConfig: () => void;
   currentTab: 'chats' | 'matter';
   onTabChange: (tab: 'chats' | 'matter') => void;
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: (open: boolean) => void;
   isSettingsModalOpen?: boolean;
-  teamConfig: {
+  organizationConfig: {
     name: string;
     profileImage: string | null;
     description?: string | null;
@@ -48,15 +48,15 @@ interface AppLayoutProps {
 }
 
 const AppLayout: FunctionComponent<AppLayoutProps> = ({
-  teamNotFound,
-  teamId,
-  onRetryTeamConfig,
+  organizationNotFound,
+  organizationId,
+  onRetryOrganizationConfig,
   currentTab,
   onTabChange,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
   isSettingsModalOpen = false,
-  teamConfig,
+  organizationConfig,
   messages: chatMessages,
   onRequestConsultation,
   onSendMessage,
@@ -186,8 +186,8 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
     debounceMs: 0
   });
 
-  if (teamNotFound) {
-    return <TeamNotFound teamId={teamId} onRetry={onRetryTeamConfig} />;
+  if (organizationNotFound) {
+    return <OrganizationNotFound organizationId={organizationId} onRetry={onRetryOrganizationConfig} />;
   }
 
   // Async-safe wrapper for consultation request
@@ -215,10 +215,10 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
               onGoToChats={handleGoToChats}
               onGoToMatter={handleGoToMatter}
               matterStatus={matterStatus}
-              teamConfig={{
-                name: teamConfig.name,
-                profileImage: teamConfig.profileImage,
-                teamId
+              organizationConfig={{
+                name: organizationConfig.name,
+                profileImage: organizationConfig.profileImage,
+                organizationId
               }}
             />
           </div>
@@ -272,10 +272,10 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
                     }}
                     onClose={() => onToggleMobileSidebar(false)}
                     matterStatus={matterStatus}
-                    teamConfig={{
-                      name: teamConfig.name,
-                      profileImage: teamConfig.profileImage,
-                      teamId
+                    organizationConfig={{
+                      name: organizationConfig.name,
+                      profileImage: organizationConfig.profileImage,
+                      organizationId
                     }}
                   />
                 </motion.div>
@@ -308,11 +308,11 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
       {/* Right Sidebar - Fixed width, hidden on mobile */}
       <div className="w-80 overflow-y-auto scrollbar-hide hidden lg:block p-2">
         <div className="bg-light-card-bg dark:bg-dark-card-bg rounded-lg p-6 text-gray-900 dark:text-white flex flex-col gap-6 h-full">
-          <TeamProfile
-            name={teamConfig.name}
-            profileImage={teamConfig.profileImage}
-            teamId={teamId}
-            description={teamConfig.description}
+          <OrganizationProfile
+            name={organizationConfig.name}
+            profileImage={organizationConfig.profileImage}
+            organizationId={organizationId}
+            description={organizationConfig.description}
             variant="sidebar"
             showVerified={true}
           />
@@ -332,7 +332,7 @@ const AppLayout: FunctionComponent<AppLayoutProps> = ({
           )}
 
           {/* Activity Timeline Section */}
-          <ActivityTimeline teamId={teamId} />
+          <ActivityTimeline organizationId={organizationId} />
 
           {/* Media Section */}
           <MediaSidebar messages={chatMessages} />

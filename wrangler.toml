@@ -30,7 +30,9 @@ database_id = "e4ed51fa-4787-4222-afed-bcddfefd13bf"  # blawby-ai-chatbot
 # Blawby API Configuration
 [vars]
 BLAWBY_API_URL = "https://staging.blawby.com"
-BLAWBY_TEAM_ULID = "01jq70jnstyfzevc6423czh50e"
+BLAWBY_ORGANIZATION_ULID = "01jq70jnstyfzevc6423czh50e"
+BETTER_AUTH_URL = "http://localhost:8787"
+DOMAIN = "localhost"
 # BLAWBY_API_TOKEN should be set via: wrangler secret put BLAWBY_API_TOKEN
 
 # Lawyer Search API Configuration
@@ -44,7 +46,7 @@ LAWYER_SEARCH_API_URL = "https://search.blawby.com"
 # Set via: wrangler secret put ADOBE_TECHNICAL_ACCOUNT_ID
 # Set via: wrangler secret put ADOBE_TECHNICAL_ACCOUNT_EMAIL
 # Set via: wrangler secret put ADOBE_ORGANIZATION_ID
-ENABLE_ADOBE_EXTRACT = "true"
+ENABLE_ADOBE_EXTRACT = true
 ADOBE_IMS_BASE_URL = "https://ims-na1.adobelogin.com"
 ADOBE_PDF_SERVICES_BASE_URL = "https://pdf-services.adobe.io"
 ADOBE_SCOPE = "openid,AdobeID,DCAPI"
@@ -58,8 +60,8 @@ CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
 
 # Environment flags
 NODE_ENV = "development"
-DEBUG = "false"
-VITE_DEBUG_OVERLAY = "false"
+DEBUG = false
+VITE_DEBUG_OVERLAY = false
 LOG_LEVEL = "debug"
 
 # Authentication removed - frontend-only application
@@ -69,8 +71,8 @@ AI_MODEL = "@cf/openai/gpt-oss-20b"
 AI_PROVIDER_DEFAULT = "workers-ai"
 AI_MODEL_DEFAULT = "@cf/openai/gpt-oss-20b"
 AI_MODEL_FALLBACK = "@cf/openai/gpt-oss-20b"
-ENABLE_WORKERS_AI = "true"
-ENABLE_GATEWAY_OPENAI = "false"
+ENABLE_WORKERS_AI = true
+ENABLE_GATEWAY_OPENAI = false
 
 # Analysis Configuration (used in worker/routes/analyze.ts)
 ANALYSIS_TIMEOUT_MS = "60000"
@@ -89,9 +91,16 @@ bucket_name = "blawby-ai-files"
 queue = "doc-events"
 binding = "DOC_EVENTS"
 
+[[queues.producers]]
+queue = "paralegal-tasks"
+binding = "PARALEGAL_TASKS"
+
 # Queue consumers
 [[queues.consumers]]
 queue = "doc-events"
+
+[[queues.consumers]]
+queue = "paralegal-tasks"
 
 # Durable Objects migrations removed - no longer using Durable Objects
 
@@ -108,6 +117,9 @@ d1_databases = [
 [[env.dev.queues.producers]]
 queue = "doc-events"
 binding = "DOC_EVENTS"
+[[env.dev.queues.producers]]
+queue = "paralegal-tasks"
+binding = "PARALEGAL_TASKS"
 [[env.dev.r2_buckets]]
 binding = "FILES_BUCKET"
 bucket_name = "blawby-ai-files"
@@ -116,15 +128,16 @@ bucket_name = "blawby-ai-files"
 [env.dev.vars]
 NODE_ENV = "development"
 LOG_LEVEL = "debug"
-ENABLE_ADOBE_EXTRACT = "true"
+ENABLE_ADOBE_EXTRACT = true
 ADOBE_IMS_BASE_URL = "https://ims-na1.adobelogin.com"
 ADOBE_PDF_SERVICES_BASE_URL = "https://pdf-services.adobe.io"
 ADOBE_SCOPE = "openid,AdobeID,DCAPI"
 AI_PROVIDER_DEFAULT = "workers-ai"
 AI_MODEL_DEFAULT = "@cf/openai/gpt-oss-20b"
 AI_MODEL_FALLBACK = "@cf/openai/gpt-oss-20b"
-ENABLE_WORKERS_AI = "true"
-ENABLE_GATEWAY_OPENAI = "false"
+ENABLE_WORKERS_AI = true
+ENABLE_GATEWAY_OPENAI = false
+DOMAIN = "localhost"
 
 # Domain configuration for ai.blawby.com
 [env.production]
@@ -140,19 +153,36 @@ d1_databases = [
 [env.production.vars]
 NODE_ENV = "production"
 LOG_LEVEL = "warn"
-ENABLE_ADOBE_EXTRACT = "true"
+ENABLE_ADOBE_EXTRACT = true
 ADOBE_IMS_BASE_URL = "https://ims-na1.adobelogin.com"
 ADOBE_PDF_SERVICES_BASE_URL = "https://pdf-services.adobe.io"
 ADOBE_SCOPE = "openid,AdobeID,DCAPI"
 AI_PROVIDER_DEFAULT = "workers-ai"
 AI_MODEL_DEFAULT = "@cf/openai/gpt-oss-20b"
 AI_MODEL_FALLBACK = "@cf/openai/gpt-oss-20b"
-ENABLE_WORKERS_AI = "true"
-ENABLE_GATEWAY_OPENAI = "false"
+ENABLE_WORKERS_AI = true
+ENABLE_GATEWAY_OPENAI = false
+BETTER_AUTH_URL = "https://ai.blawby.com"
+DOMAIN = "ai.blawby.com"
+
+# Duplicate top-level vars for production environment
+BLAWBY_API_URL = "https://staging.blawby.com"
+BLAWBY_ORGANIZATION_ULID = "01jq70jnstyfzevc6423czh50e"
+LAWYER_SEARCH_API_URL = "https://search.blawby.com"
+CLOUDFLARE_PUBLIC_URL = "https://blawby-ai-chatbot.paulchrisluke.workers.dev"
+DEBUG = false
+VITE_DEBUG_OVERLAY = false
+AI_MODEL = "@cf/openai/gpt-oss-20b"
+ANALYSIS_TIMEOUT_MS = "60000"
+RATE_LIMIT_REQUESTS_PER_MINUTE = "60"
+RATE_LIMIT_BURST_SIZE = "10"
 # Updated to use modern nested producers syntax
 [[env.production.queues.producers]]
 queue = "doc-events"
 binding = "DOC_EVENTS"
+[[env.production.queues.producers]]
+queue = "paralegal-tasks"
+binding = "PARALEGAL_TASKS"
 [[env.production.r2_buckets]]
 binding = "FILES_BUCKET"
 bucket_name = "blawby-ai-files"

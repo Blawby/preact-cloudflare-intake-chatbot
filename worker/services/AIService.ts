@@ -1,12 +1,12 @@
-// Import TeamConfig helpers from TeamService instead of defining it here
-import { TeamConfig, buildDefaultTeamConfig } from './TeamService.js';
+// Import OrganizationConfig helpers from OrganizationService instead of defining it here
+import { OrganizationConfig, buildDefaultOrganizationConfig } from './OrganizationService.js';
 import { Logger } from '../utils/logger.js';
 import type { Env } from '../types.js';
 import type { Ai } from '@cloudflare/workers-types';
 
 // Optimized AI Service with caching and timeouts
 export class AIService {
-  private teamConfigCache = new Map<string, { config: TeamConfig; timestamp: number }>();
+  private organizationConfigCache = new Map<string, { config: OrganizationConfig; timestamp: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(private ai: Ai, private env: Env) {
@@ -40,43 +40,43 @@ export class AIService {
     }
   }
   
-  async getTeamConfig(teamId: string): Promise<TeamConfig> {
-    Logger.debug('AIService.getTeamConfig called with teamId:', teamId);
-    const cached = this.teamConfigCache.get(teamId);
+  async getOrganizationConfig(organizationId: string): Promise<OrganizationConfig> {
+    Logger.debug('AIService.getOrganizationConfig called with organizationId:', organizationId);
+    const cached = this.organizationConfigCache.get(organizationId);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      Logger.debug('Returning cached team config');
+      Logger.debug('Returning cached organization config');
       return cached.config;
     }
 
     try {
-      // Use TeamService to get full team object
-      const { TeamService } = await import('./TeamService.js');
-      const teamService = new TeamService(this.env);
-      const team = await teamService.getTeam(teamId);
+      // Use OrganizationService to get full organization object
+      const { OrganizationService } = await import('./OrganizationService.js');
+      const organizationService = new OrganizationService(this.env);
+      const organization = await organizationService.getOrganization(organizationId);
       
-      if (team) {
-        Logger.logTeamConfig(team, true); // Include sanitized config in debug mode
-        this.teamConfigCache.set(teamId, { config: team.config, timestamp: Date.now() });
-        return team.config;
+      if (organization) {
+        Logger.logOrganizationConfig(organization, true); // Include sanitized config in debug mode
+        this.organizationConfigCache.set(organizationId, { config: organization.config, timestamp: Date.now() });
+        return organization.config;
       } else {
-        Logger.info('No team found in database');
-        Logger.debug('Available teams:');
-        const allTeams = await teamService.listTeams();
-        Logger.debug('All teams:', allTeams.map(t => ({ id: t.id, slug: t.slug })));
+        Logger.info('No organization found in database');
+        Logger.debug('Available organizations:');
+        const allOrganizations = await organizationService.listOrganizations();
+        Logger.debug('All organizations:', allOrganizations.map(t => ({ id: t.id, slug: t.slug })));
       }
     } catch (error) {
-      Logger.warn('Failed to fetch team config:', error);
+      Logger.warn('Failed to fetch organization config:', error);
     }
-    Logger.info('Returning default team config');
-    return buildDefaultTeamConfig(this.env);
+    Logger.info('Returning default organization config');
+    return buildDefaultOrganizationConfig(this.env);
   }
 
-  // Clear cache for a specific team or all teams
-  clearCache(teamId?: string): void {
-    if (teamId) {
-      this.teamConfigCache.delete(teamId);
+  // Clear cache for a specific organization or all organizations
+  clearCache(organizationId?: string): void {
+    if (organizationId) {
+      this.organizationConfigCache.delete(organizationId);
     } else {
-      this.teamConfigCache.clear();
+      this.organizationConfigCache.clear();
     }
   }
 

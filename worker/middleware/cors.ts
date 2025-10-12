@@ -177,8 +177,8 @@ export function createDevelopmentCorsOptions(): CorsOptions {
   return {
     allowedOrigins: '*',
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    allowCredentials: false, // Do not allow credentials for security
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+    allowCredentials: false, // Cannot be true with wildcard origin
     maxAge: 86400,
     exposeHeaders: ['Content-Disposition', 'Content-Length']
   };

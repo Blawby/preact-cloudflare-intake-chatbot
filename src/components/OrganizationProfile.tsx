@@ -1,32 +1,34 @@
 import { FaceSmileIcon, CheckBadgeIcon } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
-interface TeamProfileProps {
+interface OrganizationProfileProps {
 	name: string;
 	profileImage: string | null;
-	teamId: string;
+	organizationId: string;
 	description?: string | null;
 	variant?: 'sidebar' | 'welcome';
 	showVerified?: boolean;
 }
 
-export default function TeamProfile({ 
+export default function OrganizationProfile({ 
 	name, 
 	profileImage, 
-	teamId, 
+	organizationId, 
 	description,
 	variant = 'sidebar',
 	showVerified = true 
-}: TeamProfileProps) {
+}: OrganizationProfileProps) {
+	const { t } = useTranslation('organization');
 	const isWelcome = variant === 'welcome';
 	
 	return (
 		<div className={`flex flex-col items-center gap-3 ${variant === 'welcome' ? 'p-6' : 'p-4'}`}>
-			{/* Team Logo */}
+			{/* Organization Logo */}
 			<div className="flex items-center justify-center">
 				{profileImage ? (
 					<img 
 						src={profileImage} 
-						alt={`${name} logo`}
+						alt={t('profile.logoAlt', { name })}
 						className={`rounded-lg object-cover ${isWelcome ? 'w-16 h-16' : 'w-12 h-12'}`}
 					/>
 				) : (
@@ -36,20 +38,20 @@ export default function TeamProfile({
 				)}
 			</div>
 
-			{/* Team Name with Verified Badge */}
+			{/* Organization Name with Verified Badge */}
 			<div className="flex items-center justify-center gap-2 w-full">
 				<h3 className="text-base sm:text-lg lg:text-xl font-semibold text-center m-0 text-gray-900 dark:text-white leading-tight truncate min-w-0" title={name}>{name}</h3>
 				{showVerified && variant === 'welcome' && (
-					<CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white flex-shrink-0" aria-label="Verified" title="Verified" />
+					<CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white flex-shrink-0" aria-label={t('profile.verified')} title={t('profile.verified')} />
 				)}
 			</div>
 
-			{/* Team Slug */}
+			{/* Organization Slug */}
 			<div className="text-center w-full">
-				<span className="text-sm sm:text-base lg:text-lg font-medium text-[#d4af37] truncate block" title={`@${teamId}`}>@{teamId}</span>
+				<span className="text-sm sm:text-base lg:text-lg font-medium text-[#d4af37] truncate block" title={t('profile.slug', { id: organizationId })}>@{organizationId}</span>
 			</div>
 
-			{/* Team Description - Only show for welcome variant */}
+			{/* Organization Description - Only show for welcome variant */}
 			{description && variant === 'welcome' && (
 				<div className="text-center">
 					<p className="text-gray-700 dark:text-gray-400 text-center text-sm sm:text-base lg:text-lg leading-relaxed max-w-xs mx-auto line-clamp-3">{description}</p>

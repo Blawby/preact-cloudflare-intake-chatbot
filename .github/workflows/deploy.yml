@@ -84,7 +84,7 @@ jobs:
         # For now, we'll just log the failure for manual intervention
         echo "Manual rollback may be required. Check Cloudflare dashboard."
 
-    # Teams are managed via the API — see TEAM_API_MIGRATION.md for usage
+    # Organizations are managed via the API — see ORGANIZATION_API_MIGRATION.md for usage
 
     - name: Deploy frontend to Cloudflare Pages
       uses: cloudflare/pages-action@v1

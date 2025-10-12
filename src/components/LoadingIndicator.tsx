@@ -1,4 +1,4 @@
-import { memo } from 'preact/hooks';
+import { memo } from 'preact/compat';
 
 const LoadingIndicator = memo(() => {
   return (
