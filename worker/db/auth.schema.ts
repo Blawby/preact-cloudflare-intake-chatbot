@@ -33,6 +33,7 @@ export const accounts = sqliteTable("accounts", {
   accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp" }),
   refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp" }),
   scope: text("scope"),
+  password: text("password"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 }, (table) => ({
@@ -40,17 +41,6 @@ export const accounts = sqliteTable("accounts", {
   uniqueProviderAccount: unique("unique_provider_account").on(table.providerId, table.accountId),
   // Ensure one account per provider per user
   uniqueProviderUser: unique("unique_provider_user").on(table.providerId, table.userId),
-}));
-
-export const passwords = sqliteTable("passwords", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  hashedPassword: text("hashed_password").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-}, (table) => ({
-  // Ensure one password per user
-  uniqueUser: unique("unique_user_password").on(table.userId),
 }));
 
 export const verifications = sqliteTable("verifications", {

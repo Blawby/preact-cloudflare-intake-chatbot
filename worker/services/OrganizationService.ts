@@ -415,7 +415,7 @@ export class OrganizationService {
       if (userId) {
         // Get organizations where user is a member
         const orgRows = await this.env.DB.prepare(`
-          SELECT o.id, o.name, o.slug, o.domain, o.config, o.created_at
+          SELECT o.id, o.name, o.slug, o.domain, o.config, o.created_at, o.updated_at
           FROM organizations o
           INNER JOIN members m ON o.id = m.organization_id
           WHERE m.user_id = ?
@@ -434,13 +434,15 @@ export class OrganizationService {
             domain: row.domain as string | undefined,
             config: normalizedConfig,
             createdAt: new Date(row.created_at as string).getTime(),
-            updatedAt: new Date(row.updated_at as string).getTime(),
+            updatedAt: row.updated_at && !isNaN(new Date(row.updated_at as string).getTime())
+              ? new Date(row.updated_at as string).getTime()
+              : new Date(row.created_at as string).getTime(),
           };
         });
       } else {
         // Get all organizations (for admin purposes)
         const orgRows = await this.env.DB.prepare(`
-          SELECT id, name, slug, domain, config, created_at
+          SELECT id, name, slug, domain, config, created_at, updated_at
           FROM organizations
           ORDER BY created_at DESC
         `).all();
@@ -457,7 +459,9 @@ export class OrganizationService {
             domain: row.domain as string | undefined,
             config: normalizedConfig,
             createdAt: new Date(row.created_at as string).getTime(),
-            updatedAt: new Date(row.updated_at as string).getTime(),
+            updatedAt: row.updated_at && !isNaN(new Date(row.updated_at as string).getTime())
+              ? new Date(row.updated_at as string).getTime()
+              : new Date(row.created_at as string).getTime(),
           };
         });
       }
@@ -540,7 +544,7 @@ export class OrganizationService {
         organization.id,
         organization.slug,
         organization.name,
-        organization.domain,
+        organization.domain ?? null,
         JSON.stringify(organization.config),
         organization.createdAt,
         organization.updatedAt

@@ -357,6 +357,16 @@ CREATE TABLE IF NOT EXISTS invitations (
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
 
+-- Organization events table for audit logging
+CREATE TABLE IF NOT EXISTS organization_events (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  actor_user_id TEXT,
+  metadata JSON,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+
 -- Sessions table for Better Auth
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -367,18 +377,6 @@ CREATE TABLE IF NOT EXISTS sessions (
   ip_address TEXT,
   user_agent TEXT,
   user_id TEXT NOT NULL
-);
-
--- Passwords table for local authentication (SECURE)
--- This separates password-based auth from OAuth, following security best practices
-CREATE TABLE IF NOT EXISTS passwords (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  hashed_password TEXT NOT NULL, -- Store bcrypt/scrypt hashes, never plain text
-  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
-  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
-  -- Ensure one password per user
-  UNIQUE(user_id)
 );
 
 -- Accounts table for OAuth providers (SECURE)
@@ -395,6 +393,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   access_token_expires_at INTEGER,
   refresh_token_expires_at INTEGER,
   scope TEXT,
+  password TEXT,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   -- Critical: Prevent duplicate provider accounts
@@ -418,7 +417,6 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(email, email_verified);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_passwords_user_id ON passwords(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider ON accounts(provider_id, account_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider_user ON accounts(provider_id, user_id);
@@ -431,6 +429,7 @@ CREATE INDEX IF NOT EXISTS idx_members_org ON members(organization_id);
 CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id);
 CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
 CREATE INDEX IF NOT EXISTS idx_invitations_organization ON invitations(organization_id);
+CREATE INDEX IF NOT EXISTS idx_org_events_org_created ON organization_events(organization_id, created_at DESC);
 
 -- Create indexes for user_id columns
 CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
@@ -450,8 +449,7 @@ SELECT
   -- Count OAuth providers
   COUNT(DISTINCT a.provider_id) as oauth_provider_count,
   -- Check if user has local password
-  CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END as has_local_password
+  MAX(CASE WHEN a.password IS NOT NULL THEN 1 ELSE 0 END) as has_local_password
 FROM users u
 LEFT JOIN accounts a ON u.id = a.user_id
-LEFT JOIN passwords p ON u.id = p.user_id
-GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at, p.id;
+GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at;

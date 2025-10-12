@@ -226,16 +226,17 @@ async function waitForSessionReady(
     try {
       // Check if user exists in the database
       const user = await env.DB.prepare(`
-        SELECT id FROM user WHERE id = ?
-      `).bind(userId).first();
+        SELECT id FROM users WHERE id = ?
+      `).bind(userId).first<{ id: string }>();
       
       if (user && user.id === userId) {
         console.log(`✅ Session ready for user ${userId} after ${attempt} attempt(s)`);
         return;
       }
-    } catch (_error) {
-      // Session not ready yet, continue polling
-      console.log(`⏳ Session not ready for user ${userId}, attempt ${attempt}/${maxAttempts}`);
+    } catch (error) {
+      console.warn(`⏳ Session not ready for user ${userId}, attempt ${attempt}/${maxAttempts}`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     
     // If not the last attempt, wait with exponential backoff
