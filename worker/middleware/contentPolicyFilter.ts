@@ -63,6 +63,7 @@ const LEGAL_CONTEXT_KEYWORDS = [
  * Now conversation-aware: considers full conversation context for better accuracy
  */
 export const contentPolicyFilter: PipelineMiddleware = {
+  kind: 'standard',
   name: 'contentPolicyFilter',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, _organizationConfig: OrganizationConfig, _env: Env) => {

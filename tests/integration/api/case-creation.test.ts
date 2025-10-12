@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
 
+// Conditional debug logger - only logs when TEST_DEBUG environment variable is set
+const debugLog = (...args: unknown[]) => {
+  if (process.env.TEST_DEBUG) {
+    console.log('[TEST_DEBUG]', ...args);
+  }
+};
+
 // Helper function to parse SSE events from response data
 function parseSSEEvents(responseData: string) {
   return responseData
@@ -45,6 +52,31 @@ function validateContactFormEvent(contactFormEvent: Record<string, unknown>) {
   expect(contactFormEvent).toHaveProperty('data');
   expect((contactFormEvent.data as Record<string, unknown>)).toHaveProperty('fields');
   expect(Array.isArray((contactFormEvent.data as Record<string, unknown>).fields)).toBe(true);
+}
+
+// Helper function to validate agent response patterns
+function validateAgentResponse(
+  textEvents: Record<string, unknown>[],
+  toolCallEvents: Record<string, unknown>[] = [],
+  toolResultEvents: Record<string, unknown>[] = []
+) {
+  expect(textEvents.length).toBeGreaterThan(0);
+  
+  // Normalize event text (handle both text and content properties)
+  const fullText = textEvents.map(e => e.text || e.content || '').join(' ').toLowerCase();
+  
+  // Check if the agent is calling tools by examining actual event arrays
+  const hasToolCall = toolCallEvents.length > 0 || toolResultEvents.length > 0;
+  
+  // Perform conditional assertions based on tool call detection
+  if (hasToolCall) {
+    debugLog('Agent is calling tools (detected via event arrays)');
+  } else {
+    debugLog('Agent responded conversationally without tool calls');
+    expect(fullText).toMatch(/legal|law|help|matter|assist|attorney|counsel|case/);
+  }
+  
+  return { fullText, hasToolCall };
 }
 
 // Helper function to handle streaming responses
@@ -133,8 +165,8 @@ describe('Matter Creation API Integration - Real API', () => {
       expect(events.length).toBeGreaterThan(0);
       
       // Debug: Log what events we actually got
-      console.log('Total events received:', events.length);
-      console.log('Event types:', events.map(e => e.type));
+      debugLog('Total events received:', events.length);
+      debugLog('Event types:', events.map(e => e.type));
       
       // For employment law, expect both text response and matter canvas
       const textEvents = events.filter(event => event.type === 'text');
@@ -144,39 +176,25 @@ describe('Matter Creation API Integration - Real API', () => {
       
       // Debug: Log what events we actually got
       const eventTypes = events.map(e => e.type);
-      console.log('Event types found:', eventTypes);
-      console.log('Tool call events:', toolCallEvents.length);
-      console.log('Tool result events:', toolResultEvents.length);
-      console.log('Text events:', textEvents.length);
-      console.log('Matter canvas events:', matterCanvasEvents.length);
+      debugLog('Event types found:', eventTypes);
+      debugLog('Tool call events:', toolCallEvents.length);
+      debugLog('Tool result events:', toolResultEvents.length);
+      debugLog('Text events:', textEvents.length);
+      debugLog('Matter canvas events:', matterCanvasEvents.length);
       
       // If no tool calls were made, the agent is not using tools as expected
       if (toolCallEvents.length === 0) {
-        console.log('No tool calls made - agent responded conversationally instead of using tools');
-        console.log('Text content:', textEvents.map(e => e.text).join(' '));
+        debugLog('No tool calls made - agent responded conversationally instead of using tools');
+        debugLog('Text content:', textEvents.map(e => e.text).join(' '));
       }
       
-      expect(textEvents.length).toBeGreaterThan(0);
-      
-      // For real API tests, we can't guarantee tool execution due to environment limitations
-      // Just verify the agent responds appropriately to legal inquiries
-      const fullText = textEvents.map(e => e.text).join(' ').toLowerCase();
-      
-      // Check if the agent is calling tools (they might be embedded in text)
-      const hasToolCall = fullText.includes('tool_call') || fullText.includes('show_contact_form') || fullText.includes('create_matter');
-      
-      if (hasToolCall) {
-        console.log('Agent is calling tools (embedded in text response)');
-        expect(fullText).toMatch(/tool_call|show_contact_form|create_matter/);
-      } else {
-        console.log('Agent responded conversationally without tool calls');
-        expect(fullText).toMatch(/sorry|fired|workplace|assess|steps|legal|employment|help|matter|law|when|did|happen/);
-      }
+      // Validate agent response using centralized helper
+      const { fullText } = validateAgentResponse(textEvents, toolCallEvents, toolResultEvents);
       
       // Log what we actually got for debugging
-      console.log('Agent response:', fullText.substring(0, 200));
-      console.log('Tool calls made:', toolCallEvents.length);
-      console.log('Matter canvas events:', matterCanvasEvents.length);
+      debugLog('Agent response:', fullText.substring(0, 200));
+      debugLog('Tool calls made:', toolCallEvents.length);
+      debugLog('Matter canvas events:', matterCanvasEvents.length);
       
       // Validate event structures
       if (textEvents.length > 0) {
@@ -214,18 +232,11 @@ describe('Matter Creation API Integration - Real API', () => {
       // For divorce/contact form, expect text response and contact form
       const textEvents = events.filter(event => event.type === 'text');
       const contactFormEvents = events.filter(event => event.type === 'contact_form');
+      const toolCallEvents = events.filter(event => event.type === 'tool_call');
+      const toolResultEvents = events.filter(event => event.type === 'tool_result');
       
-      expect(textEvents.length).toBeGreaterThan(0);
-      
-      // For real API tests, verify agent responds appropriately to legal inquiries
-      const fullText = textEvents.map(e => e.text || e.content || '').join(' ').toLowerCase();
-      const hasToolCall = fullText.includes('tool_call') || fullText.includes('show_contact_form') || fullText.includes('create_matter');
-      
-      if (hasToolCall) {
-        expect(fullText).toMatch(/tool_call|show_contact_form|create_matter/);
-      } else {
-        expect(fullText).toMatch(/sorry|fired|workplace|assess|steps|legal|employment|help|matter|law|when|did|happen/);
-      }
+      // Validate agent response using centralized helper
+      validateAgentResponse(textEvents, toolCallEvents, toolResultEvents);
       
       // Validate event structures
       if (textEvents.length > 0) {
@@ -261,18 +272,11 @@ describe('Matter Creation API Integration - Real API', () => {
       // For business law, expect both text response and matter canvas
       const textEvents = events.filter(event => event.type === 'text');
       const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
+      const toolCallEvents = events.filter(event => event.type === 'tool_call');
+      const toolResultEvents = events.filter(event => event.type === 'tool_result');
       
-      expect(textEvents.length).toBeGreaterThan(0);
-      
-      // For real API tests, verify agent responds appropriately to legal inquiries
-      const fullText = textEvents.map(e => e.text || e.content || '').join(' ').toLowerCase();
-      const hasToolCall = fullText.includes('tool_call') || fullText.includes('show_contact_form') || fullText.includes('create_matter');
-      
-      if (hasToolCall) {
-        expect(fullText).toMatch(/tool_call|show_contact_form|create_matter/);
-      } else {
-        expect(fullText).toMatch(/sorry|fired|workplace|assess|steps|legal|employment|help|matter|law|when|did|happen/);
-      }
+      // Validate agent response using centralized helper
+      validateAgentResponse(textEvents, toolCallEvents, toolResultEvents);
       
       // Validate event structures
       if (textEvents.length > 0) {
@@ -309,18 +313,11 @@ describe('Matter Creation API Integration - Real API', () => {
       const textEvents = events.filter(event => event.type === 'text');
       const contactFormEvents = events.filter(event => event.type === 'contact_form');
       const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
+      const toolCallEvents = events.filter(event => event.type === 'tool_call');
+      const toolResultEvents = events.filter(event => event.type === 'tool_result');
       
-      expect(textEvents.length).toBeGreaterThan(0);
-      
-      // For real API tests, verify agent responds appropriately to legal inquiries
-      const fullText = textEvents.map(e => e.text || e.content || '').join(' ').toLowerCase();
-      const hasToolCall = fullText.includes('tool_call') || fullText.includes('show_contact_form') || fullText.includes('create_matter');
-      
-      if (hasToolCall) {
-        expect(fullText).toMatch(/tool_call|show_contact_form|create_matter/);
-      } else {
-        expect(fullText).toMatch(/sorry|fired|workplace|assess|steps|legal|employment|help|matter|law|when|did|happen/);
-      }
+      // Validate agent response using centralized helper
+      validateAgentResponse(textEvents, toolCallEvents, toolResultEvents);
       // Matter canvas events are not guaranteed in real API tests
       // The agent might respond conversationally instead of using tools
       
@@ -362,18 +359,11 @@ describe('Matter Creation API Integration - Real API', () => {
       const textEvents = events.filter(event => event.type === 'text');
       const contactFormEvents = events.filter(event => event.type === 'contact_form');
       const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
+      const toolCallEvents = events.filter(event => event.type === 'tool_call');
+      const toolResultEvents = events.filter(event => event.type === 'tool_result');
       
-      expect(textEvents.length).toBeGreaterThan(0);
-      
-      // For real API tests, verify agent responds appropriately to legal inquiries
-      const fullText = textEvents.map(e => e.text || e.content || '').join(' ').toLowerCase();
-      const hasToolCall = fullText.includes('tool_call') || fullText.includes('show_contact_form') || fullText.includes('create_matter');
-      
-      if (hasToolCall) {
-        expect(fullText).toMatch(/tool_call|show_contact_form|create_matter/);
-      } else {
-        expect(fullText).toMatch(/sorry|fired|workplace|assess|steps|legal|employment|help|matter|law|when|did|happen/);
-      }
+      // Validate agent response using centralized helper
+      validateAgentResponse(textEvents, toolCallEvents, toolResultEvents);
       // Matter canvas events are not guaranteed in real API tests
       // The agent might respond conversationally instead of using tools
       
@@ -415,18 +405,11 @@ describe('Matter Creation API Integration - Real API', () => {
       const textEvents = events.filter(event => event.type === 'text');
       const contactFormEvents = events.filter(event => event.type === 'contact_form');
       const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
+      const toolCallEvents = events.filter(event => event.type === 'tool_call');
+      const toolResultEvents = events.filter(event => event.type === 'tool_result');
       
-      expect(textEvents.length).toBeGreaterThan(0);
-      
-      // For real API tests, verify agent responds appropriately to legal inquiries
-      const fullText = textEvents.map(e => e.text || e.content || '').join(' ').toLowerCase();
-      const hasToolCall = fullText.includes('tool_call') || fullText.includes('show_contact_form') || fullText.includes('create_matter');
-      
-      if (hasToolCall) {
-        expect(fullText).toMatch(/tool_call|show_contact_form|create_matter/);
-      } else {
-        expect(fullText).toMatch(/sorry|fired|workplace|assess|steps|legal|employment|help|matter|law|when|did|happen/);
-      }
+      // Validate agent response using centralized helper
+      validateAgentResponse(textEvents, toolCallEvents, toolResultEvents);
       // Matter canvas events are not guaranteed in real API tests
       // The agent might respond conversationally instead of using tools
       
@@ -468,18 +451,11 @@ describe('Matter Creation API Integration - Real API', () => {
       const textEvents = events.filter(event => event.type === 'text');
       const contactFormEvents = events.filter(event => event.type === 'contact_form');
       const matterCanvasEvents = events.filter(event => event.type === 'matter_canvas');
+      const toolCallEvents = events.filter(event => event.type === 'tool_call');
+      const toolResultEvents = events.filter(event => event.type === 'tool_result');
       
-      expect(textEvents.length).toBeGreaterThan(0);
-      
-      // For real API tests, verify agent responds appropriately to legal inquiries
-      const fullText = textEvents.map(e => e.text || e.content || '').join(' ').toLowerCase();
-      const hasToolCall = fullText.includes('tool_call') || fullText.includes('show_contact_form') || fullText.includes('create_matter');
-      
-      if (hasToolCall) {
-        expect(fullText).toMatch(/tool_call|show_contact_form|create_matter/);
-      } else {
-        expect(fullText).toMatch(/sorry|fired|workplace|assess|steps|legal|employment|help|matter|law|when|did|happen/);
-      }
+      // Validate agent response using centralized helper
+      validateAgentResponse(textEvents, toolCallEvents, toolResultEvents);
       // Matter canvas events are not guaranteed in real API tests
       // The agent might respond conversationally instead of using tools
       

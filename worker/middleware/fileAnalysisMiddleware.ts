@@ -73,6 +73,7 @@ type AnalysisResult = {
  * Updates conversation context with analysis results for downstream middleware
  */
 export const fileAnalysisMiddleware: PipelineMiddleware = {
+  kind: 'standard',
   name: 'fileAnalysisMiddleware',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {
@@ -135,9 +136,11 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         attachmentCount: attachments.length,
         totalAttachments: context.currentAttachments.length
       });
+      
       const analysisResults = [];
 
-      // Process each attachment
+      // Process each attachment synchronously for chat requests
+      // This ensures the AI agent waits for analysis to complete before responding
       for (const attachment of attachments) {
         // Extract file ID from attachment URL
         const fileId = extractFileIdFromUrl(attachment.url);
@@ -160,7 +163,7 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
         // Determine analysis type based on file
         const analysisType = determineAnalysisType(attachment);
         
-        Logger.info('Processing file attachment', {
+        Logger.info('Processing file attachment synchronously', {
           sessionId: context.sessionId,
           organizationId: context.organizationId,
           fileId,
@@ -197,12 +200,14 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
             DEBUG: env.DEBUG
           };
           
-          // Perform file analysis with timeout protection (30 seconds)
+          // CRITICAL FIX: Perform file analysis synchronously with proper awaiting
+          // This ensures the middleware blocks until analysis completes
           const analysis = await withTimeout(
             analyzeFile(fileAnalysisEnv, fileId, analysisQuestion),
             30000
           );
           
+          // Only add results with meaningful confidence (> 0)
           if (analysis && (analysis.confidence as number) > 0) {
             analysisResults.push({
               fileId,
@@ -226,38 +231,39 @@ export const fileAnalysisMiddleware: PipelineMiddleware = {
               organizationId: context.organizationId,
               fileId,
               fileName: attachment.name,
-              confidence: (analysis?.confidence as number) || 0
+              confidence: (analysis?.confidence as number) || 0,
+              analysisResult: analysis
             });
           }
 
           // Mark file as successfully processed only after analysis completes
           context.processedFiles!.push(fileId);
         } catch (error) {
-        Logger.error('File analysis error in middleware', {
-          sessionId: context.sessionId,
-          organizationId: context.organizationId,
-          fileName: attachment.name,
-          error: error instanceof Error ? error.message : String(error)
-        });
-        
-        // Add partial result with error message instead of silently failing
-        const fileId = extractFileIdFromUrl(attachment.url);
-        if (fileId) {
-          analysisResults.push({
-            fileId,
+          Logger.error('File analysis error in middleware', {
+            sessionId: context.sessionId,
+            organizationId: context.organizationId,
             fileName: attachment.name,
-            fileType: attachment.type,
-            analysisType: determineAnalysisType(attachment),
-            confidence: 0,
-            summary: `I encountered an issue analyzing "${attachment.name}". This could be due to file format or content issues. Would you like to describe the document to me instead?`,
-            key_facts: [],
-            action_items: ['Describe the document content manually', 'Try uploading in a different format']
+            error: error instanceof Error ? error.message : String(error)
           });
+          
+          // Add partial result with error message instead of silently failing
+          const fileId = extractFileIdFromUrl(attachment.url);
+          if (fileId) {
+            analysisResults.push({
+              fileId,
+              fileName: attachment.name,
+              fileType: attachment.type,
+              analysisType: determineAnalysisType(attachment),
+              confidence: 0,
+              summary: `I encountered an issue analyzing "${attachment.name}". This could be due to file format or content issues. Would you like to describe the document to me instead?`,
+              key_facts: [],
+              action_items: ['Describe the document content manually', 'Try uploading in a different format']
+            });
+          }
         }
       }
-    }
 
-    // If we have analysis results, update context and provide response
+    // Only return a response if we have successful analysis results (confidence > 0)
     if (analysisResults.length > 0) {
       Logger.info('File analysis completed successfully, providing response', {
         sessionId: context.sessionId,

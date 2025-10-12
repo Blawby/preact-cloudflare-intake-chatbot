@@ -52,7 +52,6 @@ export async function requireOrganizationMember(
   minimumRole?: "owner" | "admin" | "attorney" | "paralegal"
 ): Promise<AuthContext & { memberRole: string }> {
   const authContext = await requireAuth(request, env);
-  const auth = await getAuth(env, request);
 
   // 1. Validate organizationId
   if (!organizationId || typeof organizationId !== 'string' || organizationId.trim() === '') {

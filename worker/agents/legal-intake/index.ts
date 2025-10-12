@@ -1605,12 +1605,34 @@ class ToolExecutor {
       ? toolResult.data as Record<string, unknown>
       : {};
 
-    // Emit matter_canvas event
+    // Validate required fields before emitting
+    const validationResult = this.validateMatterData(matterData);
+    if (!validationResult.isValid) {
+      // Emit validation error event
+      await this.sse.emit({
+        type: 'validation_error',
+        data: {
+          error: validationResult.error,
+          missingFields: validationResult.missingFields,
+          message: validationResult.userMessage
+        }
+      });
+      
+      // Emit the final response with validation error
+      await this.sse.final(validationResult.userMessage);
+      return;
+    }
+
+    // Generate proper unique IDs
+    const matterId = crypto.randomUUID();
+    const matterNumber = `CASE-${matterId}`;
+
+    // Emit matter_canvas event with validated data
     await this.sse.emit({
       type: 'matter_canvas',
       data: {
-        matterId: `matter-${Date.now()}`,
-        matterNumber: `CASE-${Date.now()}`,
+        matterId,
+        matterNumber,
         service: matterData.matter_type || 'Legal Consultation',
         matterSummary: matterData.description || 'Legal matter created',
         answers: {
@@ -1628,6 +1650,47 @@ class ToolExecutor {
     // Emit the final response
     const finalResponse = this.extractToolResponse(toolResult);
     await this.sse.final(finalResponse);
+  }
+
+  /**
+   * Validates matter data for required fields before emitting
+   */
+  private validateMatterData(matterData: Record<string, unknown>): {
+    isValid: boolean;
+    error?: string;
+    missingFields?: string[];
+    userMessage?: string;
+  } {
+    const missingFields: string[] = [];
+    
+    // Check for required fields
+    if (!matterData.name || typeof matterData.name !== 'string' || matterData.name.trim() === '') {
+      missingFields.push('name');
+    }
+    
+    if (!matterData.email || typeof matterData.email !== 'string' || matterData.email.trim() === '') {
+      missingFields.push('email');
+    }
+    
+    // Either description or matter_type is required
+    const hasDescription = matterData.description && typeof matterData.description === 'string' && matterData.description.trim() !== '';
+    const hasMatterType = matterData.matter_type && typeof matterData.matter_type === 'string' && matterData.matter_type.trim() !== '';
+    
+    if (!hasDescription && !hasMatterType) {
+      missingFields.push('description or matter_type');
+    }
+    
+    if (missingFields.length > 0) {
+      const userMessage = `I'm missing some essential information: ${missingFields.join(', ')}. Please provide this information so I can create your matter properly.`;
+      return {
+        isValid: false,
+        error: `Missing required fields: ${missingFields.join(', ')}`,
+        missingFields,
+        userMessage
+      };
+    }
+    
+    return { isValid: true };
   }
 
   private extractToolResponse(toolResult: ToolResult): string {

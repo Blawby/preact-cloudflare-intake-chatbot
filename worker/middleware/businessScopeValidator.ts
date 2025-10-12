@@ -32,6 +32,7 @@ const GENERAL_LEGAL_PATTERNS = [
  * This is where we check if the organization offers the services the user needs
  */
 export const businessScopeValidator: PipelineMiddleware = {
+  kind: 'standard',
   name: 'businessScopeValidator',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {

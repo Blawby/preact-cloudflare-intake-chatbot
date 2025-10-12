@@ -9,6 +9,7 @@ import { PDFGenerationService } from '../services/PDFGenerationService.js';
  * Detects when users want to generate PDFs from their case drafts
  */
 export const pdfGenerationMiddleware: PipelineMiddleware = {
+  kind: 'standard',
   name: 'pdfGenerationMiddleware',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {

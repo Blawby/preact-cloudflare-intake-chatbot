@@ -34,6 +34,7 @@ interface MiddlewareResponse {
  * Now conversation-aware: only triggers on explicit skip requests, not casual mentions
  */
 export const skipToLawyerMiddleware: PipelineMiddleware = {
+  kind: 'standard',
   name: 'skipToLawyerMiddleware',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, _organizationConfig: OrganizationConfig, env: Env) => {

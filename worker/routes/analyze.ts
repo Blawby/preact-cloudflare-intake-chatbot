@@ -119,6 +119,8 @@ interface ExtendedAnalysisResult extends AnalysisResult {
   adobeExtractTextPreview?: string;
   extraction_failed?: boolean;
   extraction_method?: string;
+  truncationFailed?: boolean;
+  truncationNote?: string;
   debug?: {
     adobeEnabled: boolean;
     adobeClientIdSet: boolean;
@@ -385,11 +387,12 @@ async function summarizeAdobeExtract(
     .slice(0, maxElements);
   
   // Build structured payload with proper truncation to ensure valid JSON
-  const buildTruncatedStructuredPayload = (tables: unknown[], elements: unknown[], maxLength: number): string => {
+  const buildTruncatedStructuredPayload = (tables: unknown[], elements: unknown[], maxLength: number): { payload: string; truncationFailed: boolean } => {
     let currentTables = [...tables];
     let currentElements = [...elements];
     let payload = '';
     let attempts = 0;
+    let truncationFailed = false;
     const maxAttempts = 10; // Prevent infinite loops
     
     do {
@@ -449,22 +452,24 @@ async function summarizeAdobeExtract(
     // Post-loop check: detect if truncation failed due to max attempts reached
     // This function uses best-effort semantics - it tries to fit within limits but may exceed them
     if (payload.length > maxLength) {
-      const errorMsg = `Payload truncation failed: finalLength=${payload.length}, maxLength=${maxLength}, attempts=${attempts}`;
-      logError(requestId, 'analyze.payload.truncation_failed', new Error(errorMsg), {
+      truncationFailed = true;
+      const warningMsg = `Payload truncation failed: finalLength=${payload.length}, maxLength=${maxLength}, attempts=${attempts}`;
+      logWarning(requestId, 'analyze.payload.truncation_failed', warningMsg, {
         finalLength: payload.length,
         maxLength,
         attempts
       });
-      throw new Error(errorMsg);
+      // Return the oversized payload with a note that truncation failed
+      // The caller should handle this gracefully
     }
     
-    return payload;
+    return { payload, truncationFailed };
   };
   
   // Calculate original structured length from prioritized data (before truncation)
   const originalStructuredLength = JSON.stringify({ tables: prioritizedTables, elements: prioritizedElements }).length;
   
-  const structuredPayload = buildTruncatedStructuredPayload(prioritizedTables, prioritizedElements, maxStructuredPayloadLength);
+  const { payload: structuredPayload, truncationFailed } = buildTruncatedStructuredPayload(prioritizedTables, prioritizedElements, maxStructuredPayloadLength);
   
   // Log when limits are hit for telemetry
   const originalTablesCount = (extract.tables ?? []).length;
@@ -532,6 +537,12 @@ async function summarizeAdobeExtract(
   const extendedResult = result as ExtendedAnalysisResult;
   extendedResult.adobeExtractTextLength = rawText.length;
   extendedResult.adobeExtractTextPreview = rawText.substring(0, 200);
+  
+  // Add truncation failure information if applicable
+  if (truncationFailed) {
+    extendedResult.truncationFailed = true;
+    extendedResult.truncationNote = "Payload truncation failed - some data may be incomplete due to size limits";
+  }
   
   return extendedResult;
 }
@@ -630,38 +641,24 @@ function safeJson(response: unknown): AnalysisResult {
 // Hardened JSON extraction that handles truncated/concatenated responses
 function extractValidJson(input: string): AnalysisResult {
   try {
-    // Normalize to string
-    let text = typeof input === "string" ? input : JSON.stringify(input);
-    
-    // Pre-clean: remove junk before first { and after last }
-    text = text
-      .replace(/^[^{]+/, "")       // remove junk before first {
-      .replace(/}[^}]*$/, "}");     // remove junk after last }
+    const raw = typeof input === "string" ? input : JSON.stringify(input);
 
-    // Find first full balanced JSON object
-    const firstBrace = text.indexOf("{");
-    const lastBrace = text.lastIndexOf("}");
-    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    // Find the first JSON object in the string, accounting for quoted braces and escapes.
+    const jsonBlock = extractFirstJsonObject(raw);
+    if (!jsonBlock) {
       throw new Error("No JSON object boundaries found");
     }
 
-    const jsonCandidate = text.slice(firstBrace, lastBrace + 1);
-
-    try {
-      const parsed = JSON.parse(jsonCandidate);
-      if (parsed && typeof parsed === "object" && parsed.summary) {
-        log('debug', 'safe_json_valid_parsed', { phase: 'extractValidJson' });
-        return parsed;
-      }
-    } catch (_innerErr) {
-      // fallback: trim to before any trailing garbage after a closing brace
-      const trimmed = jsonCandidate.replace(/}[^}]*$/, "}");
-      logWarning('analyze', 'safe_json_retry_parse', 'Retrying JSON parse after trim', { phase: 'extractValidJson' });
-      return JSON.parse(trimmed);
+    const parsed = JSON.parse(jsonBlock);
+    if (parsed && typeof parsed === "object" && parsed.summary) {
+      log('debug', 'safe_json_valid_parsed', { phase: 'extractValidJson' });
+      return parsed;
     }
+
+    throw new Error("Parsed JSON does not contain expected structure");
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    logError('analyze', 'safe_json_final_fallback', new Error(errorMessage), { phase: 'extractValidJson' });
+    logError('analyze', 'safe_json_final_fallback', new Error(errorMessage), { phase: 'extractValidJson', snippet: String(input).slice(0, 200) });
   }
 
   // Final fallback — return structured failure
@@ -672,6 +669,52 @@ function extractValidJson(input: string): AnalysisResult {
     action_items: ["Review document format and retry analysis"],
     confidence: 0.3,
   };
+}
+
+/**
+ * Extracts the first complete JSON object from a string, handling escaped characters.
+ */
+function extractFirstJsonObject(text: string): string | null {
+  let start = text.indexOf("{");
+  if (start === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === "{") {
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          return text.slice(start, i + 1);
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 

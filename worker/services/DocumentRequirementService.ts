@@ -76,8 +76,13 @@ export class DocumentRequirementService {
       console.log(`Created ${requirements.requirements.length} document requirements for matter ${matterId}`);
     } catch (error) {
       console.error('Failed to create document requirements:', error);
-      try { await this.env.DB.prepare('ROLLBACK').run(); } catch (_rollbackError) {
-        // Ignore rollback errors as the main error is more important
+      try { await this.env.DB.prepare('ROLLBACK').run(); } catch (rollbackError) {
+        console.error('Failed to rollback transaction in createMatterRequirements:', {
+          method: 'createMatterRequirements',
+          matterId,
+          rollbackError: rollbackError,
+          stack: rollbackError instanceof Error ? rollbackError.stack : undefined
+        });
       }
       throw error;
     }
@@ -128,7 +133,15 @@ export class DocumentRequirementService {
       `);
 
       const results = await stmt.bind(matterId).all();
-      return results.results || [];
+      return (results.results || []) as {
+        document_type: string;
+        description: string;
+        required: boolean;
+        status: string;
+        file_id: string | null;
+        due_date: string | null;
+        updated_at: string;
+      }[];
     } catch (error) {
       console.error('Failed to get matter requirement status:', error);
       return [];

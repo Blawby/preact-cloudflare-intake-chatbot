@@ -28,6 +28,7 @@ interface MiddlewareResponse {
  * Detects when users want to build case drafts and provides structured case building
  */
 export const caseDraftMiddleware: PipelineMiddleware = {
+  kind: 'standard',
   name: 'caseDraftMiddleware',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {

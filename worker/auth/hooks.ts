@@ -56,21 +56,11 @@ async function retryAddMember(
     try {
       console.log(`🔄 Attempting to add member (attempt ${attempt}/${maxRetries}) for org ${organizationId}, user ${userId}`);
       
-      // Check if membership already exists to prevent duplicates
-      const existingMember = await env.DB.prepare(`
-        SELECT id FROM members 
-        WHERE organization_id = ? AND user_id = ?
-      `).bind(organizationId, userId).first();
-      
-      if (existingMember) {
-        console.log(`ℹ️ Member ${userId} already exists in organization ${organizationId}, skipping insertion`);
-        return;
-      }
-      
-      // Add member directly to the database with proper Unix timestamp
+      // Add member atomically using upsert to prevent race conditions
       const result = await env.DB.prepare(`
         INSERT INTO members (id, organization_id, user_id, role, created_at)
         VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(organization_id, user_id) DO NOTHING
       `).bind(
         crypto.randomUUID(), // Generate a proper UUID for the id field
         organizationId,
@@ -81,6 +71,12 @@ async function retryAddMember(
       
       if (!result.success) {
         throw new Error(`Failed to insert member into database: ${result.error}`);
+      }
+      
+      // Check if the insert was applied or ignored due to conflict
+      if ((result as { changes?: number }).changes === 0) {
+        console.log(`ℹ️ Member ${userId} already exists in organization ${organizationId}, insert was ignored`);
+        return;
       }
       
       console.log(`✅ Successfully added member ${userId} to organization ${organizationId} on attempt ${attempt}`);

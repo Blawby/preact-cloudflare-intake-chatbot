@@ -9,6 +9,7 @@ import { JurisdictionValidator as JurisdictionValidatorUtil, type JurisdictionCo
  * This provides warnings for out-of-jurisdiction users but doesn't block them
  */
 export const jurisdictionValidator: PipelineMiddleware = {
+  kind: 'standard',
   name: 'jurisdictionValidator',
   
   execute: async (messages: AgentMessage[], context: ConversationContext, organizationConfig: OrganizationConfig, env: Env) => {

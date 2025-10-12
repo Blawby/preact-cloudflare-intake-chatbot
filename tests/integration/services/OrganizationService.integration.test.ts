@@ -5,8 +5,35 @@ import { Organization } from '../../../worker/services/OrganizationService.js';
 
 describe('OrganizationService Integration - Real API', () => {
   // Test organization data for deterministic testing
-  let testOrganization1: Organization;
-  let testOrganization2: Organization;
+  let testOrganization1: Organization | undefined;
+  let testOrganization2: Organization | undefined;
+
+  // Helper function to clean up test organizations
+  async function cleanupTestOrganizations(): Promise<void> {
+    const cleanupPromises = [];
+    
+    if (testOrganization1?.id) {
+      cleanupPromises.push(
+        fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`, {
+          method: 'DELETE'
+        }).catch(deleteErr => 
+          console.warn('Failed to cleanup test organization 1:', deleteErr)
+        )
+      );
+    }
+    
+    if (testOrganization2?.id) {
+      cleanupPromises.push(
+        fetch(`${WORKER_URL}/api/organizations/${testOrganization2.id}`, {
+          method: 'DELETE'
+        }).catch(deleteErr => 
+          console.warn('Failed to cleanup test organization 2:', deleteErr)
+        )
+      );
+    }
+
+    await Promise.all(cleanupPromises);
+  }
 
   beforeAll(async () => {
     console.log('🧪 Testing OrganizationService against real worker at:', WORKER_URL);
@@ -105,30 +132,7 @@ describe('OrganizationService Integration - Real API', () => {
       testOrganization2 = org2Result.data;
     } catch (error) {
       // Clean up any successfully created organizations before rethrowing
-      const cleanupPromises = [];
-      
-      if (testOrganization1?.id) {
-        cleanupPromises.push(
-          fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`, {
-            method: 'DELETE'
-          }).catch(deleteErr => 
-            console.warn('Failed to cleanup test organization 1 during error recovery:', deleteErr)
-          )
-        );
-      }
-      
-      if (testOrganization2?.id) {
-        cleanupPromises.push(
-          fetch(`${WORKER_URL}/api/organizations/${testOrganization2.id}`, {
-            method: 'DELETE'
-          }).catch(deleteErr => 
-            console.warn('Failed to cleanup test organization 2 during error recovery:', deleteErr)
-          )
-        );
-      }
-
-      // Wait for all cleanup operations to complete
-      await Promise.all(cleanupPromises);
+      await cleanupTestOrganizations();
       
       // Reset the variables to prevent afterAll from trying to clean up again
       testOrganization1 = undefined;
@@ -146,25 +150,7 @@ describe('OrganizationService Integration - Real API', () => {
 
   afterAll(async () => {
     // Clean up test organizations
-    const cleanupPromises = [];
-    
-    if (testOrganization1?.id) {
-      cleanupPromises.push(
-        fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`, {
-          method: 'DELETE'
-        }).catch(err => console.warn('Failed to cleanup test organization 1:', err))
-      );
-    }
-    
-    if (testOrganization2?.id) {
-      cleanupPromises.push(
-        fetch(`${WORKER_URL}/api/organizations/${testOrganization2.id}`, {
-          method: 'DELETE'
-        }).catch(err => console.warn('Failed to cleanup test organization 2:', err))
-      );
-    }
-
-    await Promise.all(cleanupPromises);
+    await cleanupTestOrganizations();
     console.log('✅ Cleaned up test organizations');
   });
 

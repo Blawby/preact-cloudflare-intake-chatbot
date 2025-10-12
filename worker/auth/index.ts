@@ -102,8 +102,31 @@ export async function getAuth(env: Env, request?: Request) {
       };
     } else if (enableGeolocation || enableIpDetection) {
       // Runtime with feature flags enabled: use real CF context from request
-      // Don't set cfContext - let the platform-provided request.cf be used
-      cfContext = undefined;
+      // Extract CF data from request.cf, fall back to mock if not available
+      if (request.cf) {
+        cfContext = {
+          country: request.cf.country as string,
+          city: request.cf.city as string,
+          region: request.cf.region as string,
+          timezone: request.cf.timezone as string,
+          latitude: request.cf.latitude as string,
+          longitude: request.cf.longitude as string,
+          asn: request.cf.asn as number,
+          asOrganization: request.cf.asOrganization as string
+        };
+      } else {
+        // Fall back to mock if request.cf is not available
+        cfContext = {
+          country: 'US',
+          city: 'Local',
+          region: 'Local',
+          timezone: 'UTC',
+          latitude: '0',
+          longitude: '0',
+          asn: 0,
+          asOrganization: 'Local Development'
+        };
+      }
     } else {
       // Runtime with feature flags disabled: use mock as fallback
       cfContext = {
