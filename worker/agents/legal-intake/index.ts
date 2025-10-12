@@ -1668,8 +1668,12 @@ class ToolExecutor {
       missingFields.push('name');
     }
     
-    if (!matterData.email || typeof matterData.email !== 'string' || matterData.email.trim() === '') {
-      missingFields.push('email');
+    // Check for email OR phone (at least one is required)
+    const hasEmail = matterData.email && typeof matterData.email === 'string' && matterData.email.trim() !== '';
+    const hasPhone = matterData.phone && typeof matterData.phone === 'string' && matterData.phone.trim() !== '';
+    
+    if (!hasEmail && !hasPhone) {
+      missingFields.push('email or phone');
     }
     
     // Either description or matter_type is required

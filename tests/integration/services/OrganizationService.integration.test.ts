@@ -12,7 +12,7 @@ describe('OrganizationService Integration - Real API', () => {
   async function cleanupTestOrganizations(): Promise<void> {
     const cleanupPromises = [];
     
-    if (testOrganization1.id) {
+    if (testOrganization1?.id) {
       cleanupPromises.push(
         fetch(`${WORKER_URL}/api/organizations/${testOrganization1.id}`, {
           method: 'DELETE'
@@ -22,7 +22,7 @@ describe('OrganizationService Integration - Real API', () => {
       );
     }
     
-    if (testOrganization2.id) {
+    if (testOrganization2?.id) {
       cleanupPromises.push(
         fetch(`${WORKER_URL}/api/organizations/${testOrganization2.id}`, {
           method: 'DELETE'

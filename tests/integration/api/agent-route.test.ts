@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { WORKER_URL } from '../../setup-real-api';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 // Helper function to handle streaming responses
 async function handleStreamingResponse(response: Response, timeoutMs: number = 30000) {
@@ -73,7 +74,8 @@ async function handleStreamingResponse(response: Response, timeoutMs: number = 3
  * Returns the fileId and url for use in attachment objects
  */
 async function uploadTestPdfFile(organizationId: string, sessionId: string): Promise<{ fileId: string; url: string; size: number }> {
-  const pdfPath = path.join(__dirname, '../../../Ai-native-vs-platform-revenue.pdf');
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const pdfPath = path.join(currentDir, '../../../Ai-native-vs-platform-revenue.pdf');
   const pdfBuffer = fs.readFileSync(pdfPath);
   const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
   

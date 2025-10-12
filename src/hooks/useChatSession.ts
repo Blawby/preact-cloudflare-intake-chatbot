@@ -50,6 +50,7 @@ export function useChatSession(organizationId: string): ChatSessionState {
     if (!organizationId) return null;
     
     const newKey = `${STORAGE_PREFIX}${organizationId}`;
+    const migrationFlag = `${STORAGE_PREFIX}_migrated`;
     
     // One-time migration from old teamId-based storage key
     if (typeof window !== 'undefined') {
@@ -60,26 +61,43 @@ export function useChatSession(organizationId: string): ChatSessionState {
           return newKey;
         }
         
+        // Check if migration has already been attempted
+        const migrationAttempted = window.localStorage.getItem(migrationFlag);
+        if (migrationAttempted) {
+          return newKey;
+        }
+        
         // Try to find and migrate from old teamId-based key
-        // Since we don't have direct access to teamId, we'll check for any old keys
-        // that match the old pattern and migrate them
-        const oldKeyPattern = /^blawby_session:.*$/;
+        // Use startsWith for initial scan, then tighten to exact pattern
         for (let i = 0; i < window.localStorage.length; i++) {
           const key = window.localStorage.key(i);
-          if (key && oldKeyPattern.test(key) && key !== newKey) {
-            const oldValue = window.localStorage.getItem(key);
-            if (oldValue) {
-              // Found an old session, migrate it to the new key
-              window.localStorage.setItem(newKey, oldValue);
-              // Remove the old key to clean up
-              window.localStorage.removeItem(key);
-              console.log(`Migrated session from ${key} to ${newKey}`);
-              break;
+          if (key && key.startsWith(STORAGE_PREFIX) && key !== newKey && key !== migrationFlag) {
+            // Tighten pattern to exact old-key shape (prefix + UUID pattern)
+            const oldKeyPattern = /^blawby_session:[a-f0-9-]{36}$/;
+            if (oldKeyPattern.test(key)) {
+              const oldValue = window.localStorage.getItem(key);
+              if (oldValue) {
+                // Found an old session, migrate it to the new key
+                window.localStorage.setItem(newKey, oldValue);
+                // Remove the old key to clean up
+                window.localStorage.removeItem(key);
+                console.log(`Migrated session from ${key} to ${newKey}`);
+                break; // Short-circuit on first match
+              }
             }
           }
         }
+        
+        // Set migration flag after attempt (successful or not) to avoid repeated scans
+        window.localStorage.setItem(migrationFlag, 'true');
       } catch (error) {
         console.warn('Failed to migrate session storage:', error);
+        // Set flag even on error to avoid repeated failed attempts
+        try {
+          window.localStorage.setItem(migrationFlag, 'true');
+        } catch (flagError) {
+          console.warn('Failed to set migration flag:', flagError);
+        }
       }
     }
     

@@ -2,6 +2,7 @@ import type { ConversationContext } from './conversationContextManager.js';
 import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { PipelineMiddleware } from './pipeline.js';
 import { LawyerSearchService } from '../services/LawyerSearchService.js';
+import { OrganizationService } from '../services/OrganizationService.js';
 import type { LawyerSearchResponse } from '../schemas/lawyer';
 import { QuotaExceededError, LawyerSearchError, LawyerSearchTimeoutError } from '../utils/lawyerSearchErrors.js';
 import { Logger } from '../utils/logger.js';
@@ -111,7 +112,7 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
     }
 
     // Determine if this is public mode or organization mode based on organizationId
-    const isPublicMode = determineMode(context.organizationId);
+    const isPublicMode = await determineMode(context.organizationId, env);
     
     Logger.debug('[skipToLawyerMiddleware] Organization config:', {
       organizationId: context.organizationId,
@@ -136,18 +137,24 @@ export const skipToLawyerMiddleware: PipelineMiddleware = {
 /**
  * Determine if this is public mode or organization mode
  */
-function determineMode(organizationId: string | null | undefined): boolean {
-  // Public mode: no organization ID, or specific public organizations
+async function determineMode(organizationId: string | null | undefined, env: Env): Promise<boolean> {
+  // Public mode: no organization ID
   if (!organizationId) {
     return true;
   }
 
-  // Check if this is a public organization (like blawby-ai)
-  // Note: This is a simplified check - in a real implementation, you'd want to
-  // fetch the organization by ID and check its slug, but for now we'll use
-  // a hardcoded list of known public organization IDs
-  const publicOrganizationIds = ['01K0TNGNKTM4Q0AG0XF0A8ST0Q']; // blawby-ai organization ID
-  if (publicOrganizationIds.includes(organizationId)) {
+  try {
+    // Fetch the organization by ID to check its slug
+    const organizationService = new OrganizationService(env);
+    const organization = await organizationService.getOrganization(organizationId);
+    
+    // Check if this is a public organization (like blawby-ai)
+    if (organization?.slug === 'blawby-ai') {
+      return true;
+    }
+  } catch (error) {
+    console.warn('Failed to fetch organization for mode determination:', error);
+    // Fall back to public mode if lookup fails
     return true;
   }
 

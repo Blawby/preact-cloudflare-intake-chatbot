@@ -1,5 +1,6 @@
 import { Logger } from '../utils/logger.js';
 import type { Env } from '../types.js';
+import type { PDFFont, RGB } from 'pdf-lib';
 
 interface CaseDraft {
   matter_type: string;
@@ -444,7 +445,7 @@ export class PDFGenerationService {
       };
 
       // Helper function to add text with word wrapping and page overflow protection
-      const addText = (text: string, font: unknown, size: number, color: unknown, maxWidth?: number) => {
+      const addText = (text: string, font: PDFFont, size: number, color: RGB, maxWidth?: number) => {
         // Check for page overflow before adding text (will add new page if needed)
         if (checkPageOverflow()) {
           // yPosition already reset; align local cursor

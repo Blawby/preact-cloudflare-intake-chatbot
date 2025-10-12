@@ -364,7 +364,7 @@ export class OrganizationService {
       // Query Better Auth organizations table - support both ID and slug lookups
       console.log('Querying database for organization...');
       const orgRow = await this.env.DB.prepare(
-        'SELECT id, name, slug, domain, config, created_at FROM organizations WHERE id = ? OR slug = ?'
+        'SELECT id, name, slug, domain, config, created_at, updated_at FROM organizations WHERE id = ? OR slug = ?'
       ).bind(organizationId, organizationId).first();
       
       if (orgRow) {
@@ -372,6 +372,15 @@ export class OrganizationService {
         const resolvedConfig = this.resolveEnvironmentVariables(rawConfig);
         const normalizedConfig = this.validateAndNormalizeConfig(resolvedConfig as OrganizationConfig, false, organizationId);
         
+        // Parse updated_at defensively
+        let updatedAt: number;
+        if (orgRow.updated_at && !isNaN(new Date(orgRow.updated_at as string).getTime())) {
+          updatedAt = new Date(orgRow.updated_at as string).getTime();
+        } else {
+          // Fall back to created_at or current time if updated_at is invalid
+          updatedAt = orgRow.created_at ? new Date(orgRow.created_at as string).getTime() : Date.now();
+        }
+
         const organization: Organization = {
           id: orgRow.id as string,
           name: orgRow.name as string,
@@ -379,7 +388,7 @@ export class OrganizationService {
           domain: orgRow.domain as string | undefined,
           config: normalizedConfig,
           createdAt: new Date(orgRow.created_at as string).getTime(),
-          updatedAt: new Date(orgRow.updated_at as string).getTime(),
+          updatedAt: updatedAt,
         };
         
         console.log('Found organization:', { id: organization.id, slug: organization.slug, name: organization.name });
@@ -525,12 +534,13 @@ export class OrganizationService {
     
     try {
       const result = await this.env.DB.prepare(`
-        INSERT INTO organizations (id, slug, name, config, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO organizations (id, slug, name, domain, config, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `).bind(
         organization.id,
         organization.slug,
         organization.name,
+        organization.domain,
         JSON.stringify(organization.config),
         organization.createdAt,
         organization.updatedAt
@@ -577,11 +587,12 @@ export class OrganizationService {
 
     await this.env.DB.prepare(`
       UPDATE organizations 
-      SET slug = ?, name = ?, config = ?, updated_at = ?
+      SET slug = ?, name = ?, domain = ?, config = ?, updated_at = ?
       WHERE id = ?
     `).bind(
       updatedOrganization.slug,
       updatedOrganization.name,
+      updatedOrganization.domain,
       JSON.stringify(updatedOrganization.config),
       updatedOrganization.updatedAt,
       organizationId
