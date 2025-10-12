@@ -242,13 +242,6 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
           if (ownerCount <= 1) {
             throw HttpErrors.forbidden('Cannot change role: organization must have at least one owner');
           }
-
-          if (user.id === body.userId) {
-            // Prevent owner from demoting themselves if they are the last owner
-            if (ownerCount <= 1) {
-              throw HttpErrors.forbidden('You must assign another owner before changing your own role');
-            }
-          }
         }
 
         if (existingMember.role !== body.role) {
@@ -306,10 +299,6 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
           if (ownerCount <= 1) {
             throw HttpErrors.forbidden('Cannot remove the last owner from the organization');
-          }
-
-          if (ownerContext.user.id === userId && ownerCount <= 1) {
-            throw HttpErrors.forbidden('You must assign another owner before removing yourself');
           }
         }
 
@@ -911,11 +900,11 @@ async function createOrganization(
     });
 
     if (userId) {
-      try {
-        const memberId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-          ? crypto.randomUUID()
-          : `member_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      const memberId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+        ? crypto.randomUUID()
+        : `member_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
+      try {
         await env.DB.prepare(`
           INSERT INTO members (id, organization_id, user_id, role, created_at)
           VALUES (?, ?, ?, ?, ?)
@@ -928,11 +917,18 @@ async function createOrganization(
           Math.floor(Date.now() / 1000)
         ).run();
       } catch (membershipError) {
-        console.error('❌ Failed to add organization owner membership:', {
-          organizationId: organization.id,
-          userId,
-          error: membershipError instanceof Error ? membershipError.message : String(membershipError)
-        });
+        // If membership insertion fails, delete the orphaned organization
+        try {
+          await organizationService.deleteOrganization(organization.id);
+        } catch (deleteError) {
+          console.error('❌ Failed to clean up orphaned organization:', {
+            organizationId: organization.id,
+            error: deleteError instanceof Error ? deleteError.message : String(deleteError)
+          });
+        }
+        
+        // Re-throw the original membership error
+        throw new Error(`Failed to add organization owner membership: ${membershipError instanceof Error ? membershipError.message : String(membershipError)}`);
       }
     }
 
