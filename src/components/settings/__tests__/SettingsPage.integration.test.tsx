@@ -309,20 +309,22 @@ describe('SettingsPage Integration Tests', () => {
       value: reloadStub,
     });
 
-    render(<SettingsPage onClose={mockOnClose} />);
-    
-    const signOutNav = screen.getByText('Sign Out');
-    fireEvent.click(signOutNav);
-    
-    await waitFor(() => {
-      expect(reloadStub).toHaveBeenCalled();
-    });
-    
-    // Restore original reload
-    Object.defineProperty(window.location, 'reload', {
-      configurable: true,
-      value: originalReload,
-    });
+    try {
+      render(<SettingsPage onClose={mockOnClose} />);
+      
+      const signOutNav = screen.getByText('Sign Out');
+      fireEvent.click(signOutNav);
+      
+      await waitFor(() => {
+        expect(reloadStub).toHaveBeenCalled();
+      });
+    } finally {
+      // Restore original reload
+      Object.defineProperty(window.location, 'reload', {
+        configurable: true,
+        value: originalReload,
+      });
+    }
   });
 
   it('should close settings modal when close button is clicked', () => {
