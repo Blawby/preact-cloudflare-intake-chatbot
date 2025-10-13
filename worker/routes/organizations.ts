@@ -141,17 +141,19 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
       const { user } = await requireAuth(request, env);
 
       const invitations = await env.DB.prepare(
-        `SELECT id,
-                organization_id as organizationId,
-                email,
-                role,
-                status,
-                invited_by as invitedBy,
-                expires_at as expiresAt,
-                created_at as createdAt
-           FROM invitations
-          WHERE email = ? AND status = 'pending'
-          ORDER BY created_at DESC`
+        `SELECT i.id,
+                i.organization_id as organizationId,
+                o.name as organizationName,
+                i.email,
+                i.role,
+                i.status,
+                i.invited_by as invitedBy,
+                i.expires_at as expiresAt,
+                i.created_at as createdAt
+           FROM invitations i
+           LEFT JOIN organizations o ON i.organization_id = o.id
+          WHERE i.email = ? AND i.status = 'pending'
+          ORDER BY i.created_at DESC`
       ).bind(user.email).all();
 
       // Preact usage note: call this to populate "pending invites" in the settings dashboard.

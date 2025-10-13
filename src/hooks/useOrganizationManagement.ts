@@ -32,6 +32,7 @@ export interface Member {
 export interface Invitation {
   id: string;
   organizationId: string;
+  organizationName?: string;
   email: string;
   role: Role;
   status: 'pending' | 'accepted' | 'declined';

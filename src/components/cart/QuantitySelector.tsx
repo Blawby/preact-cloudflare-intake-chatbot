@@ -1,4 +1,5 @@
 import { useCallback } from 'preact/compat';
+import { useId } from 'preact/hooks';
 import { PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export const QuantitySelector = ({ quantity, onChange, min = 1, helperText, label = 'Users' }: Props) => {
+  const inputId = useId();
+  
   const handleIncrement = useCallback(() => {
     onChange(quantity + 1);
   }, [quantity, onChange]);
@@ -28,12 +31,13 @@ export const QuantitySelector = ({ quantity, onChange, min = 1, helperText, labe
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-100 mb-1">
+      <label htmlFor={inputId} className="block text-sm font-medium text-gray-100 mb-1">
         {label}
       </label>
       
       <div className="flex items-center gap-2">
         <input
+          id={inputId}
           type="number"
           value={quantity}
           onChange={handleInputChange}
