@@ -60,10 +60,11 @@ export const getPaymentUpgradeEndpoint = () => {
 
 export const getPaymentStatusEndpoint = (paymentId: string) => {
   const config = getApiConfig();
-  return `${config.baseUrl}/api/payment/status/${paymentId}`;
+  const encodedId = encodeURIComponent(paymentId);
+  return `${config.baseUrl}/api/payment/status/${encodedId}`;
 };
 
 export const getOrganizationWorkspaceEndpoint = (orgId: string, resource: string) => {
   const config = getApiConfig();
-  return `${config.baseUrl}/api/organizations/${orgId}/workspace/${resource}`;
+  return `${config.baseUrl}/api/organizations/${encodeURIComponent(orgId)}/workspace/${encodeURIComponent(resource)}`;
 }; 

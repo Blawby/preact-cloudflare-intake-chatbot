@@ -104,7 +104,7 @@ export const PricingSummary = ({
         <div className="space-y-4" role="status" aria-live="polite">
           <div className="flex items-center space-x-3 py-6 justify-center">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent-500"></div>
-            <span className="text-sm text-gray-300">{primaryAction.loadingLabel ?? primaryAction.label}</span>
+            <span className="text-sm text-gray-300">{primaryLabel}</span>
           </div>
         </div>
       )}
@@ -191,6 +191,7 @@ export const PricingSummary = ({
             <Button 
               onClick={primaryAction.onClick}
               disabled={primaryAction.disabled}
+              loading={primaryAction.isLoading}
               className="w-full"
               size="lg"
             >

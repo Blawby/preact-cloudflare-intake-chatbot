@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
-import { useNavigate } from 'preact-iso';
+import { useNavigation } from '../utils/navigation';
 import Modal from './Modal';
 import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
@@ -9,6 +9,8 @@ import { QuantitySelector } from './cart/QuantitySelector';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
+import { handleError } from '../utils/errorHandler';
+import { useToastContext } from '../contexts/ToastContext';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -24,7 +26,8 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   currentTier = 'free',
   onUpgrade
 }) => {
-  const navigate = useNavigate();
+  const { navigate } = useNavigation();
+  const { showWarning } = useToastContext();
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
   const [selectedQuantity, setSelectedQuantity] = useState(2);
@@ -276,12 +279,40 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
   const handleUpgrade = (tier: SubscriptionTier) => {
     if (tier === 'business') {
+      // Find the selected plan to get its productId and priceId
+      const selectedPlan = allPlans.find(plan => plan.id === tier);
+      
+      // Use plan properties with safe fallbacks
+      const productId = selectedPlan?.productId || 'prod_business';
+      const priceId = selectedPlan?.priceId || 'price_monthly';
+      
       // Store cart data and navigate to cart
-      localStorage.setItem('cartData', JSON.stringify({
-        product_id: 'prod_business',
-        price_id: 'price_monthly',
-        quantity: selectedQuantity
-      }));
+      try {
+        localStorage.setItem('cartData', JSON.stringify({
+          product_id: productId,
+          price_id: priceId,
+          quantity: selectedQuantity
+        }));
+      } catch (error) {
+        // Handle localStorage failures (private mode, quota exceeded, etc.)
+        handleError(error, {
+          component: 'PricingModal',
+          action: 'store-cart-data',
+          tier,
+          quantity: selectedQuantity,
+          productId,
+          priceId
+        });
+        
+        // Show user-friendly warning about cart data storage failure
+        showWarning(
+          'Cart data not saved',
+          'Your cart data could not be saved locally. You may need to re-select your options on the cart page.',
+          5000
+        );
+      }
+      
+      // Continue with navigation and callbacks regardless of storage success/failure
       navigate('/cart');
       if (onUpgrade) {
         onUpgrade(tier);

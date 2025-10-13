@@ -123,33 +123,61 @@ export const usePaymentUpgrade = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check payment status';
       setError(errorMessage);
-      setPaymentStatus('failed');
-      return { success: false, status: 'failed', paymentId, error: errorMessage };
+      return { success: false, status: paymentStatus === 'idle' ? 'unknown' : paymentStatus, paymentId, error: errorMessage };
     }
   }, [showSuccess, showError]);
 
-  const pollPaymentStatus = useCallback((paymentId: string) => {
+  const pollPaymentStatus = useCallback((paymentId: string, maxRetries: number = 20) => {
     // Clear any existing polling
     if (pollingIntervalRef.current) {
       clearTimeout(pollingIntervalRef.current);
     }
 
+    let retryCount = 0;
+
     // Start sequential polling
     const poll = async () => {
-      const result = await checkPaymentStatus(paymentId);
-      
-      // Stop polling if payment is completed or failed
-      if (result.status === 'completed' || result.status === 'failed' || result.status === 'cancelled') {
+      // Check if we've exceeded max retries
+      if (retryCount >= maxRetries) {
         stopPolling();
-      } else {
-        // Schedule next poll after 3 seconds
-        pollingIntervalRef.current = setTimeout(poll, 3000);
+        setError('Payment status check timed out after maximum retries');
+        showError(
+          'Payment Status Timeout',
+          'Unable to verify payment status. Please check your account or contact support.'
+        );
+        return;
+      }
+
+      try {
+        const result = await checkPaymentStatus(paymentId);
+        
+        // Stop polling if payment is completed or failed
+        if (result.status === 'completed' || result.status === 'failed' || result.status === 'cancelled') {
+          stopPolling();
+        } else {
+          // Schedule next poll after 3 seconds
+          pollingIntervalRef.current = setTimeout(poll, 3000);
+        }
+      } catch (err) {
+        // Network error or other exception - increment retry count and schedule retry
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          stopPolling();
+          setError('Payment status check timed out after maximum retries');
+          showError(
+            'Payment Status Timeout',
+            'Unable to verify payment status. Please check your account or contact support.'
+          );
+        } else {
+          // Schedule retry after 3 seconds
+          pollingIntervalRef.current = setTimeout(poll, 3000);
+        }
       }
     };
 
     // Start the first poll
     poll();
-  }, [checkPaymentStatus]);
+  }, [checkPaymentStatus, showError]);
 
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {

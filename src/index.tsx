@@ -119,11 +119,12 @@ function MainApp() {
 
 	// Check if we should show business welcome modal (after upgrade)
 	useEffect(() => {
-		const params = new URLSearchParams(location.search);
+		const queryString = location.query || window.location.search;
+		const params = new URLSearchParams(queryString);
 		if (params.get('upgraded') === 'business') {
 			setShowBusinessWelcome(true);
 		}
-	}, [location.search]);
+	}, [location.query]);
 
 	// Handle hash-based routing for pricing modal
 	const [showPricingModal, setShowPricingModal] = useState(false);

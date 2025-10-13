@@ -27,9 +27,9 @@ interface OrganizationDetailsPageProps {
 export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsPageProps) => {
   const { 
     currentOrganization,
-    members,
-    tokens,
-    workspaceData,
+    getMembers,
+    getTokens,
+    getWorkspaceData,
     loading,
     error,
     updateOrganization,
@@ -67,14 +67,17 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
   
   // Update current user role when members or email changes
   useEffect(() => {
-    if (currentUserEmail && members.length > 0) {
-      const userMember = members.find(member => member.email === currentUserEmail);
-      setCurrentUserRole(userMember?.role || 'member');
-    } else if (members.length === 0 && !loading) {
-      // If members haven't loaded yet, default to non-privileged role
-      setCurrentUserRole('member');
+    if (currentOrganization && currentUserEmail) {
+      const members = getMembers(currentOrganization.id);
+      if (members.length > 0) {
+        const userMember = members.find(member => member.email === currentUserEmail);
+        setCurrentUserRole(userMember?.role || 'member');
+      } else if (!loading) {
+        // If members haven't loaded yet, default to non-privileged role
+        setCurrentUserRole('member');
+      }
     }
-  }, [currentUserEmail, members, loading]);
+  }, [currentOrganization, currentUserEmail, getMembers, loading]);
   
   const isOwner = currentUserRole === 'owner';
   const isAdmin = currentUserRole === 'admin' || isOwner;
@@ -103,7 +106,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
   const [newToken, setNewToken] = useState<{ token: string; tokenId: string } | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  // Initialize form with current organization data
+  // Initialize form with current organization data (only when organization changes)
   useEffect(() => {
     if (currentOrganization) {
       setOrgForm({
@@ -111,12 +114,18 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
         description: currentOrganization.description || ''
       });
       
-      // Fetch related data
+      // Fetch related data that doesn't depend on workspace resource
       fetchMembers(currentOrganization.id);
       fetchTokens(currentOrganization.id);
+    }
+  }, [currentOrganization, fetchMembers, fetchTokens]);
+
+  // Dedicated effect for workspace data fetching (separate from form initialization)
+  useEffect(() => {
+    if (currentOrganization) {
       fetchWorkspaceData(currentOrganization.id, workspaceResource);
     }
-  }, [currentOrganization, fetchMembers, fetchTokens, fetchWorkspaceData, workspaceResource]);
+  }, [currentOrganization?.id, workspaceResource, fetchWorkspaceData]);
 
   const handleUpdateOrganization = async () => {
     if (!currentOrganization) return;
@@ -295,7 +304,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
             </div>
             
             <div className="space-y-3">
-              {members.map(member => (
+              {currentOrganization && getMembers(currentOrganization.id).map(member => (
                 <div key={member.userId} className="flex items-center justify-between py-3 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
@@ -357,7 +366,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
               </div>
             
             <div className="space-y-3">
-              {tokens.map(token => (
+              {currentOrganization && getTokens(currentOrganization.id).map(token => (
                 <div key={token.id} className="flex items-center justify-between py-3 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div>
                     <p className="text-sm font-medium">{token.name}</p>
@@ -408,8 +417,8 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
             </div>
             
             <div className="space-y-2">
-              {workspaceData.length > 0 ? (
-                workspaceData.map((item, index) => (
+              {currentOrganization && getWorkspaceData(currentOrganization.id, workspaceResource).length > 0 ? (
+                getWorkspaceData(currentOrganization.id, workspaceResource).map((item, index) => (
                   <div key={index} className="py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded text-sm">
                     <pre className="text-xs overflow-x-auto">
                       {JSON.stringify(item, null, 2)}

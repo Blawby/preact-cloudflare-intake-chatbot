@@ -1,4 +1,4 @@
-import { useState, useRef } from 'preact/hooks';
+import { useState, useRef, useEffect } from 'preact/hooks';
 import { ClipboardIcon } from '@heroicons/react/24/outline';
 import { Button } from './Button';
 import { useToastContext } from '../../contexts/ToastContext';
@@ -11,9 +11,18 @@ interface CopyButtonProps {
 }
 
 export const CopyButton = ({ text, label, className = '', disabled = false }: CopyButtonProps) => {
-  const { showSuccess } = useToastContext();
+  const { showSuccess, showError } = useToastContext();
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
   
   const handleCopy = async () => {
     if (disabled) return;
@@ -35,6 +44,7 @@ export const CopyButton = ({ text, label, className = '', disabled = false }: Co
       }, 2000);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
+      showError('Failed to copy to clipboard', error instanceof Error ? error.message : 'Unknown error');
     }
   };
   

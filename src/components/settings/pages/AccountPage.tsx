@@ -125,12 +125,31 @@ export const AccountPage = ({
       const nextTier = upgradePath[0];
       
       if (nextTier.id === 'business' || nextTier.id === 'business-plus') {
+        // Get the plan data to use its productId and priceId
+        const allPlans = mockPricingDataService.getPricingPlans();
+        const selectedPlan = allPlans.find(plan => plan.id === nextTier.id);
+        
+        // Use plan properties with safe fallbacks
+        const productId = selectedPlan?.productId || 'prod_business';
+        const priceId = selectedPlan?.priceId || 'price_monthly';
+        
         // Navigate to cart for business upgrades
-        localStorage.setItem('cartData', JSON.stringify({
-          product_id: 'prod_business',
-          price_id: 'price_monthly',
-          quantity: 2
-        }));
+        try {
+          localStorage.setItem('cartData', JSON.stringify({
+            product_id: productId,
+            price_id: priceId,
+            quantity: 2
+          }));
+        } catch (error) {
+          console.error('Failed to save cart data to localStorage:', error);
+          showError(
+            t('settings:account.plan.toasts.cartSaveError.title'),
+            t('settings:account.plan.toasts.cartSaveError.body')
+          );
+          // Fallback: navigate with query params instead of localStorage
+          navigate(`/cart?product_id=${productId}&price_id=${priceId}&quantity=2`);
+          return;
+        }
         navigate('/cart');
       } else {
         // Handle plus tier upgrade (mock for now)

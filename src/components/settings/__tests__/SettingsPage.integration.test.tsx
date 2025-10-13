@@ -1,24 +1,28 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '../../../__tests__/test-utils';
 import { SettingsPage } from '../SettingsPage';
+import { useOrganizationManagement } from '../../../hooks/useOrganizationManagement';
 
 // Mock the organization management hook
 const mockLoadOrganizations = vi.fn();
 const mockLoadInvitations = vi.fn();
 
+// Create mutable mock object
+const useOrgMgmtMock = {
+  organizations: [],
+  invitations: [],
+  loading: false,
+  error: null,
+  loadOrganizations: mockLoadOrganizations,
+  loadInvitations: mockLoadInvitations,
+  createOrganization: vi.fn(),
+  inviteMember: vi.fn(),
+  acceptInvitation: vi.fn(),
+  declineInvitation: vi.fn(),
+};
+
 vi.mock('../../../hooks/useOrganizationManagement', () => ({
-  useOrganizationManagement: () => ({
-    organizations: [],
-    invitations: [],
-    loading: false,
-    error: null,
-    loadOrganizations: mockLoadOrganizations,
-    loadInvitations: mockLoadInvitations,
-    createOrganization: vi.fn(),
-    inviteMember: vi.fn(),
-    acceptInvitation: vi.fn(),
-    declineInvitation: vi.fn(),
-  }),
+  useOrganizationManagement: vi.fn(),
 }));
 
 // Mock the payment upgrade hook
@@ -96,6 +100,21 @@ vi.mock('../../../lib/authClient', async () => {
   };
 });
 
+// Mock react-i18next
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key, // Return the key as the translation
+  }),
+  I18nextProvider: ({ children }: { children: any }) => children,
+}));
+
+// Mock preact-iso useLocation
+vi.mock('preact-iso', () => ({
+  useLocation: () => ({
+    path: '/settings',
+  }),
+}));
+
 describe('SettingsPage Integration Tests', () => {
   const mockOnClose = vi.fn();
 
@@ -105,6 +124,21 @@ describe('SettingsPage Integration Tests', () => {
     mockLoadInvitations.mockClear();
     mockNavigate.mockClear();
     mockOnClose.mockClear();
+    
+    // Reset the mutable mock object to default values
+    useOrgMgmtMock.organizations = [];
+    useOrgMgmtMock.invitations = [];
+    useOrgMgmtMock.loading = false;
+    useOrgMgmtMock.error = null;
+    useOrgMgmtMock.loadOrganizations = mockLoadOrganizations;
+    useOrgMgmtMock.loadInvitations = mockLoadInvitations;
+    useOrgMgmtMock.createOrganization = vi.fn();
+    useOrgMgmtMock.inviteMember = vi.fn();
+    useOrgMgmtMock.acceptInvitation = vi.fn();
+    useOrgMgmtMock.declineInvitation = vi.fn();
+    
+    // Set up the mock return value
+    vi.mocked(useOrganizationManagement).mockReturnValue(useOrgMgmtMock);
   });
 
   afterEach(() => {
@@ -275,18 +309,8 @@ describe('SettingsPage Integration Tests', () => {
       },
     ];
 
-    vi.mocked(require('../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
-      organizations: mockOrganizations,
-      invitations: [],
-      loading: false,
-      error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
-      createOrganization: vi.fn(),
-      inviteMember: vi.fn(),
-      acceptInvitation: vi.fn(),
-      declineInvitation: vi.fn(),
-    });
+    // Update the mutable mock object for this test scenario
+    useOrgMgmtMock.organizations = mockOrganizations;
 
     render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
     
@@ -305,18 +329,51 @@ describe('SettingsPage Integration Tests', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/settings/organization-details?orgId=org-1');
   });
 
-  it('should handle keyboard navigation', () => {
+  it('should handle keyboard navigation', async () => {
     render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
     
-    // Tab through navigation items
-    const firstNav = screen.getByText('General');
-    firstNav.focus();
+    // Focus on the first navigation item (General)
+    const generalNav = screen.getByText('General');
+    generalNav.focus();
     
-    fireEvent.keyDown(firstNav, { key: 'ArrowDown' });
-    // Should focus next navigation item
+    // Verify General is focused initially
+    expect(document.activeElement).toBe(generalNav);
     
-    fireEvent.keyDown(firstNav, { key: 'Enter' });
-    // Should activate the navigation item
+    // Press ArrowDown to move to next navigation item
+    fireEvent.keyDown(generalNav, { key: 'ArrowDown' });
+    
+    // Should focus next navigation item (Notifications)
+    const notificationsNav = screen.getByText('Notifications');
+    expect(document.activeElement).toBe(notificationsNav);
+    
+    // Press Enter to activate the navigation item
+    fireEvent.keyDown(notificationsNav, { key: 'Enter' });
+    
+    // Should navigate to notifications page
+    await waitFor(() => {
+      expect(screen.getByText('Notification Settings')).toBeInTheDocument();
+    });
+    
+    // Verify the navigation item has active state
+    expect(notificationsNav).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('should handle ArrowUp navigation', () => {
+    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    
+    // Focus on the second navigation item (Notifications)
+    const notificationsNav = screen.getByText('Notifications');
+    notificationsNav.focus();
+    
+    // Verify Notifications is focused initially
+    expect(document.activeElement).toBe(notificationsNav);
+    
+    // Press ArrowUp to move to previous navigation item
+    fireEvent.keyDown(notificationsNav, { key: 'ArrowUp' });
+    
+    // Should focus previous navigation item (General)
+    const generalNav = screen.getByText('General');
+    expect(document.activeElement).toBe(generalNav);
   });
 
   it('should handle escape key to close modal', () => {

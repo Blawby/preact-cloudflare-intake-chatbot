@@ -20,15 +20,20 @@ vi.mock('../../../../hooks/useOrganizationManagement', () => ({
       name: 'Test Organization',
       slug: 'test-org',
     },
-    members: [
-      {
-        userId: 'user-1',
-        role: 'owner',
-        email: 'test@example.com',
-        name: 'Test User',
-        createdAt: '2023-01-01T00:00:00Z',
-      },
-    ],
+    getMembers: vi.fn((orgId: string) => {
+      if (orgId === 'org-1') {
+        return [
+          {
+            userId: 'user-1',
+            role: 'owner',
+            email: 'test@example.com',
+            name: 'Test User',
+            createdAt: '2023-01-01T00:00:00Z',
+          },
+        ];
+      }
+      return [];
+    }),
     invitations: [],
     loading: false,
     error: null,
@@ -102,9 +107,11 @@ describe('OrganizationPage', () => {
     expect(mockLoadInvitations).toHaveBeenCalled();
   });
 
-  it('should show loading state when loading', () => {
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+  it('should show loading state when loading', async () => {
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
+      currentOrganization: null,
+      members: [],
       invitations: [],
       loading: true,
       error: null,
@@ -114,6 +121,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);
@@ -121,9 +130,11 @@ describe('OrganizationPage', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  it('should show error state when there is an error', () => {
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+  it('should show error state when there is an error', async () => {
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
+      currentOrganization: null,
+      members: [],
       invitations: [],
       loading: false,
       error: 'Failed to load organizations',
@@ -133,6 +144,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);
@@ -140,7 +153,7 @@ describe('OrganizationPage', () => {
     expect(screen.getByText('Failed to load organizations')).toBeInTheDocument();
   });
 
-  it('should display organizations when available', () => {
+  it('should display organizations when available', async () => {
     const mockOrganizations = [
       {
         id: 'org-1',
@@ -156,8 +169,10 @@ describe('OrganizationPage', () => {
       },
     ];
 
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: mockOrganizations,
+      currentOrganization: null,
+      members: [],
       invitations: [],
       loading: false,
       error: null,
@@ -167,6 +182,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);
@@ -175,7 +192,7 @@ describe('OrganizationPage', () => {
     expect(screen.getByText('test-org')).toBeInTheDocument();
   });
 
-  it('should display invitations when available', () => {
+  it('should display invitations when available', async () => {
     const mockInvitations = [
       {
         id: 'inv-1',
@@ -187,8 +204,10 @@ describe('OrganizationPage', () => {
       },
     ];
 
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
+      currentOrganization: null,
+      members: [],
       invitations: mockInvitations,
       loading: false,
       error: null,
@@ -198,6 +217,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);
@@ -230,8 +251,10 @@ describe('OrganizationPage', () => {
       },
     ];
 
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: mockOrganizations,
+      currentOrganization: null,
+      members: [],
       invitations: [],
       loading: false,
       error: null,
@@ -241,6 +264,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);
@@ -310,8 +335,10 @@ describe('OrganizationPage', () => {
       },
     ];
 
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: mockOrganizations,
+      currentOrganization: null,
+      members: [],
       invitations: [],
       loading: false,
       error: null,
@@ -321,6 +348,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);
@@ -367,8 +396,10 @@ describe('OrganizationPage', () => {
       },
     ];
 
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
+      currentOrganization: null,
+      members: [],
       invitations: mockInvitations,
       loading: false,
       error: null,
@@ -378,6 +409,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);
@@ -404,8 +437,10 @@ describe('OrganizationPage', () => {
       },
     ];
 
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
+      currentOrganization: null,
+      members: [],
       invitations: mockInvitations,
       loading: false,
       error: null,
@@ -415,6 +450,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);
@@ -439,8 +476,10 @@ describe('OrganizationPage', () => {
       },
     ];
 
-    vi.mocked(require('../../../../hooks/useOrganizationManagement').useOrganizationManagement).mockReturnValue({
+    vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: mockOrganizations,
+      currentOrganization: null,
+      members: [],
       invitations: [],
       loading: false,
       error: null,
@@ -450,6 +489,8 @@ describe('OrganizationPage', () => {
       inviteMember: mockInviteMember,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      fetchMembers: mockFetchMembers,
+      refetch: mockRefetch,
     });
 
     render(<OrganizationPage />);

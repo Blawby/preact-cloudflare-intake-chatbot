@@ -6,7 +6,7 @@ import { Button } from '../../ui/Button';
 import { SectionDivider } from '../../ui/layout/SectionDivider';
 import { RoleBadge } from '../../ui/badges/RoleBadge';
 import Modal from '../../Modal';
-import { Input } from '../../ui/Input';
+import { Input } from '../../ui/input';
 import { FormLabel } from '../../ui/form/FormLabel';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { formatDate } from '../../../utils/dateTime';
@@ -18,12 +18,13 @@ interface OrganizationPageProps {
 export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
   const { 
     currentOrganization, 
-    members,
+    getMembers,
     invitations, 
     loading, 
     error,
     createOrganization,
     acceptInvitation,
+    declineInvitation,
     fetchMembers,
     refetch 
   } = useOrganizationManagement();
@@ -37,6 +38,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
   });
 
   const hasOrganization = !!currentOrganization;
+  const members = currentOrganization ? getMembers(currentOrganization.id) : [];
   const memberCount = members.length;
 
   // Fetch members when we have an organization
@@ -77,8 +79,12 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
   };
 
   const handleDeclineInvitation = async (invitationId: string) => {
-    // TODO: Implement decline invitation
-    showError('Decline invitation not implemented yet');
+    try {
+      await declineInvitation(invitationId);
+      showSuccess('Invitation declined successfully!');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to decline invitation');
+    }
   };
 
   if (loading) {

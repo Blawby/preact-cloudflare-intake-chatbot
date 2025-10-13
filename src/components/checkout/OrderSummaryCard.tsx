@@ -42,7 +42,8 @@ export const OrderSummaryCard = ({
   // Calculate VAT rate if not provided
   const calculatedVatRate = vatRate ?? (subtotal > 0 ? vat / subtotal : 0);
   const vatPercentage = isNaN(calculatedVatRate) ? 0 : calculatedVatRate;
-  const vatPercentageDisplay = (vatPercentage * 100).toFixed(vatPercentage % 1 === 0 ? 0 : 2);
+  const percentage = vatPercentage * 100;
+  const vatPercentageDisplay = percentage.toFixed(percentage % 1 === 0 ? 0 : 2) + '%';
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
       <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
@@ -65,7 +66,7 @@ export const OrderSummaryCard = ({
           </div>
           
           <div className="flex justify-between mb-2">
-            <span className="text-gray-600">VAT ({vatPercentageDisplay}%)</span>
+            <span className="text-gray-600">VAT ({vatPercentageDisplay})</span>
             <span>{formatCurrency(vat, locale, currency)}</span>
           </div>
           

@@ -82,6 +82,10 @@
         "highest": {
           "title": "Konto",
           "body": "Sie sind bereits im höchsten Tarif!"
+        },
+        "cartSaveError": {
+          "title": "Warenkorb-Fehler",
+          "body": "Warenkorbdaten konnten nicht gespeichert werden. Fortfahren mit alternativer Methode."
         }
       }
     },

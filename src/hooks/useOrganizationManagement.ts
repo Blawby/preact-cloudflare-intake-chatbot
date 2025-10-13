@@ -72,7 +72,7 @@ interface UseOrganizationManagementReturn {
   deleteOrganization: (id: string) => Promise<void>;
   
   // Team management
-  members: Member[];
+  getMembers: (orgId: string) => Member[];
   fetchMembers: (orgId: string) => Promise<void>;
   updateMemberRole: (orgId: string, userId: string, role: Role) => Promise<void>;
   removeMember: (orgId: string, userId: string) => Promise<void>;
@@ -81,15 +81,16 @@ interface UseOrganizationManagementReturn {
   invitations: Invitation[];
   sendInvitation: (orgId: string, email: string, role: Role) => Promise<void>;
   acceptInvitation: (invitationId: string) => Promise<void>;
+  declineInvitation: (invitationId: string) => Promise<void>;
   
   // API Tokens
-  tokens: ApiToken[];
+  getTokens: (orgId: string) => ApiToken[];
   fetchTokens: (orgId: string) => Promise<void>;
   createToken: (orgId: string, name: string) => Promise<{ token: string; tokenId: string }>;
   revokeToken: (orgId: string, tokenId: string) => Promise<void>;
   
   // Workspace data
-  workspaceData: any[];
+  getWorkspaceData: (orgId: string, resource: string) => any[];
   fetchWorkspaceData: (orgId: string, resource: string) => Promise<void>;
   
   refetch: () => Promise<void>;
@@ -98,36 +99,93 @@ interface UseOrganizationManagementReturn {
 export function useOrganizationManagement(): UseOrganizationManagementReturn {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<Record<string, Member[]>>({});
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [tokens, setTokens] = useState<ApiToken[]>([]);
-  const [workspaceData, setWorkspaceData] = useState<any[]>([]);
+  const [tokens, setTokens] = useState<Record<string, ApiToken[]>>({});
+  const [workspaceData, setWorkspaceData] = useState<Record<string, Record<string, any[]>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Helper function to make API calls
-  const apiCall = useCallback(async (url: string, options: RequestInit = {}) => {
-    const response = await fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+  const apiCall = useCallback(async (url: string, options: RequestInit = {}, timeoutMs: number = 15000) => {
+    // Create AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        signal: controller.signal,
+      });
+
+      // Clear timeout since request completed
+      clearTimeout(timeoutId);
+
+      // Helper function to safely parse JSON response
+      const safeJsonParse = async (response: Response) => {
+        // Check for no-content responses
+        if (response.status === 204 || response.headers.get('content-length') === '0') {
+          return { success: true, data: null };
+        }
+        
+        // Check content-type for JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          return { success: true, data: null };
+        }
+        
+        // Safe JSON parsing with fallback
+        try {
+          return await response.json();
+        } catch {
+          return { success: true, data: null };
+        }
+      };
+
+      if (!response.ok) {
+        const errorData = await safeJsonParse(response);
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await safeJsonParse(response);
+      if (!data.success) {
+        throw new Error(data.error || 'API call failed');
+      }
+
+      return data.data;
+    } catch (error) {
+      // Clear timeout in case of error
+      clearTimeout(timeoutId);
+      
+      // Handle AbortError (timeout)
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out');
+      }
+      
+      // Re-throw other errors (preserve existing error handling)
+      throw error;
     }
-
-    const data = await response.json();
-    if (!data.success) {
-      throw new Error(data.error || 'API call failed');
-    }
-
-    return data.data;
   }, []);
+
+  // Helper functions to get data by orgId
+  const getMembers = useCallback((orgId: string): Member[] => {
+    return members[orgId] || [];
+  }, [members]);
+
+  const getTokens = useCallback((orgId: string): ApiToken[] => {
+    return tokens[orgId] || [];
+  }, [tokens]);
+
+  const getWorkspaceData = useCallback((orgId: string, resource: string): any[] => {
+    return workspaceData[orgId]?.[resource] || [];
+  }, [workspaceData]);
 
   // Fetch user's organizations
   const fetchOrganizations = useCallback(async () => {
@@ -151,9 +209,10 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
       const data = await apiCall(`${getOrganizationsEndpoint()}/me/invitations`);
       setInvitations(data || []);
     } catch (err) {
-      console.error('Failed to fetch invitations:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch invitations');
+      setInvitations([]);
     }
-  }, [apiCall]);
+  }, [apiCall, setError, setInvitations]);
 
   // Create organization
   const createOrganization = useCallback(async (data: CreateOrgData): Promise<Organization> => {
@@ -186,7 +245,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   const fetchMembers = useCallback(async (orgId: string): Promise<void> => {
     try {
       const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members`);
-      setMembers(data.members || []);
+      setMembers(prev => ({ ...prev, [orgId]: data.members || [] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch members');
     }
@@ -203,7 +262,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
 
   // Remove member
   const removeMember = useCallback(async (orgId: string, userId: string): Promise<void> => {
-    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members?userId=${userId}`, {
+    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members?userId=${encodeURIComponent(userId)}`, {
       method: 'DELETE',
     });
     await fetchMembers(orgId); // Refresh members
@@ -227,11 +286,18 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
     await fetchOrganizations(); // Refresh organizations
   }, [apiCall, fetchInvitations, fetchOrganizations]);
 
+  const declineInvitation = useCallback(async (invitationId: string): Promise<void> => {
+    await apiCall(`${getOrganizationsEndpoint()}/${invitationId}/decline-invitation`, {
+      method: 'POST',
+    });
+    await fetchInvitations(); // Refresh invitations
+  }, [apiCall, fetchInvitations]);
+
   // Fetch API tokens
   const fetchTokens = useCallback(async (orgId: string): Promise<void> => {
     try {
       const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`);
-      setTokens(data || []);
+      setTokens(prev => ({ ...prev, [orgId]: data || [] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tokens');
     }
@@ -259,7 +325,13 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   const fetchWorkspaceData = useCallback(async (orgId: string, resource: string): Promise<void> => {
     try {
       const data = await apiCall(getOrganizationWorkspaceEndpoint(orgId, resource));
-      setWorkspaceData(data[resource] || []);
+      setWorkspaceData(prev => ({
+        ...prev,
+        [orgId]: {
+          ...prev[orgId],
+          [resource]: data[resource] || []
+        }
+      }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch workspace data');
     }
@@ -286,18 +358,19 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
     createOrganization,
     updateOrganization,
     deleteOrganization,
-    members,
+    getMembers,
     fetchMembers,
     updateMemberRole,
     removeMember,
     invitations,
     sendInvitation,
     acceptInvitation,
-    tokens,
+    declineInvitation,
+    getTokens,
     fetchTokens,
     createToken,
     revokeToken,
-    workspaceData,
+    getWorkspaceData,
     fetchWorkspaceData,
     refetch,
   };

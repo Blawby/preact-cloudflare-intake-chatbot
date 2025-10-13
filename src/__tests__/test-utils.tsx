@@ -2,6 +2,7 @@ import { render, RenderOptions } from '@testing-library/preact';
 import { ComponentChildren } from 'preact';
 import { ToastProvider } from '../contexts/ToastContext';
 import { OrganizationProvider } from '../contexts/OrganizationContext';
+import { vi } from 'vitest';
 
 // Mock the navigation hook
 const mockNavigate = vi.fn();

@@ -82,6 +82,10 @@
         "highest": {
           "title": "Cuenta",
           "body": "¡Ya tienes el plan más alto disponible!"
+        },
+        "cartSaveError": {
+          "title": "Error del Carrito",
+          "body": "No se pudieron guardar los datos del carrito. Procediendo con método alternativo."
         }
       }
     },

@@ -82,6 +82,10 @@
         "highest": {
           "title": "Compte",
           "body": "Vous êtes déjà au niveau le plus élevé !"
+        },
+        "cartSaveError": {
+          "title": "Erreur du Panier",
+          "body": "Impossible de sauvegarder les données du panier. Procédure avec une méthode alternative."
         }
       }
     },

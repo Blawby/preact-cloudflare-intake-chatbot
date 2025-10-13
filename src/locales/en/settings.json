@@ -82,6 +82,10 @@
         "highest": {
           "title": "Account",
           "body": "You are already on the highest tier!"
+        },
+        "cartSaveError": {
+          "title": "Cart Error",
+          "body": "Unable to save cart data. Proceeding with alternative method."
         }
       }
     },

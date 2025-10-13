@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useCallback } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { PRODUCTS, PRICES, PriceId } from '../../utils/stripe-products';
 import { QuantitySelector } from './QuantitySelector';
@@ -17,6 +17,27 @@ export const CartPage = () => {
   const annualSeatPricePerYear = PRICES.price_annual.unit_amount / 100;
   const annualSeatPricePerMonth = annualSeatPricePerYear / 12;
 
+  // Keyboard navigation for radiogroup
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    const priceIds: PriceId[] = ['price_annual', 'price_monthly'];
+    const currentIndex = priceIds.indexOf(selectedPriceId);
+    
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        const prevIndex = currentIndex > 0 ? currentIndex - 1 : priceIds.length - 1;
+        setSelectedPriceId(priceIds[prevIndex]);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        const nextIndex = currentIndex < priceIds.length - 1 ? currentIndex + 1 : 0;
+        setSelectedPriceId(priceIds[nextIndex]);
+        break;
+    }
+  }, [selectedPriceId]);
+
   const subtotal = isAnnual
     ? monthlySeatPrice * quantity * 12 // baseline yearly cost at monthly rate
     : monthlySeatPrice * quantity;
@@ -27,11 +48,40 @@ export const CartPage = () => {
 
   const handleContinue = () => {
     // Store cart data for Stripe Elements integration
-    localStorage.setItem('cartData', JSON.stringify({
+    const cartData = {
       product_id: selectedPrice.product,
       price_id: selectedPriceId,
       quantity
-    }));
+    };
+
+    try {
+      // Attempt to store in localStorage
+      const cartDataString = JSON.stringify(cartData);
+      localStorage.setItem('cartData', cartDataString);
+    } catch (error) {
+      // Log the error with context
+      console.error('Failed to store cart data in localStorage:', {
+        error: error instanceof Error ? error.message : String(error),
+        cartData,
+        storageAvailable: typeof Storage !== 'undefined',
+        localStorageAvailable: typeof localStorage !== 'undefined'
+      });
+
+      // Fallback to sessionStorage if available
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          const cartDataString = JSON.stringify(cartData);
+          sessionStorage.setItem('cartData', cartDataString);
+          console.log('Cart data stored in sessionStorage as fallback');
+        }
+      } catch (sessionError) {
+        console.error('Failed to store cart data in sessionStorage:', {
+          error: sessionError instanceof Error ? sessionError.message : String(sessionError),
+          cartData
+        });
+        // Continue without persisting - checkout should not be blocked
+      }
+    }
     
     // TODO: Integrate with Stripe Elements
     // This will redirect to Stripe checkout or open Stripe Elements modal
@@ -64,12 +114,18 @@ export const CartPage = () => {
             <h2 className="text-2xl font-bold mb-6">Pick your plan</h2>
             
             {/* Price cards */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div 
+              role="radiogroup" 
+              aria-label="Billing plan selection"
+              className="grid grid-cols-2 gap-4 mb-8"
+              onKeyDown={handleKeyDown}
+            >
               <button
                 onClick={() => setSelectedPriceId('price_annual')}
                 role="radio"
                 aria-checked={selectedPriceId === 'price_annual'}
                 aria-label="Annual plan - $25/user/month. Features: Billed annually, Minimum 2 users, Add and reassign users"
+                tabIndex={selectedPriceId === 'price_annual' ? 0 : -1}
                 className={`p-6 border rounded-lg text-left transition-all relative ${
                   selectedPriceId === 'price_annual' 
                     ? 'border-white bg-gray-800' 
@@ -113,6 +169,7 @@ export const CartPage = () => {
                 role="radio"
                 aria-checked={selectedPriceId === 'price_monthly'}
                 aria-label="Monthly plan - $30/user/month. Features: Billed monthly, Minimum 2 users, Add or remove users"
+                tabIndex={selectedPriceId === 'price_monthly' ? 0 : -1}
                 className={`p-6 border rounded-lg text-left transition-all relative ${
                   selectedPriceId === 'price_monthly' 
                     ? 'border-white bg-gray-800' 
@@ -155,7 +212,7 @@ export const CartPage = () => {
             <PricingSummary
               heading="Summary"
               planName={PRODUCTS.business.name}
-              planDescription={`${quantity} ${quantity === 1 ? 'user' : 'users'} • ${isAnnual ? 'Billed annually' : 'Billed monthly'}`}
+              planDescription={`${quantity} users • ${isAnnual ? 'Billed annually' : 'Billed monthly'}`}
               pricePerSeat={`$${(isAnnual ? annualSeatPricePerMonth : monthlySeatPrice).toFixed(2)} per user / month`}
               isAnnual={isAnnual}
               billingNote={

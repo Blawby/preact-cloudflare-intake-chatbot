@@ -9,7 +9,7 @@ export const PRODUCTS = {
 export const PRICES = {
   price_monthly: {
     id: 'price_monthly',
-    product: 'prod_business',
+    product: PRODUCTS.business.id,
     unit_amount: 3000, // $30 in cents
     currency: 'usd',
     recurring: {
@@ -19,7 +19,7 @@ export const PRICES = {
   },
   price_annual: {
     id: 'price_annual',
-    product: 'prod_business',
+    product: PRODUCTS.business.id,
     unit_amount: 30000, // $300 in cents ($25/mo effective)
     currency: 'usd',
     recurring: {

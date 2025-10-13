@@ -6,9 +6,10 @@ interface Props {
   onChange: (q: number) => void;
   min?: number;
   helperText?: string;
+  label?: string;
 }
 
-export const QuantitySelector = ({ quantity, onChange, min = 1, helperText }: Props) => {
+export const QuantitySelector = ({ quantity, onChange, min = 1, helperText, label = 'Users' }: Props) => {
   const handleIncrement = useCallback(() => {
     onChange(quantity + 1);
   }, [quantity, onChange]);
@@ -28,7 +29,7 @@ export const QuantitySelector = ({ quantity, onChange, min = 1, helperText }: Pr
   return (
     <div>
       <label className="block text-sm font-medium text-gray-100 mb-1">
-        Users
+        {label}
       </label>
       
       <div className="flex items-center gap-2">

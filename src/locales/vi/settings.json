@@ -82,6 +82,10 @@
         "highest": {
           "title": "Tài khoản",
           "body": "Bạn đã ở gói cao nhất rồi!"
+        },
+        "cartSaveError": {
+          "title": "Lỗi Giỏ Hàng",
+          "body": "Không thể lưu dữ liệu giỏ hàng. Tiếp tục với phương pháp thay thế."
         }
       }
     },

@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 import { renderHook, act } from '@testing-library/preact';
 import { useOrganizationManagement } from '../useOrganizationManagement';
 
 // Mock the API endpoints
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+vi.stubGlobal('fetch', mockFetch);
 
 // Mock the toast context
 const mockShowSuccess = vi.fn();
@@ -66,6 +66,10 @@ describe('useOrganizationManagement', () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('loadOrganizations', () => {
@@ -444,6 +448,98 @@ describe('useOrganizationManagement', () => {
   });
 
 
+  describe('getter functions', () => {
+    it('should return empty arrays for non-existent organization data', () => {
+      const { result } = renderHook(() => useOrganizationManagement());
+
+      expect(result.current.getMembers('non-existent-org')).toEqual([]);
+      expect(result.current.getTokens('non-existent-org')).toEqual([]);
+      expect(result.current.getWorkspaceData('non-existent-org', 'contact-forms')).toEqual([]);
+    });
+
+    it('should return members for specific organization', async () => {
+      const mockMembers = [
+        {
+          userId: 'user-1',
+          role: 'owner' as const,
+          email: 'owner@example.com',
+          name: 'Owner User',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          userId: 'user-2',
+          role: 'attorney' as const,
+          email: 'attorney@example.com',
+          name: 'Attorney User',
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: { members: mockMembers } }),
+      });
+
+      const { result } = renderHook(() => useOrganizationManagement());
+
+      await act(async () => {
+        await result.current.fetchMembers('org-1');
+      });
+
+      expect(result.current.getMembers('org-1')).toEqual(mockMembers);
+      expect(result.current.getMembers('org-2')).toEqual([]);
+    });
+
+    it('should return tokens for specific organization', async () => {
+      const mockTokens = [
+        {
+          id: 'token-1',
+          name: 'API Token 1',
+          permissions: ['read', 'write'],
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: mockTokens }),
+      });
+
+      const { result } = renderHook(() => useOrganizationManagement());
+
+      await act(async () => {
+        await result.current.fetchTokens('org-1');
+      });
+
+      expect(result.current.getTokens('org-1')).toEqual(mockTokens);
+      expect(result.current.getTokens('org-2')).toEqual([]);
+    });
+
+    it('should return workspace data for specific organization and resource', async () => {
+      const mockWorkspaceData = {
+        'contact-forms': [
+          { id: 'form-1', name: 'Contact Form 1' },
+          { id: 'form-2', name: 'Contact Form 2' },
+        ],
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: mockWorkspaceData }),
+      });
+
+      const { result } = renderHook(() => useOrganizationManagement());
+
+      await act(async () => {
+        await result.current.fetchWorkspaceData('org-1', 'contact-forms');
+      });
+
+      expect(result.current.getWorkspaceData('org-1', 'contact-forms')).toEqual(mockWorkspaceData['contact-forms']);
+      expect(result.current.getWorkspaceData('org-1', 'sessions')).toEqual([]);
+      expect(result.current.getWorkspaceData('org-2', 'contact-forms')).toEqual([]);
+    });
+  });
+
   describe('initialization', () => {
     it('should initialize with default state', async () => {
       const { result } = renderHook(() => useOrganizationManagement());
@@ -455,6 +551,9 @@ describe('useOrganizationManagement', () => {
 
       expect(result.current.organizations).toEqual([]);
       expect(result.current.invitations).toEqual([]);
+      expect(result.current.getMembers('test-org')).toEqual([]);
+      expect(result.current.getTokens('test-org')).toEqual([]);
+      expect(result.current.getWorkspaceData('test-org', 'contact-forms')).toEqual([]);
       expect(result.current.loading).toBe(false);
       expect(result.current.error).toBeNull();
     });
