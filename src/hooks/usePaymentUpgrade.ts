@@ -130,7 +130,7 @@ export const usePaymentUpgrade = () => {
         error: errorMessage 
       };
     }
-  }, [showSuccess, showError]);
+  }, [showSuccess, showError, paymentStatus]);
 
   const pollPaymentStatus = useCallback((paymentId: string, maxRetries: number = 20) => {
     // Clear any existing polling
