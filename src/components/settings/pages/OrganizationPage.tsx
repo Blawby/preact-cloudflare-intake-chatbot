@@ -193,7 +193,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
                 {invitations.map(inv => (
                   <div key={inv.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{inv.organizationId}</p>
+                      <p className="text-sm font-medium">{inv.organizationName || inv.organizationId}</p>
                       <p className="text-xs text-gray-500">
                         Role: <RoleBadge roleType={inv.role} /> • Expires: {formatDate(inv.expiresAt)}
                       </p>

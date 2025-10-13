@@ -204,7 +204,7 @@ describe('OrganizationPage', () => {
 
     render(<OrganizationPage />);
     
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('Loading organization...')).toBeInTheDocument();
   });
 
   it('should show error state when there is an error', async () => {
@@ -264,6 +264,7 @@ describe('OrganizationPage', () => {
         role: 'attorney' as const,
         status: 'pending' as const,
         organizationId: 'org-1',
+        organizationName: 'Test Organization',
         invitedBy: 'admin@example.com',
         expiresAt: '2024-02-01T00:00:00Z',
         createdAt: '2024-01-01T00:00:00Z',
@@ -341,12 +342,12 @@ describe('OrganizationPage', () => {
     fireEvent.click(createButton);
     
     await waitFor(() => {
-      expect(screen.getByText('Create New Organization')).toBeInTheDocument();
+      expect(screen.getByText('Create Organization')).toBeInTheDocument();
     });
     
     // Fill form
-    const nameInput = screen.getByLabelText('Organization Name');
-    const slugInput = screen.getByLabelText('Organization Slug');
+    const nameInput = screen.getByLabelText('Organization Name *');
+    const slugInput = screen.getByLabelText('Slug (optional)');
     
     fireEvent.input(nameInput, { target: { value: 'New Organization' } });
     fireEvent.input(slugInput, { target: { value: 'new-org' } });
@@ -359,17 +360,7 @@ describe('OrganizationPage', () => {
       expect(mockCreateOrganization).toHaveBeenCalledWith({
         name: 'New Organization',
         slug: 'new-org',
-        config: {
-          consultationFee: 0,
-          requiresPayment: false,
-          availableServices: ['General Consultation'],
-          jurisdiction: {
-            type: 'national',
-            description: 'Available nationwide',
-            supportedStates: ['all'],
-            supportedCountries: ['US'],
-          },
-        },
+        description: undefined,
       });
     });
   });
@@ -432,6 +423,7 @@ describe('OrganizationPage', () => {
         role: 'attorney' as const,
         status: 'pending' as const,
         organizationId: 'org-1',
+        organizationName: 'Test Organization',
         invitedBy: 'admin@example.com',
         expiresAt: '2024-02-01T00:00:00Z',
         createdAt: '2024-01-01T00:00:00Z',
@@ -467,6 +459,7 @@ describe('OrganizationPage', () => {
         role: 'attorney' as const,
         status: 'pending' as const,
         organizationId: 'org-1',
+        organizationName: 'Test Organization',
         invitedBy: 'admin@example.com',
         expiresAt: '2024-02-01T00:00:00Z',
         createdAt: '2024-01-01T00:00:00Z',
@@ -491,21 +484,25 @@ describe('OrganizationPage', () => {
     });
   });
 
-  it('should navigate to organization details when organization is clicked', async () => {
+  it('should navigate to organization details when manage button is clicked', async () => {
     mockGetMembers.mockReturnValue([]);
     
-    const mockOrganizations = [
-      {
-        id: 'org-1',
-        name: 'Test Organization',
-        slug: 'test-org',
-        config: {},
-      },
-    ];
+    // Mock window.location
+    const mockLocation = {
+      href: '',
+    };
+    Object.defineProperty(window, 'location', {
+      value: mockLocation,
+      writable: true,
+    });
 
     // Update the mutable mock object for this test
-    useOrgMgmtMock.organizations = mockOrganizations;
-    useOrgMgmtMock.currentOrganization = null;
+    useOrgMgmtMock.organizations = [];
+    useOrgMgmtMock.currentOrganization = {
+      id: 'org-1',
+      name: 'Test Organization',
+      slug: 'test-org',
+    };
     useOrgMgmtMock.getMembers = mockGetMembers;
     useOrgMgmtMock.invitations = [];
     useOrgMgmtMock.loading = false;
@@ -513,10 +510,10 @@ describe('OrganizationPage', () => {
 
     render(<OrganizationPage />);
     
-    const organizationCard = screen.getByText('Test Organization');
-    fireEvent.click(organizationCard);
+    const manageButton = screen.getByText('Manage');
+    fireEvent.click(manageButton);
     
-    expect(mockNavigate).toHaveBeenCalledWith('/settings/organization-details?orgId=org-1');
+    expect(mockLocation.href).toBe('/settings/organization/details');
   });
 
   it('should show empty state when no organizations or invitations', () => {

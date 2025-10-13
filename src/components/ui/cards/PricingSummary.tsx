@@ -1,3 +1,4 @@
+import { useId } from 'preact/compat';
 import { Button } from '../Button';
 
 interface LineItem {
@@ -67,6 +68,7 @@ export const PricingSummary = ({
   error = null,
   notice = null
 }: PricingSummaryProps) => {
+  const headingId = useId();
   const primaryLabel = primaryAction.isLoading && primaryAction.loadingLabel
     ? primaryAction.loadingLabel
     : primaryAction.label;
@@ -93,9 +95,9 @@ export const PricingSummary = ({
   const discountPercentage = computeDiscountPercentage();
 
   return (
-    <section aria-labelledby="pricing-summary-heading" className="bg-gray-900 text-white">
+    <section aria-labelledby={headingId} className="bg-gray-900 text-white">
       <header className="mb-6">
-        <h2 id="pricing-summary-heading" className="text-lg font-medium">
+        <h2 id={headingId} className="text-lg font-medium">
           {heading}
         </h2>
       </header>
