@@ -22,7 +22,6 @@ import PricingModal from './components/PricingModal';
 import WelcomeModal from './components/onboarding/WelcomeModal';
 import { BusinessWelcomeModal } from './components/onboarding/BusinessWelcomeModal';
 import { CartPage } from './components/cart/CartPage';
-import { CheckoutPage } from './components/checkout/CheckoutPage';
 import { debounce } from './utils/debounce';
 import { authClient } from './lib/authClient';
 import './index.css';
@@ -533,7 +532,6 @@ function AppWithSEO() {
 			<Router>
 				<Route path="/auth" component={AuthPage} />
 				<Route path="/cart" component={CartPage} />
-				<Route path="/checkout" component={CheckoutPage} />
 				<Route path="/settings/*" component={MainApp} />
 				<Route default component={MainApp} />
 			</Router>

@@ -1,4 +1,4 @@
-import { useLocation } from 'preact-router';
+import { useLocation } from 'preact-iso';
 import Modal from '../Modal';
 import { Button } from '../ui/Button';
 import { UserGroupIcon, BuildingOfficeIcon, KeyIcon } from '@heroicons/react/24/outline';
