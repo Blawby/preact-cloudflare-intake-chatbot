@@ -1,6 +1,6 @@
 // API Configuration
 // Set this to 'local' to use local development server, 'deployed' to use the live API
-const API_MODE = 'deployed' as const;
+const API_MODE = 'local' as const;
 
 const API_CONFIG = {
   local: {
@@ -51,4 +51,19 @@ export const getHealthEndpoint = () => {
 export const getMatterCreationEndpoint = () => {
   const config = getApiConfig();
   return `${config.baseUrl}${config.matterCreationEndpoint}`;
+};
+
+export const getPaymentUpgradeEndpoint = () => {
+  const config = getApiConfig();
+  return `${config.baseUrl}/api/payment/upgrade`;
+};
+
+export const getPaymentStatusEndpoint = (paymentId: string) => {
+  const config = getApiConfig();
+  return `${config.baseUrl}/api/payment/status/${paymentId}`;
+};
+
+export const getOrganizationWorkspaceEndpoint = (orgId: string, resource: string) => {
+  const config = getApiConfig();
+  return `${config.baseUrl}/api/organizations/${orgId}/workspace/${resource}`;
 }; 

@@ -271,10 +271,21 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   
 
   const handleUpgrade = (tier: SubscriptionTier) => {
-    if (onUpgrade) {
-      onUpgrade(tier);
+    if (tier === 'business') {
+      // Store cart data and navigate to cart
+      localStorage.setItem('cartData', JSON.stringify({
+        product_id: 'prod_business',
+        price_id: 'price_monthly',
+        quantity: 2
+      }));
+      window.location.href = '/cart';
+      onClose();
+    } else {
+      if (onUpgrade) {
+        onUpgrade(tier);
+      }
+      onClose();
     }
-    onClose();
   };
 
   return (

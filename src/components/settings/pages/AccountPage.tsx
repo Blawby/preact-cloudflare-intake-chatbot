@@ -124,18 +124,28 @@ export const AccountPage = ({
     if (upgradePath.length > 0) {
       const nextTier = upgradePath[0];
       
-      // Actually upgrade the user's tier in mock data
-      const profile = mockUserDataService.getUserProfile();
-      const updatedProfile = { ...profile, subscriptionTier: nextTier.id as SubscriptionTier };
-      mockUserDataService.setUserProfile(updatedProfile);
-      
-      // Update local state
-      setCurrentTier(nextTier.id as SubscriptionTier);
-      
-      showSuccess(
-        t('settings:account.plan.toasts.upgradeWithPlan.title'),
-        t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
-      );
+      if (nextTier.id === 'business' || nextTier.id === 'business-plus') {
+        // Navigate to cart for business upgrades
+        localStorage.setItem('cartData', JSON.stringify({
+          product_id: 'prod_business',
+          price_id: 'price_monthly',
+          quantity: 2
+        }));
+        navigate('/cart');
+      } else {
+        // Handle plus tier upgrade (mock for now)
+        const profile = mockUserDataService.getUserProfile();
+        const updatedProfile = { ...profile, subscriptionTier: nextTier.id as SubscriptionTier };
+        mockUserDataService.setUserProfile(updatedProfile);
+        
+        // Update local state
+        setCurrentTier(nextTier.id as SubscriptionTier);
+        
+        showSuccess(
+          t('settings:account.plan.toasts.upgradeWithPlan.title'),
+          t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
+        );
+      }
     } else {
       showSuccess(
         t('settings:account.plan.toasts.highest.title'),
