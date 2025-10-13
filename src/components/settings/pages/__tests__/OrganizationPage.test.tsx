@@ -11,6 +11,31 @@ const mockAcceptInvitation = vi.fn();
 const mockDeclineInvitation = vi.fn();
 const mockFetchMembers = vi.fn();
 const mockRefetch = vi.fn();
+const mockUpdateOrganization = vi.fn();
+const mockDeleteOrganization = vi.fn();
+const mockUpdateMemberRole = vi.fn();
+const mockRemoveMember = vi.fn();
+const mockSendInvitation = vi.fn();
+const mockGetTokens = vi.fn();
+const mockFetchTokens = vi.fn();
+const mockCreateToken = vi.fn();
+const mockRevokeToken = vi.fn();
+const mockGetWorkspaceData = vi.fn();
+const mockFetchWorkspaceData = vi.fn();
+const mockGetMembers = vi.fn((orgId: string) => {
+  if (orgId === 'org-1') {
+    return [
+      {
+        userId: 'user-1',
+        role: 'owner',
+        email: 'test@example.com',
+        name: 'Test User',
+        createdAt: '2023-01-01T00:00:00Z',
+      },
+    ];
+  }
+  return [];
+});
 
 vi.mock('../../../../hooks/useOrganizationManagement', () => ({
   useOrganizationManagement: () => ({
@@ -20,29 +45,24 @@ vi.mock('../../../../hooks/useOrganizationManagement', () => ({
       name: 'Test Organization',
       slug: 'test-org',
     },
-    getMembers: vi.fn((orgId: string) => {
-      if (orgId === 'org-1') {
-        return [
-          {
-            userId: 'user-1',
-            role: 'owner',
-            email: 'test@example.com',
-            name: 'Test User',
-            createdAt: '2023-01-01T00:00:00Z',
-          },
-        ];
-      }
-      return [];
-    }),
+    getMembers: mockGetMembers,
     invitations: [],
     loading: false,
     error: null,
-    loadOrganizations: mockLoadOrganizations,
-    loadInvitations: mockLoadInvitations,
     createOrganization: mockCreateOrganization,
-    inviteMember: mockInviteMember,
+    updateOrganization: mockUpdateOrganization,
+    deleteOrganization: mockDeleteOrganization,
+    updateMemberRole: mockUpdateMemberRole,
+    removeMember: mockRemoveMember,
+    sendInvitation: mockSendInvitation,
     acceptInvitation: mockAcceptInvitation,
     declineInvitation: mockDeclineInvitation,
+    getTokens: mockGetTokens,
+    fetchTokens: mockFetchTokens,
+    createToken: mockCreateToken,
+    revokeToken: mockRevokeToken,
+    getWorkspaceData: mockGetWorkspaceData,
+    fetchWorkspaceData: mockFetchWorkspaceData,
     fetchMembers: mockFetchMembers,
     refetch: mockRefetch,
   }),
@@ -84,6 +104,7 @@ describe('OrganizationPage', () => {
     mockInviteMember.mockClear();
     mockAcceptInvitation.mockClear();
     mockDeclineInvitation.mockClear();
+    mockGetMembers.mockClear();
     mockShowSuccess.mockClear();
     mockShowError.mockClear();
     mockNavigate.mockClear();
@@ -111,16 +132,24 @@ describe('OrganizationPage', () => {
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: [],
       loading: true,
       error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });
@@ -134,16 +163,24 @@ describe('OrganizationPage', () => {
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: [],
       loading: false,
       error: 'Failed to load organizations',
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });
@@ -160,28 +197,35 @@ describe('OrganizationPage', () => {
         name: 'Test Organization',
         slug: 'test-org',
         config: {
-          consultationFee: 150,
-          requiresPayment: true,
-          availableServices: ['Family Law'],
+          metadata: {
+            subscriptionPlan: 'premium',
+            planStatus: 'active',
+          },
         },
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
       },
     ];
 
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: mockOrganizations,
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: [],
       loading: false,
       error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });
@@ -197,26 +241,36 @@ describe('OrganizationPage', () => {
       {
         id: 'inv-1',
         email: 'user@example.com',
-        role: 'attorney',
-        status: 'pending',
+        role: 'attorney' as const,
+        status: 'pending' as const,
         organizationId: 'org-1',
-        organizationName: 'Test Organization',
+        invitedBy: 'admin@example.com',
+        expiresAt: '2024-02-01T00:00:00Z',
+        createdAt: '2024-01-01T00:00:00Z',
       },
     ];
 
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: mockInvitations,
       loading: false,
       error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });
@@ -246,24 +300,30 @@ describe('OrganizationPage', () => {
         name: 'Test Organization',
         slug: 'test-org',
         config: {},
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
       },
     ];
 
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: mockOrganizations,
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: [],
       loading: false,
       error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });
@@ -330,24 +390,30 @@ describe('OrganizationPage', () => {
         name: 'Test Organization',
         slug: 'test-org',
         config: {},
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
       },
     ];
 
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: mockOrganizations,
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: [],
       loading: false,
       error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });
@@ -376,7 +442,7 @@ describe('OrganizationPage', () => {
     await waitFor(() => {
       expect(mockInviteMember).toHaveBeenCalledWith({
         email: 'newuser@example.com',
-        role: 'attorney',
+        role: 'attorney' as const,
         organizationId: 'org-1',
       });
     });
@@ -389,26 +455,36 @@ describe('OrganizationPage', () => {
       {
         id: 'inv-1',
         email: 'user@example.com',
-        role: 'attorney',
-        status: 'pending',
+        role: 'attorney' as const,
+        status: 'pending' as const,
         organizationId: 'org-1',
-        organizationName: 'Test Organization',
+        invitedBy: 'admin@example.com',
+        expiresAt: '2024-02-01T00:00:00Z',
+        createdAt: '2024-01-01T00:00:00Z',
       },
     ];
 
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: mockInvitations,
       loading: false,
       error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });
@@ -430,26 +506,36 @@ describe('OrganizationPage', () => {
       {
         id: 'inv-1',
         email: 'user@example.com',
-        role: 'attorney',
-        status: 'pending',
+        role: 'attorney' as const,
+        status: 'pending' as const,
         organizationId: 'org-1',
-        organizationName: 'Test Organization',
+        invitedBy: 'admin@example.com',
+        expiresAt: '2024-02-01T00:00:00Z',
+        createdAt: '2024-01-01T00:00:00Z',
       },
     ];
 
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: [],
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: mockInvitations,
       loading: false,
       error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });
@@ -471,24 +557,30 @@ describe('OrganizationPage', () => {
         name: 'Test Organization',
         slug: 'test-org',
         config: {},
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
       },
     ];
 
     vi.mocked(await import('../../../../hooks/useOrganizationManagement')).useOrganizationManagement.mockReturnValue({
       organizations: mockOrganizations,
       currentOrganization: null,
-      members: [],
+      getMembers: (_orgId) => [],
       invitations: [],
       loading: false,
       error: null,
-      loadOrganizations: mockLoadOrganizations,
-      loadInvitations: mockLoadInvitations,
       createOrganization: mockCreateOrganization,
-      inviteMember: mockInviteMember,
+      updateOrganization: mockUpdateOrganization,
+      deleteOrganization: mockDeleteOrganization,
+      updateMemberRole: mockUpdateMemberRole,
+      removeMember: mockRemoveMember,
+      sendInvitation: mockSendInvitation,
       acceptInvitation: mockAcceptInvitation,
       declineInvitation: mockDeclineInvitation,
+      getTokens: mockGetTokens,
+      fetchTokens: mockFetchTokens,
+      createToken: mockCreateToken,
+      revokeToken: mockRevokeToken,
+      getWorkspaceData: mockGetWorkspaceData,
+      fetchWorkspaceData: mockFetchWorkspaceData,
       fetchMembers: mockFetchMembers,
       refetch: mockRefetch,
     });

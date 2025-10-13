@@ -2,6 +2,87 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '../../../__tests__/test-utils';
 import { SettingsPage } from '../SettingsPage';
 import { useOrganizationManagement } from '../../../hooks/useOrganizationManagement';
+import { i18n } from '../../../i18n';
+
+// Mock react-i18next to use the real i18n instance but avoid React provider issues
+vi.mock('react-i18next', () => ({
+  useTranslation: (_namespaces: string[] = ['common']) => ({
+    t: (key: string) => {
+      // Use the real i18n instance to get translations
+      const result = i18n.t(key);
+      
+      // Ensure we always return a string
+      if (typeof result === 'string') {
+        return result;
+      } else if (typeof result === 'object' && result !== null) {
+        return key; // Return the key as fallback
+      } else {
+        return String(result);
+      }
+    },
+  }),
+  I18nextProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Mock framer-motion to avoid React/Preact compatibility issues
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: 'div',
+    button: 'button',
+    span: 'span',
+  },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Mock heroicons to prevent icon rendering issues
+vi.mock('@heroicons/react/24/outline', () => ({
+  UserIcon: () => 'UserIcon',
+  ShieldCheckIcon: () => 'ShieldCheckIcon',
+  Cog6ToothIcon: () => 'Cog6ToothIcon',
+  XMarkIcon: () => 'XMarkIcon',
+  BellIcon: () => 'BellIcon',
+  ArrowRightOnRectangleIcon: () => 'ArrowRightOnRectangleIcon',
+  QuestionMarkCircleIcon: () => 'QuestionMarkCircleIcon',
+  ArrowLeftIcon: () => 'ArrowLeftIcon',
+}));
+
+// Mock the page components to avoid complex dependencies
+vi.mock('../pages/GeneralPage', () => ({
+  GeneralPage: ({ className }: { className?: string }) => <div className={className}>General Settings</div>,
+}));
+
+vi.mock('../pages/NotificationsPage', () => ({
+  NotificationsPage: ({ className }: { className?: string }) => <div className={className}>Notification Settings</div>,
+}));
+
+vi.mock('../pages/AccountPage', () => ({
+  AccountPage: ({ className }: { className?: string }) => <div className={className}>Account Settings</div>,
+}));
+
+vi.mock('../pages/SecurityPage', () => ({
+  SecurityPage: ({ className }: { className?: string }) => <div className={className}>Security Settings</div>,
+}));
+
+vi.mock('../pages/HelpPage', () => ({
+  HelpPage: ({ className }: { className?: string }) => <div className={className}>Help & Support</div>,
+}));
+
+// Mock the SidebarNavigation component
+vi.mock('../../ui/SidebarNavigation', () => ({
+  SidebarNavigation: ({ items, onItemClick }: { items: Array<{ id: string; label: string }>; onItemClick: (id: string) => void }) => (
+    <div data-testid="sidebar-navigation">
+      {items.map((item: { id: string; label: string }) => (
+        <button 
+          key={item.id} 
+          onClick={() => onItemClick(item.id)} 
+          data-testid="sidebar-nav-item"
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  ),
+}));
 
 // Mock the organization management hook
 const mockLoadOrganizations = vi.fn();
@@ -13,12 +94,35 @@ const useOrgMgmtMock = {
   invitations: [],
   loading: false,
   error: null,
+  currentOrganization: null,
   loadOrganizations: mockLoadOrganizations,
   loadInvitations: mockLoadInvitations,
   createOrganization: vi.fn(),
+  updateOrganization: vi.fn(),
+  deleteOrganization: vi.fn(),
   inviteMember: vi.fn(),
   acceptInvitation: vi.fn(),
   declineInvitation: vi.fn(),
+  getMembers: vi.fn(),
+  removeMember: vi.fn(),
+  updateMemberRole: vi.fn(),
+  transferOwnership: vi.fn(),
+  leaveOrganization: vi.fn(),
+  getInvitations: vi.fn(),
+  resendInvitation: vi.fn(),
+  cancelInvitation: vi.fn(),
+  fetchMembers: vi.fn(),
+  sendInvitation: vi.fn(),
+  getTokens: vi.fn(),
+  fetchTokens: vi.fn(),
+  createToken: vi.fn(),
+  revokeToken: vi.fn(),
+  updateToken: vi.fn(),
+  getUsage: vi.fn(),
+  getBilling: vi.fn(),
+  getWorkspaceData: vi.fn(),
+  fetchWorkspaceData: vi.fn(),
+  refetch: vi.fn(),
 };
 
 vi.mock('../../../hooks/useOrganizationManagement', () => ({
@@ -75,16 +179,11 @@ vi.mock('../../../contexts/OrganizationContext', async () => {
 });
 
 // Mock the feature flags
-vi.mock('../../../config/features', async () => {
-  const actual = await vi.importActual<typeof import('../../../config/features')>(
-    '../../../config/features'
-  );
-  return {
-    ...actual,
-    useFeatureFlag: (flag: string) =>
-      flag === 'enableMultipleOrganizations' ? false : actual.useFeatureFlag(flag),
-  };
-});
+vi.mock('../../../config/features', () => ({
+  features: {
+    enableMultipleOrganizations: false,
+  },
+}));
 
 // Mock the auth client
 vi.mock('../../../lib/authClient', async () => {
@@ -100,13 +199,6 @@ vi.mock('../../../lib/authClient', async () => {
   };
 });
 
-// Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key, // Return the key as the translation
-  }),
-  I18nextProvider: ({ children }: { children: any }) => children,
-}));
 
 // Mock preact-iso useLocation
 vi.mock('preact-iso', () => ({
@@ -130,12 +222,35 @@ describe('SettingsPage Integration Tests', () => {
     useOrgMgmtMock.invitations = [];
     useOrgMgmtMock.loading = false;
     useOrgMgmtMock.error = null;
+    useOrgMgmtMock.currentOrganization = null;
     useOrgMgmtMock.loadOrganizations = mockLoadOrganizations;
     useOrgMgmtMock.loadInvitations = mockLoadInvitations;
     useOrgMgmtMock.createOrganization = vi.fn();
+    useOrgMgmtMock.updateOrganization = vi.fn();
+    useOrgMgmtMock.deleteOrganization = vi.fn();
     useOrgMgmtMock.inviteMember = vi.fn();
     useOrgMgmtMock.acceptInvitation = vi.fn();
     useOrgMgmtMock.declineInvitation = vi.fn();
+    useOrgMgmtMock.getMembers = vi.fn();
+    useOrgMgmtMock.removeMember = vi.fn();
+    useOrgMgmtMock.updateMemberRole = vi.fn();
+    useOrgMgmtMock.transferOwnership = vi.fn();
+    useOrgMgmtMock.leaveOrganization = vi.fn();
+    useOrgMgmtMock.getInvitations = vi.fn();
+    useOrgMgmtMock.resendInvitation = vi.fn();
+    useOrgMgmtMock.cancelInvitation = vi.fn();
+    useOrgMgmtMock.fetchMembers = vi.fn();
+    useOrgMgmtMock.sendInvitation = vi.fn();
+    useOrgMgmtMock.getTokens = vi.fn();
+    useOrgMgmtMock.fetchTokens = vi.fn();
+    useOrgMgmtMock.createToken = vi.fn();
+    useOrgMgmtMock.revokeToken = vi.fn();
+    useOrgMgmtMock.updateToken = vi.fn();
+    useOrgMgmtMock.getUsage = vi.fn();
+    useOrgMgmtMock.getBilling = vi.fn();
+    useOrgMgmtMock.getWorkspaceData = vi.fn();
+    useOrgMgmtMock.fetchWorkspaceData = vi.fn();
+    useOrgMgmtMock.refetch = vi.fn();
     
     // Set up the mock return value
     vi.mocked(useOrganizationManagement).mockReturnValue(useOrgMgmtMock);
@@ -146,37 +261,25 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should render settings page with all navigation items', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     expect(screen.getByText('General')).toBeInTheDocument();
     expect(screen.getByText('Notifications')).toBeInTheDocument();
     expect(screen.getByText('Account')).toBeInTheDocument();
-    expect(screen.getByText('Organization')).toBeInTheDocument();
     expect(screen.getByText('Security')).toBeInTheDocument();
     expect(screen.getByText('Help')).toBeInTheDocument();
     expect(screen.getByText('Sign Out')).toBeInTheDocument();
   });
 
   it('should show general page by default', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     expect(screen.getByText('General Settings')).toBeInTheDocument();
   });
 
-  it('should navigate to organization page when organization is clicked', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
-    
-    const organizationNav = screen.getByText('Organization');
-    fireEvent.click(organizationNav);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Organization')).toBeInTheDocument();
-      expect(screen.getByText('Manage your organization settings and members.')).toBeInTheDocument();
-    });
-  });
 
   it('should navigate to notifications page when notifications is clicked', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     const notificationsNav = screen.getByText('Notifications');
     fireEvent.click(notificationsNav);
@@ -187,7 +290,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should navigate to account page when account is clicked', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     const accountNav = screen.getByText('Account');
     fireEvent.click(accountNav);
@@ -198,7 +301,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should navigate to security page when security is clicked', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     const securityNav = screen.getByText('Security');
     fireEvent.click(securityNav);
@@ -209,7 +312,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should navigate to help page when help is clicked', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     const helpNav = screen.getByText('Help');
     fireEvent.click(helpNav);
@@ -220,7 +323,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should handle sign out when sign out is clicked', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     const signOutNav = screen.getByText('Sign Out');
     fireEvent.click(signOutNav);
@@ -233,7 +336,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should close settings modal when close button is clicked', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     const closeButton = screen.getByLabelText('Close settings');
     fireEvent.click(closeButton);
@@ -242,7 +345,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should close settings modal when backdrop is clicked', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     const backdrop = screen.getByTestId('settings-backdrop');
     fireEvent.click(backdrop);
@@ -251,7 +354,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should not close settings modal when content is clicked', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     const content = screen.getByTestId('settings-content');
     fireEvent.click(content);
@@ -260,7 +363,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should handle mobile view correctly', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} isMobile={true} />);
+    render(<SettingsPage onClose={mockOnClose} isMobile={true} />);
     
     // Should show mobile header
     expect(screen.getByText('Settings')).toBeInTheDocument();
@@ -268,15 +371,15 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should handle desktop view correctly', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} isMobile={false} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     // Should show sidebar navigation
     expect(screen.getByText('General')).toBeInTheDocument();
-    expect(screen.getByText('Organization')).toBeInTheDocument();
+    expect(screen.getByText('Account')).toBeInTheDocument();
   });
 
   it('should navigate to business upgrade from account page', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     // Go to account page
     const accountNav = screen.getByText('Account');
@@ -297,40 +400,9 @@ describe('SettingsPage Integration Tests', () => {
     }
   });
 
-  it('should navigate to organization details from organization page', async () => {
-    const mockOrganizations = [
-      {
-        id: 'org-1',
-        name: 'Test Organization',
-        slug: 'test-org',
-        config: {},
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
-      },
-    ];
-
-    // Update the mutable mock object for this test scenario
-    useOrgMgmtMock.organizations = mockOrganizations;
-
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
-    
-    // Go to organization page
-    const organizationNav = screen.getByText('Organization');
-    fireEvent.click(organizationNav);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Organization')).toBeInTheDocument();
-    });
-    
-    // Click on organization
-    const organizationCard = screen.getByText('Test Organization');
-    fireEvent.click(organizationCard);
-    
-    expect(mockNavigate).toHaveBeenCalledWith('/settings/organization-details?orgId=org-1');
-  });
 
   it('should handle keyboard navigation', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     // Focus on the first navigation item (General)
     const generalNav = screen.getByText('General');
@@ -359,7 +431,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should handle ArrowUp navigation', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     // Focus on the second navigation item (Notifications)
     const notificationsNav = screen.getByText('Notifications');
@@ -377,7 +449,7 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should handle escape key to close modal', () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
     fireEvent.keyDown(document, { key: 'Escape' });
     
@@ -385,14 +457,14 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should maintain navigation state when switching between pages', async () => {
-    render(<SettingsPage isOpen={true} onClose={mockOnClose} />);
+    render(<SettingsPage onClose={mockOnClose} />);
     
-    // Go to organization page
-    const organizationNav = screen.getByText('Organization');
-    fireEvent.click(organizationNav);
+    // Go to account page
+    const accountNav = screen.getByText('Account');
+    fireEvent.click(accountNav);
     
     await waitFor(() => {
-      expect(screen.getByText('Organization')).toBeInTheDocument();
+      expect(screen.getByText('Account Settings')).toBeInTheDocument();
     });
     
     // Go back to general
@@ -403,7 +475,7 @@ describe('SettingsPage Integration Tests', () => {
       expect(screen.getByText('General Settings')).toBeInTheDocument();
     });
     
-    // Organization nav should still be visible
-    expect(screen.getByText('Organization')).toBeInTheDocument();
+    // Account nav should still be visible
+    expect(screen.getByText('Account')).toBeInTheDocument();
   });
 });

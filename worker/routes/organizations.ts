@@ -74,6 +74,10 @@ function sanitizeOrganizationResponse(organization: Organization): Organization 
     ...organization,
     config: {
       ...(organization.config ?? {}),
+      voice: organization.config?.voice ?? {
+        enabled: false,
+        provider: 'elevenlabs' as const,
+      },
       blawbyApi: organization.config?.blawbyApi
         ? {
             enabled: organization.config.blawbyApi.enabled,
@@ -752,7 +756,6 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
       // Preact note: call this endpoint when user clicks "Decline invitation".
       return createSuccessResponse({
-        success: true,
         message: 'Invitation declined successfully'
       });
     }

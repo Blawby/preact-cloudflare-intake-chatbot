@@ -124,14 +124,36 @@ export const AccountPage = ({
     if (upgradePath.length > 0) {
       const nextTier = upgradePath[0];
       
-      if (nextTier.id === 'business' || nextTier.id === 'business-plus') {
+      if (nextTier.id === 'business') {
         // Get the plan data to use its productId and priceId
         const allPlans = mockPricingDataService.getPricingPlans();
         const selectedPlan = allPlans.find(plan => plan.id === nextTier.id);
         
-        // Use plan properties with safe fallbacks
-        const productId = selectedPlan?.productId || 'prod_business';
-        const priceId = selectedPlan?.priceId || 'price_monthly';
+        // Validate that we have a valid plan with required payment data
+        if (!selectedPlan) {
+          console.error('Selected plan not found in pricing data:', nextTier.id);
+          showError(
+            t('settings:account.plan.toasts.planNotFound.title'),
+            t('settings:account.plan.toasts.planNotFound.body')
+          );
+          return;
+        }
+        
+        if (!selectedPlan.productId || !selectedPlan.priceId) {
+          console.error('Selected plan missing required payment data:', {
+            planId: selectedPlan.id,
+            productId: selectedPlan.productId,
+            priceId: selectedPlan.priceId
+          });
+          showError(
+            t('settings:account.plan.toasts.planDataMissing.title'),
+            t('settings:account.plan.toasts.planDataMissing.body')
+          );
+          return;
+        }
+        
+        const productId = selectedPlan.productId;
+        const priceId = selectedPlan.priceId;
         
         // Navigate to cart for business upgrades
         try {
@@ -448,7 +470,7 @@ export const AccountPage = ({
               {currentPlanFeatures.map((feature, index) => (
                 <div key={index} className="flex items-center gap-3">
                   <div className="text-gray-500 dark:text-gray-400">
-                    <feature.icon className="w-4 h-4" />
+                    <feature.icon />
                   </div>
                   <span className="text-sm text-gray-900 dark:text-gray-100">
                     {feature.text}

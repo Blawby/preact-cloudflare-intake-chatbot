@@ -81,6 +81,12 @@ export function formatTimeSlot(time: string | Date): string {
 
 export function formatDate(date: string | Date): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  // Check if the date is valid
+  if (isNaN(dateObj.getTime())) {
+    return '';
+  }
+  
   return dateObj.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

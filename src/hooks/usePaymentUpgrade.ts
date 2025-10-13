@@ -59,11 +59,11 @@ export const usePaymentUpgrade = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as PaymentUpgradeResponse;
       
       if (result.success) {
         setPaymentId(result.paymentId || null);
@@ -97,11 +97,11 @@ export const usePaymentUpgrade = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as PaymentStatusResponse;
       
       if (result.success) {
         setPaymentStatus(result.status);
@@ -123,7 +123,12 @@ export const usePaymentUpgrade = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check payment status';
       setError(errorMessage);
-      return { success: false, status: paymentStatus === 'idle' ? 'unknown' : paymentStatus, paymentId, error: errorMessage };
+      return { 
+        success: false, 
+        status: (paymentStatus === 'idle' ? 'pending' : paymentStatus) as 'pending' | 'completed' | 'failed' | 'cancelled', 
+        paymentId, 
+        error: errorMessage 
+      };
     }
   }, [showSuccess, showError]);
 
@@ -148,6 +153,8 @@ export const usePaymentUpgrade = () => {
         return;
       }
 
+      retryCount++;
+
       try {
         const result = await checkPaymentStatus(paymentId);
         
@@ -159,19 +166,8 @@ export const usePaymentUpgrade = () => {
           pollingIntervalRef.current = setTimeout(poll, 3000);
         }
       } catch (err) {
-        // Network error or other exception - increment retry count and schedule retry
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          stopPolling();
-          setError('Payment status check timed out after maximum retries');
-          showError(
-            'Payment Status Timeout',
-            'Unable to verify payment status. Please check your account or contact support.'
-          );
-        } else {
-          // Schedule retry after 3 seconds
-          pollingIntervalRef.current = setTimeout(poll, 3000);
-        }
+        // Network error or other exception - schedule retry
+        pollingIntervalRef.current = setTimeout(poll, 3000);
       }
     };
 

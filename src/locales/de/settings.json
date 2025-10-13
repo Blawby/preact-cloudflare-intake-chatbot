@@ -85,7 +85,15 @@
         },
         "cartSaveError": {
           "title": "Warenkorb-Fehler",
-          "body": "Warenkorbdaten konnten nicht gespeichert werden. Fortfahren mit alternativer Methode."
+          "body": "Warenkorbdaten konnten nicht gespeichert werden. Fahren Sie mit einer alternativen Methode fort."
+        },
+        "planNotFound": {
+          "title": "Plan Nicht Gefunden",
+          "body": "Der ausgewählte Plan konnte nicht gefunden werden. Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+        },
+        "planDataMissing": {
+          "title": "Plan-Konfigurationsfehler",
+          "body": "Dem ausgewählten Plan fehlen erforderliche Zahlungsinformationen. Bitte kontaktieren Sie den Support."
         }
       }
     },

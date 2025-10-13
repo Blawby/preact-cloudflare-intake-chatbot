@@ -34,10 +34,18 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
 }) => {
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const navRef = useRef<HTMLElement>(null);
+  const focusedIndexRef = useRef(focusedIndex);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    focusedIndexRef.current = focusedIndex;
+  }, [focusedIndex]);
 
   // Keyboard navigation handler
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (mobile) return; // Skip keyboard navigation on mobile
+
+    const currentFocusedIndex = focusedIndexRef.current;
 
     switch (event.key) {
       case 'ArrowDown':
@@ -51,8 +59,8 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
       case 'Enter':
       case ' ':
         event.preventDefault();
-        if (focusedIndex >= 0 && focusedIndex < items.length) {
-          const item = items[focusedIndex];
+        if (currentFocusedIndex >= 0 && currentFocusedIndex < items.length) {
+          const item = items[currentFocusedIndex];
           if (item.isAction && item.onClick) {
             item.onClick();
           } else {
@@ -69,7 +77,7 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
         setFocusedIndex(items.length - 1);
         break;
     }
-  }, [mobile, focusedIndex, items, onItemClick]);
+  }, [mobile, items, onItemClick]);
 
   // Focus management
   useEffect(() => {
@@ -85,9 +93,10 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
   // Add keyboard event listener
   useEffect(() => {
     if (!mobile && navRef.current) {
-      navRef.current.addEventListener('keydown', handleKeyDown);
+      const el = navRef.current;
+      el.addEventListener('keydown', handleKeyDown);
       return () => {
-        navRef.current?.removeEventListener('keydown', handleKeyDown);
+        el.removeEventListener('keydown', handleKeyDown);
       };
     }
   }, [mobile, handleKeyDown]);
@@ -284,7 +293,6 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
           const isActive = activeItem === item.id;
           const isAction = item.isAction;
           const isDanger = item.variant === 'danger';
-          const isFocused = focusedIndex === index;
           
           return (
             <li key={item.id}>
