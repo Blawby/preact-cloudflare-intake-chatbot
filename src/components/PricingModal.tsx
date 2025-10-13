@@ -1,9 +1,11 @@
 import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
+import { useNavigate } from 'preact-iso';
 import Modal from './Modal';
 import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Select } from './ui/input/Select';
+import { QuantitySelector } from './cart/QuantitySelector';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
@@ -22,8 +24,10 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   currentTier = 'free',
   onUpgrade
 }) => {
+  const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
+  const [selectedQuantity, setSelectedQuantity] = useState(2);
 
   // Generate country options with language information
   const countryOptions = [
@@ -276,9 +280,12 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       localStorage.setItem('cartData', JSON.stringify({
         product_id: 'prod_business',
         price_id: 'price_monthly',
-        quantity: 2
+        quantity: selectedQuantity
       }));
-      window.location.href = '/cart';
+      navigate('/cart');
+      if (onUpgrade) {
+        onUpgrade(tier);
+      }
       onClose();
     } else {
       if (onUpgrade) {
@@ -342,6 +349,18 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
         {/* Content */}
         <div className="p-6">
+          {/* Quantity Selector for Business Tab */}
+          {selectedTab === 'business' && (
+            <div className="max-w-4xl w-full mx-auto mb-6">
+              <QuantitySelector
+                quantity={selectedQuantity}
+                onChange={setSelectedQuantity}
+                min={2}
+                helperText="Minimum of 2 seats for business plans"
+              />
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mx-auto">
             {mainPlans.map((plan) => (
               <div

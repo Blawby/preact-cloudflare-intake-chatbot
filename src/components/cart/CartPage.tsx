@@ -7,20 +7,23 @@ import { Button } from '../ui/Button';
 import { CheckIcon } from '@heroicons/react/24/outline';
 
 export const CartPage = () => {
-  const navigate = useLocation();
+  const location = useLocation();
   const [selectedPriceId, setSelectedPriceId] = useState<PriceId>('price_monthly');
   const [quantity, setQuantity] = useState(2);
 
   const selectedPrice = PRICES[selectedPriceId];
   const isAnnual = selectedPrice.recurring.interval === 'year';
-  const unitAmount = selectedPrice.unit_amount / 100; // Convert cents to dollars
-  
-  // Calculate pricing with discount for annual
-  const monthlyPrice = 30; // Base monthly price per user
-  const annualMonthlyPrice = 25; // Annual price per user per month
-  const subtotal = unitAmount * quantity;
-  const discount = isAnnual ? (monthlyPrice - annualMonthlyPrice) * quantity : 0;
-  const total = subtotal;
+  const monthlySeatPrice = PRICES.price_monthly.unit_amount / 100;
+  const annualSeatPricePerYear = PRICES.price_annual.unit_amount / 100;
+  const annualSeatPricePerMonth = annualSeatPricePerYear / 12;
+
+  const subtotal = isAnnual
+    ? monthlySeatPrice * quantity * 12 // baseline yearly cost at monthly rate
+    : monthlySeatPrice * quantity;
+
+  const annualTotal = annualSeatPricePerYear * quantity;
+  const discount = isAnnual ? subtotal - annualTotal : 0;
+  const total = isAnnual ? annualTotal : subtotal;
 
   const handleContinue = () => {
     // Store cart data for Stripe Elements integration
@@ -153,9 +156,13 @@ export const CartPage = () => {
               heading="Summary"
               planName={PRODUCTS.business.name}
               planDescription={`${quantity} ${quantity === 1 ? 'user' : 'users'} • ${isAnnual ? 'Billed annually' : 'Billed monthly'}`}
-              pricePerSeat={`$${unitAmount.toFixed(2)} per user / month`}
+              pricePerSeat={`$${(isAnnual ? annualSeatPricePerMonth : monthlySeatPrice).toFixed(2)} per user / month`}
               isAnnual={isAnnual}
-              billingNote={isAnnual ? `Billed annually at $${(total * 12).toFixed(2)}/year` : `Billed monthly at $${total.toFixed(2)}/month`}
+              billingNote={
+                isAnnual
+                  ? `Billed annually at $${total.toFixed(2)}/year`
+                  : `Billed monthly at $${total.toFixed(2)}/month`
+              }
               lineItems={[
                 { 
                   id: 'subtotal', 
@@ -167,7 +174,7 @@ export const CartPage = () => {
                   id: 'discount', 
                   label: 'Discount', 
                   value: discount > 0 ? `-$${discount.toFixed(2)}` : '$0.00',
-                  numericValue: discount
+                  numericValue: -discount
                 },
                 { 
                   id: 'total', 
@@ -183,7 +190,7 @@ export const CartPage = () => {
               }}
               secondaryAction={{
                 label: 'Cancel',
-                onClick: () => navigate('/')
+                onClick: () => location.route('/')
               }}
             />
           </div>

@@ -1,4 +1,4 @@
-import { useLocation } from 'preact-iso';
+import { useNavigate } from 'preact-iso';
 import Modal from '../Modal';
 import { Button } from '../ui/Button';
 import { UserGroupIcon, BuildingOfficeIcon, KeyIcon } from '@heroicons/react/24/outline';
@@ -9,7 +9,7 @@ interface BusinessWelcomeModalProps {
 }
 
 export const BusinessWelcomeModal = ({ isOpen, onClose }: BusinessWelcomeModalProps) => {
-  const navigate = useLocation();
+  const navigate = useNavigate();
 
   const handleGoToSettings = () => {
     onClose();

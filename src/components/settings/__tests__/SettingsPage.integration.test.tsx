@@ -6,7 +6,7 @@ import { SettingsPage } from '../SettingsPage';
 const mockLoadOrganizations = vi.fn();
 const mockLoadInvitations = vi.fn();
 
-vi.mock('../../hooks/useOrganizationManagement', () => ({
+vi.mock('../../../hooks/useOrganizationManagement', () => ({
   useOrganizationManagement: () => ({
     organizations: [],
     invitations: [],
@@ -22,7 +22,7 @@ vi.mock('../../hooks/useOrganizationManagement', () => ({
 }));
 
 // Mock the payment upgrade hook
-vi.mock('../../hooks/usePaymentUpgrade', () => ({
+vi.mock('../../../hooks/usePaymentUpgrade', () => ({
   usePaymentUpgrade: () => ({
     upgradeToBusiness: vi.fn(),
     checkPaymentStatus: vi.fn(),
@@ -32,46 +32,69 @@ vi.mock('../../hooks/usePaymentUpgrade', () => ({
 }));
 
 // Mock the toast context
-vi.mock('../../contexts/ToastContext', () => ({
-  useToast: () => ({
-    showSuccess: vi.fn(),
-    showError: vi.fn(),
-  }),
-}));
+vi.mock('../../../contexts/ToastContext', async () => {
+  const actual = await vi.importActual<typeof import('../../../contexts/ToastContext')>(
+    '../../../contexts/ToastContext'
+  );
+  return {
+    ...actual,
+    useToastContext: () => ({
+      showSuccess: vi.fn(),
+      showError: vi.fn(),
+    }),
+  };
+});
 
 // Mock the navigation hook
 const mockNavigate = vi.fn();
-vi.mock('../../hooks/useNavigation', () => ({
+vi.mock('../../../hooks/useNavigation', () => ({
   useNavigation: () => ({
     navigate: mockNavigate,
   }),
 }));
 
 // Mock the organization context
-vi.mock('../../contexts/OrganizationContext', () => ({
-  useOrganization: () => ({
-    currentOrganization: {
-      id: 'org-1',
-      name: 'Test Organization',
-      slug: 'test-org',
-    },
-  }),
-}));
+vi.mock('../../../contexts/OrganizationContext', async () => {
+  const actual = await vi.importActual<typeof import('../../../contexts/OrganizationContext')>(
+    '../../../contexts/OrganizationContext'
+  );
+  return {
+    ...actual,
+    useOrganization: () => ({
+      currentOrganization: {
+        id: 'org-1',
+        name: 'Test Organization',
+        slug: 'test-org',
+      },
+    }),
+  };
+});
 
 // Mock the feature flags
-vi.mock('../../config/features', () => ({
-  useFeatureFlag: (flag: string) => {
-    if (flag === 'enableMultipleOrganizations') return false;
-    return false;
-  },
-}));
+vi.mock('../../../config/features', async () => {
+  const actual = await vi.importActual<typeof import('../../../config/features')>(
+    '../../../config/features'
+  );
+  return {
+    ...actual,
+    useFeatureFlag: (flag: string) =>
+      flag === 'enableMultipleOrganizations' ? false : actual.useFeatureFlag(flag),
+  };
+});
 
 // Mock the auth client
-vi.mock('../../lib/authClient', () => ({
-  authClient: {
-    signOut: vi.fn().mockResolvedValue(undefined),
-  },
-}));
+vi.mock('../../../lib/authClient', async () => {
+  const actual = await vi.importActual<typeof import('../../../lib/authClient')>(
+    '../../../lib/authClient'
+  );
+  return {
+    ...actual,
+    authClient: {
+      ...actual.authClient,
+      signOut: vi.fn().mockResolvedValue(undefined),
+    },
+  };
+});
 
 describe('SettingsPage Integration Tests', () => {
   const mockOnClose = vi.fn();

@@ -18,6 +18,7 @@ import { FormLabel } from '../../ui/form/FormLabel';
 import { Select } from '../../ui/input/Select';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { formatDate } from '../../../utils/dateTime';
+import { getSession } from '../../../lib/authClient';
 
 interface OrganizationDetailsPageProps {
   className?: string;
@@ -45,8 +46,36 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
   
   const { showSuccess, showError } = useToastContext();
   
-  // Determine current user's role in this organization
-  const currentUserRole = members.find(member => member.email === 'test@example.com')?.role || 'owner'; // TODO: Get actual current user
+  // Get current user's identity from auth session
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  const [currentUserRole, setCurrentUserRole] = useState<Role>('member');
+  
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const session = await getSession();
+        if (session?.user?.email) {
+          setCurrentUserEmail(session.user.email);
+        }
+      } catch (error) {
+        console.error('Failed to get current user session:', error);
+      }
+    };
+    
+    getCurrentUser();
+  }, []);
+  
+  // Update current user role when members or email changes
+  useEffect(() => {
+    if (currentUserEmail && members.length > 0) {
+      const userMember = members.find(member => member.email === currentUserEmail);
+      setCurrentUserRole(userMember?.role || 'member');
+    } else if (members.length === 0 && !loading) {
+      // If members haven't loaded yet, default to non-privileged role
+      setCurrentUserRole('member');
+    }
+  }, [currentUserEmail, members, loading]);
+  
   const isOwner = currentUserRole === 'owner';
   const isAdmin = currentUserRole === 'admin' || isOwner;
   

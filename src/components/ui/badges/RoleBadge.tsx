@@ -1,6 +1,5 @@
 import type { ComponentChildren } from 'preact';
-
-type Role = 'owner' | 'admin' | 'attorney' | 'paralegal';
+import type { Role } from '../../../hooks/useOrganizationManagement';
 
 const ROLE_STYLES = {
   owner: 'bg-accent-500 text-gray-900',

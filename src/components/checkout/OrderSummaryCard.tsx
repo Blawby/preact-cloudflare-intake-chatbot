@@ -11,7 +11,18 @@ interface OrderSummaryCardProps {
   isSubmitting: boolean;
   isValid: boolean;
   error?: string;
+  locale?: string;
+  currency?: string;
+  vatRate?: number;
 }
+
+// Currency formatter helper
+const formatCurrency = (amount: number, locale: string = 'en-US', currency: string = 'USD'): string => {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+  }).format(amount);
+};
 
 export const OrderSummaryCard = ({
   planName,
@@ -23,8 +34,15 @@ export const OrderSummaryCard = ({
   onSubmit,
   isSubmitting,
   isValid,
-  error
+  error,
+  locale = 'en-US',
+  currency = 'USD',
+  vatRate
 }: OrderSummaryCardProps) => {
+  // Calculate VAT rate if not provided
+  const calculatedVatRate = vatRate ?? (subtotal > 0 ? vat / subtotal : 0);
+  const vatPercentage = isNaN(calculatedVatRate) ? 0 : calculatedVatRate;
+  const vatPercentageDisplay = (vatPercentage * 100).toFixed(vatPercentage % 1 === 0 ? 0 : 2);
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
       <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
@@ -43,17 +61,17 @@ export const OrderSummaryCard = ({
         <div className="border-t pt-3">
           <div className="flex justify-between mb-2">
             <span className="text-gray-600">Subtotal</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>{formatCurrency(subtotal, locale, currency)}</span>
           </div>
           
           <div className="flex justify-between mb-2">
-            <span className="text-gray-600">VAT (20%)</span>
-            <span>${vat.toFixed(2)}</span>
+            <span className="text-gray-600">VAT ({vatPercentageDisplay}%)</span>
+            <span>{formatCurrency(vat, locale, currency)}</span>
           </div>
           
           <div className="flex justify-between text-lg font-semibold border-t pt-2">
             <span>Total</span>
-            <span>${total.toFixed(2)}</span>
+            <span>{formatCurrency(total, locale, currency)}</span>
           </div>
         </div>
       </div>

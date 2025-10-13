@@ -9,10 +9,26 @@ const mockCreateOrganization = vi.fn();
 const mockInviteMember = vi.fn();
 const mockAcceptInvitation = vi.fn();
 const mockDeclineInvitation = vi.fn();
+const mockFetchMembers = vi.fn();
+const mockRefetch = vi.fn();
 
-vi.mock('../../../hooks/useOrganizationManagement', () => ({
+vi.mock('../../../../hooks/useOrganizationManagement', () => ({
   useOrganizationManagement: () => ({
     organizations: [],
+    currentOrganization: {
+      id: 'org-1',
+      name: 'Test Organization',
+      slug: 'test-org',
+    },
+    members: [
+      {
+        userId: 'user-1',
+        role: 'owner',
+        email: 'test@example.com',
+        name: 'Test User',
+        createdAt: '2023-01-01T00:00:00Z',
+      },
+    ],
     invitations: [],
     loading: false,
     error: null,
@@ -22,6 +38,8 @@ vi.mock('../../../hooks/useOrganizationManagement', () => ({
     inviteMember: mockInviteMember,
     acceptInvitation: mockAcceptInvitation,
     declineInvitation: mockDeclineInvitation,
+    fetchMembers: mockFetchMembers,
+    refetch: mockRefetch,
   }),
 }));
 

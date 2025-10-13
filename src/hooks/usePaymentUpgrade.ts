@@ -131,23 +131,29 @@ export const usePaymentUpgrade = () => {
   const pollPaymentStatus = useCallback((paymentId: string) => {
     // Clear any existing polling
     if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
+      clearTimeout(pollingIntervalRef.current);
     }
 
-    // Start polling every 3 seconds
-    pollingIntervalRef.current = setInterval(async () => {
+    // Start sequential polling
+    const poll = async () => {
       const result = await checkPaymentStatus(paymentId);
       
       // Stop polling if payment is completed or failed
       if (result.status === 'completed' || result.status === 'failed' || result.status === 'cancelled') {
         stopPolling();
+      } else {
+        // Schedule next poll after 3 seconds
+        pollingIntervalRef.current = setTimeout(poll, 3000);
       }
-    }, 3000);
+    };
+
+    // Start the first poll
+    poll();
   }, [checkPaymentStatus]);
 
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
+      clearTimeout(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
   }, []);

@@ -1,3 +1,4 @@
+import { useState, useRef } from 'preact/hooks';
 import { ClipboardIcon } from '@heroicons/react/24/outline';
 import { Button } from './Button';
 import { useToastContext } from '../../contexts/ToastContext';
@@ -6,15 +7,32 @@ interface CopyButtonProps {
   text: string;
   label?: string;
   className?: string;
+  disabled?: boolean;
 }
 
-export const CopyButton = ({ text, label, className = '' }: CopyButtonProps) => {
+export const CopyButton = ({ text, label, className = '', disabled = false }: CopyButtonProps) => {
   const { showSuccess } = useToastContext();
+  const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
   
   const handleCopy = async () => {
+    if (disabled) return;
+    
     try {
       await navigator.clipboard.writeText(text);
+      setCopied(true);
       showSuccess('Copied!', label || text);
+      
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set timeout to reset copied state
+      timeoutRef.current = setTimeout(() => {
+        setCopied(false);
+        timeoutRef.current = null;
+      }, 2000);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
     }
@@ -25,10 +43,12 @@ export const CopyButton = ({ text, label, className = '' }: CopyButtonProps) => 
       variant="icon" 
       size="sm" 
       onClick={handleCopy} 
-      aria-label="Copy to clipboard"
+      disabled={disabled}
+      aria-label={copied ? 'Copied!' : 'Copy to clipboard'}
       className={className}
     >
       <ClipboardIcon className="w-4 h-4" />
+      {copied ? 'Copied!' : (label || 'Copy')}
     </Button>
   );
 };
