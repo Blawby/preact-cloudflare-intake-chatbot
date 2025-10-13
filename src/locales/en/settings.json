@@ -82,6 +82,18 @@
         "highest": {
           "title": "Account",
           "body": "You are already on the highest tier!"
+        },
+        "cartSaveError": {
+          "title": "Cart Error",
+          "body": "Unable to save cart data. Proceeding with alternative method."
+        },
+        "planNotFound": {
+          "title": "Plan Not Found",
+          "body": "The selected plan could not be found. Please try again or contact support."
+        },
+        "planDataMissing": {
+          "title": "Plan Configuration Error",
+          "body": "The selected plan is missing required payment information. Please contact support."
         }
       }
     },

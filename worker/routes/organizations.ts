@@ -74,6 +74,10 @@ function sanitizeOrganizationResponse(organization: Organization): Organization 
     ...organization,
     config: {
       ...(organization.config ?? {}),
+      voice: organization.config?.voice ?? {
+        enabled: false,
+        provider: 'elevenlabs' as const,
+      },
       blawbyApi: organization.config?.blawbyApi
         ? {
             enabled: organization.config.blawbyApi.enabled,
@@ -680,6 +684,79 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
       return createSuccessResponse({
         organizationId: invitation.organizationId,
         role: invitation.role
+      });
+    }
+
+    if (path.endsWith('/decline-invitation') && request.method === 'POST') {
+      const { user } = await requireAuth(request, env);
+      
+      // Find the index of 'decline-invitation' in the path segments
+      const declineInvitationIndex = pathSegments.indexOf('decline-invitation');
+      
+      // Validate path structure: ensure 'decline-invitation' exists and has a preceding segment
+      if (declineInvitationIndex === -1) {
+        throw HttpErrors.badRequest('Invalid path: decline-invitation segment not found');
+      }
+      
+      if (declineInvitationIndex === 0) {
+        throw HttpErrors.badRequest('Invalid path: no invitation ID provided before decline-invitation');
+      }
+      
+      const invitationId = pathSegments[declineInvitationIndex - 1];
+
+      if (!invitationId) {
+        throw HttpErrors.badRequest('Invitation ID is required');
+      }
+
+      const invitation = await env.DB.prepare(
+        `SELECT id, organization_id as organizationId, email, role, status, expires_at as expiresAt
+           FROM invitations
+          WHERE id = ?`
+      ).bind(invitationId).first() as {
+        id: string;
+        organizationId: string;
+        email: string;
+        role: string;
+        status: string;
+        expiresAt: string;
+      } | null;
+
+      if (!invitation) {
+        throw HttpErrors.notFound('Invitation not found');
+      }
+
+      if (invitation.status !== 'pending') {
+        throw HttpErrors.badRequest('Invitation is no longer valid');
+      }
+
+      if (new Date(invitation.expiresAt).getTime() < Date.now()) {
+        throw HttpErrors.badRequest('Invitation has expired');
+      }
+
+      if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+        throw HttpErrors.forbidden('Invitation does not belong to this user');
+      }
+
+      await env.DB.prepare(
+        `UPDATE invitations
+            SET status = 'declined',
+                updated_at = datetime('now')
+          WHERE id = ?`
+      ).bind(invitationId).run();
+
+      await recordOrganizationEvent(env, invitation.organizationId, {
+        type: 'invitation.declined',
+        actorId: user.id,
+        metadata: {
+          invitationId,
+          email: invitation.email,
+          role: invitation.role
+        }
+      });
+
+      // Preact note: call this endpoint when user clicks "Decline invitation".
+      return createSuccessResponse({
+        message: 'Invitation declined successfully'
       });
     }
 

@@ -124,18 +124,69 @@ export const AccountPage = ({
     if (upgradePath.length > 0) {
       const nextTier = upgradePath[0];
       
-      // Actually upgrade the user's tier in mock data
-      const profile = mockUserDataService.getUserProfile();
-      const updatedProfile = { ...profile, subscriptionTier: nextTier.id as SubscriptionTier };
-      mockUserDataService.setUserProfile(updatedProfile);
-      
-      // Update local state
-      setCurrentTier(nextTier.id as SubscriptionTier);
-      
-      showSuccess(
-        t('settings:account.plan.toasts.upgradeWithPlan.title'),
-        t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
-      );
+      if (nextTier.id === 'business') {
+        // Get the plan data to use its productId and priceId
+        const allPlans = mockPricingDataService.getPricingPlans();
+        const selectedPlan = allPlans.find(plan => plan.id === nextTier.id);
+        
+        // Validate that we have a valid plan with required payment data
+        if (!selectedPlan) {
+          console.error('Selected plan not found in pricing data:', nextTier.id);
+          showError(
+            t('settings:account.plan.toasts.planNotFound.title'),
+            t('settings:account.plan.toasts.planNotFound.body')
+          );
+          return;
+        }
+        
+        if (!selectedPlan.productId || !selectedPlan.priceId) {
+          console.error('Selected plan missing required payment data:', {
+            planId: selectedPlan.id,
+            productId: selectedPlan.productId,
+            priceId: selectedPlan.priceId
+          });
+          showError(
+            t('settings:account.plan.toasts.planDataMissing.title'),
+            t('settings:account.plan.toasts.planDataMissing.body')
+          );
+          return;
+        }
+        
+        const productId = selectedPlan.productId;
+        const priceId = selectedPlan.priceId;
+        
+        // Navigate to cart for business upgrades
+        try {
+          localStorage.setItem('cartData', JSON.stringify({
+            product_id: productId,
+            price_id: priceId,
+            quantity: 2
+          }));
+        } catch (error) {
+          console.error('Failed to save cart data to localStorage:', error);
+          showError(
+            t('settings:account.plan.toasts.cartSaveError.title'),
+            t('settings:account.plan.toasts.cartSaveError.body')
+          );
+          // Fallback: navigate with query params instead of localStorage
+          navigate(`/cart?product_id=${productId}&price_id=${priceId}&quantity=2`);
+          return;
+        }
+        navigate('/cart');
+      } else {
+        // Handle plus tier upgrade (mock for now)
+        const profile = mockUserDataService.getUserProfile();
+        const updatedProfile = { ...profile, subscriptionTier: nextTier.id as SubscriptionTier };
+        mockUserDataService.setUserProfile(updatedProfile);
+        
+        // Update local state
+        setCurrentTier(nextTier.id as SubscriptionTier);
+        
+        showSuccess(
+          t('settings:account.plan.toasts.upgradeWithPlan.title'),
+          t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
+        );
+      }
     } else {
       showSuccess(
         t('settings:account.plan.toasts.highest.title'),
@@ -419,7 +470,7 @@ export const AccountPage = ({
               {currentPlanFeatures.map((feature, index) => (
                 <div key={index} className="flex items-center gap-3">
                   <div className="text-gray-500 dark:text-gray-400">
-                    <feature.icon className="w-4 h-4" />
+                    <feature.icon />
                   </div>
                   <span className="text-sm text-gray-900 dark:text-gray-100">
                     {feature.text}

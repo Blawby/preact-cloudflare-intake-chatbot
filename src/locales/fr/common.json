@@ -64,5 +64,24 @@
       "helpCenter": "Centre d'aide",
       "letsGo": "C'est parti"
     }
+  },
+  "businessWelcome": {
+    "title": "Bienvenue dans Business !",
+    "subtitle": "Votre organisation a été mise à niveau. Voici ce que vous pouvez faire maintenant :",
+    "features": {
+      "teamManagement": {
+        "title": "Gestion d'Équipe",
+        "description": "Inviter des membres"
+      },
+      "organizationSettings": {
+        "title": "Paramètres d'Organisation",
+        "description": "Configurer votre organisation"
+      },
+      "apiAccess": {
+        "title": "Accès API",
+        "description": "Générer des tokens"
+      }
+    },
+    "goToSettings": "Aller aux Paramètres d'Organisation"
   }
 }

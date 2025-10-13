@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import { vi, beforeAll } from 'vitest';
+import { initI18n } from '../src/i18n';
 
 // Only mock fetch if it's not already available (for real API tests)
 if (!global.fetch) {
@@ -49,4 +50,10 @@ global.FileReader = vi.fn().mockImplementation(() => ({
   onload: null,
   onerror: null,
   onloadend: null,
-})); 
+}));
+
+// Initialize i18n before all tests
+beforeAll(async () => {
+  await initI18n();
+});
+

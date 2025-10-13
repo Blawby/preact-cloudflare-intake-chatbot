@@ -1,4 +1,5 @@
 import { FunctionComponent } from 'preact';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../utils/cn';
 
@@ -31,6 +32,75 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
   className = '',
   mobile = false
 }) => {
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const navRef = useRef<HTMLElement>(null);
+  const focusedIndexRef = useRef(focusedIndex);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    focusedIndexRef.current = focusedIndex;
+  }, [focusedIndex]);
+
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (mobile) return; // Skip keyboard navigation on mobile
+
+    const currentFocusedIndex = focusedIndexRef.current;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setFocusedIndex(prev => (prev + 1) % items.length);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setFocusedIndex(prev => prev <= 0 ? items.length - 1 : prev - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (currentFocusedIndex >= 0 && currentFocusedIndex < items.length) {
+          const item = items[currentFocusedIndex];
+          if (item.isAction && item.onClick) {
+            item.onClick();
+          } else {
+            onItemClick(item.id);
+          }
+        }
+        break;
+      case 'Home':
+        event.preventDefault();
+        setFocusedIndex(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        setFocusedIndex(items.length - 1);
+        break;
+    }
+  }, [mobile, items, onItemClick]);
+
+  // Focus management
+  useEffect(() => {
+    if (!mobile && navRef.current && focusedIndex >= 0) {
+      const buttons = navRef.current.querySelectorAll('button');
+      const focusedButton = buttons[focusedIndex] as HTMLButtonElement;
+      if (focusedButton) {
+        focusedButton.focus();
+      }
+    }
+  }, [mobile, focusedIndex]);
+
+  // Add keyboard event listener
+  useEffect(() => {
+    if (!mobile && navRef.current) {
+      const el = navRef.current;
+      el.addEventListener('keydown', handleKeyDown);
+      return () => {
+        el.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [mobile, handleKeyDown]);
+
   // Mobile layout with card-style sections
   if (mobile) {
     // Group items into sections while maintaining desktop order
@@ -216,9 +286,9 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
 
   // Desktop layout - original
   return (
-    <nav className={cn('flex-1 py-1 px-2', className)} aria-label="Sidebar navigation">
+    <nav ref={navRef} className={cn('flex-1 py-1 px-2', className)} aria-label="Sidebar navigation">
       <ul className="space-y-1">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const IconComponent = item.icon;
           const isActive = activeItem === item.id;
           const isAction = item.isAction;
@@ -236,6 +306,7 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
                     onItemClick(item.id);
                   }
                 }}
+                onFocus={() => setFocusedIndex(index)}
                 onTouchStart={(e) => {
                   const touch = e.touches[0];
                   e.currentTarget.dataset.touchStartX = String(touch.clientX);
@@ -263,11 +334,11 @@ export const SidebarNavigation: FunctionComponent<SidebarNavigationProps> = ({
                   'w-full flex items-center gap-2 px-2 py-2 text-left transition-colors rounded-lg touch-manipulation',
                   isAction
                     ? isDanger
-                      ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30'
-                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
+                      ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30 focus:bg-red-50 dark:focus:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800'
+                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800'
                     : isActive
-                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700'
+                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white focus:bg-gray-200 dark:focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800'
+                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800'
                 )}
               >
                 <IconComponent className="w-5 h-5 flex-shrink-0" />

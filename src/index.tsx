@@ -20,6 +20,8 @@ import { SettingsLayout } from './components/settings/SettingsLayout';
 import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
 import WelcomeModal from './components/onboarding/WelcomeModal';
+import { BusinessWelcomeModal } from './components/onboarding/BusinessWelcomeModal';
+import { CartPage } from './components/cart/CartPage';
 import { debounce } from './utils/debounce';
 import { authClient } from './lib/authClient';
 import './index.css';
@@ -36,6 +38,7 @@ function MainApp() {
 	const [isRecording, setIsRecording] = useState(false);
 	const [showSettingsModal, setShowSettingsModal] = useState(false);
 	const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+	const [showBusinessWelcome, setShowBusinessWelcome] = useState(false);
 	
 	// Mobile state - initialized as false to avoid SSR/client hydration mismatch
 	const [isMobile, setIsMobile] = useState(false);
@@ -113,6 +116,15 @@ function MainApp() {
 			}
 		}
 	}, []);
+
+	// Check if we should show business welcome modal (after upgrade)
+	useEffect(() => {
+		const queryString = location.query || window.location.search;
+		const params = new URLSearchParams(queryString);
+		if (params.get('upgraded') === 'business') {
+			setShowBusinessWelcome(true);
+		}
+	}, [location.query]);
 
 	// Handle hash-based routing for pricing modal
 	const [showPricingModal, setShowPricingModal] = useState(false);
@@ -320,6 +332,11 @@ function MainApp() {
 		}
 	};
 
+	const handleBusinessWelcomeClose = () => {
+		setShowBusinessWelcome(false);
+		navigate('/settings/organization');
+	};
+
 
 
 
@@ -471,6 +488,14 @@ function MainApp() {
 				onClose={handleWelcomeClose}
 				onComplete={handleWelcomeComplete}
 			/>
+
+			{/* Business Welcome Modal */}
+			{showBusinessWelcome && (
+				<BusinessWelcomeModal
+					isOpen={showBusinessWelcome}
+					onClose={handleBusinessWelcomeClose}
+				/>
+			)}
 		</>
 	);
 }
@@ -507,6 +532,7 @@ function AppWithSEO() {
 			/>
 			<Router>
 				<Route path="/auth" component={AuthPage} />
+				<Route path="/cart" component={CartPage} />
 				<Route path="/settings/*" component={MainApp} />
 				<Route default component={MainApp} />
 			</Router>

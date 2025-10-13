@@ -1,12 +1,16 @@
 import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
+import { useNavigation } from '../utils/navigation';
 import Modal from './Modal';
 import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Select } from './ui/input/Select';
+import { QuantitySelector } from './cart/QuantitySelector';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
+import { handleError } from '../utils/errorHandler';
+import { useToastContext } from '../contexts/ToastContext';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -22,8 +26,11 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   currentTier = 'free',
   onUpgrade
 }) => {
+  const { navigate } = useNavigation();
+  const { showWarning } = useToastContext();
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
+  const [selectedQuantity, setSelectedQuantity] = useState(2);
 
   // Generate country options with language information
   const countryOptions = [
@@ -271,10 +278,52 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   
 
   const handleUpgrade = (tier: SubscriptionTier) => {
-    if (onUpgrade) {
-      onUpgrade(tier);
+    if (tier === 'business') {
+      // Find the selected plan to get its productId and priceId
+      const selectedPlan = allPlans.find(plan => plan.id === tier);
+      
+      // Use plan properties with safe fallbacks
+      const productId = selectedPlan?.productId || 'prod_business';
+      const priceId = selectedPlan?.priceId || 'price_monthly';
+      
+      // Store cart data and navigate to cart
+      try {
+        localStorage.setItem('cartData', JSON.stringify({
+          product_id: productId,
+          price_id: priceId,
+          quantity: selectedQuantity
+        }));
+      } catch (error) {
+        // Handle localStorage failures (private mode, quota exceeded, etc.)
+        handleError(error, {
+          component: 'PricingModal',
+          action: 'store-cart-data',
+          tier,
+          quantity: selectedQuantity,
+          productId,
+          priceId
+        });
+        
+        // Show user-friendly warning about cart data storage failure
+        showWarning(
+          'Cart data not saved',
+          'Your cart data could not be saved locally. You may need to re-select your options on the cart page.',
+          5000
+        );
+      }
+      
+      // Continue with navigation and callbacks regardless of storage success/failure
+      navigate('/cart');
+      if (onUpgrade) {
+        onUpgrade(tier);
+      }
+      onClose();
+    } else {
+      if (onUpgrade) {
+        onUpgrade(tier);
+      }
+      onClose();
     }
-    onClose();
   };
 
   return (
@@ -331,6 +380,18 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
         {/* Content */}
         <div className="p-6">
+          {/* Quantity Selector for Business Tab */}
+          {selectedTab === 'business' && (
+            <div className="max-w-4xl w-full mx-auto mb-6">
+              <QuantitySelector
+                quantity={selectedQuantity}
+                onChange={setSelectedQuantity}
+                min={2}
+                helperText="Minimum of 2 seats for business plans"
+              />
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mx-auto">
             {mainPlans.map((plan) => (
               <div

@@ -42,6 +42,8 @@ export interface PricingPlan {
   limitations?: string[];
   benefits?: string[];
   popular?: boolean;
+  productId?: string;
+  priceId?: string;
 }
 
 export interface PricingComparison {
@@ -251,6 +253,8 @@ const PRICING_PLANS: PricingPlan[] = [
     currency: 'USD',
     billingPeriod: 'month',
     description: 'Secure, collaborative workspace for organizations',
+    productId: 'prod_business',
+    priceId: 'price_monthly',
     features: [
       { icon: PlusIcon, text: 'Everything in Plus, with even higher limits', description: 'All Plus features with unlimited usage' },
       { icon: CpuChipIcon, text: 'Unlimited access to our best model for work', description: 'Unlimited access to advanced AI models' },

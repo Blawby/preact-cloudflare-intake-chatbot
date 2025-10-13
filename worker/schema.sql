@@ -351,7 +351,7 @@ CREATE TABLE IF NOT EXISTS invitations (
   organization_id TEXT NOT NULL,
   email TEXT NOT NULL,
   role TEXT NOT NULL,
-  status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'expired'
+  status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'declined', 'expired'
   invited_by TEXT NOT NULL,
   expires_at INTEGER NOT NULL,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL

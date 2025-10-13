@@ -82,6 +82,18 @@
         "highest": {
           "title": "Compte",
           "body": "Vous êtes déjà au niveau le plus élevé !"
+        },
+        "cartSaveError": {
+          "title": "Erreur du Panier",
+          "body": "Impossible de sauvegarder les données du panier. Procédez avec une méthode alternative."
+        },
+        "planNotFound": {
+          "title": "Plan Non Trouvé",
+          "body": "Le plan sélectionné n'a pas pu être trouvé. Veuillez réessayer ou contacter le support."
+        },
+        "planDataMissing": {
+          "title": "Erreur de Configuration du Plan",
+          "body": "Le plan sélectionné manque d'informations de paiement requises. Veuillez contacter le support."
         }
       }
     },

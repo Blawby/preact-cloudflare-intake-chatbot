@@ -82,6 +82,18 @@
         "highest": {
           "title": "Tài khoản",
           "body": "Bạn đã ở gói cao nhất rồi!"
+        },
+        "cartSaveError": {
+          "title": "Lỗi Giỏ Hàng",
+          "body": "Không thể lưu dữ liệu giỏ hàng. Tiếp tục với phương pháp thay thế."
+        },
+        "planNotFound": {
+          "title": "Không Tìm Thấy Gói",
+          "body": "Không thể tìm thấy gói đã chọn. Vui lòng thử lại hoặc liên hệ hỗ trợ."
+        },
+        "planDataMissing": {
+          "title": "Lỗi Cấu Hình Gói",
+          "body": "Gói đã chọn thiếu thông tin thanh toán bắt buộc. Vui lòng liên hệ hỗ trợ."
         }
       }
     },
