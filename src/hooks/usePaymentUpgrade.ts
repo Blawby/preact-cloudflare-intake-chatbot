@@ -40,7 +40,8 @@ export const usePaymentUpgrade = () => {
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed' | 'cancelled'>('idle');
   const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
   const [paymentId, setPaymentId] = useState<string | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingTimeoutRef = useRef<number | null>(null);
+  const isPollingRef = useRef(false);
   const { showSuccess, showError } = useToastContext();
 
       const submitUpgrade = useCallback(async (data: CreateSubscriptionRequest): Promise<void> => {
@@ -132,16 +133,27 @@ export const usePaymentUpgrade = () => {
     }
   }, [showSuccess, showError, paymentStatus]);
 
+  const stopPolling = useCallback(() => {
+    isPollingRef.current = false;
+    if (pollingTimeoutRef.current !== null) {
+      window.clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+  }, []);
+
   const pollPaymentStatus = useCallback((paymentId: string, maxRetries: number = 20) => {
     // Clear any existing polling
-    if (pollingIntervalRef.current) {
-      clearTimeout(pollingIntervalRef.current);
+    if (pollingTimeoutRef.current !== null) {
+      window.clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
     }
+    isPollingRef.current = true;
 
     let retryCount = 0;
 
     // Start sequential polling
     const poll = async () => {
+      if (!isPollingRef.current) return;
       // Check if we've exceeded max retries
       if (retryCount >= maxRetries) {
         stopPolling();
@@ -163,24 +175,21 @@ export const usePaymentUpgrade = () => {
           stopPolling();
         } else {
           // Schedule next poll after 3 seconds
-          pollingIntervalRef.current = setTimeout(poll, 3000);
+          if (isPollingRef.current) {
+            pollingTimeoutRef.current = window.setTimeout(poll, 3000);
+          }
         }
-      } catch (err) {
+      } catch (_err) {
         // Network error or other exception - schedule retry
-        pollingIntervalRef.current = setTimeout(poll, 3000);
+        if (isPollingRef.current) {
+          pollingTimeoutRef.current = window.setTimeout(poll, 3000);
+        }
       }
     };
 
     // Start the first poll
     poll();
-  }, [checkPaymentStatus, showError]);
-
-  const stopPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearTimeout(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-  }, []);
+  }, [checkPaymentStatus, showError, stopPolling]);
 
   // Cleanup polling on unmount
   useEffect(() => {

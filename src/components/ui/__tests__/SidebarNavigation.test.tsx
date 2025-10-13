@@ -45,14 +45,14 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     generalButton.focus();
 
     // Press ArrowDown to move to next item
     fireEvent.keyDown(generalButton, { key: 'ArrowDown' });
 
     // Should focus next navigation item
-    const notificationsButton = screen.getByText('Notifications');
+    const notificationsButton = screen.getByRole('button', { name: /Notifications/i });
     expect(document.activeElement).toBe(notificationsButton);
   });
 
@@ -65,14 +65,14 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const notificationsButton = screen.getByText('Notifications');
+    const notificationsButton = screen.getByRole('button', { name: /Notifications/i });
     notificationsButton.focus();
 
     // Press ArrowUp to move to previous item
     fireEvent.keyDown(notificationsButton, { key: 'ArrowUp' });
 
     // Should focus previous navigation item
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     expect(document.activeElement).toBe(generalButton);
   });
 
@@ -85,7 +85,7 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     generalButton.focus();
 
     // Press Enter to activate the item
@@ -104,7 +104,7 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     generalButton.focus();
 
     // Press Space to activate the item
@@ -123,14 +123,14 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const accountButton = screen.getByText('Account');
+    const accountButton = screen.getByRole('button', { name: /Account/i });
     accountButton.focus();
 
     // Press Home to focus first item
     fireEvent.keyDown(accountButton, { key: 'Home' });
 
     // Should focus first navigation item
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     expect(document.activeElement).toBe(generalButton);
   });
 
@@ -143,14 +143,14 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     generalButton.focus();
 
     // Press End to focus last item
     fireEvent.keyDown(generalButton, { key: 'End' });
 
     // Should focus last navigation item
-    const accountButton = screen.getByText('Account');
+    const accountButton = screen.getByRole('button', { name: /Account/i });
     expect(document.activeElement).toBe(accountButton);
   });
 
@@ -163,14 +163,14 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const accountButton = screen.getByText('Account');
+    const accountButton = screen.getByRole('button', { name: /Account/i });
     accountButton.focus();
 
     // Press ArrowDown to wrap to first item
     fireEvent.keyDown(accountButton, { key: 'ArrowDown' });
 
     // Should focus first navigation item
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     expect(document.activeElement).toBe(generalButton);
   });
 
@@ -183,14 +183,14 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     generalButton.focus();
 
     // Press ArrowUp to wrap to last item
     fireEvent.keyDown(generalButton, { key: 'ArrowUp' });
 
     // Should focus last navigation item
-    const accountButton = screen.getByText('Account');
+    const accountButton = screen.getByRole('button', { name: /Account/i });
     expect(document.activeElement).toBe(accountButton);
   });
 
@@ -204,7 +204,7 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const generalButton = screen.getByText('General');
+    const generalButton = screen.getByRole('button', { name: /General/i });
     generalButton.focus();
 
     // Press ArrowDown - should not change focus on mobile
@@ -229,7 +229,7 @@ describe('SidebarNavigation', () => {
       />
     );
 
-    const signOutButton = screen.getByText('Sign Out');
+    const signOutButton = screen.getByRole('button', { name: /Sign Out/i });
     signOutButton.focus();
 
     // Press Enter to activate the action item

@@ -4,7 +4,7 @@ import { RoleBadge } from '../RoleBadge';
 
 describe('RoleBadge', () => {
   it('should render owner role with correct styling', () => {
-    render(<RoleBadge role="owner" />);
+    render(<RoleBadge roleType="owner" />);
     
     const badge = screen.getByText('Owner');
     expect(badge).toBeInTheDocument();
@@ -12,7 +12,7 @@ describe('RoleBadge', () => {
   });
 
   it('should render admin role with correct styling', () => {
-    render(<RoleBadge role="admin" />);
+    render(<RoleBadge roleType="admin" />);
     
     const badge = screen.getByText('Admin');
     expect(badge).toBeInTheDocument();
@@ -20,7 +20,7 @@ describe('RoleBadge', () => {
   });
 
   it('should render attorney role with correct styling', () => {
-    render(<RoleBadge role="attorney" />);
+    render(<RoleBadge roleType="attorney" />);
     
     const badge = screen.getByText('Attorney');
     expect(badge).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe('RoleBadge', () => {
   });
 
   it('should render paralegal role with correct styling', () => {
-    render(<RoleBadge role="paralegal" />);
+    render(<RoleBadge roleType="paralegal" />);
     
     const badge = screen.getByText('Paralegal');
     expect(badge).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe('RoleBadge', () => {
 
   it('should handle unknown role gracefully', () => {
     // @ts-expect-error Testing unknown role
-    render(<RoleBadge role="unknown" />);
+    render(<RoleBadge roleType="unknown" />);
     
     const badge = screen.getByText('Unknown');
     expect(badge).toBeInTheDocument();
@@ -45,7 +45,7 @@ describe('RoleBadge', () => {
   });
 
   it('should apply custom className when provided', () => {
-    render(<RoleBadge role="owner" className="custom-class" />);
+    render(<RoleBadge roleType="owner" className="custom-class" />);
     
     const badge = screen.getByText('Owner');
     expect(badge).toHaveClass('custom-class');
@@ -55,7 +55,7 @@ describe('RoleBadge', () => {
     const roles = ['owner', 'admin', 'attorney', 'paralegal'] as const;
     
     roles.forEach(role => {
-      const { unmount } = render(<RoleBadge role={role} />);
+      const { unmount } = render(<RoleBadge roleType={role} />);
       const badge = screen.getByText(role.charAt(0).toUpperCase() + role.slice(1));
       
       expect(badge).toHaveClass(

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { 
   TrashIcon, 
-  PlusIcon, 
   UserPlusIcon,
   KeyIcon,
   ChartBarIcon
@@ -10,10 +9,9 @@ import { useOrganizationManagement, type Role } from '../../../hooks/useOrganiza
 import { Button } from '../../ui/Button';
 import { SectionDivider } from '../../ui/layout/SectionDivider';
 import { RoleBadge } from '../../ui/badges/RoleBadge';
-import { StatusBadge } from '../../ui/badges/StatusBadge';
 import { CopyButton } from '../../ui/CopyButton';
 import Modal from '../../Modal';
-import { Input } from '../../ui/Input';
+import { Input } from '../../ui/input/Input';
 import { FormLabel } from '../../ui/form/FormLabel';
 import { Select } from '../../ui/input/Select';
 import { useToastContext } from '../../../contexts/ToastContext';
@@ -48,14 +46,14 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
   
   // Get current user's identity from auth session
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
-  const [currentUserRole, setCurrentUserRole] = useState<Role>('member');
+  const [currentUserRole, setCurrentUserRole] = useState<Role>('paralegal');
   
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
         const session = await getSession();
-        if (session?.user?.email) {
-          setCurrentUserEmail(session.user.email);
+        if (session && 'user' in session && session.user && typeof session.user === 'object' && 'email' in session.user) {
+          setCurrentUserEmail((session.user as { email: string }).email);
         }
       } catch (error) {
         console.error('Failed to get current user session:', error);
@@ -71,10 +69,10 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
       const members = getMembers(currentOrganization.id);
       if (members.length > 0) {
         const userMember = members.find(member => member.email === currentUserEmail);
-        setCurrentUserRole(userMember?.role || 'member');
+        setCurrentUserRole(userMember?.role || 'paralegal');
       } else if (!loading) {
         // If members haven't loaded yet, default to non-privileged role
-        setCurrentUserRole('member');
+        setCurrentUserRole('paralegal');
       }
     }
   }, [currentOrganization, currentUserEmail, getMembers, loading]);
@@ -125,7 +123,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
     if (currentOrganization) {
       fetchWorkspaceData(currentOrganization.id, workspaceResource);
     }
-  }, [currentOrganization?.id, workspaceResource, fetchWorkspaceData]);
+  }, [currentOrganization, workspaceResource, fetchWorkspaceData]);
 
   const handleUpdateOrganization = async () => {
     if (!currentOrganization) return;
@@ -219,7 +217,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4" />
           <p className="text-sm text-gray-500">Loading organization details...</p>
         </div>
       </div>
@@ -266,7 +264,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
                 <Input
                   id="org-name"
                   value={orgForm.name}
-                  onChange={(e) => setOrgForm(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(value) => setOrgForm(prev => ({ ...prev, name: value }))}
                 />
               </div>
               
@@ -275,7 +273,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
                 <Input
                   id="org-description"
                   value={orgForm.description}
-                  onChange={(e) => setOrgForm(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(value) => setOrgForm(prev => ({ ...prev, description: value }))}
                   placeholder="Brief description of your practice"
                 />
               </div>
@@ -322,16 +320,17 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
                     {isOwner ? (
                       <Select
                         value={member.role}
-                        onChange={(e) => handleUpdateMemberRole(member.userId, e.target.value as Role)}
+                        onChange={(value) => handleUpdateMemberRole(member.userId, value as Role)}
                         className="text-xs"
-                      >
-                        <option value="owner">Owner</option>
-                        <option value="admin">Admin</option>
-                        <option value="attorney">Attorney</option>
-                        <option value="paralegal">Paralegal</option>
-                      </Select>
+                        options={[
+                          { value: 'owner', label: 'Owner' },
+                          { value: 'admin', label: 'Admin' },
+                          { value: 'attorney', label: 'Attorney' },
+                          { value: 'paralegal', label: 'Paralegal' }
+                        ]}
+                      />
                     ) : (
-                      <RoleBadge role={member.role} />
+                      <RoleBadge roleType={member.role} />
                     )}
                     
                     {isAdmin && member.role !== 'owner' && (
@@ -398,14 +397,15 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
               <div className="flex items-center space-x-2">
                 <Select
                   value={workspaceResource}
-                  onChange={(e) => setWorkspaceResource(e.target.value)}
+                  onChange={(value) => setWorkspaceResource(value)}
                   className="text-xs"
-                >
-                  <option value="contact-forms">Contact Forms</option>
-                  <option value="sessions">Sessions</option>
-                  <option value="matters">Matters</option>
-                  <option value="payments">Payments</option>
-                </Select>
+                  options={[
+                    { value: 'contact-forms', label: 'Contact Forms' },
+                    { value: 'sessions', label: 'Sessions' },
+                    { value: 'matters', label: 'Matters' },
+                    { value: 'payments', label: 'Payments' }
+                  ]}
+                />
                 <Button 
                   size="sm" 
                   variant="secondary"
@@ -460,7 +460,6 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         title="Invite Team Member"
-        size="md"
       >
         <div className="space-y-4">
           <div>
@@ -469,7 +468,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
               id="invite-email"
               type="email"
               value={inviteForm.email}
-              onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+              onChange={(value) => setInviteForm(prev => ({ ...prev, email: value }))}
               placeholder="colleague@example.com"
               required
             />
@@ -478,14 +477,14 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
           <div>
             <FormLabel htmlFor="invite-role">Role</FormLabel>
             <Select
-              id="invite-role"
               value={inviteForm.role}
-              onChange={(e) => setInviteForm(prev => ({ ...prev, role: e.target.value as Role }))}
-            >
-              <option value="attorney">Attorney</option>
-              <option value="paralegal">Paralegal</option>
-              <option value="admin">Admin</option>
-            </Select>
+              onChange={(value) => setInviteForm(prev => ({ ...prev, role: value as Role }))}
+              options={[
+                { value: 'attorney', label: 'Attorney' },
+                { value: 'paralegal', label: 'Paralegal' },
+                { value: 'admin', label: 'Admin' }
+              ]}
+            />
           </div>
           
           <div className="flex justify-end gap-3 pt-4">
@@ -507,7 +506,6 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
         isOpen={showTokenModal}
         onClose={() => setShowTokenModal(false)}
         title="Create API Token"
-        size="md"
       >
         <div className="space-y-4">
           <div>
@@ -515,7 +513,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
             <Input
               id="token-name"
               value={tokenForm.name}
-              onChange={(e) => setTokenForm(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(value) => setTokenForm(prev => ({ ...prev, name: value }))}
               placeholder="My API Token"
               required
             />
@@ -540,7 +538,6 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
         isOpen={!!newToken}
         onClose={() => setNewToken(null)}
         title="API Token Created"
-        size="md"
       >
         <div className="space-y-4">
           <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
@@ -554,7 +551,6 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
             <div className="flex items-center space-x-2">
               <Input
                 value={newToken?.token || ''}
-                readOnly
                 className="font-mono text-sm"
               />
               <CopyButton text={newToken?.token || ''} />
@@ -563,7 +559,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
           
           <div className="flex justify-end pt-4">
             <Button onClick={() => setNewToken(null)}>
-              I've Copied the Token
+              I&apos;ve Copied the Token
             </Button>
           </div>
         </div>
@@ -574,7 +570,6 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         title="Delete Organization"
-        size="md"
       >
         <div className="space-y-4">
           <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -593,7 +588,7 @@ export const OrganizationDetailsPage = ({ className = '' }: OrganizationDetailsP
             <Input
               id="delete-confirm"
               value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              onChange={(value) => setDeleteConfirmText(value)}
               placeholder="Type organization name here"
             />
           </div>

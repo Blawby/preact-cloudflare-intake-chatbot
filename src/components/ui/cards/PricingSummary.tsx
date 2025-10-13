@@ -103,7 +103,7 @@ export const PricingSummary = ({
       {isLoading && (
         <div className="space-y-4" role="status" aria-live="polite">
           <div className="flex items-center space-x-3 py-6 justify-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent-500"></div>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent-500" />
             <span className="text-sm text-gray-300">{primaryLabel}</span>
           </div>
         </div>
@@ -176,7 +176,7 @@ export const PricingSummary = ({
 
           {/* Total */}
           <div className="flex justify-between items-center">
-            <div className="text-white font-bold text-lg">Today's total</div>
+            <div className="text-white font-bold text-lg">Today&apos;s total</div>
             <div className="text-white font-bold text-lg">
               {lineItems.find(item => item.id === 'total')?.value || '—'}
             </div>
@@ -190,8 +190,7 @@ export const PricingSummary = ({
           <div className="space-y-2">
             <Button 
               onClick={primaryAction.onClick}
-              disabled={primaryAction.disabled}
-              loading={primaryAction.isLoading}
+              disabled={primaryAction.disabled || primaryAction.isLoading}
               className="w-full"
               size="lg"
             >

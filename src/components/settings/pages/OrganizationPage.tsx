@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { BuildingOfficeIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { useOrganizationManagement, type Role } from '../../../hooks/useOrganizationManagement';
+import { useOrganizationManagement } from '../../../hooks/useOrganizationManagement';
 import { features } from '../../../config/features';
 import { Button } from '../../ui/Button';
 import { SectionDivider } from '../../ui/layout/SectionDivider';
@@ -91,7 +91,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4" />
           <p className="text-sm text-gray-500">Loading organization...</p>
         </div>
       </div>
@@ -128,7 +128,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold">{currentOrganization.name}</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {currentOrganization.slug} • <RoleBadge role="owner" />
+                      {currentOrganization.slug} • <RoleBadge roleType="owner" />
                     </p>
                     {currentOrganization.description && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -153,7 +153,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
                     {members.slice(0, 3).map((member, index) => (
                       <div key={member.userId} className="flex items-center gap-1">
                         <span className="text-xs text-gray-500">{member.email}</span>
-                        <RoleBadge role={member.role} />
+                        <RoleBadge roleType={member.role} />
                         {index < Math.min(members.length, 3) - 1 && <span className="text-xs text-gray-400">•</span>}
                       </div>
                     ))}
@@ -195,7 +195,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
                     <div className="flex-1">
                       <p className="text-sm font-medium">{inv.organizationId}</p>
                       <p className="text-xs text-gray-500">
-                        Role: <RoleBadge role={inv.role} /> • Expires: {formatDate(inv.expiresAt)}
+                        Role: <RoleBadge roleType={inv.role} /> • Expires: {formatDate(inv.expiresAt)}
                       </p>
                     </div>
                     <div className="flex gap-2">

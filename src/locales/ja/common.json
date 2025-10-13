@@ -64,5 +64,24 @@
       "helpCenter": "ヘルプセンター",
       "letsGo": "さあ、始めましょう"
     }
+  },
+  "businessWelcome": {
+    "title": "ビジネスへようこそ！",
+    "subtitle": "あなたの組織がアップグレードされました。今できることは次のとおりです：",
+    "features": {
+      "teamManagement": {
+        "title": "チーム管理",
+        "description": "メンバーを招待"
+      },
+      "organizationSettings": {
+        "title": "組織設定",
+        "description": "組織を設定"
+      },
+      "apiAccess": {
+        "title": "APIアクセス",
+        "description": "トークンを生成"
+      }
+    },
+    "goToSettings": "組織設定に移動"
   }
 }

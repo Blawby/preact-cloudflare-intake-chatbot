@@ -9,19 +9,19 @@ const ROLE_STYLES = {
 };
 
 interface RoleBadgeProps {
-  role: Role;
+  roleType: Role;
   children?: ComponentChildren;
   className?: string;
 }
 
-export const RoleBadge = ({ role, children, className }: RoleBadgeProps) => {
-  const roleStyles = ROLE_STYLES[role] || '';
+export const RoleBadge = ({ roleType, children, className }: RoleBadgeProps) => {
+  const roleStyles = ROLE_STYLES[roleType] || '';
   const baseClasses = 'px-2 py-1 text-xs font-medium rounded';
   const combinedClasses = className ? `${baseClasses} ${roleStyles} ${className}` : `${baseClasses} ${roleStyles}`;
   
   return (
     <span className={combinedClasses}>
-      {children || role.charAt(0).toUpperCase() + role.slice(1)}
+      {children || roleType.charAt(0).toUpperCase() + roleType.slice(1)}
     </span>
   );
 };

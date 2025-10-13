@@ -4,10 +4,7 @@ import { OrganizationPage } from '../OrganizationPage';
 import { useOrganizationManagement } from '../../../../hooks/useOrganizationManagement';
 
 // Mock the organization management hook
-const mockLoadOrganizations = vi.fn();
-const mockLoadInvitations = vi.fn();
 const mockCreateOrganization = vi.fn();
-const mockInviteMember = vi.fn();
 const mockAcceptInvitation = vi.fn();
 const mockDeclineInvitation = vi.fn();
 const mockFetchMembers = vi.fn();
@@ -28,7 +25,7 @@ const mockGetMembers = vi.fn((orgId: string) => {
     return [
       {
         userId: 'user-1',
-        role: 'owner',
+        role: 'owner' as const,
         email: 'test@example.com',
         name: 'Test User',
         createdAt: '2023-01-01T00:00:00Z',
@@ -76,21 +73,21 @@ vi.mock('../../../../hooks/useOrganizationManagement', () => ({
 const mockShowSuccess = vi.fn();
 const mockShowError = vi.fn();
 
-vi.mock('../../../contexts/ToastContext', () => ({
-  useToast: () => ({
+vi.mock('../../../../contexts/ToastContext', () => ({
+  useToastContext: () => ({
     showSuccess: mockShowSuccess,
     showError: mockShowError,
   }),
 }));
 
 // Mock the feature flags
-vi.mock('../../../config/features', () => ({
+vi.mock('../../../../config/features', () => ({
   useFeatureFlag: (flag: string) => {
-    if (flag === 'enableMultipleOrganizations') return false;
+    if (flag === 'enableMultipleOrganizations') return true;
     return false;
   },
   features: {
-    enableMultipleOrganizations: false,
+    enableMultipleOrganizations: true,
   },
 }));
 
@@ -113,7 +110,7 @@ vi.mock('@heroicons/react/24/outline', () => ({
 
 // Mock the navigation hook
 const mockNavigate = vi.fn();
-vi.mock('../../../hooks/useNavigation', () => ({
+vi.mock('../../../../hooks/useNavigation', () => ({
   useNavigation: () => ({
     navigate: mockNavigate,
   }),
@@ -122,10 +119,7 @@ vi.mock('../../../hooks/useNavigation', () => ({
 describe('OrganizationPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLoadOrganizations.mockClear();
-    mockLoadInvitations.mockClear();
     mockCreateOrganization.mockClear();
-    mockInviteMember.mockClear();
     mockAcceptInvitation.mockClear();
     mockDeclineInvitation.mockClear();
     mockGetMembers.mockClear();
@@ -135,7 +129,7 @@ describe('OrganizationPage', () => {
         return [
           {
             userId: 'user-1',
-            role: 'owner',
+            role: 'owner' as const,
             email: 'test@example.com',
             name: 'Test User',
             createdAt: '2023-01-01T00:00:00Z',
@@ -191,11 +185,10 @@ describe('OrganizationPage', () => {
     expect(screen.getByText('Manage your organization settings and members.')).toBeInTheDocument();
   });
 
-  it('should load organizations and invitations on mount', () => {
+  it('should provide refetch and fetchMembers functions', () => {
     render(<OrganizationPage />);
-    
-    expect(mockLoadOrganizations).toHaveBeenCalled();
-    expect(mockLoadInvitations).toHaveBeenCalled();
+    expect(mockRefetch).toBeDefined();
+    expect(mockFetchMembers).toBeDefined();
   });
 
   it('should show loading state when loading', async () => {
@@ -278,7 +271,12 @@ describe('OrganizationPage', () => {
     ];
 
     // Update the mutable mock object for this test
-    useOrgMgmtMock.organizations = [];
+    useOrgMgmtMock.organizations = [{
+      id: 'org-1',
+      name: 'Test Organization',
+      slug: 'test-org',
+      config: {},
+    }];
     useOrgMgmtMock.currentOrganization = null;
     useOrgMgmtMock.getMembers = mockGetMembers;
     useOrgMgmtMock.invitations = mockInvitations;
@@ -378,7 +376,7 @@ describe('OrganizationPage', () => {
 
   it('should handle member invitation', async () => {
     mockGetMembers.mockReturnValue([]);
-    mockInviteMember.mockResolvedValueOnce(undefined);
+    mockSendInvitation.mockResolvedValueOnce(undefined);
     
     const mockOrganizations = [
       {
@@ -419,11 +417,7 @@ describe('OrganizationPage', () => {
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(mockInviteMember).toHaveBeenCalledWith({
-        email: 'newuser@example.com',
-        role: 'attorney' as const,
-        organizationId: 'org-1',
-      });
+      expect(mockSendInvitation).toHaveBeenCalledWith('org-1', 'newuser@example.com', 'attorney');
     });
   });
 

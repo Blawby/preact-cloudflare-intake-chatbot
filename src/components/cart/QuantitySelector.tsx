@@ -1,4 +1,4 @@
-import { forwardRef, useCallback } from 'preact/compat';
+import { useCallback } from 'preact/compat';
 import { PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 
 interface Props {

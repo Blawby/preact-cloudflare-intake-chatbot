@@ -3,8 +3,6 @@ import { useLocation } from 'preact-iso';
 import { PRODUCTS, PRICES, PriceId } from '../../utils/stripe-products';
 import { QuantitySelector } from './QuantitySelector';
 import { PricingSummary } from '../ui/cards/PricingSummary';
-import { Button } from '../ui/Button';
-import { CheckIcon } from '@heroicons/react/24/outline';
 
 export const CartPage = () => {
   const location = useLocation();
@@ -24,17 +22,19 @@ export const CartPage = () => {
     
     switch (event.key) {
       case 'ArrowLeft':
-      case 'ArrowUp':
+      case 'ArrowUp': {
         event.preventDefault();
         const prevIndex = currentIndex > 0 ? currentIndex - 1 : priceIds.length - 1;
         setSelectedPriceId(priceIds[prevIndex]);
         break;
+      }
       case 'ArrowRight':
-      case 'ArrowDown':
+      case 'ArrowDown': {
         event.preventDefault();
         const nextIndex = currentIndex < priceIds.length - 1 ? currentIndex + 1 : 0;
         setSelectedPriceId(priceIds[nextIndex]);
         break;
+      }
     }
   }, [selectedPriceId]);
 
@@ -119,6 +119,7 @@ export const CartPage = () => {
               aria-label="Billing plan selection"
               className="grid grid-cols-2 gap-4 mb-8"
               onKeyDown={handleKeyDown}
+              tabIndex={0}
             >
               <button
                 onClick={() => setSelectedPriceId('price_annual')}
@@ -144,7 +145,7 @@ export const CartPage = () => {
                   <div className="text-lg font-bold text-white">Annual</div>
                   <div className="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center">
                     {selectedPriceId === 'price_annual' && (
-                      <div className="w-3 h-3 bg-accent-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-accent-500 rounded-full" />
                     )}
                   </div>
                 </div>
@@ -181,7 +182,7 @@ export const CartPage = () => {
                   <div className="text-lg font-bold text-white">Monthly</div>
                   <div className="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center">
                     {selectedPriceId === 'price_monthly' && (
-                      <div className="w-3 h-3 bg-accent-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-accent-500 rounded-full" />
                     )}
                   </div>
                 </div>

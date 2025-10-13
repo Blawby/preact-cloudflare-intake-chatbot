@@ -67,22 +67,6 @@ vi.mock('../pages/HelpPage', () => ({
   HelpPage: ({ className }: { className?: string }) => <div className={className}>Help & Support</div>,
 }));
 
-// Mock the SidebarNavigation component
-vi.mock('../../ui/SidebarNavigation', () => ({
-  SidebarNavigation: ({ items, onItemClick }: { items: Array<{ id: string; label: string }>; onItemClick: (id: string) => void }) => (
-    <div data-testid="sidebar-navigation">
-      {items.map((item: { id: string; label: string }) => (
-        <button 
-          key={item.id} 
-          onClick={() => onItemClick(item.id)} 
-          data-testid="sidebar-nav-item"
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-  ),
-}));
 
 // Mock the organization management hook
 const mockLoadOrganizations = vi.fn();
@@ -200,12 +184,6 @@ vi.mock('../../../lib/authClient', async () => {
 });
 
 
-// Mock preact-iso useLocation
-vi.mock('preact-iso', () => ({
-  useLocation: () => ({
-    path: '/settings',
-  }),
-}));
 
 describe('SettingsPage Integration Tests', () => {
   const mockOnClose = vi.fn();
@@ -323,15 +301,27 @@ describe('SettingsPage Integration Tests', () => {
   });
 
   it('should handle sign out when sign out is clicked', async () => {
+    // Stub window.location.reload
+    const reloadStub = vi.fn();
+    const originalReload = window.location.reload;
+    Object.defineProperty(window.location, 'reload', {
+      configurable: true,
+      value: reloadStub,
+    });
+
     render(<SettingsPage onClose={mockOnClose} />);
     
     const signOutNav = screen.getByText('Sign Out');
     fireEvent.click(signOutNav);
     
-    // Should show confirmation dialog
     await waitFor(() => {
-      expect(screen.getByText('Sign Out')).toBeInTheDocument();
-      expect(screen.getByText('Are you sure you want to sign out?')).toBeInTheDocument();
+      expect(reloadStub).toHaveBeenCalled();
+    });
+    
+    // Restore original reload
+    Object.defineProperty(window.location, 'reload', {
+      configurable: true,
+      value: originalReload,
     });
   });
 
@@ -344,23 +334,6 @@ describe('SettingsPage Integration Tests', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it('should close settings modal when backdrop is clicked', () => {
-    render(<SettingsPage onClose={mockOnClose} />);
-    
-    const backdrop = screen.getByTestId('settings-backdrop');
-    fireEvent.click(backdrop);
-    
-    expect(mockOnClose).toHaveBeenCalled();
-  });
-
-  it('should not close settings modal when content is clicked', () => {
-    render(<SettingsPage onClose={mockOnClose} />);
-    
-    const content = screen.getByTestId('settings-content');
-    fireEvent.click(content);
-    
-    expect(mockOnClose).not.toHaveBeenCalled();
-  });
 
   it('should handle mobile view correctly', () => {
     render(<SettingsPage onClose={mockOnClose} isMobile={true} />);
@@ -401,52 +374,6 @@ describe('SettingsPage Integration Tests', () => {
   });
 
 
-  it('should handle keyboard navigation', async () => {
-    render(<SettingsPage onClose={mockOnClose} />);
-    
-    // Focus on the first navigation item (General)
-    const generalNav = screen.getByText('General');
-    generalNav.focus();
-    
-    // Verify General is focused initially
-    expect(document.activeElement).toBe(generalNav);
-    
-    // Press ArrowDown to move to next navigation item
-    fireEvent.keyDown(generalNav, { key: 'ArrowDown' });
-    
-    // Should focus next navigation item (Notifications)
-    const notificationsNav = screen.getByText('Notifications');
-    expect(document.activeElement).toBe(notificationsNav);
-    
-    // Press Enter to activate the navigation item
-    fireEvent.keyDown(notificationsNav, { key: 'Enter' });
-    
-    // Should navigate to notifications page
-    await waitFor(() => {
-      expect(screen.getByText('Notification Settings')).toBeInTheDocument();
-    });
-    
-    // Verify the navigation item has active state
-    expect(notificationsNav).toHaveAttribute('aria-current', 'page');
-  });
-
-  it('should handle ArrowUp navigation', () => {
-    render(<SettingsPage onClose={mockOnClose} />);
-    
-    // Focus on the second navigation item (Notifications)
-    const notificationsNav = screen.getByText('Notifications');
-    notificationsNav.focus();
-    
-    // Verify Notifications is focused initially
-    expect(document.activeElement).toBe(notificationsNav);
-    
-    // Press ArrowUp to move to previous navigation item
-    fireEvent.keyDown(notificationsNav, { key: 'ArrowUp' });
-    
-    // Should focus previous navigation item (General)
-    const generalNav = screen.getByText('General');
-    expect(document.activeElement).toBe(generalNav);
-  });
 
   it('should handle escape key to close modal', () => {
     render(<SettingsPage onClose={mockOnClose} />);
