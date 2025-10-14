@@ -333,12 +333,12 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   // Determine if we should show the tab selector
   // Only show tabs if there are different plans available for each tab
   const shouldShowTabs = (() => {
-    // Business and enterprise users don't need tab selector
+    // Business, enterprise, and plus users don't need tab selector
     // They can only see their current plan + enterprise upgrade (business)
-    // Or just their current plan (enterprise)
-    if (currentTier === 'business' || currentTier === 'enterprise') return false;
+    // Or just their current plan (enterprise/plus)
+    if (currentTier === 'business' || currentTier === 'enterprise' || currentTier === 'plus') return false;
     
-    // Free and plus users see tabs for personal vs business upgrade paths
+    // Free users see tabs for personal vs business upgrade paths
     return true;
   })();
 
