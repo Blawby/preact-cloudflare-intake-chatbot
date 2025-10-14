@@ -10,7 +10,7 @@ import {
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
 import { mockUserDataService, MockUserLinks, MockEmailSettings, type SubscriptionTier } from '../../../utils/mockUserData';
-import { mockPricingDataService } from '../../../utils/mockPricingData';
+import { TIER_FEATURES } from '../../../utils/stripe-products';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'preact-iso';
 import { usePaymentUpgrade } from '../../../hooks/usePaymentUpgrade';
@@ -137,14 +137,14 @@ export const AccountPage = ({
           // Store previous tier before sync
           const previousTier = currentOrganization?.subscriptionTier;
           
-          const syncResult = await syncSubscription(organizationId);
+          const subscription = await syncSubscription(organizationId);
 
           // Check if tier was upgraded to business/enterprise
           let newTier = currentOrganization?.subscriptionTier;
           
           // Prefer the sync response if it returns plan/tier info
-          if (syncResult?.data?.subscription?.plan) {
-            newTier = syncResult.data.subscription.plan;
+          if (subscription?.plan) {
+            newTier = subscription.plan;
             
             // Handle upgrade check immediately if we have tier info from sync response
             const wasUpgraded = (previousTier === 'free' || !previousTier) && 
@@ -220,7 +220,9 @@ export const AccountPage = ({
 
   // Simple computed values for demo - only compute when currentTier is available
   const upgradeButtonText = 'Upgrade Plan';
-  const currentPlanFeatures = currentTier ? mockPricingDataService.getFeaturesForTier(currentTier) : [];
+  const currentPlanFeatures = currentTier && (currentTier === 'free' || currentTier === 'business')
+    ? TIER_FEATURES[currentTier]
+    : TIER_FEATURES['business'];
   const emailFallback = t('settings:account.email.addressFallback');
   const emailAddress = emailSettings?.email || emailFallback;
   const customDomainOptions = (links?.customDomains || []).map(domain => ({
@@ -510,7 +512,7 @@ export const AccountPage = ({
               
               {currentTier === 'enterprise' && (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  You're on the Enterprise plan - our highest tier
+                  You&apos;re on the Enterprise plan - our highest tier
                 </div>
               )}
             </div>

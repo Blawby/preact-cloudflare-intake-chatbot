@@ -1,5 +1,5 @@
 import { FunctionComponent } from 'preact';
-import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
+import { getBusinessPrices } from '../utils/stripe-products';
 import { type SubscriptionTier } from '../utils/mockUserData';
 
 interface PricingComparisonProps {
@@ -15,9 +15,33 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
   showAllPlans = true,
   className = ''
 }) => {
-  const plans = showAllPlans 
-    ? mockPricingDataService.getPricingPlans()
-    : mockPricingDataService.getUpgradePath(currentTier);
+  const prices = getBusinessPrices();
+  const plans = [
+    {
+      id: 'free',
+      name: 'Free',
+      price: '$0 USD / month',
+      description: 'Legal AI assistance for everyday needs',
+      features: [],
+      buttonText: 'Your current plan',
+      isRecommended: currentTier === 'free',
+      popular: false,
+      limitations: [],
+      benefits: []
+    },
+    {
+      id: 'business',
+      name: 'Business',
+      price: prices.monthly,
+      description: 'Secure, collaborative workspace for organizations',
+      features: [],
+      buttonText: 'Get Business',
+      isRecommended: currentTier !== 'business',
+      popular: true,
+      limitations: [],
+      benefits: []
+    }
+  ];
 
   return (
     <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${className}`}>

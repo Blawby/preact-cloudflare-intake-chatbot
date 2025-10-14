@@ -4,7 +4,7 @@ import { authClient } from '../lib/authClient';
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
 import { type SubscriptionTier } from '../utils/mockUserData';
-import { mockPricingDataService } from '../utils/mockPricingData';
+import { getTierDisplayName } from '../utils/stripe-products';
 import { debounce } from '../utils/debounce';
 import { useTranslation } from 'react-i18next';
 import { useOrganizationManagement } from '../hooks/useOrganizationManagement';
@@ -116,7 +116,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       debouncedResizeHandler.cancel();
       window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
     };
-  }, []); // Empty dependency array - this effect should only run once on mount
+  }, [checkAuthStatus]);
 
   // Handle dropdown close when clicking outside
   useEffect(() => {
@@ -140,12 +140,12 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     if (!orgLoading && currentOrganization) {
       checkAuthStatus();
     }
-  }, [orgLoading, currentOrganization]);
+  }, [orgLoading, currentOrganization, checkAuthStatus]);
 
   // Re-run when organization tier changes
   useEffect(() => {
     if (user) checkAuthStatus();
-  }, [currentOrganization?.subscriptionTier, checkAuthStatus]);
+  }, [user, currentOrganization?.subscriptionTier, checkAuthStatus]);
 
 
 
@@ -207,9 +207,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   };
 
 
-  const getTierDisplayName = (tier: SubscriptionTier) => {
-    return mockPricingDataService.getTierDisplayName(tier);
-  };
+  const tierDisplay = (tier: SubscriptionTier) => getTierDisplayName(tier);
 
   const getInitials = (name: string) => {
     return name
@@ -345,8 +343,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
               </div>
               <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={user.name}>{user.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-300 truncate" title={getTierDisplayName(user.subscriptionTier || 'free')}>
-                  {getTierDisplayName(user.subscriptionTier || 'free')}
+                <p className="text-xs text-gray-500 dark:text-gray-300 truncate" title={tierDisplay(user.subscriptionTier || 'free')}>
+                  {tierDisplay(user.subscriptionTier || 'free')}
                 </p>
               </div>
             </button>

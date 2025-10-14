@@ -31,3 +31,59 @@ export const PRICES = {
 
 export type PriceId = keyof typeof PRICES;
 export type ProductId = keyof typeof PRODUCTS;
+
+// ----------------------------------------
+// UI helpers for tiers and features
+// ----------------------------------------
+import { ComponentType } from 'preact';
+import { 
+  BoltIcon,
+  DocumentIcon,
+  UserGroupIcon,
+  LockClosedIcon,
+} from '@heroicons/react/24/outline';
+
+export interface TierFeature {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: ComponentType<any>; // heroicons accept className; relax typing for Preact/React interop
+  text: string;
+}
+
+export const TIER_NAMES = {
+  free: 'Free',
+  business: 'Business',
+} as const;
+
+export const TIER_FEATURES: Record<'free' | 'business', TierFeature[]> = {
+  free: [
+    { icon: BoltIcon, text: 'Basic AI assistance' },
+    { icon: DocumentIcon, text: 'Limited document analysis' },
+  ],
+  business: [
+    { icon: UserGroupIcon, text: 'Organization collaboration & workflows' },
+    { icon: LockClosedIcon, text: 'Advanced security' },
+    { icon: DocumentIcon, text: 'Personalized intake forms' },
+    { icon: BoltIcon, text: 'Unlimited usage with guardrails' },
+  ],
+};
+
+export function getTierDisplayName(tier: 'free' | 'business' | 'plus' | 'enterprise'): string {
+  // Gracefully map unknown paid tiers to Business for display purposes
+  if (tier === 'plus' || tier === 'enterprise') return TIER_NAMES.business;
+  return TIER_NAMES[tier as 'free' | 'business'] ?? String(tier);
+}
+
+export function formatPriceCents(amountCents: number, interval: 'month' | 'year'): string {
+  const dollars = (amountCents / 100).toFixed(0);
+  return `$${dollars} USD / ${interval}`;
+}
+
+export function getBusinessPrices(): { monthly: string; annual?: string } {
+  const monthly = PRICES.price_1SHfgbDJLzJ14cfPBGuTvcG3
+    ? formatPriceCents(PRICES.price_1SHfgbDJLzJ14cfPBGuTvcG3.unit_amount, 'month')
+    : '$40 USD / month';
+  const annual = PRICES.price_1SHfhCDJLzJ14cfPGFGQ77vQ
+    ? formatPriceCents(PRICES.price_1SHfhCDJLzJ14cfPGFGQ77vQ.unit_amount, 'year')
+    : undefined;
+  return { monthly, annual };
+}

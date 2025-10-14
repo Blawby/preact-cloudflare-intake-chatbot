@@ -42,6 +42,9 @@ export const auth = betterAuth({
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:8787",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:8787",
       ],
       emailAndPassword: {
         enabled: true,
@@ -146,7 +149,7 @@ export async function getAuth(env: Env, request?: Request) {
           referenceId: string;
         }) => {
 
-          if (!referenceId || referenceId === user.id) {
+          if (!referenceId) {
             return true;
           }
 
@@ -179,7 +182,6 @@ export async function getAuth(env: Env, request?: Request) {
                   await env.DB.prepare(
                     `DELETE FROM subscriptions WHERE id = ?`
                   ).bind(existingIncomplete.id).run();
-                } else {
                 }
               } catch (error) {
                 console.error('❌ Failed to clean up incomplete subscription:', error);
@@ -201,7 +203,7 @@ export async function getAuth(env: Env, request?: Request) {
         let stripeClient: Stripe;
         try {
           stripeClient = new Stripe(stripeSecretKey, {
-            apiVersion: "2025-02-24.acacia",
+            apiVersion: "2025-08-27.basil",
           });
         } catch (error) {
           console.error("❌ Failed to create Stripe client:", error);
@@ -400,10 +402,13 @@ export async function getAuth(env: Env, request?: Request) {
             "http://localhost:5173",
             "http://localhost:5174",
             "http://localhost:8787",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:8787",
           ].filter(Boolean),
           advanced: {
             defaultCookieAttributes: {
-              sameSite: "lax",
+              sameSite: env.NODE_ENV === 'production' ? "none" : "lax",
               secure: env.NODE_ENV === 'production', // Secure in production
             },
             crossSubDomainCookies: {

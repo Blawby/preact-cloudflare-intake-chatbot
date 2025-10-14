@@ -6,7 +6,7 @@ import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Select } from './ui/input/Select';
 import { type SubscriptionTier } from '../utils/mockUserData';
-import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
+import { getBusinessPrices } from '../utils/stripe-products';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
 import { useToastContext } from '../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -26,8 +26,8 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   onUpgrade
 }) => {
   const { navigate } = useNavigation();
-  const { showWarning } = useToastContext();
-  const { t } = useTranslation('settings');
+  const { showWarning: _showWarning } = useToastContext();
+  const { t: _t } = useTranslation('settings');
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
 
@@ -247,8 +247,28 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
     });
   };
 
-  // Get pricing plans from mock data service
-  const allPlans = mockPricingDataService.getPricingPlans();
+  // Build pricing plans from real Stripe config
+  const prices = getBusinessPrices();
+  const allPlans = [
+    {
+      id: 'free' as SubscriptionTier,
+      name: 'Free',
+      price: '$0 USD / month',
+      description: 'Legal AI assistance for everyday needs',
+      features: [],
+      buttonText: 'Your current plan',
+      isRecommended: currentTier === 'free',
+    },
+    {
+      id: 'business' as SubscriptionTier,
+      name: 'Business',
+      price: prices.monthly,
+      description: 'Secure, collaborative workspace for organizations',
+      features: [],
+      buttonText: 'Get Business',
+      isRecommended: currentTier !== 'business',
+    },
+  ];
   
   // Define upgrade paths - include current tier to show it
   const upgradeTiers = {
@@ -259,34 +279,40 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   };
   
   // Show different plans based on selected tab and current tier
-  const mainPlans: PricingPlan[] = (() => {
+  type SimplePlan = { id: SubscriptionTier; name: string; price: string; description: string; features: Array<{ icon?: unknown; text?: string }>; buttonText: string; isRecommended: boolean; isCurrent?: boolean };
+  const mainPlans: SimplePlan[] = (() => {
     const availableTiers = upgradeTiers[currentTier] || [];
     
     if (selectedTab === 'personal') {
       return allPlans
         .filter(plan => availableTiers.includes(plan.id) && plan.id !== 'business')
-        .map(plan => ({
-          ...plan,
-          isCurrent: plan.id === currentTier,
-          buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText,
-          // Recommended = next tier up for personal (Plus for free users)
-          isRecommended: !plan.isCurrent && plan.id === 'plus'
-        }));
+        .map(plan => {
+          const isCurrent = plan.id === currentTier;
+          return {
+            ...plan,
+            isCurrent,
+            buttonText: isCurrent ? 'Your current plan' : plan.buttonText,
+            // Recommended = show current for clarity on personal tab
+            isRecommended: !isCurrent && plan.id === 'free'
+          };
+        });
     } else {
       return allPlans
         .filter(plan => availableTiers.includes(plan.id) && plan.id !== 'plus')
-        .map(plan => ({
-          ...plan,
-          isCurrent: plan.id === currentTier,
-          buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText,
-          // Recommended = next tier up for business path
-          // Business for free/plus, Enterprise for business users
-          isRecommended: !plan.isCurrent && (
-            (currentTier === 'free' && plan.id === 'business') ||
-            (currentTier === 'plus' && plan.id === 'business') ||
-            (currentTier === 'business' && plan.id === 'enterprise')
-          )
-        }));
+        .map(plan => {
+          const isCurrent = plan.id === currentTier;
+          return {
+            ...plan,
+            isCurrent,
+            buttonText: isCurrent ? 'Your current plan' : plan.buttonText,
+            // Recommended = highlight Business when user is not already on it
+            isRecommended: !isCurrent && (
+              (currentTier === 'free' && plan.id === 'business') ||
+              (currentTier === 'plus' && plan.id === 'business') ||
+              (currentTier === 'business' && plan.id === 'business')
+            )
+          };
+        });
     }
   })();
 
@@ -418,12 +444,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
                 {/* Features List */}
                 <div className="space-y-3 flex-1">
-                  {plan.features.map((feature, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <feature.icon className="w-5 h-5 mt-0.5 flex-shrink-0 text-gray-400" />
-                      <span className="text-sm text-gray-300">{feature.text}</span>
-                    </div>
-                  ))}
+                  {/* Placeholder features moved to AccountPage tier features */}
                 </div>
 
                 {/* Footer Text */}

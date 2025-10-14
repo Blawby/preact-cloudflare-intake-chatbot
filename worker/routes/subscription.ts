@@ -84,10 +84,8 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
       if (!stripeId) {
         await clearStripeSubscriptionCache(env, organizationId);
         return createSuccessResponse({
-          data: {
-            synced: false,
-            message: "No active Stripe subscription found for organization",
-          }
+          synced: false,
+          message: "No active Stripe subscription found for organization",
         });
       }
 
@@ -99,10 +97,8 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
       });
 
       return createSuccessResponse({
-        data: {
-          synced: true,
-          subscription: cache,
-        }
+        synced: true,
+        subscription: cache,
       });
     }
 
