@@ -56,10 +56,6 @@ wrangler.toml
 migrations/*_temp.sql
 migrations/*_with_secrets.sql
 
-# Cloudflare configuration (contains sensitive IDs)
-wrangler.toml
-.wrangler/
-
 # Migration audit reports
 audit-report.json
 audit-report.md
@@ -71,8 +67,13 @@ migration-report.json
 verification-report.json
 undo-migration.js
 
-# Backups and archives
+# Backup files and archives
 .backups/
+*.backup
+*.bak
+*.orig
+*.tmp
+*~
 
 # Misc
 .cache

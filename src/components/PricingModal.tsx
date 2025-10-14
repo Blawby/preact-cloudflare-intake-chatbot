@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
+import { useTranslation } from '@/i18n/hooks';
 import { useNavigation } from '../utils/navigation';
 import Modal from './Modal';
 import { Button } from './ui/Button';
@@ -8,8 +9,6 @@ import { Select } from './ui/input/Select';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { getBusinessPrices } from '../utils/stripe-products';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
-// import { useToastContext } from '../contexts/ToastContext';
-// import { useTranslation } from 'react-i18next';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -18,215 +17,16 @@ interface PricingModalProps {
   onUpgrade?: (tier: SubscriptionTier) => Promise<void> | void;
 }
 
-
 const PricingModal: FunctionComponent<PricingModalProps> = ({
   isOpen,
   onClose,
   currentTier = 'free',
   onUpgrade
 }) => {
+  const { t } = useTranslation(['pricing', 'common']);
   const { navigate } = useNavigation();
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
-  const [selectedCountry, setSelectedCountry] = useState('vn');
-
-  // Generate country options with language information
-  const countryOptions = [
-    { value: 'af', label: 'Afghanistan' },
-    { value: 'al', label: 'Albania' },
-    { value: 'dz', label: 'Algeria' },
-    { value: 'ad', label: 'Andorra' },
-    { value: 'ao', label: 'Angola' },
-    { value: 'ag', label: 'English (Antigua & Barbuda)' },
-    { value: 'ar', label: 'Spanish (Argentina)' },
-    { value: 'am', label: 'Armenia' },
-    { value: 'au', label: 'English (Australia)' },
-    { value: 'at', label: 'Austria' },
-    { value: 'az', label: 'Azerbaijan' },
-    { value: 'bs', label: 'English (Bahamas)' },
-    { value: 'bh', label: 'Bahrain' },
-    { value: 'bd', label: 'Bangladesh' },
-    { value: 'bb', label: 'English (Barbados)' },
-    { value: 'by', label: 'Belarus' },
-    { value: 'be', label: 'Belgium' },
-    { value: 'bz', label: 'English (Belize)' },
-    { value: 'bj', label: 'Benin' },
-    { value: 'bt', label: 'Bhutan' },
-    { value: 'bo', label: 'Spanish (Bolivia)' },
-    { value: 'ba', label: 'Bosnia & Herzegovina' },
-    { value: 'bw', label: 'English (Botswana)' },
-    { value: 'br', label: 'Brazil' },
-    { value: 'bn', label: 'Brunei' },
-    { value: 'bg', label: 'Bulgaria' },
-    { value: 'bf', label: 'Burkina Faso' },
-    { value: 'bi', label: 'Burundi' },
-    { value: 'kh', label: 'Cambodia' },
-    { value: 'cm', label: 'Cameroon' },
-    { value: 'ca', label: 'English (Canada)' },
-    { value: 'cv', label: 'Cape Verde' },
-    { value: 'cf', label: 'Central African Republic' },
-    { value: 'td', label: 'Chad' },
-    { value: 'cl', label: 'Spanish (Chile)' },
-    { value: 'cn', label: 'China' },
-    { value: 'co', label: 'Spanish (Colombia)' },
-    { value: 'km', label: 'Comoros' },
-    { value: 'cg', label: 'Congo' },
-    { value: 'cd', label: 'Congo (Democratic Republic)' },
-    { value: 'cr', label: 'Spanish (Costa Rica)' },
-    { value: 'ci', label: 'Côte d\'Ivoire' },
-    { value: 'hr', label: 'Croatia' },
-    { value: 'cu', label: 'Spanish (Cuba)' },
-    { value: 'cy', label: 'English (Cyprus)' },
-    { value: 'cz', label: 'Czech Republic' },
-    { value: 'dk', label: 'Denmark' },
-    { value: 'dj', label: 'Djibouti' },
-    { value: 'dm', label: 'English (Dominica)' },
-    { value: 'do', label: 'Spanish (Dominican Republic)' },
-    { value: 'ec', label: 'Spanish (Ecuador)' },
-    { value: 'eg', label: 'Egypt' },
-    { value: 'sv', label: 'Spanish (El Salvador)' },
-    { value: 'gq', label: 'Equatorial Guinea' },
-    { value: 'er', label: 'Eritrea' },
-    { value: 'ee', label: 'Estonia' },
-    { value: 'et', label: 'Ethiopia' },
-    { value: 'fj', label: 'English (Fiji)' },
-    { value: 'fi', label: 'Finland' },
-    { value: 'fr', label: 'France' },
-    { value: 'ga', label: 'Gabon' },
-    { value: 'gm', label: 'English (Gambia)' },
-    { value: 'ge', label: 'Georgia' },
-    { value: 'de', label: 'Germany' },
-    { value: 'gh', label: 'English (Ghana)' },
-    { value: 'gr', label: 'Greece' },
-    { value: 'gd', label: 'English (Grenada)' },
-    { value: 'gt', label: 'Spanish (Guatemala)' },
-    { value: 'gn', label: 'Guinea' },
-    { value: 'gw', label: 'Guinea-Bissau' },
-    { value: 'gy', label: 'English (Guyana)' },
-    { value: 'ht', label: 'Haiti' },
-    { value: 'hn', label: 'Spanish (Honduras)' },
-    { value: 'hu', label: 'Hungary' },
-    { value: 'is', label: 'Iceland' },
-    { value: 'in', label: 'English (India)' },
-    { value: 'id', label: 'Indonesia' },
-    { value: 'ir', label: 'Iran' },
-    { value: 'iq', label: 'Iraq' },
-    { value: 'ie', label: 'English (Ireland)' },
-    { value: 'il', label: 'Israel' },
-    { value: 'it', label: 'Italy' },
-    { value: 'jm', label: 'English (Jamaica)' },
-    { value: 'jp', label: 'Japan' },
-    { value: 'jo', label: 'Jordan' },
-    { value: 'kz', label: 'Kazakhstan' },
-    { value: 'ke', label: 'English (Kenya)' },
-    { value: 'ki', label: 'English (Kiribati)' },
-    { value: 'kp', label: 'Korea (North)' },
-    { value: 'kr', label: 'Korea (South)' },
-    { value: 'kw', label: 'Kuwait' },
-    { value: 'kg', label: 'Kyrgyzstan' },
-    { value: 'la', label: 'Laos' },
-    { value: 'lv', label: 'Latvia' },
-    { value: 'lb', label: 'Lebanon' },
-    { value: 'ls', label: 'English (Lesotho)' },
-    { value: 'lr', label: 'English (Liberia)' },
-    { value: 'ly', label: 'Libya' },
-    { value: 'li', label: 'Liechtenstein' },
-    { value: 'lt', label: 'Lithuania' },
-    { value: 'lu', label: 'Luxembourg' },
-    { value: 'mk', label: 'Macedonia' },
-    { value: 'mg', label: 'Madagascar' },
-    { value: 'mw', label: 'English (Malawi)' },
-    { value: 'my', label: 'English (Malaysia)' },
-    { value: 'mv', label: 'Maldives' },
-    { value: 'ml', label: 'Mali' },
-    { value: 'mt', label: 'English (Malta)' },
-    { value: 'mh', label: 'English (Marshall Islands)' },
-    { value: 'mr', label: 'Mauritania' },
-    { value: 'mu', label: 'English (Mauritius)' },
-    { value: 'mx', label: 'Spanish (Mexico)' },
-    { value: 'fm', label: 'English (Micronesia)' },
-    { value: 'md', label: 'Moldova' },
-    { value: 'mc', label: 'Monaco' },
-    { value: 'mn', label: 'Mongolia' },
-    { value: 'me', label: 'Montenegro' },
-    { value: 'ma', label: 'Morocco' },
-    { value: 'mz', label: 'Mozambique' },
-    { value: 'mm', label: 'Myanmar' },
-    { value: 'na', label: 'English (Namibia)' },
-    { value: 'nr', label: 'English (Nauru)' },
-    { value: 'np', label: 'Nepal' },
-    { value: 'nl', label: 'Netherlands' },
-    { value: 'nz', label: 'English (New Zealand)' },
-    { value: 'ni', label: 'Spanish (Nicaragua)' },
-    { value: 'ne', label: 'Niger' },
-    { value: 'ng', label: 'English (Nigeria)' },
-    { value: 'no', label: 'Norway' },
-    { value: 'om', label: 'Oman' },
-    { value: 'pk', label: 'Pakistan' },
-    { value: 'pw', label: 'English (Palau)' },
-    { value: 'pa', label: 'Spanish (Panama)' },
-    { value: 'pg', label: 'English (Papua New Guinea)' },
-    { value: 'py', label: 'Spanish (Paraguay)' },
-    { value: 'pe', label: 'Spanish (Peru)' },
-    { value: 'ph', label: 'English (Philippines)' },
-    { value: 'pl', label: 'Poland' },
-    { value: 'pt', label: 'Portugal' },
-    { value: 'qa', label: 'Qatar' },
-    { value: 'ro', label: 'Romania' },
-    { value: 'ru', label: 'Russia' },
-    { value: 'rw', label: 'Rwanda' },
-    { value: 'kn', label: 'English (Saint Kitts & Nevis)' },
-    { value: 'lc', label: 'English (Saint Lucia)' },
-    { value: 'vc', label: 'English (Saint Vincent & the Grenadines)' },
-    { value: 'ws', label: 'English (Samoa)' },
-    { value: 'sm', label: 'San Marino' },
-    { value: 'st', label: 'São Tomé & Príncipe' },
-    { value: 'sa', label: 'Saudi Arabia' },
-    { value: 'sn', label: 'Senegal' },
-    { value: 'rs', label: 'Serbia' },
-    { value: 'sc', label: 'English (Seychelles)' },
-    { value: 'sl', label: 'English (Sierra Leone)' },
-    { value: 'sg', label: 'English (Singapore)' },
-    { value: 'sk', label: 'Slovakia' },
-    { value: 'si', label: 'Slovenia' },
-    { value: 'sb', label: 'English (Solomon Islands)' },
-    { value: 'so', label: 'Somalia' },
-    { value: 'za', label: 'English (South Africa)' },
-    { value: 'ss', label: 'English (South Sudan)' },
-    { value: 'es', label: 'Spanish (Spain)' },
-    { value: 'lk', label: 'Sri Lanka' },
-    { value: 'sd', label: 'Sudan' },
-    { value: 'sr', label: 'Suriname' },
-    { value: 'sz', label: 'English (Swaziland)' },
-    { value: 'se', label: 'Sweden' },
-    { value: 'ch', label: 'Switzerland' },
-    { value: 'sy', label: 'Syria' },
-    { value: 'tw', label: 'Taiwan' },
-    { value: 'tj', label: 'Tajikistan' },
-    { value: 'tz', label: 'English (Tanzania)' },
-    { value: 'th', label: 'Thailand' },
-    { value: 'tl', label: 'Timor-Leste' },
-    { value: 'tg', label: 'Togo' },
-    { value: 'to', label: 'English (Tonga)' },
-    { value: 'tt', label: 'English (Trinidad & Tobago)' },
-    { value: 'tn', label: 'Tunisia' },
-    { value: 'tr', label: 'Turkey' },
-    { value: 'tm', label: 'Turkmenistan' },
-    { value: 'tv', label: 'English (Tuvalu)' },
-    { value: 'ug', label: 'English (Uganda)' },
-    { value: 'ua', label: 'Ukraine' },
-    { value: 'ae', label: 'United Arab Emirates' },
-    { value: 'gb', label: 'English (United Kingdom)' },
-    { value: 'us', label: 'English (United States)' },
-    { value: 'uy', label: 'Spanish (Uruguay)' },
-    { value: 'uz', label: 'Uzbekistan' },
-    { value: 'vu', label: 'English (Vanuatu)' },
-    { value: 'va', label: 'Vatican City' },
-    { value: 've', label: 'Spanish (Venezuela)' },
-    { value: 'vn', label: 'Vietnam' },
-    { value: 'ye', label: 'Yemen' },
-    { value: 'zm', label: 'English (Zambia)' },
-    { value: 'zw', label: 'English (Zimbabwe)' }
-  ];
+  const [selectedCountry, setSelectedCountry] = useState('us');
 
   // Load user's current country preference
   useEffect(() => {
@@ -236,9 +36,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
   const handleCountryChange = (country: string) => {
     setSelectedCountry(country);
-    // Get the appropriate language for the selected country
     const language = getLanguageForCountry(country);
-    // Update user preferences with both country and language
     mockUserDataService.setPreferences({ 
       country,
       language 
@@ -250,54 +48,53 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   const allPlans = [
     {
       id: 'free' as SubscriptionTier,
-      name: 'Free',
-      price: '$0 USD / month',
-      description: 'Legal AI assistance for everyday needs',
+      name: t('plans.free.name'),
+      price: t('plans.free.price'),
+      description: t('plans.free.description'),
       features: [],
-      buttonText: 'Your current plan',
+      buttonText: t('plans.free.buttonText'),
       isRecommended: currentTier === 'free',
     },
-    // Plus tier temporarily hidden until backend Stripe integration is complete
-    // {
-    //   id: 'plus' as SubscriptionTier,
-    //   name: 'Plus',
-    //   price: '$20 USD / month',
-    //   description: 'Enhanced AI capabilities for individual professionals',
-    //   features: [],
-    //   buttonText: 'Get Plus',
-    //   isRecommended: currentTier === 'free',
-    // },
     {
       id: 'business' as SubscriptionTier,
-      name: 'Business',
+      name: t('plans.business.name'),
       price: prices.monthly,
-      description: 'Secure, collaborative workspace for organizations',
+      description: t('plans.business.description'),
       features: [],
-      buttonText: 'Get Business',
+      buttonText: t('plans.business.buttonText'),
       isRecommended: currentTier === 'free' || currentTier === 'plus',
     },
     {
       id: 'enterprise' as SubscriptionTier,
-      name: 'Enterprise',
-      price: 'Contact sales',
-      description: 'Custom solutions for large organizations',
+      name: t('plans.enterprise.name'),
+      price: t('plans.enterprise.price'),
+      description: t('plans.enterprise.description'),
       features: [],
-      buttonText: 'Contact Sales',
+      buttonText: t('plans.enterprise.buttonText'),
       isRecommended: currentTier === 'business',
     },
   ];
   
-  // Define upgrade paths - include current tier to show it
-  // Plus tier temporarily removed from upgrade paths until backend support is added
+  // Define upgrade paths
   const upgradeTiers = {
     'free': ['free', 'business'],
-    'plus': ['plus', 'business'],  // Keep for existing plus users
+    'plus': ['plus', 'business'],
     'business': ['business', 'enterprise'],
     'enterprise': ['enterprise']
   };
   
   // Show different plans based on selected tab and current tier
-  type SimplePlan = { id: SubscriptionTier; name: string; price: string; description: string; features: Array<{ icon?: unknown; text?: string }>; buttonText: string; isRecommended: boolean; isCurrent?: boolean };
+  type SimplePlan = { 
+    id: SubscriptionTier; 
+    name: string; 
+    price: string; 
+    description: string; 
+    features: Array<{ icon?: unknown; text?: string }>; 
+    buttonText: string; 
+    isRecommended: boolean; 
+    isCurrent?: boolean 
+  };
+  
   const mainPlans: SimplePlan[] = (() => {
     const availableTiers = upgradeTiers[currentTier] || [];
     
@@ -309,8 +106,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
           return {
             ...plan,
             isCurrent,
-            buttonText: isCurrent ? 'Your current plan' : plan.buttonText,
-            // Recommended = show current for clarity on personal tab
+            buttonText: isCurrent ? t('modal.currentPlan') : plan.buttonText,
             isRecommended: isCurrent
           };
         });
@@ -322,8 +118,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
           return {
             ...plan,
             isCurrent,
-            buttonText: isCurrent ? 'Your current plan' : plan.buttonText,
-            // Recommended = highlight Business when user is not already on it
+            buttonText: isCurrent ? t('modal.currentPlan') : plan.buttonText,
             isRecommended: !isCurrent && plan.id === 'business' && (currentTier === 'free' || currentTier === 'plus')
           };
         });
@@ -331,36 +126,36 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   })();
 
   // Determine if we should show the tab selector
-  // Only show tabs if there are different plans available for each tab
   const shouldShowTabs = (() => {
-    // Business, enterprise, and plus users don't need tab selector
-    // They can only see their current plan + enterprise upgrade (business)
-    // Or just their current plan (enterprise/plus)
     if (currentTier === 'business' || currentTier === 'enterprise' || currentTier === 'plus') return false;
-    
-    // Free users see tabs for personal vs business upgrade paths
     return true;
   })();
 
   const handleUpgrade = async (tier: SubscriptionTier) => {
     try {
-      // Call callbacks before navigation to ensure they complete
       if (onUpgrade) {
         await onUpgrade(tier);
       }
-
-      // Navigate to cart with the selected tier
       navigate(`/cart?tier=${tier}`);
-
-      // Close modal after navigation
       onClose();
     } catch (error) {
       console.error('Error during upgrade process:', error);
-      // Still navigate and close modal even if callback fails
       navigate(`/cart?tier=${tier}`);
       onClose();
     }
   };
+
+  // Simplified country options
+  const countryOptions = [
+    { value: 'us', label: t('country.us') },
+    { value: 'vn', label: t('country.vn') },
+    { value: 'gb', label: t('country.gb') },
+    { value: 'de', label: t('country.de') },
+    { value: 'fr', label: t('country.fr') },
+    { value: 'es', label: t('country.es') },
+    { value: 'jp', label: t('country.jp') },
+    { value: 'cn', label: t('country.cn') },
+  ];
 
   return (
     <Modal
@@ -372,13 +167,12 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       <div className="h-full bg-dark-bg text-white overflow-y-auto">
         {/* Header */}
         <div className="relative p-6 border-b border-dark-border">
-          {/* Close Button */}
           <Button
             onClick={onClose}
             variant="icon"
             size="sm"
             className="absolute top-4 right-4"
-            aria-label="Close modal"
+            aria-label={t('common.close')}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -386,9 +180,8 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
             }
           />
           
-          {/* Centered Content */}
           <div className="flex flex-col items-center space-y-6">
-            <h1 className="text-2xl font-semibold text-white">Upgrade your plan</h1>
+            <h1 className="text-2xl font-semibold text-white">{t('modal.title')}</h1>
             {shouldShowTabs && (
               <div className="flex bg-dark-card-bg rounded-lg p-1">
                 <button
@@ -399,7 +192,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  Personal
+                  {t('tabs.personal')}
                 </button>
                 <button
                   onClick={() => setSelectedTab('business')}
@@ -409,7 +202,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  Business
+                  {t('tabs.business')}
                 </button>
               </div>
             )}
@@ -418,7 +211,6 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
         {/* Content */}
         <div className="p-6">
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mx-auto">
             {mainPlans.map((plan) => (
               <div
@@ -433,7 +225,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                 {plan.isRecommended && (
                   <div className="absolute -top-3 left-6">
                     <span className="bg-accent-500 text-gray-900 text-xs font-medium px-3 py-1 rounded-full">
-                      RECOMMENDED
+                      {t('modal.recommended').toUpperCase()}
                     </span>
                   </div>
                 )}
@@ -442,10 +234,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                 <div className="mb-6">
                   <h3 className="text-2xl font-bold mb-2 text-white">{plan.name}</h3>
                   <div className="text-3xl font-bold mb-2 text-white">
-                    {plan.price.split(' ')[0]}
-                    <span className="text-lg font-normal text-gray-300 ml-1">
-                      {plan.price.split(' ').slice(1).join(' ')}
-                    </span>
+                    {plan.price}
                   </div>
                   <p className="text-gray-300">{plan.description}</p>
                 </div>
@@ -465,17 +254,17 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
                 {/* Features List */}
                 <div className="space-y-3 flex-1">
-                  {/* Placeholder features moved to AccountPage tier features */}
+                  {/* Features moved to AccountPage tier features */}
                 </div>
 
                 {/* Footer Text */}
                 {plan.id === 'free' && (
                   <div className="mt-6 pt-4 border-t border-dark-border">
                     <p className="text-xs text-gray-400">
-                      Have an existing plan?{' '}
-                    <button className="underline hover:text-white">
-                      See billing help
-                    </button>
+                      {t('plans.free.footer.existingPlan')}{' '}
+                      <button className="underline hover:text-white">
+                        {t('plans.free.footer.billingHelp')}
+                      </button>
                     </p>
                   </div>
                 )}
@@ -483,13 +272,13 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
                 {plan.id === 'business' && (
                   <div className="mt-6 pt-4 border-t border-dark-border">
                     <p className="text-xs text-gray-400 mb-1">
-                      For 2+ users, billed annually
+                      {t('plans.business.footer.billing')}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Unlimited subject to abuse guardrails.{' '}
-                    <button className="underline hover:text-white">
-                      Learn more
-                    </button>
+                      {t('plans.business.footer.unlimited')}{' '}
+                      <button className="underline hover:text-white">
+                        {t('plans.business.footer.learnMore')}
+                      </button>
                     </p>
                   </div>
                 )}
@@ -497,28 +286,26 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
             ))}
           </div>
 
-
           {/* Modal Footer */}
           <div className="border-t border-dark-border px-6 py-2 mt-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* Enterprise Section */}
               <div className="flex items-center gap-2">
                 <UserGroupIcon className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-400">Need more capabilities?</span>
+                <span className="text-sm text-gray-400">{t('footer.enterprise.question')}</span>
                 <button 
                   className="text-sm text-white underline hover:text-gray-300 transition-colors"
                   onClick={() => {
-                    // Redirect to enterprise page
                     window.open('/enterprise', '_blank');
                   }}
                 >
-                  See Blawby Enterprise
+                  {t('footer.enterprise.link')}
                 </button>
               </div>
               
               {/* Country/Region Selector */}
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-400">Country/Region:</span>
+                <span className="text-sm text-gray-400">{t('footer.country.label')}</span>
                 <Select
                   value={selectedCountry}
                   options={countryOptions}
