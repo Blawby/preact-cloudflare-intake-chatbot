@@ -41,25 +41,35 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
       let subscriptionRecord: { id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null } | undefined;
 
       if (subscriptionId) {
-        // Query by internal subscription ID
+        // Query by internal subscription ID with ownership check
         subscriptionRecord = await env.DB.prepare(
           `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
              FROM subscriptions
-            WHERE id = ?
+            WHERE id = ? AND reference_id = ?
             LIMIT 1`
         )
-          .bind(subscriptionId)
+          .bind(subscriptionId, organizationId)
           .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
+        
+        // Additional ownership validation
+        if (subscriptionRecord && subscriptionRecord.referenceId !== organizationId) {
+          throw HttpErrors.forbidden("Access denied: subscription does not belong to organization");
+        }
       } else if (stripeSubscriptionId) {
-        // Query by Stripe subscription ID
+        // Query by Stripe subscription ID with ownership check
         subscriptionRecord = await env.DB.prepare(
           `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
              FROM subscriptions
-            WHERE stripe_subscription_id = ?
+            WHERE stripe_subscription_id = ? AND reference_id = ?
             LIMIT 1`
         )
-          .bind(stripeSubscriptionId)
+          .bind(stripeSubscriptionId, organizationId)
           .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
+        
+        // Additional ownership validation
+        if (subscriptionRecord && subscriptionRecord.referenceId !== organizationId) {
+          throw HttpErrors.forbidden("Access denied: subscription does not belong to organization");
+        }
       } else {
         // Fallback: query by organization ID (reference_id)
         subscriptionRecord = await env.DB.prepare(
@@ -73,7 +83,7 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
           .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
       }
 
-      const stripeId = stripeSubscriptionId ?? subscriptionRecord?.stripeSubscriptionId;
+      const stripeId = subscriptionRecord?.stripeSubscriptionId;
 
       if (!stripeId) {
         await clearStripeSubscriptionCache(env, organizationId);

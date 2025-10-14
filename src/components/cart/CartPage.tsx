@@ -4,6 +4,7 @@ import { usePaymentUpgrade } from '../../hooks/usePaymentUpgrade';
 import { useOrganizationManagement } from '../../hooks/useOrganizationManagement';
 import { useToastContext } from '../../contexts/ToastContext';
 import { useLocation } from 'preact-iso';
+import { useNavigation } from '../../utils/navigation';
 import { QuantitySelector } from './QuantitySelector';
 import { PricingSummary } from '../ui/cards/PricingSummary';
 
@@ -12,6 +13,7 @@ const ANNUAL_PRICE_ID: PriceId = 'price_1SHfhCDJLzJ14cfPGFGQ77vQ';
 
 export const CartPage = () => {
   const location = useLocation();
+  const { navigate } = useNavigation();
   const { submitUpgrade, submitting } = usePaymentUpgrade();
   const { currentOrganization } = useOrganizationManagement();
   const { showError } = useToastContext();
@@ -19,9 +21,20 @@ export const CartPage = () => {
   const seatsQuery = location.query?.seats;
   const seatsFromQuery = Array.isArray(seatsQuery) ? seatsQuery[0] : seatsQuery;
   const initialSeats = Math.max(1, Number.parseInt(seatsFromQuery || '1', 10) || 1);
+  
+  const tierQuery = location.query?.tier;
+  const tierFromQuery = Array.isArray(tierQuery) ? tierQuery[0] : tierQuery;
 
   const [selectedPriceId, setSelectedPriceId] = useState<PriceId>(MONTHLY_PRICE_ID);
   const [quantity, setQuantity] = useState(initialSeats);
+
+  // Redirect business/enterprise users away from cart
+  useEffect(() => {
+    if (currentOrganization?.subscriptionTier === 'business' || 
+        currentOrganization?.subscriptionTier === 'enterprise') {
+      navigate('/enterprise');
+    }
+  }, [currentOrganization?.subscriptionTier, navigate]);
 
   useEffect(() => {
 
@@ -31,18 +44,31 @@ export const CartPage = () => {
 
     try {
       const stored = localStorage.getItem('cartPreferences');
-      if (!stored) {
-        return;
+      if (stored) {
+        const parsed = JSON.parse(stored) as { seats?: number | null; tier?: string } | null;
+        if (parsed?.seats && Number.isFinite(parsed.seats)) {
+          const newQuantity = Math.max(1, Math.floor(parsed.seats));
+          setQuantity(newQuantity);
+        }
       }
-      const parsed = JSON.parse(stored) as { seats?: number | null; tier?: string } | null;
-      if (parsed?.seats && Number.isFinite(parsed.seats)) {
-        const newQuantity = Math.max(1, Math.floor(parsed.seats));
-        setQuantity(newQuantity);
+      
+      // Handle tier from URL parameters
+      if (tierFromQuery) {
+        // Store tier preference for future reference
+        try {
+          const currentPrefs = stored ? JSON.parse(stored) : {};
+          localStorage.setItem('cartPreferences', JSON.stringify({
+            ...currentPrefs,
+            tier: tierFromQuery
+          }));
+        } catch (error) {
+          console.warn('❌ Cart Page - Unable to store tier preference:', error);
+        }
       }
     } catch (error) {
       console.warn('❌ Cart Page - Unable to read stored cart preferences:', error);
     }
-  }, []);
+  }, [tierFromQuery]);
 
   const selectedPrice = PRICES[selectedPriceId];
   const isAnnual = selectedPriceId === ANNUAL_PRICE_ID;

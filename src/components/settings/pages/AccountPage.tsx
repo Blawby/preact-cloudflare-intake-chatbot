@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Button } from '../../ui/Button';
-import { Select, FormLabel, FormControl, SectionDivider } from '../../ui';
+import { Select, FormLabel } from '../../ui';
 import { FormItem } from '../../ui/form';
 import Modal from '../../Modal';
 import { 
@@ -35,7 +35,7 @@ export const AccountPage = ({
   const { t } = useTranslation(['settings', 'common']);
   const location = useLocation();
   const { syncSubscription } = usePaymentUpgrade();
-  const { currentOrganization } = useOrganizationManagement();
+  const { currentOrganization, loading: orgLoading } = useOrganizationManagement();
   const [links, setLinks] = useState<MockUserLinks | null>(null);
   const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,18 +56,20 @@ export const AccountPage = ({
   const isSyncInFlightRef = useRef(false);
 
   // Extract data loading logic to eliminate duplication
-  const loadAccountData = async () => {
+  const loadAccountData = useCallback(async () => {
     try {
       setError(null);
       setLoading(true);
       const linksData = mockUserDataService.getUserLinks();
       const emailData = mockUserDataService.getEmailSettings();
-      const profile = mockUserDataService.getUserProfile();
       
+      // Use real organization subscription tier directly (no mapping needed)
+      const orgTier = currentOrganization?.subscriptionTier;
+      const displayTier = orgTier || 'free';
       
       setLinks(linksData);
       setEmailSettings(emailData);
-      setCurrentTier(profile.subscriptionTier);
+      setCurrentTier(displayTier as SubscriptionTier);
     } catch (error) {
        
       console.error('Failed to load account data:', error);
@@ -75,12 +77,15 @@ export const AccountPage = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOrganization?.subscriptionTier]);
 
-  // Load mock data
+  // Load account data when component mounts or organization changes
+  // Only load when organization data is available (not loading)
   useEffect(() => {
-    loadAccountData();
-  }, []);
+    if (!orgLoading && currentOrganization !== undefined) {
+      loadAccountData();
+    }
+  }, [loadAccountData, orgLoading, currentOrganization]);
 
   // Handle post-checkout sync
   useEffect(() => {
@@ -100,11 +105,29 @@ export const AccountPage = ({
         isSyncInFlightRef.current = true;
         
         try {
+          // Store previous tier before sync
+          const previousTier = currentOrganization?.subscriptionTier;
+          
           await syncSubscription(organizationId);
 
           // Load account data before cleaning up URL params
           if (isMountedRef.current) {
             await loadAccountData();
+          }
+
+          // Check if tier was upgraded to business/enterprise
+          const newTier = currentOrganization?.subscriptionTier;
+          const wasUpgraded = (previousTier === 'free' || !previousTier) && 
+                             (newTier === 'business' || newTier === 'enterprise');
+
+          if (wasUpgraded) {
+            // Set flag for business setup modal and redirect to root
+            try {
+              localStorage.setItem('businessSetupPending', 'true');
+              navigate('/');
+            } catch (storageError) {
+              console.warn('Failed to set business setup flag:', storageError);
+            }
           }
 
           // Clean up URL params after successful sync and data load
@@ -126,7 +149,7 @@ export const AccountPage = ({
     };
 
     handlePostCheckoutSync();
-  }, [location.query, currentOrganization?.id, syncSubscription, showError, loadAccountData]);
+  }, [location.query, currentOrganization?.id, currentOrganization?.subscriptionTier, syncSubscription, showError, loadAccountData, navigate]);
 
   // Cleanup verification timeout and sync ref on unmount
   useEffect(() => {
@@ -151,13 +174,10 @@ export const AccountPage = ({
     return () => {
       window.removeEventListener('authStateChanged', handleAuthStateChange);
     };
-  }, []);
+  }, [loadAccountData]);
 
   // Simple computed values for demo - only compute when currentTier is available
-  const upgradePath = currentTier ? mockPricingDataService.getUpgradePath(currentTier) : [];
-  const upgradeButtonText = currentTier && upgradePath.length > 0
-    ? t('settings:account.plan.upgradeButton', { plan: upgradePath[0].name })
-    : t('settings:account.plan.currentButton');
+  const upgradeButtonText = 'Upgrade Plan';
   const currentPlanFeatures = currentTier ? mockPricingDataService.getFeaturesForTier(currentTier) : [];
   const emailFallback = t('settings:account.email.addressFallback');
   const emailAddress = emailSettings?.email || emailFallback;
@@ -172,85 +192,11 @@ export const AccountPage = ({
     : DOMAIN_SELECT_VALUE;
 
   const handleUpgrade = () => {
-    if (!currentTier) {
-      showSuccess(
-        t('settings:account.plan.toasts.upgrade.title'),
-        t('settings:account.plan.toasts.upgrade.body')
-      );
+    if (currentTier === 'enterprise') {
+      // No action - they're already at max tier
       return;
     }
-    if (upgradePath.length > 0) {
-      const nextTier = upgradePath[0];
-      
-      if (nextTier.id === 'business') {
-        // Get the plan data to use its productId and priceId
-        const allPlans = mockPricingDataService.getPricingPlans();
-        const selectedPlan = allPlans.find(plan => plan.id === nextTier.id);
-        
-        // Validate that we have a valid plan with required payment data
-        if (!selectedPlan) {
-          console.error('Selected plan not found in pricing data:', nextTier.id);
-          showError(
-            t('settings:account.plan.toasts.planNotFound.title'),
-            t('settings:account.plan.toasts.planNotFound.body')
-          );
-          return;
-        }
-        
-        if (!selectedPlan.productId || !selectedPlan.priceId) {
-          console.error('Selected plan missing required payment data:', {
-            planId: selectedPlan.id,
-            productId: selectedPlan.productId,
-            priceId: selectedPlan.priceId
-          });
-          showError(
-            t('settings:account.plan.toasts.planDataMissing.title'),
-            t('settings:account.plan.toasts.planDataMissing.body')
-          );
-          return;
-        }
-        
-        const productId = selectedPlan.productId;
-        const priceId = selectedPlan.priceId;
-        
-        // Navigate to cart for business upgrades
-        try {
-          localStorage.setItem('cartData', JSON.stringify({
-            product_id: productId,
-            price_id: priceId,
-            quantity: 2
-          }));
-        } catch (error) {
-          console.error('Failed to save cart data to localStorage:', error);
-          showError(
-            t('settings:account.plan.toasts.cartSaveError.title'),
-            t('settings:account.plan.toasts.cartSaveError.body')
-          );
-          // Fallback: navigate with query params instead of localStorage
-          navigate(`/cart?product_id=${productId}&price_id=${priceId}&quantity=2`);
-          return;
-        }
-        navigate('/cart');
-      } else {
-        // Handle plus tier upgrade (mock for now)
-        const profile = mockUserDataService.getUserProfile();
-        const updatedProfile = { ...profile, subscriptionTier: nextTier.id as SubscriptionTier };
-        mockUserDataService.setUserProfile(updatedProfile);
-        
-        // Update local state
-        setCurrentTier(nextTier.id as SubscriptionTier);
-        
-        showSuccess(
-          t('settings:account.plan.toasts.upgradeWithPlan.title'),
-          t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
-        );
-      }
-    } else {
-      showSuccess(
-        t('settings:account.plan.toasts.highest.title'),
-        t('settings:account.plan.toasts.highest.body')
-      );
-    }
+    window.location.hash = '#pricing';
   };
 
   const handleDeleteAccount = () => {
@@ -450,7 +396,7 @@ export const AccountPage = ({
 
   // Features are now loaded dynamically from the pricing service
 
-  if (loading) {
+  if (loading || orgLoading) {
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
         <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
@@ -510,13 +456,21 @@ export const AccountPage = ({
               )}
             </div>
             <div className="ml-4">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleUpgrade}
-              >
-                {upgradeButtonText}
-              </Button>
+              {currentTier !== 'enterprise' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleUpgrade}
+                >
+                  {upgradeButtonText}
+                </Button>
+              )}
+              
+              {currentTier === 'enterprise' && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  You're on the Enterprise plan - our highest tier
+                </div>
+              )}
             </div>
           </div>
 
@@ -528,7 +482,7 @@ export const AccountPage = ({
               {currentPlanFeatures.map((feature, index) => (
                 <div key={index} className="flex items-center gap-3">
                   <div className="text-gray-500 dark:text-gray-400">
-                    <feature.icon />
+                    <feature.icon className="w-5 h-5 flex-shrink-0" />
                   </div>
                   <span className="text-sm text-gray-900 dark:text-gray-100">
                     {feature.text}

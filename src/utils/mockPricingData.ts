@@ -257,15 +257,15 @@ const PRICING_PLANS: PricingPlan[] = [
     priceId: 'price_1SHfgbDJLzJ14cfPBGuTvcG3',
     features: [
       { icon: PlusIcon, text: 'Everything in Plus, with even higher limits', description: 'All Plus features with unlimited usage' },
-      { icon: CpuChipIcon, text: 'Unlimited access to our best model for work', description: 'Unlimited access to advanced AI models' },
-      { icon: VideoCameraIcon, text: 'Advanced document analysis & case preparation', description: 'Full legal document processing capabilities' },
-      { icon: LockClosedIcon, text: 'Advanced security with SSO, MFA, & more', description: 'Enterprise-grade security features' },
-      { icon: EyeSlashIcon, text: 'Privacy built in; data never used for training', description: 'Complete data privacy protection' },
-      { icon: UserGroupIcon, text: 'Tools for organizations like shared projects & workflows', description: 'Organization collaboration and project management' },
+      { icon: LinkIcon, text: 'Custom branded URL for client chat', description: 'yourfirm.blawby.ai for professional client communication' },
+      { icon: DocumentIcon, text: 'Personalized intake forms', description: 'Custom intake forms to gather client information' },
+      { icon: CurrencyDollarIcon, text: 'Custom payment pages & links', description: 'Branded payment pages and shareable payment links' },
+      { icon: PhotoIcon, text: 'Business branding & logo upload', description: 'Add your firm logo and branding to client-facing pages' },
+      { icon: UserGroupIcon, text: 'Organization collaboration & workflows', description: 'Shared projects and team collaboration tools' },
+      { icon: LockClosedIcon, text: 'Advanced security (SSO, MFA, & more)', description: 'Enterprise-grade security features' },
+      { icon: EyeSlashIcon, text: 'Privacy protection - data never used for training', description: 'Complete data privacy protection' },
       { icon: ShareIcon, text: 'Integration with Quickbooks & other tools', description: 'Connect with your existing workflow' },
-      { icon: CurrencyDollarIcon, text: 'Simplified billing and user management', description: 'Easy organization and billing management' },
-      { icon: MicrophoneIcon, text: 'Voice transcription and analysis', description: 'Voice transcription and legal analysis' },
-      { icon: Cog6ToothIcon, text: 'Legal research and lawyer search agents', description: 'Specialized AI agents for legal research and lawyer matching' }
+      { icon: MicrophoneIcon, text: 'Voice transcription and analysis', description: 'Legal voice transcription and analysis' }
     ],
     buttonText: 'Get Business',
     isRecommended: true,
@@ -279,6 +279,31 @@ const PRICING_PLANS: PricingPlan[] = [
       'Enterprise security',
       'Priority support',
       'Custom integrations'
+    ]
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 'Custom',
+    priceAmount: 0,
+    currency: 'USD',
+    billingPeriod: 'month',
+    description: 'Custom solutions for large organizations',
+    features: [
+      { icon: PlusIcon, text: 'Everything in Business, plus custom features', description: 'All Business features with custom development' },
+      { icon: UserGroupIcon, text: 'Dedicated account manager', description: 'Personal account management and support' },
+      { icon: Cog6ToothIcon, text: 'Custom integrations and workflows', description: 'Tailored integrations for your organization' },
+      { icon: LockClosedIcon, text: 'Advanced security and compliance', description: 'Custom security and compliance features' },
+      { icon: CurrencyDollarIcon, text: 'Flexible billing and contracts', description: 'Custom billing arrangements' }
+    ],
+    buttonText: 'Contact Sales',
+    limitations: [],
+    benefits: [
+      'Custom feature development',
+      'Dedicated support team',
+      'SLA guarantees',
+      'Custom integrations',
+      'Flexible contracts'
     ]
   }
 ];

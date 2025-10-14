@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'preact/hooks';
-import { BuildingOfficeIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { useOrganizationManagement } from '../../../hooks/useOrganizationManagement';
+import { useState, useEffect, useMemo } from 'preact/hooks';
+import { 
+  BuildingOfficeIcon, 
+  PlusIcon, 
+  UserPlusIcon,
+  KeyIcon,
+  TrashIcon
+} from '@heroicons/react/24/outline';
+import { useOrganizationManagement, type Role } from '../../../hooks/useOrganizationManagement';
 import { features } from '../../../config/features';
 import { Button } from '../../ui/Button';
-import { SectionDivider } from '../../ui/layout/SectionDivider';
-import { RoleBadge } from '../../ui/badges/RoleBadge';
 import Modal from '../../Modal';
 import { Input } from '../../ui/input';
 import { FormLabel } from '../../ui/form/FormLabel';
+import { Select } from '../../ui/input/Select';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { formatDate } from '../../../utils/dateTime';
+import { useNavigation } from '../../../utils/navigation';
+import { getSession } from '../../../lib/authClient';
 
 interface OrganizationPageProps {
   className?: string;
@@ -19,34 +26,130 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
   const { 
     currentOrganization, 
     getMembers,
+    getTokens,
     invitations, 
     loading, 
     error,
+    updateOrganization,
     createOrganization,
+    deleteOrganization,
     acceptInvitation,
     declineInvitation,
     fetchMembers,
+    updateMemberRole,
+    removeMember,
+    sendInvitation,
+    fetchTokens,
+    createToken,
+    revokeToken,
     refetch 
   } = useOrganizationManagement();
   
   const { showSuccess, showError } = useToastContext();
+  const { navigate } = useNavigation();
+  // Get current user's identity from auth session
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  
+  // Form states
+  const [editOrgForm, setEditOrgForm] = useState({
+    name: '',
+    description: ''
+  });
+  
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
     slug: '',
     description: ''
   });
+  
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    role: 'attorney' as Role
+  });
+  
+  const [tokenForm, setTokenForm] = useState({
+    name: ''
+  });
+  
+  // Inline form states (like SecurityPage pattern)
+  const [isEditingOrg, setIsEditingOrg] = useState(false);
+  const [isInvitingMember, setIsInvitingMember] = useState(false);
+  const [isEditingMember, setIsEditingMember] = useState(false);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [newToken, setNewToken] = useState<{ token: string; tokenId: string } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [editMemberData, setEditMemberData] = useState<{ userId: string; email: string; name?: string; role: Role } | null>(null);
 
   const hasOrganization = !!currentOrganization;
   const members = currentOrganization ? getMembers(currentOrganization.id) : [];
   const memberCount = members.length;
+  const tokens = currentOrganization ? getTokens(currentOrganization.id) : [];
+  
+  // Better approach - get role directly from current org context
+  const currentMember = useMemo(() => {
+    if (!currentOrganization || !currentUserEmail) return null;
+    return members.find(m => m.email.toLowerCase() === currentUserEmail.toLowerCase());
+  }, [currentOrganization, currentUserEmail, members]);
 
-  // Fetch members when we have an organization
+  const currentUserRole = currentMember?.role || 'paralegal';
+  const isOwner = currentUserRole === 'owner';
+  // TEMP DEBUG - Remove after testing
+  const isAdmin = true; // currentUserRole === 'admin' || isOwner;
+
+  // Debug logging to see what's happening
+  console.log('🔍 Organization Debug:', {
+    hasOrganization,
+    currentUserEmail,
+    currentUserRole,
+    isAdmin,
+    isOwner,
+    membersCount: members.length,
+    members: members.map(m => ({ email: m.email, role: m.role })),
+    organizationData: currentOrganization ? {
+      id: currentOrganization.id,
+      name: currentOrganization.name,
+      subscriptionTier: currentOrganization.subscriptionTier,
+      seats: currentOrganization.seats,
+      stripeCustomerId: currentOrganization.stripeCustomerId
+    } : null
+  });
+
+  // Get current user's identity from auth session
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const session = await getSession();
+        if (session && 'user' in session && session.user && typeof session.user === 'object' && 'email' in session.user) {
+          setCurrentUserEmail((session.user as { email: string }).email);
+        }
+      } catch (error) {
+        console.error('Failed to get current user session:', error);
+      }
+    };
+    
+    getCurrentUser();
+  }, []);
+
+  // Initialize form with current organization data
   useEffect(() => {
     if (currentOrganization) {
-      fetchMembers(currentOrganization.id);
+      setEditOrgForm({
+        name: currentOrganization.name,
+        description: currentOrganization.description || ''
+      });
+      
+      // Fetch related data with debug logging
+      fetchMembers(currentOrganization.id).then(() => {
+        const membersData = getMembers(currentOrganization.id);
+        console.log('✅ Members fetched:', membersData);
+      }).catch(err => {
+        console.error('❌ Failed to fetch members:', err);
+      });
+      fetchTokens(currentOrganization.id);
     }
-  }, [currentOrganization, fetchMembers]);
+  }, [currentOrganization, fetchMembers, fetchTokens, getMembers]);
 
   const handleCreateOrganization = async () => {
     if (!createForm.name.trim()) {
@@ -87,6 +190,105 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
     }
   };
 
+  const handleUpdateOrganization = async () => {
+    if (!currentOrganization) return;
+    
+    try {
+      await updateOrganization(currentOrganization.id, editOrgForm);
+      showSuccess('Organization updated successfully!');
+      setIsEditingOrg(false);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to update organization');
+    }
+  };
+
+  const handleSendInvitation = async () => {
+    if (!currentOrganization || !inviteForm.email.trim()) {
+      showError('Email is required');
+      return;
+    }
+
+    try {
+      await sendInvitation(currentOrganization.id, inviteForm.email, inviteForm.role);
+      showSuccess('Invitation sent successfully!');
+      setShowInviteModal(false);
+      setInviteForm({ email: '', role: 'attorney' });
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to send invitation');
+    }
+  };
+
+  const handleCreateToken = async () => {
+    if (!currentOrganization || !tokenForm.name.trim()) {
+      showError('Token name is required');
+      return;
+    }
+
+    try {
+      const result = await createToken(currentOrganization.id, tokenForm.name);
+      setNewToken(result);
+      showSuccess('API token created successfully!');
+      setShowTokenModal(false);
+      setTokenForm({ name: '' });
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to create token');
+    }
+  };
+
+  const handleRevokeToken = async (tokenId: string) => {
+    if (!currentOrganization) return;
+
+    try {
+      await revokeToken(currentOrganization.id, tokenId);
+      showSuccess('Token revoked successfully!');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to revoke token');
+    }
+  };
+
+  const handleDeleteOrganization = async () => {
+    if (!currentOrganization) return;
+    
+    if (deleteConfirmText !== currentOrganization.name) {
+      showError('Organization name must match exactly');
+      return;
+    }
+
+    try {
+      await deleteOrganization(currentOrganization.id);
+      showSuccess('Organization deleted successfully!');
+      setShowDeleteModal(false);
+      setDeleteConfirmText('');
+      navigate('/');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to delete organization');
+    }
+  };
+
+  const handleUpdateMemberRole = async () => {
+    if (!currentOrganization || !editMemberData) return;
+
+    try {
+      await updateMemberRole(currentOrganization.id, editMemberData.userId, editMemberData.role);
+      showSuccess('Member role updated successfully!');
+      setEditMemberData(null);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to update member role');
+    }
+  };
+
+  const handleRemoveMember = async (member: { userId: string; email: string; name?: string; role: Role }) => {
+    if (!currentOrganization) return;
+
+    try {
+      await removeMember(currentOrganization.id, member.userId);
+      showSuccess('Member removed successfully!');
+      setEditMemberData(null);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to remove member');
+    }
+  };
+
   if (loading) {
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
@@ -114,55 +316,315 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
   return (
     <div className={`h-full flex flex-col ${className}`}>
       <div className="px-6 py-4">
-        <h1 className="text-lg font-semibold">Organization</h1>
-        <SectionDivider />
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Organization
+        </h1>
+        <div className="border-t border-gray-200 dark:border-dark-border mt-4" />
       </div>
       
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-0">
           {hasOrganization ? (
             <>
-              {/* Current Organization */}
-              <div className="py-3">
-                <div className="flex items-center justify-between">
+              {/* Organization Name Section */}
+              <div className="flex items-center justify-between py-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold">{currentOrganization.name}</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Organization Name
+                  </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {currentOrganization.slug} • <RoleBadge roleType="owner" />
-                    </p>
-                    {currentOrganization.description && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {currentOrganization.description}
-                      </p>
-                    )}
+                    {currentOrganization.name}
+                  </p>
                   </div>
-                  <Button size="sm" onClick={() => window.location.href = '/settings/organization/details'}>
-                    Manage
+                <div className="ml-4">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setIsEditingOrg(!isEditingOrg)}
+                  >
+                    {isEditingOrg ? 'Cancel' : 'Edit'}
                   </Button>
                 </div>
               </div>
               
-              <SectionDivider />
-              
-              {/* Team Summary */}
+              {/* Inline Edit Form */}
+              {isEditingOrg && (
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <FormLabel htmlFor="edit-org-name">Organization Name</FormLabel>
+                    <Input
+                      id="edit-org-name"
+                      value={editOrgForm.name}
+                      onChange={(value) => setEditOrgForm(prev => ({ ...prev, name: value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <FormLabel htmlFor="edit-org-description">Description (optional)</FormLabel>
+                    <Input
+                      id="edit-org-description"
+                      value={editOrgForm.description}
+                      onChange={(value) => setEditOrgForm(prev => ({ ...prev, description: value }))}
+                      placeholder="Brief description of your practice"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="secondary" onClick={() => setIsEditingOrg(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleUpdateOrganization}>
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="border-t border-gray-200 dark:border-dark-border" />
+
+              {/* Subscription Tier Section */}
               <div className="py-3">
-                <h3 className="text-sm font-semibold mb-2">Team</h3>
-                <p className="text-xs text-gray-500 mb-2">{memberCount} members</p>
-                {members.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {members.slice(0, 3).map((member, index) => (
-                      <div key={member.userId} className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">{member.email}</span>
-                        <RoleBadge roleType={member.role} />
-                        {index < Math.min(members.length, 3) - 1 && <span className="text-xs text-gray-400">•</span>}
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  Subscription Plan
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {currentOrganization.subscriptionTier === 'plus' ? 'Plus' : 
+                   currentOrganization.subscriptionTier === 'business' ? 'Business' : 
+                   currentOrganization.subscriptionTier === 'enterprise' ? 'Enterprise' : 'Free'}
+                  {currentOrganization.seats && currentOrganization.seats > 1 && 
+                    ` • ${currentOrganization.seats} seats`}
+                </p>
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-dark-border" />
+
+              {/* Organization Slug Section */}
+              <div className="py-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  Organization Slug
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {currentOrganization.slug}
+                </p>
+              </div>
+
+              {currentOrganization.description && (
+                <>
+                  <div className="border-t border-gray-200 dark:border-dark-border" />
+                  <div className="py-3">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                      Description
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {currentOrganization.description}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              <div className="border-t border-gray-200 dark:border-dark-border" />
+
+              {/* Team Members Section */}
+              <div className="py-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Team Members</h3>
+                  {isAdmin && (
+                    <Button 
+                      size="sm" 
+                      onClick={() => setIsInvitingMember(!isInvitingMember)}
+                    >
+                      <UserPlusIcon className="w-4 h-4 mr-2" />
+                      {isInvitingMember ? 'Cancel' : 'Invite'}
+                    </Button>
+                  )}
+                </div>
+                
+                {members.length === 0 && loading ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Loading members...</p>
+                ) : members.length > 0 ? (
+                  <div className="space-y-3">
+                    {members.map((member) => (
+                      <div key={member.userId} className="flex items-center justify-between py-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {member.name || member.email}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {member.email} • {member.role}
+                          </p>
+                        </div>
+                        {isAdmin && member.role !== 'owner' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditMemberData(member);
+                              setIsEditingMember(!isEditingMember);
+                            }}
+                            className="text-gray-600 dark:text-gray-400"
+                          >
+                            {isEditingMember && editMemberData?.userId === member.userId ? 'Cancel' : 'Manage'}
+                          </Button>
+                        )}
                       </div>
                     ))}
-                    {members.length > 3 && (
-                      <span className="text-xs text-gray-400">+{members.length - 3} more</span>
-                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">No team members yet</p>
+                )}
+
+                {/* Inline Invite Form */}
+                {isInvitingMember && (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <FormLabel htmlFor="invite-email">Email Address</FormLabel>
+                      <Input
+                        id="invite-email"
+                        type="email"
+                        value={inviteForm.email}
+                        onChange={(value) => setInviteForm(prev => ({ ...prev, email: value }))}
+                        placeholder="colleague@lawfirm.com"
+                      />
+                    </div>
+                    
+                    <div>
+                      <FormLabel htmlFor="invite-role">Role</FormLabel>
+                      <Select
+                        value={inviteForm.role}
+                        options={[
+                          { value: 'paralegal', label: 'Paralegal' },
+                          { value: 'attorney', label: 'Attorney' },
+                          { value: 'admin', label: 'Admin' }
+                        ]}
+                        onChange={(value) => setInviteForm(prev => ({ ...prev, role: value as Role }))}
+                      />
+                    </div>
+                    
+                    <div className="flex gap-2 pt-2">
+                      <Button variant="secondary" onClick={() => setIsInvitingMember(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSendInvitation}>
+                        Send Invitation
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Inline Edit Member Form */}
+                {isEditingMember && editMemberData && (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                        {editMemberData.name || editMemberData.email}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {editMemberData.email}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <FormLabel htmlFor="member-role">Role</FormLabel>
+                      <Select
+                        value={editMemberData.role}
+                        options={[
+                          { value: 'paralegal', label: 'Paralegal' },
+                          { value: 'attorney', label: 'Attorney' },
+                          { value: 'admin', label: 'Admin' }
+                        ]}
+                        onChange={(value) => setEditMemberData(prev => prev ? {...prev, role: value as Role} : null)}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-between pt-2">
+                      <Button 
+                        variant="ghost"
+                        onClick={() => handleRemoveMember(editMemberData)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Remove Member
+                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="secondary" onClick={() => {
+                          setIsEditingMember(false);
+                          setEditMemberData(null);
+                        }}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleUpdateMemberRole}>
+                          Save Changes
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
+
+              <div className="border-t border-gray-200 dark:border-dark-border" />
+
+              {/* API Tokens Section (Owner only) */}
+              {isOwner && (
+                <>
+                  <div className="py-3">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">API Tokens</h3>
+                      <Button size="sm" onClick={() => setShowTokenModal(true)}>
+                        <KeyIcon className="w-4 h-4 mr-2" />
+                        Create Token
+                      </Button>
+                    </div>
+                    
+                    {tokens.length > 0 ? (
+                      <div className="space-y-3">
+                        {tokens.map((token) => (
+                          <div key={token.id} className="flex items-center justify-between py-2">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{token.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Created: {formatDate(token.createdAt)}
+                                {token.lastUsed && ` • Last used: ${formatDate(token.lastUsed)}`}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRevokeToken(token.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              Revoke
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">No API tokens created yet</p>
+                    )}
+                  </div>
+
+                  <div className="border-t border-gray-200 dark:border-dark-border" />
+
+                  {/* Delete Organization Section (Owner only) */}
+                  <div className="flex items-center justify-between py-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Delete Organization</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Permanently delete this organization and all its data
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowDeleteModal(true)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <TrashIcon className="w-4 h-4 mr-2" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           ) : (
             /* No Organization State */
@@ -183,19 +645,21 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
             </div>
           )}
           
-          <SectionDivider />
+          <div className="border-t border-gray-200 dark:border-dark-border" />
           
           {/* Pending Invitations */}
           <div className="py-3">
-            <h3 className="text-sm font-semibold mb-4">Pending Invitations</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Pending Invitations</h3>
             {invitations.length > 0 ? (
               <div className="space-y-3">
                 {invitations.map(inv => (
-                  <div key={inv.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div key={inv.id} className="flex items-center justify-between py-2">
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{inv.organizationName || inv.organizationId}</p>
-                      <p className="text-xs text-gray-500">
-                        Role: <RoleBadge roleType={inv.role} /> • Expires: {formatDate(inv.expiresAt)}
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {inv.organizationName || inv.organizationId}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Role: {inv.role} • Expires: {formatDate(inv.expiresAt)}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -210,7 +674,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-500">No pending invitations</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">No pending invitations</p>
             )}
           </div>
         </div>
@@ -229,7 +693,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
             <Input
               id="org-name"
               value={createForm.name}
-              onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(value) => setCreateForm(prev => ({ ...prev, name: value }))}
               placeholder="Your Law Firm Name"
               required
             />
@@ -240,7 +704,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
             <Input
               id="org-slug"
               value={createForm.slug}
-              onChange={(e) => setCreateForm(prev => ({ ...prev, slug: e.target.value }))}
+              onChange={(value) => setCreateForm(prev => ({ ...prev, slug: value }))}
               placeholder="your-law-firm"
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -253,7 +717,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
             <Input
               id="org-description"
               value={createForm.description}
-              onChange={(e) => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(value) => setCreateForm(prev => ({ ...prev, description: value }))}
               placeholder="Brief description of your practice"
             />
           </div>
@@ -271,6 +735,102 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
           </div>
         </div>
       </Modal>
+
+
+      {/* Create API Token Modal */}
+      <Modal
+        isOpen={showTokenModal}
+        onClose={() => setShowTokenModal(false)}
+        title="Create API Token"
+      >
+        <div className="space-y-4">
+          <div>
+            <FormLabel htmlFor="token-name">Token Name</FormLabel>
+            <Input
+              id="token-name"
+              value={tokenForm.name}
+              onChange={(value) => setTokenForm(prev => ({ ...prev, name: value }))}
+              placeholder="My Integration Token"
+            />
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setShowTokenModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateToken}>
+              Create Token
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* New Token Display Modal */}
+      <Modal
+        isOpen={!!newToken}
+        onClose={() => setNewToken(null)}
+        title="API Token Created"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <p className="text-sm font-medium mb-2">Your new API token:</p>
+            <code className="text-xs bg-white dark:bg-gray-900 p-2 rounded border block break-all">
+              {newToken?.token}
+            </code>
+            <p className="text-xs text-gray-500 mt-2">
+              ⚠️ Copy this token now. You won't be able to see it again.
+            </p>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button onClick={() => setNewToken(null)}>
+              I've Copied It
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Organization Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Organization"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+            <p className="text-sm text-red-800 dark:text-red-200">
+              ⚠️ This action cannot be undone. This will permanently delete the organization and all its data.
+            </p>
+          </div>
+          
+          <div>
+            <FormLabel htmlFor="delete-confirm">
+              Type the organization name to confirm: <strong>{currentOrganization?.name}</strong>
+            </FormLabel>
+            <Input
+              id="delete-confirm"
+              value={deleteConfirmText}
+              onChange={setDeleteConfirmText}
+              placeholder="Enter organization name"
+            />
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="ghost"
+              onClick={handleDeleteOrganization}
+              disabled={deleteConfirmText !== currentOrganization?.name}
+              className="text-red-600 hover:text-red-700"
+            >
+              Delete Organization
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   );
 };

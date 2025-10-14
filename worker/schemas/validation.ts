@@ -10,7 +10,7 @@ export const timestampSchema = z.number().int().positive();
 export const organizationRoleSchema = z.enum(['owner', 'admin', 'attorney', 'paralegal']);
 
 // Organization subscription and billing schemas
-export const subscriptionTierSchema = z.enum(['free', 'pro', 'enterprise']);
+export const subscriptionTierSchema = z.enum(['free', 'plus', 'business', 'enterprise']);
 export const seatsSchema = z.number().int().positive().default(1);
 export const stripeCustomerIdSchema = z.string().min(1).optional();
 
@@ -116,8 +116,9 @@ export const organizationUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   slug: z.string().min(1).optional(),
   config: organizationConfigSchema.optional(),
-  stripeCustomerId: stripeCustomerIdSchema,
+  stripeCustomerId: stripeCustomerIdSchema.optional(),
   subscriptionTier: subscriptionTierSchema.optional(),
+  // seats: optional() means "no change" when missing; service handles fallback to existing/default
   seats: seatsSchema.optional()
 });
 

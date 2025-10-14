@@ -48,31 +48,39 @@ fi
 
 # Test 3: Legacy Payment Endpoint (should return 410)
 echo "3. Testing Legacy Payment Endpoint..."
-LEGACY_RESPONSE=$(curl -s --fail-with-body -X POST "$BASE_URL/api/payment/upgrade" \
+LEGACY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/payment/upgrade" \
     -H "Content-Type: application/json" \
-    -d '{"organizationId":"test-org","seats":1}')
-CURL_EXIT_CODE=$?
-if [ $CURL_EXIT_CODE -ne 0 ]; then
-    echo "❌ Legacy payment endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
-    echo "Response: $LEGACY_RESPONSE"
+    -d '{"organizationId":"test-org","seats":1}' \
+    -w '%{http_code}')
+LEGACY_HTTP_CODE="${LEGACY_RESPONSE: -3}"
+LEGACY_BODY="${LEGACY_RESPONSE%???}"
+if [ "$LEGACY_HTTP_CODE" != "410" ]; then
+    echo "❌ Legacy payment endpoint returned unexpected status: $LEGACY_HTTP_CODE (expected 410)"
+    echo "Response: $LEGACY_BODY"
     exit 1
 fi
-if echo "$LEGACY_RESPONSE" | jq -e '.errorCode == "LEGACY_PAYMENTS_DISABLED"' > /dev/null; then
+if echo "$LEGACY_BODY" | jq -e '.errorCode == "LEGACY_PAYMENTS_DISABLED"' > /dev/null; then
     echo "✅ Legacy payment endpoint correctly disabled (410 Gone)"
 else
     echo "❌ Legacy payment endpoint not properly disabled"
+    echo "Response body: $LEGACY_BODY"
     exit 1
 fi
 
 # Test 4: Subscription Sync Endpoint (should require auth)
 echo "4. Testing Subscription Sync Endpoint..."
-SYNC_RESPONSE=$(curl -s --fail-with-body -X POST "$BASE_URL/api/subscription/sync" \
+SYNC_HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/sync_response.json -X POST "$BASE_URL/api/subscription/sync" \
     -H "Content-Type: application/json" \
     -d '{"organizationId":"test-org","stripeSubscriptionId":"sub_test123"}')
+SYNC_RESPONSE=$(cat /tmp/sync_response.json)
 CURL_EXIT_CODE=$?
 if [ $CURL_EXIT_CODE -ne 0 ]; then
     echo "❌ Subscription sync endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
     echo "Response: $SYNC_RESPONSE"
+    exit 1
+fi
+if [ "$SYNC_HTTP_CODE" -ne 401 ]; then
+    echo "❌ Expected 401 status code, got $SYNC_HTTP_CODE"
     exit 1
 fi
 if echo "$SYNC_RESPONSE" | jq -e '.errorCode == "HTTP_401"' > /dev/null; then

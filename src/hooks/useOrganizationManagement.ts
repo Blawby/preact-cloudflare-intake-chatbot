@@ -13,7 +13,7 @@ export interface Organization {
   name: string;
   description?: string;
   stripeCustomerId?: string | null;
-  subscriptionTier?: 'free' | 'plus' | 'business' | null;
+  subscriptionTier?: 'free' | 'plus' | 'business' | 'enterprise' | null;
   seats?: number | null;
   config?: {
     metadata?: {
@@ -248,7 +248,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch members
   const fetchMembers = useCallback(async (orgId: string): Promise<void> => {
     try {
-      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members`);
+      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member`);
       setMembers(prev => ({ ...prev, [orgId]: data.members || [] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch members');
@@ -257,7 +257,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
 
   // Update member role
   const updateMemberRole = useCallback(async (orgId: string, userId: string, role: Role): Promise<void> => {
-    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members`, {
+    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member`, {
       method: 'PATCH',
       body: JSON.stringify({ userId, role }),
     });
@@ -266,7 +266,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
 
   // Remove member
   const removeMember = useCallback(async (orgId: string, userId: string): Promise<void> => {
-    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members?userId=${encodeURIComponent(userId)}`, {
+    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member?userId=${encodeURIComponent(userId)}`, {
       method: 'DELETE',
     });
     await fetchMembers(orgId); // Refresh members

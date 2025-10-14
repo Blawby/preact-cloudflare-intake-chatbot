@@ -9,9 +9,9 @@ import AuthPage from './components/AuthPage';
 import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
 import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
+import { useOrganizationManagement } from './hooks/useOrganizationManagement';
 import { useMessageHandlingWithContext } from './hooks/useMessageHandling';
 import { useFileUploadWithContext } from './hooks/useFileUpload';
-import { useOrganizationConfig } from './hooks/useOrganizationConfig';
 import { useChatSessionWithContext } from './hooks/useChatSession';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
@@ -21,6 +21,7 @@ import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
 import WelcomeModal from './components/onboarding/WelcomeModal';
 import { BusinessWelcomeModal } from './components/onboarding/BusinessWelcomeModal';
+import { BusinessSetupModal } from './components/onboarding/BusinessSetupModal';
 import { CartPage } from './components/cart/CartPage';
 import { debounce } from './utils/debounce';
 import { authClient } from './lib/authClient';
@@ -39,6 +40,7 @@ function MainApp() {
 	const [showSettingsModal, setShowSettingsModal] = useState(false);
 	const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 	const [showBusinessWelcome, setShowBusinessWelcome] = useState(false);
+	const [showBusinessSetup, setShowBusinessSetup] = useState(false);
 	
 	// Mobile state - initialized as false to avoid SSR/client hydration mismatch
 	const [isMobile, setIsMobile] = useState(false);
@@ -49,6 +51,9 @@ function MainApp() {
 
 	// Use organization context
 	const { organizationId, organizationConfig, organizationNotFound, handleRetryOrganizationConfig } = useOrganization();
+	
+	// Use organization management for subscription tier
+	const { currentOrganization } = useOrganizationManagement();
 
 	const {
 		sessionId,
@@ -117,6 +122,21 @@ function MainApp() {
 		}
 	}, []);
 
+	// Check if we should show business setup modal (after tier upgrade)
+	useEffect(() => {
+		try {
+			const businessSetupPending = localStorage.getItem('businessSetupPending');
+			if (businessSetupPending === 'true') {
+				setShowBusinessSetup(true);
+				// Don't remove the flag here - let the modal handlers do it
+			}
+		} catch (error) {
+			if (import.meta.env.DEV) {
+				console.warn('Failed to check business setup status:', error);
+			}
+		}
+	}, []);
+
 	// Check if we should show business welcome modal (after upgrade)
 	useEffect(() => {
 		const queryString = location.query || window.location.search;
@@ -158,20 +178,10 @@ function MainApp() {
 			}
 		};
 
-		// Check current user tier from auth session
-		const checkUserTier = async () => {
-			try {
-				const session = await authClient.getSession();
-				if (session?.data?.user) {
-					// For now, default to 'free' tier - this could be extended to fetch from user profile
-					setCurrentUserTier('free');
-				} else {
-					setCurrentUserTier('free');
-				}
-			} catch (error) {
-				console.error('Error checking user session:', error);
-				setCurrentUserTier('free');
-			}
+		// Use organization tier directly from organization management
+		const checkUserTier = () => {
+			const orgTier = currentOrganization?.subscriptionTier || 'free';
+			setCurrentUserTier(orgTier as 'free' | 'plus' | 'business' | 'enterprise');
 		};
 		
 		checkUserTier();
@@ -181,7 +191,7 @@ function MainApp() {
 		return () => {
 			window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
 		};
-	}, []);
+	}, [currentOrganization?.subscriptionTier]);
 
 	const isSessionReady = Boolean(sessionId);
 
@@ -496,6 +506,12 @@ function MainApp() {
 					onClose={handleBusinessWelcomeClose}
 				/>
 			)}
+
+			{/* Business Setup Modal */}
+			<BusinessSetupModal
+				isOpen={showBusinessSetup}
+				onClose={() => setShowBusinessSetup(false)}
+			/>
 		</>
 	);
 }

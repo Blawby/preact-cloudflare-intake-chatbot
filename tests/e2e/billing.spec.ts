@@ -1,18 +1,26 @@
 import { test, expect, Page } from '@playwright/test';
 
 // Helper function to find the first visible element from a list of selectors
-async function findAnyVisibleElement(page: Page, selectors: string[], timeout = 1000): Promise<{ found: boolean; selector?: string }> {
-  for (const selector of selectors) {
+async function findAnyVisibleElement(
+  page: Page,
+  selectors: string[],
+  timeout = 1000
+): Promise<{ found: true; selector: string } | { found: false }> {
+  const visibilityChecks = selectors.map(async (selector) => {
     try {
-      const element = page.locator(selector);
-      if (await element.isVisible({ timeout })) {
-        return { found: true, selector };
-      }
-    } catch (e) {
-      // Element not found, continue
+      await page.locator(selector).waitFor({ state: 'visible', timeout });
+      return selector;
+    } catch {
+      return null;
     }
-  }
-  return { found: false };
+  });
+
+  const results = await Promise.all(visibilityChecks);
+  const foundSelector = results.find((s) => s !== null);
+
+  return foundSelector
+    ? { found: true, selector: foundSelector }
+    : { found: false };
 }
 
 test.describe('Billing Integration', () => {

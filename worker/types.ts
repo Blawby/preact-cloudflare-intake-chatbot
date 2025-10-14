@@ -158,7 +158,7 @@ export interface Organization {
     };
   };
   stripeCustomerId?: string | null;
-  subscriptionTier?: 'free' | 'pro' | 'enterprise' | null;
+  subscriptionTier?: 'free' | 'plus' | 'business' | 'enterprise' | null;
   seats?: number | null;
   createdAt: number;
   updatedAt: number;

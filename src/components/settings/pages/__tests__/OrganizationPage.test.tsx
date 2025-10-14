@@ -496,17 +496,8 @@ describe('OrganizationPage', () => {
     });
   });
 
-  it('should navigate to organization details when manage button is clicked', async () => {
+  it('should show inline edit form when edit button is clicked', async () => {
     mockGetMembers.mockReturnValue([]);
-    
-    // Mock window.location
-    const mockLocation = {
-      href: '',
-    };
-    Object.defineProperty(window, 'location', {
-      value: mockLocation,
-      writable: true,
-    });
 
     // Update the mutable mock object for this test
     useOrgMgmtMock.organizations = [];
@@ -522,10 +513,14 @@ describe('OrganizationPage', () => {
 
     render(<OrganizationPage />);
     
-    const manageButton = screen.getByText('Manage');
-    fireEvent.click(manageButton);
+    const editButton = screen.getByText('Edit');
+    fireEvent.click(editButton);
     
-    expect(mockLocation.href).toBe('/settings/organization/details');
+    // Should show the inline edit form
+    expect(screen.getByLabelText('Organization Name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Description (optional)')).toBeInTheDocument();
+    expect(screen.getByText('Save Changes')).toBeInTheDocument();
+    expect(screen.getByText('Cancel')).toBeInTheDocument();
   });
 
   it('should show empty state when no organizations or invitations', () => {

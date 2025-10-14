@@ -5,11 +5,9 @@ import Modal from './Modal';
 import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Select } from './ui/input/Select';
-import { QuantitySelector } from './cart/QuantitySelector';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
-import { handleError } from '../utils/errorHandler';
 import { useToastContext } from '../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 
@@ -32,7 +30,6 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   const { t } = useTranslation('settings');
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
-  const [selectedQuantity, setSelectedQuantity] = useState(2);
 
   // Generate country options with language information
   const countryOptions = [
@@ -253,62 +250,69 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   // Get pricing plans from mock data service
   const allPlans = mockPricingDataService.getPricingPlans();
   
-  // Show different plans based on selected tab
+  // Define upgrade paths - include current tier to show it
+  const upgradeTiers = {
+    'free': ['free', 'plus', 'business'],
+    'plus': ['plus', 'business'],  
+    'business': ['business', 'enterprise'],
+    'enterprise': ['enterprise']
+  };
+  
+  // Show different plans based on selected tab and current tier
   const mainPlans: PricingPlan[] = (() => {
+    const availableTiers = upgradeTiers[currentTier] || [];
+    
     if (selectedTab === 'personal') {
-      // Personal tab: show Free and Plus (Plus is recommended)
       return allPlans
-        .filter(plan => plan.id !== 'business')
+        .filter(plan => availableTiers.includes(plan.id) && plan.id !== 'business')
         .map(plan => ({
           ...plan,
           isCurrent: plan.id === currentTier,
           buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText,
-          isRecommended: plan.id === 'plus' // Plus is recommended for personal
+          // Recommended = next tier up for personal (Plus for free users)
+          isRecommended: !plan.isCurrent && plan.id === 'plus'
         }));
     } else {
-      // Business tab: show Free and Business (Business is recommended)
       return allPlans
-        .filter(plan => plan.id !== 'plus')
+        .filter(plan => availableTiers.includes(plan.id) && plan.id !== 'plus')
         .map(plan => ({
           ...plan,
           isCurrent: plan.id === currentTier,
           buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText,
-          isRecommended: plan.id === 'business' // Business is recommended for business
+          // Recommended = next tier up for business path
+          // Business for free/plus, Enterprise for business users
+          isRecommended: !plan.isCurrent && (
+            (currentTier === 'free' && plan.id === 'business') ||
+            (currentTier === 'plus' && plan.id === 'business') ||
+            (currentTier === 'business' && plan.id === 'enterprise')
+          )
         }));
     }
   })();
-  
 
-  const handleUpgrade = (tier: SubscriptionTier) => {
+  // Determine if we should show the tab selector
+  // Only show tabs if there are different plans available for each tab
+  const shouldShowTabs = (() => {
+    // Business and enterprise users don't need tab selector
+    // They can only see their current plan + enterprise upgrade (business)
+    // Or just their current plan (enterprise)
+    if (currentTier === 'business' || currentTier === 'enterprise') return false;
+    
+    // Free and plus users see tabs for personal vs business upgrade paths
+    return true;
+  })();
+
+  const handleUpgrade = async (tier: SubscriptionTier) => {
     // Call callbacks before navigation to ensure they complete
     if (onUpgrade) {
       onUpgrade(tier);
     }
-    onClose();
 
-    if (tier === 'business') {
-      try {
-        const payload = {
-          seats: selectedQuantity,
-          tier,
-          timestamp: Date.now()
-        };
-        localStorage.setItem('cartPreferences', JSON.stringify(payload));
-        navigate(`/cart?seats=${selectedQuantity}`);
-      } catch (error) {
-        // Log detailed error for debugging
-        console.error('Unable to store cart preferences:', error);
-        
-        // Show user-facing warning using i18n
-        showWarning(
-          t('billing.cartSaveError.title'),
-          t('billing.cartSaveError.body')
-        );
-        
-        // Still navigate to cart even if preferences couldn't be saved
-        navigate(`/cart?seats=${selectedQuantity}`);
-      }
-    }
+    // Navigate to cart with the selected tier
+    navigate(`/cart?tier=${tier}`);
+
+    // Close modal after navigation
+    onClose();
   };
 
   return (
@@ -338,44 +342,35 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
           {/* Centered Content */}
           <div className="flex flex-col items-center space-y-6">
             <h1 className="text-2xl font-semibold text-white">Upgrade your plan</h1>
-            <div className="flex bg-dark-card-bg rounded-lg p-1">
-              <button
-                onClick={() => setSelectedTab('personal')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedTab === 'personal'
-                    ? 'bg-dark-bg text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Personal
-              </button>
-              <button
-                onClick={() => setSelectedTab('business')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedTab === 'business'
-                    ? 'bg-dark-bg text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Business
-              </button>
-            </div>
+            {shouldShowTabs && (
+              <div className="flex bg-dark-card-bg rounded-lg p-1">
+                <button
+                  onClick={() => setSelectedTab('personal')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedTab === 'personal'
+                      ? 'bg-dark-bg text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Personal
+                </button>
+                <button
+                  onClick={() => setSelectedTab('business')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedTab === 'business'
+                      ? 'bg-dark-bg text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Business
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Content */}
         <div className="p-6">
-          {/* Quantity Selector for Business Tab */}
-          {selectedTab === 'business' && (
-            <div className="max-w-4xl w-full mx-auto mb-6">
-              <QuantitySelector
-                quantity={selectedQuantity}
-                onChange={setSelectedQuantity}
-                min={2}
-                helperText="Minimum of 2 seats for business plans"
-              />
-            </div>
-          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mx-auto">
             {mainPlans.map((plan) => (
@@ -459,6 +454,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
               </div>
             ))}
           </div>
+
 
           {/* Modal Footer */}
           <div className="border-t border-dark-border px-6 py-2 mt-6">

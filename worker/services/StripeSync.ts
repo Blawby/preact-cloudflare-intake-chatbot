@@ -121,8 +121,9 @@ export async function syncStripeDataToKV(args: {
   organizationId: string;
   subscription: Stripe.Subscription;
   overwriteExisting?: boolean;
+  cacheDurationMs?: number;
 }): Promise<StripeSubscriptionCache> {
-  const { env, organizationId, subscription, overwriteExisting = true } = args;
+  const { env, organizationId, subscription, overwriteExisting = true, cacheDurationMs = 60 * 60 * 1000 } = args;
 
   const primaryItem = subscription.items?.data?.[0];
   const price = primaryItem?.price;
@@ -157,8 +158,8 @@ export async function syncStripeDataToKV(args: {
     cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
     limits,
     cachedAt: now,
-    // Cache expires in 1 hour by default, can be overridden
-    expiresAt: now + (60 * 60 * 1000),
+    // Cache expiration is configurable via cacheDurationMs parameter
+    expiresAt: now + cacheDurationMs,
   };
 
   const cacheKey = getOrganizationCacheKey(organizationId);
@@ -181,14 +182,16 @@ export async function applyStripeSubscriptionUpdate(args: {
   stripeSubscription: Stripe.Subscription;
   plan?: string | null;
   overwriteExisting?: boolean;
+  cacheDurationMs?: number;
 }): Promise<StripeSubscriptionCache> {
-  const { env, organizationId, stripeSubscription, plan, overwriteExisting } = args;
+  const { env, organizationId, stripeSubscription, plan, overwriteExisting, cacheDurationMs } = args;
 
   const cache = await syncStripeDataToKV({
     env,
     organizationId,
     subscription: stripeSubscription,
     overwriteExisting,
+    cacheDurationMs,
   });
 
   await updateOrganizationSubscriptionMetadata({
@@ -250,8 +253,9 @@ export async function refreshStripeSubscriptionById(args: {
   subscriptionId: string;
   plan?: string | null;
   stripeClient?: Stripe;
+  cacheDurationMs?: number;
 }): Promise<StripeSubscriptionCache> {
-  const { env, organizationId, subscriptionId, plan } = args;
+  const { env, organizationId, subscriptionId, plan, cacheDurationMs } = args;
   const client = args.stripeClient ?? getOrCreateStripeClient(env);
   
   try {
@@ -264,6 +268,7 @@ export async function refreshStripeSubscriptionById(args: {
       organizationId,
       stripeSubscription: subscription,
       plan,
+      cacheDurationMs,
     });
   } catch (error) {
     // Log error with contextual details

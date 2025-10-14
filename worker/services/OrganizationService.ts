@@ -21,8 +21,8 @@ export interface Organization {
   metadata?: Record<string, unknown>;
   config: OrganizationConfig;
   stripeCustomerId?: string | null;
-  subscriptionTier?: 'free' | 'pro' | 'enterprise' | null;
-  seats?: number | null;
+  subscriptionTier?: 'free' | 'plus' | 'business' | 'enterprise' | null;
+  seats?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -391,10 +391,8 @@ export class OrganizationService {
           domain: orgRow.domain as string | undefined,
           config: normalizedConfig,
           stripeCustomerId: (orgRow as Record<string, unknown>).stripe_customer_id as string | null | undefined,
-          subscriptionTier: (orgRow as Record<string, unknown>).subscription_tier as 'free' | 'pro' | 'enterprise' | null | undefined,
-          seats: typeof (orgRow as Record<string, unknown>).seats === 'number'
-            ? ((orgRow as Record<string, unknown>).seats as number)
-            : Number((orgRow as Record<string, unknown>).seats ?? 1) || 1,
+          subscriptionTier: (orgRow as Record<string, unknown>).subscription_tier as 'free' | 'plus' | 'business' | 'enterprise' | null | undefined,
+          seats: Number((orgRow as Record<string, unknown>).seats ?? 1) || 1,
           createdAt: new Date(orgRow.created_at as string).getTime(),
           updatedAt: updatedAt,
         };
@@ -442,10 +440,8 @@ export class OrganizationService {
             domain: row.domain as string | undefined,
             config: normalizedConfig,
             stripeCustomerId: row.stripe_customer_id as string | undefined,
-            subscriptionTier: row.subscription_tier as 'free' | 'pro' | 'enterprise' | undefined,
-            seats: typeof row.seats === 'number'
-              ? (row.seats as number)
-              : Number(row.seats ?? 1) || 1,
+            subscriptionTier: row.subscription_tier as 'free' | 'plus' | 'business' | 'enterprise' | null | undefined,
+            seats: Number(row.seats ?? 1) || 1,
             createdAt: new Date(row.created_at as string).getTime(),
             updatedAt: row.updated_at && !isNaN(new Date(row.updated_at as string).getTime())
               ? new Date(row.updated_at as string).getTime()
@@ -472,10 +468,8 @@ export class OrganizationService {
             domain: row.domain as string | undefined,
             config: normalizedConfig,
             stripeCustomerId: row.stripe_customer_id as string | undefined,
-            subscriptionTier: row.subscription_tier as 'free' | 'pro' | 'enterprise' | undefined,
-            seats: typeof row.seats === 'number'
-              ? (row.seats as number)
-              : Number(row.seats ?? 1) || 1,
+            subscriptionTier: row.subscription_tier as 'free' | 'plus' | 'business' | 'enterprise' | null | undefined,
+            seats: Number(row.seats ?? 1) || 1,
             createdAt: new Date(row.created_at as string).getTime(),
             updatedAt: row.updated_at && !isNaN(new Date(row.updated_at as string).getTime())
               ? new Date(row.updated_at as string).getTime()
@@ -544,9 +538,7 @@ export class OrganizationService {
     // Validate and normalize the organization configuration
     const normalizedConfig = this.validateAndNormalizeConfig(organizationData.config, true, id);
     
-    const defaultSeats = typeof organizationData.seats === 'number'
-      ? organizationData.seats
-      : Number(organizationData.seats ?? 1) || 1;
+    const defaultSeats = Number(organizationData.seats ?? 1) || 1;
 
     const organization: Organization = {
       ...organizationData,
@@ -619,9 +611,7 @@ export class OrganizationService {
 
     updatedOrganization.stripeCustomerId = updatedOrganization.stripeCustomerId ?? null;
     updatedOrganization.subscriptionTier = updatedOrganization.subscriptionTier ?? existingOrganization.subscriptionTier ?? 'free';
-    updatedOrganization.seats = typeof updatedOrganization.seats === 'number'
-      ? updatedOrganization.seats
-      : Number(updatedOrganization.seats ?? existingOrganization.seats ?? 1) || 1;
+    updatedOrganization.seats = Number(updatedOrganization.seats ?? existingOrganization.seats ?? 1) || 1;
 
     await this.env.DB.prepare(`
       UPDATE organizations 

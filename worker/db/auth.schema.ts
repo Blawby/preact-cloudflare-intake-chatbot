@@ -60,7 +60,7 @@ export const organizations = sqliteTable("organizations", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   stripeCustomerId: text("stripe_customer_id").unique(),
-  subscriptionTier: text("subscription_tier", { enum: ["free", "pro", "enterprise"] }).default("free"),
+  subscriptionTier: text("subscription_tier", { enum: ["free", "plus", "business", "enterprise"] }).default("free"),
   seats: integer("seats").default(1),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
@@ -83,7 +83,6 @@ export const subscriptions = sqliteTable("subscriptions", {
   id: text("id").primaryKey(),
   plan: text("plan").notNull(),
   referenceId: text("reference_id").notNull().references(() => organizations.id, { onDelete: "cascade" }), // References organizations.id for organization-level subscriptions
-  stripeCustomerId: text("stripe_customer_id").references(() => organizations.stripeCustomerId, { onDelete: "set null" }), // References organizations.stripe_customer_id
   stripeSubscriptionId: text("stripe_subscription_id").unique(),
   status: text("status").notNull().default("incomplete"), // Validated by CHECK constraint in SQL
   periodStart: integer("period_start", { mode: "timestamp" }),
