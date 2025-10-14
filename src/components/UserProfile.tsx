@@ -63,7 +63,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       debouncedResizeHandler.cancel();
       window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
     };
-  }, [checkAuthStatus]);
+  }, []); // Empty dependency array - this effect should only run once on mount
 
   // Handle dropdown close when clicking outside
   useEffect(() => {
@@ -87,12 +87,12 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     if (!orgLoading && currentOrganization) {
       checkAuthStatus();
     }
-  }, [orgLoading, currentOrganization, checkAuthStatus]);
+  }, [orgLoading, currentOrganization]);
 
   // Re-run when organization tier changes
   useEffect(() => {
     if (user) checkAuthStatus();
-  }, [currentOrganization?.subscriptionTier, user, checkAuthStatus]);
+  }, [currentOrganization?.subscriptionTier, checkAuthStatus]);
 
   const checkAuthStatus = useCallback(async () => {
     // Increment request ID to cancel previous requests
