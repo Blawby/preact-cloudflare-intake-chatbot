@@ -392,7 +392,11 @@ export class OrganizationService {
           config: normalizedConfig,
           stripeCustomerId: (orgRow as Record<string, unknown>).stripe_customer_id as string | null | undefined,
           subscriptionTier: (orgRow as Record<string, unknown>).subscription_tier as 'free' | 'plus' | 'business' | 'enterprise' | null | undefined,
-          seats: Number((orgRow as Record<string, unknown>).seats ?? 1) || 1,
+          seats: (() => {
+            const rawSeats = (orgRow as Record<string, unknown>).seats;
+            const numSeats = Number(rawSeats ?? 1);
+            return isNaN(numSeats) ? 1 : numSeats;
+          })(),
           createdAt: new Date(orgRow.created_at as string).getTime(),
           updatedAt: updatedAt,
         };

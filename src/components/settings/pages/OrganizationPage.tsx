@@ -95,26 +95,8 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
 
   const currentUserRole = currentMember?.role || 'paralegal';
   const isOwner = currentUserRole === 'owner';
-  // TEMP DEBUG - Remove after testing
-  const isAdmin = true; // currentUserRole === 'admin' || isOwner;
+  const isAdmin = (currentUserRole === 'admin' || isOwner) ?? false;
 
-  // Debug logging to see what's happening
-  console.log('🔍 Organization Debug:', {
-    hasOrganization,
-    currentUserEmail,
-    currentUserRole,
-    isAdmin,
-    isOwner,
-    membersCount: members.length,
-    members: members.map(m => ({ email: m.email, role: m.role })),
-    organizationData: currentOrganization ? {
-      id: currentOrganization.id,
-      name: currentOrganization.name,
-      subscriptionTier: currentOrganization.subscriptionTier,
-      seats: currentOrganization.seats,
-      stripeCustomerId: currentOrganization.stripeCustomerId
-    } : null
-  });
 
   // Get current user's identity from auth session
   useEffect(() => {
@@ -125,7 +107,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
           setCurrentUserEmail((session.user as { email: string }).email);
         }
       } catch (error) {
-        console.error('Failed to get current user session:', error);
+        showError('Failed to get current user session');
       }
     };
     
@@ -140,13 +122,16 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
         description: currentOrganization.description || ''
       });
       
-      // Fetch related data with debug logging
-      fetchMembers(currentOrganization.id).then(() => {
-        const membersData = getMembers(currentOrganization.id);
-        console.log('✅ Members fetched:', membersData);
-      }).catch(err => {
-        console.error('❌ Failed to fetch members:', err);
-      });
+      // Fetch related data
+      const fetchMembersData = async () => {
+        try {
+          await fetchMembers(currentOrganization.id);
+        } catch (err) {
+          showError('Failed to fetch organization members');
+        }
+      };
+      
+      fetchMembersData();
       fetchTokens(currentOrganization.id);
     }
   }, [currentOrganization, fetchMembers, fetchTokens, getMembers]);
@@ -211,7 +196,7 @@ export const OrganizationPage = ({ className = '' }: OrganizationPageProps) => {
     try {
       await sendInvitation(currentOrganization.id, inviteForm.email, inviteForm.role);
       showSuccess('Invitation sent successfully!');
-      setShowInviteModal(false);
+      setIsInvitingMember(false);
       setInviteForm({ email: '', role: 'attorney' });
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Failed to send invitation');

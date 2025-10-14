@@ -510,7 +510,17 @@ function MainApp() {
 			{/* Business Setup Modal */}
 			<BusinessSetupModal
 				isOpen={showBusinessSetup}
-				onClose={() => setShowBusinessSetup(false)}
+				onClose={() => {
+					// Clear the localStorage flag so modal doesn't reappear on reload
+					try {
+						localStorage.removeItem('businessSetupPending');
+					} catch (error) {
+						if (import.meta.env.DEV) {
+							console.warn('Failed to remove business setup flag:', error);
+						}
+					}
+					setShowBusinessSetup(false);
+				}}
 			/>
 		</>
 	);

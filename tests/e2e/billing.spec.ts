@@ -9,18 +9,19 @@ async function findAnyVisibleElement(
   const visibilityChecks = selectors.map(async (selector) => {
     try {
       await page.locator(selector).waitFor({ state: 'visible', timeout });
-      return selector;
+      return { found: true, selector };
     } catch {
       return null;
     }
   });
 
-  const results = await Promise.all(visibilityChecks);
-  const foundSelector = results.find((s) => s !== null);
+  // Create a sentinel promise that resolves when all checks are done
+  const allDone = Promise.all(visibilityChecks).then(() => ({ found: false }));
 
-  return foundSelector
-    ? { found: true, selector: foundSelector }
-    : { found: false };
+  // Race all checks against the sentinel
+  const result = await Promise.race([...visibilityChecks, allDone]);
+
+  return result || { found: false };
 }
 
 test.describe('Billing Integration', () => {

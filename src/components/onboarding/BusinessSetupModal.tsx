@@ -16,7 +16,7 @@ interface BusinessSetupModalProps {
 
 export const BusinessSetupModal = ({ isOpen, onClose }: BusinessSetupModalProps) => {
   const { navigate } = useNavigation();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('onboarding');
 
   const handleSkip = () => {
     onClose();
@@ -45,24 +45,24 @@ export const BusinessSetupModal = ({ isOpen, onClose }: BusinessSetupModalProps)
       icon: BuildingOfficeIcon,
       iconColor: 'text-blue-500',
       bgColor: 'bg-blue-100 dark:bg-blue-900/20',
-      title: 'Business Information',
-      description: 'Add your business name, address, and contact details'
+      title: t('onboarding.businessSetup.steps.businessInfo.title'),
+      description: t('onboarding.businessSetup.steps.businessInfo.description')
     },
     {
       id: 'branding',
       icon: Cog6ToothIcon,
       iconColor: 'text-purple-500',
       bgColor: 'bg-purple-100 dark:bg-purple-900/20',
-      title: 'Branding & Logo',
-      description: 'Upload your logo and customize your brand colors'
+      title: t('onboarding.businessSetup.steps.branding.title'),
+      description: t('onboarding.businessSetup.steps.branding.description')
     },
     {
       id: 'practiceAreas',
       icon: UserGroupIcon,
       iconColor: 'text-green-500',
       bgColor: 'bg-green-100 dark:bg-green-900/20',
-      title: 'Practice Areas',
-      description: 'Select your legal practice areas and specializations'
+      title: t('onboarding.businessSetup.steps.practiceAreas.title'),
+      description: t('onboarding.businessSetup.steps.practiceAreas.description')
     }
   ];
 
@@ -73,9 +73,9 @@ export const BusinessSetupModal = ({ isOpen, onClose }: BusinessSetupModalProps)
           <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mx-auto mb-4">
             <CheckCircleIcon className="h-8 w-8 text-green-500" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Complete Your Business Setup</h2>
+          <h2 className="text-2xl font-bold mb-2">{t('onboarding.businessSetup.title')}</h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Welcome to your business plan! Let's set up your organization profile to get the most out of your subscription.
+            {t('onboarding.businessSetup.subtitle')}
           </p>
         </div>
 
@@ -107,14 +107,14 @@ export const BusinessSetupModal = ({ isOpen, onClose }: BusinessSetupModalProps)
             className="flex-1" 
             onClick={handleSkip}
           >
-            Skip for now
+            {t('onboarding.businessSetup.actions.skip')}
           </Button>
           <Button 
             variant="primary" 
             className="flex-1" 
             onClick={handleContinue}
           >
-            Continue Setup
+            {t('onboarding.businessSetup.actions.continue')}
           </Button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { UserIcon, Cog6ToothIcon, SparklesIcon, QuestionMarkCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { authClient } from '../lib/authClient';
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
@@ -33,6 +33,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const requestIdRef = useRef(0);
   const { navigateToAuth, navigate } = useNavigation();
 
   useEffect(() => {
@@ -62,7 +63,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       debouncedResizeHandler.cancel();
       window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
     };
-  }, []);
+  }, [checkAuthStatus]);
 
   // Handle dropdown close when clicking outside
   useEffect(() => {
@@ -86,17 +87,25 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     if (!orgLoading && currentOrganization) {
       checkAuthStatus();
     }
-  }, [orgLoading, currentOrganization]);
+  }, [orgLoading, currentOrganization, checkAuthStatus]);
 
   // Re-run when organization tier changes
   useEffect(() => {
     if (user) checkAuthStatus();
-  }, [currentOrganization?.subscriptionTier]);
+  }, [currentOrganization?.subscriptionTier, user, checkAuthStatus]);
 
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
+    // Increment request ID to cancel previous requests
+    const currentRequestId = ++requestIdRef.current;
+    
     try {
       // Get session from Better Auth
       const session = await authClient.getSession();
+      
+      // Check if this request is still current (not cancelled)
+      if (currentRequestId !== requestIdRef.current) {
+        return; // Ignore stale response
+      }
       
       if (session?.data?.user) {
         // Use organization tier directly (no mapping needed)
@@ -120,14 +129,23 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
         setUser(null);
       }
     } catch (error) {
+      // Check if this request is still current (not cancelled)
+      if (currentRequestId !== requestIdRef.current) {
+        return; // Ignore stale response
+      }
+      
       console.error('Error checking auth status:', error);
       if (error instanceof Error && error.message.includes('fetch')) {
         console.warn('Network error checking auth status - user may be offline');
       }
       setUser(null);
     }
-    setLoading(false);
-  };
+    
+    // Only update loading state if this is still the current request
+    if (currentRequestId === requestIdRef.current) {
+      setLoading(false);
+    }
+  }, [currentOrganization]);
 
 
   const handleSignIn = () => {

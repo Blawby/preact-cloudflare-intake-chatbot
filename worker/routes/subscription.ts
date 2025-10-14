@@ -50,11 +50,6 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
         )
           .bind(subscriptionId, organizationId)
           .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
-        
-        // Additional ownership validation
-        if (subscriptionRecord && subscriptionRecord.referenceId !== organizationId) {
-          throw HttpErrors.forbidden("Access denied: subscription does not belong to organization");
-        }
       } else if (stripeSubscriptionId) {
         // Query by Stripe subscription ID with ownership check
         subscriptionRecord = await env.DB.prepare(
@@ -65,11 +60,6 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
         )
           .bind(stripeSubscriptionId, organizationId)
           .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
-        
-        // Additional ownership validation
-        if (subscriptionRecord && subscriptionRecord.referenceId !== organizationId) {
-          throw HttpErrors.forbidden("Access denied: subscription does not belong to organization");
-        }
       } else {
         // Fallback: query by organization ID (reference_id)
         subscriptionRecord = await env.DB.prepare(
