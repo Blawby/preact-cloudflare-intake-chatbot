@@ -13,8 +13,8 @@ export interface Organization {
   name: string;
   description?: string;
   stripeCustomerId?: string | null;
-  subscriptionTier?: string | null;
-  seats?: number;
+  subscriptionTier?: 'free' | 'plus' | 'business' | null;
+  seats?: number | null;
   config?: {
     metadata?: {
       subscriptionPlan?: string;

@@ -1,24 +1,41 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+// Helper function to find the first visible element from a list of selectors
+async function findAnyVisibleElement(page: Page, selectors: string[], timeout = 1000): Promise<{ found: boolean; selector?: string }> {
+  for (const selector of selectors) {
+    try {
+      const element = page.locator(selector);
+      if (await element.isVisible({ timeout })) {
+        return { found: true, selector };
+      }
+    } catch (e) {
+      // Element not found, continue
+    }
+  }
+  return { found: false };
+}
 
 test.describe('Billing Integration', () => {
   test('should navigate to billing settings and show Stripe integration', async ({ page }) => {
     // Navigate to the app
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     
-    // Wait for the page to load
+    // Wait for the page to load and React to hydrate
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000); // Additional wait for React to hydrate
+    // Wait for the main chat container to be visible, indicating React hydration is complete
+    await page.waitForSelector('[data-testid="chat-container"]', { state: 'visible' });
     
     // Check if the page loaded (don't check body visibility as it might be hidden by CSS)
     const title = await page.title();
     expect(title).toBeTruthy();
     
     // Try to navigate to settings (this might require authentication)
-    await page.goto('http://localhost:5173/settings');
+    await page.goto('/settings');
     
-    // Wait for the page to load
+    // Wait for the page to load and settings navigation to be ready
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000); // Additional wait for React to hydrate
+    // Wait for settings navigation elements to be visible, indicating the settings page is ready
+    await page.waitForSelector('text=General', { state: 'visible' });
     
     // Check if settings page loads (check title instead of body visibility)
     const settingsTitle = await page.title();
@@ -36,21 +53,10 @@ test.describe('Billing Integration', () => {
       '[data-testid*="subscription"]'
     ];
     
-    let foundBillingElement = false;
-    for (const selector of billingElements) {
-      try {
-        const element = page.locator(selector);
-        if (await element.isVisible({ timeout: 1000 })) {
-          console.log(`Found billing element: ${selector}`);
-          foundBillingElement = true;
-          break;
-        }
-      } catch (e) {
-        // Element not found, continue
-      }
-    }
+    const billingResult = await findAnyVisibleElement(page, billingElements, 1000);
     
-    if (foundBillingElement) {
+    if (billingResult.found) {
+      console.log(`Found billing element: ${billingResult.selector}`);
       console.log('✅ Billing elements found on settings page');
     } else {
       console.log('⚠️ No billing elements found on settings page');
@@ -61,12 +67,6 @@ test.describe('Billing Integration', () => {
   });
   
   test('should check if Stripe integration is working', async ({ page }) => {
-    // Navigate to the app
-    await page.goto('http://localhost:5173');
-    
-    // Wait for the page to load
-    await page.waitForLoadState('networkidle');
-    
     // Check network requests for Stripe-related calls
     const stripeRequests: string[] = [];
     
@@ -78,8 +78,14 @@ test.describe('Billing Integration', () => {
       }
     });
     
+    // Navigate to the app
+    await page.goto('/');
+    
+    // Wait for the page to load
+    await page.waitForLoadState('networkidle');
+    
     // Try to trigger any billing-related actions
-    await page.goto('http://localhost:5173/settings');
+    await page.goto('/settings');
     await page.waitForLoadState('networkidle');
     
     // Look for upgrade buttons or billing links
@@ -94,21 +100,16 @@ test.describe('Billing Integration', () => {
       'button:has-text("Subscribe")'
     ];
     
-    for (const selector of upgradeButtons) {
-      try {
-        const button = page.locator(selector);
-        if (await button.isVisible({ timeout: 1000 })) {
-          console.log(`Found upgrade button: ${selector}`);
-          // Don't actually click to avoid real charges
-          break;
-        }
-      } catch (e) {
-        // Button not found, continue
-      }
+    const upgradeResult = await findAnyVisibleElement(page, upgradeButtons, 1000);
+    
+    if (upgradeResult.found) {
+      console.log(`Found upgrade button: ${upgradeResult.selector}`);
+      // Don't actually click to avoid real charges
     }
     
-    // Wait a bit for any network requests
-    await page.waitForTimeout(2000);
+    // Wait for any potential Stripe-related network requests to complete
+    // This waits for the page to be idle, indicating all network activity has settled
+    await page.waitForLoadState('networkidle');
     
     console.log(`Total Stripe-related requests: ${stripeRequests.length}`);
     if (stripeRequests.length > 0) {
@@ -123,11 +124,12 @@ test.describe('Billing Integration', () => {
 
   test('should navigate to cart page and show subscription options', async ({ page }) => {
     // Navigate directly to the cart page (where billing functionality is)
-    await page.goto('http://localhost:5173/cart');
+    await page.goto('/cart');
     
-    // Wait for the page to load
+    // Wait for the page to load and cart page elements to be ready
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
+    // Wait for the main cart page heading to be visible, indicating the page is ready
+    await page.waitForSelector('text=Pick your plan', { state: 'visible' });
     
     // Check if the page loaded
     const title = await page.title();
@@ -149,21 +151,10 @@ test.describe('Billing Integration', () => {
       '[data-testid*="quantity"]'
     ];
     
-    let foundCartElement = false;
-    for (const selector of cartPageElements) {
-      try {
-        const element = page.locator(selector);
-        if (await element.isVisible({ timeout: 1000 })) {
-          console.log(`Found cart page element: ${selector}`);
-          foundCartElement = true;
-          break;
-        }
-      } catch (e) {
-        // Element not found, continue
-      }
-    }
+    const cartResult = await findAnyVisibleElement(page, cartPageElements, 1000);
     
-    if (foundCartElement) {
+    if (cartResult.found) {
+      console.log(`Found cart page element: ${cartResult.selector}`);
       console.log('✅ Cart page elements found');
     } else {
       console.log('⚠️ No cart page elements found');

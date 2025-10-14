@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import type { Env, StripeSubscriptionCache } from "../types.js";
+import { stripeSubscriptionCacheSchema } from "../schemas/validation.js";
 
 const DEFAULT_STRIPE_API_VERSION: Stripe.StripeConfig["apiVersion"] = "2025-08-27.basil";
 
@@ -30,13 +31,19 @@ function normalizeSubscriptionStatus(
     case "trialing":
       return status;
     case "canceled":
-    case "incomplete_expired":
       return "canceled";
+    case "incomplete_expired":
+      return "incomplete_expired";
     case "past_due":
-    case "unpaid":
       return "past_due";
+    case "unpaid":
+      return "unpaid";
+    case "incomplete":
+      return "incomplete";
     default:
-      return "none";
+      // For null/undefined or unknown statuses, default to canceled
+      // This represents a subscription that exists but is not in a valid state
+      return "canceled";
   }
 }
 
@@ -92,7 +99,21 @@ export async function getStripeSubscriptionCache(
     return null;
   }
 
-  return cached as StripeSubscriptionCache;
+  try {
+    // Validate the cached data using Zod schema
+    const validatedCache = stripeSubscriptionCacheSchema.parse(cached);
+    return validatedCache;
+  } catch (error) {
+    // Log invalid cache entry for debugging
+    console.warn(`Invalid Stripe subscription cache entry for organization ${organizationId}:`, {
+      cacheKey,
+      error: error instanceof Error ? error.message : String(error),
+      cachedData: cached
+    });
+    
+    // Return null to indicate cache miss, allowing downstream code to fetch fresh data
+    return null;
+  }
 }
 
 export async function syncStripeDataToKV(args: {
@@ -106,20 +127,38 @@ export async function syncStripeDataToKV(args: {
   const primaryItem = subscription.items?.data?.[0];
   const price = primaryItem?.price;
 
+  // Validate price and price ID before proceeding
+  if (!price || !price.id) {
+    const errorMessage = `Missing price id for subscription ${subscription.id} (organization: ${organizationId})`;
+    console.error("Failed to sync Stripe data - missing price information:", {
+      subscriptionId: subscription.id,
+      organizationId,
+      hasPrice: !!price,
+      hasPriceId: !!price?.id,
+      primaryItemId: primaryItem?.id
+    });
+    throw new Error(errorMessage);
+  }
+
   const limits: StripeSubscriptionCache["limits"] = {
     aiQueries: 1000,
     documentAnalysis: true,
     customBranding: true,
   };
 
+  const now = Date.now();
   const cachePayload: StripeSubscriptionCache = {
     subscriptionId: subscription.id,
+    stripeCustomerId: extractStripeCustomerId(subscription),
     status: normalizeSubscriptionStatus(subscription.status),
-    priceId: price?.id ?? "unknown",
+    priceId: price.id,
     seats: primaryItem?.quantity ?? 1,
-    currentPeriodEnd: primaryItem?.current_period_end ?? 0,
+    currentPeriodEnd: subscription?.current_period_end ?? 0,
     cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
     limits,
+    cachedAt: now,
+    // Cache expires in 1 hour by default, can be overridden
+    expiresAt: now + (60 * 60 * 1000),
   };
 
   const cacheKey = getOrganizationCacheKey(organizationId);
@@ -185,8 +224,24 @@ export async function mapUserToStripeCustomer(env: Env, userId: string, customer
 
 export async function getMappedStripeCustomer(env: Env, userId: string): Promise<string | null> {
   const cacheKey = getUserCacheKey(userId);
-  const data = (await env.CHAT_SESSIONS.get(cacheKey, { type: "json" })) as { customerId?: string } | null;
-  return data?.customerId ?? null;
+  
+  try {
+    const data = await env.CHAT_SESSIONS.get(cacheKey, { type: "json" });
+    
+    // Validate that data is a non-null object with customerId property
+    if (data && typeof data === 'object' && 'customerId' in data) {
+      const customerId = data.customerId;
+      if (typeof customerId === 'string') {
+        return customerId;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    // Handle any unexpected errors during cache retrieval
+    console.warn(`Failed to retrieve cached customer data for user ${userId}:`, error);
+    return null;
+  }
 }
 
 export async function refreshStripeSubscriptionById(args: {
@@ -198,14 +253,40 @@ export async function refreshStripeSubscriptionById(args: {
 }): Promise<StripeSubscriptionCache> {
   const { env, organizationId, subscriptionId, plan } = args;
   const client = args.stripeClient ?? getOrCreateStripeClient(env);
-  const subscription = await client.subscriptions.retrieve(subscriptionId, {
-    expand: ["items.data.price"],
-  });
+  
+  try {
+    const subscription = await client.subscriptions.retrieve(subscriptionId, {
+      expand: ["items.data.price"],
+    });
 
-  return applyStripeSubscriptionUpdate({
-    env,
-    organizationId,
-    stripeSubscription: subscription,
-    plan,
-  });
+    return applyStripeSubscriptionUpdate({
+      env,
+      organizationId,
+      stripeSubscription: subscription,
+      plan,
+    });
+  } catch (error) {
+    // Log error with contextual details
+    console.error("Failed to retrieve Stripe subscription", {
+      operation: "refreshStripeSubscriptionById",
+      subscriptionId,
+      organizationId,
+      error: {
+        type: error instanceof Error ? error.constructor.name : typeof error,
+        message: error instanceof Error ? error.message : String(error),
+        // Preserve important Stripe error fields if available
+        ...(error && typeof error === "object" && "status" in error && { status: error.status }),
+        ...(error && typeof error === "object" && "code" in error && { code: error.code }),
+        ...(error && typeof error === "object" && "type" in error && { stripeType: error.type }),
+      },
+    });
+
+    // Rethrow with a clearer message while preserving the original error
+    throw new Error(
+      `Failed to retrieve Stripe subscription ${subscriptionId} for organization ${organizationId}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error }
+    );
+  }
 }

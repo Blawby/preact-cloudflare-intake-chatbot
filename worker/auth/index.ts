@@ -141,18 +141,11 @@ export async function getAuth(env: Env, request?: Request) {
           user,
           referenceId,
         }: {
-          user: { id: string };
+          user: { id: string; email?: string; stripeCustomerId?: string };
           referenceId: string;
         }) => {
-          console.log(`🔐 Authorizing subscription reference:`, {
-            userId: user.id,
-            userEmail: user.email,
-            referenceId,
-            userStripeCustomerId: user.stripeCustomerId
-          });
 
           if (!referenceId || referenceId === user.id) {
-            console.log(`✅ Authorized: referenceId is user ID or empty`);
             return true;
           }
 
@@ -166,32 +159,26 @@ export async function getAuth(env: Env, request?: Request) {
               .bind(referenceId, user.id)
               .first<{ role: string }>();
 
-            console.log(`👥 Membership check result:`, { membership, referenceId, userId: user.id });
 
             if (!membership) {
-              console.log(`❌ No membership found for user ${user.id} in org ${referenceId}`);
               return false;
             }
 
             const isAuthorized = membership.role === "owner" || membership.role === "admin";
-            console.log(`🔑 Authorization result:`, { isAuthorized, role: membership.role });
             
             // If authorized, clean up any existing incomplete subscriptions
             if (isAuthorized) {
               try {
                 const existingIncomplete = await env.DB.prepare(
-                  `SELECT id FROM subscription 
+                  `SELECT id FROM subscriptions 
                    WHERE reference_id = ? AND status = 'incomplete'`
                 ).bind(referenceId).first<{ id: string }>();
                 
                 if (existingIncomplete) {
-                  console.log(`🧹 Cleaning up incomplete subscription ${existingIncomplete.id} for org ${referenceId}`);
                   await env.DB.prepare(
-                    `DELETE FROM subscription WHERE id = ?`
+                    `DELETE FROM subscriptions WHERE id = ?`
                   ).bind(existingIncomplete.id).run();
-                  console.log(`✅ Successfully cleaned up incomplete subscription`);
                 } else {
-                  console.log(`ℹ️ No incomplete subscriptions found for org ${referenceId}`);
                 }
               } catch (error) {
                 console.error('❌ Failed to clean up incomplete subscription:', error);
@@ -215,21 +202,12 @@ export async function getAuth(env: Env, request?: Request) {
           stripeClient = new Stripe(stripeSecretKey, {
             apiVersion: "2025-02-24.acacia",
           });
-          console.log("✅ Stripe client created successfully");
         } catch (error) {
           console.error("❌ Failed to create Stripe client:", error);
           throw error;
         }
 
         try {
-          console.log(`🔧 Initializing Stripe plugin with configuration:`, {
-            hasStripeClient: !!stripeClient,
-            hasWebhookSecret: !!stripeWebhookSecret,
-            createCustomerOnSignUp: true,
-            priceId: stripePriceId,
-            annualPriceId: stripeAnnualPriceId,
-            trialDays: SUBSCRIPTION_TRIAL_DAYS
-          });
 
           stripeIntegration = stripePlugin({
             stripeClient,
@@ -239,10 +217,7 @@ export async function getAuth(env: Env, request?: Request) {
               enabled: true,
               organization: { enabled: true },
               authorizeReference: async ({ user, referenceId }) => {
-                console.log(`🔐 Stripe plugin calling authorizeReference:`, { userId: user.id, referenceId });
-                const result = await authorizeReference({ user, referenceId });
-                console.log(`🔐 Stripe plugin authorizeReference result:`, result);
-                return result;
+                return await authorizeReference({ user, referenceId });
               },
               plans: [
                 {
@@ -256,17 +231,12 @@ export async function getAuth(env: Env, request?: Request) {
                 {
                   name: "business-annual",
                   priceId: stripeAnnualPriceId,
-                  freeTrial: { days: SUBSCRIPTION_TRIAL_DAYS },
+                  ...(SUBSCRIPTION_TRIAL_DAYS > 0
+                    ? { freeTrial: { days: SUBSCRIPTION_TRIAL_DAYS } }
+                    : {}),
                 },
               ],
               onSubscriptionComplete: async ({ stripeSubscription, subscription, plan }) => {
-                console.log(`🎉 Subscription completed:`, {
-                  subscriptionId: subscription.id,
-                  stripeSubscriptionId: stripeSubscription.id,
-                  referenceId: subscription.referenceId,
-                  plan: plan?.name ?? subscription.plan,
-                  status: stripeSubscription.status
-                });
                 await syncSubscriptionState({
                   stripeSubscription,
                   referenceId: subscription.referenceId,
@@ -298,16 +268,11 @@ export async function getAuth(env: Env, request?: Request) {
                 const seats = params.subscription?.seats || 1;
                 const annual = params.plan?.name === 'business-annual';
                 
-                console.log(`🛒 Creating checkout session with full params:`, {
-                  allParams: params,
-                  userId: params.user?.id,
-                  userEmail: params.user?.email,
-                  plan: params.plan?.name,
-                  seats: params.seats,
-                  annual: params.annual,
-                  subscriptionSeats: params.subscription?.seats,
-                  isAnnualPlan: annual,
-                  stripeCustomerId: params.user?.stripeCustomerId
+                console.log('Checkout session params:', {
+                  seats,
+                  annual,
+                  planName: params.plan?.name,
+                  subscriptionSeats: params.subscription?.seats
                 });
                 
                 return {
@@ -321,7 +286,6 @@ export async function getAuth(env: Env, request?: Request) {
             },
           });
           
-          console.log("✅ Stripe plugin initialized successfully");
         } catch (error) {
           console.error("❌ Failed to initialize Stripe plugin:", error);
           throw error;

@@ -158,8 +158,8 @@ export interface Organization {
     };
   };
   stripeCustomerId?: string | null;
-  subscriptionTier?: string | null;
-  seats?: number;
+  subscriptionTier?: 'free' | 'pro' | 'enterprise' | null;
+  seats?: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -167,9 +167,12 @@ export interface Organization {
 // Stripe subscription cache type following Theo's KV-first pattern
 export interface StripeSubscriptionCache {
   subscriptionId: string;
-  status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'none';
+  // Maps to Organization.stripeCustomerId for cross-reference
+  stripeCustomerId?: string | null;
+  status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'unpaid';
   priceId: string;
-  seats: number;
+  // Optional to match Organization interface - defaults to 1 if not specified
+  seats?: number | null;
   currentPeriodEnd: number;
   cancelAtPeriodEnd: boolean;
   limits: {
@@ -177,6 +180,9 @@ export interface StripeSubscriptionCache {
     documentAnalysis: boolean;
     customBranding: boolean;
   };
+  // Cache metadata for KV invalidation
+  cachedAt: number;
+  expiresAt?: number;
 }
 
 // Form types

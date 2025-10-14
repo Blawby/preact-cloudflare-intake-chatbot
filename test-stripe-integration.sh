@@ -8,7 +8,13 @@ BASE_URL="http://localhost:8787"
 
 # Test 1: Health Check
 echo "1. Testing Health Endpoint..."
-HEALTH_RESPONSE=$(curl -s -X GET "$BASE_URL/api/health")
+HEALTH_RESPONSE=$(curl -s --fail-with-body -X GET "$BASE_URL/api/health")
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    echo "❌ Health endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
+    echo "Response: $HEALTH_RESPONSE"
+    exit 1
+fi
 if echo "$HEALTH_RESPONSE" | jq -e '.success' > /dev/null; then
     echo "✅ Health endpoint working"
 else
@@ -18,7 +24,13 @@ fi
 
 # Test 2: Organizations Endpoint with Stripe Fields
 echo "2. Testing Organizations Endpoint..."
-ORG_RESPONSE=$(curl -s -X GET "$BASE_URL/api/organizations")
+ORG_RESPONSE=$(curl -s --fail-with-body -X GET "$BASE_URL/api/organizations")
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    echo "❌ Organizations endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
+    echo "Response: $ORG_RESPONSE"
+    exit 1
+fi
 if echo "$ORG_RESPONSE" | jq -e '.success' > /dev/null; then
     echo "✅ Organizations endpoint working"
     
@@ -36,9 +48,15 @@ fi
 
 # Test 3: Legacy Payment Endpoint (should return 410)
 echo "3. Testing Legacy Payment Endpoint..."
-LEGACY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/payment/upgrade" \
+LEGACY_RESPONSE=$(curl -s --fail-with-body -X POST "$BASE_URL/api/payment/upgrade" \
     -H "Content-Type: application/json" \
     -d '{"organizationId":"test-org","seats":1}')
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    echo "❌ Legacy payment endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
+    echo "Response: $LEGACY_RESPONSE"
+    exit 1
+fi
 if echo "$LEGACY_RESPONSE" | jq -e '.errorCode == "LEGACY_PAYMENTS_DISABLED"' > /dev/null; then
     echo "✅ Legacy payment endpoint correctly disabled (410 Gone)"
 else
@@ -48,9 +66,15 @@ fi
 
 # Test 4: Subscription Sync Endpoint (should require auth)
 echo "4. Testing Subscription Sync Endpoint..."
-SYNC_RESPONSE=$(curl -s -X POST "$BASE_URL/api/subscription/sync" \
+SYNC_RESPONSE=$(curl -s --fail-with-body -X POST "$BASE_URL/api/subscription/sync" \
     -H "Content-Type: application/json" \
-    -d '{"organizationId":"test-org","subscriptionId":"sub_test123"}')
+    -d '{"organizationId":"test-org","stripeSubscriptionId":"sub_test123"}')
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    echo "❌ Subscription sync endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
+    echo "Response: $SYNC_RESPONSE"
+    exit 1
+fi
 if echo "$SYNC_RESPONSE" | jq -e '.errorCode == "HTTP_401"' > /dev/null; then
     echo "✅ Subscription sync endpoint correctly requires authentication"
 else
@@ -60,7 +84,13 @@ fi
 
 # Test 5: Better Auth Session Endpoint
 echo "5. Testing Better Auth Session Endpoint..."
-AUTH_RESPONSE=$(curl -s -X GET "$BASE_URL/api/auth/get-session")
+AUTH_RESPONSE=$(curl -s --fail-with-body -X GET "$BASE_URL/api/auth/get-session")
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    echo "❌ Better Auth session endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
+    echo "Response: $AUTH_RESPONSE"
+    exit 1
+fi
 if echo "$AUTH_RESPONSE" | jq -e '. == null' > /dev/null; then
     echo "✅ Better Auth session endpoint working (null for unauthenticated)"
 else
@@ -70,9 +100,15 @@ fi
 
 # Test 6: Stripe Webhook Endpoint (should validate secret)
 echo "6. Testing Stripe Webhook Endpoint..."
-WEBHOOK_RESPONSE=$(curl -s -X POST "$BASE_URL/api/auth/stripe/webhook" \
+WEBHOOK_RESPONSE=$(curl -s --fail-with-body -X POST "$BASE_URL/api/auth/stripe/webhook" \
     -H "Content-Type: application/json" \
     -d '{"type":"customer.created","data":{"object":{"id":"cus_test123"}}}')
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    echo "❌ Stripe webhook endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
+    echo "Response: $WEBHOOK_RESPONSE"
+    exit 1
+fi
 if echo "$WEBHOOK_RESPONSE" | jq -e '.code == "WEBHOOK_ERROR_STRIPE_WEBHOOK_SECRET_NOT_FOUND"' > /dev/null; then
     echo "✅ Stripe webhook endpoint correctly validates webhook secret"
 else

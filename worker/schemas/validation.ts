@@ -9,6 +9,11 @@ export const timestampSchema = z.number().int().positive();
 // Organization role schema
 export const organizationRoleSchema = z.enum(['owner', 'admin', 'attorney', 'paralegal']);
 
+// Organization subscription and billing schemas
+export const subscriptionTierSchema = z.enum(['free', 'pro', 'enterprise']);
+export const seatsSchema = z.number().int().positive().default(1);
+export const stripeCustomerIdSchema = z.string().min(1).optional();
+
 // Organization membership result schema
 export const organizationMembershipSchema = z.object({
   role: organizationRoleSchema
@@ -19,7 +24,7 @@ export const chatMessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
   content: z.string().min(1),
   timestamp: timestampSchema,
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.string(), z.unknown()).optional()
 });
 
 export const chatRequestSchema = z.object({
@@ -29,7 +34,7 @@ export const chatRequestSchema = z.object({
   })).min(1),
   sessionId: idSchema.optional(),
   organizationId: idSchema.optional(),
-  context: z.record(z.any()).optional()
+  context: z.record(z.string(), z.any()).optional()
 });
 
 export const chatResponseSchema = z.object({
@@ -44,14 +49,14 @@ export const matterCreationSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().min(1),
   status: z.enum(['draft', 'active', 'closed']).default('draft'),
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.string(), z.unknown()).optional()
 });
 
 export const matterUpdateSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().min(1).optional(),
   status: z.enum(['draft', 'active', 'closed']).optional(),
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.string(), z.unknown()).optional()
 });
 
 // Organization schemas
@@ -61,7 +66,7 @@ export const organizationConfigSchema = z.object({
   requiresPayment: z.boolean(),
   ownerEmail: emailSchema,
   availableServices: z.array(z.string().min(1)),
-  serviceQuestions: z.record(z.array(z.string().min(1))),
+  serviceQuestions: z.record(z.string(), z.array(z.string().min(1))),
   domain: z.string().min(1),
   description: z.string().min(1),
   paymentLink: z.string().url().optional(),
@@ -85,6 +90,37 @@ export const organizationSchema = z.object({
   config: organizationConfigSchema
 });
 
+// Organization database schema with constraints
+export const organizationDbSchema = z.object({
+  id: idSchema,
+  name: z.string().min(1),
+  slug: z.string().min(1),
+  stripeCustomerId: stripeCustomerIdSchema,
+  subscriptionTier: subscriptionTierSchema.default('free'),
+  seats: seatsSchema,
+  createdAt: timestampSchema,
+  updatedAt: timestampSchema
+});
+
+// Organization creation/update schemas
+export const organizationCreateSchema = z.object({
+  name: z.string().min(1),
+  slug: z.string().min(1),
+  config: organizationConfigSchema,
+  stripeCustomerId: stripeCustomerIdSchema,
+  subscriptionTier: subscriptionTierSchema.default('free'),
+  seats: seatsSchema
+});
+
+export const organizationUpdateSchema = z.object({
+  name: z.string().min(1).optional(),
+  slug: z.string().min(1).optional(),
+  config: organizationConfigSchema.optional(),
+  stripeCustomerId: stripeCustomerIdSchema,
+  subscriptionTier: subscriptionTierSchema.optional(),
+  seats: seatsSchema.optional()
+});
+
 // Form schemas
 export const contactFormSchema = z.object({
   organizationId: idSchema,
@@ -102,7 +138,7 @@ export const fileUploadSchema = z.object({
   filename: z.string().min(1),
   contentType: z.string().min(1),
   size: z.number().int().positive(),
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.string(), z.unknown()).optional()
 });
 
 // Feedback schemas
@@ -122,7 +158,7 @@ export const sessionSchema = z.object({
   messages: z.array(chatMessageSchema),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.string(), z.unknown()).optional()
 });
 
 // Export schemas
@@ -138,8 +174,8 @@ export const exportRequestSchema = z.object({
 
 // Query parameter schemas
 export const paginationSchema = z.object({
-  page: z.string().transform(val => parseInt(val, 10)).pipe(z.number().int().min(1)).default('1'),
-  limit: z.string().transform(val => parseInt(val, 10)).pipe(z.number().int().min(1).max(100)).default('20')
+  page: z.string().transform(val => parseInt(val, 10)).pipe(z.number().int().min(1)).default(1),
+  limit: z.string().transform(val => parseInt(val, 10)).pipe(z.number().int().min(1).max(100)).default(20)
 });
 
 export const organizationIdQuerySchema = z.object({
@@ -166,4 +202,22 @@ export const contentTypeSchema = z.object({
 // File upload headers schema
 export const multipartHeadersSchema = z.object({
   'content-type': z.string().includes('multipart/form-data')
-}); 
+});
+
+// Stripe subscription cache schema
+export const stripeSubscriptionCacheSchema = z.object({
+  subscriptionId: z.string().min(1),
+  stripeCustomerId: z.string().min(1).nullable().optional(),
+  status: z.enum(['active', 'trialing', 'canceled', 'past_due', 'incomplete', 'incomplete_expired', 'unpaid']),
+  priceId: z.string().min(1),
+  seats: z.number().int().positive().nullable().optional(),
+  currentPeriodEnd: z.number().int().nonnegative(),
+  cancelAtPeriodEnd: z.boolean(),
+  limits: z.object({
+    aiQueries: z.number().int().nonnegative(),
+    documentAnalysis: z.boolean(),
+    customBranding: z.boolean()
+  }),
+  cachedAt: z.number().int().positive(),
+  expiresAt: z.number().int().positive().optional()
+});

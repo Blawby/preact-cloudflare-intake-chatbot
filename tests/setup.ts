@@ -97,27 +97,6 @@ vi.mock('framer-motion', () => ({
   usePresence: () => [true, null],
 }));
 
-// Mock React hooks that might be used by framer-motion
-vi.mock('react', () => ({
-  createContext: vi.fn(),
-  useContext: vi.fn(),
-  useState: vi.fn(),
-  useEffect: vi.fn(),
-  useRef: vi.fn(),
-  useCallback: vi.fn(),
-  useMemo: vi.fn(),
-  useReducer: vi.fn(),
-  useLayoutEffect: vi.fn(),
-  useImperativeHandle: vi.fn(),
-  useDebugValue: vi.fn(),
-  forwardRef: vi.fn((component) => component),
-  memo: vi.fn((component) => component),
-  createElement: vi.fn(),
-  Fragment: 'Fragment',
-  StrictMode: 'StrictMode',
-  Suspense: 'Suspense',
-  lazy: vi.fn(),
-}));
 
 // Mock window.location
 Object.defineProperty(window, 'location', {

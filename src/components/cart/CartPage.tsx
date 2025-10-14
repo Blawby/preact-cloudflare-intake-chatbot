@@ -24,15 +24,6 @@ export const CartPage = () => {
   const [quantity, setQuantity] = useState(initialSeats);
 
   useEffect(() => {
-    console.log('🛒 Cart Page - Component mounted with initial state:', {
-      selectedPriceId,
-      quantity,
-      isAnnual,
-      currentOrganization: currentOrganization?.id,
-      locationQuery: location.query,
-      seatsFromQuery,
-      initialSeats
-    });
 
     if (typeof window === 'undefined') {
       return;
@@ -41,14 +32,11 @@ export const CartPage = () => {
     try {
       const stored = localStorage.getItem('cartPreferences');
       if (!stored) {
-        console.log('🛒 Cart Page - No stored cart preferences found');
         return;
       }
-      const parsed = JSON.parse(stored) as { seats?: number; tier?: string } | null;
-      console.log('🛒 Cart Page - Stored cart preferences:', parsed);
+      const parsed = JSON.parse(stored) as { seats?: number | null; tier?: string } | null;
       if (parsed?.seats && Number.isFinite(parsed.seats)) {
         const newQuantity = Math.max(1, Math.floor(parsed.seats));
-        console.log('🛒 Cart Page - Setting quantity from stored preferences:', newQuantity);
         setQuantity(newQuantity);
       }
     } catch (error) {
@@ -59,15 +47,6 @@ export const CartPage = () => {
   const selectedPrice = PRICES[selectedPriceId];
   const isAnnual = selectedPriceId === ANNUAL_PRICE_ID;
 
-  // Log when price selection changes
-  useEffect(() => {
-    console.log('🛒 Cart Page - Price selection changed:', {
-      selectedPriceId,
-      isAnnual,
-      selectedPrice: selectedPrice?.nickname || selectedPrice?.id,
-      quantity
-    });
-  }, [selectedPriceId, isAnnual, quantity]);
   const monthlySeatPrice = PRICES[MONTHLY_PRICE_ID].unit_amount / 100;
   const annualSeatPricePerYear = PRICES[ANNUAL_PRICE_ID].unit_amount / 100;
   const annualSeatPricePerMonth = annualSeatPricePerYear / 12;
@@ -104,14 +83,6 @@ export const CartPage = () => {
   const total = isAnnual ? annualTotal : subtotal;
 
   const handleContinue = async () => {
-    console.log('🛒 Cart Page - Starting checkout process:', {
-      selectedPriceId,
-      quantity,
-      isAnnual,
-      selectedPrice,
-      currentOrganization: currentOrganization?.id,
-      locationQuery: location.query
-    });
 
     // Store cart data for Stripe Elements integration
     const cartData = {
@@ -120,13 +91,11 @@ export const CartPage = () => {
       quantity
     };
 
-    console.log('🛒 Cart Page - Cart data to store:', cartData);
 
     try {
       // Attempt to store in localStorage
       const cartDataString = JSON.stringify(cartData);
       localStorage.setItem('cartData', cartDataString);
-      console.log('✅ Cart Page - Cart data stored in localStorage');
     } catch (error) {
       // Log the error with context
       console.error('❌ Cart Page - Failed to store cart data in localStorage:', {
@@ -141,7 +110,6 @@ export const CartPage = () => {
         if (typeof sessionStorage !== 'undefined') {
           const cartDataString = JSON.stringify(cartData);
           sessionStorage.setItem('cartData', cartDataString);
-          console.log('✅ Cart Page - Cart data stored in sessionStorage as fallback');
         }
       } catch (sessionError) {
         console.error('❌ Cart Page - Failed to store cart data in sessionStorage:', {
@@ -152,15 +120,9 @@ export const CartPage = () => {
       }
     }
     
-    // TODO: Integrate with Stripe Elements checkout experience
     const queryOrgIdParam = location.query?.organizationId;
     const organizationId = (Array.isArray(queryOrgIdParam) ? queryOrgIdParam[0] : queryOrgIdParam) || currentOrganization?.id;
 
-    console.log('🛒 Cart Page - Organization ID resolution:', {
-      queryOrgIdParam,
-      currentOrganizationId: currentOrganization?.id,
-      resolvedOrganizationId: organizationId
-    });
 
     if (!organizationId) {
       console.error('❌ Cart Page - No organization ID available');
@@ -175,7 +137,6 @@ export const CartPage = () => {
       cancelUrl: typeof window !== 'undefined' ? window.location.href : undefined,
     };
 
-    console.log('🚀 Cart Page - Calling submitUpgrade with params:', upgradeParams);
 
     await submitUpgrade(upgradeParams);
   };
@@ -211,7 +172,7 @@ export const CartPage = () => {
                 onClick={() => setSelectedPriceId(ANNUAL_PRICE_ID)}
                 role="radio"
                 aria-checked={selectedPriceId === ANNUAL_PRICE_ID}
-                aria-label="Annual plan - $420 per user per year. Features: Billed annually, Minimum 2 users, Add and reassign users"
+                aria-label="Annual plan - $420 per user per year. Features: Billed annually, Minimum 1 user, Add and reassign users"
                 tabIndex={selectedPriceId === ANNUAL_PRICE_ID ? 0 : -1}
                 className={`p-4 md:p-6 border rounded-lg text-left transition-all relative ${
                   selectedPriceId === ANNUAL_PRICE_ID 
@@ -255,7 +216,7 @@ export const CartPage = () => {
                 onClick={() => setSelectedPriceId(MONTHLY_PRICE_ID)}
                 role="radio"
                 aria-checked={selectedPriceId === MONTHLY_PRICE_ID}
-                aria-label="Monthly plan - $40 per user per month. Features: Billed monthly, Minimum 2 users, Add or remove users"
+                aria-label="Monthly plan - $40 per user per month. Features: Billed monthly, Minimum 1 user, Add or remove users"
                 tabIndex={selectedPriceId === MONTHLY_PRICE_ID ? 0 : -1}
                 className={`p-4 md:p-6 border rounded-lg text-left transition-all relative ${
                   selectedPriceId === MONTHLY_PRICE_ID

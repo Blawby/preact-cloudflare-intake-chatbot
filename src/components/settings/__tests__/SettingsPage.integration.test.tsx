@@ -128,7 +128,6 @@ vi.mock('../../../contexts/ToastContext', async () => {
 });
 
 // Mock the navigation hook
-const mockNavigate = vi.fn();
 vi.mock('../../../hooks/useNavigation', () => ({
   useNavigation: () => ({
     navigate: mockNavigate,
@@ -182,7 +181,6 @@ describe('SettingsPage Integration Tests', () => {
     vi.clearAllMocks();
     mockLoadOrganizations.mockClear();
     mockLoadInvitations.mockClear();
-    mockNavigate.mockClear();
     mockRoute.mockClear();
     mockOnClose.mockClear();
     
@@ -222,8 +220,6 @@ describe('SettingsPage Integration Tests', () => {
     
     // Set up the mock return value
     vi.mocked(useOrganizationManagement).mockReturnValue(useOrgMgmtMock);
-    // Clear navigation spy between tests
-    mockNavigate.mockClear();
     // Reset mocked path to base settings route
     resetMockPath();
   });

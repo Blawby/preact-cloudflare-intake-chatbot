@@ -21,8 +21,8 @@ export interface Organization {
   metadata?: Record<string, unknown>;
   config: OrganizationConfig;
   stripeCustomerId?: string | null;
-  subscriptionTier?: string | null;
-  seats?: number;
+  subscriptionTier?: 'free' | 'pro' | 'enterprise' | null;
+  seats?: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -391,7 +391,7 @@ export class OrganizationService {
           domain: orgRow.domain as string | undefined,
           config: normalizedConfig,
           stripeCustomerId: (orgRow as Record<string, unknown>).stripe_customer_id as string | null | undefined,
-          subscriptionTier: (orgRow as Record<string, unknown>).subscription_tier as string | null | undefined,
+          subscriptionTier: (orgRow as Record<string, unknown>).subscription_tier as 'free' | 'pro' | 'enterprise' | null | undefined,
           seats: typeof (orgRow as Record<string, unknown>).seats === 'number'
             ? ((orgRow as Record<string, unknown>).seats as number)
             : Number((orgRow as Record<string, unknown>).seats ?? 1) || 1,
@@ -442,7 +442,7 @@ export class OrganizationService {
             domain: row.domain as string | undefined,
             config: normalizedConfig,
             stripeCustomerId: row.stripe_customer_id as string | undefined,
-            subscriptionTier: row.subscription_tier as string | undefined,
+            subscriptionTier: row.subscription_tier as 'free' | 'pro' | 'enterprise' | undefined,
             seats: typeof row.seats === 'number'
               ? (row.seats as number)
               : Number(row.seats ?? 1) || 1,
@@ -472,7 +472,7 @@ export class OrganizationService {
             domain: row.domain as string | undefined,
             config: normalizedConfig,
             stripeCustomerId: row.stripe_customer_id as string | undefined,
-            subscriptionTier: row.subscription_tier as string | undefined,
+            subscriptionTier: row.subscription_tier as 'free' | 'pro' | 'enterprise' | undefined,
             seats: typeof row.seats === 'number'
               ? (row.seats as number)
               : Number(row.seats ?? 1) || 1,

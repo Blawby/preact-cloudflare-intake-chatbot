@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS organizations (
   slug TEXT UNIQUE, -- Human-readable identifier (e.g., "north-carolina-legal-services")
   domain TEXT,
   config JSON,
-  stripe_customer_id TEXT,
-  subscription_tier TEXT DEFAULT 'free',
-  seats INTEGER DEFAULT 1,
+  stripe_customer_id TEXT UNIQUE,
+  subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'pro', 'enterprise')),
+  seats INTEGER DEFAULT 1 CHECK (seats > 0),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -209,6 +209,78 @@ CREATE TABLE IF NOT EXISTS ai_feedback (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ========================================
+-- MIGRATION: Clean existing data before applying constraints
+-- ========================================
+-- This migration ensures existing data complies with new constraints
+
+-- Clean up any invalid subscription_tier values
+UPDATE organizations 
+SET subscription_tier = 'free' 
+WHERE subscription_tier NOT IN ('free', 'pro', 'enterprise') OR subscription_tier IS NULL;
+
+-- Clean up any invalid seats values (set to 1 if <= 0 or NULL)
+UPDATE organizations 
+SET seats = 1 
+WHERE seats IS NULL OR seats <= 0;
+
+-- Handle duplicate stripe_customer_id values by setting duplicates to NULL
+-- This preserves the first occurrence and nullifies duplicates
+UPDATE organizations 
+SET stripe_customer_id = NULL 
+WHERE id NOT IN (
+  SELECT MIN(id) 
+  FROM organizations 
+  WHERE stripe_customer_id IS NOT NULL 
+  GROUP BY stripe_customer_id
+);
+
+-- Handle duplicate stripe_customer_id values in users table
+-- This preserves the first occurrence and nullifies duplicates
+UPDATE users 
+SET stripe_customer_id = NULL 
+WHERE id NOT IN (
+  SELECT MIN(id) 
+  FROM users 
+  WHERE stripe_customer_id IS NOT NULL 
+  GROUP BY stripe_customer_id
+);
+
+-- ========================================
+-- SUBSCRIPTION TABLE MIGRATION
+-- ========================================
+-- Clean up subscriptions table data to comply with new constraints
+
+-- Clean up any invalid status values in subscriptions table
+UPDATE subscriptions 
+SET status = 'incomplete' 
+WHERE status NOT IN ('incomplete', 'active', 'canceled', 'past_due', 'trialing', 'paused') OR status IS NULL;
+
+-- Clean up any invalid seats values (set to NULL if <= 0)
+UPDATE subscriptions 
+SET seats = NULL 
+WHERE seats IS NULL OR seats <= 0;
+
+-- Clean up any invalid cancel_at_period_end values
+UPDATE subscriptions 
+SET cancel_at_period_end = 0 
+WHERE cancel_at_period_end IS NULL;
+
+-- Handle orphaned subscription records by setting reference_id to NULL for non-existent organizations
+-- This will be caught by foreign key constraint, but we clean up first
+UPDATE subscriptions 
+SET reference_id = NULL 
+WHERE reference_id NOT IN (SELECT id FROM organizations);
+
+-- Handle orphaned stripe_customer_id references
+UPDATE subscriptions 
+SET stripe_customer_id = NULL 
+WHERE stripe_customer_id IS NOT NULL 
+  AND stripe_customer_id NOT IN (SELECT stripe_customer_id FROM organizations WHERE stripe_customer_id IS NOT NULL);
+
+-- ========================================
+-- DEFAULT ORGANIZATIONS
+-- ========================================
 -- Insert default organizations with proper ULIDs
 -- Note: API keys and sensitive configuration should be set via the setup script, not in schema
 -- Run ./scripts/setup-blawby-api.sh to configure the blawby-ai organization with API credentials
@@ -334,7 +406,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   organization_id TEXT,
-  stripe_customer_id TEXT,
+  stripe_customer_id TEXT UNIQUE,
   role TEXT,
   phone TEXT
 );
@@ -362,25 +434,30 @@ CREATE TABLE IF NOT EXISTS invitations (
 );
 
 -- Stripe subscription table managed by Better Auth Stripe plugin
-CREATE TABLE IF NOT EXISTS subscription (
+CREATE TABLE IF NOT EXISTS subscriptions (
   id TEXT PRIMARY KEY,
   plan TEXT NOT NULL,
-  reference_id TEXT NOT NULL,
-  stripe_customer_id TEXT,
-  stripe_subscription_id TEXT,
-  status TEXT DEFAULT 'incomplete' NOT NULL,
+  reference_id TEXT NOT NULL, -- References organizations.id for organization-level subscriptions
+  stripe_customer_id TEXT, -- References organizations.stripe_customer_id
+  stripe_subscription_id TEXT UNIQUE,
+  status TEXT DEFAULT 'incomplete' NOT NULL CHECK(status IN ('incomplete', 'active', 'canceled', 'past_due', 'trialing', 'paused')),
   period_start INTEGER,
   period_end INTEGER,
   trial_start INTEGER,
   trial_end INTEGER,
-  cancel_at_period_end INTEGER DEFAULT 0,
-  seats INTEGER,
+  cancel_at_period_end INTEGER DEFAULT 0 NOT NULL,
+  seats INTEGER CHECK(seats > 0),
   created_at INTEGER DEFAULT (strftime('%s', 'now')),
-  updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+  -- Foreign key constraints for data integrity
+  FOREIGN KEY (reference_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (stripe_customer_id) REFERENCES organizations(stripe_customer_id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_subscription_reference_id ON subscription(reference_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_stripe_id ON subscription(stripe_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_reference_id ON subscriptions(reference_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_customer_id ON subscriptions(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+-- Note: stripe_subscription_id already has UNIQUE constraint in table definition
 
 -- Organization events table for audit logging
 CREATE TABLE IF NOT EXISTS organization_events (
@@ -440,6 +517,7 @@ CREATE TABLE IF NOT EXISTS verifications (
 -- Create indexes for Better Auth tables
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(email, email_verified);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_customer_id_unique ON users(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);

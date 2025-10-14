@@ -11,6 +11,7 @@ import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingDa
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
 import { handleError } from '../utils/errorHandler';
 import { useToastContext } from '../contexts/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 }) => {
   const { navigate } = useNavigation();
   const { showWarning } = useToastContext();
+  const { t } = useTranslation('settings');
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
   const [selectedQuantity, setSelectedQuantity] = useState(2);
@@ -278,6 +280,12 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   
 
   const handleUpgrade = (tier: SubscriptionTier) => {
+    // Call callbacks before navigation to ensure they complete
+    if (onUpgrade) {
+      onUpgrade(tier);
+    }
+    onClose();
+
     if (tier === 'business') {
       try {
         const payload = {
@@ -286,16 +294,21 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
           timestamp: Date.now()
         };
         localStorage.setItem('cartPreferences', JSON.stringify(payload));
+        navigate(`/cart?seats=${selectedQuantity}`);
       } catch (error) {
-        console.warn('Unable to store cart preferences:', error);
+        // Log detailed error for debugging
+        console.error('Unable to store cart preferences:', error);
+        
+        // Show user-facing warning using i18n
+        showWarning(
+          t('billing.cartSaveError.title'),
+          t('billing.cartSaveError.body')
+        );
+        
+        // Still navigate to cart even if preferences couldn't be saved
+        navigate(`/cart?seats=${selectedQuantity}`);
       }
-
-      navigate(`/cart?seats=${selectedQuantity}`);
     }
-    if (onUpgrade) {
-      onUpgrade(tier);
-    }
-    onClose();
   };
 
   return (

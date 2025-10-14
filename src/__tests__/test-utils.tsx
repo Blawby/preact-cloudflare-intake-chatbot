@@ -20,7 +20,6 @@ export const getMockPath = () => mockCurrentPath;
 
 // Mock the navigation hook
 const mockNavigate = vi.fn((url: string) => {
-  console.log('Mock navigate called with:', url);
   mockCurrentPath = url;
 });
 vi.mock('../hooks/useNavigation', () => ({
@@ -65,29 +64,29 @@ vi.mock('../lib/authClient', () => ({
 // Mock Heroicons
 vi.mock('@heroicons/react/24/outline', () => ({
   ChevronRightIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="chevron-right-icon"></svg>`,
+    <svg className={className} data-testid="chevron-right-icon" />,
   Cog6ToothIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="cog-icon"></svg>`,
+    <svg className={className} data-testid="cog-icon" />,
   BellIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="bell-icon"></svg>`,
+    <svg className={className} data-testid="bell-icon" />,
   UserIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="user-icon"></svg>`,
+    <svg className={className} data-testid="user-icon" />,
   ShieldCheckIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="shield-check-icon"></svg>`,
+    <svg className={className} data-testid="shield-check-icon" />,
   QuestionMarkCircleIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="question-mark-icon"></svg>`,
+    <svg className={className} data-testid="question-mark-icon" />,
   ClipboardIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="clipboard-icon"></svg>`,
+    <svg className={className} data-testid="clipboard-icon" />,
   BuildingOfficeIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="building-office-icon"></svg>`,
+    <svg className={className} data-testid="building-office-icon" />,
   XMarkIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="x-mark-icon"></svg>`,
+    <svg className={className} data-testid="x-mark-icon" />,
   ArrowRightOnRectangleIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="arrow-right-on-rectangle-icon"></svg>`,
+    <svg className={className} data-testid="arrow-right-on-rectangle-icon" />,
   ArrowLeftIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="arrow-left-icon"></svg>`,
+    <svg className={className} data-testid="arrow-left-icon" />,
   PlusIcon: ({ className }: { className?: string }) => 
-    `<svg class="${className}" data-testid="plus-icon"></svg>`,
+    <svg className={className} data-testid="plus-icon" />,
 }));
 
 // Mock ToastContext
@@ -139,27 +138,27 @@ vi.mock('../config/features', () => ({
 
 // Mock settings page components
 vi.mock('../components/settings/pages/GeneralPage', () => ({
-  GeneralPage: () => 'General Settings',
+  GeneralPage: () => <div>General Settings</div>,
 }));
 
 vi.mock('../components/settings/pages/NotificationsPage', () => ({
-  NotificationsPage: () => 'Notification Settings',
+  NotificationsPage: () => <div>Notification Settings</div>,
 }));
 
 vi.mock('../components/settings/pages/AccountPage', () => ({
-  AccountPage: () => 'Account Settings',
+  AccountPage: () => <div>Account Settings</div>,
 }));
 
 vi.mock('../components/settings/pages/SecurityPage', () => ({
-  SecurityPage: () => 'Security Settings',
+  SecurityPage: () => <div>Security Settings</div>,
 }));
 
 vi.mock('../components/settings/pages/MFAEnrollmentPage', () => ({
-  MFAEnrollmentPage: () => 'MFA Enrollment',
+  MFAEnrollmentPage: () => <div>MFA Enrollment</div>,
 }));
 
 vi.mock('../components/settings/pages/HelpPage', () => ({
-  HelpPage: () => 'Help & Support',
+  HelpPage: () => <div>Help & Support</div>,
 }));
 
 // Note: Individual test files should mock fetch as needed

@@ -25,7 +25,7 @@ export async function ensureActiveSubscription(
 
   let cache = await getStripeSubscriptionCache(env, organizationId);
 
-  if ((!cache || cache.status === "none") && refreshIfMissing && subscriptionId) {
+  if (!cache && refreshIfMissing && subscriptionId) {
     cache = await refreshStripeSubscriptionById({
       env,
       organizationId,

@@ -158,6 +158,9 @@ d1_databases = [
 [env.production.vars]
 NODE_ENV = "production"
 LOG_LEVEL = "warn"
+# Stripe price configuration for production (live mode IDs)
+STRIPE_PRICE_ID = "price_1SI0uoDJLzJ14cfP4kmC67jR"
+STRIPE_ANNUAL_PRICE_ID = "price_1SI0uoDJLzJ14cfPoXID4aj4"
 ENABLE_ADOBE_EXTRACT = true
 ADOBE_IMS_BASE_URL = "https://ims-na1.adobelogin.com"
 ADOBE_PDF_SERVICES_BASE_URL = "https://pdf-services.adobe.io"

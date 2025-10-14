@@ -4,6 +4,7 @@ import { ValidationError } from '../utils/validationErrors.js';
 import { requireAuth, requireOrgOwner, requireOrgMember } from '../middleware/auth.js';
 import { handleError, HttpErrors } from '../errorHandler.js';
 import type { Organization } from '../services/OrganizationService.js';
+import { organizationCreateSchema, organizationUpdateSchema } from '../schemas/validation.js';
 
 /**
  * Helper function to create standardized error responses
@@ -193,7 +194,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
       if (request.method === 'GET') {
           await requireOrgMember(request, env, organization.id, 'admin');
 
-          const member = await env.DB.prepare(
+          const members = await env.DB.prepare(
             `SELECT m.user_id as userId,
                     m.role,
                     m.created_at as createdAt,
@@ -208,7 +209,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
         // Preact usage: fetch to populate org settings > member list.
         return createSuccessResponse({
-          member: member.results ?? []
+          members: members.results ?? []
         });
       }
 
@@ -931,23 +932,34 @@ async function createOrganization(
 ): Promise<Response> {
   let body;
   try {
-    body = await request.json() as {
-      slug: string;
-      name: string;
-      config: OrganizationConfig;
-    };
+    body = await request.json();
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
       status: 400, headers: { 'Content-Type': 'application/json' }
     });
   }
   
-  // Validate required fields
-  if (!body.slug || !body.name || !body.config) {
+  // Validate request body using Zod schema
+  try {
+    const validatedBody = organizationCreateSchema.parse(body);
+    body = validatedBody;
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Validation error: ${error.message}` 
+        }), 
+        { 
+          status: 400, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Missing required fields: slug, name, config' 
+        error: 'Invalid request data' 
       }), 
       { 
         status: 400, 
@@ -975,7 +987,10 @@ async function createOrganization(
     const organization = await organizationService.createOrganization({
       slug: body.slug,
       name: body.name,
-      config: body.config
+      config: body.config,
+      stripeCustomerId: body.stripeCustomerId,
+      subscriptionTier: body.subscriptionTier,
+      seats: body.seats
     });
 
     if (userId) {
@@ -1034,6 +1049,35 @@ async function updateOrganization(organizationService: OrganizationService, orga
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
       status: 400, headers: { 'Content-Type': 'application/json' }
     });
+  }
+  
+  // Validate request body using Zod schema
+  try {
+    const validatedBody = organizationUpdateSchema.parse(body);
+    body = validatedBody;
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Validation error: ${error.message}` 
+        }), 
+        { 
+          status: 400, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Invalid request data' 
+      }), 
+      { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
   }
   
   try {

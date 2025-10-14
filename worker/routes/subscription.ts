@@ -9,7 +9,9 @@ import {
 
 interface SyncSubscriptionRequest {
   organizationId: string;
+  /** Internal subscription ID - queries WHERE id = ? */
   subscriptionId?: string;
+  /** Stripe subscription ID - queries WHERE stripe_subscription_id = ? */
   stripeSubscriptionId?: string;
 }
 
@@ -21,11 +23,10 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
   const url = new URL(request.url);
   const path = url.pathname;
 
-  if (!isStripeSubscriptionsEnabled(env)) {
-    throw HttpErrors.notFound("Stripe subscription endpoints are disabled");
-  }
-
   try {
+    if (!isStripeSubscriptionsEnabled(env)) {
+      throw HttpErrors.notFound("Stripe subscription endpoints are disabled");
+    }
     if (path === "/api/subscription/sync" && request.method === "POST") {
       const { organizationId, subscriptionId, stripeSubscriptionId } =
         (await parseJsonBody(request)) as SyncSubscriptionRequest;
@@ -37,24 +38,40 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
       await requireAuth(request, env);
       await requireOrgOwner(request, env, organizationId);
 
-      const subscriptionRecord = subscriptionId
-        ? await env.DB.prepare(
-            `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
-               FROM subscription
-              WHERE id = ? OR stripe_subscription_id = ?
-              LIMIT 1`
-          )
-            .bind(subscriptionId, subscriptionId)
-            .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>()
-        : await env.DB.prepare(
-            `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
-               FROM subscription
-              WHERE reference_id = ?
-              ORDER BY updated_at DESC
-              LIMIT 1`
-          )
-            .bind(organizationId)
-            .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
+      let subscriptionRecord: { id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null } | undefined;
+
+      if (subscriptionId) {
+        // Query by internal subscription ID
+        subscriptionRecord = await env.DB.prepare(
+          `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
+             FROM subscriptions
+            WHERE id = ?
+            LIMIT 1`
+        )
+          .bind(subscriptionId)
+          .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
+      } else if (stripeSubscriptionId) {
+        // Query by Stripe subscription ID
+        subscriptionRecord = await env.DB.prepare(
+          `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
+             FROM subscriptions
+            WHERE stripe_subscription_id = ?
+            LIMIT 1`
+        )
+          .bind(stripeSubscriptionId)
+          .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
+      } else {
+        // Fallback: query by organization ID (reference_id)
+        subscriptionRecord = await env.DB.prepare(
+          `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
+             FROM subscriptions
+            WHERE reference_id = ?
+            ORDER BY updated_at DESC
+            LIMIT 1`
+        )
+          .bind(organizationId)
+          .first<{ id: string; plan: string | null; referenceId: string; stripeSubscriptionId: string | null }>();
+      }
 
       const stripeId = stripeSubscriptionId ?? subscriptionRecord?.stripeSubscriptionId;
 
@@ -70,7 +87,7 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
         env,
         organizationId,
         subscriptionId: stripeId,
-        plan: subscriptionRecord?.plan ?? "business",
+        plan: subscriptionRecord?.plan ?? "free",
       });
 
       return createSuccessResponse({

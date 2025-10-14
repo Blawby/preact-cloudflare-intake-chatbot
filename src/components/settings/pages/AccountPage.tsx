@@ -50,6 +50,10 @@ export const AccountPage = ({
   
   // Ref to store verification timeout ID for cleanup
   const verificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  // Ref to prevent concurrent sync operations
+  const isSyncInFlightRef = useRef(false);
 
   // Extract data loading logic to eliminate duplication
   const loadAccountData = async () => {
@@ -92,35 +96,46 @@ export const AccountPage = ({
         ? rawOrgId[0]
         : rawOrgId || currentOrganization?.id;
 
-      if (shouldSync && organizationId) {
+      if (shouldSync && organizationId && !isSyncInFlightRef.current) {
+        isSyncInFlightRef.current = true;
+        
         try {
-          console.log('🔄 Post-checkout sync triggered for organization:', organizationId);
           await syncSubscription(organizationId);
 
+          // Load account data before cleaning up URL params
+          if (isMountedRef.current) {
+            await loadAccountData();
+          }
+
+          // Clean up URL params after successful sync and data load
           if (typeof window !== 'undefined') {
             const newUrl = new URL(window.location.href);
             newUrl.searchParams.delete('sync');
             newUrl.searchParams.delete('organizationId');
             window.history.replaceState({}, '', newUrl.toString());
           }
-
-          await loadAccountData();
         } catch (error) {
           console.error('❌ Post-checkout sync failed:', error);
-          showError('Sync Failed', 'Failed to refresh subscription status after checkout. Please refresh the page.');
+          if (isMountedRef.current) {
+            showError('Sync Failed', 'Failed to refresh subscription status after checkout. Please refresh the page.');
+          }
+        } finally {
+          isSyncInFlightRef.current = false;
         }
       }
     };
 
     handlePostCheckoutSync();
-  }, [location.query, currentOrganization?.id, syncSubscription, showError]);
+  }, [location.query, currentOrganization?.id, syncSubscription, showError, loadAccountData]);
 
-  // Cleanup verification timeout on unmount
+  // Cleanup verification timeout and sync ref on unmount
   useEffect(() => {
     return () => {
       if (verificationTimeoutRef.current !== null) {
         clearTimeout(verificationTimeoutRef.current);
       }
+      isMountedRef.current = false;
+      isSyncInFlightRef.current = false;
     };
   }, []);
 

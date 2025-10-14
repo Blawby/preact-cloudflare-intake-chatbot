@@ -8,7 +8,7 @@ import { useToastContext } from '../contexts/ToastContext';
 
 export interface SubscriptionUpgradeRequest {
   organizationId: string;
-  seats?: number;
+  seats?: number | null;
   annual?: boolean;
   successUrl?: string;
   cancelUrl?: string;
@@ -58,13 +58,6 @@ export const usePaymentUpgrade = () => {
           requestBody.seats = seats;
         }
         
-        console.log('🚀 Frontend sending subscription upgrade request:', {
-          endpoint: getSubscriptionUpgradeEndpoint(),
-          requestBody,
-          organizationId,
-          seats,
-          annual
-        });
 
         const response = await fetch(getSubscriptionUpgradeEndpoint(), {
           method: 'POST',
@@ -76,7 +69,16 @@ export const usePaymentUpgrade = () => {
         const result = await response.json().catch(() => ({}));
 
         if (!response.ok || !result || !result.url) {
-          console.error('❌ Subscription upgrade failed with response:', result);
+          if (import.meta.env.DEV) {
+            // Only log in development, and sanitize sensitive data
+            const sanitizedResult = {
+              error: result?.error,
+              success: result?.success,
+              errorCode: result?.errorCode,
+              // Exclude sensitive fields like organizationId, subscription details, etc.
+            };
+            console.error('❌ Subscription upgrade failed with response:', sanitizedResult);
+          }
           const message = result?.error || 'Unable to initiate Stripe checkout';
           throw new Error(message);
         }
