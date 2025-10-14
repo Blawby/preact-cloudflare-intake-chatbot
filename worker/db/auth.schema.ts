@@ -94,7 +94,7 @@ export const subscriptions = sqliteTable("subscriptions", {
   cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).default(false).notNull(),
   seats: integer("seats"), // Validated by CHECK constraint in SQL (seats > 0)
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(strftime('%s', 'now') * 1000)`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(strftime('%s', 'now') * 1000)`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 }, (_table) => ({
   // Foreign key constraints are now defined in Drizzle schema to match SQL schema
   // stripeSubscriptionIdUnique: unique("stripe_subscription_id_unique").on(table.stripeSubscriptionId), // Now handled by .unique() on column

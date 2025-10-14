@@ -481,3 +481,64 @@ FROM users u
 LEFT JOIN accounts a ON u.id = a.user_id
 GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at;
 
+-- ========================================
+-- TRIGGERS FOR AUTOMATIC UPDATED_AT TIMESTAMPS
+-- ========================================
+-- These triggers ensure that updated_at columns are automatically updated
+-- when rows are modified, using the same millisecond timestamp format
+-- as the auth schema defaults: (strftime('%s', 'now') * 1000)
+
+-- Trigger for users table
+CREATE TRIGGER IF NOT EXISTS trigger_users_updated_at
+  AFTER UPDATE ON users
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE users SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for sessions table
+CREATE TRIGGER IF NOT EXISTS trigger_sessions_updated_at
+  AFTER UPDATE ON sessions
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE sessions SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for accounts table
+CREATE TRIGGER IF NOT EXISTS trigger_accounts_updated_at
+  AFTER UPDATE ON accounts
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE accounts SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for verifications table
+CREATE TRIGGER IF NOT EXISTS trigger_verifications_updated_at
+  AFTER UPDATE ON verifications
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE verifications SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for organizations table
+CREATE TRIGGER IF NOT EXISTS trigger_organizations_updated_at
+  AFTER UPDATE ON organizations
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE organizations SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for subscriptions table
+CREATE TRIGGER IF NOT EXISTS trigger_subscriptions_updated_at
+  AFTER UPDATE ON subscriptions
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE subscriptions SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+

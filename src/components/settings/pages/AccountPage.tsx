@@ -54,6 +54,10 @@ export const AccountPage = ({
   const isMountedRef = useRef(true);
   // Ref to prevent concurrent sync operations
   const isSyncInFlightRef = useRef(false);
+  // Ref to store previous tier for upgrade detection after refetch
+  const previousTierRef = useRef<string | null>(null);
+  // Ref to track if we need to check for upgrades after organization update
+  const shouldCheckUpgradeRef = useRef(false);
 
   // Extract data loading logic to eliminate duplication
   const loadAccountData = useCallback(async () => {
@@ -87,6 +91,31 @@ export const AccountPage = ({
     }
   }, [loadAccountData, orgLoading, currentOrganization]);
 
+  // Check for tier upgrades after organization data is updated
+  useEffect(() => {
+    if (shouldCheckUpgradeRef.current && currentOrganization?.subscriptionTier) {
+      const previousTier = previousTierRef.current;
+      const newTier = currentOrganization.subscriptionTier;
+      
+      const wasUpgraded = (previousTier === 'free' || !previousTier) && 
+                         (newTier === 'business' || newTier === 'enterprise');
+
+      if (wasUpgraded) {
+        // Set flag for business setup modal and redirect to root
+        try {
+          localStorage.setItem('businessSetupPending', 'true');
+          navigate('/');
+        } catch (storageError) {
+          console.warn('Failed to set business setup flag:', storageError);
+        }
+      }
+
+      // Reset the flag
+      shouldCheckUpgradeRef.current = false;
+      previousTierRef.current = null;
+    }
+  }, [currentOrganization?.subscriptionTier, navigate]);
+
   // Handle post-checkout sync
   useEffect(() => {
     const handlePostCheckoutSync = async () => {
@@ -116,23 +145,26 @@ export const AccountPage = ({
           // Prefer the sync response if it returns plan/tier info
           if (syncResult?.data?.subscription?.plan) {
             newTier = syncResult.data.subscription.plan;
+            
+            // Handle upgrade check immediately if we have tier info from sync response
+            const wasUpgraded = (previousTier === 'free' || !previousTier) && 
+                               (newTier === 'business' || newTier === 'enterprise');
+
+            if (wasUpgraded) {
+              // Set flag for business setup modal and redirect to root
+              try {
+                localStorage.setItem('businessSetupPending', 'true');
+                navigate('/');
+              } catch (storageError) {
+                console.warn('Failed to set business setup flag:', storageError);
+              }
+            }
           } else {
             // If no tier info in response, refetch to get latest organization data
+            // Store previous tier and set flag for upgrade check in the effect
+            previousTierRef.current = previousTier;
+            shouldCheckUpgradeRef.current = true;
             await refetch();
-            newTier = currentOrganization?.subscriptionTier;
-          }
-
-          const wasUpgraded = (previousTier === 'free' || !previousTier) && 
-                             (newTier === 'business' || newTier === 'enterprise');
-
-          if (wasUpgraded) {
-            // Set flag for business setup modal and redirect to root
-            try {
-              localStorage.setItem('businessSetupPending', 'true');
-              navigate('/');
-            } catch (storageError) {
-              console.warn('Failed to set business setup flag:', storageError);
-            }
           }
 
           // Load account data after upgrade handling

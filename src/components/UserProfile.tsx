@@ -36,6 +36,59 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   const requestIdRef = useRef(0);
   const { navigateToAuth, navigate } = useNavigation();
 
+  const checkAuthStatus = useCallback(async () => {
+    // Increment request ID to cancel previous requests
+    const currentRequestId = ++requestIdRef.current;
+    
+    try {
+      // Get session from Better Auth
+      const session = await authClient.getSession();
+      
+      // Check if this request is still current (not cancelled)
+      if (currentRequestId !== requestIdRef.current) {
+        return; // Ignore stale response
+      }
+      
+      if (session?.data?.user) {
+        // Use organization tier directly (no mapping needed)
+        const orgTier = currentOrganization?.subscriptionTier;
+        const displayTier = orgTier || 'free';
+        
+        // User is authenticated, create user object with real subscription tier
+        const userWithTier = {
+          id: session.data.user.id,
+          name: session.data.user.name,
+          email: session.data.user.email,
+          image: session.data.user.image,
+          organizationId: currentOrganization?.id || null,
+          role: 'user', // Default role
+          phone: null,
+          subscriptionTier: displayTier as SubscriptionTier
+        };
+        setUser(userWithTier);
+      } else {
+        // No session means user is signed out
+        setUser(null);
+      }
+    } catch (error) {
+      // Check if this request is still current (not cancelled)
+      if (currentRequestId !== requestIdRef.current) {
+        return; // Ignore stale response
+      }
+      
+      console.error('Error checking auth status:', error);
+      if (error instanceof Error && error.message.includes('fetch')) {
+        console.warn('Network error checking auth status - user may be offline');
+      }
+      setUser(null);
+    }
+    
+    // Only update loading state if this is still the current request
+    if (currentRequestId === requestIdRef.current) {
+      setLoading(false);
+    }
+  }, [currentOrganization]);
+
   useEffect(() => {
     checkAuthStatus();
     
@@ -94,58 +147,6 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     if (user) checkAuthStatus();
   }, [currentOrganization?.subscriptionTier, checkAuthStatus]);
 
-  const checkAuthStatus = useCallback(async () => {
-    // Increment request ID to cancel previous requests
-    const currentRequestId = ++requestIdRef.current;
-    
-    try {
-      // Get session from Better Auth
-      const session = await authClient.getSession();
-      
-      // Check if this request is still current (not cancelled)
-      if (currentRequestId !== requestIdRef.current) {
-        return; // Ignore stale response
-      }
-      
-      if (session?.data?.user) {
-        // Use organization tier directly (no mapping needed)
-        const orgTier = currentOrganization?.subscriptionTier;
-        const displayTier = orgTier || 'free';
-        
-        // User is authenticated, create user object with real subscription tier
-        const userWithTier = {
-          id: session.data.user.id,
-          name: session.data.user.name,
-          email: session.data.user.email,
-          image: session.data.user.image,
-          organizationId: currentOrganization?.id || null,
-          role: 'user', // Default role
-          phone: null,
-          subscriptionTier: displayTier as SubscriptionTier
-        };
-        setUser(userWithTier);
-      } else {
-        // No session means user is signed out
-        setUser(null);
-      }
-    } catch (error) {
-      // Check if this request is still current (not cancelled)
-      if (currentRequestId !== requestIdRef.current) {
-        return; // Ignore stale response
-      }
-      
-      console.error('Error checking auth status:', error);
-      if (error instanceof Error && error.message.includes('fetch')) {
-        console.warn('Network error checking auth status - user may be offline');
-      }
-      setUser(null);
-    }
-    
-    // Only update loading state if this is still the current request
-    if (currentRequestId === requestIdRef.current) {
-      setLoading(false);
-    }
-  }, [currentOrganization]);
 
 
   const handleSignIn = () => {

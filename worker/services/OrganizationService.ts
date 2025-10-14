@@ -889,8 +889,9 @@ export class OrganizationService {
       };
 
       // Update the organization in the database
+      // Note: updated_at is automatically handled by database trigger
       const result = await this.env.DB.prepare(`
-        UPDATE organizations SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        UPDATE organizations SET config = ? WHERE id = ?
       `).bind(JSON.stringify(updatedConfig), organizationId).run();
 
       // Check if rows were actually updated using meta.changes

@@ -254,7 +254,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
         if (existingMember.role !== body.role) {
           const updateResult = await env.DB.prepare(
             `UPDATE member
-                SET role = ?, updated_at = datetime('now')
+                SET role = ?
               WHERE organization_id = ? AND user_id = ?`
           ).bind(body.role, organization.id, body.userId).run();
 
@@ -656,15 +656,14 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
       await env.DB.prepare(
         `UPDATE invitations
-            SET status = 'accepted',
-                updated_at = datetime('now')
+            SET status = 'accepted'
           WHERE id = ?`
       ).bind(invitationId).run();
 
       await env.DB.prepare(
         `INSERT INTO member (id, organization_id, user_id, role, created_at)
            VALUES (?, ?, ?, ?, ?)
-           ON CONFLICT(organization_id, user_id) DO UPDATE SET role = excluded.role, updated_at = datetime('now')`
+           ON CONFLICT(organization_id, user_id) DO UPDATE SET role = excluded.role`
       ).bind(
         crypto.randomUUID(),
         invitation.organizationId,
@@ -742,8 +741,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
       await env.DB.prepare(
         `UPDATE invitations
-            SET status = 'declined',
-                updated_at = datetime('now')
+            SET status = 'declined'
           WHERE id = ?`
       ).bind(invitationId).run();
 
