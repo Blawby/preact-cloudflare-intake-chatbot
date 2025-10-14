@@ -38,3 +38,10 @@ ENABLE_AUTH_IP_DETECTION=false
 # Google OAuth Configuration (SENSITIVE)
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+
+# Stripe Configuration (SENSITIVE)
+STRIPE_SECRET_KEY=your_stripe_secret_key_here
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret_here
+STRIPE_CONNECT_WEBHOOK_SECRET=your_stripe_connect_webhook_secret_here
+STRIPE_PRICE_ID=your_price_id_here
+STRIPE_ANNUAL_PRICE_ID=your_annual_price_id_here

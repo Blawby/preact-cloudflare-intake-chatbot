@@ -1,6 +1,7 @@
 import { createAuthClient } from "better-auth/client";
 import { organizationClient } from "better-auth/client/plugins";
 import { cloudflareClient } from "better-auth-cloudflare/client";
+import { stripeClient } from "@better-auth/stripe/client";
 
 // Safe baseURL computation for SSR/build-time compatibility
 const getBaseURL = () => {
@@ -19,7 +20,7 @@ const getBaseURL = () => {
 
 export const authClient = createAuthClient({
   baseURL: getBaseURL(),
-  plugins: [organizationClient(), cloudflareClient()],
+  plugins: [organizationClient(), cloudflareClient(), stripeClient({ subscription: true })],
   fetchOptions: {
     credentials: "include", // Important for CORS
   },
@@ -29,4 +30,3 @@ export type AuthClient = typeof authClient;
 
 // Export individual methods for easier use
 export const { signIn, signOut, signUp, getSession } = authClient;
-

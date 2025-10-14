@@ -86,10 +86,13 @@ describe('SidebarNavigation', () => {
     );
 
     const generalButton = screen.getByRole('button', { name: /General/i });
-    generalButton.focus();
+    const navElement = screen.getByRole('navigation');
+    
+    // Focus the button using fireEvent to ensure the onFocus handler is triggered
+    fireEvent.focus(generalButton);
 
-    // Press Enter to activate the item
-    fireEvent.keyDown(generalButton, { key: 'Enter' });
+    // Press Enter to activate the item - fire on the nav element where the keyboard handler is attached
+    fireEvent.keyDown(navElement, { key: 'Enter' });
 
     // Should call onItemClick with the item id
     expect(mockOnItemClick).toHaveBeenCalledWith('general');
@@ -105,10 +108,13 @@ describe('SidebarNavigation', () => {
     );
 
     const generalButton = screen.getByRole('button', { name: /General/i });
-    generalButton.focus();
+    const navElement = screen.getByRole('navigation');
+    
+    // Focus the button using fireEvent to ensure the onFocus handler is triggered
+    fireEvent.focus(generalButton);
 
-    // Press Space to activate the item
-    fireEvent.keyDown(generalButton, { key: ' ' });
+    // Press Space to activate the item - fire on the nav element where the keyboard handler is attached
+    fireEvent.keyDown(navElement, { key: ' ' });
 
     // Should call onItemClick with the item id
     expect(mockOnItemClick).toHaveBeenCalledWith('general');
@@ -230,10 +236,13 @@ describe('SidebarNavigation', () => {
     );
 
     const signOutButton = screen.getByRole('button', { name: /Sign Out/i });
-    signOutButton.focus();
+    const navElement = screen.getByRole('navigation');
+    
+    // Focus the button using fireEvent to ensure the onFocus handler is triggered
+    fireEvent.focus(signOutButton);
 
-    // Press Enter to activate the action item
-    fireEvent.keyDown(signOutButton, { key: 'Enter' });
+    // Press Enter to activate the action item - fire on the nav element where the keyboard handler is attached
+    fireEvent.keyDown(navElement, { key: 'Enter' });
 
     // Should call the action's onClick instead of onItemClick
     expect(mockOnClick).toHaveBeenCalled();

@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { UserIcon, Cog6ToothIcon, SparklesIcon, QuestionMarkCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { authClient } from '../lib/authClient';
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
 import { useNavigation } from '../utils/navigation';
 import { type SubscriptionTier } from '../utils/mockUserData';
-import { mockPricingDataService } from '../utils/mockPricingData';
+import { getTierDisplayName } from '../utils/stripe-products';
 import { debounce } from '../utils/debounce';
 import { useTranslation } from 'react-i18next';
+import { useOrganizationManagement } from '../hooks/useOrganizationManagement';
 
 interface User {
   id: string;
@@ -26,12 +27,67 @@ interface UserProfileProps {
 
 const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   const { t } = useTranslation(['profile', 'common']);
+  const { currentOrganization, loading: orgLoading } = useOrganizationManagement();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const requestIdRef = useRef(0);
   const { navigateToAuth, navigate } = useNavigation();
+
+  const checkAuthStatus = useCallback(async () => {
+    // Increment request ID to cancel previous requests
+    const currentRequestId = ++requestIdRef.current;
+    
+    try {
+      // Get session from Better Auth
+      const session = await authClient.getSession();
+      
+      // Check if this request is still current (not cancelled)
+      if (currentRequestId !== requestIdRef.current) {
+        return; // Ignore stale response
+      }
+      
+      if (session?.data?.user) {
+        // Use organization tier directly (no mapping needed)
+        const orgTier = currentOrganization?.subscriptionTier;
+        const displayTier = orgTier || 'free';
+        
+        // User is authenticated, create user object with real subscription tier
+        const userWithTier = {
+          id: session.data.user.id,
+          name: session.data.user.name,
+          email: session.data.user.email,
+          image: session.data.user.image,
+          organizationId: currentOrganization?.id || null,
+          role: 'user', // Default role
+          phone: null,
+          subscriptionTier: displayTier as SubscriptionTier
+        };
+        setUser(userWithTier);
+      } else {
+        // No session means user is signed out
+        setUser(null);
+      }
+    } catch (error) {
+      // Check if this request is still current (not cancelled)
+      if (currentRequestId !== requestIdRef.current) {
+        return; // Ignore stale response
+      }
+      
+      console.error('Error checking auth status:', error);
+      if (error instanceof Error && error.message.includes('fetch')) {
+        console.warn('Network error checking auth status - user may be offline');
+      }
+      setUser(null);
+    }
+    
+    // Only update loading state if this is still the current request
+    if (currentRequestId === requestIdRef.current) {
+      setLoading(false);
+    }
+  }, [currentOrganization]);
 
   useEffect(() => {
     checkAuthStatus();
@@ -60,7 +116,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       debouncedResizeHandler.cancel();
       window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
     };
-  }, []);
+  }, [checkAuthStatus]);
 
   // Handle dropdown close when clicking outside
   useEffect(() => {
@@ -79,38 +135,18 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     };
   }, [showDropdown]);
 
-
-  const checkAuthStatus = async () => {
-    try {
-      // Get session from Better Auth
-      const session = await authClient.getSession();
-      
-      if (session?.data?.user) {
-        // User is authenticated, create user object with subscription tier
-        const userWithTier = {
-          id: session.data.user.id,
-          name: session.data.user.name,
-          email: session.data.user.email,
-          image: session.data.user.image,
-          organizationId: null, // Will be populated from organization context if needed
-          role: 'user', // Default role
-          phone: null,
-          subscriptionTier: 'free' as SubscriptionTier // Default to free tier
-        };
-        setUser(userWithTier);
-      } else {
-        // No session means user is signed out
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      if (error instanceof Error && error.message.includes('fetch')) {
-        console.warn('Network error checking auth status - user may be offline');
-      }
-      setUser(null);
+  // Initial load when organization data is available
+  useEffect(() => {
+    if (!orgLoading && currentOrganization) {
+      checkAuthStatus();
     }
-    setLoading(false);
-  };
+  }, [orgLoading, currentOrganization, checkAuthStatus]);
+
+  // Re-run when organization tier changes
+  useEffect(() => {
+    if (user) checkAuthStatus();
+  }, [user, currentOrganization?.subscriptionTier, checkAuthStatus]);
+
 
 
   const handleSignIn = () => {
@@ -120,7 +156,6 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
 
 
   const handleUpgrade = () => {
-    // Navigate to #pricing hash to open the modal
     window.location.hash = '#pricing';
   };
 
@@ -172,9 +207,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   };
 
 
-  const getTierDisplayName = (tier: SubscriptionTier) => {
-    return mockPricingDataService.getTierDisplayName(tier);
-  };
+  const tierDisplay = (tier: SubscriptionTier) => getTierDisplayName(tier);
 
   const getInitials = (name: string) => {
     return name
@@ -205,8 +238,8 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     
     return (
       <div className="absolute bottom-full right-0 mb-2 w-full max-w-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-        {/* Upgrade Plan */}
-        {user.subscriptionTier === 'free' && (
+        {/* Upgrade Plan - unified for all non-enterprise tiers */}
+        {user.subscriptionTier !== 'enterprise' && (
           <button
             onClick={handleUpgradeClick}
             className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
@@ -310,14 +343,14 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
               </div>
               <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={user.name}>{user.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-300 truncate" title={getTierDisplayName(user.subscriptionTier || 'free')}>
-                  {getTierDisplayName(user.subscriptionTier || 'free')}
+                <p className="text-xs text-gray-500 dark:text-gray-300 truncate" title={tierDisplay(user.subscriptionTier || 'free')}>
+                  {tierDisplay(user.subscriptionTier || 'free')}
                 </p>
               </div>
             </button>
             
-            {/* Upgrade Button - inline with profile */}
-            {user.subscriptionTier === 'free' && (
+            {/* Upgrade Button - unified for all non-enterprise tiers */}
+            {user.subscriptionTier !== 'enterprise' && (
               <button
                 onClick={handleUpgrade}
                 className="px-2 py-1 text-xs font-medium text-gray-900 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
@@ -325,6 +358,13 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
               >
                 {t('profile:menu.upgradeShort')}
               </button>
+            )}
+            
+            {/* Enterprise Badge - non-clickable for max tier users */}
+            {user.subscriptionTier === 'enterprise' && (
+              <span className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full flex-shrink-0">
+                Enterprise
+              </span>
             )}
             
             {/* Dropdown - only show on desktop */}

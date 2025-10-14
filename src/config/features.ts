@@ -74,6 +74,12 @@ interface FeatureFlags {
      */
     enableLeadQualification: boolean;
 
+    /**
+     * Enable multiple organizations feature
+     * When false, users can only have one organization
+     * When true, users can create and manage multiple organizations
+     */
+    enableMultipleOrganizations: boolean;
 
 }
 
@@ -90,6 +96,7 @@ const baseFeatureConfig: FeatureFlags = {
     enableMobileBottomNav: false, // Temporarily hide mobile bottom nav
     enablePaymentIframe: false, // Disable payment iframe/drawer - only show "Open in Browser" button
     enableLeadQualification: true, // Enable lead qualification flow - AI asks questions before contact form
+    enableMultipleOrganizations: true, // Enable multiple organizations feature
 };
 
 // DEV-only overrides (computed via spread, no mutation)

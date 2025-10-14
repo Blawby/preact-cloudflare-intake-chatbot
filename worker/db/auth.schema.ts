@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, primaryKey, unique } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, unique, index } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -7,6 +8,7 @@ export const users = sqliteTable("users", {
   name: text("name"),
   image: text("image"),
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  stripeCustomerId: text("stripe_customer_id").unique(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
@@ -57,16 +59,43 @@ export const organizations = sqliteTable("organizations", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  stripeCustomerId: text("stripe_customer_id").unique(),
+  subscriptionTier: text("subscription_tier", { enum: ["free", "plus", "business", "enterprise"] }).default("free"),
+  seats: integer("seats").default(1),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
+}, (_table) => ({
+  // Check constraint for seats > 0 (enforced at DB level in schema.sql)
+  // seatsPositive: check("seats_positive", sql`${table.seats} > 0`), // SQLite doesn't support named check constraints in Drizzle
+}));
 
-export const organizationMembers = sqliteTable("organization_members", {
+export const member = sqliteTable("member", {
+  id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
   organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 }, (table) => ({
-  pk: primaryKey({ columns: [table.organizationId, table.userId] }),
+  uniqueOrgUser: unique("unique_org_user").on(table.organizationId, table.userId),
+  memberOrgIdx: index("member_org_idx").on(table.organizationId),
+  memberUserIdx: index("member_user_idx").on(table.userId),
+}));
+
+export const subscriptions = sqliteTable("subscriptions", {
+  id: text("id").primaryKey(),
+  plan: text("plan").notNull(),
+  referenceId: text("reference_id").notNull().references(() => organizations.id, { onDelete: "cascade" }), // References organizations.id for organization-level subscriptions
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  status: text("status").notNull().default("incomplete"), // Validated by CHECK constraint in SQL
+  periodStart: integer("period_start", { mode: "timestamp" }),
+  periodEnd: integer("period_end", { mode: "timestamp" }),
+  trialStart: integer("trial_start", { mode: "timestamp" }),
+  trialEnd: integer("trial_end", { mode: "timestamp" }),
+  cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).default(false).notNull(),
+  seats: integer("seats"), // Validated by CHECK constraint in SQL (seats > 0)
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(strftime('%s', 'now') * 1000)`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (_table) => ({
+  // Foreign key constraints are now defined in Drizzle schema to match SQL schema
+  // stripeSubscriptionIdUnique: unique("stripe_subscription_id_unique").on(table.stripeSubscriptionId), // Now handled by .unique() on column
 }));

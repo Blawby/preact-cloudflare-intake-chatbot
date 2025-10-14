@@ -64,6 +64,21 @@ export const getPaymentStatusEndpoint = (paymentId: string) => {
   return `${config.baseUrl}/api/payment/status/${encodedId}`;
 };
 
+export const getSubscriptionUpgradeEndpoint = () => {
+  const config = getApiConfig();
+  return `${config.baseUrl}/api/auth/subscription/upgrade`;
+};
+
+export const getSubscriptionBillingPortalEndpoint = () => {
+  const config = getApiConfig();
+  return `${config.baseUrl}/api/auth/subscription/billing-portal`;
+};
+
+export const getSubscriptionSyncEndpoint = () => {
+  const config = getApiConfig();
+  return `${config.baseUrl}/api/subscription/sync`;
+};
+
 export const getOrganizationWorkspaceEndpoint = (orgId: string, resource: string) => {
   const config = getApiConfig();
   return `${config.baseUrl}/api/organizations/${encodeURIComponent(orgId)}/workspace/${encodeURIComponent(resource)}`;

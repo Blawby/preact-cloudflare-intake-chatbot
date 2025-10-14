@@ -1,6 +1,14 @@
 import { FunctionComponent } from 'preact';
-import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
+import { getBusinessPrices } from '../utils/stripe-products';
 import { type SubscriptionTier } from '../utils/mockUserData';
+import { 
+  ChatBubbleLeftRightIcon, 
+  DocumentTextIcon, 
+  UserGroupIcon, 
+  ShieldCheckIcon,
+  ClockIcon,
+  CloudIcon
+} from '@heroicons/react/24/outline';
 
 interface PricingComparisonProps {
   currentTier?: SubscriptionTier;
@@ -15,9 +23,94 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
   showAllPlans = true,
   className = ''
 }) => {
-  const plans = showAllPlans 
-    ? mockPricingDataService.getPricingPlans()
-    : mockPricingDataService.getUpgradePath(currentTier);
+  const prices = getBusinessPrices();
+  
+  const allPlans = [
+    {
+      id: 'free',
+      name: 'Free',
+      price: '$0 USD / month',
+      description: 'Legal AI assistance for everyday needs',
+      features: [
+        {
+          icon: ChatBubbleLeftRightIcon,
+          text: 'Basic AI chat assistance',
+          description: 'Get help with general legal questions'
+        },
+        {
+          icon: DocumentTextIcon,
+          text: 'Document analysis',
+          description: 'Upload and analyze up to 3 documents per month'
+        },
+        {
+          icon: ClockIcon,
+          text: 'Standard response time',
+          description: 'Responses within 24 hours'
+        }
+      ],
+      buttonText: 'Your current plan',
+      isRecommended: false,
+      popular: false,
+      limitations: [
+        'Limited to 3 document uploads per month',
+        'No team collaboration features',
+        'Basic AI responses only',
+        'No priority support'
+      ],
+      benefits: [
+        'Perfect for personal use',
+        'No credit card required',
+        'Full access to basic features'
+      ]
+    },
+    {
+      id: 'business',
+      name: 'Business',
+      price: prices.monthly,
+      description: 'Secure, collaborative workspace for organizations',
+      features: [
+        {
+          icon: UserGroupIcon,
+          text: 'Team collaboration',
+          description: 'Unlimited team members and shared workspaces'
+        },
+        {
+          icon: DocumentTextIcon,
+          text: 'Unlimited document analysis',
+          description: 'Upload and analyze unlimited documents'
+        },
+        {
+          icon: ShieldCheckIcon,
+          text: 'Advanced security',
+          description: 'Enterprise-grade security and compliance'
+        },
+        {
+          icon: CloudIcon,
+          text: 'Cloud storage',
+          description: 'Secure cloud storage for all documents'
+        },
+        {
+          icon: ClockIcon,
+          text: 'Priority support',
+          description: '24/7 priority customer support'
+        }
+      ],
+      buttonText: 'Get Business',
+      isRecommended: currentTier !== 'business',
+      popular: true,
+      limitations: [],
+      benefits: [
+        'Unlimited document processing',
+        'Team collaboration tools',
+        'Advanced AI capabilities',
+        'Priority customer support',
+        'Custom integrations available'
+      ]
+    }
+  ];
+
+  // Filter plans based on showAllPlans prop
+  const plans = showAllPlans ? allPlans : allPlans.filter(plan => plan.id !== 'free');
 
   return (
     <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${className}`}>
@@ -62,7 +155,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
 
           {/* Action Button */}
           <button
-            onClick={() => onUpgrade?.(plan.id)}
+            onClick={() => onUpgrade?.(plan.id as SubscriptionTier)}
             disabled={plan.id === currentTier}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-colors mb-6 ${
               plan.id === currentTier

@@ -20,6 +20,9 @@ export interface Organization {
   domain?: string;
   metadata?: Record<string, unknown>;
   config: OrganizationConfig;
+  stripeCustomerId?: string | null;
+  subscriptionTier?: 'free' | 'plus' | 'business' | 'enterprise' | null;
+  seats?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -364,7 +367,7 @@ export class OrganizationService {
       // Query Better Auth organizations table - support both ID and slug lookups
       console.log('Querying database for organization...');
       const orgRow = await this.env.DB.prepare(
-        'SELECT id, name, slug, domain, config, created_at, updated_at FROM organizations WHERE id = ? OR slug = ?'
+        'SELECT id, name, slug, domain, config, stripe_customer_id, subscription_tier, seats, created_at, updated_at FROM organizations WHERE id = ? OR slug = ?'
       ).bind(organizationId, organizationId).first();
       
       if (orgRow) {
@@ -387,6 +390,13 @@ export class OrganizationService {
           slug: orgRow.slug as string,
           domain: orgRow.domain as string | undefined,
           config: normalizedConfig,
+          stripeCustomerId: (orgRow as Record<string, unknown>).stripe_customer_id as string | null | undefined,
+          subscriptionTier: (orgRow as Record<string, unknown>).subscription_tier as 'free' | 'plus' | 'business' | 'enterprise' | null | undefined,
+          seats: (() => {
+            const rawSeats = (orgRow as Record<string, unknown>).seats;
+            const numSeats = Number(rawSeats ?? 1);
+            return isNaN(numSeats) ? 1 : numSeats;
+          })(),
           createdAt: new Date(orgRow.created_at as string).getTime(),
           updatedAt: updatedAt,
         };
@@ -415,9 +425,9 @@ export class OrganizationService {
       if (userId) {
         // Get organizations where user is a member
         const orgRows = await this.env.DB.prepare(`
-          SELECT o.id, o.name, o.slug, o.domain, o.config, o.created_at, o.updated_at
+          SELECT o.id, o.name, o.slug, o.domain, o.config, o.stripe_customer_id, o.subscription_tier, o.seats, o.created_at, o.updated_at
           FROM organizations o
-          INNER JOIN members m ON o.id = m.organization_id
+          INNER JOIN member m ON o.id = m.organization_id
           WHERE m.user_id = ?
           ORDER BY o.created_at DESC
         `).bind(userId).all();
@@ -433,6 +443,9 @@ export class OrganizationService {
             slug: row.slug as string,
             domain: row.domain as string | undefined,
             config: normalizedConfig,
+            stripeCustomerId: row.stripe_customer_id as string | undefined,
+            subscriptionTier: row.subscription_tier as 'free' | 'plus' | 'business' | 'enterprise' | null | undefined,
+            seats: Number(row.seats ?? 1) || 1,
             createdAt: new Date(row.created_at as string).getTime(),
             updatedAt: row.updated_at && !isNaN(new Date(row.updated_at as string).getTime())
               ? new Date(row.updated_at as string).getTime()
@@ -442,7 +455,7 @@ export class OrganizationService {
       } else {
         // Get all organizations (for admin purposes)
         const orgRows = await this.env.DB.prepare(`
-          SELECT id, name, slug, domain, config, created_at, updated_at
+          SELECT id, name, slug, domain, config, stripe_customer_id, subscription_tier, seats, created_at, updated_at
           FROM organizations
           ORDER BY created_at DESC
         `).all();
@@ -458,6 +471,9 @@ export class OrganizationService {
             slug: row.slug as string,
             domain: row.domain as string | undefined,
             config: normalizedConfig,
+            stripeCustomerId: row.stripe_customer_id as string | undefined,
+            subscriptionTier: row.subscription_tier as 'free' | 'plus' | 'business' | 'enterprise' | null | undefined,
+            seats: Number(row.seats ?? 1) || 1,
             createdAt: new Date(row.created_at as string).getTime(),
             updatedAt: row.updated_at && !isNaN(new Date(row.updated_at as string).getTime())
               ? new Date(row.updated_at as string).getTime()
@@ -526,8 +542,13 @@ export class OrganizationService {
     // Validate and normalize the organization configuration
     const normalizedConfig = this.validateAndNormalizeConfig(organizationData.config, true, id);
     
+    const defaultSeats = Number(organizationData.seats ?? 1) || 1;
+
     const organization: Organization = {
       ...organizationData,
+      stripeCustomerId: organizationData.stripeCustomerId ?? null,
+      subscriptionTier: organizationData.subscriptionTier ?? 'free',
+      seats: defaultSeats,
       config: normalizedConfig,
       id,
       createdAt: new Date(now).getTime(),
@@ -538,14 +559,17 @@ export class OrganizationService {
     
     try {
       const result = await this.env.DB.prepare(`
-        INSERT INTO organizations (id, slug, name, domain, config, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO organizations (id, slug, name, domain, config, stripe_customer_id, subscription_tier, seats, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         organization.id,
         organization.slug,
         organization.name,
         organization.domain ?? null,
         JSON.stringify(organization.config),
+        organization.stripeCustomerId ?? null,
+        organization.subscriptionTier ?? 'free',
+        organization.seats ?? 1,
         organization.createdAt,
         organization.updatedAt
       ).run();
@@ -589,15 +613,22 @@ export class OrganizationService {
       updatedAt: new Date().getTime()
     };
 
+    updatedOrganization.stripeCustomerId = updatedOrganization.stripeCustomerId ?? null;
+    updatedOrganization.subscriptionTier = updatedOrganization.subscriptionTier ?? existingOrganization.subscriptionTier ?? 'free';
+    updatedOrganization.seats = Number(updatedOrganization.seats ?? existingOrganization.seats ?? 1) || 1;
+
     await this.env.DB.prepare(`
       UPDATE organizations 
-      SET slug = ?, name = ?, domain = ?, config = ?, updated_at = ?
+      SET slug = ?, name = ?, domain = ?, config = ?, stripe_customer_id = ?, subscription_tier = ?, seats = ?, updated_at = ?
       WHERE id = ?
     `).bind(
       updatedOrganization.slug,
       updatedOrganization.name,
       updatedOrganization.domain,
       JSON.stringify(updatedOrganization.config),
+      updatedOrganization.stripeCustomerId ?? null,
+      updatedOrganization.subscriptionTier ?? 'free',
+      updatedOrganization.seats ?? 1,
       updatedOrganization.updatedAt,
       organizationId
     ).run();
@@ -858,8 +889,9 @@ export class OrganizationService {
       };
 
       // Update the organization in the database
+      // Note: updated_at is automatically handled by database trigger
       const result = await this.env.DB.prepare(`
-        UPDATE organizations SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        UPDATE organizations SET config = ? WHERE id = ?
       `).bind(JSON.stringify(updatedConfig), organizationId).run();
 
       // Check if rows were actually updated using meta.changes

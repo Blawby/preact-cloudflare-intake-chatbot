@@ -1,212 +1,160 @@
-import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
-import { getPaymentUpgradeEndpoint, getPaymentStatusEndpoint } from '../config/api';
+import { useState, useCallback } from 'preact/hooks';
+import {
+  getSubscriptionUpgradeEndpoint,
+  getSubscriptionBillingPortalEndpoint,
+  getSubscriptionSyncEndpoint,
+} from '../config/api';
 import { useToastContext } from '../contexts/ToastContext';
 
-export interface CreateSubscriptionRequest {
-  organizationName: string;
-  existingOrganizationId?: string;
-  price_id: string; // Stripe Price ID
-  quantity: number;
-  billing: {
-    name: string;
-    email: string;
-    address: {
-      line1: string;
-      city: string;
-      postal_code: string;
-      country: string;
-    };
-  };
+export interface SubscriptionUpgradeRequest {
+  organizationId: string;
+  seats?: number | null;
+  annual?: boolean;
+  successUrl?: string;
+  cancelUrl?: string;
 }
 
-export interface PaymentUpgradeResponse {
-  success: boolean;
-  paymentId?: string;
-  redirectUrl?: string;
-  invoiceUrl?: string;
-  error?: string;
-}
-
-export interface PaymentStatusResponse {
-  success: boolean;
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
-  paymentId: string;
-  error?: string;
+export interface BillingPortalRequest {
+  organizationId: string;
+  returnUrl?: string;
 }
 
 export const usePaymentUpgrade = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed' | 'cancelled'>('idle');
-  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
-  const pollingTimeoutRef = useRef<number | null>(null);
-  const isPollingRef = useRef(false);
-  const { showSuccess, showError } = useToastContext();
+  const { showError, showSuccess } = useToastContext();
 
-      const submitUpgrade = useCallback(async (data: CreateSubscriptionRequest): Promise<void> => {
-    setSubmitting(true);
-    setError(null);
-    setPaymentStatus('pending');
-
-    try {
-      const response = await fetch(getPaymentUpgradeEndpoint(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json() as PaymentUpgradeResponse;
-      
-      if (result.success) {
-        setPaymentId(result.paymentId || null);
-        setInvoiceUrl(result.invoiceUrl || null);
-        setPaymentStatus('pending');
-        showSuccess(
-          'Upgrade Submitted',
-          'Your business plan upgrade is being processed.'
-        );
-      } else {
-        throw new Error(result.error || 'Upgrade submission failed');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Upgrade submission failed';
-      setError(errorMessage);
-      setPaymentStatus('failed');
-      showError(
-        'Upgrade Failed',
-        'There was an error submitting your upgrade. Please try again.'
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }, [showSuccess, showError]);
-
-  const checkPaymentStatus = useCallback(async (paymentId: string): Promise<PaymentStatusResponse> => {
-    try {
-      const response = await fetch(getPaymentStatusEndpoint(paymentId), {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json() as PaymentStatusResponse;
-      
-      if (result.success) {
-        setPaymentStatus(result.status);
-        
-        if (result.status === 'completed') {
-          showSuccess(
-            'Payment Successful',
-            'Your organization has been upgraded successfully!'
-          );
-        } else if (result.status === 'failed') {
-          showError(
-            'Payment Failed',
-            'Your payment could not be processed. Please try again.'
-          );
-        }
-      }
-
-      return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to check payment status';
-      setError(errorMessage);
-      return { 
-        success: false, 
-        status: (paymentStatus === 'idle' ? 'pending' : paymentStatus) as 'pending' | 'completed' | 'failed' | 'cancelled', 
-        paymentId, 
-        error: errorMessage 
-      };
-    }
-  }, [showSuccess, showError, paymentStatus]);
-
-  const stopPolling = useCallback(() => {
-    isPollingRef.current = false;
-    if (pollingTimeoutRef.current !== null) {
-      window.clearTimeout(pollingTimeoutRef.current);
-      pollingTimeoutRef.current = null;
-    }
+  const buildSuccessUrl = useCallback((organizationId: string) => {
+    if (typeof window === 'undefined') return '/settings/account';
+    const url = new URL(window.location.origin + '/settings/account');
+    url.searchParams.set('organizationId', organizationId);
+    url.searchParams.set('sync', '1');
+    return url.toString();
   }, []);
 
-  const pollPaymentStatus = useCallback((paymentId: string, maxRetries: number = 20) => {
-    // Clear any existing polling
-    if (pollingTimeoutRef.current !== null) {
-      window.clearTimeout(pollingTimeoutRef.current);
-      pollingTimeoutRef.current = null;
-    }
-    isPollingRef.current = true;
+  const buildCancelUrl = useCallback((organizationId: string) => {
+    if (typeof window === 'undefined') return '/settings/account';
+    const url = new URL(window.location.origin + '/settings/account');
+    url.searchParams.set('organizationId', organizationId);
+    url.searchParams.set('cancelled', '1');
+    return url.toString();
+  }, []);
 
-    let retryCount = 0;
-
-    // Start sequential polling
-    const poll = async () => {
-      if (!isPollingRef.current) return;
-      // Check if we've exceeded max retries
-      if (retryCount >= maxRetries) {
-        stopPolling();
-        setError('Payment status check timed out after maximum retries');
-        showError(
-          'Payment Status Timeout',
-          'Unable to verify payment status. Please check your account or contact support.'
-        );
-        return;
-      }
-
-      retryCount++;
+  const submitUpgrade = useCallback(
+    async ({ organizationId, seats = 1, annual = false, successUrl, cancelUrl }: SubscriptionUpgradeRequest): Promise<void> => {
+      setSubmitting(true);
+      setError(null);
 
       try {
-        const result = await checkPaymentStatus(paymentId);
+        const requestBody: Record<string, unknown> = {
+          plan: 'business',
+          referenceId: organizationId,
+          annual,
+          successUrl: successUrl ?? buildSuccessUrl(organizationId),
+          cancelUrl: cancelUrl ?? buildCancelUrl(organizationId),
+          returnUrl: successUrl ?? buildSuccessUrl(organizationId), // Add required returnUrl parameter
+        };
+        if (seats > 1) {
+          requestBody.seats = seats;
+        }
         
-        // Stop polling if payment is completed or failed
-        if (result.status === 'completed' || result.status === 'failed' || result.status === 'cancelled') {
-          stopPolling();
-        } else {
-          // Schedule next poll after 3 seconds
-          if (isPollingRef.current) {
-            pollingTimeoutRef.current = window.setTimeout(poll, 3000);
+
+        const response = await fetch(getSubscriptionUpgradeEndpoint(), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result || !result.url) {
+          if (import.meta.env.DEV) {
+            // Only log in development, and sanitize sensitive data
+            const sanitizedResult = {
+              error: result?.error,
+              success: result?.success,
+              errorCode: result?.errorCode,
+              // Exclude sensitive fields like organizationId, subscription details, etc.
+            };
+            console.error('❌ Subscription upgrade failed with response:', sanitizedResult);
           }
+          const message = result?.error || 'Unable to initiate Stripe checkout';
+          throw new Error(message);
         }
-      } catch (_err) {
-        // Network error or other exception - schedule retry
-        if (isPollingRef.current) {
-          pollingTimeoutRef.current = window.setTimeout(poll, 3000);
-        }
+
+        window.location.href = result.url as string;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Upgrade failed';
+        setError(message);
+        showError('Upgrade Failed', message);
+      } finally {
+        setSubmitting(false);
       }
-    };
+    },
+    [buildCancelUrl, buildSuccessUrl, showError]
+  );
 
-    // Start the first poll
-    poll();
-  }, [checkPaymentStatus, showError, stopPolling]);
+  const openBillingPortal = useCallback(
+    async ({ organizationId, returnUrl }: BillingPortalRequest) => {
+      try {
+        const response = await fetch(getSubscriptionBillingPortalEndpoint(), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            referenceId: organizationId,
+            returnUrl: returnUrl ?? '/settings/account',
+          }),
+        });
 
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      stopPolling();
-    };
-  }, [stopPolling]);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result?.url) {
+          const message = result?.error || 'Unable to open billing portal';
+          throw new Error(message);
+        }
+
+        window.location.href = result.url as string;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to open billing portal';
+        showError('Billing Portal Error', message);
+      }
+    },
+    [showError]
+  );
+
+  const syncSubscription = useCallback(
+    async (organizationId: string) => {
+      try {
+        const response = await fetch(getSubscriptionSyncEndpoint(), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ organizationId }),
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.success === false) {
+          const message = result?.error || 'Failed to refresh subscription status';
+          throw new Error(message);
+        }
+
+        showSuccess('Subscription updated', 'Your subscription status has been refreshed.');
+        return result?.subscription ?? null;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to refresh subscription status';
+        showError('Subscription Sync Error', message);
+        return null;
+      }
+    },
+    [showError, showSuccess]
+  );
 
   return {
-    submitUpgrade,
-    checkPaymentStatus,
-    pollPaymentStatus,
-    stopPolling,
     submitting,
     error,
-    paymentStatus,
-    invoiceUrl,
-    paymentId,
+    submitUpgrade,
+    openBillingPortal,
+    syncSubscription,
   };
 };

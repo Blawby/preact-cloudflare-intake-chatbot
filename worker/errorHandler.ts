@@ -70,6 +70,7 @@ export const HttpErrors = {
   notFound: (message: string = 'Not found', details?: unknown) => createHttpError(404, message, details),
   methodNotAllowed: (message: string = 'Method not allowed', details?: unknown) => createHttpError(405, message, details),
   payloadTooLarge: (message: string = 'Payload too large', details?: unknown) => createHttpError(413, message, details),
+  paymentRequired: (message: string = 'Payment required', details?: unknown) => createHttpError(402, message, details),
   conflict: (message: string, details?: unknown) => createHttpError(409, message, details),
   unprocessableEntity: (message: string, details?: unknown) => createHttpError(422, message, details),
   tooManyRequests: (message: string = 'Too many requests', details?: unknown) => createHttpError(429, message, details),

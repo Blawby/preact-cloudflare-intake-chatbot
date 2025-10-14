@@ -5,18 +5,17 @@ import Modal from './Modal';
 import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Select } from './ui/input/Select';
-import { QuantitySelector } from './cart/QuantitySelector';
 import { type SubscriptionTier } from '../utils/mockUserData';
-import { mockPricingDataService, type PricingPlan } from '../utils/mockPricingData';
+import { getBusinessPrices } from '../utils/stripe-products';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
-import { handleError } from '../utils/errorHandler';
-import { useToastContext } from '../contexts/ToastContext';
+// import { useToastContext } from '../contexts/ToastContext';
+// import { useTranslation } from 'react-i18next';
 
 interface PricingModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentTier?: SubscriptionTier;
-  onUpgrade?: (tier: SubscriptionTier) => void;
+  onUpgrade?: (tier: SubscriptionTier) => Promise<void> | void;
 }
 
 
@@ -27,10 +26,8 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   onUpgrade
 }) => {
   const { navigate } = useNavigation();
-  const { showWarning } = useToastContext();
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
-  const [selectedQuantity, setSelectedQuantity] = useState(2);
 
   // Generate country options with language information
   const countryOptions = [
@@ -248,80 +245,119 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
     });
   };
 
-  // Get pricing plans from mock data service
-  const allPlans = mockPricingDataService.getPricingPlans();
+  // Build pricing plans from real Stripe config
+  const prices = getBusinessPrices();
+  const allPlans = [
+    {
+      id: 'free' as SubscriptionTier,
+      name: 'Free',
+      price: '$0 USD / month',
+      description: 'Legal AI assistance for everyday needs',
+      features: [],
+      buttonText: 'Your current plan',
+      isRecommended: currentTier === 'free',
+    },
+    // Plus tier temporarily hidden until backend Stripe integration is complete
+    // {
+    //   id: 'plus' as SubscriptionTier,
+    //   name: 'Plus',
+    //   price: '$20 USD / month',
+    //   description: 'Enhanced AI capabilities for individual professionals',
+    //   features: [],
+    //   buttonText: 'Get Plus',
+    //   isRecommended: currentTier === 'free',
+    // },
+    {
+      id: 'business' as SubscriptionTier,
+      name: 'Business',
+      price: prices.monthly,
+      description: 'Secure, collaborative workspace for organizations',
+      features: [],
+      buttonText: 'Get Business',
+      isRecommended: currentTier === 'free' || currentTier === 'plus',
+    },
+    {
+      id: 'enterprise' as SubscriptionTier,
+      name: 'Enterprise',
+      price: 'Contact sales',
+      description: 'Custom solutions for large organizations',
+      features: [],
+      buttonText: 'Contact Sales',
+      isRecommended: currentTier === 'business',
+    },
+  ];
   
-  // Show different plans based on selected tab
-  const mainPlans: PricingPlan[] = (() => {
+  // Define upgrade paths - include current tier to show it
+  // Plus tier temporarily removed from upgrade paths until backend support is added
+  const upgradeTiers = {
+    'free': ['free', 'business'],
+    'plus': ['plus', 'business'],  // Keep for existing plus users
+    'business': ['business', 'enterprise'],
+    'enterprise': ['enterprise']
+  };
+  
+  // Show different plans based on selected tab and current tier
+  type SimplePlan = { id: SubscriptionTier; name: string; price: string; description: string; features: Array<{ icon?: unknown; text?: string }>; buttonText: string; isRecommended: boolean; isCurrent?: boolean };
+  const mainPlans: SimplePlan[] = (() => {
+    const availableTiers = upgradeTiers[currentTier] || [];
+    
     if (selectedTab === 'personal') {
-      // Personal tab: show Free and Plus (Plus is recommended)
       return allPlans
-        .filter(plan => plan.id !== 'business')
-        .map(plan => ({
-          ...plan,
-          isCurrent: plan.id === currentTier,
-          buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText,
-          isRecommended: plan.id === 'plus' // Plus is recommended for personal
-        }));
+        .filter(plan => availableTiers.includes(plan.id) && plan.id !== 'business')
+        .map(plan => {
+          const isCurrent = plan.id === currentTier;
+          return {
+            ...plan,
+            isCurrent,
+            buttonText: isCurrent ? 'Your current plan' : plan.buttonText,
+            // Recommended = show current for clarity on personal tab
+            isRecommended: isCurrent
+          };
+        });
     } else {
-      // Business tab: show Free and Business (Business is recommended)
       return allPlans
-        .filter(plan => plan.id !== 'plus')
-        .map(plan => ({
-          ...plan,
-          isCurrent: plan.id === currentTier,
-          buttonText: plan.id === currentTier ? 'Your current plan' : plan.buttonText,
-          isRecommended: plan.id === 'business' // Business is recommended for business
-        }));
+        .filter(plan => availableTiers.includes(plan.id))
+        .map(plan => {
+          const isCurrent = plan.id === currentTier;
+          return {
+            ...plan,
+            isCurrent,
+            buttonText: isCurrent ? 'Your current plan' : plan.buttonText,
+            // Recommended = highlight Business when user is not already on it
+            isRecommended: !isCurrent && plan.id === 'business' && (currentTier === 'free' || currentTier === 'plus')
+          };
+        });
     }
   })();
-  
 
-  const handleUpgrade = (tier: SubscriptionTier) => {
-    if (tier === 'business') {
-      // Find the selected plan to get its productId and priceId
-      const selectedPlan = allPlans.find(plan => plan.id === tier);
-      
-      // Use plan properties with safe fallbacks
-      const productId = selectedPlan?.productId || 'prod_business';
-      const priceId = selectedPlan?.priceId || 'price_monthly';
-      
-      // Store cart data and navigate to cart
-      try {
-        localStorage.setItem('cartData', JSON.stringify({
-          product_id: productId,
-          price_id: priceId,
-          quantity: selectedQuantity
-        }));
-      } catch (error) {
-        // Handle localStorage failures (private mode, quota exceeded, etc.)
-        handleError(error, {
-          component: 'PricingModal',
-          action: 'store-cart-data',
-          tier,
-          quantity: selectedQuantity,
-          productId,
-          priceId
-        });
-        
-        // Show user-friendly warning about cart data storage failure
-        showWarning(
-          'Cart data not saved',
-          'Your cart data could not be saved locally. You may need to re-select your options on the cart page.',
-          5000
-        );
-      }
-      
-      // Continue with navigation and callbacks regardless of storage success/failure
-      navigate('/cart');
+  // Determine if we should show the tab selector
+  // Only show tabs if there are different plans available for each tab
+  const shouldShowTabs = (() => {
+    // Business, enterprise, and plus users don't need tab selector
+    // They can only see their current plan + enterprise upgrade (business)
+    // Or just their current plan (enterprise/plus)
+    if (currentTier === 'business' || currentTier === 'enterprise' || currentTier === 'plus') return false;
+    
+    // Free users see tabs for personal vs business upgrade paths
+    return true;
+  })();
+
+  const handleUpgrade = async (tier: SubscriptionTier) => {
+    try {
+      // Call callbacks before navigation to ensure they complete
       if (onUpgrade) {
-        onUpgrade(tier);
+        await onUpgrade(tier);
       }
+
+      // Navigate to cart with the selected tier
+      navigate(`/cart?tier=${tier}`);
+
+      // Close modal after navigation
       onClose();
-    } else {
-      if (onUpgrade) {
-        onUpgrade(tier);
-      }
+    } catch (error) {
+      console.error('Error during upgrade process:', error);
+      // Still navigate and close modal even if callback fails
+      navigate(`/cart?tier=${tier}`);
       onClose();
     }
   };
@@ -353,44 +389,35 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
           {/* Centered Content */}
           <div className="flex flex-col items-center space-y-6">
             <h1 className="text-2xl font-semibold text-white">Upgrade your plan</h1>
-            <div className="flex bg-dark-card-bg rounded-lg p-1">
-              <button
-                onClick={() => setSelectedTab('personal')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedTab === 'personal'
-                    ? 'bg-dark-bg text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Personal
-              </button>
-              <button
-                onClick={() => setSelectedTab('business')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedTab === 'business'
-                    ? 'bg-dark-bg text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Business
-              </button>
-            </div>
+            {shouldShowTabs && (
+              <div className="flex bg-dark-card-bg rounded-lg p-1">
+                <button
+                  onClick={() => setSelectedTab('personal')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedTab === 'personal'
+                      ? 'bg-dark-bg text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Personal
+                </button>
+                <button
+                  onClick={() => setSelectedTab('business')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedTab === 'business'
+                      ? 'bg-dark-bg text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Business
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Content */}
         <div className="p-6">
-          {/* Quantity Selector for Business Tab */}
-          {selectedTab === 'business' && (
-            <div className="max-w-4xl w-full mx-auto mb-6">
-              <QuantitySelector
-                quantity={selectedQuantity}
-                onChange={setSelectedQuantity}
-                min={2}
-                helperText="Minimum of 2 seats for business plans"
-              />
-            </div>
-          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mx-auto">
             {mainPlans.map((plan) => (
@@ -438,12 +465,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
                 {/* Features List */}
                 <div className="space-y-3 flex-1">
-                  {plan.features.map((feature, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <feature.icon className="w-5 h-5 mt-0.5 flex-shrink-0 text-gray-400" />
-                      <span className="text-sm text-gray-300">{feature.text}</span>
-                    </div>
-                  ))}
+                  {/* Placeholder features moved to AccountPage tier features */}
                 </div>
 
                 {/* Footer Text */}
@@ -474,6 +496,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
               </div>
             ))}
           </div>
+
 
           {/* Modal Footer */}
           <div className="border-t border-dark-border px-6 py-2 mt-6">

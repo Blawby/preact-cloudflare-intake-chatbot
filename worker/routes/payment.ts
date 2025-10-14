@@ -26,6 +26,23 @@ interface BusinessUpgradeRequest {
 export async function handlePayment(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
+  const subscriptionsEnabled =
+    env.ENABLE_STRIPE_SUBSCRIPTIONS === 'true' ||
+    env.ENABLE_STRIPE_SUBSCRIPTIONS === true;
+
+  if (subscriptionsEnabled) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'Legacy payment endpoints are disabled. Use Stripe subscription APIs.',
+        errorCode: 'LEGACY_PAYMENTS_DISABLED'
+      }),
+      {
+        status: 410,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
 
   // POST /api/payment/upgrade - upgrade to business plan (creates invoice + org)
   if (path === '/api/payment/upgrade' && request.method === 'POST') {
@@ -95,7 +112,7 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
 
         // Ensure the upgrading user is the owner.
         await env.DB.prepare(
-          `INSERT INTO members (id, organization_id, user_id, role, created_at)
+          `INSERT INTO member (id, organization_id, user_id, role, created_at)
            VALUES (?, ?, ?, 'owner', ?)
            ON CONFLICT(organization_id, user_id) DO NOTHING`
         ).bind(

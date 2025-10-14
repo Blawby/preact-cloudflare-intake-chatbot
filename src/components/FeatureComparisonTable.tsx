@@ -1,5 +1,5 @@
 import { FunctionComponent } from 'preact';
-import { mockPricingDataService } from '../utils/mockPricingData';
+import { getBusinessPrices, TIER_FEATURES } from '../utils/stripe-products';
 import { type SubscriptionTier } from '../utils/mockUserData';
 
 interface FeatureComparisonTableProps {
@@ -9,9 +9,11 @@ interface FeatureComparisonTableProps {
 const FeatureComparisonTable: FunctionComponent<FeatureComparisonTableProps> = ({
   className = ''
 }) => {
-  const comparison = mockPricingDataService.getPricingComparison();
-  const plans = comparison.plans;
-  const features = comparison.features;
+  const prices = getBusinessPrices();
+  const plans = [
+    { id: 'free', name: 'Free', price: '$0 USD / month' },
+    { id: 'business', name: 'Business', price: prices.monthly },
+  ] as const;
 
   return (
     <div className={`overflow-x-auto ${className}`}>
@@ -30,35 +32,44 @@ const FeatureComparisonTable: FunctionComponent<FeatureComparisonTableProps> = (
           </tr>
         </thead>
         <tbody>
-          {Object.entries(features).map(([featureKey, feature]) => (
-            <tr key={featureKey} className="border-b border-dark-border">
-              <td className="py-4 px-6">
-                <div className="flex items-center gap-3">
-                  <feature.icon className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="text-white font-medium">{feature.name}</div>
-                    <div className="text-sm text-gray-400">{feature.description}</div>
+          {(() => {
+            // Create a unified list of unique features by text
+            const allFeatures = new Map<string, typeof TIER_FEATURES.free[0]>();
+            
+            // Add features from all tiers, using text as unique key
+            (['free', 'business'] as const).forEach(tierKey => {
+              TIER_FEATURES[tierKey].forEach(feature => {
+                allFeatures.set(feature.text, feature);
+              });
+            });
+            
+            // Convert to array and render
+            return Array.from(allFeatures.values()).map((feature, idx) => (
+              <tr key={`feature-${idx}`} className="border-b border-dark-border">
+                <td className="py-4 px-6">
+                  <div className="flex items-center gap-3">
+                    <feature.icon className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <div className="text-white font-medium">{feature.text}</div>
+                    </div>
                   </div>
-                </div>
-              </td>
-              {plans.map((plan) => {
-                const value = feature.tiers[plan.id];
-                return (
-                  <td key={plan.id} className="text-center py-4 px-6">
-                    {typeof value === 'boolean' ? (
-                      value ? (
+                </td>
+                {plans.map((plan) => {
+                  const hasFeature = TIER_FEATURES[plan.id as keyof typeof TIER_FEATURES]
+                    .some(f => f.text === feature.text);
+                  return (
+                    <td key={plan.id} className="text-center py-4 px-6">
+                      {hasFeature ? (
                         <span className="text-accent-500 text-lg">✓</span>
                       ) : (
                         <span className="text-gray-500 text-lg">✗</span>
-                      )
-                    ) : (
-                      <span className="text-gray-300 text-sm">{value}</span>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ));
+          })()}
         </tbody>
       </table>
     </div>

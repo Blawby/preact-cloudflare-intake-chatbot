@@ -39,6 +39,7 @@ export default defineConfig({
       'react': 'preact/compat',
       'react-dom': 'preact/compat',
       'react/jsx-runtime': 'preact/jsx-runtime',
+      'react-dom/client': 'preact/compat',
       '@': resolve(__dirname, './src'),
       '~': resolve(__dirname, './'),
       '@tests': resolve(__dirname, './tests'),

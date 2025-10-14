@@ -30,6 +30,14 @@ export interface Env {
   ENABLE_AUTH_GEOLOCATION?: string;
   ENABLE_AUTH_IP_DETECTION?: string;
   
+  // Stripe Configuration
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_CONNECT_WEBHOOK_SECRET?: string;
+  STRIPE_PRICE_ID?: string;
+  STRIPE_ANNUAL_PRICE_ID?: string;
+  ENABLE_STRIPE_SUBSCRIPTIONS?: string | boolean;
+  
   // Cloudflare AI Configuration
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_API_TOKEN?: string;
@@ -149,8 +157,32 @@ export interface Organization {
       previewUrl?: string | null;
     };
   };
+  stripeCustomerId?: string | null;
+  subscriptionTier?: 'free' | 'plus' | 'business' | 'enterprise' | null;
+  seats?: number | null;
   createdAt: number;
   updatedAt: number;
+}
+
+// Stripe subscription cache type following Theo's KV-first pattern
+export interface StripeSubscriptionCache {
+  subscriptionId: string;
+  // Maps to Organization.stripeCustomerId for cross-reference
+  stripeCustomerId?: string | null;
+  status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'unpaid';
+  priceId: string;
+  // Optional to match Organization interface - defaults to 1 if not specified
+  seats?: number | null;
+  currentPeriodEnd: number;
+  cancelAtPeriodEnd: boolean;
+  limits: {
+    aiQueries: number;
+    documentAnalysis: boolean;
+    customBranding: boolean;
+  };
+  // Cache metadata for KV invalidation
+  cachedAt: number;
+  expiresAt?: number;
 }
 
 // Form types

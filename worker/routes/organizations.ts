@@ -4,6 +4,7 @@ import { ValidationError } from '../utils/validationErrors.js';
 import { requireAuth, requireOrgOwner, requireOrgMember } from '../middleware/auth.js';
 import { handleError, HttpErrors } from '../errorHandler.js';
 import type { Organization } from '../services/OrganizationService.js';
+import { organizationCreateSchema, organizationUpdateSchema } from '../schemas/validation.js';
 
 /**
  * Helper function to create standardized error responses
@@ -182,7 +183,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
       );
     }
 
-    if (pathSegments.length === 2 && pathSegments[1] === 'members') {
+    if (pathSegments.length === 2 && pathSegments[1] === 'member') {
       const organizationIdentifier = pathSegments[0];
       const organization = await organizationService.getOrganization(organizationIdentifier);
 
@@ -200,13 +201,13 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
                     u.email,
                     u.name,
                     u.image
-               FROM members m
+               FROM member m
                LEFT JOIN users u ON u.id = m.user_id
               WHERE m.organization_id = ?
               ORDER BY m.role DESC, m.created_at ASC`
           ).bind(organization.id).all();
 
-        // Preact usage: fetch to populate org settings > members list.
+        // Preact usage: fetch to populate org settings > member list.
         return createSuccessResponse({
           members: members.results ?? []
         });
@@ -229,7 +230,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
         }
 
         const existingMember = await env.DB.prepare(
-          `SELECT role FROM members WHERE organization_id = ? AND user_id = ?`
+          `SELECT role FROM member WHERE organization_id = ? AND user_id = ?`
         ).bind(organization.id, body.userId).first<{ role: string }>();
 
         if (!existingMember) {
@@ -239,7 +240,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
         if (existingMember.role === 'owner' && body.role !== 'owner') {
           const ownerCountRow = await env.DB.prepare(
             `SELECT COUNT(*) as ownerCount 
-               FROM members 
+               FROM member 
               WHERE organization_id = ? AND role = 'owner'`
           ).bind(organization.id).first<{ ownerCount: number }>();
 
@@ -252,8 +253,8 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
         if (existingMember.role !== body.role) {
           const updateResult = await env.DB.prepare(
-            `UPDATE members
-                SET role = ?, updated_at = datetime('now')
+            `UPDATE member
+                SET role = ?
               WHERE organization_id = ? AND user_id = ?`
           ).bind(body.role, organization.id, body.userId).run();
 
@@ -287,7 +288,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
         }
 
         const memberRecord = await env.DB.prepare(
-          `SELECT role FROM members WHERE organization_id = ? AND user_id = ?`
+          `SELECT role FROM member WHERE organization_id = ? AND user_id = ?`
         ).bind(organization.id, userId).first<{ role: string }>();
 
         if (!memberRecord) {
@@ -297,7 +298,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
         if (memberRecord.role === 'owner') {
           const ownerCountRow = await env.DB.prepare(
             `SELECT COUNT(*) as ownerCount 
-               FROM members 
+               FROM member 
               WHERE organization_id = ? AND role = 'owner'`
           ).bind(organization.id).first<{ ownerCount: number }>();
 
@@ -309,7 +310,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
         }
 
         const removal = await env.DB.prepare(
-          `DELETE FROM members WHERE organization_id = ? AND user_id = ?`
+          `DELETE FROM member WHERE organization_id = ? AND user_id = ?`
         ).bind(organization.id, userId).run();
 
         if ((removal.meta?.changes ?? 0) === 0) {
@@ -655,15 +656,14 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
       await env.DB.prepare(
         `UPDATE invitations
-            SET status = 'accepted',
-                updated_at = datetime('now')
+            SET status = 'accepted'
           WHERE id = ?`
       ).bind(invitationId).run();
 
       await env.DB.prepare(
-        `INSERT INTO members (id, organization_id, user_id, role, created_at)
+        `INSERT INTO member (id, organization_id, user_id, role, created_at)
            VALUES (?, ?, ?, ?, ?)
-           ON CONFLICT(organization_id, user_id) DO UPDATE SET role = excluded.role, updated_at = datetime('now')`
+           ON CONFLICT(organization_id, user_id) DO UPDATE SET role = excluded.role`
       ).bind(
         crypto.randomUUID(),
         invitation.organizationId,
@@ -741,8 +741,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
 
       await env.DB.prepare(
         `UPDATE invitations
-            SET status = 'declined',
-                updated_at = datetime('now')
+            SET status = 'declined'
           WHERE id = ?`
       ).bind(invitationId).run();
 
@@ -931,23 +930,34 @@ async function createOrganization(
 ): Promise<Response> {
   let body;
   try {
-    body = await request.json() as {
-      slug: string;
-      name: string;
-      config: OrganizationConfig;
-    };
+    body = await request.json();
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
       status: 400, headers: { 'Content-Type': 'application/json' }
     });
   }
   
-  // Validate required fields
-  if (!body.slug || !body.name || !body.config) {
+  // Validate request body using Zod schema
+  try {
+    const validatedBody = organizationCreateSchema.parse(body);
+    body = validatedBody;
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Validation error: ${error.message}` 
+        }), 
+        { 
+          status: 400, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Missing required fields: slug, name, config' 
+        error: 'Invalid request data' 
       }), 
       { 
         status: 400, 
@@ -975,7 +985,10 @@ async function createOrganization(
     const organization = await organizationService.createOrganization({
       slug: body.slug,
       name: body.name,
-      config: body.config
+      config: body.config,
+      stripeCustomerId: body.stripeCustomerId,
+      subscriptionTier: body.subscriptionTier,
+      seats: body.seats
     });
 
     if (userId) {
@@ -985,7 +998,7 @@ async function createOrganization(
 
       try {
         await env.DB.prepare(`
-          INSERT INTO members (id, organization_id, user_id, role, created_at)
+          INSERT INTO member (id, organization_id, user_id, role, created_at)
           VALUES (?, ?, ?, ?, ?)
           ON CONFLICT(organization_id, user_id) DO NOTHING
         `).bind(
@@ -995,8 +1008,8 @@ async function createOrganization(
           'owner',
           Math.floor(Date.now() / 1000)
         ).run();
-      } catch (membershipError) {
-        // If membership insertion fails, delete the orphaned organization
+      } catch (memberhipError) {
+        // If memberhip insertion fails, delete the orphaned organization
         try {
           await organizationService.deleteOrganization(organization.id);
         } catch (deleteError) {
@@ -1006,8 +1019,8 @@ async function createOrganization(
           });
         }
         
-        // Re-throw the original membership error
-        throw new Error(`Failed to add organization owner membership: ${membershipError instanceof Error ? membershipError.message : String(membershipError)}`);
+        // Re-throw the original memberhip error
+        throw new Error(`Failed to add organization owner memberhip: ${memberhipError instanceof Error ? memberhipError.message : String(memberhipError)}`);
       }
     }
 
@@ -1034,6 +1047,35 @@ async function updateOrganization(organizationService: OrganizationService, orga
     return new Response(JSON.stringify({ success: false, error: 'Invalid JSON' }), {
       status: 400, headers: { 'Content-Type': 'application/json' }
     });
+  }
+  
+  // Validate request body using Zod schema
+  try {
+    const validatedBody = organizationUpdateSchema.parse(body);
+    body = validatedBody;
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Validation error: ${error.message}` 
+        }), 
+        { 
+          status: 400, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Invalid request data' 
+      }), 
+      { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
   }
   
   try {

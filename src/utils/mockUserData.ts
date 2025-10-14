@@ -1,7 +1,7 @@
 // Mock User Data Service
 // This provides consistent mock data for development until the real API is ready
 
-export type SubscriptionTier = 'free' | 'plus' | 'business';
+export type SubscriptionTier = 'free' | 'plus' | 'business' | 'enterprise';
 export type Language = 'en' | 'es';
 
 // Simplified country-to-language mapping (English and Spanish only)
@@ -99,7 +99,6 @@ export interface MockUserProfile {
   addressZip: string | null;
   addressCountry: string | null;
   preferredContactMethod: 'email' | 'phone' | 'sms';
-  subscriptionTier: SubscriptionTier;
   createdAt: string;
   updatedAt: string;
 }
@@ -194,7 +193,6 @@ export function getDefaultMockUser(): MockUserProfile {
     addressZip: '27601',
     addressCountry: 'US',
     preferredContactMethod: 'email',
-    subscriptionTier: 'free',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: new Date().toISOString()
   };
@@ -499,10 +497,6 @@ class MockUserDataService {
     });
   }
 
-  // Subscription Methods
-  setSubscriptionTier(tier: SubscriptionTier): MockUserProfile {
-    return this.setUserProfile({ subscriptionTier: tier });
-  }
 
   // Utility Methods
   resetToDefaults(): void {

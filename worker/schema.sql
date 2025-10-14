@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS organizations (
   slug TEXT UNIQUE, -- Human-readable identifier (e.g., "north-carolina-legal-services")
   domain TEXT,
   config JSON,
+  stripe_customer_id TEXT UNIQUE,
+  subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'plus', 'business', 'enterprise')),
+  seats INTEGER DEFAULT 1 CHECK (seats > 0),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -206,13 +209,12 @@ CREATE TABLE IF NOT EXISTS ai_feedback (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default organizations with proper ULIDs
--- Note: API keys and sensitive configuration should be set via the setup script, not in schema
--- Run ./scripts/setup-blawby-api.sh to configure the blawby-ai organization with API credentials
-INSERT OR IGNORE INTO organizations (id, slug, name, config) VALUES
-('01K0TNGNKVCFT7V78Y4QF0PKH5', 'test-organization', 'Test Law Firm', '{"aiModel": "@cf/openai/gpt-oss-20b", "requiresPayment": false}'),
-('01K0TNGNKNJEP8EPKHXAQV4S0R', 'north-carolina-legal-services', 'North Carolina Legal Services', '{"aiModel": "@cf/openai/gpt-oss-20b", "consultationFee": 75, "requiresPayment": true, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Small Business and Nonprofits", "Employment Law", "Tenant Rights Law", "Probate and Estate Planning", "Special Education and IEP Advocacy"], "serviceQuestions": {"Family Law": ["Thanks for reaching out. I know family situations can be really difficult. Can you tell me what type of family issue you''re going through? (For example, divorce, custody, child support...)"], "Small Business and Nonprofits": ["What type of business entity are you operating or planning to start?"], "Employment Law": ["I''m sorry you''re dealing with workplace issues - that can be really stressful. Can you tell me what''s been happening at work? (For example, discrimination, harassment, wage problems...)"], "Tenant Rights Law": ["What specific tenant rights issue are you facing? (eviction, repairs, security deposit, etc.)"], "Probate and Estate Planning": ["Are you dealing with probate of an estate or planning your own estate?"], "Special Education and IEP Advocacy": ["What grade level is your child in and what type of school do they attend?"]}, "domain": "northcarolinalegalservices.blawby.com", "description": "Affordable, comprehensive legal services for North Carolina. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.", "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500", "brandColor": "#059669", "accentColor": "#10b981", "introMessage": "Welcome to North Carolina Legal Services! I''m here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you connect with our experienced attorneys. How can I assist you today?", "profileImage": "https://app.blawby.com/storage/organization-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg", "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}}'),
-('01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'blawby-ai', 'Blawby AI', '{"aiModel": "@cf/openai/gpt-oss-20b", "consultationFee": 0, "requiresPayment": false, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Business Law", "Contract Review", "Intellectual Property", "Employment Law", "Personal Injury", "Criminal Law", "Civil Law", "General Consultation"], "serviceQuestions": {"Family Law": ["I understand this is a difficult time. Can you tell me what type of family situation you''re dealing with?", "What are the main issues you''re facing?", "Have you taken any steps to address this situation?", "What would a good outcome look like for you?"], "Business Law": ["What type of business entity are you operating or planning to start?", "What specific legal issue are you facing with your business?", "Are you dealing with contracts, employment issues, or regulatory compliance?", "What is the size and scope of your business operations?"], "Contract Review": ["What type of contract do you need reviewed?", "What is the value or importance of this contract?", "Are there any specific concerns or red flags you''ve noticed?", "What is the timeline for this contract?"], "Intellectual Property": ["What type of intellectual property are you dealing with?", "Are you looking to protect, license, or enforce IP rights?", "What is the nature of your IP (patent, trademark, copyright, trade secret)?", "What is the commercial value or importance of this IP?"], "Employment Law": ["What specific employment issue are you facing?", "Are you an employer or employee in this situation?", "Have you taken any steps to address this issue?", "What is the timeline or urgency of your situation?"], "Personal Injury": ["Can you tell me about the incident that caused your injury?", "What type of injuries did you sustain?", "Have you received medical treatment?", "What is the current status of your recovery?"], "Criminal Law": ["What type of legal situation are you facing?", "Are you currently facing charges or under investigation?", "Have you been arrested or contacted by law enforcement?", "Do you have an attorney representing you?"], "Civil Law": ["What type of civil legal issue are you dealing with?", "Are you involved in a lawsuit or considering legal action?", "What is the nature of the dispute?", "What outcome are you hoping to achieve?"], "General Consultation": ["Thanks for reaching out! I''d love to help. Can you tell me what legal situation you''re dealing with?", "Have you been able to take any steps to address this yet?", "What would a good outcome look like for you?", "Do you have any documents or information that might be relevant?"]}, "domain": "ai.blawby.com", "description": "AI-powered legal assistance for businesses and individuals", "paymentLink": null, "brandColor": "#2563eb", "accentColor": "#3b82f6", "introMessage": "Hello! I''m Blawby AI, your intelligent legal assistant. I can help you with family law, business law, contract review, intellectual property, employment law, personal injury, criminal law, civil law, and general legal consultation. How can I assist you today?", "profileImage": null, "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}, "blawbyApi": {"enabled": false, "apiUrl": "https://staging.blawby.com"}}');
+
+-- ========================================
+-- DEFAULT ORGANIZATIONS
+-- ========================================
+-- Default organizations are seeded via ./scripts/seed-organizations.sh
+-- This keeps the schema file clean and allows for more flexible seeding
 
 -- Payment history table for tracking all payment transactions
 CREATE TABLE IF NOT EXISTS payment_history (
@@ -331,12 +333,13 @@ CREATE TABLE IF NOT EXISTS users (
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   organization_id TEXT,
+  stripe_customer_id TEXT UNIQUE,
   role TEXT,
   phone TEXT
 );
 
 -- Organization members for Better Auth multi-tenancy
-CREATE TABLE IF NOT EXISTS members (
+CREATE TABLE IF NOT EXISTS member (
   id TEXT PRIMARY KEY,
   organization_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
@@ -356,6 +359,29 @@ CREATE TABLE IF NOT EXISTS invitations (
   expires_at INTEGER NOT NULL,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
+
+-- Stripe subscription table managed by Better Auth Stripe plugin
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id TEXT PRIMARY KEY,
+  plan TEXT NOT NULL,
+  reference_id TEXT NOT NULL, -- References organizations.id for organization-level subscriptions
+  stripe_subscription_id TEXT UNIQUE,
+  status TEXT DEFAULT 'incomplete' NOT NULL CHECK(status IN ('incomplete', 'incomplete_expired', 'active', 'canceled', 'past_due', 'unpaid', 'trialing')),
+  period_start INTEGER,
+  period_end INTEGER,
+  trial_start INTEGER,
+  trial_end INTEGER,
+  cancel_at_period_end INTEGER DEFAULT 0 NOT NULL,
+  seats INTEGER CHECK(seats > 0),
+  created_at INTEGER DEFAULT (strftime('%s', 'now')),
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+  -- Foreign key constraints for data integrity
+  FOREIGN KEY (reference_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_reference_id ON subscriptions(reference_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+-- Note: stripe_subscription_id already has UNIQUE constraint in table definition
 
 -- Organization events table for audit logging
 CREATE TABLE IF NOT EXISTS organization_events (
@@ -415,6 +441,7 @@ CREATE TABLE IF NOT EXISTS verifications (
 -- Create indexes for Better Auth tables
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(email, email_verified);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_customer_id_unique ON users(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
@@ -425,8 +452,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value
 CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires_at);
 
 -- Create indexes for organization membership tables
-CREATE INDEX IF NOT EXISTS idx_members_org ON members(organization_id);
-CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id);
+CREATE INDEX IF NOT EXISTS idx_member_org ON member(organization_id);
+CREATE INDEX IF NOT EXISTS idx_member_user ON member(user_id);
 CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
 CREATE INDEX IF NOT EXISTS idx_invitations_organization ON invitations(organization_id);
 CREATE INDEX IF NOT EXISTS idx_org_events_org_created ON organization_events(organization_id, created_at DESC);
@@ -453,3 +480,65 @@ SELECT
 FROM users u
 LEFT JOIN accounts a ON u.id = a.user_id
 GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at;
+
+-- ========================================
+-- TRIGGERS FOR AUTOMATIC UPDATED_AT TIMESTAMPS
+-- ========================================
+-- These triggers ensure that updated_at columns are automatically updated
+-- when rows are modified, using the same millisecond timestamp format
+-- as the auth schema defaults: (strftime('%s', 'now') * 1000)
+
+-- Trigger for users table
+CREATE TRIGGER IF NOT EXISTS trigger_users_updated_at
+  AFTER UPDATE ON users
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE users SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for sessions table
+CREATE TRIGGER IF NOT EXISTS trigger_sessions_updated_at
+  AFTER UPDATE ON sessions
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE sessions SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for accounts table
+CREATE TRIGGER IF NOT EXISTS trigger_accounts_updated_at
+  AFTER UPDATE ON accounts
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE accounts SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for verifications table
+CREATE TRIGGER IF NOT EXISTS trigger_verifications_updated_at
+  AFTER UPDATE ON verifications
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE verifications SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for organizations table
+CREATE TRIGGER IF NOT EXISTS trigger_organizations_updated_at
+  AFTER UPDATE ON organizations
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE organizations SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for subscriptions table
+CREATE TRIGGER IF NOT EXISTS trigger_subscriptions_updated_at
+  AFTER UPDATE ON subscriptions
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE subscriptions SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+

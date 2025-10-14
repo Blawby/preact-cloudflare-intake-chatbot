@@ -6,6 +6,7 @@
       "general": "General",
       "notifications": "Notifications",
       "account": "Account",
+      "organization": "Organization",
       "security": "Security",
       "help": "Help",
       "signOut": "Sign Out"

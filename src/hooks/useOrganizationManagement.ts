@@ -12,6 +12,9 @@ export interface Organization {
   slug: string;
   name: string;
   description?: string;
+  stripeCustomerId?: string | null;
+  subscriptionTier?: 'free' | 'plus' | 'business' | 'enterprise' | null;
+  seats?: number | null;
   config?: {
     metadata?: {
       subscriptionPlan?: string;
@@ -245,7 +248,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch members
   const fetchMembers = useCallback(async (orgId: string): Promise<void> => {
     try {
-      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members`);
+      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member`);
       setMembers(prev => ({ ...prev, [orgId]: data.members || [] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch members');
@@ -254,7 +257,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
 
   // Update member role
   const updateMemberRole = useCallback(async (orgId: string, userId: string, role: Role): Promise<void> => {
-    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members`, {
+    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member`, {
       method: 'PATCH',
       body: JSON.stringify({ userId, role }),
     });
@@ -263,7 +266,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
 
   // Remove member
   const removeMember = useCallback(async (orgId: string, userId: string): Promise<void> => {
-    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/members?userId=${encodeURIComponent(userId)}`, {
+    await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member?userId=${encodeURIComponent(userId)}`, {
       method: 'DELETE',
     });
     await fetchMembers(orgId); // Refresh members
@@ -298,7 +301,16 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   const fetchTokens = useCallback(async (orgId: string): Promise<void> => {
     try {
       const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`);
-      setTokens(prev => ({ ...prev, [orgId]: data || [] }));
+      // Map API response to ApiToken shape
+      const mappedTokens = (data || []).map((token: any) => ({
+        id: token.id,
+        name: token.tokenName,
+        permissions: token.permissions || [],
+        createdAt: token.createdAt,
+        lastUsed: token.lastUsedAt,
+        ...token // Include any other fields
+      }));
+      setTokens(prev => ({ ...prev, [orgId]: mappedTokens }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tokens');
     }
