@@ -6,7 +6,7 @@ import { useNavigation } from '../utils/navigation';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { getTierDisplayName } from '../utils/stripe-products';
 import { debounce } from '../utils/debounce';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 import { useOrganizationManagement } from '../hooks/useOrganizationManagement';
 
 interface User {

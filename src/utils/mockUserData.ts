@@ -2,9 +2,14 @@
 // This provides consistent mock data for development until the real API is ready
 
 export type SubscriptionTier = 'free' | 'plus' | 'business' | 'enterprise';
-export type Language = 'en' | 'es';
+export type Language = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'vi' | 
+                       'pt' | 'ar' | 'ru' | 'it' | 'ko' | 'nl' | 'pl' | 
+                       'tr' | 'th' | 'id' | 'hi' | 'uk';
 
-// Simplified country-to-language mapping (English and Spanish only)
+// Country-to-language mapping for all supported locales
+// Supports: English, Spanish, French, German, Chinese, Japanese, Vietnamese,
+// Portuguese, Arabic, Russian, Italian, Korean, Dutch, Polish,
+// Turkish, Thai, Indonesian, Hindi, Ukrainian
 export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   // English-speaking countries
   'us': 'en',
@@ -50,6 +55,19 @@ export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   'sc': 'en',
   'mu': 'en',
   'na': 'en',
+  'ki': 'en',
+  'pw': 'en',
+  'fm': 'en',
+  'mh': 'en',
+  'nr': 'en',
+  'pg': 'en',
+  'sb': 'en',
+  'to': 'en',
+  'tv': 'en',
+  'vu': 'en',
+  'ws': 'en',
+  'fj': 'en',
+  'ss': 'en',
   
   // Spanish-speaking countries
   'es': 'es',
@@ -74,6 +92,122 @@ export const COUNTRY_TO_LANGUAGE_MAP: Record<string, Language> = {
   'pr': 'es',
   'gq': 'es',
   'ad': 'es',
+  
+  // French-speaking countries
+  'fr': 'fr',
+  'be': 'fr', // Belgium (also speaks Dutch/German)
+  'ch': 'fr', // Switzerland (also speaks German/Italian)
+  'lu': 'fr', // Luxembourg (also speaks German)
+  'mc': 'fr', // Monaco
+  'dz': 'fr', // Algeria
+  'ma': 'fr', // Morocco
+  'tn': 'fr', // Tunisia
+  'sn': 'fr', // Senegal
+  'ci': 'fr', // Côte d'Ivoire
+  'ml': 'fr', // Mali
+  'bf': 'fr', // Burkina Faso
+  'ne': 'fr', // Niger
+  'td': 'fr', // Chad
+  'mg': 'fr', // Madagascar
+  'cm': 'fr', // Cameroon
+  'cg': 'fr', // Congo
+  'cd': 'fr', // Democratic Republic of Congo
+  'ga': 'fr', // Gabon
+  'gn': 'fr', // Guinea
+  'ht': 'fr', // Haiti
+  'bj': 'fr', // Benin
+  'rw': 'fr', // Rwanda
+  'bi': 'fr', // Burundi
+  'tg': 'fr', // Togo
+  'cf': 'fr', // Central African Republic
+  
+  // German-speaking countries
+  'de': 'de',
+  'at': 'de', // Austria
+  'li': 'de', // Liechtenstein
+  
+  // Chinese-speaking countries/regions
+  'cn': 'zh',
+  'tw': 'zh',
+  // Note: 'hk' and 'sg' are listed under English-speaking countries above
+  
+  // Japanese-speaking countries
+  'jp': 'ja',
+  
+  // Vietnamese-speaking countries
+  'vn': 'vi',
+  
+  // Portuguese-speaking countries
+  'pt': 'pt', // Portugal
+  'br': 'pt', // Brazil
+  'ao': 'pt', // Angola
+  'mz': 'pt', // Mozambique
+  'cv': 'pt', // Cape Verde
+  'gw': 'pt', // Guinea-Bissau
+  'st': 'pt', // São Tomé and Príncipe
+  'tl': 'pt', // Timor-Leste
+  
+  // Arabic-speaking countries
+  'sa': 'ar', // Saudi Arabia
+  'ae': 'ar', // United Arab Emirates
+  'eg': 'ar', // Egypt
+  'iq': 'ar', // Iraq
+  'jo': 'ar', // Jordan
+  'lb': 'ar', // Lebanon
+  'sy': 'ar', // Syria
+  'ye': 'ar', // Yemen
+  'qa': 'ar', // Qatar
+  'bh': 'ar', // Bahrain
+  'kw': 'ar', // Kuwait
+  'om': 'ar', // Oman
+  'ly': 'ar', // Libya
+  'sd': 'ar', // Sudan
+  'so': 'ar', // Somalia
+  'dj': 'ar', // Djibouti
+  'km': 'ar', // Comoros
+  'mr': 'ar', // Mauritania
+  // Note: dz, ma, tn keep 'fr' as primary (also speak Arabic)
+  
+  // Russian-speaking countries
+  'ru': 'ru', // Russia
+  'by': 'ru', // Belarus
+  'kz': 'ru', // Kazakhstan
+  'kg': 'ru', // Kyrgyzstan
+  'tj': 'ru', // Tajikistan
+  'md': 'ru', // Moldova
+  'tm': 'ru', // Turkmenistan
+  'uz': 'ru', // Uzbekistan
+  
+  // Italian-speaking countries
+  'it': 'it', // Italy
+  'sm': 'it', // San Marino
+  'va': 'it', // Vatican City
+  
+  // Korean-speaking countries
+  'kr': 'ko', // South Korea
+  'kp': 'ko', // North Korea
+  
+  // Turkish-speaking countries
+  'tr': 'tr', // Turkey
+  
+  // Dutch-speaking countries
+  'nl': 'nl', // Netherlands
+  'sr': 'nl', // Suriname
+  
+  // Polish-speaking countries
+  'pl': 'pl', // Poland
+  
+  // Indonesian-speaking countries
+  'id': 'id', // Indonesia
+  
+  // Thai-speaking countries
+  'th': 'th', // Thailand
+  
+  // Hindi-speaking countries (India defaults to English, Hindi optional)
+  // 'in': 'hi', // Uncomment to make Hindi default for India
+  
+  // Ukrainian-speaking countries
+  'ua': 'uk', // Ukraine
 };
 
 /**
