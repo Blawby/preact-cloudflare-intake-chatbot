@@ -26,8 +26,6 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   onUpgrade
 }) => {
   const { navigate } = useNavigation();
-  const { showWarning: _showWarning } = useToastContext();
-  const { t: _t } = useTranslation('settings');
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
 
@@ -260,13 +258,31 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       isRecommended: currentTier === 'free',
     },
     {
+      id: 'plus' as SubscriptionTier,
+      name: 'Plus',
+      price: '$20 USD / month',
+      description: 'Enhanced AI capabilities for individual professionals',
+      features: [],
+      buttonText: 'Get Plus',
+      isRecommended: currentTier === 'free',
+    },
+    {
       id: 'business' as SubscriptionTier,
       name: 'Business',
       price: prices.monthly,
       description: 'Secure, collaborative workspace for organizations',
       features: [],
       buttonText: 'Get Business',
-      isRecommended: currentTier !== 'business',
+      isRecommended: currentTier === 'plus',
+    },
+    {
+      id: 'enterprise' as SubscriptionTier,
+      name: 'Enterprise',
+      price: 'Contact sales',
+      description: 'Custom solutions for large organizations',
+      features: [],
+      buttonText: 'Contact Sales',
+      isRecommended: currentTier === 'business',
     },
   ];
   
@@ -293,7 +309,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
             isCurrent,
             buttonText: isCurrent ? 'Your current plan' : plan.buttonText,
             // Recommended = show current for clarity on personal tab
-            isRecommended: !isCurrent && plan.id === 'free'
+            isRecommended: isCurrent
           };
         });
     } else {
@@ -306,11 +322,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
             isCurrent,
             buttonText: isCurrent ? 'Your current plan' : plan.buttonText,
             // Recommended = highlight Business when user is not already on it
-            isRecommended: !isCurrent && (
-              (currentTier === 'free' && plan.id === 'business') ||
-              (currentTier === 'plus' && plan.id === 'business') ||
-              (currentTier === 'business' && plan.id === 'business')
-            )
+            isRecommended: !isCurrent && plan.id === 'business' && (currentTier === 'free' || currentTier === 'plus')
           };
         });
     }

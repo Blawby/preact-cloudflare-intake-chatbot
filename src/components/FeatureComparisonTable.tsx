@@ -32,30 +32,44 @@ const FeatureComparisonTable: FunctionComponent<FeatureComparisonTableProps> = (
           </tr>
         </thead>
         <tbody>
-          {(['free','business'] as const).map((tierKey) => (
-            TIER_FEATURES[tierKey].map((feature, idx) => (
-            <tr key={`${tierKey}-${idx}`} className="border-b border-dark-border">
-              <td className="py-4 px-6">
-                <div className="flex items-center gap-3">
-                  <feature.icon className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="text-white font-medium">{feature.text}</div>
+          {(() => {
+            // Create a unified list of unique features by text
+            const allFeatures = new Map<string, typeof TIER_FEATURES.free[0]>();
+            
+            // Add features from all tiers, using text as unique key
+            (['free', 'business'] as const).forEach(tierKey => {
+              TIER_FEATURES[tierKey].forEach(feature => {
+                allFeatures.set(feature.text, feature);
+              });
+            });
+            
+            // Convert to array and render
+            return Array.from(allFeatures.values()).map((feature, idx) => (
+              <tr key={`feature-${idx}`} className="border-b border-dark-border">
+                <td className="py-4 px-6">
+                  <div className="flex items-center gap-3">
+                    <feature.icon className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <div className="text-white font-medium">{feature.text}</div>
+                    </div>
                   </div>
-                </div>
-              </td>
-              {plans.map((plan) => {
-                return (
-                  <td key={plan.id} className="text-center py-4 px-6">
-                    {plan.id === tierKey ? (
-                      <span className="text-accent-500 text-lg">✓</span>
-                    ) : (
-                      <span className="text-gray-500 text-lg">✗</span>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          )))}
+                </td>
+                {plans.map((plan) => {
+                  const hasFeature = TIER_FEATURES[plan.id as keyof typeof TIER_FEATURES]
+                    .some(f => f.text === feature.text);
+                  return (
+                    <td key={plan.id} className="text-center py-4 px-6">
+                      {hasFeature ? (
+                        <span className="text-accent-500 text-lg">✓</span>
+                      ) : (
+                        <span className="text-gray-500 text-lg">✗</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ));
+          })()}
         </tbody>
       </table>
     </div>
