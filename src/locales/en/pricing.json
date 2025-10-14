@@ -2,8 +2,38 @@
   "plans": {
     "free": {
       "name": "Free",
+      "price": "$0 USD / month",
       "description": "Legal AI assistance for everyday needs",
-      "buttonText": "Your current plan"
+      "buttonText": "Your current plan",
+      "features": {
+        "basicChat": {
+          "text": "Basic AI chat assistance",
+          "description": "Get help with general legal questions"
+        },
+        "documentAnalysis": {
+          "text": "Document analysis",
+          "description": "Upload and analyze up to 3 documents per month"
+        },
+        "responseTime": {
+          "text": "Standard response time",
+          "description": "Responses within 24 hours"
+        }
+      },
+      "limitations": {
+        "documentLimit": "Limited to 3 document uploads per month",
+        "noTeam": "No team collaboration features",
+        "basicAI": "Basic AI responses only",
+        "noPriority": "No priority support"
+      },
+      "benefits": {
+        "personalUse": "Perfect for personal use",
+        "noCard": "No credit card required",
+        "fullAccess": "Full access to basic features"
+      },
+      "footer": {
+        "existingPlan": "Have an existing plan?",
+        "billingHelp": "See billing help"
+      }
     },
     "plus": {
       "name": "Plus",
@@ -12,8 +42,48 @@
     },
     "business": {
       "name": "Business",
-      "description": "Secure, collaborative workspace for teams",
-      "buttonText": "Get Business"
+      "description": "Secure, collaborative workspace for organizations",
+      "buttonText": "Get Business",
+      "features": {
+        "teamCollaboration": {
+          "text": "Team collaboration",
+          "description": "Unlimited team members and shared workspaces"
+        },
+        "unlimitedDocuments": {
+          "text": "Unlimited document analysis",
+          "description": "Upload and analyze unlimited documents"
+        },
+        "advancedSecurity": {
+          "text": "Advanced security",
+          "description": "Enterprise-grade security and compliance"
+        },
+        "cloudStorage": {
+          "text": "Cloud storage",
+          "description": "Secure cloud storage for all documents"
+        },
+        "prioritySupport": {
+          "text": "Priority support",
+          "description": "24/7 priority customer support"
+        }
+      },
+      "benefits": {
+        "unlimitedProcessing": "Unlimited document processing",
+        "teamTools": "Team collaboration tools",
+        "advancedAI": "Advanced AI capabilities",
+        "prioritySupport": "Priority customer support",
+        "customIntegrations": "Custom integrations available"
+      },
+      "footer": {
+        "billing": "For 2+ users, billed annually",
+        "unlimited": "Unlimited subject to abuse guardrails.",
+        "learnMore": "Learn more"
+      }
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "price": "Contact sales",
+      "description": "Custom solutions for large organizations",
+      "buttonText": "Contact Sales"
     }
   },
   "features": {
@@ -208,10 +278,33 @@
       "business": "Business"
     },
     "countryLabel": "Select your country",
-    "currentPlan": "Current Plan",
+    "currentPlan": "Your current plan",
     "recommended": "Recommended",
     "popular": "Most Popular",
     "close": "Close"
+  },
+  "tabs": {
+    "personal": "Personal",
+    "business": "Business"
+  },
+  "country": {
+    "us": "United States",
+    "vn": "Vietnam",
+    "gb": "United Kingdom",
+    "de": "Germany",
+    "fr": "France",
+    "es": "Spain",
+    "jp": "Japan",
+    "cn": "China"
+  },
+  "footer": {
+    "enterprise": {
+      "question": "Need more capabilities?",
+      "link": "See Blawby Enterprise"
+    },
+    "country": {
+      "label": "Country/Region:"
+    }
   },
   "billing": {
     "monthly": "month",
