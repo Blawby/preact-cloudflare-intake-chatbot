@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS organizations (
   slug TEXT UNIQUE, -- Human-readable identifier (e.g., "north-carolina-legal-services")
   domain TEXT,
   config JSON,
+  stripe_customer_id TEXT,
+  subscription_tier TEXT DEFAULT 'free',
+  seats INTEGER DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -331,12 +334,13 @@ CREATE TABLE IF NOT EXISTS users (
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   organization_id TEXT,
+  stripe_customer_id TEXT,
   role TEXT,
   phone TEXT
 );
 
 -- Organization members for Better Auth multi-tenancy
-CREATE TABLE IF NOT EXISTS members (
+CREATE TABLE IF NOT EXISTS member (
   id TEXT PRIMARY KEY,
   organization_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
@@ -356,6 +360,27 @@ CREATE TABLE IF NOT EXISTS invitations (
   expires_at INTEGER NOT NULL,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
+
+-- Stripe subscription table managed by Better Auth Stripe plugin
+CREATE TABLE IF NOT EXISTS subscription (
+  id TEXT PRIMARY KEY,
+  plan TEXT NOT NULL,
+  reference_id TEXT NOT NULL,
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  status TEXT DEFAULT 'incomplete' NOT NULL,
+  period_start INTEGER,
+  period_end INTEGER,
+  trial_start INTEGER,
+  trial_end INTEGER,
+  cancel_at_period_end INTEGER DEFAULT 0,
+  seats INTEGER,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')),
+  updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscription_reference_id ON subscription(reference_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_stripe_id ON subscription(stripe_subscription_id);
 
 -- Organization events table for audit logging
 CREATE TABLE IF NOT EXISTS organization_events (
@@ -425,8 +450,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value
 CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires_at);
 
 -- Create indexes for organization membership tables
-CREATE INDEX IF NOT EXISTS idx_members_org ON members(organization_id);
-CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id);
+CREATE INDEX IF NOT EXISTS idx_member_org ON member(organization_id);
+CREATE INDEX IF NOT EXISTS idx_member_user ON member(user_id);
 CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
 CREATE INDEX IF NOT EXISTS idx_invitations_organization ON invitations(organization_id);
 CREATE INDEX IF NOT EXISTS idx_org_events_org_created ON organization_events(organization_id, created_at DESC);

@@ -12,6 +12,9 @@ import { useNavigation } from '../../../utils/navigation';
 import { mockUserDataService, MockUserLinks, MockEmailSettings, type SubscriptionTier } from '../../../utils/mockUserData';
 import { mockPricingDataService } from '../../../utils/mockPricingData';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'preact-iso';
+import { usePaymentUpgrade } from '../../../hooks/usePaymentUpgrade';
+import { useOrganizationManagement } from '../../../hooks/useOrganizationManagement';
 
 
 export interface AccountPageProps {
@@ -30,6 +33,9 @@ export const AccountPage = ({
   const { showSuccess, showError } = useToastContext();
   const { navigate } = useNavigation();
   const { t } = useTranslation(['settings', 'common']);
+  const location = useLocation();
+  const { syncSubscription } = usePaymentUpgrade();
+  const { currentOrganization } = useOrganizationManagement();
   const [links, setLinks] = useState<MockUserLinks | null>(null);
   const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +77,43 @@ export const AccountPage = ({
   useEffect(() => {
     loadAccountData();
   }, []);
+
+  // Handle post-checkout sync
+  useEffect(() => {
+    const handlePostCheckoutSync = async () => {
+      const rawSyncFlag = location.query?.sync;
+      const rawOrgId = location.query?.organizationId;
+
+      const shouldSync = Array.isArray(rawSyncFlag)
+        ? rawSyncFlag[0] === '1'
+        : rawSyncFlag === '1';
+
+      const organizationId = Array.isArray(rawOrgId)
+        ? rawOrgId[0]
+        : rawOrgId || currentOrganization?.id;
+
+      if (shouldSync && organizationId) {
+        try {
+          console.log('🔄 Post-checkout sync triggered for organization:', organizationId);
+          await syncSubscription(organizationId);
+
+          if (typeof window !== 'undefined') {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('sync');
+            newUrl.searchParams.delete('organizationId');
+            window.history.replaceState({}, '', newUrl.toString());
+          }
+
+          await loadAccountData();
+        } catch (error) {
+          console.error('❌ Post-checkout sync failed:', error);
+          showError('Sync Failed', 'Failed to refresh subscription status after checkout. Please refresh the page.');
+        }
+      }
+    };
+
+    handlePostCheckoutSync();
+  }, [location.query, currentOrganization?.id, syncSubscription, showError]);
 
   // Cleanup verification timeout on unmount
   useEffect(() => {

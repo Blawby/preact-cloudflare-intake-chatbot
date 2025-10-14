@@ -6,6 +6,15 @@ import { useOrganizationManagement } from '../useOrganizationManagement';
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
+// Helper function to create mock Response objects
+const createMockResponse = (data: any, options: { ok?: boolean; status?: number; statusText?: string } = {}) => ({
+  ok: options.ok ?? true,
+  status: options.status ?? 200,
+  statusText: options.statusText ?? 'OK',
+  headers: new Headers({ 'content-type': 'application/json' }),
+  json: async () => data,
+});
+
 // Mock the toast context
 const mockShowSuccess = vi.fn();
 const mockShowError = vi.fn();
@@ -57,11 +66,7 @@ describe('useOrganizationManagement', () => {
     vi.clearAllMocks();
     mockFetch.mockClear();
     // Default successful fetch response
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ success: true, data: [] }),
-      status: 200,
-    });
+    mockFetch.mockResolvedValue(createMockResponse({ success: true, data: [] }));
   });
 
   afterEach(() => {
@@ -87,16 +92,18 @@ describe('useOrganizationManagement', () => {
         },
       ];
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true, data: mockOrganizations }),
-      });
+      // Mock all 4 calls: 2 on mount (useEffect) + 2 on refetch()
+      mockFetch.mockResolvedValueOnce(createMockResponse({ success: true, data: mockOrganizations })); // mount: organizations
+      mockFetch.mockResolvedValueOnce(createMockResponse({ success: true, data: [] })); // mount: invitations
+      mockFetch.mockResolvedValueOnce(createMockResponse({ success: true, data: mockOrganizations })); // refetch: organizations
+      mockFetch.mockResolvedValueOnce(createMockResponse({ success: true, data: [] })); // refetch: invitations
 
       const { result } = renderHook(() => useOrganizationManagement());
 
       await act(async () => {
         await result.current.refetch();
       });
+
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8787/api/organizations/me',
@@ -111,11 +118,10 @@ describe('useOrganizationManagement', () => {
     });
 
     it('should handle API errors when loading organizations', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-      });
+      mockFetch.mockResolvedValueOnce(createMockResponse(
+        { success: false, error: 'Failed to load organizations' },
+        { ok: false, status: 500, statusText: 'Internal Server Error' }
+      ));
 
       const { result } = renderHook(() => useOrganizationManagement());
 

@@ -1,23 +1,80 @@
-import { useState, useCallback } from 'preact/hooks';
-import { useLocation } from 'preact-iso';
+import { useState, useCallback, useEffect } from 'preact/hooks';
 import { PRODUCTS, PRICES, PriceId } from '../../utils/stripe-products';
+import { usePaymentUpgrade } from '../../hooks/usePaymentUpgrade';
+import { useOrganizationManagement } from '../../hooks/useOrganizationManagement';
+import { useToastContext } from '../../contexts/ToastContext';
+import { useLocation } from 'preact-iso';
 import { QuantitySelector } from './QuantitySelector';
 import { PricingSummary } from '../ui/cards/PricingSummary';
 
+const MONTHLY_PRICE_ID: PriceId = 'price_1SHfgbDJLzJ14cfPBGuTvcG3';
+const ANNUAL_PRICE_ID: PriceId = 'price_1SHfhCDJLzJ14cfPGFGQ77vQ';
+
 export const CartPage = () => {
   const location = useLocation();
-  const [selectedPriceId, setSelectedPriceId] = useState<PriceId>('price_monthly');
-  const [quantity, setQuantity] = useState(2);
+  const { submitUpgrade, submitting } = usePaymentUpgrade();
+  const { currentOrganization } = useOrganizationManagement();
+  const { showError } = useToastContext();
+
+  const seatsQuery = location.query?.seats;
+  const seatsFromQuery = Array.isArray(seatsQuery) ? seatsQuery[0] : seatsQuery;
+  const initialSeats = Math.max(1, Number.parseInt(seatsFromQuery || '1', 10) || 1);
+
+  const [selectedPriceId, setSelectedPriceId] = useState<PriceId>(MONTHLY_PRICE_ID);
+  const [quantity, setQuantity] = useState(initialSeats);
+
+  useEffect(() => {
+    console.log('🛒 Cart Page - Component mounted with initial state:', {
+      selectedPriceId,
+      quantity,
+      isAnnual,
+      currentOrganization: currentOrganization?.id,
+      locationQuery: location.query,
+      seatsFromQuery,
+      initialSeats
+    });
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem('cartPreferences');
+      if (!stored) {
+        console.log('🛒 Cart Page - No stored cart preferences found');
+        return;
+      }
+      const parsed = JSON.parse(stored) as { seats?: number; tier?: string } | null;
+      console.log('🛒 Cart Page - Stored cart preferences:', parsed);
+      if (parsed?.seats && Number.isFinite(parsed.seats)) {
+        const newQuantity = Math.max(1, Math.floor(parsed.seats));
+        console.log('🛒 Cart Page - Setting quantity from stored preferences:', newQuantity);
+        setQuantity(newQuantity);
+      }
+    } catch (error) {
+      console.warn('❌ Cart Page - Unable to read stored cart preferences:', error);
+    }
+  }, []);
 
   const selectedPrice = PRICES[selectedPriceId];
-  const isAnnual = selectedPrice.recurring.interval === 'year';
-  const monthlySeatPrice = PRICES.price_monthly.unit_amount / 100;
-  const annualSeatPricePerYear = PRICES.price_annual.unit_amount / 100;
+  const isAnnual = selectedPriceId === ANNUAL_PRICE_ID;
+
+  // Log when price selection changes
+  useEffect(() => {
+    console.log('🛒 Cart Page - Price selection changed:', {
+      selectedPriceId,
+      isAnnual,
+      selectedPrice: selectedPrice?.nickname || selectedPrice?.id,
+      quantity
+    });
+  }, [selectedPriceId, isAnnual, quantity]);
+  const monthlySeatPrice = PRICES[MONTHLY_PRICE_ID].unit_amount / 100;
+  const annualSeatPricePerYear = PRICES[ANNUAL_PRICE_ID].unit_amount / 100;
   const annualSeatPricePerMonth = annualSeatPricePerYear / 12;
 
   // Keyboard navigation for radiogroup
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    const priceIds: PriceId[] = ['price_annual', 'price_monthly'];
+    const priceIds: PriceId[] = [ANNUAL_PRICE_ID, MONTHLY_PRICE_ID];
     const currentIndex = priceIds.indexOf(selectedPriceId);
     
     switch (event.key) {
@@ -46,7 +103,16 @@ export const CartPage = () => {
   const discount = isAnnual ? subtotal - annualTotal : 0;
   const total = isAnnual ? annualTotal : subtotal;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    console.log('🛒 Cart Page - Starting checkout process:', {
+      selectedPriceId,
+      quantity,
+      isAnnual,
+      selectedPrice,
+      currentOrganization: currentOrganization?.id,
+      locationQuery: location.query
+    });
+
     // Store cart data for Stripe Elements integration
     const cartData = {
       product_id: selectedPrice.product,
@@ -54,13 +120,16 @@ export const CartPage = () => {
       quantity
     };
 
+    console.log('🛒 Cart Page - Cart data to store:', cartData);
+
     try {
       // Attempt to store in localStorage
       const cartDataString = JSON.stringify(cartData);
       localStorage.setItem('cartData', cartDataString);
+      console.log('✅ Cart Page - Cart data stored in localStorage');
     } catch (error) {
       // Log the error with context
-      console.error('Failed to store cart data in localStorage:', {
+      console.error('❌ Cart Page - Failed to store cart data in localStorage:', {
         error: error instanceof Error ? error.message : String(error),
         cartData,
         storageAvailable: typeof Storage !== 'undefined',
@@ -72,10 +141,10 @@ export const CartPage = () => {
         if (typeof sessionStorage !== 'undefined') {
           const cartDataString = JSON.stringify(cartData);
           sessionStorage.setItem('cartData', cartDataString);
-          console.log('Cart data stored in sessionStorage as fallback');
+          console.log('✅ Cart Page - Cart data stored in sessionStorage as fallback');
         }
       } catch (sessionError) {
-        console.error('Failed to store cart data in sessionStorage:', {
+        console.error('❌ Cart Page - Failed to store cart data in sessionStorage:', {
           error: sessionError instanceof Error ? sessionError.message : String(sessionError),
           cartData
         });
@@ -83,22 +152,39 @@ export const CartPage = () => {
       }
     }
     
-    // TODO: Integrate with Stripe Elements
-    // This will redirect to Stripe checkout or open Stripe Elements modal
-    console.log('Proceeding to Stripe checkout with:', {
-      product_id: selectedPrice.product,
-      price_id: selectedPriceId,
-      quantity,
-      unit_amount: selectedPrice.unit_amount,
-      total: total * 100 // Convert to cents for Stripe
+    // TODO: Integrate with Stripe Elements checkout experience
+    const queryOrgIdParam = location.query?.organizationId;
+    const organizationId = (Array.isArray(queryOrgIdParam) ? queryOrgIdParam[0] : queryOrgIdParam) || currentOrganization?.id;
+
+    console.log('🛒 Cart Page - Organization ID resolution:', {
+      queryOrgIdParam,
+      currentOrganizationId: currentOrganization?.id,
+      resolvedOrganizationId: organizationId
     });
+
+    if (!organizationId) {
+      console.error('❌ Cart Page - No organization ID available');
+      showError('Upgrade unavailable', 'Select or create an organization before upgrading to Business.');
+      return;
+    }
+
+    const upgradeParams = {
+      organizationId,
+      seats: quantity,
+      annual: isAnnual,
+      cancelUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+    };
+
+    console.log('🚀 Cart Page - Calling submitUpgrade with params:', upgradeParams);
+
+    await submitUpgrade(upgradeParams);
   };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
       <header className="py-4">
-        <div className="max-w-7xl mx-auto px-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-20">
           <img 
             src="/blawby-favicon-iframe.png" 
             alt="Blawby" 
@@ -107,94 +193,94 @@ export const CartPage = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left: Price selection */}
-          <div>
+          <div className="px-4 md:px-8 lg:px-16">
             <h2 className="text-2xl font-bold mb-6">Pick your plan</h2>
             
             {/* Price cards */}
             <div 
               role="radiogroup" 
               aria-label="Billing plan selection"
-              className="grid grid-cols-2 gap-4 mb-8"
+              className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
               onKeyDown={handleKeyDown}
               tabIndex={0}
             >
               <button
-                onClick={() => setSelectedPriceId('price_annual')}
+                onClick={() => setSelectedPriceId(ANNUAL_PRICE_ID)}
                 role="radio"
-                aria-checked={selectedPriceId === 'price_annual'}
-                aria-label="Annual plan - $25/user/month. Features: Billed annually, Minimum 2 users, Add and reassign users"
-                tabIndex={selectedPriceId === 'price_annual' ? 0 : -1}
-                className={`p-6 border rounded-lg text-left transition-all relative ${
-                  selectedPriceId === 'price_annual' 
+                aria-checked={selectedPriceId === ANNUAL_PRICE_ID}
+                aria-label="Annual plan - $420 per user per year. Features: Billed annually, Minimum 2 users, Add and reassign users"
+                tabIndex={selectedPriceId === ANNUAL_PRICE_ID ? 0 : -1}
+                className={`p-4 md:p-6 border rounded-lg text-left transition-all relative ${
+                  selectedPriceId === ANNUAL_PRICE_ID 
                     ? 'border-white bg-gray-800' 
                     : 'border-gray-700 hover:border-gray-600'
                 }`}
               >
                 {/* Floating discount badge */}
                 <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-accent-500 text-white text-xs font-medium px-2 py-1 rounded">
-                    Save 17%
+                  <span className="bg-accent-500 text-white text-xs md:text-sm font-medium px-2 py-1 rounded">
+                    Save 12%
                   </span>
                 </div>
 
                 {/* Header with radio indicator */}
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-lg font-bold text-white">Annual</div>
+                  <div className="text-base md:text-lg font-bold text-white">Annual</div>
                   <div className="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center">
-                    {selectedPriceId === 'price_annual' && (
+                    {selectedPriceId === ANNUAL_PRICE_ID && (
                       <div className="w-3 h-3 bg-accent-500 rounded-full" />
                     )}
                   </div>
                 </div>
 
                 {/* Pricing with strikethrough for discounts */}
-                <div className="text-sm text-white mb-1">
-                  $25/user/month
-                  <span className="text-sm text-gray-400 line-through ml-1">$30</span>
+                <div className="text-xs md:text-sm text-white mb-1">
+                  USD $35
+                  <span className="text-xs md:text-sm text-gray-400 line-through ml-1">$40</span>
                 </div>
-                <div className="text-sm text-gray-400 mb-3">per user / month</div>
+                <div className="text-xs md:text-sm text-gray-400 mb-3">per user/month</div>
 
                 {/* Feature list */}
-                <ul className="text-sm text-gray-400 space-y-1">
+                <ul className="text-xs md:text-sm text-gray-400 space-y-1">
                   <li>• Billed annually</li>
-                  <li>• Minimum 2 users</li>
+                  <li>• Minimum 1 user</li>
                   <li>• Add and reassign users</li>
                 </ul>
               </button>
               
               <button
-                onClick={() => setSelectedPriceId('price_monthly')}
+                onClick={() => setSelectedPriceId(MONTHLY_PRICE_ID)}
                 role="radio"
-                aria-checked={selectedPriceId === 'price_monthly'}
-                aria-label="Monthly plan - $30/user/month. Features: Billed monthly, Minimum 2 users, Add or remove users"
-                tabIndex={selectedPriceId === 'price_monthly' ? 0 : -1}
-                className={`p-6 border rounded-lg text-left transition-all relative ${
-                  selectedPriceId === 'price_monthly' 
-                    ? 'border-white bg-gray-800' 
+                aria-checked={selectedPriceId === MONTHLY_PRICE_ID}
+                aria-label="Monthly plan - $40 per user per month. Features: Billed monthly, Minimum 2 users, Add or remove users"
+                tabIndex={selectedPriceId === MONTHLY_PRICE_ID ? 0 : -1}
+                className={`p-4 md:p-6 border rounded-lg text-left transition-all relative ${
+                  selectedPriceId === MONTHLY_PRICE_ID
+                    ? 'border-white bg-gray-800'
                     : 'border-gray-700 hover:border-gray-600'
                 }`}
               >
                 {/* Header with radio indicator */}
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-lg font-bold text-white">Monthly</div>
+                  <div className="text-base md:text-lg font-bold text-white">Monthly</div>
                   <div className="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center">
-                    {selectedPriceId === 'price_monthly' && (
+                    {selectedPriceId === MONTHLY_PRICE_ID && (
                       <div className="w-3 h-3 bg-accent-500 rounded-full" />
                     )}
                   </div>
                 </div>
 
                 {/* Pricing */}
-                <div className="text-sm text-white mb-1">$30/user/month</div>
-                <div className="text-sm text-gray-400 mb-3">per user / month</div>
+                <div className="text-xs md:text-sm text-white mb-1">USD $40</div>
+                <div className="text-xs md:text-sm text-gray-400 mb-3">per user / month</div>
 
                 {/* Feature list */}
-                <ul className="text-sm text-gray-400 space-y-1">
+                <ul className="text-xs md:text-sm text-gray-400 space-y-1">
                   <li>• Billed monthly</li>
-                  <li>• Minimum 2 users</li>
+                  <li>• Minimum 1 user</li>
                   <li>• Add or remove users</li>
                 </ul>
               </button>
@@ -203,13 +289,15 @@ export const CartPage = () => {
             <QuantitySelector
               quantity={quantity}
               onChange={setQuantity}
-              min={2}
-              helperText="Minimum of 2 seats"
+              min={1}
+              helperText="Minimum of 1 seat"
             />
           </div>
 
           {/* Right: Summary */}
-          <div>
+          <div className="relative">
+            {/* Shadow border down center */}
+            <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-gray-600 to-transparent shadow-lg"></div>
             <PricingSummary
               heading="Summary"
               planName={PRODUCTS.business.name}
@@ -244,7 +332,9 @@ export const CartPage = () => {
               ]}
               primaryAction={{
                 label: 'Continue',
-                onClick: handleContinue
+                onClick: () => { void handleContinue(); },
+                isLoading: submitting,
+                loadingLabel: 'Redirecting to Stripe…'
               }}
               secondaryAction={{
                 label: 'Cancel',

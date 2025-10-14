@@ -52,6 +52,108 @@ global.FileReader = vi.fn().mockImplementation(() => ({
   onloadend: null,
 }));
 
+// Mock framer-motion
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: 'div',
+    span: 'span',
+    button: 'button',
+    section: 'section',
+    article: 'article',
+    header: 'header',
+    footer: 'footer',
+    nav: 'nav',
+    main: 'main',
+    aside: 'aside',
+    h1: 'h1',
+    h2: 'h2',
+    h3: 'h3',
+    h4: 'h4',
+    h5: 'h5',
+    h6: 'h6',
+    p: 'p',
+    a: 'a',
+    img: 'img',
+    ul: 'ul',
+    ol: 'ol',
+    li: 'li',
+    table: 'table',
+    tr: 'tr',
+    td: 'td',
+    th: 'th',
+    thead: 'thead',
+    tbody: 'tbody',
+    tfoot: 'tfoot',
+    form: 'form',
+    input: 'input',
+    textarea: 'textarea',
+    select: 'select',
+    option: 'option',
+    label: 'label',
+    fieldset: 'fieldset',
+    legend: 'legend',
+  },
+  AnimatePresence: ({ children }: { children: any }) => children,
+  usePresence: () => [true, null],
+}));
+
+// Mock React hooks that might be used by framer-motion
+vi.mock('react', () => ({
+  createContext: vi.fn(),
+  useContext: vi.fn(),
+  useState: vi.fn(),
+  useEffect: vi.fn(),
+  useRef: vi.fn(),
+  useCallback: vi.fn(),
+  useMemo: vi.fn(),
+  useReducer: vi.fn(),
+  useLayoutEffect: vi.fn(),
+  useImperativeHandle: vi.fn(),
+  useDebugValue: vi.fn(),
+  forwardRef: vi.fn((component) => component),
+  memo: vi.fn((component) => component),
+  createElement: vi.fn(),
+  Fragment: 'Fragment',
+  StrictMode: 'StrictMode',
+  Suspense: 'Suspense',
+  lazy: vi.fn(),
+}));
+
+// Mock window.location
+Object.defineProperty(window, 'location', {
+  value: {
+    href: 'http://localhost:3000',
+    pathname: '/',
+    search: '',
+    hash: '',
+    reload: vi.fn(),
+    assign: vi.fn(),
+    replace: vi.fn(),
+  },
+  writable: true,
+});
+
+// Mock window.history
+Object.defineProperty(window, 'history', {
+  value: {
+    pushState: vi.fn(),
+    replaceState: vi.fn(),
+    go: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+  },
+  writable: true,
+});
+
+// Mock clipboard API
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
+    writeText: vi.fn().mockResolvedValue(undefined),
+    readText: vi.fn().mockResolvedValue(''),
+  },
+  writable: true,
+});
+
 // Initialize i18n before all tests
 beforeAll(async () => {
   await initI18n();

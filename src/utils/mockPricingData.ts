@@ -248,13 +248,13 @@ const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'business',
     name: 'Business',
-    price: '$25 USD / month',
-    priceAmount: 25,
+    price: '$40 USD / month',
+    priceAmount: 40,
     currency: 'USD',
     billingPeriod: 'month',
     description: 'Secure, collaborative workspace for organizations',
-    productId: 'prod_business',
-    priceId: 'price_monthly',
+    productId: 'prod_TE7wTSeH3z57OL',
+    priceId: 'price_1SHfgbDJLzJ14cfPBGuTvcG3',
     features: [
       { icon: PlusIcon, text: 'Everything in Plus, with even higher limits', description: 'All Plus features with unlimited usage' },
       { icon: CpuChipIcon, text: 'Unlimited access to our best model for work', description: 'Unlimited access to advanced AI models' },

@@ -58,7 +58,7 @@ async function retryAddMember(
       
       // Add member atomically using upsert to prevent race conditions
       const result = await env.DB.prepare(`
-        INSERT INTO members (id, organization_id, user_id, role, created_at)
+        INSERT INTO member (id, organization_id, user_id, role, created_at)
         VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(organization_id, user_id) DO NOTHING
       `).bind(
@@ -135,7 +135,7 @@ export async function createPersonalOrganizationOnSignup(
     
     // Check if user already has an organization by querying the database directly
     const existingMembership = await env.DB.prepare(`
-      SELECT organization_id FROM members 
+      SELECT organization_id FROM member 
       WHERE user_id = ?
     `).bind(userId).all();
     

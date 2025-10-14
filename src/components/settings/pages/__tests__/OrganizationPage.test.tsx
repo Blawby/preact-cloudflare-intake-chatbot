@@ -176,13 +176,19 @@ describe('OrganizationPage', () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+    // Reset the mock object to default values
+    useOrgMgmtMock.currentOrganization = {
+      id: 'org-1',
+      name: 'Test Organization',
+      slug: 'test-org',
+    };
   });
 
   it('should render organization page with correct title', () => {
     render(<OrganizationPage className="test-class" />);
     
     expect(screen.getByText('Organization')).toBeInTheDocument();
-    expect(screen.getByText('Manage your organization settings and members.')).toBeInTheDocument();
+    expect(screen.getByText('No Organization Yet')).toBeInTheDocument();
   });
 
   it('should provide refetch and fetchMembers functions', () => {
@@ -292,13 +298,16 @@ describe('OrganizationPage', () => {
   });
 
   it('should open create organization modal when create button is clicked', async () => {
+    // Set currentOrganization to null to show empty state
+    useOrgMgmtMock.currentOrganization = null;
+    
     render(<OrganizationPage />);
     
     const createButton = screen.getByText('Create Organization');
     fireEvent.click(createButton);
     
     await waitFor(() => {
-      expect(screen.getByText('Create New Organization')).toBeInTheDocument();
+      expect(screen.getByText('Create Organization')).toBeInTheDocument();
     });
   });
 
@@ -334,6 +343,9 @@ describe('OrganizationPage', () => {
 
   it('should handle organization creation', async () => {
     mockCreateOrganization.mockResolvedValueOnce(undefined);
+    
+    // Set currentOrganization to null to show empty state
+    useOrgMgmtMock.currentOrganization = null;
     
     render(<OrganizationPage />);
     
@@ -517,9 +529,12 @@ describe('OrganizationPage', () => {
   });
 
   it('should show empty state when no organizations or invitations', () => {
+    // Set currentOrganization to null to show empty state
+    useOrgMgmtMock.currentOrganization = null;
+    
     render(<OrganizationPage />);
     
-    expect(screen.getByText('No organizations found')).toBeInTheDocument();
-    expect(screen.getByText('Create your first organization to get started.')).toBeInTheDocument();
+    expect(screen.getByText('No Organization Yet')).toBeInTheDocument();
+    expect(screen.getByText('Create your law firm or accept an invitation')).toBeInTheDocument();
   });
 });

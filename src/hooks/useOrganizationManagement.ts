@@ -12,6 +12,9 @@ export interface Organization {
   slug: string;
   name: string;
   description?: string;
+  stripeCustomerId?: string | null;
+  subscriptionTier?: string | null;
+  seats?: number;
   config?: {
     metadata?: {
       subscriptionPlan?: string;

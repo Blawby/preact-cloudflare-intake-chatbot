@@ -6,6 +6,12 @@ import type { Env } from "../types";
 import * as authSchema from "../db/auth.schema";
 import { EmailService } from "../services/EmailService.js";
 import { handlePostSignup } from "./hooks.js";
+import { stripe as stripePlugin } from "@better-auth/stripe";
+import Stripe from "stripe";
+import {
+  applyStripeSubscriptionUpdate,
+  clearStripeSubscriptionCache,
+} from "../services/StripeSync.js";
 
 // Organization plugin will use default roles for now
 
@@ -73,6 +79,255 @@ export async function getAuth(env: Env, request?: Request) {
     // Feature flags for geolocation and IP detection (default to disabled)
     const enableGeolocation = env.ENABLE_AUTH_GEOLOCATION === 'true';
     const enableIpDetection = env.ENABLE_AUTH_IP_DETECTION === 'true';
+
+    // Determine if Stripe subscriptions should be enabled
+    const enableStripeSubscriptions =
+      env.ENABLE_STRIPE_SUBSCRIPTIONS === 'true' ||
+      env.ENABLE_STRIPE_SUBSCRIPTIONS === true;
+
+    const stripeSecretKey = env.STRIPE_SECRET_KEY;
+    const stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET;
+    const stripePriceId = env.STRIPE_PRICE_ID;
+    const stripeAnnualPriceId = env.STRIPE_ANNUAL_PRICE_ID;
+
+    let stripeIntegration: ReturnType<typeof stripePlugin> | null = null;
+
+    if (enableStripeSubscriptions) {
+      console.log("🔧 Stripe subscriptions enabled, checking environment variables...");
+      console.log("STRIPE_SECRET_KEY:", stripeSecretKey ? "✅ Present" : "❌ Missing");
+      console.log("STRIPE_WEBHOOK_SECRET:", stripeWebhookSecret ? "✅ Present" : "❌ Missing");
+      console.log("STRIPE_PRICE_ID:", stripePriceId ? "✅ Present" : "❌ Missing");
+      
+      if (!stripeSecretKey || !stripeWebhookSecret || !stripePriceId) {
+        console.warn(
+          "⚠️ Stripe subscriptions enabled but required env vars are missing. " +
+          "Set STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and STRIPE_PRICE_ID."
+        );
+      } else {
+        console.log("✅ All Stripe environment variables present, initializing plugin...");
+        // Stripe API version 2025-02-24 rejects legacy `trial_period_days`;
+        // disable trial period until Better Auth updates to new trial_settings shape.
+        const SUBSCRIPTION_TRIAL_DAYS = 0;
+
+        const normalizePlanName = (value?: string | null) =>
+          typeof value === "string" && value.length > 0 ? value.toLowerCase() : null;
+
+        const syncSubscriptionState = async (params: {
+          stripeSubscription: Stripe.Subscription;
+          referenceId?: string | null;
+          plan?: string | null;
+        }) => {
+          const { stripeSubscription, referenceId, plan } = params;
+          if (!referenceId) {
+            console.warn("Stripe subscription update missing referenceId");
+            return;
+          }
+          try {
+            await applyStripeSubscriptionUpdate({
+              env,
+              organizationId: referenceId,
+              stripeSubscription,
+              plan: normalizePlanName(plan) ?? "business",
+            });
+          } catch (error) {
+            console.error("Failed to sync Stripe subscription state", {
+              organizationId: referenceId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        };
+
+        const authorizeReference = async ({
+          user,
+          referenceId,
+        }: {
+          user: { id: string };
+          referenceId: string;
+        }) => {
+          console.log(`🔐 Authorizing subscription reference:`, {
+            userId: user.id,
+            userEmail: user.email,
+            referenceId,
+            userStripeCustomerId: user.stripeCustomerId
+          });
+
+          if (!referenceId || referenceId === user.id) {
+            console.log(`✅ Authorized: referenceId is user ID or empty`);
+            return true;
+          }
+
+          try {
+            const membership = await env.DB.prepare(
+              `SELECT role 
+                 FROM member 
+                WHERE organization_id = ? 
+                  AND user_id = ?`
+            )
+              .bind(referenceId, user.id)
+              .first<{ role: string }>();
+
+            console.log(`👥 Membership check result:`, { membership, referenceId, userId: user.id });
+
+            if (!membership) {
+              console.log(`❌ No membership found for user ${user.id} in org ${referenceId}`);
+              return false;
+            }
+
+            const isAuthorized = membership.role === "owner" || membership.role === "admin";
+            console.log(`🔑 Authorization result:`, { isAuthorized, role: membership.role });
+            
+            // If authorized, clean up any existing incomplete subscriptions
+            if (isAuthorized) {
+              try {
+                const existingIncomplete = await env.DB.prepare(
+                  `SELECT id FROM subscription 
+                   WHERE reference_id = ? AND status = 'incomplete'`
+                ).bind(referenceId).first<{ id: string }>();
+                
+                if (existingIncomplete) {
+                  console.log(`🧹 Cleaning up incomplete subscription ${existingIncomplete.id} for org ${referenceId}`);
+                  await env.DB.prepare(
+                    `DELETE FROM subscription WHERE id = ?`
+                  ).bind(existingIncomplete.id).run();
+                  console.log(`✅ Successfully cleaned up incomplete subscription`);
+                } else {
+                  console.log(`ℹ️ No incomplete subscriptions found for org ${referenceId}`);
+                }
+              } catch (error) {
+                console.error('❌ Failed to clean up incomplete subscription:', error);
+              }
+            }
+
+            return isAuthorized;
+          } catch (error) {
+            console.error("❌ Failed to authorize subscription reference", {
+              referenceId,
+              userId: user.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return false;
+          }
+        };
+
+        // Create Stripe client instance
+        let stripeClient: Stripe;
+        try {
+          stripeClient = new Stripe(stripeSecretKey, {
+            apiVersion: "2025-02-24.acacia",
+          });
+          console.log("✅ Stripe client created successfully");
+        } catch (error) {
+          console.error("❌ Failed to create Stripe client:", error);
+          throw error;
+        }
+
+        try {
+          console.log(`🔧 Initializing Stripe plugin with configuration:`, {
+            hasStripeClient: !!stripeClient,
+            hasWebhookSecret: !!stripeWebhookSecret,
+            createCustomerOnSignUp: true,
+            priceId: stripePriceId,
+            annualPriceId: stripeAnnualPriceId,
+            trialDays: SUBSCRIPTION_TRIAL_DAYS
+          });
+
+          stripeIntegration = stripePlugin({
+            stripeClient,
+            stripeWebhookSecret,
+            createCustomerOnSignUp: true,
+            subscription: {
+              enabled: true,
+              organization: { enabled: true },
+              authorizeReference: async ({ user, referenceId }) => {
+                console.log(`🔐 Stripe plugin calling authorizeReference:`, { userId: user.id, referenceId });
+                const result = await authorizeReference({ user, referenceId });
+                console.log(`🔐 Stripe plugin authorizeReference result:`, result);
+                return result;
+              },
+              plans: [
+                {
+                  name: "business",
+                  priceId: stripePriceId,
+                  annualDiscountPriceId: stripeAnnualPriceId,
+                  ...(SUBSCRIPTION_TRIAL_DAYS > 0
+                    ? { freeTrial: { days: SUBSCRIPTION_TRIAL_DAYS } }
+                    : {}),
+                },
+                {
+                  name: "business-annual",
+                  priceId: stripeAnnualPriceId,
+                  freeTrial: { days: SUBSCRIPTION_TRIAL_DAYS },
+                },
+              ],
+              onSubscriptionComplete: async ({ stripeSubscription, subscription, plan }) => {
+                console.log(`🎉 Subscription completed:`, {
+                  subscriptionId: subscription.id,
+                  stripeSubscriptionId: stripeSubscription.id,
+                  referenceId: subscription.referenceId,
+                  plan: plan?.name ?? subscription.plan,
+                  status: stripeSubscription.status
+                });
+                await syncSubscriptionState({
+                  stripeSubscription,
+                  referenceId: subscription.referenceId,
+                  plan: plan?.name ?? subscription.plan,
+                });
+              },
+              onSubscriptionUpdate: async ({ event, subscription }) => {
+                const stripeSubscription = event.data.object as Stripe.Subscription;
+                await syncSubscriptionState({
+                  stripeSubscription,
+                  referenceId: subscription.referenceId,
+                  plan: subscription.plan,
+                });
+              },
+              onSubscriptionCancel: async ({ stripeSubscription, subscription }) => {
+                await syncSubscriptionState({
+                  stripeSubscription,
+                  referenceId: subscription.referenceId,
+                  plan: subscription.plan,
+                });
+              },
+              onSubscriptionDeleted: async ({ subscription }) => {
+                if (subscription.referenceId) {
+                  await clearStripeSubscriptionCache(env, subscription.referenceId);
+                }
+              },
+              getCheckoutSessionParams: async (params) => {
+                // Extract seats and annual from the subscription object since they're not passed directly
+                const seats = params.subscription?.seats || 1;
+                const annual = params.plan?.name === 'business-annual';
+                
+                console.log(`🛒 Creating checkout session with full params:`, {
+                  allParams: params,
+                  userId: params.user?.id,
+                  userEmail: params.user?.email,
+                  plan: params.plan?.name,
+                  seats: params.seats,
+                  annual: params.annual,
+                  subscriptionSeats: params.subscription?.seats,
+                  isAnnualPlan: annual,
+                  stripeCustomerId: params.user?.stripeCustomerId
+                });
+                
+                return {
+                  params: {
+                    allow_promotion_codes: true,
+                    tax_id_collection: { enabled: true },
+                    locale: 'en', // Explicitly set locale to prevent language module loading issues
+                  },
+                };
+              },
+            },
+          });
+          
+          console.log("✅ Stripe plugin initialized successfully");
+        } catch (error) {
+          console.error("❌ Failed to initialize Stripe plugin:", error);
+          throw error;
+        }
+      }
+    }
     
     // Determine CF context based on environment and feature flags
     let cfContext: {
@@ -189,6 +444,16 @@ export async function getAuth(env: Env, request?: Request) {
             crossSubDomainCookies: {
               enabled: true,
             },
+            errorHandler: (error, request) => {
+              console.error(`🚨 Better Auth Error:`, {
+                error: error.message,
+                stack: error.stack,
+                url: request?.url,
+                method: request?.method,
+                headers: request?.headers ? Object.fromEntries(request.headers.entries()) : undefined
+              });
+              throw error; // Re-throw to maintain original behavior
+            }
           },
           emailAndPassword: {
             enabled: true,
@@ -235,6 +500,7 @@ export async function getAuth(env: Env, request?: Request) {
           },
           plugins: [
             organization(),
+            ...(stripeIntegration ? [stripeIntegration] : []),
           ],
           databaseHooks: {
             user: {

@@ -30,6 +30,14 @@ export interface Env {
   ENABLE_AUTH_GEOLOCATION?: string;
   ENABLE_AUTH_IP_DETECTION?: string;
   
+  // Stripe Configuration
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_CONNECT_WEBHOOK_SECRET?: string;
+  STRIPE_PRICE_ID?: string;
+  STRIPE_ANNUAL_PRICE_ID?: string;
+  ENABLE_STRIPE_SUBSCRIPTIONS?: string | boolean;
+  
   // Cloudflare AI Configuration
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_API_TOKEN?: string;
@@ -149,8 +157,26 @@ export interface Organization {
       previewUrl?: string | null;
     };
   };
+  stripeCustomerId?: string | null;
+  subscriptionTier?: string | null;
+  seats?: number;
   createdAt: number;
   updatedAt: number;
+}
+
+// Stripe subscription cache type following Theo's KV-first pattern
+export interface StripeSubscriptionCache {
+  subscriptionId: string;
+  status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'none';
+  priceId: string;
+  seats: number;
+  currentPeriodEnd: number;
+  cancelAtPeriodEnd: boolean;
+  limits: {
+    aiQueries: number;
+    documentAnalysis: boolean;
+    customBranding: boolean;
+  };
 }
 
 // Form types

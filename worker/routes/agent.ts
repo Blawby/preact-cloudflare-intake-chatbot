@@ -18,6 +18,7 @@ import { SessionService } from '../services/SessionService.js';
 import { StatusService } from '../services/StatusService.js';
 import { chunkResponseText } from '../utils/streaming.js';
 import { Logger } from '../utils/logger.js';
+import { ensureActiveSubscription } from '../middleware/subscription.js';
 
 // Interface for the request body
 interface RouteBody {
@@ -347,6 +348,25 @@ export async function handleAgentStreamV2(request: Request, env: Env): Promise<R
 
     if (sessionResolution.cookie) {
       headers.append('Set-Cookie', sessionResolution.cookie);
+    }
+
+    const stripeSubscriptionsEnabled =
+      env.ENABLE_STRIPE_SUBSCRIPTIONS === 'true' ||
+      env.ENABLE_STRIPE_SUBSCRIPTIONS === true;
+
+    if (stripeSubscriptionsEnabled) {
+      try {
+        await ensureActiveSubscription(env, {
+          organizationId: resolvedOrganizationId,
+          refreshIfMissing: false,
+        });
+      } catch (subscriptionError) {
+        console.warn('Subscription check failed; allowing request to proceed for now', {
+          error: subscriptionError instanceof Error ? subscriptionError.message : String(subscriptionError),
+          organizationId: resolvedOrganizationId,
+          sessionId: resolvedSessionId,
+        });
+      }
     }
 
     // Persist the latest user message for auditing

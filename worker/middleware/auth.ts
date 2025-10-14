@@ -61,7 +61,7 @@ export async function requireOrganizationMember(
   // 2. Fetch user's membership for the organization using direct database query
   try {
     const membershipResult = await env.DB.prepare(`
-      SELECT role FROM organization_members 
+      SELECT role FROM member 
       WHERE organization_id = ? AND user_id = ?
     `).bind(organizationId, authContext.user.id).first();
     

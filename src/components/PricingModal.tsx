@@ -279,51 +279,23 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
   const handleUpgrade = (tier: SubscriptionTier) => {
     if (tier === 'business') {
-      // Find the selected plan to get its productId and priceId
-      const selectedPlan = allPlans.find(plan => plan.id === tier);
-      
-      // Use plan properties with safe fallbacks
-      const productId = selectedPlan?.productId || 'prod_business';
-      const priceId = selectedPlan?.priceId || 'price_monthly';
-      
-      // Store cart data and navigate to cart
       try {
-        localStorage.setItem('cartData', JSON.stringify({
-          product_id: productId,
-          price_id: priceId,
-          quantity: selectedQuantity
-        }));
-      } catch (error) {
-        // Handle localStorage failures (private mode, quota exceeded, etc.)
-        handleError(error, {
-          component: 'PricingModal',
-          action: 'store-cart-data',
+        const payload = {
+          seats: selectedQuantity,
           tier,
-          quantity: selectedQuantity,
-          productId,
-          priceId
-        });
-        
-        // Show user-friendly warning about cart data storage failure
-        showWarning(
-          'Cart data not saved',
-          'Your cart data could not be saved locally. You may need to re-select your options on the cart page.',
-          5000
-        );
+          timestamp: Date.now()
+        };
+        localStorage.setItem('cartPreferences', JSON.stringify(payload));
+      } catch (error) {
+        console.warn('Unable to store cart preferences:', error);
       }
-      
-      // Continue with navigation and callbacks regardless of storage success/failure
-      navigate('/cart');
-      if (onUpgrade) {
-        onUpgrade(tier);
-      }
-      onClose();
-    } else {
-      if (onUpgrade) {
-        onUpgrade(tier);
-      }
-      onClose();
+
+      navigate(`/cart?seats=${selectedQuantity}`);
     }
+    if (onUpgrade) {
+      onUpgrade(tier);
+    }
+    onClose();
   };
 
   return (

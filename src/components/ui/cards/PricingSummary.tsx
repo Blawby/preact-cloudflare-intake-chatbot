@@ -95,7 +95,7 @@ export const PricingSummary = ({
   const discountPercentage = computeDiscountPercentage();
 
   return (
-    <section aria-labelledby={headingId} className="bg-gray-900 text-white">
+    <section aria-labelledby={headingId} className="bg-gray-900 text-white px-4 md:px-8 lg:px-32">
       <header className="mb-6">
         <h2 id={headingId} className="text-lg font-medium">
           {heading}

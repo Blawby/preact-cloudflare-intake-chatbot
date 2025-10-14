@@ -88,8 +88,9 @@ describe('SidebarNavigation', () => {
     const generalButton = screen.getByRole('button', { name: /General/i });
     generalButton.focus();
 
-    // Press Enter to activate the item
-    fireEvent.keyDown(generalButton, { key: 'Enter' });
+    // Press Enter to activate the item - fire on the nav element where the listener is attached
+    const nav = screen.getByRole('navigation');
+    fireEvent.keyDown(nav, { key: 'Enter' });
 
     // Should call onItemClick with the item id
     expect(mockOnItemClick).toHaveBeenCalledWith('general');
@@ -107,8 +108,9 @@ describe('SidebarNavigation', () => {
     const generalButton = screen.getByRole('button', { name: /General/i });
     generalButton.focus();
 
-    // Press Space to activate the item
-    fireEvent.keyDown(generalButton, { key: ' ' });
+    // Press Space to activate the item - fire on the nav element where the listener is attached
+    const nav = screen.getByRole('navigation');
+    fireEvent.keyDown(nav, { key: ' ' });
 
     // Should call onItemClick with the item id
     expect(mockOnItemClick).toHaveBeenCalledWith('general');
@@ -232,8 +234,9 @@ describe('SidebarNavigation', () => {
     const signOutButton = screen.getByRole('button', { name: /Sign Out/i });
     signOutButton.focus();
 
-    // Press Enter to activate the action item
-    fireEvent.keyDown(signOutButton, { key: 'Enter' });
+    // Press Enter to activate the action item - fire on the nav element where the listener is attached
+    const nav = screen.getByRole('navigation');
+    fireEvent.keyDown(nav, { key: 'Enter' });
 
     // Should call the action's onClick instead of onItemClick
     expect(mockOnClick).toHaveBeenCalled();
