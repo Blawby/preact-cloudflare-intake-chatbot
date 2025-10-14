@@ -366,7 +366,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   plan TEXT NOT NULL,
   reference_id TEXT NOT NULL, -- References organizations.id for organization-level subscriptions
   stripe_subscription_id TEXT UNIQUE,
-  status TEXT DEFAULT 'incomplete' NOT NULL CHECK(status IN ('incomplete', 'active', 'canceled', 'past_due', 'trialing', 'paused')),
+  status TEXT DEFAULT 'incomplete' NOT NULL CHECK(status IN ('incomplete', 'incomplete_expired', 'active', 'canceled', 'past_due', 'unpaid', 'trialing')),
   period_start INTEGER,
   period_end INTEGER,
   trial_start INTEGER,

@@ -202,10 +202,10 @@ export function getCorsConfig(env: Env): CorsOptions {
     // In development, allow specific localhost origins for credentials
     const allowedDomains = [
       'http://localhost:5173', // Vite dev server
-      'http://localhost:3000', // Alternative dev server
+      'http://localhost:5174', // Alternative Vite dev server
       'http://localhost:8787', // Worker dev server
       'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5174',
       'http://127.0.0.1:8787'
     ];
     return createProductionCorsOptions(allowedDomains);

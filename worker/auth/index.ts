@@ -97,6 +97,7 @@ export async function getAuth(env: Env, request?: Request) {
       console.log("STRIPE_SECRET_KEY:", stripeSecretKey ? "✅ Present" : "❌ Missing");
       console.log("STRIPE_WEBHOOK_SECRET:", stripeWebhookSecret ? "✅ Present" : "❌ Missing");
       console.log("STRIPE_PRICE_ID:", stripePriceId ? "✅ Present" : "❌ Missing");
+      console.log("STRIPE_ANNUAL_PRICE_ID:", stripeAnnualPriceId ? "✅ Present" : "❌ Missing");
       
       if (!stripeSecretKey || !stripeWebhookSecret || !stripePriceId) {
         console.warn(
@@ -223,18 +224,18 @@ export async function getAuth(env: Env, request?: Request) {
                 {
                   name: "business",
                   priceId: stripePriceId,
-                  annualDiscountPriceId: stripeAnnualPriceId,
+                  ...(stripeAnnualPriceId ? { annualDiscountPriceId: stripeAnnualPriceId } : {}),
                   ...(SUBSCRIPTION_TRIAL_DAYS > 0
                     ? { freeTrial: { days: SUBSCRIPTION_TRIAL_DAYS } }
                     : {}),
                 },
-                {
+                ...(stripeAnnualPriceId ? [{
                   name: "business-annual",
                   priceId: stripeAnnualPriceId,
                   ...(SUBSCRIPTION_TRIAL_DAYS > 0
                     ? { freeTrial: { days: SUBSCRIPTION_TRIAL_DAYS } }
                     : {}),
-                },
+                }] : []),
               ],
               onSubscriptionComplete: async ({ stripeSubscription, subscription, plan }) => {
                 await syncSubscriptionState({
@@ -409,12 +410,25 @@ export async function getAuth(env: Env, request?: Request) {
               enabled: true,
             },
             errorHandler: (error, request) => {
+              // Sanitize headers to remove sensitive information
+              const sanitizedHeaders: Record<string, string> = {};
+              if (request?.headers) {
+                for (const [key, value] of request.headers.entries()) {
+                  const normalizedKey = key.toLowerCase();
+                  if (normalizedKey === 'authorization' || normalizedKey === 'cookie') {
+                    sanitizedHeaders[key] = '[REDACTED]';
+                  } else {
+                    sanitizedHeaders[key] = value;
+                  }
+                }
+              }
+              
               console.error(`🚨 Better Auth Error:`, {
                 error: error.message,
                 stack: error.stack,
                 url: request?.url,
                 method: request?.method,
-                headers: request?.headers ? Object.fromEntries(request.headers.entries()) : undefined
+                headers: sanitizedHeaders
               });
               throw error; // Re-throw to maintain original behavior
             }

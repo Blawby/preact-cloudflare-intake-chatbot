@@ -10,6 +10,7 @@ import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
 import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
 import { useOrganizationManagement } from './hooks/useOrganizationManagement';
+import { type SubscriptionTier } from './utils/mockUserData';
 import { useMessageHandlingWithContext } from './hooks/useMessageHandling';
 import { useFileUploadWithContext } from './hooks/useFileUpload';
 import { useChatSessionWithContext } from './hooks/useChatSession';
@@ -148,7 +149,7 @@ function MainApp() {
 
 	// Handle hash-based routing for pricing modal
 	const [showPricingModal, setShowPricingModal] = useState(false);
-	const [currentUserTier, setCurrentUserTier] = useState<'free' | 'plus' | 'business'>('free');
+	const [currentUserTier, setCurrentUserTier] = useState<SubscriptionTier>('free');
 	
 	useEffect(() => {
 		const handleHashChange = () => {
@@ -181,7 +182,7 @@ function MainApp() {
 		// Use organization tier directly from organization management
 		const checkUserTier = () => {
 			const orgTier = currentOrganization?.subscriptionTier || 'free';
-			setCurrentUserTier(orgTier as 'free' | 'plus' | 'business' | 'enterprise');
+			setCurrentUserTier(orgTier as SubscriptionTier);
 		};
 		
 		checkUserTier();
@@ -209,7 +210,7 @@ function MainApp() {
 			};
 			addMessage(introMessage);
 		}
-	}, [organizationConfig?.introMessage, messages.length, addMessage]);
+	}, [organizationConfig, messages.length, addMessage]);
 
 	// Create stable callback references for keyboard handlers
 	const handleEscape = useCallback(() => {

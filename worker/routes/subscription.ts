@@ -28,8 +28,14 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
       throw HttpErrors.notFound("Stripe subscription endpoints are disabled");
     }
     if (path === "/api/subscription/sync" && request.method === "POST") {
-      const { organizationId, subscriptionId, stripeSubscriptionId } =
-        (await parseJsonBody(request)) as SyncSubscriptionRequest;
+      let requestBody: SyncSubscriptionRequest;
+      try {
+        requestBody = (await parseJsonBody(request)) as SyncSubscriptionRequest;
+      } catch (err) {
+        throw HttpErrors.badRequest('Invalid JSON: ' + (err instanceof Error ? err.message : String(err)));
+      }
+      
+      const { organizationId, subscriptionId, stripeSubscriptionId } = requestBody;
 
       if (!organizationId) {
         throw HttpErrors.badRequest("organizationId is required");
@@ -78,8 +84,10 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
       if (!stripeId) {
         await clearStripeSubscriptionCache(env, organizationId);
         return createSuccessResponse({
-          synced: false,
-          message: "No active Stripe subscription found for organization",
+          data: {
+            synced: false,
+            message: "No active Stripe subscription found for organization",
+          }
         });
       }
 
@@ -91,8 +99,10 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
       });
 
       return createSuccessResponse({
-        synced: true,
-        subscription: cache,
+        data: {
+          synced: true,
+          subscription: cache,
+        }
       });
     }
 

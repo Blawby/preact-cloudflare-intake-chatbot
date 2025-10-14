@@ -161,6 +161,7 @@ export const CartPage = () => {
       seats: quantity,
       annual: isAnnual,
       cancelUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+      returnUrl: typeof window !== 'undefined' ? window.location.href : undefined,
     };
 
 

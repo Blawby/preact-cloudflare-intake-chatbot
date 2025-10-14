@@ -35,7 +35,7 @@ export const AccountPage = ({
   const { t } = useTranslation(['settings', 'common']);
   const location = useLocation();
   const { syncSubscription } = usePaymentUpgrade();
-  const { currentOrganization, loading: orgLoading } = useOrganizationManagement();
+  const { currentOrganization, loading: orgLoading, refetch } = useOrganizationManagement();
   const [links, setLinks] = useState<MockUserLinks | null>(null);
   const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,15 +108,20 @@ export const AccountPage = ({
           // Store previous tier before sync
           const previousTier = currentOrganization?.subscriptionTier;
           
-          await syncSubscription(organizationId);
-
-          // Load account data before cleaning up URL params
-          if (isMountedRef.current) {
-            await loadAccountData();
-          }
+          const syncResult = await syncSubscription(organizationId);
 
           // Check if tier was upgraded to business/enterprise
-          const newTier = currentOrganization?.subscriptionTier;
+          let newTier = currentOrganization?.subscriptionTier;
+          
+          // Prefer the sync response if it returns plan/tier info
+          if (syncResult?.data?.subscription?.plan) {
+            newTier = syncResult.data.subscription.plan;
+          } else {
+            // If no tier info in response, refetch to get latest organization data
+            await refetch();
+            newTier = currentOrganization?.subscriptionTier;
+          }
+
           const wasUpgraded = (previousTier === 'free' || !previousTier) && 
                              (newTier === 'business' || newTier === 'enterprise');
 
@@ -128,6 +133,11 @@ export const AccountPage = ({
             } catch (storageError) {
               console.warn('Failed to set business setup flag:', storageError);
             }
+          }
+
+          // Load account data after upgrade handling
+          if (isMountedRef.current) {
+            await loadAccountData();
           }
 
           // Clean up URL params after successful sync and data load
@@ -149,7 +159,7 @@ export const AccountPage = ({
     };
 
     handlePostCheckoutSync();
-  }, [location.query, currentOrganization?.id, currentOrganization?.subscriptionTier, syncSubscription, showError, loadAccountData, navigate]);
+  }, [location.query, currentOrganization?.id, currentOrganization?.subscriptionTier, syncSubscription, showError, loadAccountData, navigate, refetch]);
 
   // Cleanup verification timeout and sync ref on unmount
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, unique } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, unique, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
@@ -70,13 +70,15 @@ export const organizations = sqliteTable("organizations", {
 }));
 
 export const member = sqliteTable("member", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
   organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 }, (table) => ({
   uniqueOrgUser: unique("unique_org_user").on(table.organizationId, table.userId),
+  memberOrgIdx: index("member_org_idx").on(table.organizationId),
+  memberUserIdx: index("member_user_idx").on(table.userId),
 }));
 
 export const subscriptions = sqliteTable("subscriptions", {
@@ -91,8 +93,8 @@ export const subscriptions = sqliteTable("subscriptions", {
   trialEnd: integer("trial_end", { mode: "timestamp" }),
   cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).default(false).notNull(),
   seats: integer("seats"), // Validated by CHECK constraint in SQL (seats > 0)
-  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(strftime('%s', 'now') * 1000)`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(strftime('%s', 'now') * 1000)`),
 }, (_table) => ({
   // Foreign key constraints are now defined in Drizzle schema to match SQL schema
   // stripeSubscriptionIdUnique: unique("stripe_subscription_id_unique").on(table.stripeSubscriptionId), // Now handled by .unique() on column

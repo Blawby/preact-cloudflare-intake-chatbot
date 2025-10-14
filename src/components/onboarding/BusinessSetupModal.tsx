@@ -7,7 +7,7 @@ import {
   Cog6ToothIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../ui/i18n/useTranslation';
 
 interface BusinessSetupModalProps {
   isOpen: boolean;
@@ -45,37 +45,37 @@ export const BusinessSetupModal = ({ isOpen, onClose }: BusinessSetupModalProps)
       icon: BuildingOfficeIcon,
       iconColor: 'text-blue-500',
       bgColor: 'bg-blue-100 dark:bg-blue-900/20',
-      title: t('onboarding.businessSetup.steps.businessInfo.title'),
-      description: t('onboarding.businessSetup.steps.businessInfo.description')
+      title: t('businessSetup.steps.businessInfo.title'),
+      description: t('businessSetup.steps.businessInfo.description')
     },
     {
       id: 'branding',
       icon: Cog6ToothIcon,
       iconColor: 'text-purple-500',
       bgColor: 'bg-purple-100 dark:bg-purple-900/20',
-      title: t('onboarding.businessSetup.steps.branding.title'),
-      description: t('onboarding.businessSetup.steps.branding.description')
+      title: t('businessSetup.steps.branding.title'),
+      description: t('businessSetup.steps.branding.description')
     },
     {
       id: 'practiceAreas',
       icon: UserGroupIcon,
       iconColor: 'text-green-500',
       bgColor: 'bg-green-100 dark:bg-green-900/20',
-      title: t('onboarding.businessSetup.steps.practiceAreas.title'),
-      description: t('onboarding.businessSetup.steps.practiceAreas.description')
+      title: t('businessSetup.steps.practiceAreas.title'),
+      description: t('businessSetup.steps.practiceAreas.description')
     }
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose}>
       <div className="p-8">
         <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mx-auto mb-4">
             <CheckCircleIcon className="h-8 w-8 text-green-500" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">{t('onboarding.businessSetup.title')}</h2>
+          <h2 className="text-2xl font-bold mb-2">{t('businessSetup.title')}</h2>
           <p className="text-gray-600 dark:text-gray-400">
-            {t('onboarding.businessSetup.subtitle')}
+            {t('businessSetup.subtitle')}
           </p>
         </div>
 
@@ -107,14 +107,14 @@ export const BusinessSetupModal = ({ isOpen, onClose }: BusinessSetupModalProps)
             className="flex-1" 
             onClick={handleSkip}
           >
-            {t('onboarding.businessSetup.actions.skip')}
+            {t('businessSetup.actions.skip')}
           </Button>
           <Button 
             variant="primary" 
             className="flex-1" 
             onClick={handleContinue}
           >
-            {t('onboarding.businessSetup.actions.continue')}
+            {t('businessSetup.actions.continue')}
           </Button>
         </div>
       </div>

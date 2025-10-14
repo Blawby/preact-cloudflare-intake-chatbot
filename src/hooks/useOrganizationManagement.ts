@@ -301,7 +301,16 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   const fetchTokens = useCallback(async (orgId: string): Promise<void> => {
     try {
       const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`);
-      setTokens(prev => ({ ...prev, [orgId]: data || [] }));
+      // Map API response to ApiToken shape
+      const mappedTokens = (data || []).map((token: any) => ({
+        id: token.id,
+        name: token.tokenName,
+        permissions: token.permissions || [],
+        createdAt: token.createdAt,
+        lastUsed: token.lastUsedAt,
+        ...token // Include any other fields
+      }));
+      setTokens(prev => ({ ...prev, [orgId]: mappedTokens }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tokens');
     }
