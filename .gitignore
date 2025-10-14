@@ -60,6 +60,14 @@ migrations/*_with_secrets.sql
 wrangler.toml
 .wrangler/
 
+# Backup files
+.backups/
+*.backup
+*.bak
+*.orig
+*.tmp
+*~
+
 # Misc
 .cache
 .parcel-cache
