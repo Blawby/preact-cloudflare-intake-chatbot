@@ -8,14 +8,14 @@ import { Select } from './ui/input/Select';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { getBusinessPrices } from '../utils/stripe-products';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
-import { useToastContext } from '../contexts/ToastContext';
-import { useTranslation } from 'react-i18next';
+// import { useToastContext } from '../contexts/ToastContext';
+// import { useTranslation } from 'react-i18next';
 
 interface PricingModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentTier?: SubscriptionTier;
-  onUpgrade?: (tier: SubscriptionTier) => void;
+  onUpgrade?: (tier: SubscriptionTier) => Promise<void> | void;
 }
 
 
@@ -257,15 +257,16 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       buttonText: 'Your current plan',
       isRecommended: currentTier === 'free',
     },
-    {
-      id: 'plus' as SubscriptionTier,
-      name: 'Plus',
-      price: '$20 USD / month',
-      description: 'Enhanced AI capabilities for individual professionals',
-      features: [],
-      buttonText: 'Get Plus',
-      isRecommended: currentTier === 'free',
-    },
+    // Plus tier temporarily hidden until backend Stripe integration is complete
+    // {
+    //   id: 'plus' as SubscriptionTier,
+    //   name: 'Plus',
+    //   price: '$20 USD / month',
+    //   description: 'Enhanced AI capabilities for individual professionals',
+    //   features: [],
+    //   buttonText: 'Get Plus',
+    //   isRecommended: currentTier === 'free',
+    // },
     {
       id: 'business' as SubscriptionTier,
       name: 'Business',
@@ -273,7 +274,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
       description: 'Secure, collaborative workspace for organizations',
       features: [],
       buttonText: 'Get Business',
-      isRecommended: currentTier === 'plus',
+      isRecommended: currentTier === 'free' || currentTier === 'plus',
     },
     {
       id: 'enterprise' as SubscriptionTier,
@@ -287,9 +288,10 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   ];
   
   // Define upgrade paths - include current tier to show it
+  // Plus tier temporarily removed from upgrade paths until backend support is added
   const upgradeTiers = {
-    'free': ['free', 'plus', 'business'],
-    'plus': ['plus', 'business'],  
+    'free': ['free', 'business'],
+    'plus': ['plus', 'business'],  // Keep for existing plus users
     'business': ['business', 'enterprise'],
     'enterprise': ['enterprise']
   };
@@ -314,7 +316,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
         });
     } else {
       return allPlans
-        .filter(plan => availableTiers.includes(plan.id) && plan.id !== 'plus')
+        .filter(plan => availableTiers.includes(plan.id))
         .map(plan => {
           const isCurrent = plan.id === currentTier;
           return {
@@ -341,16 +343,23 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   })();
 
   const handleUpgrade = async (tier: SubscriptionTier) => {
-    // Call callbacks before navigation to ensure they complete
-    if (onUpgrade) {
-      onUpgrade(tier);
+    try {
+      // Call callbacks before navigation to ensure they complete
+      if (onUpgrade) {
+        await onUpgrade(tier);
+      }
+
+      // Navigate to cart with the selected tier
+      navigate(`/cart?tier=${tier}`);
+
+      // Close modal after navigation
+      onClose();
+    } catch (error) {
+      console.error('Error during upgrade process:', error);
+      // Still navigate and close modal even if callback fails
+      navigate(`/cart?tier=${tier}`);
+      onClose();
     }
-
-    // Navigate to cart with the selected tier
-    navigate(`/cart?tier=${tier}`);
-
-    // Close modal after navigation
-    onClose();
   };
 
   return (

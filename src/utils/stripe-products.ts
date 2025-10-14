@@ -74,8 +74,14 @@ export function getTierDisplayName(tier: 'free' | 'business' | 'plus' | 'enterpr
 }
 
 export function formatPriceCents(amountCents: number, interval: 'month' | 'year'): string {
-  const dollars = (amountCents / 100).toFixed(0);
-  return `$${dollars} USD / ${interval}`;
+  const dollars = amountCents / 100;
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+  return `${formatter.format(dollars)} / ${interval}`;
 }
 
 export function getBusinessPrices(): { monthly: string; annual?: string } {

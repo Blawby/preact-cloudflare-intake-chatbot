@@ -203,7 +203,7 @@ export async function getAuth(env: Env, request?: Request) {
         let stripeClient: Stripe;
         try {
           stripeClient = new Stripe(stripeSecretKey, {
-            apiVersion: "2025-08-27.basil",
+            apiVersion: "2024-08-14", // Use stable version instead of preview
           });
         } catch (error) {
           console.error("❌ Failed to create Stripe client:", error);
