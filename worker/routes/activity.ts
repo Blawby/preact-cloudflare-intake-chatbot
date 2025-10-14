@@ -1,6 +1,7 @@
 import { ActivityService, type ActivityEvent } from '../services/ActivityService';
 import { SessionService } from '../services/SessionService';
 import { rateLimit, getClientId } from '../middleware/rateLimit';
+import { createRateLimitResponse } from '../errorHandler';
 import { HttpErrors, handleError } from '../errorHandler';
 import { parseJsonBody } from '../utils';
 import type { Env } from '../types';
@@ -23,20 +24,11 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
   // Rate limiting
   const clientId = getClientId(request);
   if (!(await rateLimit(env, clientId, 50, 60))) { // 50 requests per minute
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Rate limit exceeded. Please try again later.',
-      errorCode: 'RATE_LIMITED',
-      retryAfter: 60
-    }), {
-      status: 429,
-      headers: {
-        'Content-Type': 'application/json',
-        'Retry-After': '60',
-        'X-RateLimit-Limit': '50',
-        'X-RateLimit-Remaining': '0',
-        'X-RateLimit-Reset': String(Math.floor(Date.now() / 1000) + 60)
-      }
+    return createRateLimitResponse(60, {
+      limit: 50,
+      remaining: 0,
+      reset: Math.floor(Date.now() / 1000) + 60,
+      errorMessage: 'Rate limit exceeded. Please try again later.'
     });
   }
 
@@ -79,10 +71,10 @@ export async function handleActivity(request: Request, env: Env): Promise<Respon
 
 async function handleGetActivity(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
-  const teamId = url.searchParams.get('teamId');
+  const organizationId = url.searchParams.get('organizationId');
   
-  if (!teamId) {
-    throw HttpErrors.badRequest('teamId parameter is required');
+  if (!organizationId) {
+    throw HttpErrors.badRequest('organizationId parameter is required');
   }
 
   // Resolve session for tenant scoping (no auth required)
@@ -90,7 +82,7 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
   try {
     sessionResolution = await SessionService.resolveSession(env, {
       request,
-      teamId,
+      organizationId,
       createIfMissing: true // Allow creating session if missing
     });
   } catch (error) {
@@ -98,11 +90,11 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
     throw HttpErrors.badRequest('Failed to resolve session');
   }
 
-  const resolvedTeamId = sessionResolution.session.teamId;
+  const resolvedOrganizationId = sessionResolution.session.organizationId;
   
-  // Security check: ensure session belongs to the requested team
-  if (resolvedTeamId !== teamId) {
-    throw HttpErrors.forbidden('Session does not belong to the specified team');
+  // Security check: ensure session belongs to the requested organization
+  if (resolvedOrganizationId !== organizationId) {
+    throw HttpErrors.forbidden('Session does not belong to the specified organization');
   }
 
   // Parse query parameters
@@ -131,7 +123,7 @@ async function handleGetActivity(request: Request, env: Env): Promise<Response> 
   let result;
   try {
     result = await activityService.queryActivity({
-      teamId: resolvedTeamId,
+      organizationId: resolvedOrganizationId,
       matterId,
       sessionId,
       limit,
@@ -214,12 +206,12 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
     throw HttpErrors.badRequest('sessionId is required when type is session_event');
   }
 
-  // Extract team ID from request (could be in body or query params)
+  // Extract organization ID from request (could be in body or query params)
   const url = new URL(request.url);
-  const teamId = (body.metadata?.teamId as string) || url.searchParams.get('teamId');
+  const organizationId = (body.metadata?.organizationId as string) || url.searchParams.get('organizationId');
   
-  if (!teamId) {
-    throw HttpErrors.badRequest('teamId is required');
+  if (!organizationId) {
+    throw HttpErrors.badRequest('organizationId is required');
   }
 
   // Resolve session for tenant scoping (no auth required)
@@ -227,7 +219,7 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
   try {
     sessionResolution = await SessionService.resolveSession(env, {
       request,
-      teamId,
+      organizationId,
       createIfMissing: true // Allow creating session if missing
     });
   } catch (error) {
@@ -235,17 +227,17 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
     throw HttpErrors.badRequest('Failed to resolve session');
   }
 
-  const resolvedTeamId = sessionResolution.session.teamId;
+  const resolvedOrganizationId = sessionResolution.session.organizationId;
   
-  // Security check: ensure session belongs to the requested team
-  if (resolvedTeamId !== teamId) {
-    throw HttpErrors.forbidden('Session does not belong to the specified team');
+  // Security check: ensure session belongs to the requested organization
+  if (resolvedOrganizationId !== organizationId) {
+    throw HttpErrors.forbidden('Session does not belong to the specified organization');
   }
 
   // Check for idempotency
   const idempotencyKey = request.headers.get('Idempotency-Key') || body.idempotencyKey;
   if (idempotencyKey) {
-    const existingEvent = await checkIdempotency(env, idempotencyKey, resolvedTeamId);
+    const existingEvent = await checkIdempotency(env, idempotencyKey, resolvedOrganizationId);
     if (existingEvent) {
       return new Response(JSON.stringify({
         success: true,
@@ -284,15 +276,15 @@ async function handleCreateActivity(request: Request, env: Env): Promise<Respons
     actorId,
     metadata: {
       ...body.metadata,
-      teamId: resolvedTeamId,
+      organizationId: resolvedOrganizationId,
       ...(body.matterId ? { matterId: body.matterId } : {}),
       ...(body.sessionId ? { sessionId: body.sessionId } : {})
     }
-  }, resolvedTeamId);
+  }, resolvedOrganizationId);
 
   // Store idempotency key if provided
   if (idempotencyKey) {
-    await storeIdempotencyKey(env, idempotencyKey, resolvedTeamId, eventId);
+    await storeIdempotencyKey(env, idempotencyKey, resolvedOrganizationId, eventId);
   }
 
   // Fetch the created event to return
@@ -317,10 +309,10 @@ function generateETag(data: unknown): string {
   return `"${base64.slice(0, 16)}"`;
 }
 
-async function checkIdempotency(env: Env, key: string, teamId: string): Promise<ActivityEvent | null> {
+async function checkIdempotency(env: Env, key: string, organizationId: string): Promise<ActivityEvent | null> {
   if (!env.CHAT_SESSIONS) return null;
   
-  const idempotencyKey = `idempotency:${teamId}:${key}`;
+  const idempotencyKey = `idempotency:${organizationId}:${key}`;
   const existing = await env.CHAT_SESSIONS.get(idempotencyKey);
   
   if (existing) {
@@ -333,10 +325,10 @@ async function checkIdempotency(env: Env, key: string, teamId: string): Promise<
   return null;
 }
 
-async function storeIdempotencyKey(env: Env, key: string, teamId: string, eventId: string): Promise<void> {
+async function storeIdempotencyKey(env: Env, key: string, organizationId: string, eventId: string): Promise<void> {
   if (!env.CHAT_SESSIONS) return;
   
-  const idempotencyKey = `idempotency:${teamId}:${key}`;
+  const idempotencyKey = `idempotency:${organizationId}:${key}`;
   await env.CHAT_SESSIONS.put(idempotencyKey, eventId, { expirationTtl: 86400 }); // 24 hours
 }
 

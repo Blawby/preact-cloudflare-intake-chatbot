@@ -74,7 +74,7 @@ const Modal: FunctionComponent<ModalProps> = ({
     if (!isOpen || !isBrowser) return null;
 
     // Determine modal behavior based on type and mobile state
-    const shouldUseDrawer = type === 'drawer' || (mobileBehavior === 'drawer' && isMobile);
+    const shouldUseDrawer = type === 'drawer' || (type !== 'fullscreen' && mobileBehavior === 'drawer' && isMobile);
     const shouldUseFullscreen = type === 'fullscreen';
 
     const modalContent = (
@@ -92,6 +92,7 @@ const Modal: FunctionComponent<ModalProps> = ({
                     <div 
                         className="absolute inset-0 bg-black bg-opacity-50"
                         onClick={disableBackdropClick ? undefined : onClose}
+                        onKeyDown={disableBackdropClick ? undefined : () => {}}
                     />
                     
                     {/* Content */}
@@ -119,7 +120,7 @@ const Modal: FunctionComponent<ModalProps> = ({
                         {/* Handle for mobile drawer */}
                         {shouldUseDrawer && (
                             <div className="flex justify-center pt-4 pb-2">
-                                <div className="w-12 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                <div className="w-12 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
                             </div>
                         )}
                         

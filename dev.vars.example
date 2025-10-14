@@ -1,20 +1,10 @@
 # Local development environment variables (Worker Secrets Only)
 # Copy this file to .dev.vars and fill in your actual values
-
-# Environment Configuration
-NODE_ENV=development
-
-# Authentication removed - frontend-only application
-
-# Debug Configuration
-VITE_DEBUG_OVERLAY=false
-
-# AI Provider Defaults
-AI_PROVIDER_DEFAULT=workers-ai
-AI_MODEL_DEFAULT=@cf/openai/gpt-oss-20b
-AI_MODEL_FALLBACK=@cf/meta/llama-3.1-8b-instruct
-ENABLE_WORKERS_AI=true
-ENABLE_GATEWAY_OPENAI=false
+# 
+# Note: Non-sensitive configuration variables (like AI_MODEL_DEFAULT, ENABLE_WORKERS_AI, etc.)
+# are now managed in wrangler.toml instead of this file.
+# 
+# Updated for Better Auth organization migration - all "team" references changed to "organization"
 
 # API Keys and Tokens (SENSITIVE)
 BLAWBY_API_TOKEN=your_blawby_api_token_here
@@ -24,3 +14,34 @@ RESEND_API_KEY=your_resend_api_key_here
 
 # Account IDs (SENSITIVE)
 CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id_here
+
+# Adobe PDF Services API Configuration (SENSITIVE)
+ADOBE_CLIENT_ID=your_adobe_client_id_here
+ADOBE_CLIENT_SECRET=your_adobe_client_secret_here
+ADOBE_TECHNICAL_ACCOUNT_ID=your_technical_account_id@techacct.adobe.com
+ADOBE_TECHNICAL_ACCOUNT_EMAIL=your_technical_account_email@techacct.adobe.com
+ADOBE_ORGANIZATION_ID=your_organization_id@AdobeOrg
+
+# Better Auth Configuration (SENSITIVE)
+BETTER_AUTH_SECRET=your_better_auth_secret_here
+BETTER_AUTH_URL=http://localhost:8787
+
+# Better Auth Feature Flags (NON-SENSITIVE)
+# Set to 'true' to enable geolocation and IP detection features
+# Note: These features require proper Cloudflare context and are disabled by default
+ENABLE_AUTH_GEOLOCATION=false
+ENABLE_AUTH_IP_DETECTION=false
+
+# Domain Configuration (NON-SENSITIVE)
+# DOMAIN=localhost  # Set this in .dev.vars for local development
+
+# Google OAuth Configuration (SENSITIVE)
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+
+# Stripe Configuration (SENSITIVE)
+STRIPE_SECRET_KEY=your_stripe_secret_key_here
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret_here
+STRIPE_CONNECT_WEBHOOK_SECRET=your_stripe_connect_webhook_secret_here
+STRIPE_PRICE_ID=your_price_id_here
+STRIPE_ANNUAL_PRICE_ID=your_annual_price_id_here

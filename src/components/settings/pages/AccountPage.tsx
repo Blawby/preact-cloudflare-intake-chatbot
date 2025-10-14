@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Button } from '../../ui/Button';
-import { Select, FormLabel, FormControl, SectionDivider } from '../../ui';
+import { Select, FormLabel } from '../../ui';
 import { FormItem } from '../../ui/form';
 import Modal from '../../Modal';
 import { 
@@ -10,8 +10,11 @@ import {
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
 import { mockUserDataService, MockUserLinks, MockEmailSettings, type SubscriptionTier } from '../../../utils/mockUserData';
-import { mockPricingDataService } from '../../../utils/mockPricingData';
+import { TIER_FEATURES } from '../../../utils/stripe-products';
 import { useTranslation } from '@/i18n/hooks';
+import { useLocation } from 'preact-iso';
+import { usePaymentUpgrade } from '../../../hooks/usePaymentUpgrade';
+import { useOrganizationManagement } from '../../../hooks/useOrganizationManagement';
 
 
 export interface AccountPageProps {
@@ -30,6 +33,9 @@ export const AccountPage = ({
   const { showSuccess, showError } = useToastContext();
   const { navigate } = useNavigation();
   const { t } = useTranslation(['settings', 'common']);
+  const location = useLocation();
+  const { syncSubscription } = usePaymentUpgrade();
+  const { currentOrganization, loading: orgLoading, refetch } = useOrganizationManagement();
   const [links, setLinks] = useState<MockUserLinks | null>(null);
   const [emailSettings, setEmailSettings] = useState<MockEmailSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,40 +50,157 @@ export const AccountPage = ({
   
   // Ref to store verification timeout ID for cleanup
   const verificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  // Ref to prevent concurrent sync operations
+  const isSyncInFlightRef = useRef(false);
+  // Ref to store previous tier for upgrade detection after refetch
+  const previousTierRef = useRef<string | null>(null);
+  // Ref to track if we need to check for upgrades after organization update
+  const shouldCheckUpgradeRef = useRef(false);
 
   // Extract data loading logic to eliminate duplication
-  const loadAccountData = async () => {
+  const loadAccountData = useCallback(async () => {
     try {
       setError(null);
       setLoading(true);
       const linksData = mockUserDataService.getUserLinks();
       const emailData = mockUserDataService.getEmailSettings();
-      const profile = mockUserDataService.getUserProfile();
       
+      // Use real organization subscription tier directly (no mapping needed)
+      const orgTier = currentOrganization?.subscriptionTier;
+      const displayTier = orgTier || 'free';
       
       setLinks(linksData);
       setEmailSettings(emailData);
-      setCurrentTier(profile.subscriptionTier);
+      setCurrentTier(displayTier as SubscriptionTier);
     } catch (error) {
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to load account data:', error);
       setError(error instanceof Error ? error.message : String(error));
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOrganization?.subscriptionTier]);
 
-  // Load mock data
+  // Load account data when component mounts or organization changes
+  // Only load when organization data is available (not loading)
   useEffect(() => {
-    loadAccountData();
-  }, []);
+    if (!orgLoading && currentOrganization !== undefined) {
+      loadAccountData();
+    }
+  }, [loadAccountData, orgLoading, currentOrganization]);
 
-  // Cleanup verification timeout on unmount
+  // Check for tier upgrades after organization data is updated
+  useEffect(() => {
+    if (shouldCheckUpgradeRef.current && currentOrganization?.subscriptionTier) {
+      const previousTier = previousTierRef.current;
+      const newTier = currentOrganization.subscriptionTier;
+      
+      const wasUpgraded = (previousTier === 'free' || !previousTier) && 
+                         (newTier === 'business' || newTier === 'enterprise');
+
+      if (wasUpgraded) {
+        // Set flag for business setup modal and redirect to root
+        try {
+          localStorage.setItem('businessSetupPending', 'true');
+          navigate('/');
+        } catch (storageError) {
+          console.warn('Failed to set business setup flag:', storageError);
+        }
+      }
+
+      // Reset the flag
+      shouldCheckUpgradeRef.current = false;
+      previousTierRef.current = null;
+    }
+  }, [currentOrganization?.subscriptionTier, navigate]);
+
+  // Handle post-checkout sync
+  useEffect(() => {
+    const handlePostCheckoutSync = async () => {
+      const rawSyncFlag = location.query?.sync;
+      const rawOrgId = location.query?.organizationId;
+
+      const shouldSync = Array.isArray(rawSyncFlag)
+        ? rawSyncFlag[0] === '1'
+        : rawSyncFlag === '1';
+
+      const organizationId = Array.isArray(rawOrgId)
+        ? rawOrgId[0]
+        : rawOrgId || currentOrganization?.id;
+
+      if (shouldSync && organizationId && !isSyncInFlightRef.current) {
+        isSyncInFlightRef.current = true;
+        
+        try {
+          // Store previous tier before sync
+          const previousTier = currentOrganization?.subscriptionTier;
+          
+          const subscription = await syncSubscription(organizationId);
+
+          // Check if tier was upgraded to business/enterprise
+          let newTier = currentOrganization?.subscriptionTier;
+          
+          // Prefer the sync response if it returns plan/tier info
+          if (subscription?.plan) {
+            newTier = subscription.plan;
+            
+            // Handle upgrade check immediately if we have tier info from sync response
+            const wasUpgraded = (previousTier === 'free' || !previousTier) && 
+                               (newTier === 'business' || newTier === 'enterprise');
+
+            if (wasUpgraded) {
+              // Set flag for business setup modal and redirect to root
+              try {
+                localStorage.setItem('businessSetupPending', 'true');
+                navigate('/');
+              } catch (storageError) {
+                console.warn('Failed to set business setup flag:', storageError);
+              }
+            }
+          } else {
+            // If no tier info in response, refetch to get latest organization data
+            // Store previous tier and set flag for upgrade check in the effect
+            previousTierRef.current = previousTier;
+            shouldCheckUpgradeRef.current = true;
+            await refetch();
+          }
+
+          // Load account data after upgrade handling
+          if (isMountedRef.current) {
+            await loadAccountData();
+          }
+
+          // Clean up URL params after successful sync and data load
+          if (typeof window !== 'undefined') {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('sync');
+            newUrl.searchParams.delete('organizationId');
+            window.history.replaceState({}, '', newUrl.toString());
+          }
+        } catch (error) {
+          console.error('❌ Post-checkout sync failed:', error);
+          if (isMountedRef.current) {
+            showError('Sync Failed', 'Failed to refresh subscription status after checkout. Please refresh the page.');
+          }
+        } finally {
+          isSyncInFlightRef.current = false;
+        }
+      }
+    };
+
+    handlePostCheckoutSync();
+  }, [location.query, currentOrganization?.id, currentOrganization?.subscriptionTier, syncSubscription, showError, loadAccountData, navigate, refetch]);
+
+  // Cleanup verification timeout and sync ref on unmount
   useEffect(() => {
     return () => {
       if (verificationTimeoutRef.current !== null) {
         clearTimeout(verificationTimeoutRef.current);
       }
+      isMountedRef.current = false;
+      isSyncInFlightRef.current = false;
     };
   }, []);
 
@@ -93,14 +216,13 @@ export const AccountPage = ({
     return () => {
       window.removeEventListener('authStateChanged', handleAuthStateChange);
     };
-  }, []);
+  }, [loadAccountData]);
 
   // Simple computed values for demo - only compute when currentTier is available
-  const upgradePath = currentTier ? mockPricingDataService.getUpgradePath(currentTier) : [];
-  const upgradeButtonText = currentTier && upgradePath.length > 0
-    ? t('settings:account.plan.upgradeButton', { plan: upgradePath[0].name })
-    : t('settings:account.plan.currentButton');
-  const currentPlanFeatures = currentTier ? mockPricingDataService.getFeaturesForTier(currentTier) : [];
+  const upgradeButtonText = 'Upgrade Plan';
+  const currentPlanFeatures = currentTier && (currentTier === 'free' || currentTier === 'business')
+    ? TIER_FEATURES[currentTier]
+    : TIER_FEATURES['business'];
   const emailFallback = t('settings:account.email.addressFallback');
   const emailAddress = emailSettings?.email || emailFallback;
   const customDomainOptions = (links?.customDomains || []).map(domain => ({
@@ -114,34 +236,11 @@ export const AccountPage = ({
     : DOMAIN_SELECT_VALUE;
 
   const handleUpgrade = () => {
-    if (!currentTier) {
-      showSuccess(
-        t('settings:account.plan.toasts.upgrade.title'),
-        t('settings:account.plan.toasts.upgrade.body')
-      );
+    if (currentTier === 'enterprise') {
+      // No action - they're already at max tier
       return;
     }
-    if (upgradePath.length > 0) {
-      const nextTier = upgradePath[0];
-      
-      // Actually upgrade the user's tier in mock data
-      const profile = mockUserDataService.getUserProfile();
-      const updatedProfile = { ...profile, subscriptionTier: nextTier.id as SubscriptionTier };
-      mockUserDataService.setUserProfile(updatedProfile);
-      
-      // Update local state
-      setCurrentTier(nextTier.id as SubscriptionTier);
-      
-      showSuccess(
-        t('settings:account.plan.toasts.upgradeWithPlan.title'),
-        t('settings:account.plan.toasts.upgradeWithPlan.body', { plan: nextTier.name })
-      );
-    } else {
-      showSuccess(
-        t('settings:account.plan.toasts.highest.title'),
-        t('settings:account.plan.toasts.highest.body')
-      );
-    }
+    window.location.hash = '#pricing';
   };
 
   const handleDeleteAccount = () => {
@@ -341,7 +440,7 @@ export const AccountPage = ({
 
   // Features are now loaded dynamically from the pricing service
 
-  if (loading) {
+  if (loading || orgLoading) {
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
         <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
@@ -401,13 +500,21 @@ export const AccountPage = ({
               )}
             </div>
             <div className="ml-4">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleUpgrade}
-              >
-                {upgradeButtonText}
-              </Button>
+              {currentTier !== 'enterprise' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleUpgrade}
+                >
+                  {upgradeButtonText}
+                </Button>
+              )}
+              
+              {currentTier === 'enterprise' && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  You&apos;re on the Enterprise plan - our highest tier
+                </div>
+              )}
             </div>
           </div>
 
@@ -419,7 +526,7 @@ export const AccountPage = ({
               {currentPlanFeatures.map((feature, index) => (
                 <div key={index} className="flex items-center gap-3">
                   <div className="text-gray-500 dark:text-gray-400">
-                    <feature.icon className="w-4 h-4" />
+                    <feature.icon className="w-5 h-5 flex-shrink-0" />
                   </div>
                   <span className="text-sm text-gray-900 dark:text-gray-100">
                     {feature.text}

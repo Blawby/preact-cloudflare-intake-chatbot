@@ -4,10 +4,333 @@ import { parseJsonBody } from '../utils';
 import { PaymentService } from '../services/PaymentService';
 import { PaymentRequest } from '../schemas';
 import { MockPaymentService } from '../services/MockPaymentService';
+import { requireAuth, requireOrgOwner } from '../middleware/auth.js';
+import { OrganizationService, buildDefaultOrganizationConfig } from '../services/OrganizationService.js';
+import type { Organization, OrganizationConfig } from '../services/OrganizationService.js';
+
+interface BusinessUpgradeRequest {
+  organizationName: string;
+  slug?: string;
+  plan: 'business' | 'business-plus' | string;
+  billing: {
+    name: string;
+    email: string;
+    phone: string;
+    location?: string;
+  };
+  sessionId?: string;
+  existingOrganizationId?: string;
+  upgradeNotes?: string;
+}
 
 export async function handlePayment(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
+  const subscriptionsEnabled =
+    env.ENABLE_STRIPE_SUBSCRIPTIONS === 'true' ||
+    env.ENABLE_STRIPE_SUBSCRIPTIONS === true;
+
+  if (subscriptionsEnabled) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'Legacy payment endpoints are disabled. Use Stripe subscription APIs.',
+        errorCode: 'LEGACY_PAYMENTS_DISABLED'
+      }),
+      {
+        status: 410,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  // POST /api/payment/upgrade - upgrade to business plan (creates invoice + org)
+  if (path === '/api/payment/upgrade' && request.method === 'POST') {
+    try {
+      const { user } = await requireAuth(request, env);
+      const {
+        organizationName,
+        slug,
+        plan,
+        billing,
+        sessionId,
+        existingOrganizationId,
+        upgradeNotes
+      } = await parseJsonBody(request) as BusinessUpgradeRequest;
+
+      if (!organizationName?.trim()) {
+        throw HttpErrors.badRequest('organizationName is required');
+      }
+      if (!billing?.name || !billing.email || !billing.phone) {
+        throw HttpErrors.badRequest('billing.name, billing.email, and billing.phone are required');
+      }
+
+      const organizationService = new OrganizationService(env);
+
+      let targetOrganization: Organization | null = null;
+      const creatingNewOrg = !existingOrganizationId;
+
+      if (existingOrganizationId) {
+        const existing = await organizationService.getOrganization(existingOrganizationId);
+        if (!existing) {
+          throw HttpErrors.notFound('Existing organization not found');
+        }
+        await requireOrgOwner(request, env, existing.id);
+        const updatedConfig: OrganizationConfig = {
+          ...existing.config,
+          metadata: {
+            ...(existing.config.metadata ?? {}),
+            subscriptionPlan: plan,
+            lastUpgradeAt: new Date().toISOString(),
+            upgradeNotes: upgradeNotes ?? existing.config.metadata?.upgradeNotes
+          }
+        };
+        const updated = await organizationService.updateOrganization(existing.id, {
+          name: organizationName.trim(),
+          config: updatedConfig
+        });
+        targetOrganization = updated ?? await organizationService.getOrganization(existing.id);
+      } else {
+        const baseConfig: OrganizationConfig = {
+          ...buildDefaultOrganizationConfig(env),
+          ownerEmail: billing.email,
+          requiresPayment: false,
+          metadata: {
+            planStatus: 'pending_payment',
+            subscriptionPlan: plan,
+            upgradedBy: user.email,
+            upgradedAt: new Date().toISOString(),
+            upgradeNotes: upgradeNotes ?? null
+          }
+        };
+
+        targetOrganization = await organizationService.createOrganization({
+          name: organizationName.trim(),
+          slug: slug?.trim(),
+          config: baseConfig
+        });
+
+        // Ensure the upgrading user is the owner.
+        await env.DB.prepare(
+          `INSERT INTO member (id, organization_id, user_id, role, created_at)
+           VALUES (?, ?, ?, 'owner', ?)
+           ON CONFLICT(organization_id, user_id) DO NOTHING`
+        ).bind(
+          crypto.randomUUID(),
+          targetOrganization.id,
+          user.id,
+          Math.floor(Date.now() / 1000)
+        ).run();
+      }
+
+      if (!targetOrganization) {
+        throw HttpErrors.internalServerError('Failed to create or update organization');
+      }
+
+      const paymentPayload: PaymentRequest = {
+        customerInfo: {
+          name: billing.name,
+          email: billing.email,
+          phone: billing.phone,
+          location: billing.location ?? ''
+        },
+        matterInfo: {
+          type: 'Business Plan Upgrade',
+          description: `Plan: ${plan} for ${organizationName}`,
+          urgency: 'normal'
+        },
+        organizationId: targetOrganization.id,
+        sessionId: sessionId ?? '',
+        currency: 'USD'
+      };
+
+      const isDevelopment = env.BLAWBY_API_URL?.includes('localhost');
+      const paymentService = isDevelopment ? new MockPaymentService(env) : new PaymentService(env);
+      const invoice = await paymentService.createInvoice(paymentPayload);
+
+      if (!invoice.success) {
+        throw HttpErrors.internalServerError(invoice.error ?? 'Failed to create upgrade invoice');
+      }
+
+      // Update metadata to reflect pending payment status
+      const pendingMeta = await organizationService.updateOrganization(targetOrganization.id, {
+        config: {
+          ...targetOrganization.config,
+          metadata: {
+            ...(targetOrganization.config.metadata ?? {}),
+            planStatus: 'awaiting_payment',
+            lastInvoiceId: invoice.paymentId,
+            lastInvoiceUrl: invoice.invoiceUrl
+          }
+        }
+      });
+
+      const responseOrganization = pendingMeta ?? await organizationService.getOrganization(targetOrganization.id);
+
+      await recordOrganizationEvent(env, targetOrganization.id, {
+        type: 'plan.upgrade_requested',
+        actorId: user.id,
+        metadata: {
+          plan,
+          paymentId: invoice.paymentId,
+          invoiceUrl: invoice.invoiceUrl,
+          existingOrganizationId,
+          creatingNewOrg
+        }
+      });
+
+      // Frontend note: direct users to invoiceUrl, then poll payment status.
+      return createSuccessResponse({
+        organization: {
+          id: responseOrganization?.id ?? targetOrganization.id,
+          slug: responseOrganization?.slug ?? targetOrganization.slug,
+          name: responseOrganization?.name ?? targetOrganization.name
+        },
+        invoiceUrl: invoice.invoiceUrl,
+        paymentId: invoice.paymentId,
+        plan
+      });
+    } catch (error) {
+      return handleError(error);
+    }
+  }
+
+  if (path === '/api/payment/status' && request.method === 'GET') {
+    try {
+      const paymentId = url.searchParams.get('paymentId');
+      if (!paymentId) {
+        throw HttpErrors.badRequest('paymentId query parameter is required');
+      }
+
+      const authContext = await requireAuth(request, env);
+
+      const paymentRow = await env.DB.prepare(
+        `SELECT payment_id as paymentId,
+                organization_id as organizationId,
+                status,
+                invoice_url as invoiceUrl,
+                created_at as createdAt,
+                updated_at as updatedAt
+           FROM payment_history
+          WHERE payment_id = ?`
+      ).bind(paymentId).first<{
+        paymentId: string;
+        organizationId: string;
+        status: string;
+        invoiceUrl?: string;
+        createdAt: string;
+        updatedAt: string;
+      }>();
+
+      if (!paymentRow) {
+        throw HttpErrors.notFound('Payment not found');
+      }
+
+      await requireOrgOwner(request, env, paymentRow.organizationId);
+
+      const organizationService = new OrganizationService(env);
+      const organization = await organizationService.getOrganization(paymentRow.organizationId);
+
+      return createSuccessResponse({
+        paymentId: paymentRow.paymentId,
+        status: paymentRow.status,
+        organizationId: paymentRow.organizationId,
+        invoiceUrl: paymentRow.invoiceUrl,
+        planStatus: organization?.config?.metadata?.planStatus ?? null,
+        lastPaymentStatus: organization?.config?.metadata?.lastPaymentStatus ?? null,
+        lastPaymentAt: organization?.config?.metadata?.lastPaymentAt ?? null,
+        checkedBy: authContext.user.id
+      });
+    } catch (error) {
+      return handleError(error);
+    }
+  }
+
+  if (path === '/api/payment/status-update' && request.method === 'POST') {
+    try {
+      const { user } = await requireAuth(request, env);
+      const body = await parseJsonBody(request) as {
+        paymentId: string;
+        status: string;
+        organizationId?: string;
+        metadata?: Record<string, unknown>;
+      };
+
+      if (!body.paymentId || !body.status) {
+        throw HttpErrors.badRequest('paymentId and status are required');
+      }
+
+      let organizationId = body.organizationId ?? null;
+
+      const paymentRecord = await env.DB.prepare(
+        `SELECT organization_id as organizationId
+           FROM payment_history
+          WHERE payment_id = ?`
+      ).bind(body.paymentId).first<{ organizationId: string }>();
+
+      if (paymentRecord) {
+        organizationId = paymentRecord.organizationId;
+      }
+
+      if (!organizationId) {
+        throw HttpErrors.badRequest('organizationId is required for status updates');
+      }
+
+      const organizationService = new OrganizationService(env);
+      const organization = await organizationService.getOrganization(organizationId);
+
+      if (!organization) {
+        throw HttpErrors.notFound('Organization not found for provided paymentId');
+      }
+
+      await requireOrgOwner(request, env, organization.id);
+
+      // Update payment history after verifying organization ownership
+      if (paymentRecord) {
+        await env.DB.prepare(
+          `UPDATE payment_history
+              SET status = ?,
+                  event_type = ?,
+                  updated_at = datetime('now')
+            WHERE payment_id = ?`
+        ).bind(body.status, `payment.${body.status}`, body.paymentId).run();
+      }
+
+      const updatedConfig: OrganizationConfig = {
+        ...organization.config,
+        metadata: {
+          ...(organization.config.metadata ?? {}),
+          planStatus: resolvePlanStatus(body.status, organization.config.metadata?.planStatus ?? 'awaiting_payment'),
+          lastPaymentStatus: body.status,
+          lastPaymentId: body.paymentId,
+          lastPaymentAt: new Date().toISOString()
+        }
+      };
+
+      await organizationService.updateOrganization(organization.id, {
+        config: updatedConfig
+      });
+
+      await recordOrganizationEvent(env, organization.id, {
+        type: `plan.payment_${body.status}`,
+        actorId: user.id,
+        metadata: {
+          paymentId: body.paymentId,
+          status: body.status,
+          ...body.metadata
+        }
+      });
+
+      // Preact usage: call after payment provider confirms completion to refresh plan state.
+      return createSuccessResponse({
+        paymentId: body.paymentId,
+        status: body.status,
+        organizationId
+      });
+    } catch (error) {
+      return handleError(error);
+    }
+  }
 
   // POST /api/payment/create-invoice - Create payment invoice
   if (path === '/api/payment/create-invoice' && request.method === 'POST') {
@@ -23,8 +346,8 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
         throw HttpErrors.badRequest('Missing required matter information');
       }
 
-      if (!body.teamId) {
-        throw HttpErrors.badRequest('Missing team ID');
+      if (!body.organizationId) {
+        throw HttpErrors.badRequest('Missing organization ID');
       }
 
       // Use real service for staging.blawby.com, mock for localhost
@@ -88,26 +411,26 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
     }
   }
 
-  // GET /api/payment/history - Get payment history for a user or team
+  // GET /api/payment/history - Get payment history for a user or organization
   if (path === '/api/payment/history' && request.method === 'GET') {
     try {
       const url = new URL(request.url);
-      const teamId = url.searchParams.get('teamId');
+      const organizationId = url.searchParams.get('organizationId');
       const customerEmail = url.searchParams.get('customerEmail');
       const limit = parseInt(url.searchParams.get('limit') || '50');
       const offset = parseInt(url.searchParams.get('offset') || '0');
 
-      if (!teamId && !customerEmail) {
-        throw HttpErrors.badRequest('Either teamId or customerEmail is required');
+      if (!organizationId && !customerEmail) {
+        throw HttpErrors.badRequest('Either organizationId or customerEmail is required');
       }
 
       let query = 'SELECT * FROM payment_history';
-      let params: any[] = [];
+      let params: unknown[] = [];
       const conditions = [];
 
-      if (teamId) {
-        conditions.push('team_id = ?');
-        params.push(teamId);
+      if (organizationId) {
+        conditions.push('organization_id = ?');
+        params.push(organizationId);
       }
 
       if (customerEmail) {
@@ -145,7 +468,7 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
   if (path === '/api/payment/stats' && request.method === 'GET') {
     try {
       const url = new URL(request.url);
-      const teamId = url.searchParams.get('teamId');
+      const organizationId = url.searchParams.get('organizationId');
       const period = url.searchParams.get('period') || '30'; // days
 
       let query = `
@@ -160,11 +483,11 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
         WHERE created_at >= datetime('now', '-${period} days')
       `;
 
-      let params: any[] = [];
+      let params: unknown[] = [];
 
-      if (teamId) {
-        query += ' AND team_id = ?';
-        params.push(teamId);
+      if (organizationId) {
+        query += ' AND organization_id = ?';
+        params.push(organizationId);
       }
 
       const stats = await env.DB.prepare(query).bind(...params).first();
@@ -287,14 +610,14 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
       // Store payment history
       await env.DB.prepare(`
         INSERT INTO payment_history (
-          payment_id, team_id, customer_email, amount, status, 
+          payment_id, organization_id, customer_email, amount, status, 
           event_type, metadata, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         ON CONFLICT(payment_id) DO UPDATE SET
           status = ?, updated_at = datetime('now')
       `).bind(
         paymentId,
-        body.teamId || 'unknown',
+        body.organizationId || 'unknown',
         customerEmail,
         amount,
         status,
@@ -361,10 +684,45 @@ export async function handlePayment(request: Request, env: Env): Promise<Respons
     }
   }
 
-  // Handle unknown payment endpoints
   if (path.startsWith('/api/payment/')) {
     throw HttpErrors.notFound('Payment endpoint not found');
   }
   
   throw HttpErrors.notFound('Payment endpoint not found');
-} 
+}
+
+function resolvePlanStatus(status: string, fallback: string): string {
+  switch (status) {
+    case 'completed':
+      return 'active';
+    case 'failed':
+      return 'payment_failed';
+    case 'refunded':
+      return 'refunded';
+    case 'cancelled':
+      return 'cancelled';
+    default:
+      return fallback;
+  }
+}
+
+async function recordOrganizationEvent(
+  env: Env,
+  organizationId: string,
+  event: { type: string; actorId?: string; metadata?: Record<string, unknown> }
+): Promise<void> {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO organization_events (id, organization_id, event_type, actor_user_id, metadata, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(
+      crypto.randomUUID(),
+      organizationId,
+      event.type,
+      event.actorId ?? null,
+      event.metadata ? JSON.stringify(event.metadata) : null
+    ).run();
+  } catch (error) {
+    console.error('Failed to record organization event (payment):', error);
+  }
+}

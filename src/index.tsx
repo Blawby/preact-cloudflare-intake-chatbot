@@ -8,10 +8,12 @@ import AppLayout from './components/AppLayout';
 import AuthPage from './components/AuthPage';
 import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
-import { useMessageHandling } from './hooks/useMessageHandling';
-import { useFileUpload } from './hooks/useFileUpload';
-import { useTeamConfig } from './hooks/useTeamConfig';
-import { useChatSession } from './hooks/useChatSession';
+import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
+import { useOrganizationManagement } from './hooks/useOrganizationManagement';
+import { type SubscriptionTier } from './utils/mockUserData';
+import { useMessageHandlingWithContext } from './hooks/useMessageHandling';
+import { useFileUploadWithContext } from './hooks/useFileUpload';
+import { useChatSessionWithContext } from './hooks/useChatSession';
 import { setupGlobalKeyboardListeners } from './utils/keyboard';
 import { ChatMessageUI } from '../worker/types';
 // Settings components
@@ -19,7 +21,11 @@ import { SettingsLayout } from './components/settings/SettingsLayout';
 import { useNavigation } from './utils/navigation';
 import PricingModal from './components/PricingModal';
 import WelcomeModal from './components/onboarding/WelcomeModal';
+import { BusinessWelcomeModal } from './components/onboarding/BusinessWelcomeModal';
+import { BusinessSetupModal } from './components/onboarding/BusinessSetupModal';
+import { CartPage } from './components/cart/CartPage';
 import { debounce } from './utils/debounce';
+import { authClient } from './lib/authClient';
 import './index.css';
 import { i18n, initI18n } from './i18n';
 
@@ -34,6 +40,8 @@ function MainApp() {
 	const [isRecording, setIsRecording] = useState(false);
 	const [showSettingsModal, setShowSettingsModal] = useState(false);
 	const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+	const [showBusinessWelcome, setShowBusinessWelcome] = useState(false);
+	const [showBusinessSetup, setShowBusinessSetup] = useState(false);
 	
 	// Mobile state - initialized as false to avoid SSR/client hydration mismatch
 	const [isMobile, setIsMobile] = useState(false);
@@ -42,45 +50,42 @@ function MainApp() {
 	const location = useLocation();
 	const { navigate } = useNavigation();
 
-	// Use custom hooks
-	const { teamId, teamConfig, teamNotFound, handleRetryTeamConfig } = useTeamConfig({
-		onError: (error) => {
-			// Handle team config error
-			// eslint-disable-next-line no-console
-			console.error('Team config error:', error);
-		}
-	});
+	// Use organization context
+	const { organizationId, organizationConfig, organizationNotFound, handleRetryOrganizationConfig } = useOrganization();
+	
+	// Use organization management for subscription tier
+	const { currentOrganization } = useOrganizationManagement();
 
 	const {
 		sessionId,
 		error: sessionError
-	} = useChatSession(teamId);
+	} = useChatSessionWithContext();
 
-	const { messages, sendMessage, handleContactFormSubmit, addMessage } = useMessageHandling({
-		teamId,
+	const { messages, sendMessage, handleContactFormSubmit, addMessage } = useMessageHandlingWithContext({
 		sessionId,
 		onError: (error) => {
 			// Handle message handling error
-			// eslint-disable-next-line no-console
+			 
 			console.error('Message handling error:', error);
 		}
 	});
 
 	const {
 		previewFiles,
+		uploadingFiles,
 		isDragging,
 		setIsDragging,
 		handleCameraCapture,
 		handleFileSelect,
 		removePreviewFile,
 		clearPreviewFiles,
+		cancelUpload,
 		isReadyToUpload
-	} = useFileUpload({
-		teamId,
+	} = useFileUploadWithContext({
 		sessionId,
 		onError: (error) => {
 			// Handle file upload error
-			// eslint-disable-next-line no-console
+			 
 			console.error('File upload error:', error);
 		}
 	});
@@ -88,7 +93,7 @@ function MainApp() {
 	useEffect(() => {
 		if (sessionError) {
 			// Handle session initialization error
-			// eslint-disable-next-line no-console
+			 
 			console.error('Session initialization error:', sessionError);
 		}
 	}, [sessionError]);
@@ -112,15 +117,39 @@ function MainApp() {
 		} catch (error) {
 			// Handle localStorage access failures (private browsing, etc.)
 			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
+				 
 				console.warn('Failed to check onboarding completion status:', error);
 			}
 		}
 	}, []);
 
+	// Check if we should show business setup modal (after tier upgrade)
+	useEffect(() => {
+		try {
+			const businessSetupPending = localStorage.getItem('businessSetupPending');
+			if (businessSetupPending === 'true') {
+				setShowBusinessSetup(true);
+				// Don't remove the flag here - let the modal handlers do it
+			}
+		} catch (error) {
+			if (import.meta.env.DEV) {
+				console.warn('Failed to check business setup status:', error);
+			}
+		}
+	}, []);
+
+	// Check if we should show business welcome modal (after upgrade)
+	useEffect(() => {
+		const queryString = location.query || window.location.search;
+		const params = new URLSearchParams(queryString);
+		if (params.get('upgraded') === 'business') {
+			setShowBusinessWelcome(true);
+		}
+	}, [location.query]);
+
 	// Handle hash-based routing for pricing modal
 	const [showPricingModal, setShowPricingModal] = useState(false);
-	const [currentUserTier, setCurrentUserTier] = useState<'free' | 'plus' | 'business'>('free');
+	const [currentUserTier, setCurrentUserTier] = useState<SubscriptionTier>('free');
 	
 	useEffect(() => {
 		const handleHashChange = () => {
@@ -150,41 +179,38 @@ function MainApp() {
 			}
 		};
 
-		// Check current user tier from localStorage
-		const mockUser = localStorage.getItem('mockUser');
-		if (mockUser) {
-			try {
-				const userData = JSON.parse(mockUser);
-				setCurrentUserTier(userData.subscriptionTier || 'free');
-			} catch (_error) {
-				// Ignore parsing errors
-			}
-		}
+		// Use organization tier directly from organization management
+		const checkUserTier = () => {
+			const orgTier = currentOrganization?.subscriptionTier || 'free';
+			setCurrentUserTier(orgTier as SubscriptionTier);
+		};
+		
+		checkUserTier();
 
 		window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
 		
 		return () => {
 			window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
 		};
-	}, []);
+	}, [currentOrganization?.subscriptionTier]);
 
 	const isSessionReady = Boolean(sessionId);
 
 
-	// Add intro message when team config is loaded and no messages exist
+	// Add intro message when organization config is loaded and no messages exist
 	useEffect(() => {
-		if (teamConfig.introMessage && messages.length === 0) {
-			// Add intro message only (team profile is now a UI element)
+		if (organizationConfig && organizationConfig.introMessage && messages.length === 0) {
+			// Add intro message only (organization profile is now a UI element)
 			const introMessage: ChatMessageUI = {
 				id: crypto.randomUUID(),
-				content: teamConfig.introMessage,
+				content: organizationConfig.introMessage,
 				isUser: false,
 				role: 'assistant',
 				timestamp: Date.now()
 			};
 			addMessage(introMessage);
 		}
-	}, [teamConfig.introMessage, messages.length, addMessage]);
+	}, [organizationConfig, messages.length, addMessage]);
 
 	// Create stable callback references for keyboard handlers
 	const handleEscape = useCallback(() => {
@@ -280,7 +306,7 @@ function MainApp() {
 	// Handle feedback submission
 	const handleFeedbackSubmit = useCallback((feedback: Record<string, unknown>) => {
 		// Handle feedback submission
-		// eslint-disable-next-line no-console
+		 
 		console.log('Feedback submitted:', feedback);
 		// Could show a toast notification here
 	}, []);
@@ -295,7 +321,7 @@ function MainApp() {
 		} catch (error) {
 			// Handle localStorage access failures (private browsing, etc.)
 			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
+				 
 				console.warn('Failed to remove onboarding completion flag:', error);
 			}
 		}
@@ -311,10 +337,15 @@ function MainApp() {
 		} catch (error) {
 			// Handle localStorage access failures (private browsing, etc.)
 			if (import.meta.env.DEV) {
-				// eslint-disable-next-line no-console
+				 
 				console.warn('Failed to remove onboarding completion flag:', error);
 			}
 		}
+	};
+
+	const handleBusinessWelcomeClose = () => {
+		setShowBusinessWelcome(false);
+		navigate('/settings/organization');
 	};
 
 
@@ -337,7 +368,7 @@ function MainApp() {
 			
 		} catch (error) {
 			// Handle media upload error
-			// eslint-disable-next-line no-console
+			 
 			console.error('Failed to upload captured media:', error);
 			// Show error message to user
 			sendMessage("I'm sorry, I couldn't upload the recorded media. Please try again.", []);
@@ -356,18 +387,18 @@ function MainApp() {
 			<DragDropOverlay isVisible={isDragging} onClose={() => setIsDragging(false)} />
 			
 			<AppLayout
-				teamNotFound={teamNotFound}
-				teamId={teamId}
-				onRetryTeamConfig={handleRetryTeamConfig}
+				organizationNotFound={organizationNotFound}
+				organizationId={organizationId}
+				onRetryOrganizationConfig={handleRetryOrganizationConfig}
 				currentTab={currentTab}
 				onTabChange={setCurrentTab}
 				isMobileSidebarOpen={isMobileSidebarOpen}
 				onToggleMobileSidebar={setIsMobileSidebarOpen}
 				isSettingsModalOpen={showSettingsModal}
-				teamConfig={{
-					name: teamConfig.name,
-					profileImage: teamConfig.profileImage,
-					description: teamConfig.description
+				organizationConfig={{
+					name: organizationConfig?.name ?? '',
+					profileImage: organizationConfig?.profileImage ?? null,
+					description: organizationConfig?.description ?? ''
 				}}
 				messages={messages}
 				onSendMessage={sendMessage}
@@ -380,29 +411,31 @@ function MainApp() {
 						messages={messages}
 						onSendMessage={sendMessage}
 						onContactFormSubmit={handleContactFormSubmit}
-						teamConfig={{
-							name: teamConfig.name,
-							profileImage: teamConfig.profileImage,
-							teamId,
-							description: teamConfig.description
+						organizationConfig={{
+							name: organizationConfig?.name ?? '',
+							profileImage: organizationConfig?.profileImage ?? null,
+							organizationId,
+							description: organizationConfig?.description ?? ''
 						}}
 						onOpenSidebar={() => setIsMobileSidebarOpen(true)}
 						sessionId={sessionId}
-						teamId={teamId}
+						organizationId={organizationId}
 						onFeedbackSubmit={handleFeedbackSubmit}
 						previewFiles={previewFiles}
+						uploadingFiles={uploadingFiles}
 						removePreviewFile={removePreviewFile}
 						clearPreviewFiles={clearPreviewFiles}
 						handleCameraCapture={handleCameraCapture}
 						handleFileSelect={async (files: File[]) => {
 							await handleFileSelect(files);
 						}}
-							handleMediaCapture={handleMediaCaptureWrapper}
-							isRecording={isRecording}
-							setIsRecording={setIsRecording}
-							clearInput={clearInputTrigger}
-							isReadyToUpload={isReadyToUpload}
-							isSessionReady={isSessionReady}
+						cancelUpload={cancelUpload}
+						handleMediaCapture={handleMediaCaptureWrapper}
+						isRecording={isRecording}
+						setIsRecording={setIsRecording}
+						clearInput={clearInputTrigger}
+						isReadyToUpload={isReadyToUpload}
+						isSessionReady={isSessionReady}
 						/>
 				</div>
 			</AppLayout>
@@ -428,46 +461,30 @@ function MainApp() {
 					window.location.hash = '';
 				}}
 				currentTier={currentUserTier}
-				onUpgrade={(tier) => {
+				onUpgrade={async (tier) => {
 					// Update user's subscription tier
-					const mockUser = localStorage.getItem('mockUser');
-					if (mockUser) {
-						try {
-							const userData = JSON.parse(mockUser);
-							userData.subscriptionTier = tier;
-							localStorage.setItem('mockUser', JSON.stringify(userData));
+					try {
+						const session = await authClient.getSession();
+						if (session?.data?.user) {
+							// For now, just update the local state
+							// In a real implementation, this would make an API call to update the user's subscription
+							setCurrentUserTier(tier);
 							
 							// Dispatch event to notify other components
-							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: userData }));
-						} catch (_error) {
-							// eslint-disable-next-line no-console
-							console.error('Failed to parse mockUser data:', _error);
-							// Create a fresh user object with the new subscription tier
-							const freshUserData = {
-								subscriptionTier: tier,
-								// Add other default user properties as needed
-							};
-							localStorage.setItem('mockUser', JSON.stringify(freshUserData));
-							
-							// Dispatch event with the fresh user data
-							window.dispatchEvent(new CustomEvent('authStateChanged', { detail: freshUserData }));
+							window.dispatchEvent(new CustomEvent('authStateChanged', { 
+								detail: { 
+									...session.data.user, 
+									subscriptionTier: tier 
+								} 
+							}));
+						} else {
+							// User not authenticated, just update local state
+							setCurrentUserTier(tier);
 						}
-					} else {
-						// No existing user - create a fallback user record for first-time users
-						const fallbackUserData = {
-							id: `fallback-user-${Date.now()}`,
-							name: 'New User',
-							email: 'user@example.com',
-							image: null,
-							teamId: null,
-							role: 'user',
-							phone: null,
-							subscriptionTier: tier
-						};
-						localStorage.setItem('mockUser', JSON.stringify(fallbackUserData));
-						
-						// Dispatch event with the fallback user data
-						window.dispatchEvent(new CustomEvent('authStateChanged', { detail: fallbackUserData }));
+					} catch (error) {
+						console.error('Error updating subscription tier:', error);
+						// Still update local state as fallback
+						setCurrentUserTier(tier);
 					}
 					
 					// Always ensure these cleanup operations run
@@ -482,6 +499,30 @@ function MainApp() {
 				onClose={handleWelcomeClose}
 				onComplete={handleWelcomeComplete}
 			/>
+
+			{/* Business Welcome Modal */}
+			{showBusinessWelcome && (
+				<BusinessWelcomeModal
+					isOpen={showBusinessWelcome}
+					onClose={handleBusinessWelcomeClose}
+				/>
+			)}
+
+			{/* Business Setup Modal */}
+			<BusinessSetupModal
+				isOpen={showBusinessSetup}
+				onClose={() => {
+					// Clear the localStorage flag so modal doesn't reappear on reload
+					try {
+						localStorage.removeItem('businessSetupPending');
+					} catch (error) {
+						if (import.meta.env.DEV) {
+							console.warn('Failed to remove business setup flag:', error);
+						}
+					}
+					setShowBusinessSetup(false);
+				}}
+			/>
 		</>
 	);
 }
@@ -489,37 +530,40 @@ function MainApp() {
 
 // Main App component with routing
 export function App() {
-	// Use custom hooks for team config (needed for SEO)
-	const { teamConfig } = useTeamConfig({
-		onError: (error) => {
-			// Handle team config error
-			// eslint-disable-next-line no-console
-			console.error('Team config error:', error);
-		}
-	});
+	return (
+		<LocationProvider>
+			<OrganizationProvider onError={(error) => console.error('Organization config error:', error)}>
+				<ToastProvider>
+					<AppWithSEO />
+				</ToastProvider>
+			</OrganizationProvider>
+		</LocationProvider>
+	);
+}
 
-	// Get reactive location for client-side navigation
+// Component that uses organization context for SEO
+function AppWithSEO() {
+	const { organizationConfig } = useOrganization();
 	const location = useLocation();
 	
 	// Create reactive currentUrl that updates on navigation
 	const currentUrl = typeof window !== 'undefined' 
 		? `${window.location.origin}${location.url}`
 		: undefined;
-
+	
 	return (
-		<LocationProvider>
-			<ToastProvider>
-				<SEOHead 
-					teamConfig={teamConfig}
-					currentUrl={currentUrl}
-				/>
-				<Router>
-					<Route path="/auth" component={AuthPage} />
-					<Route path="/settings/*" component={MainApp} />
-					<Route default component={MainApp} />
-				</Router>
-			</ToastProvider>
-		</LocationProvider>
+		<>
+			<SEOHead 
+				organizationConfig={organizationConfig}
+				currentUrl={currentUrl}
+			/>
+			<Router>
+				<Route path="/auth" component={AuthPage} />
+				<Route path="/cart" component={CartPage} />
+				<Route path="/settings/*" component={MainApp} />
+				<Route default component={MainApp} />
+			</Router>
+		</>
 	);
 }
 
@@ -554,7 +598,7 @@ if (typeof window !== 'undefined') {
 			hydrate(<AppWithProviders />, document.getElementById('app'));
 		})
 		.catch((error) => {
-			// eslint-disable-next-line no-console
+			 
 			console.error('Failed to initialize i18n:', error);
 			hydrate(<AppWithProviders />, document.getElementById('app'));
 		});

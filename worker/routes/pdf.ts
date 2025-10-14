@@ -10,7 +10,7 @@ interface PDFDownloadRequest {
   matterType: string;
   generatedAt: string;
   sessionId?: string;
-  teamId?: string;
+  organizationId?: string;
 }
 
 /**
@@ -58,10 +58,10 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
         throw HttpErrors.badRequest('Missing required PDF information');
       }
 
-      // Get session and team context if provided
+      // Get session and organization context if provided
       let context = null;
-      if (body.sessionId && body.teamId) {
-        context = await ConversationContextManager.load(body.sessionId, body.teamId, env);
+      if (body.sessionId && body.organizationId) {
+        context = await ConversationContextManager.load(body.sessionId, body.organizationId, env);
       }
 
       // If we have context and case draft, generate fresh PDF
@@ -73,8 +73,8 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
             urgency: context.caseDraft.urgency || 'normal'
           },
           clientName: context.contactInfo?.name,
-          teamName: context.teamConfig?.description || 'Legal Services',
-          teamBrandColor: context.teamConfig?.brandColor || '#2563eb'
+          organizationName: context.organizationConfig?.description || 'Legal Services',
+          organizationBrandColor: context.organizationConfig?.brandColor || '#2563eb'
         }, env);
 
         if (pdfResult.success && pdfResult.pdfBuffer) {
@@ -107,7 +107,7 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
   // POST /api/pdf/generate - Generate new PDF
   if (path === '/api/pdf/generate' && request.method === 'POST') {
     try {
-      let body: any;
+      let body: Record<string, unknown>;
       try {
         body = await parseJsonBody(request);
         if (!body || typeof body !== 'object') {
@@ -117,18 +117,18 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
         throw HttpErrors.badRequest('Invalid JSON body');
       }
 
-      const { sessionId, teamId, matterType } = body as {
+      const { sessionId, organizationId, matterType } = body as {
         sessionId: string;
-        teamId: string;
+        organizationId: string;
         matterType?: string;
       };
 
-      if (!sessionId || !teamId) {
-        throw HttpErrors.badRequest('Missing session ID or team ID');
+      if (!sessionId || !organizationId) {
+        throw HttpErrors.badRequest('Missing session ID or organization ID');
       }
 
       // Load conversation context
-      const context = await ConversationContextManager.load(sessionId, teamId, env);
+      const context = await ConversationContextManager.load(sessionId, organizationId, env);
       
       if (!context?.caseDraft) {
         throw HttpErrors.badRequest('No case draft found. Please create a case draft first.');
@@ -142,8 +142,8 @@ export async function handlePDF(request: Request, env: Env): Promise<Response> {
           urgency: context.caseDraft.urgency || 'normal'
         },
         clientName: context.contactInfo?.name,
-        teamName: context.teamConfig?.description || 'Legal Services',
-        teamBrandColor: context.teamConfig?.brandColor || '#2563eb'
+        organizationName: context.organizationConfig?.description || 'Legal Services',
+        organizationBrandColor: context.organizationConfig?.brandColor || '#2563eb'
       }, env);
 
       if (pdfResult.success && pdfResult.pdfBuffer) {

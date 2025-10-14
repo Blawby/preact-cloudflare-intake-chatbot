@@ -84,10 +84,10 @@ interface MessageProps {
 		}>;
 		total: number;
 	};
-	teamConfig?: {
+	organizationConfig?: {
 		name: string;
 		profileImage: string | null;
-		teamId: string;
+		organizationId: string;
 	};
 	onOpenSidebar?: () => void;
 	onContactFormSubmit?: (data: ContactData) => void | Promise<void>;
@@ -97,7 +97,7 @@ interface MessageProps {
 	// Feedback props
 	id?: string;
 	sessionId?: string;
-	teamId?: string;
+	organizationId?: string;
 	showFeedback?: boolean;
 	onFeedbackSubmit?: (feedback: { rating: number; comment?: string }) => void;
 }
@@ -218,7 +218,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	contactForm,
 	documentChecklist,
 	lawyerSearchResults,
-	teamConfig: _teamConfig,
+	organizationConfig: _organizationConfig,
 	onOpenSidebar: _onOpenSidebar,
 	onContactFormSubmit,
 	isLoading,
@@ -226,7 +226,7 @@ const Message: FunctionComponent<MessageProps> = memo(({
 	toolMessage,
 	id: _id,
 	sessionId: _sessionId,
-	teamId: _teamId,
+	organizationId: _organizationId,
 	showFeedback: _showFeedback = true,
 	onFeedbackSubmit: _onFeedbackSubmit
 }) => {
@@ -273,7 +273,19 @@ const Message: FunctionComponent<MessageProps> = memo(({
 			<div className="text-base leading-6 min-h-4">
 				{/* Show message content as soon as it exists */}
 				{hasContent && (
-					<ChatMarkdown text={content} isStreaming={isStreaming} />
+					<>
+						{/* Special styling for analysis status messages */}
+						{!isUser && (content.includes('📄 Analyzing document') || content.includes('🔍')) ? (
+							<div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
+								<div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" role="status" aria-live="polite">
+									<span className="sr-only">Loading…</span>
+								</div>
+								<ChatMarkdown text={content} isStreaming={isStreaming} />
+							</div>
+						) : (
+							<ChatMarkdown text={content} isStreaming={isStreaming} />
+						)}
+					</>
 				)}
 				
 				{/* Show AI thinking indicator only when we truly need a spinner */}

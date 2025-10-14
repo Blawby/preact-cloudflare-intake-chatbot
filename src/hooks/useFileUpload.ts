@@ -1,18 +1,54 @@
 import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 import { FileAttachment } from '../../worker/types';
+import { uploadWithProgress, validateFile, type UploadResult } from '../services/upload/UploadTransport';
+import { useOrganizationId } from '../contexts/OrganizationContext.js';
+
+export type FileStatus = 
+  | 'uploading'      // Browser → Workers
+  | 'uploaded'       // Stored in R2, queued for processing
+  | 'processing'     // Adobe extraction in progress
+  | 'analyzing'      // AI analysis in progress  
+  | 'completed'      // Ready to use
+  | 'failed';        // Error occurred
+
+export interface UploadingFile {
+  id: string;
+  file: File;
+  status: FileStatus;
+  progress: number;
+  fileId?: string;
+  storageKey?: string;
+  error?: string;
+}
+
+interface UploadResponse {
+  fileName: string;
+  fileSize?: number;
+  fileType: string;
+  url: string;
+}
 
 interface UseFileUploadOptions {
-  teamId?: string;
+  organizationId?: string;
   sessionId?: string;
   onError?: (error: string) => void;
 }
 
+/**
+ * Hook that uses organization context instead of requiring organizationId parameter
+ * This is the preferred way to use file upload in components
+ */
+export const useFileUploadWithContext = ({ sessionId, onError }: Omit<UseFileUploadOptions, 'organizationId'>) => {
+  const organizationId = useOrganizationId();
+  return useFileUpload({ organizationId, sessionId, onError });
+};
+
 // Utility function to upload a file to backend
-async function uploadFileToBackend(file: File, teamId: string, sessionId: string, signal?: AbortSignal) {
+async function uploadFileToBackend(file: File, organizationId: string, sessionId: string, signal?: AbortSignal): Promise<UploadResponse> {
   try {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('teamId', teamId);
+    formData.append('organizationId', organizationId);
     formData.append('sessionId', sessionId);
 
     const response = await fetch('/api/files/upload', {
@@ -23,11 +59,11 @@ async function uploadFileToBackend(file: File, teamId: string, sessionId: string
     });
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({})) as any;
+      const error = await response.json().catch(() => ({})) as { error?: string };
       throw new Error(error?.error || 'File upload failed');
     }
     
-    const result = await response.json() as any;
+    const result = await response.json() as { data: UploadResponse };
     return result.data;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
@@ -37,102 +73,175 @@ async function uploadFileToBackend(file: File, teamId: string, sessionId: string
   }
 }
 
-export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptions) => {
+/**
+ * Legacy hook that requires organizationId parameter
+ * @deprecated Use useFileUploadWithContext() instead
+ */
+export const useFileUpload = ({ organizationId, sessionId, onError }: UseFileUploadOptions) => {
   const [previewFiles, setPreviewFiles] = useState<FileAttachment[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
+  const abortControllers = useRef<Map<string, AbortController>>(new Map());
 
-  const resolvedTeamId = (teamId ?? '').trim();
+  const resolvedOrganizationId = (organizationId ?? '').trim();
   const resolvedSessionId = (sessionId ?? '').trim();
 
   // Check if we're ready to upload files
-  const isReadyToUpload = resolvedTeamId !== '' && resolvedSessionId !== '';
+  const isReadyToUpload = resolvedOrganizationId !== '' && resolvedSessionId !== '';
 
-  // Shared file upload logic
+
+  // Upload files with progress tracking
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!isReadyToUpload) {
-      const error = `Cannot upload files yet. Waiting for session to initialize. teamId: "${resolvedTeamId}", sessionId: "${resolvedSessionId}"`;
+      const error = `Cannot upload files yet. Waiting for session to initialize. organizationId: "${resolvedOrganizationId}", sessionId: "${resolvedSessionId}"`;
       console.error(error);
       onError?.(error);
       return;
     }
 
-    try {
-      // Upload files in parallel for better UX
-      const uploadPromises = files.map(async (file) => {
-        try {
-          const uploaded = await uploadFileToBackend(file, resolvedTeamId, resolvedSessionId);
-          return {
-            name: uploaded.fileName,
-            size: uploaded.fileSize || file.size,
-            type: uploaded.fileType,
-            url: uploaded.url,
-          } as FileAttachment;
-        } catch (err: any) {
-          const error = `Failed to upload file: ${file.name}\n${err.message}`;
-          console.error(error);
-          onError?.(error);
-          return null; // Return null for failed uploads
-        }
-      });
-      
-      const results = await Promise.all(uploadPromises);
-      const successfulUploads = results.filter((result): result is FileAttachment => result !== null);
-      
-      if (successfulUploads.length > 0) {
-        setPreviewFiles(prev => [...prev, ...successfulUploads]);
+    // Validate files first
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+
+    files.forEach(file => {
+      const validation = validateFile(file);
+      if (validation.isValid) {
+        validFiles.push(file);
+      } else {
+        invalidFiles.push(`${file.name}: ${validation.error}`);
       }
-    } catch (error) {
-      console.error('Upload batch failed:', error);
+    });
+
+    if (invalidFiles.length > 0) {
+      onError?.(`Invalid files: ${invalidFiles.join(', ')}`);
     }
-  }, [resolvedTeamId, resolvedSessionId, isReadyToUpload, onError]);
+
+    if (validFiles.length === 0) return;
+
+    // Create upload tracking entries
+    const newUploads: UploadingFile[] = validFiles.map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      status: 'uploading',
+      progress: 0
+    }));
+
+    setUploadingFiles(prev => [...prev, ...newUploads]);
+
+    // Upload each file with progress tracking in parallel
+    const uploadPromises = newUploads.map(async (upload) => {
+      const abortController = new AbortController();
+      abortControllers.current.set(upload.id, abortController);
+
+      try {
+        const result = await uploadWithProgress(upload.file, {
+          organizationId: resolvedOrganizationId,
+          sessionId: resolvedSessionId,
+          onProgress: (progress) => {
+            setUploadingFiles(prev => prev.map(f => 
+              f.id === upload.id 
+                ? { ...f, progress: progress.percentage }
+                : f
+            ));
+          },
+          onSuccess: (result) => {
+            
+            // Update file to uploaded status
+            setUploadingFiles(prev => prev.map(f => 
+              f.id === upload.id 
+                ? { 
+                    ...f, 
+                    status: 'uploaded',
+                    progress: 100,
+                    fileId: result.fileId,
+                    storageKey: result.storageKey
+                  }
+                : f
+            ));
+            
+            // After a brief delay, move to previewFiles for smooth UX
+            setTimeout(() => {
+              
+              setPreviewFiles(prev => [...prev, {
+                id: result.fileId,
+                name: upload.file.name,
+                size: upload.file.size,
+                type: upload.file.type,
+                url: `/api/files/${result.fileId}`, // Use proper file URL instead of blob URL
+                storageKey: result.storageKey
+              }]);
+              
+              // Remove from uploadingFiles
+              setUploadingFiles(prev => prev.filter(f => f.id !== upload.id));
+            }, 500);
+          },
+          onError: (error) => {
+            setUploadingFiles(prev => prev.map(f => 
+              f.id === upload.id 
+                ? { ...f, status: 'failed', error: error.message }
+                : f
+            ));
+            onError?.(`Failed to upload ${upload.file.name}: ${error.message}`);
+          },
+          signal: abortController.signal
+        });
+
+        return result;
+      } catch (error) {
+        setUploadingFiles(prev => prev.map(f => 
+          f.id === upload.id 
+            ? { ...f, status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' }
+            : f
+        ));
+        throw error;
+      } finally {
+        abortControllers.current.delete(upload.id);
+      }
+    });
+
+    // Wait for all uploads to complete (or fail)
+    try {
+      await Promise.all(uploadPromises);
+    } catch (error) {
+      // Individual upload errors are already handled in the map function above
+      // This catch block ensures the function doesn't throw unhandled promise rejections
+      console.warn('Some uploads failed:', error);
+    }
+  }, [resolvedOrganizationId, resolvedSessionId, isReadyToUpload, onError]);
 
   // Handle camera capture
   const handleCameraCapture = useCallback(async (file: File) => {
     await uploadFiles([file]);
   }, [uploadFiles]);
 
-  // Handle file selection (now handles all file types including photos)
+  // Handle file selection (now uses the new upload progress system)
   const handleFileSelect = useCallback(async (files: File[]) => {
     if (!isReadyToUpload) {
-      const error = `Cannot upload files yet. Waiting for session to initialize. teamId: "${resolvedTeamId}", sessionId: "${resolvedSessionId}"`;
+      const error = `Cannot upload files yet. Waiting for session to initialize. organizationId: "${resolvedOrganizationId}", sessionId: "${resolvedSessionId}"`;
       console.error(error);
       onError?.(error);
       return [];
     }
 
-    try {
-      // Upload files in parallel for better UX
-      const uploadPromises = files.map(async (file) => {
-        try {
-          const uploaded = await uploadFileToBackend(file, resolvedTeamId, resolvedSessionId);
-          return {
-            name: uploaded.fileName,
-            size: uploaded.fileSize || file.size,
-            type: uploaded.fileType,
-            url: uploaded.url,
-          } as FileAttachment;
-        } catch (err: any) {
-          const error = `Failed to upload file: ${file.name}\n${err.message}`;
-          console.error(error);
-          onError?.(error);
-          return null; // Return null for failed uploads
-        }
-      });
-      
-      const results = await Promise.all(uploadPromises);
-      const successfulUploads = results.filter((result): result is FileAttachment => result !== null);
-      
-      if (successfulUploads.length > 0) {
-        setPreviewFiles(prev => [...prev, ...successfulUploads]);
-      }
-      
-      return successfulUploads;
-    } catch (error) {
-      console.error('Upload batch failed:', error);
-      return [];
+    // Use the new upload system with progress tracking
+    await uploadFiles(files);
+    
+    // Return empty array since files will be handled by the upload system
+    // and moved to previewFiles automatically when complete
+    return [];
+  }, [uploadFiles, isReadyToUpload, onError]);
+
+  // Cancel upload
+  const cancelUpload = useCallback((uploadId: string) => {
+    const controller = abortControllers.current.get(uploadId);
+    if (controller) {
+      controller.abort();
+      abortControllers.current.delete(uploadId);
     }
-  }, [resolvedTeamId, resolvedSessionId, isReadyToUpload, onError]);
+    
+    setUploadingFiles(prev => prev.filter(f => f.id !== uploadId));
+  }, []);
 
   // Remove preview file
   const removePreviewFile = useCallback((index: number) => {
@@ -142,6 +251,14 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
   // Clear all preview files
   const clearPreviewFiles = useCallback(() => {
     setPreviewFiles([]);
+  }, []);
+
+  // Clear all uploading files
+  const clearUploadingFiles = useCallback(() => {
+    // Cancel all ongoing uploads
+    abortControllers.current.forEach(controller => controller.abort());
+    abortControllers.current.clear();
+    setUploadingFiles([]);
   }, []);
 
   // Handle media capture (audio/video)
@@ -240,6 +357,7 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
 
   return {
     previewFiles,
+    uploadingFiles,
     isDragging,
     setIsDragging,
     handleCameraCapture,
@@ -247,6 +365,9 @@ export const useFileUpload = ({ teamId, sessionId, onError }: UseFileUploadOptio
     handleMediaCapture,
     removePreviewFile,
     clearPreviewFiles,
+    clearUploadingFiles,
+    cancelUpload,
+    uploadFiles,
     isReadyToUpload
   };
 }; 

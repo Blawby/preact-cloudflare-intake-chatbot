@@ -13,7 +13,7 @@ export interface UseFormValidationOptions<T> {
   validateOnBlur?: boolean;
 }
 
-export function useFormValidation<T extends Record<string, any>>({
+export function useFormValidation<T extends Record<string, unknown>>({
   schema,
   initialValues = {},
   validateOnChange = true,
@@ -23,12 +23,12 @@ export function useFormValidation<T extends Record<string, any>>({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const validateField = useCallback((fieldName: keyof T, value: any) => {
+  const validateField = useCallback((fieldName: keyof T, value: unknown) => {
     try {
       // Check if schema is a ZodObject (has pick method)
       if (schema instanceof ZodObject) {
         // For ZodObject, we can safely use pick to validate just this field
-        const fieldSchema = schema.pick({ [fieldName]: true } as any);
+        const fieldSchema = schema.pick({ [fieldName]: true } as Record<keyof T, true>);
         fieldSchema.parse({ [fieldName]: value });
       } else {
         // For unions, intersections, or other schema types, validate the full object
@@ -78,7 +78,7 @@ export function useFormValidation<T extends Record<string, any>>({
     }
   }, [schema, values]);
 
-  const setValue = useCallback((fieldName: keyof T, value: any) => {
+  const setValue = useCallback((fieldName: keyof T, value: unknown) => {
     setValues(prev => ({ ...prev, [fieldName]: value }));
     
     if (validateOnChange) {

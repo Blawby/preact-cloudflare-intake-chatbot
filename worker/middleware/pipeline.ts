@@ -1,13 +1,14 @@
 import type { ConversationContext } from './conversationContextManager.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 import type { Env, AgentMessage } from '../types.js';
 
-export interface PipelineMiddleware {
+export interface StandardMiddleware {
+  kind: 'standard';
   name: string;
   execute: (
     messages: AgentMessage[],
     context: ConversationContext,
-    teamConfig: TeamConfig,
+    organizationConfig: OrganizationConfig,
     env: Env
   ) => Promise<{ 
     context: ConversationContext; 
@@ -15,6 +16,35 @@ export interface PipelineMiddleware {
     shouldStop?: boolean;
   }>;
 }
+
+export interface SimpleMiddleware {
+  kind: 'simple';
+  name: string;
+  execute: (
+    messages: AgentMessage[],
+    context: ConversationContext,
+    env: Env
+  ) => Promise<{ 
+    context: ConversationContext; 
+    response?: string;
+    shouldStop?: boolean;
+  }>;
+}
+
+// Discriminated union for all possible middleware types
+export type AnyMiddleware = StandardMiddleware | SimpleMiddleware;
+
+// Type predicates for type narrowing
+export function isStandardMiddleware(middleware: AnyMiddleware): middleware is StandardMiddleware {
+  return middleware.kind === 'standard';
+}
+
+export function isSimpleMiddleware(middleware: AnyMiddleware): middleware is SimpleMiddleware {
+  return middleware.kind === 'simple';
+}
+
+// Legacy type alias for backward compatibility
+export type PipelineMiddleware = StandardMiddleware;
 
 export interface PipelineResult {
   context: ConversationContext;
@@ -30,8 +60,8 @@ export interface PipelineResult {
 export async function runPipeline(
   messages: AgentMessage[],
   context: ConversationContext,
-  teamConfig: TeamConfig,
-  middlewares: PipelineMiddleware[],
+  organizationConfig: OrganizationConfig,
+  middlewares: AnyMiddleware[],
   env: Env
 ): Promise<PipelineResult> {
   let updatedContext = context;
@@ -40,7 +70,17 @@ export async function runPipeline(
 
   for (const middleware of middlewares) {
     try {
-      const result = await middleware.execute(messages, updatedContext, teamConfig, env);
+      let result;
+      
+      // Type-safe narrowing using discriminated union
+      if (isSimpleMiddleware(middleware)) {
+        result = await middleware.execute(messages, updatedContext, env);
+      } else if (isStandardMiddleware(middleware)) {
+        result = await middleware.execute(messages, updatedContext, organizationConfig, env);
+      } else {
+        // This should never happen with proper typing, but provides a fallback
+        throw new Error(`Unknown middleware type: ${JSON.stringify(middleware)}`);
+      }
       
       // Update context from this middleware
       updatedContext = result.context;
@@ -79,15 +119,16 @@ export async function runPipeline(
 /**
  * Creates a middleware that logs pipeline execution
  */
-export function createLoggingMiddleware(): PipelineMiddleware {
+export function createLoggingMiddleware(): StandardMiddleware {
   return {
+    kind: 'standard',
     name: 'logging',
-    execute: async (messages, context, teamConfig, env) => {
+    execute: async (messages, context, organizationConfig, env) => {
       // Null-safe access with defaults
       const latestMessage = messages[messages.length - 1];
       const safeMessage = latestMessage ? String(latestMessage.content || '').substring(0, 100) : '';
       const safeContext = context || {};
-      const safeTeamConfig = teamConfig || {};
+      const safeOrganizationConfig = organizationConfig || {};
       
       console.log('Pipeline execution:', {
         messageCount: messages.length,
@@ -97,8 +138,8 @@ export function createLoggingMiddleware(): PipelineMiddleware {
           userIntent: context.userIntent || 'unclear',
           sessionId: context.sessionId || 'unknown'
         },
-        teamConfig: {
-          availableServices: teamConfig.availableServices || []
+        organizationConfig: {
+          availableServices: organizationConfig.availableServices || []
         }
       });
       

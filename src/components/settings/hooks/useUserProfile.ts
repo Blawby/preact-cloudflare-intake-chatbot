@@ -10,7 +10,7 @@ interface BetterAuthUser {
   image?: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
-  teamId?: string | null;
+  organizationId?: string | null;
   role?: string | null;
   phone?: string | null;
 }
@@ -56,7 +56,7 @@ function mapBetterAuthUserToProfile(authUser: BetterAuthUser): UserProfile {
     
     // Optional fields from Better Auth
     image: authUser.image || null,
-    teamId: authUser.teamId || null,
+    organizationId: authUser.organizationId || null,
     role: authUser.role || null,
     phone: authUser.phone || null,
     
@@ -96,7 +96,7 @@ export interface UserProfile {
   name: string;
   email: string;
   image?: string | null;
-  teamId?: string | null;
+  organizationId?: string | null;
   role?: string | null;
   phone?: string | null;
   // Profile Information

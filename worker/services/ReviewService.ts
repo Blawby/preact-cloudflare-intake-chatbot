@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { TeamConfig } from './AIService';
+import { OrganizationConfig } from './AIService';
 
 export interface ReviewMatter {
   id: string;
@@ -23,7 +23,7 @@ export class ReviewService {
   constructor(private env: Env) {}
 
   // Get matters that require lawyer review
-  async getReviewMatters(teamId: string): Promise<ReviewMatter[]> {
+  async getReviewMatters(organizationId: string): Promise<ReviewMatter[]> {
     try {
       // Get matters that have been flagged for review
       const matters = await this.env.DB.prepare(`
@@ -41,12 +41,12 @@ export class ReviewService {
           aigs.summary as ai_summary
         FROM matters m
         LEFT JOIN ai_generated_summaries aigs ON m.id = aigs.matter_id
-        WHERE m.team_id = ? 
+        WHERE m.organization_id = ? 
         AND m.status IN ('pending_review', 'approved', 'rejected')
         ORDER BY m.created_at DESC
-      `).bind(teamId).all();
+      `).bind(organizationId).all();
 
-      return matters.results?.map((matter: any) => ({
+      return matters.results?.map((matter: { [key: string]: unknown }) => ({
         id: matter.id,
         matterNumber: matter.matter_number,
         service: matter.service,
@@ -118,8 +118,8 @@ export class ReviewService {
     }
   }
 
-  // Get review statistics for a team
-  async getReviewStats(teamId: string): Promise<{
+  // Get review statistics for a organization
+  async getReviewStats(organizationId: string): Promise<{
     total: number;
     pending: number;
     approved: number;
@@ -133,15 +133,15 @@ export class ReviewService {
           SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
           SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
         FROM matters 
-        WHERE team_id = ? 
+        WHERE organization_id = ? 
         AND status IN ('pending_review', 'approved', 'rejected')
-      `).bind(teamId).first();
+      `).bind(organizationId).first();
 
       return {
-        total: (stats as any)?.total || 0,
-        pending: (stats as any)?.pending || 0,
-        approved: (stats as any)?.approved || 0,
-        rejected: (stats as any)?.rejected || 0
+        total: (stats as { total?: number })?.total || 0,
+        pending: (stats as { pending?: number })?.pending || 0,
+        approved: (stats as { approved?: number })?.approved || 0,
+        rejected: (stats as { rejected?: number })?.rejected || 0
       };
     } catch (error) {
       console.error('Failed to get review stats:', error);

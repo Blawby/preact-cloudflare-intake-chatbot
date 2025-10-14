@@ -51,10 +51,10 @@ export interface LegalIntakeLogEntry {
   level: LegalIntakeLogLevel;
   timestamp: string;
   sessionId?: string;
-  teamId?: string;
+  organizationId?: string;
   userId?: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   duration?: number; // in milliseconds
   error?: {
     code: string;
@@ -72,9 +72,9 @@ export interface AgentStartLogEntry extends LegalIntakeLogEntry {
     messageCount: number;
     hasAttachments: boolean;
     attachmentCount?: number;
-    teamConfig?: {
+    organizationConfig?: {
       hasConfig: boolean;
-      teamSlug?: string;
+      organizationSlug?: string;
     };
   };
 }
@@ -137,8 +137,8 @@ export interface ToolCallLogEntry extends LegalIntakeLogEntry {
   operation: LegalIntakeOperation.TOOL_CALL_START | LegalIntakeOperation.TOOL_CALL_SUCCESS | LegalIntakeOperation.TOOL_CALL_FAILED;
   metadata: {
     toolName: string;
-    parameters?: Record<string, any>;
-    result?: any;
+    parameters?: Record<string, unknown>;
+    result?: unknown;
   };
 }
 
@@ -159,7 +159,7 @@ export interface SecurityEventLogEntry extends LegalIntakeLogEntry {
   metadata: {
     eventType: 'injection_attempt' | 'pii_detected' | 'validation_failed' | 'suspicious_input';
     severity: 'low' | 'medium' | 'high' | 'critical';
-    details: Record<string, any>;
+    details: Record<string, unknown>;
   };
 }
 
@@ -184,11 +184,11 @@ export class LegalIntakeLogger {
   static logAgentStart(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     messageCount: number,
     hasAttachments: boolean,
     attachmentCount?: number,
-    teamConfig?: { hasConfig: boolean; teamSlug?: string }
+    organizationConfig?: { hasConfig: boolean; organizationSlug?: string }
   ): void {
     const logEntry: AgentStartLogEntry = {
       correlationId,
@@ -196,13 +196,13 @@ export class LegalIntakeLogger {
       level: LegalIntakeLogLevel.AUDIT,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: 'Legal intake agent started',
       metadata: {
         messageCount,
         hasAttachments,
         attachmentCount,
-        teamConfig
+        organizationConfig
       }
     };
 
@@ -215,7 +215,7 @@ export class LegalIntakeLogger {
   static logAgentComplete(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     duration: number,
     success: boolean,
     responseLength?: number
@@ -226,7 +226,7 @@ export class LegalIntakeLogger {
       level: LegalIntakeLogLevel.AUDIT,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: `Legal intake agent completed ${success ? 'successfully' : 'with errors'}`,
       duration,
       metadata: {
@@ -244,9 +244,9 @@ export class LegalIntakeLogger {
   static logAgentError(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     error: Error,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): void {
     const logEntry: LegalIntakeLogEntry = {
       correlationId,
@@ -254,7 +254,7 @@ export class LegalIntakeLogger {
       level: LegalIntakeLogLevel.ERROR,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: `Legal intake agent error: ${error.message}`,
       error: {
         code: error.name,
@@ -273,7 +273,7 @@ export class LegalIntakeLogger {
   static logStateTransition(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     fromState: ConversationState,
     toState: ConversationState,
     trigger: string,
@@ -285,7 +285,7 @@ export class LegalIntakeLogger {
       level: LegalIntakeLogLevel.AUDIT,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: `State transition: ${fromState} -> ${toState}`,
       metadata: {
         fromState,
@@ -304,7 +304,7 @@ export class LegalIntakeLogger {
   static logMatterCreation(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     operation: LegalIntakeOperation.MATTER_CREATION_START | LegalIntakeOperation.MATTER_CREATION_SUCCESS | LegalIntakeOperation.MATTER_CREATION_FAILED,
     matterType: string,
     context: MatterCreationContext,
@@ -323,7 +323,7 @@ export class LegalIntakeLogger {
       level: operation === LegalIntakeOperation.MATTER_CREATION_FAILED ? LegalIntakeLogLevel.ERROR : LegalIntakeLogLevel.AUDIT,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: `Matter creation ${operation.split('_').pop()}: ${matterType}`,
       metadata: {
         matterType,
@@ -350,11 +350,11 @@ export class LegalIntakeLogger {
   static logToolCall(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     operation: LegalIntakeOperation.TOOL_CALL_START | LegalIntakeOperation.TOOL_CALL_SUCCESS | LegalIntakeOperation.TOOL_CALL_FAILED,
     toolName: string,
-    parameters?: Record<string, any>,
-    result?: any,
+    parameters?: Record<string, unknown>,
+    result?: unknown,
     error?: Error
   ): void {
     const logEntry: ToolCallLogEntry = {
@@ -363,7 +363,7 @@ export class LegalIntakeLogger {
       level: operation === LegalIntakeOperation.TOOL_CALL_FAILED ? LegalIntakeLogLevel.ERROR : LegalIntakeLogLevel.AUDIT,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: `Tool call ${operation.split('_').pop()}: ${toolName}`,
       metadata: {
         toolName,
@@ -386,7 +386,7 @@ export class LegalIntakeLogger {
   static logAIModelCall(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     operation: LegalIntakeOperation.AI_MODEL_CALL | LegalIntakeOperation.AI_MODEL_RESPONSE,
     model?: string,
     tokenCount?: number,
@@ -401,7 +401,7 @@ export class LegalIntakeLogger {
       level: LegalIntakeLogLevel.INFO,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: `AI model ${operation.split('_').pop()}`,
       metadata: {
         model,
@@ -422,10 +422,10 @@ export class LegalIntakeLogger {
   static logSecurityEvent(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     eventType: 'injection_attempt' | 'pii_detected' | 'validation_failed' | 'suspicious_input',
     severity: 'low' | 'medium' | 'high' | 'critical',
-    details: Record<string, any>
+    details: Record<string, unknown>
   ): void {
     const logEntry: SecurityEventLogEntry = {
       correlationId,
@@ -433,7 +433,7 @@ export class LegalIntakeLogger {
       level: LegalIntakeLogLevel.ERROR,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: `Security event: ${eventType}`,
       metadata: {
         eventType,
@@ -451,10 +451,10 @@ export class LegalIntakeLogger {
   static logPerformance(
     correlationId: string,
     sessionId: string | undefined,
-    teamId: string | undefined,
+    organizationId: string | undefined,
     operation: string,
     duration: number,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): void {
     const logEntry: LegalIntakeLogEntry = {
       correlationId,
@@ -462,7 +462,7 @@ export class LegalIntakeLogger {
       level: LegalIntakeLogLevel.INFO,
       timestamp: new Date().toISOString(),
       sessionId,
-      teamId,
+      organizationId,
       message: `Performance: ${operation}`,
       duration,
       metadata: {
@@ -481,13 +481,26 @@ export class LegalIntakeLogger {
     const logLevel = logEntry.level.toUpperCase();
     const logMessage = `[${logLevel}] [${logEntry.operation}] ${logEntry.message}`;
     
+    // Get environment from Logger or fallback to production
+    let environment: string;
+    try {
+      environment = Logger.getEnvironment?.() || 'production';
+    } catch (error) {
+      // Fallback to production if Logger.getEnvironment throws (e.g., Logger not initialized)
+      environment = 'production';
+      // Log the error at debug level if available
+      if (Logger.debug) {
+        Logger.debug('Failed to get environment from Logger, falling back to production', { error });
+      }
+    }
+    
     // Create a structured log object
     const structuredLog = {
       ...logEntry,
       // Add additional metadata for log aggregation
       service: 'legal-intake',
       version: '1.0.0',
-      environment: (typeof process !== 'undefined' && process.env && process.env.NODE_ENV) || 'development'
+      environment
     };
 
     // Use appropriate Logger method based on level

@@ -56,11 +56,18 @@ wrangler.toml
 migrations/*_temp.sql
 migrations/*_with_secrets.sql
 
-# Cloudflare configuration (contains sensitive IDs)
-wrangler.toml
-.wrangler/
+# Migration audit reports
+audit-report.json
+audit-report.md
+audit-warnings.txt
+advanced-audit-report.json
+advanced-audit-report.md
+migration-plan.json
+migration-report.json
+verification-report.json
+undo-migration.js
 
-# Backup files
+# Backup files and archives
 .backups/
 *.backup
 *.bak

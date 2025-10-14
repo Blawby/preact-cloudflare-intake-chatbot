@@ -20,7 +20,7 @@ export interface MediaGroup {
  * Extract all media files from conversation messages and organize them by type
  * Similar to Upwork's file aggregation in chat sidebar
  */
-export function aggregateMediaFromMessages(messages: any[]): MediaGroup[] {
+export function aggregateMediaFromMessages(messages: Array<{ files?: FileAttachment[] }>): MediaGroup[] {
   const allMedia: AggregatedMedia[] = [];
   
   // Extract files from all messages

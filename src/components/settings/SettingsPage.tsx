@@ -5,6 +5,7 @@ import { AccountPage } from './pages/AccountPage';
 import { SecurityPage } from './pages/SecurityPage';
 import { MFAEnrollmentPage } from './pages/MFAEnrollmentPage';
 import { HelpPage } from './pages/HelpPage';
+import { OrganizationPage } from './pages/OrganizationPage';
 import { SidebarNavigation, SidebarNavigationItem } from '../ui/SidebarNavigation';
 import { 
   UserIcon, 
@@ -14,7 +15,8 @@ import {
   BellIcon,
   ArrowRightOnRectangleIcon,
   QuestionMarkCircleIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigation } from '../../utils/navigation';
@@ -66,8 +68,7 @@ export const SettingsPage = ({
     // Use the mock data service to properly clear all data
     mockUserDataService.resetToDefaults();
     
-    // Also clear the legacy mockUser key for backward compatibility
-    localStorage.removeItem('mockUser');
+    // Note: Auth data is now managed by Better Auth, not localStorage
     
     // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
@@ -87,6 +88,7 @@ export const SettingsPage = ({
     { id: 'general', label: t('settings:navigation.items.general'), icon: Cog6ToothIcon },
     { id: 'notifications', label: t('settings:navigation.items.notifications'), icon: BellIcon },
     { id: 'account', label: t('settings:navigation.items.account'), icon: UserIcon },
+    { id: 'organization', label: t('settings:navigation.items.organization'), icon: BuildingOfficeIcon },
     { id: 'security', label: t('settings:navigation.items.security'), icon: ShieldCheckIcon },
     { id: 'help', label: t('settings:navigation.items.help'), icon: QuestionMarkCircleIcon },
     { id: 'signout', label: t('settings:navigation.items.signOut'), icon: ArrowRightOnRectangleIcon, isAction: true, onClick: handleSignOut, variant: 'danger' }
@@ -102,6 +104,8 @@ export const SettingsPage = ({
         return <NotificationsPage className="h-full" />;
       case 'account':
         return <AccountPage isMobile={isMobile} onClose={onClose} className="h-full" />;
+      case 'organization':
+        return <OrganizationPage className="h-full" />;
       case 'security':
         return <SecurityPage isMobile={isMobile} onClose={onClose} className="h-full" />;
       case 'help':

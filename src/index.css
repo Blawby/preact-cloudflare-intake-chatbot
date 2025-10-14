@@ -96,6 +96,58 @@
     @apply text-accent-300 hover:text-accent-200;
   }
 
+  /* File display styling */
+  .file-display {
+    @apply flex items-center gap-2 p-2 rounded-2xl;
+    @apply bg-light-file-bg dark:bg-dark-file-bg;
+    @apply border border-light-file-border dark:border-dark-file-border;
+    @apply transition-all duration-200;
+  }
+
+  .file-display-icon {
+    @apply flex-shrink-0;
+  }
+
+  .file-display-info {
+    @apply flex-1 min-w-0;
+  }
+
+  .file-display-name {
+    @apply text-sm font-medium text-light-file-text dark:text-dark-file-text truncate;
+  }
+
+  .file-display-type {
+    @apply text-xs text-light-file-text-secondary dark:text-dark-file-text-secondary;
+  }
+
+  .file-display-remove {
+    @apply flex-shrink-0 w-6 h-6 rounded-full;
+    @apply flex items-center justify-center;
+    @apply bg-light-file-remove-bg dark:bg-dark-file-remove-bg;
+    @apply hover:bg-light-file-remove-hover dark:hover:bg-dark-file-remove-hover;
+    @apply transition-colors;
+  }
+
+  .file-display-remove-icon {
+    @apply w-3.5 h-3.5 text-white;
+  }
+
+  /* Message composer styling */
+  .message-composer-container {
+    @apply flex flex-col w-full relative;
+    @apply bg-gray-200 dark:bg-gray-900;
+    @apply border border-gray-300 dark:border-gray-700;
+    @apply rounded-2xl p-2 min-h-[48px] gap-2 h-auto overflow-visible;
+  }
+
+  .message-composer-preview-container {
+    @apply flex gap-2 overflow-x-auto scrollbar-hide;
+  }
+
+  .message-composer-input-row {
+    @apply flex items-center gap-3 w-full;
+  }
+
   /* Standardized input styling */
   .input-base {
     @apply w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-dark-input-bg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 transition-colors;

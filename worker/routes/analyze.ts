@@ -1,30 +1,146 @@
 import type { Env } from '../types';
-import { HttpErrors, handleError, createSuccessResponse } from '../errorHandler';
+import { HttpErrors, createSuccessResponse } from '../errorHandler';
 import { rateLimit, getClientId } from '../middleware/rateLimit.js';
-import { withAIRetry } from '../utils/retry.js';
+import { AdobeDocumentService, type AdobeExtractSuccess, type IAdobeExtractor } from '../services/AdobeDocumentService.js';
+import { type AnalysisResult } from '../services/SessionService.js';
+import { 
+  log, 
+  logRequestStart, 
+  logAIProcessing, 
+  logError, 
+  logWarning 
+} from '../utils/logging.js';
+import { parseEnvBool } from '../utils/safeStringUtils.js';
+import { createRateLimitResponse } from '../errorHandler';
 
-interface AnalysisResult {
-  summary: string;
-  key_facts: string[];
-  entities: {
-    people: string[];
-    orgs: string[];
-    dates: string[];
+// Legal keywords for relevance scoring
+const LEGAL_KEYWORDS = [
+  'contract', 'agreement', 'payment', 'amount', 'date', 'party', 'obligation', 
+  'liability', 'damages', 'settlement', 'court', 'judge', 'plaintiff', 'defendant', 
+  'signature', 'witness'
+];
+
+// Safe JSON serialization utility to prevent OOM and handle cyclic objects
+function safeStringify(obj: unknown, maxLength: number = 10000): string {
+  try {
+    const seen = new WeakSet();
+    const replacer = (key: string, value: unknown) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
+      }
+      return value;
+    };
+    
+    const result = JSON.stringify(obj, replacer);
+    
+    // Truncate if too long to prevent OOM
+    if (result.length > maxLength) {
+      return result.substring(0, maxLength) + '...[truncated]';
+    }
+    
+    return result;
+  } catch (_error) {
+    return '<unserializable-table>';
+  }
+}
+
+// Helper functions for prioritizing tables and elements by relevance
+function calculateTableRelevance(table: { rows?: unknown[]; [key: string]: unknown }, _documentText: string): number {
+  let score = 0;
+  
+  // Base score for table size (larger tables often more important)
+  if (table.rows && Array.isArray(table.rows)) {
+    score += Math.min(table.rows.length * 0.1, 2); // Cap at 2 points
+  }
+  
+  // Check for legal keywords in table content - use safe serialization
+  const tableText = safeStringify(table).toLowerCase();
+  
+  LEGAL_KEYWORDS.forEach(keyword => {
+    if (tableText.includes(keyword)) {
+      score += 1;
+    }
+  });
+  
+  // Bonus for tables with monetary values
+  if (/\$[\d,]+\.?\d*/.test(tableText)) {
+    score += 1.5;
+  }
+  
+  // Bonus for tables with dates
+  if (/\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}/.test(tableText)) {
+    score += 1;
+  }
+  
+  return score;
+}
+
+function calculateElementRelevance(element: { text?: string; [key: string]: unknown }, _documentText: string): number {
+  let score = 0;
+  
+  // Base score for element size
+  if (element.text && element.text.length > 0) {
+    score += Math.min(element.text.length / 100, 2); // Cap at 2 points
+  }
+  
+  // Check for legal keywords in element content
+  const elementText = (element.text || '').toLowerCase();
+  
+  LEGAL_KEYWORDS.forEach(keyword => {
+    if (elementText.includes(keyword)) {
+      score += 1;
+    }
+  });
+  
+  // Bonus for elements with monetary values
+  if (/\$[\d,]+\.?\d*/.test(elementText)) {
+    score += 1.5;
+  }
+  
+  // Bonus for elements with dates
+  if (/\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}/.test(elementText)) {
+    score += 1;
+  }
+  
+  // Bonus for signature-related elements
+  if (elementText.includes('signature') || elementText.includes('signed') || elementText.includes('witness')) {
+    score += 2;
+  }
+  
+  return score;
+}
+
+// Extended AnalysisResult for debugging purposes
+interface ExtendedAnalysisResult extends AnalysisResult {
+  adobeExtractTextLength?: number;
+  adobeExtractTextPreview?: string;
+  extraction_failed?: boolean;
+  extraction_method?: string;
+  truncationFailed?: boolean;
+  truncationNote?: string;
+  debug?: {
+    adobeEnabled: boolean;
+    adobeClientIdSet: boolean;
+    adobeClientSecretSet: boolean;
+    fileTypeEligible: boolean;
+    analysisMethod: string;
+    debugTimestamp: string;
+    codeVersion: string;
+    summaryContainsUnable: boolean;
+    summaryContainsNotProvided: boolean;
+    summaryLength: number;
+    adobeExtractTextLength: number;
+    adobeExtractTextPreview: string;
   };
-  action_items: string[];
-  confidence: number;
-  error?: string;
 }
 
-interface AIOptions {
-  prompt?: string;
-  image?: Uint8Array;
-  max_tokens?: number;
-  signal?: AbortSignal;
-}
+
 
 // Helper function to create fallback response
-function createFallbackResponse(aiResponse: string): AnalysisResult {
+function _createFallbackResponse(aiResponse: string): AnalysisResult {
   return {
     summary: aiResponse.substring(0, 200) + (aiResponse.length > 200 ? '...' : ''),
     key_facts: [aiResponse],
@@ -34,68 +150,571 @@ function createFallbackResponse(aiResponse: string): AnalysisResult {
   };
 }
 
-// Helper function to parse AI response with multiple fallback strategies
-function parseAIResponse(aiResponse: string): AnalysisResult {
-  if (!aiResponse || typeof aiResponse !== 'string') {
-    return createFallbackResponse('No response received');
+
+async function attemptAdobeExtract(
+  file: File,
+  question: string,
+  env: Env,
+  requestId?: string
+): Promise<ExtendedAnalysisResult | null> {
+  log('debug', 'adobe_service_creation', { message: 'Creating Adobe service', requestId });
+  
+  // Use mock extractor if available (for testing), otherwise use real Adobe service
+  const adobeService: IAdobeExtractor = env.ADOBE_EXTRACTOR_SERVICE || new AdobeDocumentService(env);
+  log('debug', 'adobe_service_created', { 
+    message: 'Adobe service created', 
+    isMock: !!env.ADOBE_EXTRACTOR_SERVICE,
+    requestId 
+  });
+  log('debug', 'adobe_service_enabled_check', { isEnabled: adobeService.isEnabled(), requestId });
+  
+  const eligibleTypes = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]);
+
+  log('info', 'adobe_extract_attempt', {
+    fileType: file.type,
+    isEligibleType: eligibleTypes.has(file.type),
+    isEnabled: adobeService.isEnabled(),
+    enableFlag: env.ENABLE_ADOBE_EXTRACT,
+    adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+    adobeClientSecret: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET',
+    requestId
+  });
+
+  log('info', 'adobe_service_check', {
+    isEnabled: adobeService.isEnabled(),
+    enableFlag: env.ENABLE_ADOBE_EXTRACT,
+    adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+    requestId
+  });
+
+  if (!eligibleTypes.has(file.type)) {
+    log('info', 'adobe_extract_skipped', { reason: 'not_eligible_type', fileType: file.type, requestId });
+    return null;
+  }
+  
+  if (!adobeService.isEnabled()) {
+    log('info', 'adobe_extract_skipped', { reason: 'not_enabled', isEnabled: adobeService.isEnabled(), requestId });
+    return null;
   }
 
-  // Strategy 1: Direct JSON parse
   try {
-    const parsed = JSON.parse(aiResponse.trim());
-    if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
-      return parsed;
-    }
-  } catch (_error) {
-    // Continue to next strategy
-  }
-
-  // Strategy 2: Extract substring between first '{' and last '}'
-  try {
-    const firstBrace = aiResponse.indexOf('{');
-    const lastBrace = aiResponse.lastIndexOf('}');
+    log('info', 'adobe_extraction_start', { fileName: file.name, fileType: file.type, requestId });
+    log('debug', 'adobe_extraction_details', {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      requestId
+    });
     
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      const jsonSubstring = aiResponse.substring(firstBrace, lastBrace + 1);
-      const parsed = JSON.parse(jsonSubstring);
-      if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
-        return parsed;
+    const buffer = await file.arrayBuffer();
+    log('info', 'adobe_file_buffer', { fileName: file.name, bufferSize: buffer.byteLength, requestId });
+    log('debug', 'adobe_buffer_details', { bufferSize: buffer.byteLength, requestId });
+    
+    const extractResult = await adobeService.extractFromBuffer(file.name, file.type, buffer);
+    log('info', 'adobe_extraction_result', {
+      success: extractResult.success,
+      hasDetails: !!extractResult.details,
+      error: extractResult.error,
+      warnings: extractResult.warnings,
+      requestId
+    });
+    
+    log('debug', 'adobe_extraction_result_details', {
+      success: extractResult.success,
+      hasDetails: !!extractResult.details,
+      error: extractResult.error || 'None',
+      warnings: extractResult.warnings || 'None',
+      textLength: extractResult.details?.text?.length || 0,
+      textPreview: extractResult.details?.text?.substring(0, 200) || 'No text',
+      requestId
+    });
+
+    if (!extractResult.success || !extractResult.details) {
+      log('warn', 'adobe_extraction_failed', { reason: 'no_success_or_details', requestId });
+      log('debug', 'adobe_extraction_failure_details', {
+        success: extractResult.success,
+        hasDetails: !!extractResult.details,
+        error: extractResult.error,
+        requestId
+      });
+      return null;
+    }
+
+    log('info', 'adobe_extraction_success', { fileName: file.name, requestId });
+    log('debug', 'adobe_extraction_success_details', { message: 'Adobe extraction successful, calling summarizeAdobeExtract', requestId });
+    const result = await summarizeAdobeExtract(extractResult.details, question, env, requestId || 'unknown');
+    // Ensure the result has the extended fields
+    return {
+      ...result,
+      adobeExtractTextLength: result.adobeExtractTextLength || extractResult.details.text?.length || 0,
+      adobeExtractTextPreview: result.adobeExtractTextPreview || extractResult.details.text?.substring(0, 200) || 'No text',
+      debug: {
+        ...result.debug,
+        adobeExtractTextLength: result.adobeExtractTextLength || extractResult.details.text?.length || 0,
+        adobeExtractTextPreview: result.adobeExtractTextPreview || extractResult.details.text?.substring(0, 200) || 'No text'
+      }
+    };
+  } catch (error) {
+    logWarning('analyze', 'adobe_extract_failed', 'Adobe extract failed, falling back to generic AI analysis', {
+      fileName: file.name,
+      fileType: file.type,
+      error: error instanceof Error ? error.message : String(error),
+      requestId,
+      debug: {
+        adobeEnabled: Boolean(env.ENABLE_ADOBE_EXTRACT),
+        adobeClientIdSet: !!env.ADOBE_CLIENT_ID,
+        adobeClientSecretSet: !!env.ADOBE_CLIENT_SECRET,
+        fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type),
+        analysisMethod: 'fallback_to_generic_ai',
+        debugTimestamp: new Date().toISOString(),
+        codeVersion: 'v2.3-debug'
+      }
+    });
+    
+    // Return null to allow the caller to fall back to generic AI analysis
+    return null;
+  }
+}
+
+async function summarizeAdobeExtract(
+  extract: AdobeExtractSuccess,
+  question: string,
+  env: Env,
+  requestId: string
+): Promise<ExtendedAnalysisResult> {
+  log('debug', 'summarize_adobe_extract_called', {
+    textLength: extract.text?.length || 0,
+    textPreview: extract.text?.substring(0, 200) || 'NO TEXT',
+    tablesCount: extract.tables?.length || 0,
+    elementsCount: extract.elements?.length || 0,
+    requestId
+  });
+  
+  const rawText = extract.text ?? '';
+  
+  // If no text was extracted, return a meaningful error response
+  if (!rawText || rawText.trim().length === 0) {
+    log('warn', 'adobe_extract_no_text', {
+      message: 'Adobe extraction returned no text content',
+      hasElements: (extract.elements?.length || 0) > 0,
+      hasTables: (extract.tables?.length || 0) > 0,
+      requestId
+    });
+    
+    return {
+      summary: "Adobe PDF extraction was unable to extract readable text from this document. This could be due to the document being image-based, having text in non-standard formats, or other extraction limitations.",
+      key_facts: [
+        "Document appears to be a PDF but text extraction failed",
+        "Adobe PDF Services was unable to extract readable content",
+        "Document may contain images, scanned content, or non-standard text formats"
+      ],
+      entities: {
+        people: [],
+        orgs: [],
+        dates: []
+      },
+      action_items: [
+        "Try uploading a different PDF with standard text content",
+        "Consider converting the document to a text format",
+        "Verify the PDF contains selectable text (not just images)"
+      ],
+      confidence: 0.1,
+      adobeExtractTextLength: 0,
+      adobeExtractTextPreview: 'No text extracted'
+    };
+  }
+  
+  // Helper function to safely parse integer environment variables
+  const parseEnvInt = (value: string | undefined, defaultValue: number, minValue: number = 1, maxValue: number = Number.MAX_SAFE_INTEGER): number => {
+    const parsed = parseInt(value || defaultValue.toString(), 10);
+    if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
+      return defaultValue;
+    }
+    // Clamp to sensible bounds
+    return Math.max(minValue, Math.min(maxValue, parsed));
+  };
+
+  // Reduce text size to avoid Cloudflare AI token/character limits
+  // Make the limit configurable and increase from 10k to 20k characters
+  const maxTextLength = parseEnvInt(env.AI_MAX_TEXT_LENGTH, 20000, 1000, 100000);
+  const truncatedText = rawText.length > maxTextLength
+    ? `${rawText.slice(0, maxTextLength)}...`
+    : rawText;
+    
+  // Log truncation events for monitoring
+  if (rawText.length > maxTextLength) {
+    log('warn', 'text_truncation_applied', {
+      originalLength: rawText.length,
+      truncatedLength: maxTextLength,
+      contextId: requestId,
+      truncationRatio: (maxTextLength / rawText.length).toFixed(3)
+    });
+  }
+    
+  log('debug', 'truncated_text_details', {
+    truncatedTextLength: truncatedText.length,
+    truncatedTextPreview: truncatedText.substring(0, 200),
+    requestId
+  });
+
+  // Reduce structured payload size to avoid Cloudflare AI limits
+  // Make limits configurable and implement prioritization
+  const maxTables = parseEnvInt(env.AI_MAX_TABLES, 5, 1, 100);
+  const maxElements = parseEnvInt(env.AI_MAX_ELEMENTS, 20, 1, 1000);
+  const maxStructuredPayloadLength = parseEnvInt(env.AI_MAX_STRUCTURED_PAYLOAD_LENGTH, 6000, 1000, 50000);
+  
+  // Prioritize tables and elements by relevance/importance
+  const prioritizedTables = (extract.tables ?? [])
+    .map((table, index) => ({
+      ...(typeof table === 'object' && table !== null ? table : {}),
+      relevanceScore: calculateTableRelevance(table as { rows?: unknown[]; [key: string]: unknown }, rawText),
+      originalIndex: index
+    }))
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, maxTables);
+    
+  const prioritizedElements = (extract.elements ?? [])
+    .map((element, index) => ({
+      ...(typeof element === 'object' && element !== null ? element : {}),
+      relevanceScore: calculateElementRelevance(element as { text?: string; [key: string]: unknown }, rawText),
+      originalIndex: index
+    }))
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, maxElements);
+  
+  // Build structured payload with proper truncation to ensure valid JSON
+  const buildTruncatedStructuredPayload = (tables: unknown[], elements: unknown[], maxLength: number): { payload: string; truncationFailed: boolean } => {
+    let currentTables = [...tables];
+    let currentElements = [...elements];
+    let payload = '';
+    let attempts = 0;
+    let truncationFailed = false;
+    const maxAttempts = 10; // Prevent infinite loops
+    
+    do {
+      const structuredObject = {
+        tables: currentTables,
+        elements: currentElements
+      };
+      
+      payload = JSON.stringify(structuredObject);
+      attempts++;
+      
+      if (payload.length <= maxLength || attempts >= maxAttempts) {
+        break;
+      }
+      
+      // Truncation strategy: reduce arrays first, then trim string fields
+      if (currentTables.length > 1) {
+        // Remove least relevant tables (they're already sorted by relevance)
+        currentTables = currentTables.slice(0, Math.max(1, Math.floor(currentTables.length * 0.8)));
+      } else if (currentElements.length > 1) {
+        // Remove least relevant elements
+        currentElements = currentElements.slice(0, Math.max(1, Math.floor(currentElements.length * 0.8)));
+      } else {
+        // If we're down to 1 table and 1 element, try trimming string fields
+        if (currentTables.length > 0 && currentElements.length > 0) {
+          // Trim string fields in the remaining table and element
+          currentTables = currentTables.map(table => {
+            if (typeof table === 'object' && table !== null) {
+              const trimmedTable = { ...table };
+              Object.keys(trimmedTable).forEach(key => {
+                if (typeof trimmedTable[key] === 'string' && trimmedTable[key].length > 100) {
+                  trimmedTable[key] = trimmedTable[key].substring(0, 100) + '...';
+                }
+              });
+              return trimmedTable;
+            }
+            return table;
+          });
+          
+          currentElements = currentElements.map(element => {
+            if (typeof element === 'object' && element !== null) {
+              const trimmedElement = { ...element };
+              Object.keys(trimmedElement).forEach(key => {
+                if (typeof trimmedElement[key] === 'string' && trimmedElement[key].length > 100) {
+                  trimmedElement[key] = trimmedElement[key].substring(0, 100) + '...';
+                }
+              });
+              return trimmedElement;
+            }
+            return element;
+          });
+        }
+        break; // Exit if we can't reduce further
+      }
+    } while (payload.length > maxLength && attempts < maxAttempts);
+    
+    // Post-loop check: detect if truncation failed due to max attempts reached
+    // This function uses best-effort semantics - it tries to fit within limits but may exceed them
+    if (payload.length > maxLength) {
+      truncationFailed = true;
+      const warningMsg = `Payload truncation failed: finalLength=${payload.length}, maxLength=${maxLength}, attempts=${attempts}`;
+      logWarning(requestId, 'analyze.payload.truncation_failed', warningMsg, {
+        finalLength: payload.length,
+        maxLength,
+        attempts
+      });
+      // Return the oversized payload with a note that truncation failed
+      // The caller should handle this gracefully
+    }
+    
+    return { payload, truncationFailed };
+  };
+  
+  // Calculate original structured length from prioritized data (before truncation)
+  const originalStructuredLength = JSON.stringify({ tables: prioritizedTables, elements: prioritizedElements }).length;
+  
+  const { payload: structuredPayload, truncationFailed } = buildTruncatedStructuredPayload(prioritizedTables, prioritizedElements, maxStructuredPayloadLength);
+  
+  // Log when limits are hit for telemetry
+  const originalTablesCount = (extract.tables ?? []).length;
+  const originalElementsCount = (extract.elements ?? []).length;
+
+  if (originalTablesCount > maxTables) {
+    log('warn', 'table_limit_hit', {
+      originalCount: originalTablesCount,
+      limitedCount: maxTables,
+      contextId: requestId,
+      dataLoss: true
+    });
+  }
+  
+  if (originalElementsCount > maxElements) {
+    log('warn', 'element_limit_hit', {
+      originalCount: originalElementsCount,
+      limitedCount: maxElements,
+      contextId: requestId,
+      dataLoss: true
+    });
+  }
+  
+  // Log structured payload truncation events
+  if (originalStructuredLength > maxStructuredPayloadLength) {
+    log('warn', 'structured_payload_truncation_applied', {
+      originalLength: originalStructuredLength,
+      truncatedLength: structuredPayload.length,
+      limitedLength: maxStructuredPayloadLength,
+      contextId: requestId,
+      truncationRatio: (structuredPayload.length / originalStructuredLength).toFixed(3),
+      dataLoss: true
+    });
+  }
+
+  const systemPrompt = [
+    'You are a legal intake analyst receiving structured output from Adobe PDF Services.',
+    'Use the provided document text and structured data to answer the intake question.',
+    'Return STRICT JSON: { "summary": string, "key_facts": string[], "entities": { "people": string[], "orgs": string[], "dates": string[] }, "action_items": string[], "confidence": number }',
+    'Highlight parties, obligations, important dates, dollar amounts, and recommended next steps.'
+  ].join('\n');
+
+  const userPrompt = [
+    `Intake question: ${question}`,
+    truncatedText ? `Extracted text:\n${truncatedText}` : '',
+    structuredPayload ? `Structured data:\n${structuredPayload}` : ''
+  ].filter(Boolean).join('\n\n');
+
+  // Use the correct format for Cloudflare AI
+  const res = await (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run('@cf/openai/gpt-oss-20b', {
+    input: `${systemPrompt}\n\n${userPrompt}`,
+    max_tokens: 800,
+    temperature: 0.1
+  });
+
+  logAIProcessing('analyze', 'response.meta', {
+    type: typeof res,
+    keys: typeof res === 'object' && res !== null ? Object.keys(res as Record<string, unknown>).slice(0, 10) : [],
+    requestId: requestId || 'unknown'
+  });
+  const result = safeJson(res as Record<string, unknown>);
+  logAIProcessing('analyze', 'safe_json', { result, requestId: requestId || 'unknown' });
+  
+  // Add Adobe extraction details to the result for debugging
+  const extendedResult = result as ExtendedAnalysisResult;
+  extendedResult.adobeExtractTextLength = rawText.length;
+  extendedResult.adobeExtractTextPreview = rawText.substring(0, 200);
+  
+  // Add truncation failure information if applicable
+  if (truncationFailed) {
+    extendedResult.truncationFailed = true;
+    extendedResult.truncationNote = "Payload truncation failed - some data may be incomplete due to size limits";
+  }
+  
+  return extendedResult;
+}
+
+// Helper function to safely parse JSON responses with hardened truncation handling
+function safeJson(response: unknown): AnalysisResult {
+  log('debug', 'safe_json_debug', {
+    phase: 'safeJson',
+    inputType: typeof response,
+    keys: typeof response === 'object' && response !== null ? Object.keys(response) : [],
+    snippet: typeof response === "string"
+      ? response.slice(0, 200)
+      : JSON.stringify(response || {}).slice(0, 200)
+  });
+  
+  try {
+    // Handle structured AI output - look for the actual JSON in the response
+    if (response && typeof response === 'object' && 'output' in response && Array.isArray((response as Record<string, unknown>).output)) {
+      const output = (response as Record<string, unknown>).output as unknown[];
+      // Find the message with the actual content (prefer message type over reasoning type)
+      const message = output.find((msg: unknown) => 
+        (msg as Record<string, unknown>).content && Array.isArray((msg as Record<string, unknown>).content) && (msg as Record<string, unknown>).type === 'message'
+      ) || output.find((msg: unknown) => 
+        (msg as Record<string, unknown>).content && Array.isArray((msg as Record<string, unknown>).content)
+      );
+      
+      if (message && typeof message === 'object' && message !== null && 'content' in message) {
+        const messageContent = (message as Record<string, unknown>).content;
+        if (Array.isArray(messageContent)) {
+          // Find the output_text content (the actual response)
+          const outputTextContent = messageContent.find((content: unknown) => 
+            (content as Record<string, unknown>).type === 'output_text' && (content as Record<string, unknown>).text
+          );
+        
+          if (outputTextContent && typeof outputTextContent === 'object' && outputTextContent !== null && 'text' in outputTextContent) {
+            log('debug', 'safe_json_found_output', {
+              phase: 'safeJson',
+              snippet: (outputTextContent.text as string).substring(0, 200) + '...'
+            });
+            
+            // Extract and clean the JSON text
+            let text = (outputTextContent.text as string).trim();
+            
+            // Remove quotes if wrapped
+            if (text.startsWith('"') && text.endsWith('"')) {
+              text = text.slice(1, -1);
+            }
+            
+            // Apply the hardened JSON extraction logic
+            return extractValidJson(text);
+          }
+        }
       }
     }
-  } catch (_error) {
-    // Continue to next strategy
-  }
 
-  // Strategy 3: Fix common escaped characters and try again
+    // Handle direct string input
+    if (typeof response === "string") {
+      return extractValidJson(response);
+    }
+
+    // Handle object with nested output_text
+    if (response && typeof response === 'object' && 'result' in response && 
+        response.result && typeof response.result === 'object' && 'output_text' in response.result) {
+      return extractValidJson((response.result as Record<string, unknown>).output_text as string);
+    }
+    if (response && typeof response === 'object' && 'output_text' in response) {
+      return extractValidJson((response as Record<string, unknown>).output_text as string);
+    }
+
+    // Handle already-parsed object
+    if (typeof response === "object" && response && 'summary' in response) {
+      return response as unknown as AnalysisResult;
+    }
+
+    // Fallback
+    logWarning('analyze', 'safe_json_unexpected_format', 'Unexpected format in safeJson', { response });
+    return {
+      summary: "Analysis completed but response format was unexpected",
+      key_facts: ["Document processed successfully"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: [],
+      confidence: 0.3
+    };
+  } catch (err) {
+    logError('analyze', 'safe_json_parse_error', err as Error, { response });
+    return {
+      summary: "Analysis completed but response format was unexpected",
+      key_facts: ["Document processed successfully"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: [],
+      confidence: 0.5
+    };
+  }
+}
+
+// Hardened JSON extraction that handles truncated/concatenated responses
+function extractValidJson(input: string): AnalysisResult {
   try {
-    const fixedResponse = aiResponse
-      .replace(/\\_/g, '_')  // Fix escaped underscores
-      .replace(/\\"/g, '"')  // Fix escaped quotes
-      .replace(/\\\\/g, '\\'); // Fix double escaped backslashes
-    
-    const parsed = JSON.parse(fixedResponse);
-    if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
+    const raw = typeof input === "string" ? input : JSON.stringify(input);
+
+    // Find the first JSON object in the string, accounting for quoted braces and escapes.
+    const jsonBlock = extractFirstJsonObject(raw);
+    if (!jsonBlock) {
+      throw new Error("No JSON object boundaries found");
+    }
+
+    const parsed = JSON.parse(jsonBlock);
+    if (parsed && typeof parsed === "object" && parsed.summary) {
+      log('debug', 'safe_json_valid_parsed', { phase: 'extractValidJson' });
       return parsed;
     }
-  } catch (_error) {
-    // Continue to next strategy
+
+    throw new Error("Parsed JSON does not contain expected structure");
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logError('analyze', 'safe_json_final_fallback', new Error(errorMessage), { phase: 'extractValidJson', snippet: String(input).slice(0, 200) });
   }
 
-  // Strategy 4: Regex match for JSON object
-  try {
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.summary && parsed.key_facts && parsed.entities && parsed.action_items !== undefined && parsed.confidence !== undefined) {
-        return parsed;
+  // Final fallback — return structured failure
+  return {
+    summary: "Document analysis completed but JSON parsing failed",
+    key_facts: ["Document processed successfully"],
+    entities: { people: [], orgs: [], dates: [] },
+    action_items: ["Review document format and retry analysis"],
+    confidence: 0.3,
+  };
+}
+
+/**
+ * Extracts the first complete JSON object from a string, handling escaped characters.
+ */
+function extractFirstJsonObject(text: string): string | null {
+  let start = text.indexOf("{");
+  if (start === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === "{") {
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          return text.slice(start, i + 1);
+        }
       }
     }
-  } catch (_error) {
-    // Continue to fallback
   }
 
-  // Fallback: Create structured response from text
-  return createFallbackResponse(aiResponse);
+  return null;
 }
 
 
@@ -111,10 +730,89 @@ const ALLOWED_ANALYSIS_MIME_TYPES = [
   'image/heic',
   'image/heif',
   'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'text/plain'
 ];
 
 const MAX_ANALYSIS_FILE_SIZE = 8 * 1024 * 1024; // 8MB for inline analysis
+
+async function analyzeWithGenericAI(
+  file: File,
+  question: string,
+  env: Env,
+  requestId?: string
+): Promise<AnalysisResult> {
+  try {
+    log('info', 'generic_ai_analysis_start', {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      requestId
+    });
+
+    let content = '';
+    
+    if (file.type === 'text/plain') {
+      // Check file size before reading into memory
+      if (file.size > MAX_ANALYSIS_FILE_SIZE) {
+        throw new Error(`File size exceeds maximum limit of ${MAX_ANALYSIS_FILE_SIZE / (1024 * 1024)}MB for analysis`);
+      }
+      // Read text content directly
+      content = await file.text();
+    } else {
+      // For other types, produce a concise intake description
+      content = `Document: ${file.name}\nType: ${file.type}\nSize: ${file.size} bytes\nQuestion: ${question}`;
+    }
+
+    const systemPrompt = [
+      'You are a legal intake analyst. Analyze the provided content and answer the intake question.',
+      'Return STRICT JSON: { "summary": string, "key_facts": string[], "entities": { "people": string[], "orgs": string[], "dates": string[] }, "action_items": string[], "confidence": number }',
+      'Focus on legal parties, obligations, deadlines, amounts, and recommended next steps.'
+    ].join('\n');
+
+    const userPrompt = `Intake question: ${question}\n\nContent:\n${content}`;
+
+    // Use the default AI model or fallback
+    const model = env.AI_MODEL_DEFAULT || '@cf/openai/gpt-oss-20b';
+    
+    const res = await (env.AI as { run: (model: string, params: Record<string, unknown>) => Promise<unknown> }).run(model, {
+      input: `${systemPrompt}\n\n${userPrompt}`,
+      max_tokens: 800,
+      temperature: 0.1
+    });
+
+    logAIProcessing('analyze', 'generic_ai_response.meta', {
+      type: typeof res,
+      keys: typeof res === 'object' && res !== null ? Object.keys(res as Record<string, unknown>).slice(0, 10) : []
+    });
+
+    const result = safeJson(res as Record<string, unknown>);
+    
+    log('info', 'generic_ai_analysis_completed', {
+      fileName: file.name,
+      confidence: result.confidence,
+      summaryLength: result.summary?.length || 0,
+      requestId
+    });
+
+    return result;
+  } catch (error) {
+    logError('analyze', 'generic_ai_analysis_failed', error as Error, {
+      fileName: file.name,
+      fileType: file.type
+    });
+
+    return {
+      summary: "Analysis failed due to an internal error. Please try again or contact support.",
+      key_facts: ["Document analysis encountered an error"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: ["Retry the analysis", "Contact support if the issue persists"],
+      confidence: 0.0,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
 
 function validateAnalysisFile(file: File): { isValid: boolean; error?: string } {
   // Check file size
@@ -139,200 +837,46 @@ function validateAnalysisFile(file: File): { isValid: boolean; error?: string } 
 export async function analyzeWithCloudflareAI(
   file: File,
   question: string,
-  env: Env
-): Promise<AnalysisResult> {
-  // Configurable timeout with fallbacks
-  const isImage = file.type.startsWith('image/');
-  const defaultTimeoutMs = isImage ? 60000 : 30000; // 60s for images, 30s for others
-  const timeoutMs = (env as any).ANALYSIS_TIMEOUT_MS
-    ? parseInt((env as any).ANALYSIS_TIMEOUT_MS, 10)
-    : defaultTimeoutMs;
+  env: Env,
+  requestId?: string
+): Promise<ExtendedAnalysisResult> {
+  log('debug', 'analyze_with_cloudflare_ai_called', {
+    fileType: file.type,
+    fileName: file.name,
+    requestId
+  });
   
-  if (isNaN(timeoutMs) || timeoutMs <= 0) {
-    throw new Error(
-      `Invalid ANALYSIS_TIMEOUT_MS configuration: ${(env as any).ANALYSIS_TIMEOUT_MS}`
-    );
+  // Try Adobe extraction first
+  log('debug', 'attempting_adobe_extraction', { message: 'Attempting Adobe extraction', requestId });
+  const adobeAnalysis = await attemptAdobeExtract(file, question, env, requestId);
+  if (adobeAnalysis) {
+    log('debug', 'adobe_analysis_successful', { message: 'Adobe analysis successful, returning result', requestId });
+    return adobeAnalysis;
   }
   
-  // Generate request identifier for better logging
-  const requestId = `analysis-${Date.now()}-${Math.random()
-    .toString(36)
-    .substr(2, 9)}`;
+  // Adobe extraction failed or ineligible - use generic AI fallback
+  log('debug', 'adobe_extraction_failed_fallback', { message: 'Adobe extraction failed, using generic AI fallback', requestId });
+  log('info', 'adobe_extract_fallback', {
+    fileName: file.name,
+    fileType: file.type,
+    reason: 'adobe_extraction_failed_or_ineligible',
+    requestId
+  });
   
-  const controller = new AbortController();
-  const timeout = setTimeout(() => {
-    console.warn(
-      `[${requestId}] Analysis timeout triggered after ${timeoutMs}ms for ${file.name} (${file.type}, ${file.size} bytes)`
-    );
-    controller.abort();
-  }, timeoutMs);
+  const fallbackResult = await analyzeWithGenericAI(file, question, env, requestId);
   
-  console.log(
-    `[${requestId}] Starting analysis: ${file.name} (${file.type}, ${file.size} bytes) with ${timeoutMs}ms timeout`
-  );
-
-  try {
-    // Prepare model input based on file type
-    let prompt: string;
-    let modelName: string;
-    let aiOptions: AIOptions;
-    
-    if (file.type.startsWith('image/')) {
-      // Use vision model for images only (following official Cloudflare docs)
-      modelName = '@cf/llava-hf/llava-1.5-7b-hf';
-      console.log('Using vision model for image analysis:', modelName);
-      
-      // Convert image file to Uint8Array for vision model (following official docs)
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        
-        prompt = `${question}\n\nPlease analyze this image and return a JSON response with the following structure. IMPORTANT: Do not include the JSON structure template in your response - only provide the actual analysis results:
-
-{
-  "summary": "Brief summary of what you see",
-  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
-  "entities": {
-    "people": ["Person names found"],
-    "orgs": ["Organization names found"],
-    "dates": ["Dates found"]
-  },
-  "action_items": ["Action 1", "Action 2"],
-  "confidence": 0.85
-}`;
-        
-        aiOptions = {
-          image: uint8Array, // Pass binary directly to avoid unnecessary copy
-          prompt: prompt,
-          max_tokens: 512
-        };
-        console.log('Converted image to vision format, size:', uint8Array.length);
-        
-        // Add signal for timeout handling
-        if (controller.signal) {
-          aiOptions.signal = controller.signal;
-        }
-      } catch (conversionError) {
-        console.warn('Failed to convert image for vision analysis:', conversionError);
-        // Fallback to text model
-        modelName = '@cf/meta/llama-3.1-8b-instruct';
-        prompt = `${question}\n\nPlease analyze this image and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
-
-{
-  "summary": "Brief summary of what you see",
-  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
-  "entities": {
-    "people": ["Person names found"],
-    "orgs": ["Organization names found"],
-    "dates": ["Dates found"]
-  },
-  "action_items": ["Action 1", "Action 2"],
-  "confidence": 0.85
-}`;
-        aiOptions = { prompt: prompt };
-      }
-  } else if (file.type === 'application/pdf') {
-    // PDF analysis not implemented in this PR
-    return {
-      summary: "PDF analysis is not yet available. Please upload text files or images for analysis.",
-      key_facts: [
-        "PDF analysis feature is coming soon",
-        "Currently supports text files and images"
-      ],
-      entities: {
-        people: [],
-        orgs: [],
-        dates: []
-      },
-      action_items: [
-        "Try uploading a text file (.txt) instead",
-        "Upload individual page images for analysis",
-        "PDF analysis will be available in a future update"
-      ],
-      confidence: 0.0,
-      error: "PDF analysis not implemented"
-    };
-    } else {
-      // For text files, use text model
-      modelName = '@cf/meta/llama-3.1-8b-instruct';
-      let textContent = '';
-      
-      try {
-        textContent = await file.text();
-      } catch (error) {
-        console.warn('Failed to extract text from file:', error);
-        textContent = '[Unable to extract text content from file]';
-      }
-      
-      console.log('Extracted text content length:', textContent.length);
-      console.log('Text content preview:', textContent.substring(0, 200));
-      
-      prompt = `${question}\n\nDocument content:\n${textContent}\n\nPlease analyze this document and return ONLY a valid JSON response with the following structure. Do not include any text before or after the JSON:
-
-{
-  "summary": "Brief summary of the document",
-  "key_facts": ["Fact 1", "Fact 2", "Fact 3"],
-  "entities": {
-    "people": ["Person names found"],
-    "orgs": ["Organization names found"],
-    "dates": ["Dates found"]
-  },
-  "action_items": ["Action 1", "Action 2"],
-  "confidence": 0.85
-}`;
-      
-      aiOptions = { prompt: prompt };
-    }
-    
-    const result = await withAIRetry(() => env.AI.run(modelName as any, aiOptions));
-    console.log('Raw AI result object:', result);
-    
-    // Handle different response formats for different models
-    let aiResponse = (result as any).response;
-    if (!aiResponse && (result as any).description) {
-      // Vision models return description instead of response
-      aiResponse = (result as any).description;
-      console.log('Using description field from vision model response');
-    }
-    
-    console.log('AI response type:', typeof aiResponse);
-    console.log('AI response length:', aiResponse?.length || 0);
-    
-    if (!aiResponse) {
-      console.error('No response from AI model:', result);
-      throw new Error('No content in Cloudflare AI response');
-    }
-
-    // Parse AI response using helper function
-    console.log(`[${requestId}] Raw AI response:`, aiResponse);
-    const parsed = parseAIResponse(aiResponse);
-    console.log(`[${requestId}] Parsed response:`, parsed);
-
-    // No cleanup needed - we're using direct file data
-
-    return parsed;
-
-  } catch (error) {
-    clearTimeout(timeout);
-    
-    if (error.name === 'AbortError') {
-      console.warn(`[${requestId}] Analysis timed out after ${timeoutMs}ms for ${file.name} (${file.type}, ${file.size} bytes)`);
-      const fileType = file.type.startsWith('image/') ? 'image' : 'document';
-      return {
-        summary: `Timed out analyzing ${fileType}. The ${fileType} may be too complex or the AI service is experiencing high load.`,
-        key_facts: [`${fileType.charAt(0).toUpperCase() + fileType.slice(1)} analysis timed out`],
-        entities: { people: [], orgs: [], dates: [] },
-        action_items: ["Try uploading a smaller or simpler file", "Contact support if the issue persists"],
-        confidence: 0
-      };
-    }
-    
-    console.error(`[${requestId}] Analysis error for ${file.name}:`, error);
-    throw error;
-  }
+  // Add extraction_failed flag to indicate Adobe extraction didn't work
+  return {
+    ...fallbackResult,
+    extraction_failed: true,
+    extraction_method: 'generic_ai_fallback'
+  } as ExtendedAnalysisResult;
 }
 
 export async function handleAnalyze(request: Request, env: Env): Promise<Response> {
+  const _startTime = Date.now();
+  const requestId = crypto.randomUUID();
+  
   if (request.method !== 'POST') {
     throw HttpErrors.methodNotAllowed('Only POST method is allowed');
   }
@@ -340,28 +884,21 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
   // Rate limiting for analysis endpoint
   const clientId = getClientId(request);
   if (!(await rateLimit(env, clientId, 30, 60))) { // 30 requests per minute
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Rate limit exceeded. Please try again later.',
-      errorCode: 'RATE_LIMITED'
-    }), {
-      status: 429,
-      headers: { 'Content-Type': 'application/json' }
+    logWarning('analyze', 'rate_limit.exceeded', 'Rate limit exceeded', { clientId });
+    return createRateLimitResponse(60, {
+      errorMessage: 'Rate limit exceeded. Please try again later.'
     });
   }
 
   try {
+    logRequestStart('analyze', request.method, new URL(request.url).pathname);
+    
     // Debug: Log environment variables
-    console.log('Environment variables check:', {
+    log('info', 'environment_check', {
       CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID ? 'SET' : 'NOT SET',
       CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN ? 'SET' : 'NOT SET', 
       CLOUDFLARE_PUBLIC_URL: env.CLOUDFLARE_PUBLIC_URL ? 'SET' : 'NOT SET'
     });
-    
-    // Check if Cloudflare AI is configured
-    if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_API_TOKEN || !env.CLOUDFLARE_PUBLIC_URL) {
-      throw HttpErrors.internalServerError('Cloudflare AI not configured. Please set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and CLOUDFLARE_PUBLIC_URL');
-    }
 
     // Parse form data
     const formData = await request.formData();
@@ -378,39 +915,115 @@ export async function handleAnalyze(request: Request, env: Env): Promise<Respons
       throw HttpErrors.badRequest(fileValidation.error!);
     }
 
-    console.log('Starting file analysis:', {
+    log('info', 'file_analysis_start', {
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
-      question: question
+      question: question,
+      ENABLE_ADOBE_EXTRACT: env.ENABLE_ADOBE_EXTRACT,
+      ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+      requestId
+    });
+
+    // Debug: Log Adobe service status
+    log('debug', 'adobe_service_status_check', {
+      enableAdobeExtract: env.ENABLE_ADOBE_EXTRACT,
+      adobeClientId: env.ADOBE_CLIENT_ID ? 'SET' : 'NOT SET',
+      adobeClientSecret: env.ADOBE_CLIENT_SECRET ? 'SET' : 'NOT SET',
+      fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type),
+      requestId
     });
 
     // Perform analysis
-    const analysis = await analyzeWithCloudflareAI(file, question, env);
+    const analysis = await analyzeWithCloudflareAI(file, question, env, requestId);
+    
+    // Add debug information to analysis
+    const extendedAnalysis = analysis as ExtendedAnalysisResult;
+    extendedAnalysis.debug = {
+      adobeEnabled: Boolean(env.ENABLE_ADOBE_EXTRACT),
+      adobeClientIdSet: !!env.ADOBE_CLIENT_ID,
+      adobeClientSecretSet: !!env.ADOBE_CLIENT_SECRET,
+      fileTypeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type),
+      analysisMethod: analysis.summary?.includes('Unable to analyze') ? 'fallback' : 'adobe',
+      debugTimestamp: new Date().toISOString(),
+      codeVersion: 'v2.3-debug',
+      summaryContainsUnable: analysis.summary?.includes('Unable to analyze') || false,
+      summaryContainsNotProvided: analysis.summary?.includes('not provided') || false,
+      summaryLength: analysis.summary?.length || 0,
+      // Add Adobe extraction details to debug
+      adobeExtractTextLength: extendedAnalysis.adobeExtractTextLength || 0,
+      adobeExtractTextPreview: extendedAnalysis.adobeExtractTextPreview || 'N/A'
+    };
 
-    console.log('Analysis completed successfully:', {
+    log('info', 'analysis_completed', {
       fileName: file.name,
       confidence: analysis.confidence,
       summaryLength: analysis.summary?.length || 0,
-      keyFactsCount: analysis.key_facts?.length || 0
+      keyFactsCount: analysis.key_facts?.length || 0,
+      requestId
     });
 
     const disclaimer = "Blawby provides general information, not legal advice. No attorney-client relationship is formed. For advice, consult a licensed attorney in your jurisdiction.";
     
+    const metadata: {
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      question: string;
+      timestamp: string;
+      isAdobeEligible: boolean;
+      debug?: Record<string, unknown>;
+    } = {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      question: question,
+      timestamp: new Date().toISOString(),
+      isAdobeEligible: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)
+    };
+
+    // Only include debug information when DEBUG mode is enabled
+    if (parseEnvBool(env.DEBUG)) {
+      metadata.debug = {
+        adobeClientIdConfigured: !!env.ADOBE_CLIENT_ID,
+        adobeExtractEnabled: !!env.ENABLE_ADOBE_EXTRACT
+      };
+    }
+
     return createSuccessResponse({
       analysis,
-      metadata: {
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        question: question,
-        timestamp: new Date().toISOString()
-      },
+      metadata,
       disclaimer
     });
 
   } catch (error) {
-    console.error('Analysis error:', error);
-    return handleError(error);
+    logError('analyze', 'analysis_error', error as Error, {});
+    
+    // For analysis errors, return 200 with error information instead of 503
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const fallbackAnalysis: ExtendedAnalysisResult = {
+      summary: "Document analysis encountered an error. Please try again or contact support if the issue persists.",
+      key_facts: ["Analysis failed due to an internal error"],
+      entities: { people: [], orgs: [], dates: [] },
+      action_items: ["Retry the analysis", "Contact support if the issue persists"],
+      confidence: 0.0,
+      extraction_failed: true,
+      extraction_method: 'error_fallback',
+      error: errorMessage
+    };
+
+    return createSuccessResponse({
+      analysis: fallbackAnalysis,
+      metadata: {
+        fileName: 'unknown',
+        fileType: 'unknown',
+        fileSize: 0,
+        question: 'Analysis failed',
+        timestamp: new Date().toISOString(),
+        isAdobeEligible: false,
+        error: errorMessage
+      },
+      disclaimer: "Blawby provides general information, not legal advice. No attorney-client relationship is formed. For advice, consult a licensed attorney in your jurisdiction."
+    });
   }
 }

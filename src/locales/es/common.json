@@ -157,5 +157,24 @@
       "helpCenter": "Centro de Ayuda",
       "letsGo": "Bien, vamos"
     }
+  },
+  "businessWelcome": {
+    "title": "¡Bienvenido a Business!",
+    "subtitle": "Su organización ha sido actualizada. Esto es lo que puede hacer ahora:",
+    "features": {
+      "teamManagement": {
+        "title": "Gestión de Equipo",
+        "description": "Invitar miembros"
+      },
+      "organizationSettings": {
+        "title": "Configuración de Organización",
+        "description": "Configurar su organización"
+      },
+      "apiAccess": {
+        "title": "Acceso API",
+        "description": "Generar tokens"
+      }
+    },
+    "goToSettings": "Ir a Configuración de Organización"
   }
 }

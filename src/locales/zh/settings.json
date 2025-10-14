@@ -82,6 +82,18 @@
         "highest": {
           "title": "账户",
           "body": "您已经是最高级别！"
+        },
+        "cartSaveError": {
+          "title": "购物车错误",
+          "body": "无法保存购物车数据。使用替代方法继续。"
+        },
+        "planNotFound": {
+          "title": "未找到计划",
+          "body": "找不到所选计划。请重试或联系支持。"
+        },
+        "planDataMissing": {
+          "title": "计划配置错误",
+          "body": "所选计划缺少必需的付款信息。请联系支持。"
         }
       }
     },

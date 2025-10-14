@@ -16,17 +16,17 @@ interface MatterProgressData {
   nextActions: string[];
   missing?: string[];
   completed: boolean;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 interface MatterProgressProps {
-  teamId: string;
+  organizationId: string;
   matterId: string;
   visible?: boolean;
   onClose?: () => void;
 }
 
-export function MatterProgress({ teamId, matterId, visible = false, onClose }: MatterProgressProps) {
+export function MatterProgress({ organizationId, matterId, visible = false, onClose }: MatterProgressProps) {
   const [progressData, setProgressData] = useState<MatterProgressData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,13 +38,13 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
   }
 
   const fetchProgress = async () => {
-    if (!teamId || !matterId) return;
+    if (!organizationId || !matterId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/paralegal/${teamId}/${matterId}/status`, {
+      const response = await fetch(`/api/paralegal/${organizationId}/${matterId}/status`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -74,7 +74,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
 
     const interval = setInterval(fetchProgress, 10000); // Poll every 10 seconds
     return () => clearInterval(interval);
-  }, [teamId, matterId, visible]);
+  }, [organizationId, matterId, visible]);
 
   const getStageDisplayName = (stage: string): string => {
     const stageNames: Record<string, string> = {
@@ -128,7 +128,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
           {loading && !progressData && (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
               <span className="ml-3 text-gray-600">Loading progress...</span>
             </div>
           )}
@@ -165,7 +165,7 @@ export function MatterProgress({ teamId, matterId, visible = false, onClose }: M
                     <div 
                       className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${getProgressPercentage()}%` }}
-                    ></div>
+                     />
                   </div>
                 </div>
               </div>

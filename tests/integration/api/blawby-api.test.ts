@@ -4,14 +4,14 @@ import { Currency } from '../../../worker/agents/legal-intake/index.js';
 
 // Real Blawby API configuration for integration testing
 const BLAWBY_API_URL = 'https://staging.blawby.com';
-const BLAWBY_TEAM_SLUG = 'blawby-ai';
+const BLAWBY_ORGANIZATION_SLUG = 'blawby-ai';
 
 // Test context for managing test data and state
 interface TestContext {
   customerIds: string[];
   apiToken?: string;
-  teamUlid?: string;
-  teamMetadata?: {
+  organizationUlid?: string;
+  organizationMetadata?: {
     name: string;
     slug: string;
     config: any;
@@ -23,7 +23,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
   // Helper: skip when token/ULID missing or blank (whitespace-only)
   const shouldSkipTest = (): boolean => {
-    return !testContext.apiToken?.trim() || !testContext.teamUlid?.trim();
+    return !testContext.apiToken?.trim() || !testContext.organizationUlid?.trim();
   };
 
   beforeAll(async () => {
@@ -31,26 +31,26 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
     
     // Read sensitive credentials from environment variables (secure approach)
     const apiToken = process.env.BLAWBY_API_TOKEN;
-    const teamUlid = process.env.BLAWBY_TEAM_ULID;
+    const organizationUlid = process.env.BLAWBY_ORGANIZATION_ULID;
     
     testContext = {
       customerIds: [],
       apiToken: apiToken,
-      teamUlid: teamUlid
+      organizationUlid: organizationUlid
     };
     
-    if (apiToken && teamUlid) {
+    if (apiToken && organizationUlid) {
       console.log('✅ Retrieved Blawby API credentials from environment variables');
-      console.log(`   Team ULID: ${testContext.teamUlid}`);
+      console.log(`   Organization ULID: ${testContext.organizationUlid}`);
       console.log(`   API Token: ${testContext.apiToken ? '***' + testContext.apiToken.slice(-4) : 'NOT SET'}`);
     } else {
       console.warn('⚠️  Blawby API credentials not available in environment variables');
-      console.warn('   Set BLAWBY_API_TOKEN and BLAWBY_TEAM_ULID for real API testing');
+      console.warn('   Set BLAWBY_API_TOKEN and BLAWBY_ORGANIZATION_ULID for real API testing');
     }
     
-    // Fetch non-sensitive team metadata from API (credentials are redacted server-side)
+    // Fetch non-sensitive organization metadata from API (credentials are redacted server-side)
     try {
-      const response = await fetch(`${WORKER_URL}/api/teams/${BLAWBY_TEAM_SLUG}`, {
+      const response = await fetch(`${WORKER_URL}/api/organizations/${BLAWBY_ORGANIZATION_SLUG}`, {
         signal: AbortSignal.timeout(10000), // 10 second timeout
         headers: {
           'Accept': 'application/json'
@@ -59,37 +59,37 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
       
       if (response.ok) {
         const result = await response.json();
-        const team = result.data; // API returns { success: true, data: team }
+        const organization = result.data; // API returns { success: true, data: organization }
         
-        if (team) {
-          // Store non-sensitive metadata (apiKey and teamUlid are redacted server-side)
-          testContext.teamMetadata = {
-            name: team.name,
-            slug: team.slug,
-            config: team.config
+        if (organization) {
+          // Store non-sensitive metadata (apiKey and organizationUlid are redacted server-side)
+          testContext.organizationMetadata = {
+            name: organization.name,
+            slug: organization.slug,
+            config: organization.config
           };
           
-          console.log('✅ Retrieved team metadata from database');
-          console.log(`   Team Name: ${testContext.teamMetadata.name}`);
-          console.log(`   Blawby API Enabled: ${testContext.teamMetadata.config?.blawbyApi?.enabled || false}`);
+          console.log('✅ Retrieved organization metadata from database');
+          console.log(`   Organization Name: ${testContext.organizationMetadata.name}`);
+          console.log(`   Blawby API Enabled: ${testContext.organizationMetadata.config?.blawbyApi?.enabled || false}`);
         }
       } else {
-        console.warn(`⚠️  Failed to fetch team metadata: ${response.status} ${response.statusText}`);
+        console.warn(`⚠️  Failed to fetch organization metadata: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      console.warn('⚠️  Failed to retrieve team metadata:', error);
+      console.warn('⚠️  Failed to retrieve organization metadata:', error);
     }
     
     if (shouldSkipTest()) {
       console.warn('⚠️  Blawby API credentials not available for testing');
-      console.warn('   Tests will be skipped. Set BLAWBY_API_TOKEN and BLAWBY_TEAM_ULID environment variables for real API testing.');
+      console.warn('   Tests will be skipped. Set BLAWBY_API_TOKEN and BLAWBY_ORGANIZATION_ULID environment variables for real API testing.');
     }
   });
 
   afterEach(async () => {
-    // Skip if no real API token, team ULID, or no test data
-    if (!testContext.apiToken || !testContext.teamUlid || !testContext.customerIds.length) {
-      console.log('⏭️  Skipping cleanup - no valid token, team ULID, or test data');
+    // Skip if no real API token, organization ULID, or no test data
+    if (!testContext.apiToken || !testContext.organizationUlid || !testContext.customerIds.length) {
+      console.log('⏭️  Skipping cleanup - no valid token, organization ULID, or test data');
       return;
     }
     
@@ -99,7 +99,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         console.log(`🧹 Cleaning up test customer: ${customerId}`);
         
         const deleteResponse = await fetch(
-          `${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer/${customerId}`,
+          `${BLAWBY_API_URL}/api/v1/organizations/${testContext.organizationUlid}/customer/${customerId}`,
           {
             method: 'DELETE',
             headers: {
@@ -136,7 +136,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         return;
       }
 
-      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customers`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/organizations/${testContext.organizationUlid}/customers`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${testContext.apiToken}`,
@@ -157,7 +157,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         return;
       }
 
-      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customers`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/organizations/${testContext.organizationUlid}/customers`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json'
@@ -185,14 +185,14 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         phone: '+13322097232',
         currency: Currency.USD,
         status: 'Lead',
-        team_id: testContext.teamUlid,
+        organization_id: testContext.organizationUlid,
         address_line_1: '123 Test St',
         city: 'Test City',
         state: 'TS',
         zip: '12345'
       };
 
-      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/organizations/${testContext.organizationUlid}/customer`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${testContext.apiToken}`,
@@ -227,7 +227,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         phone: 'invalid-phone'
       };
 
-      const response = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer`, {
+      const response = await fetch(`${BLAWBY_API_URL}/api/v1/organizations/${testContext.organizationUlid}/customer`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${testContext.apiToken}`,
@@ -261,10 +261,10 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         phone: '+13322097232',
         currency: Currency.USD,
         status: 'Lead',
-        team_id: testContext.teamUlid
+        organization_id: testContext.organizationUlid
       };
 
-      const customerResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customer`, {
+      const customerResponse = await fetch(`${BLAWBY_API_URL}/api/v1/organizations/${testContext.organizationUlid}/customer`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${testContext.apiToken}`,
@@ -300,7 +300,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
         ]
       };
 
-      const invoiceResponse = await fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/invoice`, {
+      const invoiceResponse = await fetch(`${BLAWBY_API_URL}/api/v1/organizations/${testContext.organizationUlid}/invoice`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${testContext.apiToken}`,
@@ -389,7 +389,7 @@ describe('Blawby API Integration Tests - Real API Calls', () => {
 
       // Make multiple rapid requests to test rate limiting
       const promises = Array.from({ length: 5 }, () =>
-        fetch(`${BLAWBY_API_URL}/api/v1/teams/${testContext.teamUlid}/customers`, {
+        fetch(`${BLAWBY_API_URL}/api/v1/organizations/${testContext.organizationUlid}/customers`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${testContext.apiToken}`,

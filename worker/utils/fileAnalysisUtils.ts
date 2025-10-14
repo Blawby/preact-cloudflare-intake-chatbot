@@ -3,7 +3,7 @@ import { createAnalysisErrorResponse } from './responseUtils.js';
 /**
  * Analyzes files using the vision API
  */
-export async function analyzeFile(env: any, fileId: string, question?: string): Promise<any> {
+export async function analyzeFile(env: Record<string, unknown>, fileId: string, question?: string): Promise<Record<string, unknown>> {
   console.log('=== ANALYZE FILE FUNCTION CALLED ===');
   console.log('File ID:', fileId);
   console.log('Question:', question);
@@ -112,11 +112,11 @@ export async function analyzeFile(env: any, fileId: string, question?: string): 
 /**
  * Finds file path in R2 storage by file ID
  */
-async function findFilePathInR2(env: any, fileId: string): Promise<string | null> {
+async function findFilePathInR2(env: Record<string, unknown>, fileId: string): Promise<string | null> {
   console.log('No file path from database, attempting to construct from file ID');
   
   // Handle the actual file ID format with UUID
-  // Format: team-slug-uuid-timestamp-random
+  // Format: organization-slug-uuid-timestamp-random
   // Example: north-carolina-legal-services-5b69514f-ef86-45ea-996d-4f2764b40d27-1754974140878-11oeburbd
   
   // Split by hyphens and look for UUID pattern
@@ -125,7 +125,7 @@ async function findFilePathInR2(env: any, fileId: string): Promise<string | null
   
   if (parts.length >= 6) {
     // Find the UUID part (8-4-4-4-12 format)
-    let teamSlug = '';
+    let organizationSlug = '';
     let sessionId = '';
     let timestamp = '';
     let random = '';
@@ -137,15 +137,15 @@ async function findFilePathInR2(env: any, fileId: string): Promise<string | null
       
       if (potentialUuid.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
         // Found UUID, reconstruct the parts
-        teamSlug = parts.slice(0, i).join('-');
+        organizationSlug = parts.slice(0, i).join('-');
         sessionId = potentialUuid;
         timestamp = parts[i + 5];
         random = parts[i + 6];
         
-        console.log('Successfully parsed file ID:', { teamSlug, sessionId, timestamp, random, fileId });
+        console.log('Successfully parsed file ID:', { organizationSlug, sessionId, timestamp, random, fileId });
         
         // Try to find the file with this prefix
-        const prefix = `uploads/${teamSlug}/${sessionId}/${fileId}`;
+        const prefix = `uploads/${organizationSlug}/${sessionId}/${fileId}`;
         console.log('Looking for file with prefix:', prefix);
         
         try {

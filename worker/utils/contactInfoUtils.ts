@@ -161,10 +161,14 @@ export function isContactInfoComplete(conversationText: string): boolean {
 export function logContactInfoDetection(
   conversationText: string, 
   detection: ContactInfoMatch, 
-  correlationId?: string
+  correlationId?: string,
+  env?: { NODE_ENV?: string }
 ): void {
-  // Only log in development environment
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'development') {
+  // Only log in non-production environments or when debug is enabled
+  // Use env.NODE_ENV for Cloudflare Workers compatibility
+  const isProduction = env?.NODE_ENV === 'production';
+  
+  if (isProduction) {
     return;
   }
 
@@ -186,15 +190,28 @@ export function logContactInfoDetection(
     .replace(/Location:\s*.+/gi, 'Location: [LOCATION_REDACTED]')
     .substring(0, 200);
 
-  // Use structured logging (replace with your logging framework)
+  // Create sanitized detection object without raw PII
+  const sanitizedDetection = {
+    hasName: detection.hasName,
+    hasEmail: detection.hasEmail,
+    hasPhone: detection.hasPhone,
+    hasLocation: detection.hasLocation,
+    hasContactInfoHeader: detection.hasContactInfoHeader,
+    // Include PII-safe pattern information from matches array
+    matchedPatterns: detection.matches
+      .filter(match => match.matched)
+      .map(match => match.pattern)
+  };
+
+  // Use structured logging with Logger instead of console.log
   const logData = {
-    level: 'info',
     message: 'Contact information detection',
     correlationId,
     hasContactInfo: hasContactInformation(conversationText),
     isComplete: isContactInfoComplete(conversationText),
-    detection,
+    detection: sanitizedDetection,
     conversationText: redactedText + (conversationText.length > 200 ? '...' : '')
   };
-  console.log(JSON.stringify(logData));
+  
+  console.log('Contact information detection:', JSON.stringify(logData));
 }

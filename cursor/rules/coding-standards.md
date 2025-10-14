@@ -135,7 +135,7 @@ return handleError(error);
 LegalIntakeLogger.logBusinessOperation(
   correlationId,
   sessionId,
-  teamId,
+  organizationId,
   'matter_created',
   { matterType, matterId }
 );
@@ -320,7 +320,7 @@ const [formData, setFormData] = useState<FormData>({
 const result = await PaymentServiceFactory.processPayment(
   env,
   paymentRequest,
-  teamConfig
+  organizationConfig
 );
 
 // Handle responses consistently
@@ -356,6 +356,123 @@ if (result.success) {
 - Sanitize all logs
 - Enable error monitoring
 - Use production URLs and keys
+
+## Critical Integration Patterns
+
+### File Analysis Middleware Environment Binding
+
+**CRITICAL**: When creating environment adapters for middleware, ensure ALL required bindings are included.
+
+```typescript
+// ❌ WRONG - Missing AI binding causes crashes
+type FileAnalysisEnv = {
+  FILES_BUCKET: Env['FILES_BUCKET'];
+  DB: Env['DB'];
+  // Missing AI binding!
+};
+
+// ✅ CORRECT - Include all required bindings
+type FileAnalysisEnv = {
+  FILES_BUCKET: Env['FILES_BUCKET'];
+  DB: Env['DB'];
+  AI: Env['AI'];  // Required for AI model execution
+  ENABLE_ADOBE_EXTRACT: Env['ENABLE_ADOBE_EXTRACT'];
+  ADOBE_CLIENT_ID: Env['ADOBE_CLIENT_ID'];
+  ADOBE_CLIENT_SECRET: Env['ADOBE_CLIENT_SECRET'];
+  ADOBE_TECHNICAL_ACCOUNT_ID: Env['ADOBE_TECHNICAL_ACCOUNT_ID'];
+  ADOBE_TECHNICAL_ACCOUNT_EMAIL: Env['ADOBE_TECHNICAL_ACCOUNT_EMAIL'];
+  ADOBE_ORGANIZATION_ID: Env['ADOBE_ORGANIZATION_ID'];
+  ADOBE_IMS_BASE_URL: Env['ADOBE_IMS_BASE_URL'];
+  ADOBE_PDF_SERVICES_BASE_URL: Env['ADOBE_PDF_SERVICES_BASE_URL'];
+  ADOBE_SCOPE: Env['ADOBE_SCOPE'];
+  CLOUDFLARE_ACCOUNT_ID: Env['CLOUDFLARE_ACCOUNT_ID'];
+  CLOUDFLARE_API_TOKEN: Env['CLOUDFLARE_API_TOKEN'];
+  CLOUDFLARE_PUBLIC_URL: Env['CLOUDFLARE_PUBLIC_URL'];
+  AI_MODEL_DEFAULT: Env['AI_MODEL_DEFAULT'];
+  AI_MAX_TEXT_LENGTH: Env['AI_MAX_TEXT_LENGTH'];
+  AI_MAX_TABLES: Env['AI_MAX_TABLES'];
+  AI_MAX_ELEMENTS: Env['AI_MAX_ELEMENTS'];
+  AI_MAX_STRUCTURED_PAYLOAD_LENGTH: Env['AI_MAX_STRUCTURED_PAYLOAD_LENGTH'];
+  DEBUG: Env['DEBUG'];
+};
+
+// ✅ CORRECT - Pass all bindings in adapter creation
+const fileAnalysisEnv: FileAnalysisEnv = {
+  FILES_BUCKET: env.FILES_BUCKET,
+  DB: env.DB,
+  AI: env.AI,  // Critical for AI operations
+  ENABLE_ADOBE_EXTRACT: env.ENABLE_ADOBE_EXTRACT,
+  ADOBE_CLIENT_ID: env.ADOBE_CLIENT_ID,
+  ADOBE_CLIENT_SECRET: env.ADOBE_CLIENT_SECRET,
+  // ... include ALL required bindings
+};
+```
+
+**Common Error**: `"Cannot read properties of undefined (reading 'run')"` when `env.AI` is missing from adapter.
+
+### Adobe PDF Analysis Setup
+
+**Required Environment Variables**:
+```typescript
+// Adobe API Configuration
+ENABLE_ADOBE_EXTRACT: boolean
+ADOBE_CLIENT_ID: string
+ADOBE_CLIENT_SECRET: string
+ADOBE_TECHNICAL_ACCOUNT_ID: string
+ADOBE_TECHNICAL_ACCOUNT_EMAIL: string
+ADOBE_ORGANIZATION_ID: string
+ADOBE_IMS_BASE_URL: string
+ADOBE_PDF_SERVICES_BASE_URL: string
+ADOBE_SCOPE: string
+
+// Cloudflare AI Configuration
+AI: CloudflareAI  // Binding object
+AI_MODEL_DEFAULT: string
+AI_MAX_TEXT_LENGTH: string
+AI_MAX_TABLES: string
+AI_MAX_ELEMENTS: string
+AI_MAX_STRUCTURED_PAYLOAD_LENGTH: string
+
+// Cloudflare Configuration
+CLOUDFLARE_ACCOUNT_ID: string
+CLOUDFLARE_API_TOKEN: string
+CLOUDFLARE_PUBLIC_URL: string
+```
+
+**Wrangler Dev Mode Requirements**:
+```bash
+# ✅ CORRECT - AI binding available
+wrangler dev --port 8787
+
+# ❌ WRONG - AI binding NOT available in local mode
+wrangler dev --local --port 8787
+```
+
+**Testing Adobe Integration**:
+```bash
+# Test file upload
+curl -X POST http://localhost:8787/api/files/upload \
+  -F "file=@document.pdf" \
+  -F "organizationId=test-org" \
+  -F "sessionId=test-session"
+
+# Test streaming analysis
+curl -X POST http://localhost:8787/api/agent/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": "Analyze this document"}],
+    "organizationId": "test-org",
+    "sessionId": "test-session",
+    "attachments": [{"id": "file-id", "name": "document.pdf", "type": "application/pdf", "size": 12345, "url": "/api/files/file-id"}]
+  }'
+```
+
+**Debugging Adobe Issues**:
+1. Check logs for `"Adobe extraction successful"` vs `"adobe_extraction_failed_or_ineligible"`
+2. Verify all Adobe environment variables are set in `.dev.vars`
+3. Ensure `ENABLE_ADOBE_EXTRACT=true` is set
+4. Test with real PDF files (not text files with PDF content-type)
+5. Check that `env.AI` binding is available (not running in `--local` mode)
 
 ---
 

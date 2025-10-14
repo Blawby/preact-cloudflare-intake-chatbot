@@ -1,7 +1,7 @@
-import type { Env } from '../types';
+import type { Env } from '../types.js';
 import { withRetry } from '../utils/retry.js';
 import { Currency } from '../agents/legal-intake/index.js';
-import type { PaymentRequest, PaymentResponse, InvoiceCreateRequest, InvoiceCreateResponse, CustomerCreateRequest, CustomerCreateResponse, PaymentConfig, InvoiceErrorCode, InvoiceResult } from '../schemas/payment';
+import type { PaymentRequest, PaymentResponse, InvoiceCreateRequest, InvoiceCreateResponse, CustomerCreateRequest, CustomerCreateResponse, PaymentConfig, InvoiceErrorCode, InvoiceResult } from '../schemas/payment.js';
 
 
 
@@ -19,24 +19,24 @@ export class PaymentService {
   }
 
   /**
-   * Gets payment configuration for a team, with fallback to defaults
+   * Gets payment configuration for a organization, with fallback to defaults
    */
-  private async getPaymentConfig(teamId: string): Promise<PaymentConfig> {
+  private async getPaymentConfig(organizationId: string): Promise<PaymentConfig> {
     try {
-      const { TeamService } = await import('./TeamService.js');
-      const teamService = new TeamService(this.env);
-      const team = await teamService.getTeam(teamId);
+      const { OrganizationService } = await import('./OrganizationService.js');
+      const organizationService = new OrganizationService(this.env);
+      const organization = await organizationService.getOrganization(organizationId);
       
-      // Use team's consultation fee if available, otherwise use defaults
-      const teamConsultationFee = team?.config?.consultationFee;
+      // Use organization's consultation fee if available, otherwise use defaults
+      const organizationConsultationFee = organization?.config?.consultationFee;
       
       // Validate and normalize the consultation fee
-      const normalizedFee = this.validateConsultationFee(teamConsultationFee);
+      const normalizedFee = this.validateConsultationFee(organizationConsultationFee);
       
       // Convert to integer cents and ensure minimum value
       const defaultPriceCents = Math.max(100, Math.round(normalizedFee * 100)); // Minimum 100 cents ($1.00)
       
-      // Default configuration with team-specific pricing
+      // Default configuration with organization-specific pricing
       return {
         defaultPrice: defaultPriceCents,
         currency: Currency.USD,
@@ -51,7 +51,7 @@ export class PaymentService {
         }
       };
     } catch (error) {
-      console.warn('⚠️ Failed to load team payment config, using defaults:', error);
+      console.warn('⚠️ Failed to load organization payment config, using defaults:', error);
     }
     
     // Fallback default configuration
@@ -110,15 +110,15 @@ export class PaymentService {
    * Creates a customer with retry logic for transient failures
    */
   private async createCustomerWithRetry(
-    teamUlid: string, 
+    organizationUlid: string, 
     apiToken: string, 
     customerData: CustomerCreateRequest
   ): Promise<{ success: boolean; customerId?: string; error?: string }> {
     // Guard clause: validate required parameters
-    if (!teamUlid || !apiToken || !customerData) {
+    if (!organizationUlid || !apiToken || !customerData) {
       return {
         success: false,
-        error: 'Missing required parameters: teamUlid, apiToken, or customerData'
+        error: 'Missing required parameters: organizationUlid, apiToken, or customerData'
       };
     }
 
@@ -141,7 +141,7 @@ export class PaymentService {
           const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
           
           try {
-            const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer`, {
+            const response = await fetch(`${this.mcpServerUrl}/api/v1/organizations/${organizationUlid}/customer`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -197,13 +197,13 @@ export class PaymentService {
    * Deletes a customer with retry logic for transient failures
    */
   private async deleteCustomerWithRetry(
-    teamUlid: string, 
+    organizationUlid: string, 
     apiToken: string, 
     customerId: string
   ): Promise<{ success: boolean; error?: string }> {
     // Input validation guard clauses
-    if (!teamUlid || typeof teamUlid !== 'string' || teamUlid.trim() === '') {
-      return { success: false, error: 'Team ULID is required and must be a non-empty string' };
+    if (!organizationUlid || typeof organizationUlid !== 'string' || organizationUlid.trim() === '') {
+      return { success: false, error: 'Organization ULID is required and must be a non-empty string' };
     }
     
     if (!apiToken || typeof apiToken !== 'string' || apiToken.trim() === '') {
@@ -222,7 +222,7 @@ export class PaymentService {
           const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
           
           try {
-            const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/customer/${customerId}`, {
+            const response = await fetch(`${this.mcpServerUrl}/api/v1/organizations/${organizationUlid}/customer/${customerId}`, {
               method: 'DELETE',
               headers: {
                 'Authorization': `Bearer ${apiToken}`,
@@ -383,7 +383,7 @@ export class PaymentService {
       name: customerData.name,
       email: customerData.email,
       phone: customerData.phone,
-      team_id: customerData.team_id
+      organization_id: customerData.organization_id
     };
     
     // Use HMAC with payment-specific secret for secure hashing
@@ -419,7 +419,7 @@ export class PaymentService {
    * Creates an invoice with retry logic for transient failures
    */
   private async createInvoiceWithRetry(
-    teamUlid: string, 
+    organizationUlid: string, 
     apiToken: string, 
     invoiceData: InvoiceCreateRequest,
     idempotencyKey?: string
@@ -435,7 +435,7 @@ export class PaymentService {
           const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
           
           try {
-            const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamUlid}/invoice`, {
+            const response = await fetch(`${this.mcpServerUrl}/api/v1/organizations/${organizationUlid}/invoice`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -545,10 +545,10 @@ export class PaymentService {
       };
     }
 
-    if (!paymentRequest.teamId || !paymentRequest.sessionId) {
+    if (!paymentRequest.organizationId || !paymentRequest.sessionId) {
       return {
         success: false,
-        error: 'Missing required fields: teamId or sessionId'
+        error: 'Missing required fields: organizationId or sessionId'
       };
     }
 
@@ -576,35 +576,35 @@ export class PaymentService {
     }
 
     try {
-      console.log('💰 Creating invoice for payment request: teamId=', paymentRequest.teamId, 'sessionId=', paymentRequest.sessionId);
+      console.log('💰 Creating invoice for payment request: organizationId=', paymentRequest.organizationId, 'sessionId=', paymentRequest.sessionId);
       
-      const teamId = paymentRequest.teamId;
-      console.log('💰 Using team ID:', teamId);
+      const organizationId = paymentRequest.organizationId;
+      console.log('💰 Using organization ID:', organizationId);
       
-      // Get team configuration to check if Blawby API is enabled
-      const { TeamService } = await import('./TeamService.js');
-      const teamService = new TeamService(this.env);
-      const team = await teamService.getTeam(teamId);
+      // Get organization configuration to check if Blawby API is enabled
+      const { OrganizationService } = await import('./OrganizationService.js');
+      const organizationService = new OrganizationService(this.env);
+      const organization = await organizationService.getOrganization(organizationId);
       
-      if (!team) {
+      if (!organization) {
         return {
           success: false,
-          error: 'Team not found'
+          error: 'Organization not found'
         };
       }
       
-      // Check if Blawby API is enabled for this team
-      if (!team.config.blawbyApi?.enabled) {
-        console.log('❌ Blawby API not enabled for team:', teamId);
+      // Check if Blawby API is enabled for this organization
+      if (!organization.config.blawbyApi?.enabled) {
+        console.log('❌ Blawby API not enabled for organization:', organizationId);
         return {
           success: false,
-          error: 'Blawby API not enabled for this team'
+          error: 'Blawby API not enabled for this organization'
         };
       }
       
       // Use secure API credentials from environment variables
       const apiToken = this.env.BLAWBY_API_TOKEN;
-      const teamUlid = this.env.BLAWBY_TEAM_ULID;
+      const organizationUlid = this.env.BLAWBY_ORGANIZATION_ULID;
       
       if (!apiToken) {
         console.error('❌ CRITICAL: No API token available for payment processing');
@@ -616,24 +616,24 @@ export class PaymentService {
         };
       }
       
-      if (!teamUlid) {
-        console.error('❌ CRITICAL: No team ULID available for payment processing');
-        console.error('   - env.BLAWBY_TEAM_ULID:', this.env.BLAWBY_TEAM_ULID ? 'SET' : 'NOT SET');
-        console.error('   - Set BLAWBY_TEAM_ULID environment variable for secure payment processing');
+      if (!organizationUlid) {
+        console.error('❌ CRITICAL: No organization ULID available for payment processing');
+        console.error('   - env.BLAWBY_ORGANIZATION_ULID:', this.env.BLAWBY_ORGANIZATION_ULID ? 'SET' : 'NOT SET');
+        console.error('   - Set BLAWBY_ORGANIZATION_ULID environment variable for secure payment processing');
         return {
           success: false,
-          error: 'Team ULID not configured - cannot process payment. Set BLAWBY_TEAM_ULID environment variable.'
+          error: 'Organization ULID not configured - cannot process payment. Set BLAWBY_ORGANIZATION_ULID environment variable.'
         };
       }
       
-      console.log('💰 Team API configuration:', {
-        enabled: team.config.blawbyApi?.enabled,
+      console.log('💰 Organization API configuration:', {
+        enabled: organization.config.blawbyApi?.enabled,
         hasApiKey: !!apiToken,
-        teamUlid: teamUlid
+        organizationUlid: organizationUlid
       });
       
-      // Get payment configuration for this team
-      const paymentConfig = await this.getPaymentConfig(teamId);
+      // Get payment configuration for this organization
+      const paymentConfig = await this.getPaymentConfig(organizationId);
       console.log('💰 Payment configuration:', paymentConfig);
       
       // Step 1: Create customer with retry logic
@@ -644,7 +644,7 @@ export class PaymentService {
         phone: this.formatPhoneNumber(paymentRequest.customerInfo.phone),
         currency: paymentConfig.currency,
         status: 'Lead',
-        team_id: teamUlid,
+        organization_id: organizationUlid,
         // Only include address fields if we have real values
         ...(paymentRequest.customerInfo.location && { address_line_1: paymentRequest.customerInfo.location }),
         ...(locationInfo.city && { city: locationInfo.city }),
@@ -652,7 +652,7 @@ export class PaymentService {
         ...(locationInfo.zip && { zip: locationInfo.zip })
       };
 
-      const customerResult = await this.createCustomerWithRetry(teamUlid, apiToken, customerData);
+      const customerResult = await this.createCustomerWithRetry(organizationUlid, apiToken, customerData);
       if (!customerResult.success) {
         return {
           success: false,
@@ -690,7 +690,7 @@ export class PaymentService {
           dueDate: dueDate
         });
 
-        const invoiceResult = await this.createInvoiceWithRetry(teamUlid, apiToken, invoiceData);
+        const invoiceResult = await this.createInvoiceWithRetry(organizationUlid, apiToken, invoiceData);
         if (!invoiceResult.success) {
           // Conservative guard: Only delete customer if we're certain the invoice wasn't created
           // Network aborts, timeouts, and server errors could still create invoices server-side
@@ -709,7 +709,7 @@ export class PaymentService {
           
           // Only attempt cleanup for deterministic failures (validation errors, auth errors)
           console.log('🔄 Invoice creation failed with deterministic error, attempting to delete orphaned customer:', customerId);
-          const deleteResult = await this.deleteCustomerWithRetry(teamUlid, apiToken, customerId);
+          const deleteResult = await this.deleteCustomerWithRetry(organizationUlid, apiToken, customerId);
           if (!deleteResult.success) {
             console.error('❌ Failed to clean up orphaned customer:', customerId, 'Error:', deleteResult.error);
           } else {
@@ -730,7 +730,7 @@ export class PaymentService {
       } catch (error) {
         // Any downstream error - attempt to clean up the orphaned customer
         console.log('🔄 Downstream error occurred, attempting to delete orphaned customer:', customerId);
-        const deleteResult = await this.deleteCustomerWithRetry(teamUlid, apiToken, customerId);
+        const deleteResult = await this.deleteCustomerWithRetry(organizationUlid, apiToken, customerId);
         if (!deleteResult.success) {
           console.error('❌ Failed to clean up orphaned customer:', customerId, 'Error:', deleteResult.error);
         } else {
@@ -753,8 +753,8 @@ export class PaymentService {
 
   async getPaymentStatus(paymentId: string): Promise<PaymentResponse> {
     try {
-      const teamId = this.env.BLAWBY_TEAM_ULID || 'default';
-      const response = await fetch(`${this.mcpServerUrl}/api/v1/teams/${teamId}/invoices/${paymentId}`, {
+      const organizationId = this.env.BLAWBY_ORGANIZATION_ULID || 'default';
+      const response = await fetch(`${this.mcpServerUrl}/api/v1/organizations/${organizationId}/invoices/${paymentId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${this.env.BLAWBY_API_TOKEN || ''}`,
@@ -787,17 +787,17 @@ export class PaymentService {
   }
 
   /**
-   * Validates and normalizes consultation fee from team configuration
-   * @param teamConsultationFee - The consultation fee from team config (can be any type)
+   * Validates and normalizes consultation fee from organization configuration
+   * @param organizationConsultationFee - The consultation fee from organization config (can be any type)
    * @returns A valid number representing the consultation fee in dollars
    */
-  private validateConsultationFee(teamConsultationFee: unknown): number {
-    if (teamConsultationFee !== undefined && teamConsultationFee !== null) {
-      const parsedFee = parseFloat(String(teamConsultationFee));
+  private validateConsultationFee(organizationConsultationFee: unknown): number {
+    if (organizationConsultationFee !== undefined && organizationConsultationFee !== null) {
+      const parsedFee = parseFloat(String(organizationConsultationFee));
       if (isFinite(parsedFee) && parsedFee > 0) {
         return parsedFee;
       } else {
-        console.warn('⚠️ Invalid consultation fee, using default $75.00:', teamConsultationFee);
+        console.warn('⚠️ Invalid consultation fee, using default $75.00:', organizationConsultationFee);
       }
     }
     return 75.00; // Default fallback

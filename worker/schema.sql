@@ -3,13 +3,16 @@
 -- Enable foreign key constraints
 PRAGMA foreign_keys = ON;
 
--- Teams table
-CREATE TABLE IF NOT EXISTS teams (
+-- Organizations table
+CREATE TABLE IF NOT EXISTS organizations (
   id TEXT PRIMARY KEY, -- This will be the ULID
   name TEXT NOT NULL,
   slug TEXT UNIQUE, -- Human-readable identifier (e.g., "north-carolina-legal-services")
   domain TEXT,
   config JSON,
+  stripe_customer_id TEXT UNIQUE,
+  subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'plus', 'business', 'enterprise')),
+  seats INTEGER DEFAULT 1 CHECK (seats > 0),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -17,8 +20,9 @@ CREATE TABLE IF NOT EXISTS teams (
 -- Conversations table
 CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
+  user_id TEXT,
   user_info JSON,
   status TEXT DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -30,6 +34,7 @@ CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY,
   conversation_id TEXT NOT NULL,
   matter_id TEXT, -- Optional: link to specific matter for tighter integration
+  user_id TEXT,
   content TEXT NOT NULL,
   is_user BOOLEAN NOT NULL,
   metadata JSON,
@@ -40,7 +45,7 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE TABLE IF NOT EXISTS contact_forms (
   id TEXT PRIMARY KEY,
   conversation_id TEXT,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   phone_number TEXT NOT NULL,
   email TEXT NOT NULL,
   matter_details TEXT NOT NULL,
@@ -54,7 +59,7 @@ CREATE TABLE IF NOT EXISTS contact_forms (
 -- Services table
 CREATE TABLE IF NOT EXISTS services (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
   payment_required BOOLEAN DEFAULT FALSE,
@@ -64,10 +69,10 @@ CREATE TABLE IF NOT EXISTS services (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Lawyers table for team member management
+-- Lawyers table for organization member management
 CREATE TABLE IF NOT EXISTS lawyers (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT,
@@ -84,7 +89,8 @@ CREATE TABLE IF NOT EXISTS lawyers (
 -- Matters table to represent legal matters
 CREATE TABLE IF NOT EXISTS matters (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
+  user_id TEXT,
   client_name TEXT NOT NULL,
   client_email TEXT,
   client_phone TEXT,
@@ -132,7 +138,8 @@ CREATE TABLE IF NOT EXISTS matter_events (
 -- Files table (replaces uploaded_files) - general-purpose file management
 CREATE TABLE IF NOT EXISTS files (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
+  user_id TEXT,
   matter_id TEXT, -- Optional: link to specific matter
   session_id TEXT, -- Optional: link to chat session
   conversation_id TEXT, -- Optional: link to conversation
@@ -145,7 +152,7 @@ CREATE TABLE IF NOT EXISTS files (
   checksum TEXT, -- For integrity verification
   description TEXT,
   tags JSON, -- Array of tags for categorization
-  access_level TEXT DEFAULT 'private', -- 'public', 'private', 'team', 'client'
+  access_level TEXT DEFAULT 'private', -- 'public', 'private', 'organization', 'client'
   shared_with JSON, -- Array of user IDs who have access
   version INTEGER DEFAULT 1,
   parent_file_id TEXT, -- For versioning
@@ -163,7 +170,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE TABLE IF NOT EXISTS chat_logs (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
-  team_id TEXT,
+  organization_id TEXT,
   role TEXT NOT NULL, -- 'user' | 'assistant' | 'system'
   content TEXT NOT NULL,
   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -173,7 +180,7 @@ CREATE TABLE IF NOT EXISTS chat_logs (
 CREATE TABLE IF NOT EXISTS matter_questions (
   id TEXT PRIMARY KEY,
   matter_id TEXT,
-  team_id TEXT,
+  organization_id TEXT,
   question TEXT NOT NULL,
   answer TEXT NOT NULL,
   source TEXT DEFAULT 'ai-form', -- 'ai-form' | 'human-entry' | 'followup'
@@ -194,7 +201,7 @@ CREATE TABLE IF NOT EXISTS ai_generated_summaries (
 CREATE TABLE IF NOT EXISTS ai_feedback (
   id TEXT PRIMARY KEY,
   session_id TEXT,
-  team_id TEXT,
+  organization_id TEXT,
   rating INTEGER, -- 1-5 scale
   thumbs_up BOOLEAN,
   comments TEXT,
@@ -202,19 +209,18 @@ CREATE TABLE IF NOT EXISTS ai_feedback (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default teams with proper ULIDs
--- Note: API keys and sensitive configuration should be set via the setup script, not in schema
--- Run ./scripts/setup-blawby-api.sh to configure the blawby-ai team with API credentials
-INSERT OR IGNORE INTO teams (id, slug, name, config) VALUES
-('01K0TNGNKVCFT7V78Y4QF0PKH5', 'test-team', 'Test Law Firm', '{"aiModel": "llama", "requiresPayment": false}'),
-('01K0TNGNKNJEP8EPKHXAQV4S0R', 'north-carolina-legal-services', 'North Carolina Legal Services', '{"aiModel": "llama", "consultationFee": 75, "requiresPayment": true, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Small Business and Nonprofits", "Employment Law", "Tenant Rights Law", "Probate and Estate Planning", "Special Education and IEP Advocacy"], "serviceQuestions": {"Family Law": ["Thanks for reaching out. I know family situations can be really difficult. Can you tell me what type of family issue you're going through? (For example, divorce, custody, child support...)"], "Small Business and Nonprofits": ["What type of business entity are you operating or planning to start?"], "Employment Law": ["I''m sorry you''re dealing with workplace issues - that can be really stressful. Can you tell me what''s been happening at work? (For example, discrimination, harassment, wage problems...)"], "Tenant Rights Law": ["What specific tenant rights issue are you facing? (eviction, repairs, security deposit, etc.)"], "Probate and Estate Planning": ["Are you dealing with probate of an estate or planning your own estate?"], "Special Education and IEP Advocacy": ["What grade level is your child in and what type of school do they attend?"]}, "domain": "northcarolinalegalservices.blawby.com", "description": "Affordable, comprehensive legal services for North Carolina. Family Law, Small Business, Employment, Tenant Rights, Probate, Special Education, and more.", "paymentLink": "https://app.blawby.com/northcarolinalegalservices/pay?amount=7500", "brandColor": "#059669", "accentColor": "#10b981", "introMessage": "Welcome to North Carolina Legal Services! I''m here to help you with affordable legal assistance in areas including Family Law, Small Business, Employment, Tenant Rights, Probate, and Special Education. I can answer your questions and help you connect with our experienced attorneys. How can I assist you today?", "profileImage": "https://app.blawby.com/storage/team-photos/uCVk3tFuy4aTdR4ad18ibmUn4nOiVY8q4WBgYk1j.jpg", "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}}'),
-('01K0TNGNKTM4Q0AG0XF0A8ST0Q', 'blawby-ai', 'Blawby AI', '{"aiModel": "llama", "consultationFee": 0, "requiresPayment": false, "ownerEmail": "paulchrisluke@gmail.com", "availableServices": ["Family Law", "Business Law", "Contract Review", "Intellectual Property", "Employment Law", "Personal Injury", "Criminal Law", "Civil Law", "General Consultation"], "serviceQuestions": {"Family Law": ["I understand this is a difficult time. Can you tell me what type of family situation you''re dealing with?", "What are the main issues you''re facing?", "Have you taken any steps to address this situation?", "What would a good outcome look like for you?"], "Business Law": ["What type of business entity are you operating or planning to start?", "What specific legal issue are you facing with your business?", "Are you dealing with contracts, employment issues, or regulatory compliance?", "What is the size and scope of your business operations?"], "Contract Review": ["What type of contract do you need reviewed?", "What is the value or importance of this contract?", "Are there any specific concerns or red flags you''ve noticed?", "What is the timeline for this contract?"], "Intellectual Property": ["What type of intellectual property are you dealing with?", "Are you looking to protect, license, or enforce IP rights?", "What is the nature of your IP (patent, trademark, copyright, trade secret)?", "What is the commercial value or importance of this IP?"], "Employment Law": ["What specific employment issue are you facing?", "Are you an employer or employee in this situation?", "Have you taken any steps to address this issue?", "What is the timeline or urgency of your situation?"], "Personal Injury": ["Can you tell me about the incident that caused your injury?", "What type of injuries did you sustain?", "Have you received medical treatment?", "What is the current status of your recovery?"], "Criminal Law": ["What type of legal situation are you facing?", "Are you currently facing charges or under investigation?", "Have you been arrested or contacted by law enforcement?", "Do you have an attorney representing you?"], "Civil Law": ["What type of civil legal issue are you dealing with?", "Are you involved in a lawsuit or considering legal action?", "What is the nature of the dispute?", "What outcome are you hoping to achieve?"], "General Consultation": ["Thanks for reaching out! I''d love to help. Can you tell me what legal situation you''re dealing with?", "Have you been able to take any steps to address this yet?", "What would a good outcome look like for you?", "Do you have any documents or information that might be relevant?"]}, "domain": "ai.blawby.com", "description": "AI-powered legal assistance for businesses and individuals", "paymentLink": null, "brandColor": "#2563eb", "accentColor": "#3b82f6", "introMessage": "Hello! I''m Blawby AI, your intelligent legal assistant. I can help you with family law, business law, contract review, intellectual property, employment law, personal injury, criminal law, civil law, and general legal consultation. How can I assist you today?", "profileImage": null, "voice": {"enabled": false, "provider": "cloudflare", "voiceId": null, "displayName": null, "previewUrl": null}, "blawbyApi": {"enabled": false, "apiUrl": "https://staging.blawby.com"}}');
+
+-- ========================================
+-- DEFAULT ORGANIZATIONS
+-- ========================================
+-- Default organizations are seeded via ./scripts/seed-organizations.sh
+-- This keeps the schema file clean and allows for more flexible seeding
 
 -- Payment history table for tracking all payment transactions
 CREATE TABLE IF NOT EXISTS payment_history (
   id TEXT PRIMARY KEY,
   payment_id TEXT UNIQUE NOT NULL,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   customer_email TEXT NOT NULL,
   customer_name TEXT,
   customer_phone TEXT,
@@ -231,10 +237,10 @@ CREATE TABLE IF NOT EXISTS payment_history (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Team API tokens table for secure token storage
-CREATE TABLE IF NOT EXISTS team_api_tokens (
+-- Organization API tokens table for secure token storage
+CREATE TABLE IF NOT EXISTS organization_api_tokens (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
   token_name TEXT NOT NULL, -- Human-readable name for the token
   token_hash TEXT NOT NULL, -- SHA-256 hash of the actual token
   permissions JSON, -- Array of permissions this token has
@@ -249,7 +255,8 @@ CREATE TABLE IF NOT EXISTS team_api_tokens (
 -- Chat sessions table for session management
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id TEXT PRIMARY KEY,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
+  user_id TEXT,
   token_hash TEXT,
   state TEXT NOT NULL DEFAULT 'active',
   status_reason TEXT,
@@ -259,18 +266,20 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_active DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   closed_at DATETIME,
-  UNIQUE(id, team_id)
+  UNIQUE(id, organization_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_chat_sessions_team_state ON chat_sessions(team_id, state);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_team_state ON chat_sessions(organization_id, state);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_last_active ON chat_sessions(last_active);
-CREATE INDEX IF NOT EXISTS idx_chat_sessions_token_hash_team ON chat_sessions(token_hash, team_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_token_hash_organization ON chat_sessions(token_hash, organization_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_user ON chat_sessions(user_id);
 
 -- Chat messages table for storing conversation messages
 CREATE TABLE IF NOT EXISTS chat_messages (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
-  team_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
+  user_id TEXT,
   role TEXT NOT NULL,
   content TEXT NOT NULL,
   metadata TEXT,
@@ -279,7 +288,8 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_team ON chat_messages(team_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_organization ON chat_messages(organization_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id);
 
 -- Session summaries table for AI-generated summaries
 CREATE TABLE IF NOT EXISTS session_summaries (
@@ -305,15 +315,13 @@ CREATE TABLE IF NOT EXISTS session_audit_events (
 
 CREATE INDEX IF NOT EXISTS idx_session_audit_events_session ON session_audit_events(session_id, created_at);
 
--- Insert sample lawyers
-INSERT OR IGNORE INTO lawyers (id, team_id, name, email, phone, specialties, role, hourly_rate, bar_number, license_state) VALUES
-('lawyer-1', 'test-team', 'Sarah Johnson', 'sarah@testlawfirm.com', '555-0101', '["Family Law", "Divorce", "Child Custody"]', 'attorney', 35000, 'CA123456', 'CA'),
-('lawyer-2', 'test-team', 'Michael Chen', 'michael@testlawfirm.com', '555-0102', '["Employment Law", "Workplace Discrimination"]', 'attorney', 40000, 'CA789012', 'CA'),
-('paralegal-1', 'test-team', 'Emily Rodriguez', 'emily@testlawfirm.com', '555-0103', '["Legal Research", "Document Preparation"]', 'paralegal', 7500, NULL, NULL);
+-- Sample data removed - use seed scripts for development data
 
 -- ========================================
 -- BETTER AUTH TABLES (SECURE SCHEMA)
 -- ========================================
+-- Note: Geolocation and IP detection features are disabled by default
+-- Set ENABLE_AUTH_GEOLOCATION=true and ENABLE_AUTH_IP_DETECTION=true to enable
 
 -- Users table for Better Auth
 CREATE TABLE IF NOT EXISTS users (
@@ -324,9 +332,65 @@ CREATE TABLE IF NOT EXISTS users (
   image TEXT,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
-  team_id TEXT,
+  organization_id TEXT,
+  stripe_customer_id TEXT UNIQUE,
   role TEXT,
   phone TEXT
+);
+
+-- Organization members for Better Auth multi-tenancy
+CREATE TABLE IF NOT EXISTS member (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL, -- 'owner', 'admin', 'attorney', 'paralegal'
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  UNIQUE(organization_id, user_id)
+);
+
+-- Invitations for organization member onboarding
+CREATE TABLE IF NOT EXISTS invitations (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL,
+  status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'declined', 'expired'
+  invited_by TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+
+-- Stripe subscription table managed by Better Auth Stripe plugin
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id TEXT PRIMARY KEY,
+  plan TEXT NOT NULL,
+  reference_id TEXT NOT NULL, -- References organizations.id for organization-level subscriptions
+  stripe_subscription_id TEXT UNIQUE,
+  status TEXT DEFAULT 'incomplete' NOT NULL CHECK(status IN ('incomplete', 'incomplete_expired', 'active', 'canceled', 'past_due', 'unpaid', 'trialing')),
+  period_start INTEGER,
+  period_end INTEGER,
+  trial_start INTEGER,
+  trial_end INTEGER,
+  cancel_at_period_end INTEGER DEFAULT 0 NOT NULL,
+  seats INTEGER CHECK(seats > 0),
+  created_at INTEGER DEFAULT (strftime('%s', 'now')),
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+  -- Foreign key constraints for data integrity
+  FOREIGN KEY (reference_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_reference_id ON subscriptions(reference_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+-- Note: stripe_subscription_id already has UNIQUE constraint in table definition
+
+-- Organization events table for audit logging
+CREATE TABLE IF NOT EXISTS organization_events (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  actor_user_id TEXT,
+  metadata JSON,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
 
 -- Sessions table for Better Auth
@@ -339,18 +403,6 @@ CREATE TABLE IF NOT EXISTS sessions (
   ip_address TEXT,
   user_agent TEXT,
   user_id TEXT NOT NULL
-);
-
--- Passwords table for local authentication (SECURE)
--- This separates password-based auth from OAuth, following security best practices
-CREATE TABLE IF NOT EXISTS passwords (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  hashed_password TEXT NOT NULL, -- Store bcrypt/scrypt hashes, never plain text
-  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
-  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
-  -- Ensure one password per user
-  UNIQUE(user_id)
 );
 
 -- Accounts table for OAuth providers (SECURE)
@@ -367,6 +419,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   access_token_expires_at INTEGER,
   refresh_token_expires_at INTEGER,
   scope TEXT,
+  password TEXT,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   -- Critical: Prevent duplicate provider accounts
@@ -388,15 +441,28 @@ CREATE TABLE IF NOT EXISTS verifications (
 -- Create indexes for Better Auth tables
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(email, email_verified);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_customer_id_unique ON users(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_passwords_user_id ON passwords(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider ON accounts(provider_id, account_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider_user ON accounts(provider_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value);
 CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires_at);
+
+-- Create indexes for organization membership tables
+CREATE INDEX IF NOT EXISTS idx_member_org ON member(organization_id);
+CREATE INDEX IF NOT EXISTS idx_member_user ON member(user_id);
+CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
+CREATE INDEX IF NOT EXISTS idx_invitations_organization ON invitations(organization_id);
+CREATE INDEX IF NOT EXISTS idx_org_events_org_created ON organization_events(organization_id, created_at DESC);
+
+-- Create indexes for user_id columns
+CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_matters_user ON matters(user_id);
+CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
 
 -- Create a view for secure user authentication data
 -- This view can be used by the application to safely access user auth data
@@ -410,8 +476,69 @@ SELECT
   -- Count OAuth providers
   COUNT(DISTINCT a.provider_id) as oauth_provider_count,
   -- Check if user has local password
-  CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END as has_local_password
+  MAX(CASE WHEN a.password IS NOT NULL THEN 1 ELSE 0 END) as has_local_password
 FROM users u
 LEFT JOIN accounts a ON u.id = a.user_id
-LEFT JOIN passwords p ON u.id = p.user_id
-GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at, p.id;
+GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at;
+
+-- ========================================
+-- TRIGGERS FOR AUTOMATIC UPDATED_AT TIMESTAMPS
+-- ========================================
+-- These triggers ensure that updated_at columns are automatically updated
+-- when rows are modified, using the same millisecond timestamp format
+-- as the auth schema defaults: (strftime('%s', 'now') * 1000)
+
+-- Trigger for users table
+CREATE TRIGGER IF NOT EXISTS trigger_users_updated_at
+  AFTER UPDATE ON users
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE users SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for sessions table
+CREATE TRIGGER IF NOT EXISTS trigger_sessions_updated_at
+  AFTER UPDATE ON sessions
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE sessions SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for accounts table
+CREATE TRIGGER IF NOT EXISTS trigger_accounts_updated_at
+  AFTER UPDATE ON accounts
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE accounts SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for verifications table
+CREATE TRIGGER IF NOT EXISTS trigger_verifications_updated_at
+  AFTER UPDATE ON verifications
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE verifications SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for organizations table
+CREATE TRIGGER IF NOT EXISTS trigger_organizations_updated_at
+  AFTER UPDATE ON organizations
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE organizations SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+
+-- Trigger for subscriptions table
+CREATE TRIGGER IF NOT EXISTS trigger_subscriptions_updated_at
+  AFTER UPDATE ON subscriptions
+  FOR EACH ROW
+  WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE subscriptions SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
+END;
+

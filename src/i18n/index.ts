@@ -7,6 +7,7 @@ import settingsEn from '../locales/en/settings.json';
 import authEn from '../locales/en/auth.json';
 import profileEn from '../locales/en/profile.json';
 import pricingEn from '../locales/en/pricing.json';
+import organizationEn from '../locales/en/organization.json';
 
 export const DEFAULT_LOCALE = 'en' as const;
 
@@ -48,7 +49,7 @@ export const isRTLLocale = (locale: AppLocale): boolean => {
   return RTL_LOCALES.has(locale);
 };
 
-const NAMESPACES = ['common', 'settings', 'auth', 'profile', 'pricing'] as const;
+const NAMESPACES = ['common', 'settings', 'auth', 'profile', 'pricing', 'organization'] as const;
 
 const STORAGE_KEY = 'blawby_locale';
 let initialized = false;
@@ -59,7 +60,8 @@ const staticResources = {
     settings: settingsEn,
     auth: authEn,
     profile: profileEn,
-    pricing: pricingEn
+    pricing: pricingEn,
+    organization: organizationEn
   }
 };
 

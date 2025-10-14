@@ -101,7 +101,7 @@ export function generatePaymentRequiredMessage(data: MatterSummaryData): string 
  * Generate no payment required message
  */
 export function generateNoPaymentMessage(): string {
-  return `I'll submit this to our legal team for review. A lawyer will contact you within 24 hours to discuss your case.`;
+  return `I'll submit this to our legal organization for review. A lawyer will contact you within 24 hours to discuss your case.`;
 }
 
 /**
@@ -116,9 +116,9 @@ export function generatePDFMessage(pdfFilename: string): string {
  */
 export function generateNotificationMessage(requiresPayment: boolean): string {
   if (requiresPayment) {
-    return `Your full submission has already been sent to our legal team for review, and we alerted them that payment is pending.`;
+    return `Your full submission has already been sent to our legal organization for review, and we alerted them that payment is pending.`;
   }
-  return `Your full submission has already been sent to our legal team for review.`;
+  return `Your full submission has already been sent to our legal organization for review.`;
 }
 
 /**

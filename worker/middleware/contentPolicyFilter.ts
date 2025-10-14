@@ -1,5 +1,5 @@
 import type { Env, AgentMessage } from '../types.js';
-import type { TeamConfig } from '../services/TeamService.js';
+import type { OrganizationConfig } from '../services/OrganizationService.js';
 
 import type { ConversationContext } from './conversationContextManager.js';
 import type { PipelineMiddleware } from './pipeline.js';
@@ -63,11 +63,12 @@ const LEGAL_CONTEXT_KEYWORDS = [
  * Now conversation-aware: considers full conversation context for better accuracy
  */
 export const contentPolicyFilter: PipelineMiddleware = {
+  kind: 'standard',
   name: 'contentPolicyFilter',
   
-  execute: async (messages: AgentMessage[], context: ConversationContext, _teamConfig: TeamConfig, _env: Env) => {
-    // Note: teamConfig parameter is currently unused but kept for interface compatibility
-    // Future enhancement: could use team-specific content policies
+  execute: async (messages: AgentMessage[], context: ConversationContext, _organizationConfig: OrganizationConfig, _env: Env) => {
+    // Note: organizationConfig parameter is currently unused but kept for interface compatibility
+    // Future enhancement: could use organization-specific content policies
     
     // Guard clause: ensure we have at least one message
     if (!messages || messages.length === 0) {
@@ -82,7 +83,7 @@ export const contentPolicyFilter: PipelineMiddleware = {
       // Log security violations (privacy-safe)
       console.warn('Content policy violation detected:', {
         sessionId: context.sessionId,
-        teamId: context.teamId,
+        organizationId: context.organizationId,
         violations,
         messageCount: messages.length,
         messageLength: latestMessage.content.length,

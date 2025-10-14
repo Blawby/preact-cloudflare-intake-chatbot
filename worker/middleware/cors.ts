@@ -161,8 +161,8 @@ export function createProductionCorsOptions(allowedDomains: string[]): CorsOptio
   return {
     allowedOrigins: allowedDomains,
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    allowCredentials: false,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+    allowCredentials: true,
     maxAge: 86400,
     exposeHeaders: ['Content-Disposition', 'Content-Length']
   };
@@ -177,8 +177,8 @@ export function createDevelopmentCorsOptions(): CorsOptions {
   return {
     allowedOrigins: '*',
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    allowCredentials: false, // Do not allow credentials for security
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+    allowCredentials: false, // Cannot be true with wildcard origin
     maxAge: 86400,
     exposeHeaders: ['Content-Disposition', 'Content-Length']
   };
@@ -199,7 +199,15 @@ export function getCorsConfig(env: Env): CorsOptions {
     ];
     return createProductionCorsOptions(allowedDomains);
   } else {
-    // In development, allow all origins
-    return createDevelopmentCorsOptions();
+    // In development, allow specific localhost origins for credentials
+    const allowedDomains = [
+      'http://localhost:5173', // Vite dev server
+      'http://localhost:5174', // Alternative Vite dev server
+      'http://localhost:8787', // Worker dev server
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
+      'http://127.0.0.1:8787'
+    ];
+    return createProductionCorsOptions(allowedDomains);
   }
 }

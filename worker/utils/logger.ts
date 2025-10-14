@@ -1,3 +1,5 @@
+import { parseEnvBool } from './safeStringUtils.js';
+
 export class Logger {
   private static env?: { DEBUG?: string; NODE_ENV?: string };
 
@@ -20,65 +22,77 @@ export class Logger {
     this.env = env;
   }
 
-  private static isDebugEnabled(): boolean {
-    // Use injected environment variables if available, otherwise fallback to process.env (for Node.js environments)
-    const debug = this.env?.DEBUG || (typeof process !== 'undefined' && process.env?.DEBUG);
-    const nodeEnv = this.env?.NODE_ENV || (typeof process !== 'undefined' && process.env?.NODE_ENV);
+  /**
+   * Get the current environment from initialized Logger
+   */
+  static getEnvironment(): string {
+    // Check if Logger has been initialized
+    if (this.env === undefined) {
+      throw new Error('Logger.getEnvironment: Logger has not been initialized. Call Logger.initialize() first.');
+    }
     
-    return debug === 'true' || nodeEnv === 'development';
+    return this.env.NODE_ENV || 'production';
   }
 
-  static debug(message: string, data?: any): void {
+  private static isDebugEnabled(): boolean {
+    // Use injected environment variables (Cloudflare Workers don't have process.env)
+    const debug = this.env?.DEBUG;
+    const nodeEnv = this.env?.NODE_ENV;
+    
+    return parseEnvBool(debug) || nodeEnv === 'development';
+  }
+
+  static debug(message: string, data?: unknown): void {
     if (this.isDebugEnabled()) {
       console.log(`[DEBUG] ${message}`, data);
     }
   }
 
-  static info(message: string, data?: any): void {
+  static info(message: string, data?: unknown): void {
     console.log(`[INFO] ${message}`, data);
   }
 
-  static warn(message: string, data?: any): void {
+  static warn(message: string, data?: unknown): void {
     console.warn(`[WARN] ${message}`, data);
   }
 
-  static error(message: string, error?: any): void {
+  static error(message: string, error?: unknown): void {
     console.error(`[ERROR] ${message}`, error);
   }
 
   /**
-   * Safely logs team configuration data by redacting sensitive information
+   * Safely logs organization configuration data by redacting sensitive information
    */
-  static logTeamConfig(team: any, includeConfig: boolean = false): void {
-    if (!team) {
-      this.warn('logTeamConfig called with null/undefined team');
+  static logOrganizationConfig(organization: Record<string, unknown>, includeConfig: boolean = false): void {
+    if (!organization) {
+      this.warn('logOrganizationConfig called with null/undefined organization');
       return;
     }
 
-    const safeTeamData = {
-      id: team.id,
-      slug: team.slug,
-      name: team.name,
-      createdAt: team.createdAt,
-      updatedAt: team.updatedAt
+    const safeOrganizationData = {
+      id: organization.id,
+      slug: organization.slug,
+      name: organization.name,
+      createdAt: organization.createdAt,
+      updatedAt: organization.updatedAt
     };
 
     if (includeConfig && this.isDebugEnabled()) {
       // Create a sanitized version of the config
-      const sanitizedConfig = this.sanitizeConfig(team.config);
-      (safeTeamData as any).config = sanitizedConfig;
+      const sanitizedConfig = this.sanitizeConfig(organization.config);
+      (safeOrganizationData as Record<string, unknown>).config = sanitizedConfig;
     }
 
-    this.info('Team data:', safeTeamData);
+    this.info('Organization data:', safeOrganizationData);
   }
 
   /**
    * Sanitizes configuration data to remove sensitive information
    */
-  private static sanitizeConfig(config: any): any {
-    if (!config) return config;
+  private static sanitizeConfig(config: unknown): Record<string, unknown> {
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return {};
 
-    const sanitized = { ...config };
+    const sanitized = { ...(config as Record<string, unknown>) };
 
     // Mask sensitive fields
     const sensitiveFields = [
@@ -114,7 +128,7 @@ export class Logger {
     // Recursively sanitize nested objects
     for (const [key, value] of Object.entries(sanitized)) {
       if (value && typeof value === 'object' && !Array.isArray(value)) {
-        sanitized[key] = this.sanitizeConfig(value);
+        sanitized[key] = this.sanitizeConfig(value as Record<string, unknown>);
       }
     }
 

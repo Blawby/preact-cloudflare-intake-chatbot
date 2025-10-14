@@ -1,7 +1,7 @@
 // Mock User Data Service
 // This provides consistent mock data for development until the real API is ready
 
-export type SubscriptionTier = 'free' | 'plus' | 'business';
+export type SubscriptionTier = 'free' | 'plus' | 'business' | 'enterprise';
 export type Language = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'vi' | 
                        'pt' | 'ar' | 'ru' | 'it' | 'ko' | 'nl' | 'pl' | 
                        'tr' | 'th' | 'id' | 'hi' | 'uk';
@@ -233,7 +233,6 @@ export interface MockUserProfile {
   addressZip: string | null;
   addressCountry: string | null;
   preferredContactMethod: 'email' | 'phone' | 'sms';
-  subscriptionTier: SubscriptionTier;
   createdAt: string;
   updatedAt: string;
 }
@@ -328,7 +327,6 @@ export function getDefaultMockUser(): MockUserProfile {
     addressZip: '27601',
     addressCountry: 'US',
     preferredContactMethod: 'email',
-    subscriptionTier: 'free',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: new Date().toISOString()
   };
@@ -633,10 +631,6 @@ class MockUserDataService {
     });
   }
 
-  // Subscription Methods
-  setSubscriptionTier(tier: SubscriptionTier): MockUserProfile {
-    return this.setUserProfile({ subscriptionTier: tier });
-  }
 
   // Utility Methods
   resetToDefaults(): void {
@@ -662,11 +656,10 @@ class MockUserDataService {
           return;
         }
 
-        // Clear all user data
+        // Clear UI-related mock data only (not auth data)
         this.resetToDefaults();
         
-        // Also clear any other user-related data
-        storage.removeItem('mockUser');
+        // Clear other non-auth user-related data
         storage.removeItem('conversations');
         storage.removeItem('chatHistory');
         storage.removeItem('uploadedFiles');
@@ -866,19 +859,19 @@ export const mockUserDataService = new MockUserDataService();
 
 // Development helper - expose to window for easy testing
 if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).mockUserDataService = mockUserDataService;
+   
+  (window as { mockUserDataService?: MockUserDataService }).mockUserDataService = mockUserDataService;
   
   // Helper function to easily test different subscription tiers
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).setSubscriptionTier = (tier: SubscriptionTier) => {
+   
+  (window as { setSubscriptionTier?: (tier: SubscriptionTier) => void }).setSubscriptionTier = (tier: SubscriptionTier) => {
     try {
       const updatedProfile = mockUserDataService.setSubscriptionTier(tier);
       window.dispatchEvent(new CustomEvent('authStateChanged', { detail: updatedProfile }));
-      // eslint-disable-next-line no-console
+       
       console.log(`Subscription tier changed to: ${tier}`);
     } catch (_error) {
-      // eslint-disable-next-line no-console
+       
       console.log('No user logged in. Please sign in first.');
     }
   };

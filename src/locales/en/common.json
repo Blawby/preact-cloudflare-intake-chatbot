@@ -157,5 +157,24 @@
       "helpCenter": "Help Center",
       "letsGo": "Okay, let's go"
     }
+  },
+  "businessWelcome": {
+    "title": "Welcome to Business!",
+    "subtitle": "Your organization has been upgraded. Here's what you can do now:",
+    "features": {
+      "teamManagement": {
+        "title": "Team Management",
+        "description": "Invite members"
+      },
+      "organizationSettings": {
+        "title": "Organization Settings",
+        "description": "Configure your org"
+      },
+      "apiAccess": {
+        "title": "API Access",
+        "description": "Generate tokens"
+      }
+    },
+    "goToSettings": "Go to Organization Settings"
   }
 }

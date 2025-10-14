@@ -129,10 +129,10 @@ export function ContactForm({
   if (typeof onSubmit !== 'function') {
     console.error('[ContactForm] Invalid onSubmit prop: must be a function. Returning fallback UI.');
     return (
-      <div class="bg-white dark:bg-dark-bg border border-red-300 dark:border-red-600 rounded-lg p-6 shadow-sm" data-testid="contact-form-error">
-        <div class="text-red-600 dark:text-red-400 text-center">
-          <p class="font-medium">Contact Form Error</p>
-          <p class="text-sm mt-1">Invalid configuration. Please check the form setup.</p>
+      <div className="bg-white dark:bg-dark-bg border border-red-300 dark:border-red-600 rounded-lg p-6 shadow-sm" data-testid="contact-form-error">
+        <div className="text-red-600 dark:text-red-400 text-center">
+          <p className="font-medium">Contact Form Error</p>
+          <p className="text-sm mt-1">Invalid configuration. Please check the form setup.</p>
         </div>
       </div>
     );
@@ -158,9 +158,9 @@ export function ContactForm({
   };
 
   return (
-    <div class="bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-6 shadow-sm" data-testid="contact-form">
+    <div className="bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg p-6 shadow-sm" data-testid="contact-form">
       {validMessage && (
-        <div class="mb-4 text-gray-700 dark:text-gray-300">
+        <div className="mb-4 text-gray-700 dark:text-gray-300">
           {validMessage}
         </div>
       )}
@@ -269,7 +269,7 @@ export function ContactForm({
           </FormItem>
         )}
 
-        <div class="pt-4">
+        <div className="pt-4">
           <Button
             type="submit"
             data-testid="contact-form-submit"

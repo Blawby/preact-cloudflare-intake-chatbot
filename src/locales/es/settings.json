@@ -82,6 +82,18 @@
         "highest": {
           "title": "Cuenta",
           "body": "¡Ya tienes el plan más alto disponible!"
+        },
+        "cartSaveError": {
+          "title": "Error del Carrito",
+          "body": "No se pudieron guardar los datos del carrito. Procediendo con método alternativo."
+        },
+        "planNotFound": {
+          "title": "Plan No Encontrado",
+          "body": "El plan seleccionado no se pudo encontrar. Por favor, inténtalo de nuevo o contacta con soporte."
+        },
+        "planDataMissing": {
+          "title": "Error de Configuración del Plan",
+          "body": "El plan seleccionado no tiene la información de pago requerida. Por favor, contacta con soporte."
         }
       }
     },

@@ -1,4 +1,4 @@
-import { FunctionComponent } from 'preact';
+import { FunctionComponent, ComponentType } from 'preact';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/Accordion';
 import {
   ChatBubbleOvalLeftEllipsisIcon,
@@ -18,7 +18,7 @@ import { useActivity } from '../hooks/useActivity';
 
 interface ActivityTimelineProps {
   className?: string;
-  teamId?: string;
+  organizationId?: string;
   matterId?: string;
   sessionId?: string;
   limit?: number;
@@ -27,7 +27,7 @@ interface ActivityTimelineProps {
 }
 
 // Event type to icon mapping
-const EVENT_ICONS: Record<string, any> = {
+const EVENT_ICONS: Record<string, ComponentType> = {
   // Matter Events
   matter_created: ClockIcon,
   matter_status_changed: ChatBubbleOvalLeftEllipsisIcon,
@@ -72,7 +72,7 @@ function formatRelativeTime(dateString: string): string {
 
 const ActivityTimeline: FunctionComponent<ActivityTimelineProps> = ({ 
   className = '',
-  teamId,
+  organizationId,
   matterId,
   sessionId,
   limit = 25,
@@ -81,7 +81,7 @@ const ActivityTimeline: FunctionComponent<ActivityTimelineProps> = ({
 }) => {
   // Use the activity hook to fetch real data
   const { events, loading, error, hasMore, loadMore, refresh } = useActivity({
-    teamId,
+    organizationId,
     matterId,
     sessionId,
     limit,

@@ -6,28 +6,31 @@ import { ChatMessageUI } from '../../worker/types';
 import { FileAttachment } from '../../worker/types';
 import { ContactData } from './ContactForm';
 import { createKeyPressHandler } from '../utils/keyboard';
+import type { UploadingFile } from '../hooks/useFileUpload';
 
 interface ChatContainerProps {
   messages: ChatMessageUI[];
   onSendMessage: (message: string, attachments: FileAttachment[]) => void;
   onContactFormSubmit?: (data: ContactData) => void;
-  teamConfig?: {
+  organizationConfig?: {
     name: string;
     profileImage: string | null;
-    teamId: string;
+    organizationId: string;
     description?: string | null;
   };
   onOpenSidebar?: () => void;
   sessionId?: string;
-  teamId?: string;
+  organizationId?: string;
   onFeedbackSubmit?: (feedback: unknown) => void;
 
   // File handling props
   previewFiles: FileAttachment[];
+  uploadingFiles: UploadingFile[];
   removePreviewFile: (index: number) => void;
   clearPreviewFiles: () => void;
   handleFileSelect: (files: File[]) => Promise<void>;
   handleCameraCapture: (file: File) => Promise<void>;
+  cancelUpload: (fileId: string) => void;
   handleMediaCapture: (blob: Blob, type: 'audio' | 'video') => void;
   isRecording: boolean;
   setIsRecording: (v: boolean) => void;
@@ -42,16 +45,18 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
   messages,
   onSendMessage,
   onContactFormSubmit,
-  teamConfig,
+  organizationConfig,
   onOpenSidebar,
   sessionId,
-  teamId,
+  organizationId,
   onFeedbackSubmit,
   previewFiles,
+  uploadingFiles,
   removePreviewFile,
   clearPreviewFiles,
   handleFileSelect,
   handleCameraCapture,
+  cancelUpload,
   handleMediaCapture,
   isRecording,
   setIsRecording,
@@ -137,11 +142,11 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
       <main className="flex flex-col h-full w-full overflow-hidden relative bg-white dark:bg-dark-bg">
         <VirtualMessageList
           messages={messages}
-          teamConfig={teamConfig}
+          organizationConfig={organizationConfig}
           onOpenSidebar={onOpenSidebar}
           onContactFormSubmit={onContactFormSubmit}
           sessionId={sessionId}
-          teamId={teamId}
+          organizationId={organizationId}
           onFeedbackSubmit={onFeedbackSubmit}
         />
         
@@ -149,10 +154,11 @@ const ChatContainer: FunctionComponent<ChatContainerProps> = ({
           inputValue={inputValue}
           setInputValue={setInputValue}
           previewFiles={previewFiles}
+          uploadingFiles={uploadingFiles}
           removePreviewFile={removePreviewFile}
           handleFileSelect={handleFileSelect}
           handleCameraCapture={handleCameraCapture}
-
+          cancelUpload={cancelUpload}
           isRecording={isRecording}
           handleMediaCapture={handleMediaCapture}
           setIsRecording={setIsRecording}

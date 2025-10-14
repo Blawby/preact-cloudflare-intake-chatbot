@@ -101,7 +101,7 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
       } catch (storageError) {
         // Handle localStorage failures (private browsing, quota exceeded, etc.)
         if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
+           
           console.warn('Failed to cache onboarding completion in localStorage:', storageError);
         }
         // Continue execution - this is just a cache, not critical
@@ -118,7 +118,7 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
     } catch (error) {
       // Log the error for debugging in development
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
+         
         console.error('Failed to save onboarding data:', error);
       }
       
