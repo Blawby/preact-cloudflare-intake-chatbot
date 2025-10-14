@@ -229,7 +229,7 @@ Last run: 2025-01-13
 - 19/19 languages have template files created
 - 0/19 languages are 100% complete
 - 1/19 languages are baseline (English)
-- 7/19 languages have partial translations
+- 6/19 languages have partial translations
 - 12/19 languages pending translation
 
 **Common Issues:**

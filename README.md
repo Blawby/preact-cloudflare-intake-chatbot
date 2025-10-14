@@ -53,7 +53,7 @@ A production-ready legal intake chatbot built with Cloudflare Workers AI, featur
 ## 🎯 **Key Features**
 
 - **🤖 AI-Powered Legal Intake**: Intelligent conversation handling with Cloudflare Workers AI
-- **🌍 Global Language Support**: 19 languages covering 5+ billion speakers with full RTL support for Arabic
+- **🌍 Global Language Support**: 18 languages covering 5+ billion speakers — ~90%+ of global internet users — with full RTL support for Arabic
 - **📋 Lead Qualification**: Smart filtering to ensure quality leads before contact collection
 - **⚖️ Matter Classification**: Automatic legal issue categorization (Employment, Family, Personal Injury, etc.)
 - **💰 Payment Integration**: Automated consultation fee collection with organization configuration
@@ -126,7 +126,7 @@ Copy `.dev.vars.example` to `.dev.vars` and add your API keys:
 
 ### Internationalization
 
-The application supports **19 languages** covering 90%+ of global internet users:
+The application supports **18 languages** covering 5+ billion speakers — ~90%+ of global internet users:
 
 **Supported Languages:**
 - 🌍 **Americas**: English, Spanish, Portuguese, French

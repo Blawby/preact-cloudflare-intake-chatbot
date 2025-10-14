@@ -76,6 +76,7 @@ src/
 │   │   ├── settings.json     # Settings screen translations
 │   │   ├── auth.json         # Authentication flow
 │   │   ├── profile.json      # User profile
+│   │   ├── organization.json # Organization-related translations
 │   │   └── pricing.json      # Pricing and subscriptions
 │   ├── ar/  # Arabic (RTL)
 │   ├── pt/  # Portuguese
@@ -87,13 +88,14 @@ src/
 
 ### Translation Namespaces
 
-We use **5 namespaces** to organize translations:
+We use **6 namespaces** to organize translations:
 
 1. **common** - General UI elements, navigation, buttons
 2. **settings** - Settings page, preferences, configurations
 3. **auth** - Login, registration, password reset
 4. **profile** - User profile, account management
 5. **pricing** - Plans, subscriptions, billing
+6. **organization** - Organization management, team settings
 
 ### Usage in Components
 
@@ -317,12 +319,13 @@ cp src/locales/en/*.json src/locales/[language_code]/
 
 ### Step 3: Translate All Files
 
-Translate all 5 namespace files:
+Translate all 6 namespace files:
 - `common.json`
 - `settings.json`
 - `auth.json`
 - `profile.json`
 - `pricing.json`
+- `organization.json`
 
 ### Step 4: Update Configuration
 
