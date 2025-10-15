@@ -36,12 +36,37 @@ log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
+# Execute wrangler command with proper error handling
+execute_wrangler_command() {
+    local command="$1"
+    local description="$2"
+    
+    # Capture both stdout and stderr
+    local output
+    local error_output
+    local exit_code
+    
+    # Execute command and capture output
+    if output=$(wrangler d1 execute $DB_NAME --remote --command="$command" --json 2>&1); then
+        echo "$output"
+        return 0
+    else
+        exit_code=$?
+        log_error "Failed to execute wrangler command: $description"
+        log_error "Command: $command"
+        log_error "Exit code: $exit_code"
+        log_error "Output: $output"
+        exit $exit_code
+    fi
+}
+
 # Check current state
 check_migration_status() {
     log_info "Checking current database state..."
     
     # Get all tables
-    TABLES=$(wrangler d1 execute $DB_NAME --remote --command="SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_cf_%' ORDER BY name;" --json | jq -r '.[0].results[].name')
+    WRANGLER_OUTPUT=$(execute_wrangler_command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_cf_%' ORDER BY name;" "list all database tables")
+    TABLES=$(echo "$WRANGLER_OUTPUT" | jq -r '.[0].results[].name')
     
     echo "Current tables in production:"
     echo "$TABLES"
@@ -93,9 +118,11 @@ check_migration_status() {
         
         # Check singular table first
         if [ "$HAS_SINGULAR_SUB" -gt 0 ]; then
-            HAS_STRIPE_FIELD=$(wrangler d1 execute $DB_NAME --remote --command="PRAGMA table_info(subscription);" --json | jq -r '.[0].results[] | select(.name=="stripe_customer_id") | .name' 2>/dev/null || echo "")
+            WRANGLER_OUTPUT=$(execute_wrangler_command "PRAGMA table_info(subscription);" "check subscription table structure")
+            HAS_STRIPE_FIELD=$(echo "$WRANGLER_OUTPUT" | jq -r '.[0].results[] | select(.name=="stripe_customer_id") | .name' 2>/dev/null || echo "")
         else
-            HAS_STRIPE_FIELD=$(wrangler d1 execute $DB_NAME --remote --command="PRAGMA table_info(subscriptions);" --json | jq -r '.[0].results[] | select(.name=="stripe_customer_id") | .name' 2>/dev/null || echo "")
+            WRANGLER_OUTPUT=$(execute_wrangler_command "PRAGMA table_info(subscriptions);" "check subscriptions table structure")
+            HAS_STRIPE_FIELD=$(echo "$WRANGLER_OUTPUT" | jq -r '.[0].results[] | select(.name=="stripe_customer_id") | .name' 2>/dev/null || echo "")
         fi
         
         if [ -n "$HAS_STRIPE_FIELD" ]; then
@@ -112,7 +139,8 @@ check_migration_status() {
     # Check a few key tables for timestamp format
     for table in user session account; do
         if echo "$TABLES" | grep -q "^$table$"; then
-            TIMESTAMP_DEFAULT=$(wrangler d1 execute $DB_NAME --remote --command="PRAGMA table_info($table);" --json | jq -r '.[0].results[] | select(.name=="created_at") | .dflt_value' 2>/dev/null || echo "")
+            WRANGLER_OUTPUT=$(execute_wrangler_command "PRAGMA table_info($table);" "check $table table structure for timestamp format")
+            TIMESTAMP_DEFAULT=$(echo "$WRANGLER_OUTPUT" | jq -r '.[0].results[] | select(.name=="created_at") | .dflt_value' 2>/dev/null || echo "")
             
             if echo "$TIMESTAMP_DEFAULT" | grep -q "\* 1000"; then
                 log_success "Table $table has correct millisecond timestamps"
@@ -143,7 +171,8 @@ check_foreign_keys() {
     log_info "Checking foreign key references..."
     
     # Check subscription table foreign key
-    SUB_FK=$(wrangler d1 execute $DB_NAME --remote --command="PRAGMA foreign_key_list(subscription);" --json | jq -r '.[0].results[] | select(.table=="organizations") | .table' 2>/dev/null || echo "")
+    WRANGLER_OUTPUT=$(execute_wrangler_command "PRAGMA foreign_key_list(subscription);" "check subscription table foreign key references")
+    SUB_FK=$(echo "$WRANGLER_OUTPUT" | jq -r '.[0].results[] | select(.table=="organizations") | .table' 2>/dev/null || echo "")
     
     if [ -n "$SUB_FK" ]; then
         log_warning "Subscription table references 'organizations' (plural) - should reference 'organization' (singular)"

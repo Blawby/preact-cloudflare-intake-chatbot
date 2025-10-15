@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useCallback, type ReactNode } from 'preact/compat';
+import { createContext, useContext, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'preact/compat';
 import { useOrganizationConfig } from '../hooks/useOrganizationConfig.js';
 
 export interface OrganizationContextValue {
@@ -41,11 +41,18 @@ export interface OrganizationProviderProps {
  * to all child components, eliminating the need for prop drilling
  */
 export function OrganizationProvider({ children, onError }: OrganizationProviderProps) {
-  // Stabilize the onError callback to prevent useOrganizationConfig from recreating fetchOrganizationConfig
-  const stableOnError = useCallback((error: string) => {
-    console.error('Organization config error:', error);
-    onError?.(error);
+  // Keep a ref to the latest onError to create a truly stable callback
+  const onErrorRef = useRef(onError);
+  
+  // Update the ref whenever onError changes
+  useEffect(() => {
+    onErrorRef.current = onError;
   }, [onError]);
+  
+  // Create a truly stable callback that reads from the ref
+  const stableOnError = useCallback((error: string) => {
+    onErrorRef.current?.(error);
+  }, []);
 
   const {
     organizationId,

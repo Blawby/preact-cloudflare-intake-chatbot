@@ -487,7 +487,7 @@ GROUP BY u.id, u.email, u.email_verified, u.name, u.created_at;
 -- ========================================
 -- These triggers ensure that updated_at columns are automatically updated
 -- when rows are modified, using the same millisecond timestamp format
--- as the auth schema defaults: (strftime('%s', 'now') * 1000 * 1000)
+-- as the auth schema defaults: (strftime('%s', 'now') * 1000)
 
 -- Trigger for user table
 CREATE TRIGGER IF NOT EXISTS trigger_user_updated_at
@@ -495,7 +495,7 @@ CREATE TRIGGER IF NOT EXISTS trigger_user_updated_at
   FOR EACH ROW
   WHEN NEW.updated_at = OLD.updated_at
 BEGIN
-  UPDATE user SET updated_at = (strftime('%s', 'now') * 1000 * 1000) WHERE id = NEW.id;
+  UPDATE user SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
 END;
 
 -- Trigger for session table
@@ -504,7 +504,7 @@ CREATE TRIGGER IF NOT EXISTS trigger_session_updated_at
   FOR EACH ROW
   WHEN NEW.updated_at = OLD.updated_at
 BEGIN
-  UPDATE session SET updated_at = (strftime('%s', 'now') * 1000 * 1000) WHERE id = NEW.id;
+  UPDATE session SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
 END;
 
 -- Trigger for account table
@@ -513,7 +513,7 @@ CREATE TRIGGER IF NOT EXISTS trigger_account_updated_at
   FOR EACH ROW
   WHEN NEW.updated_at = OLD.updated_at
 BEGIN
-  UPDATE account SET updated_at = (strftime('%s', 'now') * 1000 * 1000) WHERE id = NEW.id;
+  UPDATE account SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
 END;
 
 -- Trigger for verification table
@@ -522,7 +522,7 @@ CREATE TRIGGER IF NOT EXISTS trigger_verification_updated_at
   FOR EACH ROW
   WHEN NEW.updated_at = OLD.updated_at
 BEGIN
-  UPDATE verification SET updated_at = (strftime('%s', 'now') * 1000 * 1000) WHERE id = NEW.id;
+  UPDATE verification SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
 END;
 
 -- Trigger for organization table
@@ -531,7 +531,7 @@ CREATE TRIGGER IF NOT EXISTS trigger_organization_updated_at
   FOR EACH ROW
   WHEN NEW.updated_at = OLD.updated_at
 BEGIN
-  UPDATE organization SET updated_at = (strftime('%s', 'now') * 1000 * 1000) WHERE id = NEW.id;
+  UPDATE organization SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
 END;
 
 -- Trigger for subscription table
@@ -540,6 +540,6 @@ CREATE TRIGGER IF NOT EXISTS trigger_subscription_updated_at
   FOR EACH ROW
   WHEN NEW.updated_at = OLD.updated_at
 BEGIN
-  UPDATE subscription SET updated_at = (strftime('%s', 'now') * 1000 * 1000) WHERE id = NEW.id;
+  UPDATE subscription SET updated_at = (strftime('%s', 'now') * 1000) WHERE id = NEW.id;
 END;
 

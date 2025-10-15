@@ -1,11 +1,10 @@
-import { useState, useCallback, useEffect } from 'preact/hooks';
+import { useState, useCallback, useEffect, useRef } from 'preact/hooks';
+import { z } from 'zod';
 import { 
   getOrganizationsEndpoint, 
   getOrganizationWorkspaceEndpoint 
 } from '../config/api';
 
-// Global flag to prevent multiple simultaneous API calls
-let globalFetchingInProgress = false;
 
 // Types
 export type Role = 'owner' | 'admin' | 'attorney' | 'paralegal';
@@ -86,6 +85,130 @@ export interface UpdateOrgData {
   description?: string;
 }
 
+// Zod validation schemas
+const RoleSchema = z.enum(['owner', 'admin', 'attorney', 'paralegal']);
+
+const OrganizationSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  stripeCustomerId: z.string().nullable().optional(),
+  subscriptionTier: z.enum(['free', 'plus', 'business', 'enterprise']).nullable().optional(),
+  seats: z.number().nullable().optional(),
+  config: z.object({
+    metadata: z.object({
+      subscriptionPlan: z.string().optional(),
+      planStatus: z.string().optional(),
+    }).optional(),
+  }).optional(),
+});
+
+const MemberSchema = z.object({
+  userId: z.string(),
+  role: RoleSchema,
+  email: z.string(),
+  name: z.string().optional(),
+  image: z.string().optional(),
+  createdAt: z.string(),
+});
+
+const InvitationSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  organizationName: z.string().optional(),
+  email: z.string(),
+  role: RoleSchema,
+  status: z.enum(['pending', 'accepted', 'declined']),
+  invitedBy: z.string(),
+  expiresAt: z.string(),
+  createdAt: z.string(),
+});
+
+
+const TokenApiResponseSchema = z.object({
+  id: z.string(),
+  tokenName: z.string(),
+  permissions: z.array(z.string()).optional(),
+  createdAt: z.string(),
+  lastUsedAt: z.string().optional(),
+});
+
+const CreateTokenResponseSchema = z.object({
+  token: z.string(),
+  tokenId: z.string(),
+});
+
+const MembersResponseSchema = z.object({
+  members: z.array(MemberSchema),
+});
+
+const WorkspaceResourceSchema = z.record(z.string(), z.array(z.unknown()));
+
+// Type guard functions
+function validateOrganizations(data: unknown): Organization[] {
+  const result = z.array(OrganizationSchema).safeParse(data);
+  if (!result.success) {
+    console.error('Organization validation failed:', result.error);
+    throw new Error('Invalid organization data received from API');
+  }
+  return result.data;
+}
+
+function validateOrganization(data: unknown): Organization {
+  const result = OrganizationSchema.safeParse(data);
+  if (!result.success) {
+    console.error('Single organization validation failed:', result.error);
+    throw new Error('Invalid organization data received from API');
+  }
+  return result.data;
+}
+
+function validateInvitations(data: unknown): Invitation[] {
+  const result = z.array(InvitationSchema).safeParse(data);
+  if (!result.success) {
+    console.error('Invitation validation failed:', result.error);
+    throw new Error('Invalid invitation data received from API');
+  }
+  return result.data;
+}
+
+function validateMembersResponse(data: unknown): { members: Member[] } {
+  const result = MembersResponseSchema.safeParse(data);
+  if (!result.success) {
+    console.error('Members response validation failed:', result.error);
+    throw new Error('Invalid members data received from API');
+  }
+  return result.data;
+}
+
+function validateTokenApiResponses(data: unknown): TokenApiResponse[] {
+  const result = z.array(TokenApiResponseSchema).safeParse(data);
+  if (!result.success) {
+    console.error('Token API response validation failed:', result.error);
+    throw new Error('Invalid token data received from API');
+  }
+  return result.data;
+}
+
+function validateCreateTokenResponse(data: unknown): { token: string; tokenId: string } {
+  const result = CreateTokenResponseSchema.safeParse(data);
+  if (!result.success) {
+    console.error('Create token response validation failed:', result.error);
+    throw new Error('Invalid create token response received from API');
+  }
+  return result.data;
+}
+
+function validateWorkspaceResource(data: unknown): WorkspaceResource {
+  const result = WorkspaceResourceSchema.safeParse(data);
+  if (!result.success) {
+    console.error('Workspace resource validation failed:', result.error);
+    throw new Error('Invalid workspace data received from API');
+  }
+  return result.data;
+}
+
 interface UseOrganizationManagementReturn {
   // Organization CRUD
   organizations: Organization[];
@@ -133,7 +256,8 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Prevent multiple simultaneous calls - using global flag instead
+  // Hook-scoped flag to prevent multiple simultaneous API calls
+  const fetchingInProgress = useRef(false);
 
   // Helper function to make API calls - stable reference
   const apiCall = useCallback(async (url: string, options: RequestInit = {}, timeoutMs: number = 15000) => {
@@ -218,16 +342,17 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
 
   // Fetch user's organizations
   const fetchOrganizations = useCallback(async () => {
-    // Prevent multiple simultaneous calls globally
-    if (globalFetchingInProgress) {
+    // Prevent multiple simultaneous calls
+    if (fetchingInProgress.current) {
       return;
     }
     
     try {
-      globalFetchingInProgress = true;
+      fetchingInProgress.current = true;
       setLoading(true);
       setError(null);
-      const data = await apiCall(`${getOrganizationsEndpoint()}/me`) as Organization[];
+      const rawData = await apiCall(`${getOrganizationsEndpoint()}/me`);
+      const data = validateOrganizations(rawData);
       setOrganizations(data || []);
       // Set first organization as current (single org model)
       setCurrentOrganization(data?.[0] || null);
@@ -235,35 +360,37 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
       setError(err instanceof Error ? err.message : 'Failed to fetch organizations');
     } finally {
       setLoading(false);
-      globalFetchingInProgress = false;
+      fetchingInProgress.current = false;
     }
   }, [apiCall]);
 
   // Fetch pending invitations
   const fetchInvitations = useCallback(async () => {
-    // Prevent multiple simultaneous calls globally
-    if (globalFetchingInProgress) {
+    // Prevent multiple simultaneous calls
+    if (fetchingInProgress.current) {
       return;
     }
     
     try {
-      globalFetchingInProgress = true;
-      const data = await apiCall(`${getOrganizationsEndpoint()}/me/invitations`) as Invitation[];
+      fetchingInProgress.current = true;
+      const rawData = await apiCall(`${getOrganizationsEndpoint()}/me/invitations`);
+      const data = validateInvitations(rawData);
       setInvitations(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch invitations');
       setInvitations([]);
     } finally {
-      globalFetchingInProgress = false;
+      fetchingInProgress.current = false;
     }
   }, [apiCall]);
 
   // Create organization
   const createOrganization = useCallback(async (data: CreateOrgData): Promise<Organization> => {
-    const result = await apiCall(getOrganizationsEndpoint(), {
+    const rawResult = await apiCall(getOrganizationsEndpoint(), {
       method: 'POST',
       body: JSON.stringify(data),
-    }) as Organization;
+    });
+    const result = validateOrganization(rawResult);
     await fetchOrganizations(); // Refresh list
     return result;
   }, [apiCall, fetchOrganizations]);
@@ -288,7 +415,8 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch members
   const fetchMembers = useCallback(async (orgId: string): Promise<void> => {
     try {
-      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member`) as { members: Member[] };
+      const rawData = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member`);
+      const data = validateMembersResponse(rawData);
       setMembers(prev => ({ ...prev, [orgId]: data.members || [] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch members');
@@ -340,7 +468,8 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch API tokens
   const fetchTokens = useCallback(async (orgId: string): Promise<void> => {
     try {
-      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`) as TokenApiResponse[];
+      const rawData = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`);
+      const data = validateTokenApiResponses(rawData);
       // Map API response to ApiToken shape
       const mappedTokens = (data || []).map((token: TokenApiResponse) => ({
         id: token.id,
@@ -358,10 +487,11 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
 
   // Create API token
   const createToken = useCallback(async (orgId: string, name: string): Promise<{ token: string; tokenId: string }> => {
-    const result = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`, {
+    const rawResult = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`, {
       method: 'POST',
       body: JSON.stringify({ tokenName: name }),
-    }) as { token: string; tokenId: string };
+    });
+    const result = validateCreateTokenResponse(rawResult);
     await fetchTokens(orgId); // Refresh tokens
     return { token: result.token, tokenId: result.tokenId };
   }, [apiCall, fetchTokens]);
@@ -377,7 +507,8 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch workspace data
   const fetchWorkspaceData = useCallback(async (orgId: string, resource: string): Promise<void> => {
     try {
-      const data = await apiCall(getOrganizationWorkspaceEndpoint(orgId, resource)) as WorkspaceResource;
+      const rawData = await apiCall(getOrganizationWorkspaceEndpoint(orgId, resource));
+      const data = validateWorkspaceResource(rawData);
       setWorkspaceData(prev => ({
         ...prev,
         [orgId]: {
