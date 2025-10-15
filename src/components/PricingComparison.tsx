@@ -1,6 +1,8 @@
 import { FunctionComponent } from 'preact';
 import { useTranslation } from '@/i18n/hooks';
 import { getBusinessPrices } from '../utils/stripe-products';
+import { buildPriceDisplay } from '../utils/currencyFormatter';
+import { mockUserDataService } from '../utils/mockUserData';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { 
   ChatBubbleLeftRightIcon, 
@@ -25,7 +27,13 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
   className = ''
 }) => {
   const { t } = useTranslation('pricing');
-  const prices = getBusinessPrices();
+  
+  // Get user preferences for locale and currency
+  const preferences = mockUserDataService.getPreferences();
+  const userLocale = preferences.language === 'auto-detect' ? 'en' : preferences.language;
+  const userCurrency = 'USD'; // TODO: Add currency preference to user preferences
+  
+  const _prices = getBusinessPrices(userLocale, userCurrency);
   
   const allPlans = [
     {
@@ -68,7 +76,7 @@ const PricingComparison: FunctionComponent<PricingComparisonProps> = ({
     {
       id: 'business',
       name: t('plans.business.name'),
-      price: prices.monthly,
+      price: buildPriceDisplay(40, userCurrency, 'month', userLocale, t),
       description: t('plans.business.description'),
       features: [
         {

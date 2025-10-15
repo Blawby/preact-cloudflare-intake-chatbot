@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
-import { useTranslation } from '@/i18n/hooks';
+import { useTranslation, i18n } from '@/i18n/hooks';
 import { useNavigation } from '../utils/navigation';
 import Modal from './Modal';
 import { Button } from './ui/Button';
@@ -8,6 +8,7 @@ import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Select } from './ui/input/Select';
 import { type SubscriptionTier } from '../utils/mockUserData';
 import { getBusinessPrices } from '../utils/stripe-products';
+import { buildPriceDisplay } from '../utils/currencyFormatter';
 import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
 
 interface PricingModalProps {
@@ -43,8 +44,13 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
     });
   };
 
+  // Get user preferences for locale and currency
+  const preferences = mockUserDataService.getPreferences();
+  const userLocale = preferences.language === 'auto-detect' ? 'en' : preferences.language;
+  const userCurrency = 'USD'; // TODO: Add currency preference to user preferences
+  
   // Build pricing plans from real Stripe config
-  const prices = getBusinessPrices();
+  const _prices = getBusinessPrices(userLocale, userCurrency);
   const allPlans = [
     {
       id: 'free' as SubscriptionTier,
@@ -58,7 +64,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
     {
       id: 'business' as SubscriptionTier,
       name: t('plans.business.name'),
-      price: prices.monthly,
+      price: buildPriceDisplay(40, userCurrency, 'month', userLocale, t),
       description: t('plans.business.description'),
       features: [],
       buttonText: t('plans.business.buttonText'),
@@ -145,17 +151,14 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
     }
   };
 
-  // Simplified country options
-  const countryOptions = [
-    { value: 'us', label: t('country.us') },
-    { value: 'vn', label: t('country.vn') },
-    { value: 'gb', label: t('country.gb') },
-    { value: 'de', label: t('country.de') },
-    { value: 'fr', label: t('country.fr') },
-    { value: 'es', label: t('country.es') },
-    { value: 'jp', label: t('country.jp') },
-    { value: 'cn', label: t('country.cn') },
-  ];
+  // Country options via Intl.DisplayNames (locale-aware)
+  const regionCodes = ['US','VN','GB','DE','FR','ES','JP','CN'] as const;
+  const locale = i18n.language || 'en';
+  const displayNames = new Intl.DisplayNames([locale], { type: 'region' });
+  const countryOptions = regionCodes.map(code => ({
+    value: code.toLowerCase(),
+    label: displayNames.of(code) || code
+  }));
 
   return (
     <Modal
@@ -172,7 +175,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
             variant="icon"
             size="sm"
             className="absolute top-4 right-4"
-            aria-label={t('common.close')}
+            aria-label={t('common:close')}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

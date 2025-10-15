@@ -8,7 +8,7 @@ The Blawby AI Chatbot supports **19 languages** across the globe, with comprehen
 
 ### Current Languages (19 Total)
 
-All 19 languages are fully supported in the codebase with complete translation files. However, the UI language selector displays only languages with ≥90% translation completion to ensure quality user experience.
+We support 19 configured locales. The UI language selector displays only languages with ≥90% translation completion; the remaining locales are template-only and hidden until completed.
 
 | Language | Code | Regions | Native Speakers | Translation Status | UI Visible |
 |----------|------|---------|-----------------|-------------------|------------|
@@ -100,7 +100,7 @@ We use **6 namespaces** to organize translations:
 ### Usage in Components
 
 ```typescript
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/hooks';
 
 function MyComponent() {
   const { t } = useTranslation('common'); // Specify namespace
@@ -351,7 +351,7 @@ Add language name in all locale `common.json` files:
 
 ### Step 6: Update Country Mapping (if applicable)
 
-Add country codes in `src/data/mockUserData.ts`:
+Add country codes in `src/utils/mockUserData.ts`:
 
 ```typescript
 export const countryToLanguageMap: Record<string, Language> = {
@@ -500,9 +500,10 @@ console.log('Loaded namespaces:', i18n.store.data);
 ## Resources
 
 ### Internal Documentation
-- [Translation File Structure](./TRANSLATION_STRUCTURE.md)
-- [RTL Development Guide](./RTL_GUIDE.md)
-- [Testing i18n](./TESTING_I18N.md)
+<!-- TODO: Create these documentation files -->
+<!-- - [Translation File Structure](./TRANSLATION_STRUCTURE.md) -->
+<!-- - [RTL Development Guide](./RTL_GUIDE.md) -->
+<!-- - [Testing i18n](./TESTING_I18N.md) -->
 
 ### External Resources
 - [i18next Documentation](https://www.i18next.com/)
