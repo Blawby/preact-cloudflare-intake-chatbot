@@ -106,11 +106,31 @@ else
     exit 1
 fi
 
-# Test 6: Stripe Webhook Endpoint (should validate secret)
-echo "6. Testing Stripe Webhook Endpoint..."
-WEBHOOK_RESPONSE=$(curl -s --fail-with-body -X POST "$BASE_URL/api/auth/stripe/webhook" \
+# Test 6: Stripe Checkout Endpoint (should require auth and valid organization)
+echo "6. Testing Stripe Checkout Endpoint..."
+CHECKOUT_HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/checkout_response.json -X POST "$BASE_URL/api/auth/subscription/upgrade" \
+    -H "Content-Type: application/json" \
+    -d '{"organizationId":"test-org","seats":1,"plan":"business"}')
+CHECKOUT_RESPONSE=$(cat /tmp/checkout_response.json)
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    echo "❌ Stripe checkout endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
+    echo "Response: $CHECKOUT_RESPONSE"
+    exit 1
+fi
+if [ "$CHECKOUT_HTTP_CODE" -ne 401 ]; then
+    echo "❌ Expected 401 status code, got $CHECKOUT_HTTP_CODE"
+    echo "Response: $CHECKOUT_RESPONSE"
+    exit 1
+fi
+echo "✅ Stripe checkout endpoint correctly requires authentication"
+
+# Test 7: Stripe Webhook Endpoint (should validate secret)
+echo "7. Testing Stripe Webhook Endpoint..."
+WEBHOOK_HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/webhook_response.json -X POST "$BASE_URL/api/auth/stripe/webhook" \
     -H "Content-Type: application/json" \
     -d '{"type":"customer.created","data":{"object":{"id":"cus_test123"}}}')
+WEBHOOK_RESPONSE=$(cat /tmp/webhook_response.json)
 CURL_EXIT_CODE=$?
 if [ $CURL_EXIT_CODE -ne 0 ]; then
     echo "❌ Stripe webhook endpoint request failed (curl exit code: $CURL_EXIT_CODE)"
@@ -121,6 +141,7 @@ if echo "$WEBHOOK_RESPONSE" | jq -e '.code == "WEBHOOK_ERROR_STRIPE_WEBHOOK_SECR
     echo "✅ Stripe webhook endpoint correctly validates webhook secret"
 else
     echo "❌ Stripe webhook endpoint not properly validating secrets"
+    echo "Response: $WEBHOOK_RESPONSE"
     exit 1
 fi
 
@@ -132,6 +153,7 @@ echo "✅ Organizations endpoint with Stripe fields"
 echo "✅ Legacy payment endpoints disabled"
 echo "✅ Subscription sync endpoint requires auth"
 echo "✅ Better Auth integration working"
+echo "✅ Stripe checkout endpoint requires auth"
 echo "✅ Stripe webhook validation working"
 echo ""
 echo "🚀 Stripe integration is fully operational!"

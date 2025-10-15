@@ -1,21 +1,23 @@
 import { sqliteTable, text, integer, unique, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
-export const users = sqliteTable("users", {
+export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
   emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
   name: text("name"),
   image: text("image"),
-  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   stripeCustomerId: text("stripe_customer_id").unique(),
+  organizationId: text("organization_id"),
+  role: text("role"),
+  phone: text("phone"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
-export const sessions = sqliteTable("sessions", {
+export const session = sqliteTable("session", {
   id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
   token: text("token").notNull().unique(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
@@ -24,9 +26,9 @@ export const sessions = sqliteTable("sessions", {
   userAgent: text("user_agent"),
 });
 
-export const accounts = sqliteTable("accounts", {
+export const account = sqliteTable("account", {
   id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
   accessToken: text("access_token"),
@@ -45,7 +47,7 @@ export const accounts = sqliteTable("accounts", {
   uniqueProviderUser: unique("unique_provider_user").on(table.providerId, table.userId),
 }));
 
-export const verifications = sqliteTable("verifications", {
+export const verification = sqliteTable("verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
@@ -55,7 +57,7 @@ export const verifications = sqliteTable("verifications", {
 });
 
 // Organization plugin tables
-export const organizations = sqliteTable("organizations", {
+export const organization = sqliteTable("organization", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
@@ -71,8 +73,8 @@ export const organizations = sqliteTable("organizations", {
 
 export const member = sqliteTable("member", {
   id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
-  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 }, (table) => ({
@@ -81,10 +83,11 @@ export const member = sqliteTable("member", {
   memberUserIdx: index("member_user_idx").on(table.userId),
 }));
 
-export const subscriptions = sqliteTable("subscriptions", {
+export const subscription = sqliteTable("subscription", {
   id: text("id").primaryKey(),
   plan: text("plan").notNull(),
-  referenceId: text("reference_id").notNull().references(() => organizations.id, { onDelete: "cascade" }), // References organizations.id for organization-level subscriptions
+  referenceId: text("reference_id").notNull().references(() => organization.id, { onDelete: "cascade" }), // References organization.id for organization-level subscriptions
+  stripeCustomerId: text("stripe_customer_id"), // Added for Better Auth Stripe plugin
   stripeSubscriptionId: text("stripe_subscription_id").unique(),
   status: text("status").notNull().default("incomplete"), // Validated by CHECK constraint in SQL
   periodStart: integer("period_start", { mode: "timestamp" }),

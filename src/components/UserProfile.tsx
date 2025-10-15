@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
+import { memo } from 'preact/compat';
 import { UserIcon, Cog6ToothIcon, SparklesIcon, QuestionMarkCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { authClient } from '../lib/authClient';
 import { sanitizeUserImageUrl } from '../utils/urlValidation';
@@ -34,13 +35,21 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(0);
+  const checkingAuthRef = useRef(false);
   const { navigateToAuth, navigate } = useNavigation();
 
   const checkAuthStatus = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (checkingAuthRef.current) {
+      return;
+    }
+    
     // Increment request ID to cancel previous requests
     const currentRequestId = ++requestIdRef.current;
     
+    
     try {
+      checkingAuthRef.current = true;
       // Get session from Better Auth
       const session = await authClient.getSession();
       
@@ -50,20 +59,17 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       }
       
       if (session?.data?.user) {
-        // Use organization tier directly (no mapping needed)
-        const orgTier = currentOrganization?.subscriptionTier;
-        const displayTier = orgTier || 'free';
-        
-        // User is authenticated, create user object with real subscription tier
+        // User is authenticated, create user object with basic info
+        // Organization data will be updated separately
         const userWithTier = {
           id: session.data.user.id,
           name: session.data.user.name,
           email: session.data.user.email,
           image: session.data.user.image,
-          organizationId: currentOrganization?.id || null,
+          organizationId: null, // Will be updated by separate effect
           role: 'user', // Default role
           phone: null,
-          subscriptionTier: displayTier as SubscriptionTier
+          subscriptionTier: 'free' as SubscriptionTier // Will be updated by separate effect
         };
         setUser(userWithTier);
       } else {
@@ -81,13 +87,14 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
         console.warn('Network error checking auth status - user may be offline');
       }
       setUser(null);
+    } finally {
+      checkingAuthRef.current = false;
+      // Only update loading state if this is still the current request
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
-    
-    // Only update loading state if this is still the current request
-    if (currentRequestId === requestIdRef.current) {
-      setLoading(false);
-    }
-  }, [currentOrganization]);
+  }, []); // Remove currentOrganization dependency to prevent infinite loop
 
   useEffect(() => {
     checkAuthStatus();
@@ -116,7 +123,24 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       debouncedResizeHandler.cancel();
       window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
     };
-  }, [checkAuthStatus]);
+  }, []); // Remove checkAuthStatus from dependencies to prevent infinite loop
+
+  // Update user subscription tier and organization ID when currentOrganization changes (without re-checking auth)
+  useEffect(() => {
+    if (user && currentOrganization) {
+      const orgTier = currentOrganization.subscriptionTier;
+      const displayTier = orgTier || 'free';
+      
+      // Only update if the tier or organization ID actually changed
+      if (user.subscriptionTier !== displayTier || user.organizationId !== currentOrganization.id) {
+        setUser(prevUser => prevUser ? {
+          ...prevUser,
+          subscriptionTier: displayTier as SubscriptionTier,
+          organizationId: currentOrganization.id
+        } : null);
+      }
+    }
+  }, [currentOrganization?.id, currentOrganization?.subscriptionTier, user?.subscriptionTier, user?.organizationId]);
 
   // Handle dropdown close when clicking outside
   useEffect(() => {
@@ -135,17 +159,6 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
     };
   }, [showDropdown]);
 
-  // Initial load when organization data is available
-  useEffect(() => {
-    if (!orgLoading && currentOrganization) {
-      checkAuthStatus();
-    }
-  }, [orgLoading, currentOrganization, checkAuthStatus]);
-
-  // Re-run when organization tier changes
-  useEffect(() => {
-    if (user) checkAuthStatus();
-  }, [user, currentOrganization?.subscriptionTier, checkAuthStatus]);
 
 
 
@@ -376,4 +389,4 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   );
 };
 
-export default UserProfile;
+export default memo(UserProfile);

@@ -72,7 +72,7 @@ async function updateOrganizationSubscriptionMetadata(args: {
       : "free";
 
   await env.DB.prepare(
-    `UPDATE organizations 
+    `UPDATE organization 
        SET stripe_customer_id = ?, 
            subscription_tier = ?, 
            seats = ?, 
@@ -83,7 +83,7 @@ async function updateOrganizationSubscriptionMetadata(args: {
       stripeCustomerId,
       normalizedTier,
       normalizedSeats,
-      Math.floor(Date.now() / 1000),
+      Date.now(),
       organizationId
     )
     .run();

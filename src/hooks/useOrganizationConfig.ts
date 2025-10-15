@@ -265,7 +265,7 @@ export const useOrganizationConfig = ({ onError }: UseOrganizationConfigOptions 
     if (organizationId) {
       fetchOrganizationConfig(organizationId);
     }
-  }, [organizationId, fetchOrganizationConfig]);
+  }, [organizationId]); // Remove fetchOrganizationConfig from dependencies to prevent infinite loop
 
   return {
     organizationId,

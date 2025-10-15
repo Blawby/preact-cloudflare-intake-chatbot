@@ -367,7 +367,7 @@ export class OrganizationService {
       // Query Better Auth organizations table - support both ID and slug lookups
       console.log('Querying database for organization...');
       const orgRow = await this.env.DB.prepare(
-        'SELECT id, name, slug, domain, config, stripe_customer_id, subscription_tier, seats, created_at, updated_at FROM organizations WHERE id = ? OR slug = ?'
+        'SELECT id, name, slug, domain, config, stripe_customer_id, subscription_tier, seats, created_at, updated_at FROM organization WHERE id = ? OR slug = ?'
       ).bind(organizationId, organizationId).first();
       
       if (orgRow) {
@@ -426,7 +426,7 @@ export class OrganizationService {
         // Get organizations where user is a member
         const orgRows = await this.env.DB.prepare(`
           SELECT o.id, o.name, o.slug, o.domain, o.config, o.stripe_customer_id, o.subscription_tier, o.seats, o.created_at, o.updated_at
-          FROM organizations o
+          FROM organization o
           INNER JOIN member m ON o.id = m.organization_id
           WHERE m.user_id = ?
           ORDER BY o.created_at DESC
@@ -456,7 +456,7 @@ export class OrganizationService {
         // Get all organizations (for admin purposes)
         const orgRows = await this.env.DB.prepare(`
           SELECT id, name, slug, domain, config, stripe_customer_id, subscription_tier, seats, created_at, updated_at
-          FROM organizations
+          FROM organization
           ORDER BY created_at DESC
         `).all();
         
@@ -559,7 +559,7 @@ export class OrganizationService {
     
     try {
       const result = await this.env.DB.prepare(`
-        INSERT INTO organizations (id, slug, name, domain, config, stripe_customer_id, subscription_tier, seats, created_at, updated_at)
+        INSERT INTO organization (id, slug, name, domain, config, stripe_customer_id, subscription_tier, seats, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         organization.id,
@@ -577,7 +577,7 @@ export class OrganizationService {
       console.log('OrganizationService.createOrganization: Insert result:', { success: result.success });
       
       // Verify the organization was actually created by querying the database
-      const verifyOrganization = await this.env.DB.prepare('SELECT id FROM organizations WHERE id = ?').bind(organization.id).first();
+      const verifyOrganization = await this.env.DB.prepare('SELECT id FROM organization WHERE id = ?').bind(organization.id).first();
       if (!verifyOrganization) {
         throw new Error('Organization creation failed - organization not found in database after insert');
       }
@@ -618,7 +618,7 @@ export class OrganizationService {
     updatedOrganization.seats = Number(updatedOrganization.seats ?? existingOrganization.seats ?? 1) || 1;
 
     await this.env.DB.prepare(`
-      UPDATE organizations 
+      UPDATE organization 
       SET slug = ?, name = ?, domain = ?, config = ?, stripe_customer_id = ?, subscription_tier = ?, seats = ?, updated_at = ?
       WHERE id = ?
     `).bind(
@@ -650,7 +650,7 @@ export class OrganizationService {
     console.log('✅ Organization found for deletion:', { id: existingOrganization.id, slug: existingOrganization.slug, name: existingOrganization.name });
     
     try {
-      const result = await this.env.DB.prepare('DELETE FROM organizations WHERE id = ?').bind(organizationId).run();
+      const result = await this.env.DB.prepare('DELETE FROM organization WHERE id = ?').bind(organizationId).run();
       console.log('Delete result:', { success: result.success });
       
       this.clearCache(organizationId);
@@ -659,7 +659,7 @@ export class OrganizationService {
       // In D1 local development, changes might be undefined but success is true
       if (result.success) {
         // Double-check by trying to get the organization again
-        const verifyDeleted = await this.env.DB.prepare('SELECT id FROM organizations WHERE id = ?').bind(organizationId).first();
+        const verifyDeleted = await this.env.DB.prepare('SELECT id FROM organization WHERE id = ?').bind(organizationId).first();
         if (!verifyDeleted) {
           console.log('✅ Organization deleted successfully (verified by query)');
           return true;
@@ -891,7 +891,7 @@ export class OrganizationService {
       // Update the organization in the database
       // Note: updated_at is automatically handled by database trigger
       const result = await this.env.DB.prepare(`
-        UPDATE organizations SET config = ? WHERE id = ?
+        UPDATE organization SET config = ? WHERE id = ?
       `).bind(JSON.stringify(updatedConfig), organizationId).run();
 
       // Check if rows were actually updated using meta.changes

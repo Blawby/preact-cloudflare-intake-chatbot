@@ -152,7 +152,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
                 i.expires_at as expiresAt,
                 i.created_at as createdAt
            FROM invitations i
-           LEFT JOIN organizations o ON i.organization_id = o.id
+           LEFT JOIN organization o ON i.organization_id = o.id
           WHERE i.email = ? AND i.status = 'pending'
           ORDER BY i.created_at DESC`
       ).bind(user.email).all();
@@ -202,7 +202,7 @@ export async function handleOrganizations(request: Request, env: Env): Promise<R
                     u.name,
                     u.image
                FROM member m
-               LEFT JOIN users u ON u.id = m.user_id
+               LEFT JOIN user u ON u.id = m.user_id
               WHERE m.organization_id = ?
               ORDER BY m.role DESC, m.created_at ASC`
           ).bind(organization.id).all();

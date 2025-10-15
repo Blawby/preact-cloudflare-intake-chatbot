@@ -17,12 +17,12 @@ async function normalizeOrganizationId(env: Env, organizationId?: string | null)
 
   // Try to find organization by ID (ULID) first, then by slug
   let organizationRow = await env.DB.prepare(
-    'SELECT id FROM organizations WHERE id = ?'
+    'SELECT id FROM organization WHERE id = ?'
   ).bind(trimmed).first();
   
   if (!organizationRow) {
     organizationRow = await env.DB.prepare(
-      'SELECT id FROM organizations WHERE slug = ?'
+      'SELECT id FROM organization WHERE slug = ?'
     ).bind(trimmed).first();
   }
   

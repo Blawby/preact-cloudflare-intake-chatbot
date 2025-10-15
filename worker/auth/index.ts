@@ -174,13 +174,13 @@ export async function getAuth(env: Env, request?: Request) {
             if (isAuthorized) {
               try {
                 const existingIncomplete = await env.DB.prepare(
-                  `SELECT id FROM subscriptions 
+                  `SELECT id FROM subscription 
                    WHERE reference_id = ? AND status = 'incomplete'`
                 ).bind(referenceId).first<{ id: string }>();
                 
                 if (existingIncomplete) {
                   await env.DB.prepare(
-                    `DELETE FROM subscriptions WHERE id = ?`
+                    `DELETE FROM subscription WHERE id = ?`
                   ).bind(existingIncomplete.id).run();
                 }
               } catch (error) {
@@ -203,7 +203,7 @@ export async function getAuth(env: Env, request?: Request) {
         let stripeClient: Stripe;
         try {
           stripeClient = new Stripe(stripeSecretKey, {
-            apiVersion: "2024-08-14", // Use stable version instead of preview
+            apiVersion: "2025-08-27.basil", // Use current stable version
           });
         } catch (error) {
           console.error("❌ Failed to create Stripe client:", error);
@@ -370,7 +370,7 @@ export async function getAuth(env: Env, request?: Request) {
           d1: {
             db,
             options: {
-              usePlural: true,
+              usePlural: false,
               debugLogs: false,
             },
           },

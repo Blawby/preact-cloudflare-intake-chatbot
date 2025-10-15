@@ -66,7 +66,7 @@ async function retryAddMember(
         organizationId,
         userId,
         role,
-        Math.floor(Date.now() / 1000) // Convert to Unix timestamp (seconds since epoch)
+        Date.now() // Use milliseconds timestamp to match schema
       ).run();
       
       if (!result.success) {
@@ -226,7 +226,7 @@ async function waitForSessionReady(
     try {
       // Check if user exists in the database
       const user = await env.DB.prepare(`
-        SELECT id FROM users WHERE id = ?
+        SELECT id FROM user WHERE id = ?
       `).bind(userId).first<{ id: string }>();
       
       if (user && user.id === userId) {

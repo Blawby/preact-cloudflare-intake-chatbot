@@ -4,6 +4,9 @@ import {
   getOrganizationWorkspaceEndpoint 
 } from '../config/api';
 
+// Global flag to prevent multiple simultaneous API calls
+let globalFetchingInProgress = false;
+
 // Types
 export type Role = 'owner' | 'admin' | 'attorney' | 'paralegal';
 
@@ -52,6 +55,26 @@ export interface ApiToken {
   lastUsed?: string;
 }
 
+// API Response types
+interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+interface WorkspaceResource {
+  [key: string]: unknown[];
+}
+
+interface TokenApiResponse {
+  id: string;
+  tokenName: string;
+  permissions?: string[];
+  createdAt: string;
+  lastUsedAt?: string;
+  [key: string]: unknown;
+}
+
 export interface CreateOrgData {
   name: string;
   slug?: string;
@@ -94,7 +117,7 @@ interface UseOrganizationManagementReturn {
   revokeToken: (orgId: string, tokenId: string) => Promise<void>;
   
   // Workspace data
-  getWorkspaceData: (orgId: string, resource: string) => any[];
+  getWorkspaceData: (orgId: string, resource: string) => unknown[];
   fetchWorkspaceData: (orgId: string, resource: string) => Promise<void>;
   
   refetch: () => Promise<void>;
@@ -106,11 +129,13 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   const [members, setMembers] = useState<Record<string, Member[]>>({});
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [tokens, setTokens] = useState<Record<string, ApiToken[]>>({});
-  const [workspaceData, setWorkspaceData] = useState<Record<string, Record<string, any[]>>>({});
+  const [workspaceData, setWorkspaceData] = useState<Record<string, Record<string, unknown[]>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Prevent multiple simultaneous calls - using global flag instead
 
-  // Helper function to make API calls
+  // Helper function to make API calls - stable reference
   const apiCall = useCallback(async (url: string, options: RequestInit = {}, timeoutMs: number = 15000) => {
     // Create AbortController for timeout handling
     const controller = new AbortController();
@@ -133,7 +158,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
       clearTimeout(timeoutId);
 
       // Helper function to safely parse JSON response
-      const safeJsonParse = async (response: Response) => {
+      const safeJsonParse = async (response: Response): Promise<ApiResponse> => {
         // Check for no-content responses
         if (response.status === 204 || response.headers.get('content-length') === '0') {
           return { success: true, data: null };
@@ -147,7 +172,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
         
         // Safe JSON parsing with fallback
         try {
-          return await response.json();
+          return await response.json() as ApiResponse;
         } catch {
           return { success: true, data: null };
         }
@@ -187,16 +212,22 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
     return tokens[orgId] || [];
   }, [tokens]);
 
-  const getWorkspaceData = useCallback((orgId: string, resource: string): any[] => {
+  const getWorkspaceData = useCallback((orgId: string, resource: string): unknown[] => {
     return workspaceData[orgId]?.[resource] || [];
   }, [workspaceData]);
 
   // Fetch user's organizations
   const fetchOrganizations = useCallback(async () => {
+    // Prevent multiple simultaneous calls globally
+    if (globalFetchingInProgress) {
+      return;
+    }
+    
     try {
+      globalFetchingInProgress = true;
       setLoading(true);
       setError(null);
-      const data = await apiCall(`${getOrganizationsEndpoint()}/me`);
+      const data = await apiCall(`${getOrganizationsEndpoint()}/me`) as Organization[];
       setOrganizations(data || []);
       // Set first organization as current (single org model)
       setCurrentOrganization(data?.[0] || null);
@@ -204,26 +235,35 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
       setError(err instanceof Error ? err.message : 'Failed to fetch organizations');
     } finally {
       setLoading(false);
+      globalFetchingInProgress = false;
     }
   }, [apiCall]);
 
   // Fetch pending invitations
   const fetchInvitations = useCallback(async () => {
+    // Prevent multiple simultaneous calls globally
+    if (globalFetchingInProgress) {
+      return;
+    }
+    
     try {
-      const data = await apiCall(`${getOrganizationsEndpoint()}/me/invitations`);
+      globalFetchingInProgress = true;
+      const data = await apiCall(`${getOrganizationsEndpoint()}/me/invitations`) as Invitation[];
       setInvitations(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch invitations');
       setInvitations([]);
+    } finally {
+      globalFetchingInProgress = false;
     }
-  }, [apiCall, setError, setInvitations]);
+  }, [apiCall]);
 
   // Create organization
   const createOrganization = useCallback(async (data: CreateOrgData): Promise<Organization> => {
     const result = await apiCall(getOrganizationsEndpoint(), {
       method: 'POST',
       body: JSON.stringify(data),
-    });
+    }) as Organization;
     await fetchOrganizations(); // Refresh list
     return result;
   }, [apiCall, fetchOrganizations]);
@@ -248,7 +288,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch members
   const fetchMembers = useCallback(async (orgId: string): Promise<void> => {
     try {
-      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member`);
+      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/member`) as { members: Member[] };
       setMembers(prev => ({ ...prev, [orgId]: data.members || [] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch members');
@@ -300,9 +340,9 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch API tokens
   const fetchTokens = useCallback(async (orgId: string): Promise<void> => {
     try {
-      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`);
+      const data = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`) as TokenApiResponse[];
       // Map API response to ApiToken shape
-      const mappedTokens = (data || []).map((token: any) => ({
+      const mappedTokens = (data || []).map((token: TokenApiResponse) => ({
         id: token.id,
         name: token.tokenName,
         permissions: token.permissions || [],
@@ -321,7 +361,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
     const result = await apiCall(`${getOrganizationsEndpoint()}/${orgId}/tokens`, {
       method: 'POST',
       body: JSON.stringify({ tokenName: name }),
-    });
+    }) as { token: string; tokenId: string };
     await fetchTokens(orgId); // Refresh tokens
     return { token: result.token, tokenId: result.tokenId };
   }, [apiCall, fetchTokens]);
@@ -337,7 +377,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch workspace data
   const fetchWorkspaceData = useCallback(async (orgId: string, resource: string): Promise<void> => {
     try {
-      const data = await apiCall(getOrganizationWorkspaceEndpoint(orgId, resource));
+      const data = await apiCall(getOrganizationWorkspaceEndpoint(orgId, resource)) as WorkspaceResource;
       setWorkspaceData(prev => ({
         ...prev,
         [orgId]: {
@@ -358,10 +398,11 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
     ]);
   }, [fetchOrganizations, fetchInvitations]);
 
-  // Initial load
+  // Initial load - only run once on mount
   useEffect(() => {
-    refetch();
-  }, [refetch]);
+    fetchOrganizations();
+    fetchInvitations();
+  }, [fetchOrganizations, fetchInvitations]);
 
   return {
     organizations,

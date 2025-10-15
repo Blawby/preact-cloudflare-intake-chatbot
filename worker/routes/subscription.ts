@@ -50,7 +50,7 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
         // Query by internal subscription ID with ownership check
         subscriptionRecord = await env.DB.prepare(
           `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
-             FROM subscriptions
+             FROM subscription
             WHERE id = ? AND reference_id = ?
             LIMIT 1`
         )
@@ -60,7 +60,7 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
         // Query by Stripe subscription ID with ownership check
         subscriptionRecord = await env.DB.prepare(
           `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
-             FROM subscriptions
+             FROM subscription
             WHERE stripe_subscription_id = ? AND reference_id = ?
             LIMIT 1`
         )
@@ -70,7 +70,7 @@ export async function handleSubscription(request: Request, env: Env): Promise<Re
         // Fallback: query by organization ID (reference_id)
         subscriptionRecord = await env.DB.prepare(
           `SELECT id, plan, reference_id as referenceId, stripe_subscription_id as stripeSubscriptionId
-             FROM subscriptions
+             FROM subscription
             WHERE reference_id = ?
             ORDER BY updated_at DESC
             LIMIT 1`

@@ -160,7 +160,7 @@ async function storeFile(file: File, organizationId: string, sessionId: string, 
 
   // Check if the organization exists - this is required for file operations
   // This check MUST happen before any R2 upload to prevent orphaned files
-  const organizationCheckStmt = env.DB.prepare('SELECT id FROM organizations WHERE id = ? OR slug = ?');
+  const organizationCheckStmt = env.DB.prepare('SELECT id FROM organization WHERE id = ? OR slug = ?');
   const existingOrganization = await organizationCheckStmt.bind(organizationId, organizationId).first();
   
   if (!existingOrganization) {

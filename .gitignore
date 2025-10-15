@@ -74,6 +74,7 @@ undo-migration.js
 *.orig
 *.tmp
 *~
+backup_*.json
 
 # Misc
 .cache

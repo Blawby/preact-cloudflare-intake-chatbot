@@ -27,16 +27,16 @@ DROP TABLE IF EXISTS services;
 DROP TABLE IF EXISTS contact_forms;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS conversations;
-DROP TABLE IF EXISTS organizations;
+DROP TABLE IF EXISTS organization;
 DROP TABLE IF EXISTS session_audit_events;
 DROP TABLE IF EXISTS session_summaries;
 DROP TABLE IF EXISTS chat_messages;
 DROP TABLE IF EXISTS chat_sessions;
-DROP TABLE IF EXISTS verifications;
-DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS verification;
+DROP TABLE IF EXISTS account;
 DROP TABLE IF EXISTS passwords;
-DROP TABLE IF EXISTS sessions;
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS session;
+DROP TABLE IF EXISTS user;
 "
 
 echo "📝 Applying schema..."
