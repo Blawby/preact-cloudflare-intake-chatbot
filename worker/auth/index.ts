@@ -370,8 +370,8 @@ export async function getAuth(env: Env, request?: Request) {
           d1: {
             db,
             options: {
-              usePlural: false,
-              debugLogs: true,
+              usePlural: true,
+              debugLogs: false,
             },
           },
           // R2 for profile images only (only if FILES_BUCKET is available)
