@@ -62,8 +62,17 @@ export async function handleAuth(request: Request, env: Env): Promise<Response> 
         
         // Add corrected Set-Cookie headers
         setCookieHeaders.forEach(cookie => {
-          // Replace SameSite=Lax with SameSite=None
-          const fixedCookie = cookie.replace(/SameSite=Lax/gi, 'SameSite=None');
+          let fixedCookie = cookie;
+          
+          // Replace any SameSite=lax (case-insensitive) with SameSite=None
+          fixedCookie = fixedCookie.replace(/SameSite=lax/gi, 'SameSite=None');
+          
+          // Check if SameSite=None is present and Secure is not already present
+          if (/SameSite=None/i.test(fixedCookie) && !/;\s*Secure\s*(;|$)/i.test(fixedCookie)) {
+            // Add Secure attribute - append before any trailing semicolon or at the end
+            fixedCookie = fixedCookie.replace(/(;?\s*)$/, '; Secure$1');
+          }
+          
           console.log('🍪 Fixed cookie:', fixedCookie);
           newResponse.headers.append('Set-Cookie', fixedCookie);
         });
@@ -92,11 +101,19 @@ export async function handleAuth(request: Request, env: Env): Promise<Response> 
     return newResponse;
   } catch (error) {
     console.error('❌ Auth route handler error:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: 'Authentication service error',
-      details: error instanceof Error ? error.message : String(error)
-    }), {
+    
+    // Prepare error response - only include details in non-production environments
+    const errorResponse: { success: false; error: string; details?: string } = {
+      success: false,
+      error: 'Authentication service error'
+    };
+    
+    // Only include error details in non-production environments
+    if (env.NODE_ENV !== 'production') {
+      errorResponse.details = error instanceof Error ? error.message : String(error);
+    }
+    
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
