@@ -1,26 +1,38 @@
 // API Configuration
-// Set this to 'local' to use local development server, 'deployed' to use the live API
-const API_MODE = 'local' as const;
+// Environment-aware configuration that uses relative URLs in production
+// and explicit URLs in development
+
+/**
+ * Get the base URL for API requests
+ * - In development: Uses VITE_API_URL if set, otherwise falls back to localhost
+ * - In production: Uses relative URLs (same-origin) to avoid CORS issues
+ */
+function getBaseUrl(): string {
+  // Check for explicit API URL (development/override)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // In production or when no explicit URL is set, use relative URLs
+  // This works because frontend and API are served from the same domain
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  // Fallback for SSR/build-time (should not be used in runtime)
+  return '';
+}
 
 const API_CONFIG = {
-  local: {
-    baseUrl: 'http://localhost:8787',
-    chatEndpoint: '/api/chat',
-    organizationsEndpoint: '/api/organizations',
-    healthEndpoint: '/api/health',
-    matterCreationEndpoint: '/api/matter-creation'
-  },
-  deployed: {
-    baseUrl: 'https://blawby-ai-chatbot.paulchrisluke.workers.dev',
-    chatEndpoint: '/api/chat',
-    organizationsEndpoint: '/api/organizations',
-    healthEndpoint: '/api/health',
-    matterCreationEndpoint: '/api/matter-creation'
-  }
+  baseUrl: getBaseUrl(),
+  chatEndpoint: '/api/chat',
+  organizationsEndpoint: '/api/organizations',
+  healthEndpoint: '/api/health',
+  matterCreationEndpoint: '/api/matter-creation'
 };
 
 export const getApiConfig = () => {
-  return API_CONFIG[API_MODE];
+  return API_CONFIG;
 };
 
 export const getChatEndpoint = () => {
