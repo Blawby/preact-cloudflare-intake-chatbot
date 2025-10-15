@@ -8,7 +8,7 @@ export const user = sqliteTable("user", {
   name: text("name"),
   image: text("image"),
   stripeCustomerId: text("stripe_customer_id").unique(),
-  organizationId: text("organization_id"),
+  organizationId: text("organization_id").references(() => organization.id, { onDelete: "set null" }),
   role: text("role"),
   phone: text("phone"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),

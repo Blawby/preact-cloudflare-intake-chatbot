@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS organization (
   stripe_customer_id TEXT UNIQUE,
   subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'plus', 'business', 'enterprise')),
   seats INTEGER DEFAULT 1 CHECK (seats > 0),
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- Conversations table
@@ -25,8 +25,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   user_id TEXT,
   user_info JSON,
   status TEXT DEFAULT 'active',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- Messages table
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS messages (
   content TEXT NOT NULL,
   is_user BOOLEAN NOT NULL,
   metadata JSON,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- Contact form submissions table
@@ -52,8 +52,8 @@ CREATE TABLE IF NOT EXISTS contact_forms (
   status TEXT DEFAULT 'pending', -- 'pending', 'contacted', 'closed'
   assigned_lawyer TEXT,
   notes TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- Services table
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS services (
   payment_amount INTEGER,
   intake_form JSON,
   active BOOLEAN DEFAULT TRUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- Lawyers table for organization member management
@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS lawyers (
   hourly_rate INTEGER, -- in cents
   bar_number TEXT,
   license_state TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- Matters table to represent legal matters
@@ -112,9 +112,9 @@ CREATE TABLE IF NOT EXISTS matters (
   matter_number TEXT, -- Changed from case_number to matter_number
   tags JSON, -- Array of tags for categorization
   custom_fields JSON, -- Flexible metadata storage
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  closed_at DATETIME
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  closed_at INTEGER
 );
 
 -- Matter events table for matter activity logs
@@ -131,8 +131,8 @@ CREATE TABLE IF NOT EXISTS matter_events (
   amount INTEGER, -- in cents, for expenses/payments
   tags JSON, -- Array of tags
   metadata JSON, -- Additional structured data
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- Files table (replaces uploaded_files) - general-purpose file management
@@ -159,9 +159,9 @@ CREATE TABLE IF NOT EXISTS files (
   is_deleted BOOLEAN DEFAULT FALSE,
   uploaded_by_lawyer_id TEXT,
   metadata JSON, -- Additional file metadata
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  deleted_at DATETIME
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  deleted_at INTEGER
 );
 
 -- AI Training Data Tables --
@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS matter_questions (
   question TEXT NOT NULL,
   answer TEXT NOT NULL,
   source TEXT DEFAULT 'ai-form', -- 'ai-form' | 'human-entry' | 'followup'
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- AI generated summaries table for markdown matter summaries
@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS ai_generated_summaries (
   summary TEXT NOT NULL,
   model_used TEXT,
   prompt_snapshot TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- AI feedback table for user quality ratings and intent tags
@@ -206,7 +206,7 @@ CREATE TABLE IF NOT EXISTS ai_feedback (
   thumbs_up BOOLEAN,
   comments TEXT,
   intent TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 
@@ -233,8 +233,8 @@ CREATE TABLE IF NOT EXISTS payment_history (
   invoice_url TEXT,
   metadata JSON, -- Additional payment data
   notes TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 -- Organization API tokens table for secure token storage
@@ -245,9 +245,9 @@ CREATE TABLE IF NOT EXISTS organization_api_tokens (
   token_hash TEXT NOT NULL, -- SHA-256 hash of the actual token
   permissions JSON, -- Array of permissions this token has
   active BOOLEAN DEFAULT TRUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  last_used_at DATETIME,
-  expires_at DATETIME, -- Optional expiration date
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  last_used_at INTEGER,
+  expires_at INTEGER, -- Optional expiration date
   created_by TEXT, -- Who created this token
   notes TEXT
 );
@@ -262,10 +262,10 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
   status_reason TEXT,
   retention_horizon_days INTEGER NOT NULL DEFAULT 180,
   is_hold INTEGER NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  last_active DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  closed_at DATETIME,
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  last_active INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+  closed_at INTEGER,
   UNIQUE(id, organization_id)
 );
 
@@ -284,7 +284,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   content TEXT NOT NULL,
   metadata TEXT,
   token_count INTEGER,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at);
@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS session_summaries (
   session_id TEXT NOT NULL,
   summary TEXT NOT NULL,
   token_count INTEGER,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_summaries_session ON session_summaries(session_id, created_at DESC);
@@ -310,7 +310,7 @@ CREATE TABLE IF NOT EXISTS session_audit_events (
   actor_type TEXT NOT NULL,
   actor_id TEXT,
   payload TEXT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_audit_events_session ON session_audit_events(session_id, created_at);

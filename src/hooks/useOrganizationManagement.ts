@@ -4,6 +4,7 @@ import {
   getOrganizationsEndpoint, 
   getOrganizationWorkspaceEndpoint 
 } from '../config/api';
+import type { ApiResponse } from '../../worker/types';
 
 
 // Types
@@ -54,12 +55,6 @@ export interface ApiToken {
   lastUsed?: string;
 }
 
-// API Response types
-interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
 
 interface WorkspaceResource {
   [key: string]: unknown[];
@@ -240,7 +235,7 @@ interface UseOrganizationManagementReturn {
   revokeToken: (orgId: string, tokenId: string) => Promise<void>;
   
   // Workspace data
-  getWorkspaceData: (orgId: string, resource: string) => unknown[];
+  getWorkspaceData: <T = unknown>(orgId: string, resource: string) => T[];
   fetchWorkspaceData: (orgId: string, resource: string) => Promise<void>;
   
   refetch: () => Promise<void>;
@@ -337,8 +332,8 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
     return tokens[orgId] || [];
   }, [tokens]);
 
-  const getWorkspaceData = useCallback((orgId: string, resource: string): unknown[] => {
-    return workspaceData[orgId]?.[resource] || [];
+  const getWorkspaceData = useCallback(<T = unknown>(orgId: string, resource: string): T[] => {
+    return (workspaceData[orgId]?.[resource] || []) as T[];
   }, [workspaceData]);
 
   // Fetch user's organizations
