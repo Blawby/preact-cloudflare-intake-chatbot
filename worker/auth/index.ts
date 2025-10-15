@@ -408,7 +408,7 @@ export async function getAuth(env: Env, request?: Request) {
           ].filter(Boolean),
           advanced: {
             defaultCookieAttributes: {
-              sameSite: env.NODE_ENV === 'production' ? "none" : "lax",
+              sameSite: "lax", // Use lax for same-domain requests
               secure: env.NODE_ENV === 'production', // Secure in production
             },
             crossSubDomainCookies: {
