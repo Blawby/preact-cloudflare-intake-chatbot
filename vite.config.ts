@@ -240,5 +240,11 @@ export default defineConfig({
 
 			}
 		}
+	},
+	// Environment variables for development
+	define: {
+		// Set VITE_API_URL for development mode to use localhost
+		// In production builds, this will be undefined, triggering relative URL usage
+		'import.meta.env.VITE_API_URL': JSON.stringify(process.env.NODE_ENV === 'development' ? 'http://localhost:8787' : undefined)
 	}
 });
