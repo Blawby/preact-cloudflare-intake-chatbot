@@ -111,13 +111,13 @@ export class SessionService {
     return SESSION_COOKIE_MAX_AGE_SECONDS;
   }
 
-  static buildSessionCookie(token: string, maxAgeSeconds = SESSION_COOKIE_MAX_AGE_SECONDS): string {
+  static buildSessionCookie(token: string, maxAgeSeconds = SESSION_COOKIE_MAX_AGE_SECONDS, isProduction = false): string {
     const parts = [
       `${SESSION_COOKIE_NAME}=${token}`,
       'Path=/',
       `Max-Age=${maxAgeSeconds}`,
       'HttpOnly',
-      'SameSite=Lax',
+      isProduction ? 'SameSite=None' : 'SameSite=Lax',
       'Secure'
     ];
     return parts.join('; ');
@@ -222,7 +222,7 @@ export class SessionService {
     }
 
     if (isNew) {
-      cookie = this.buildSessionCookie(sessionToken);
+      cookie = this.buildSessionCookie(sessionToken, undefined, env.NODE_ENV === 'production');
     } else {
       let needsTokenRotation = false;
 
@@ -250,7 +250,7 @@ export class SessionService {
 
       if (needsTokenRotation) {
         await this.setSessionToken(env, sessionId, sessionToken);
-        cookie = this.buildSessionCookie(sessionToken);
+        cookie = this.buildSessionCookie(sessionToken, undefined, env.NODE_ENV === 'production');
       }
 
       const updateStmt = env.DB.prepare(`
@@ -376,7 +376,7 @@ export class SessionService {
       if (!(await tokensMatch(providedToken, session.tokenHash))) {
         sessionToken = crypto.randomUUID();
         await this.setSessionToken(env, session.id, sessionToken);
-        cookie = this.buildSessionCookie(sessionToken);
+        cookie = this.buildSessionCookie(sessionToken, undefined, env.NODE_ENV === 'production');
         session.tokenHash = await hashToken(sessionToken);
       }
 
@@ -396,7 +396,7 @@ export class SessionService {
         sessionId: options.sessionId,
         message: error instanceof Error ? error.message : String(error)
       });
-      return this.createEphemeralSession(options.organizationId, {
+      return this.createEphemeralSession(env, options.organizationId, {
         sessionId: options.sessionId,
         sessionToken: options.sessionToken ?? undefined
       });
@@ -549,6 +549,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
   }
 
   private static createEphemeralSession(
+    env: Env,
     organizationId: string,
     options: { sessionId?: string | null; sessionToken?: string }
   ): SessionResolution {
@@ -574,7 +575,7 @@ ${analysis.action_items?.map((item: string) => `• ${item}`).join('\n') || 'No 
       tokenHash: null
     };
 
-    const cookie = this.buildSessionCookie(sessionToken);
+    const cookie = this.buildSessionCookie(sessionToken, undefined, env.NODE_ENV === 'production');
 
     return {
       session,

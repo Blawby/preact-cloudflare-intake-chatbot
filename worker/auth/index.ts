@@ -203,7 +203,7 @@ export async function getAuth(env: Env, request?: Request) {
         let stripeClient: Stripe;
         try {
           stripeClient = new Stripe(stripeSecretKey, {
-            apiVersion: "2025-09-30.clover", // Use GA version
+            apiVersion: "2025-08-27.basil", // Use supported version
           });
         } catch (error) {
           console.error("❌ Failed to create Stripe client:", error);
@@ -364,6 +364,13 @@ export async function getAuth(env: Env, request?: Request) {
       };
     }
     
+    console.log('🔧 Better Auth configuration:', {
+      baseUrl,
+      sameSite: env.NODE_ENV === 'production' ? "none" : "lax",
+      secure: env.NODE_ENV === 'production',
+      nodeEnv: env.NODE_ENV
+    });
+    
     authInstance = betterAuth({
       ...withCloudflare(
         {
@@ -410,6 +417,8 @@ export async function getAuth(env: Env, request?: Request) {
             defaultCookieAttributes: {
               sameSite: env.NODE_ENV === 'production' ? "none" : "lax",
               secure: env.NODE_ENV === 'production', // Secure in production
+              httpOnly: true,
+              path: "/",
             },
             crossSubDomainCookies: {
               enabled: true,
