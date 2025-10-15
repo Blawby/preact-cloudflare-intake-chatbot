@@ -370,7 +370,7 @@ export async function getAuth(env: Env, request?: Request) {
           d1: {
             db,
             options: {
-              usePlural: true,
+              usePlural: false,
               debugLogs: true,
             },
           },
