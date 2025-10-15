@@ -41,21 +41,24 @@ execute_wrangler_command() {
     local command="$1"
     local description="$2"
     
-    # Capture both stdout and stderr
+    # Capture stdout and stderr separately
     local output
     local error_output
     local exit_code
     
-    # Execute command and capture output
-    if output=$(wrangler d1 execute $DB_NAME --remote --command="$command" --json 2>&1); then
+    # Execute command and capture stdout only on success
+    if output=$(wrangler d1 execute $DB_NAME --remote --command="$command" --json 2>/dev/null); then
         echo "$output"
         return 0
     else
         exit_code=$?
+        # Capture stderr for error diagnostics
+        error_output=$(wrangler d1 execute $DB_NAME --remote --command="$command" --json 2>&1 >/dev/null)
         log_error "Failed to execute wrangler command: $description"
         log_error "Command: $command"
         log_error "Exit code: $exit_code"
         log_error "Output: $output"
+        log_error "Error: $error_output"
         exit $exit_code
     fi
 }

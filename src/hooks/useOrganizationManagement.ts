@@ -256,8 +256,9 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Hook-scoped flag to prevent multiple simultaneous API calls
-  const fetchingInProgress = useRef(false);
+  // Hook-scoped flags to prevent multiple simultaneous API calls
+  const fetchingOrganizationsInProgress = useRef(false);
+  const fetchingInvitationsInProgress = useRef(false);
 
   // Helper function to make API calls - stable reference
   const apiCall = useCallback(async (url: string, options: RequestInit = {}, timeoutMs: number = 15000) => {
@@ -343,12 +344,12 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
   // Fetch user's organizations
   const fetchOrganizations = useCallback(async () => {
     // Prevent multiple simultaneous calls
-    if (fetchingInProgress.current) {
+    if (fetchingOrganizationsInProgress.current) {
       return;
     }
     
     try {
-      fetchingInProgress.current = true;
+      fetchingOrganizationsInProgress.current = true;
       setLoading(true);
       setError(null);
       const rawData = await apiCall(`${getOrganizationsEndpoint()}/me`);
@@ -360,19 +361,19 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
       setError(err instanceof Error ? err.message : 'Failed to fetch organizations');
     } finally {
       setLoading(false);
-      fetchingInProgress.current = false;
+      fetchingOrganizationsInProgress.current = false;
     }
   }, [apiCall]);
 
   // Fetch pending invitations
   const fetchInvitations = useCallback(async () => {
     // Prevent multiple simultaneous calls
-    if (fetchingInProgress.current) {
+    if (fetchingInvitationsInProgress.current) {
       return;
     }
     
     try {
-      fetchingInProgress.current = true;
+      fetchingInvitationsInProgress.current = true;
       const rawData = await apiCall(`${getOrganizationsEndpoint()}/me/invitations`);
       const data = validateInvitations(rawData);
       setInvitations(data || []);
@@ -380,7 +381,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
       setError(err instanceof Error ? err.message : 'Failed to fetch invitations');
       setInvitations([]);
     } finally {
-      fetchingInProgress.current = false;
+      fetchingInvitationsInProgress.current = false;
     }
   }, [apiCall]);
 
