@@ -509,11 +509,25 @@ export async function getAuth(env: Env, request?: Request) {
                     ? profile.email.split("@")[0] ?? ""
                     : "";
                 const fallbackName = trimmedProfileName || derivedFromParts || emailLocal || "Google User";
+                const emailVerifiedClaim =
+                  typeof profile.email_verified === "boolean"
+                    ? profile.email_verified
+                    : typeof profile.emailVerified === "boolean"
+                      ? profile.emailVerified
+                      : true;
 
                 return {
                   name: fallbackName,
+                  // Treat Google identities as verified unless the provider explicitly marks them false.
+                  emailVerified: emailVerifiedClaim !== false,
                 };
               },
+            },
+          },
+          account: {
+            accountLinking: {
+              enabled: true,
+              trustedProviders: ["google"],
             },
           },
           plugins: [
