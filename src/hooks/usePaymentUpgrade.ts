@@ -12,6 +12,7 @@ export interface SubscriptionUpgradeRequest {
   annual?: boolean;
   successUrl?: string;
   cancelUrl?: string;
+  returnUrl?: string;
 }
 
 export interface BillingPortalRequest {
@@ -40,19 +41,51 @@ export const usePaymentUpgrade = () => {
     return url.toString();
   }, []);
 
+  const openBillingPortal = useCallback(
+    async ({ organizationId, returnUrl }: BillingPortalRequest) => {
+      try {
+        const response = await fetch(getSubscriptionBillingPortalEndpoint(), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            referenceId: organizationId,
+            returnUrl: returnUrl ?? '/settings/account',
+          }),
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result?.url) {
+          const message = result?.error || 'Unable to open billing portal';
+          throw new Error(message);
+        }
+
+        window.location.href = result.url as string;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to open billing portal';
+        showError('Billing Portal Error', message);
+      }
+    },
+    [showError]
+  );
+
   const submitUpgrade = useCallback(
-    async ({ organizationId, seats = 1, annual = false, successUrl, cancelUrl }: SubscriptionUpgradeRequest): Promise<void> => {
+    async ({ organizationId, seats = 1, annual = false, successUrl, cancelUrl, returnUrl }: SubscriptionUpgradeRequest): Promise<void> => {
       setSubmitting(true);
       setError(null);
+
+      const resolvedSuccessUrl = successUrl ?? buildSuccessUrl(organizationId);
+      const resolvedCancelUrl = cancelUrl ?? buildCancelUrl(organizationId);
+      const resolvedReturnUrl = returnUrl ?? resolvedSuccessUrl;
 
       try {
         const requestBody: Record<string, unknown> = {
           plan: 'business',
           referenceId: organizationId,
           annual,
-          successUrl: successUrl ?? buildSuccessUrl(organizationId),
-          cancelUrl: cancelUrl ?? buildCancelUrl(organizationId),
-          returnUrl: successUrl ?? buildSuccessUrl(organizationId), // Add required returnUrl parameter
+          successUrl: resolvedSuccessUrl,
+          cancelUrl: resolvedCancelUrl,
+          returnUrl: resolvedReturnUrl,
         };
         if (seats > 1) {
           requestBody.seats = seats;
@@ -86,41 +119,35 @@ export const usePaymentUpgrade = () => {
         window.location.href = result.url as string;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Upgrade failed';
+        const normalizedMessage = message.toLowerCase();
+
+        if (normalizedMessage.includes("already subscribed to this plan")) {
+          // Treat already-subscribed as a soft success: send the user to the billing portal so they can manage seats.
+          setError(null);
+          showSuccess(
+            'Subscription Active',
+            'Your organization already has an active Business subscription. Redirecting to the Stripe billing portal so you can manage it.'
+          );
+          await openBillingPortal({ organizationId, returnUrl: resolvedReturnUrl });
+          return;
+        }
+
+        if (normalizedMessage.includes('email verification is required')) {
+          setError(message);
+          showError(
+            'Verify Email',
+            'Please verify your email address before upgrading. Check your inbox for the verification link.'
+          );
+          return;
+        }
+
         setError(message);
         showError('Upgrade Failed', message);
       } finally {
         setSubmitting(false);
       }
     },
-    [buildCancelUrl, buildSuccessUrl, showError]
-  );
-
-  const openBillingPortal = useCallback(
-    async ({ organizationId, returnUrl }: BillingPortalRequest) => {
-      try {
-        const response = await fetch(getSubscriptionBillingPortalEndpoint(), {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            referenceId: organizationId,
-            returnUrl: returnUrl ?? '/settings/account',
-          }),
-        });
-
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result?.url) {
-          const message = result?.error || 'Unable to open billing portal';
-          throw new Error(message);
-        }
-
-        window.location.href = result.url as string;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unable to open billing portal';
-        showError('Billing Portal Error', message);
-      }
-    },
-    [showError]
+    [buildCancelUrl, buildSuccessUrl, openBillingPortal, showError, showSuccess]
   );
 
   const syncSubscription = useCallback(

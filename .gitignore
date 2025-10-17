@@ -73,6 +73,7 @@ undo-migration.js
 
 # Backups and archives
 .backups/
+backups/
 
 # Misc
 .cache
