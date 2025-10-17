@@ -75,7 +75,7 @@ export const usePaymentUpgrade = () => {
 
   const buildSuccessUrl = useCallback((organizationId: string) => {
     if (typeof window === 'undefined') return '/settings/account';
-    const url = new URL(window.location.origin + '/settings/account');
+    const url = new URL(`${window.location.origin}/settings/account`);
     url.searchParams.set('organizationId', organizationId);
     url.searchParams.set('sync', '1');
     return url.toString();
@@ -83,7 +83,7 @@ export const usePaymentUpgrade = () => {
 
   const buildCancelUrl = useCallback((organizationId: string) => {
     if (typeof window === 'undefined') return '/settings/account';
-    const url = new URL(window.location.origin + '/settings/account');
+    const url = new URL(`${window.location.origin}/settings/account`);
     url.searchParams.set('organizationId', organizationId);
     url.searchParams.set('cancelled', '1');
     return url.toString();
@@ -102,8 +102,9 @@ export const usePaymentUpgrade = () => {
           }),
         });
 
-        const result = await response.json().catch(() => ({})) as SubscriptionApiResponse<{ url: string }>;
-        if (!response.ok || !result?.url) {
+        const result = await response.json().catch(() => ({})) as Record<string, unknown>;
+        const url: string | undefined = result?.url ?? result?.data?.url;
+        if (!response.ok || !url) {
           // Handle specific error codes
           if (result?.errorCode) {
             throw new Error(JSON.stringify({
@@ -117,7 +118,7 @@ export const usePaymentUpgrade = () => {
           throw new Error(message);
         }
 
-        window.location.href = result.url as string;
+        window.location.href = url;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unable to open billing portal';
         
@@ -172,9 +173,10 @@ export const usePaymentUpgrade = () => {
           body: JSON.stringify(requestBody),
         });
 
-        const result = await response.json().catch(() => ({})) as SubscriptionApiResponse<{ url: string }>;
+        const result = await response.json().catch(() => ({})) as Record<string, unknown>;
+        const checkoutUrl: string | undefined = result?.url ?? result?.data?.url;
 
-        if (!response.ok || !result || !result.url) {
+        if (!response.ok || !checkoutUrl) {
           if (import.meta.env.DEV) {
             // Only log in development, and sanitize sensitive data
             const sanitizedResult = {
@@ -199,7 +201,7 @@ export const usePaymentUpgrade = () => {
           throw new Error(message);
         }
 
-        window.location.href = result.url as string;
+        window.location.href = checkoutUrl;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Upgrade failed';
         
@@ -229,7 +231,7 @@ export const usePaymentUpgrade = () => {
           // Open billing portal and handle any errors gracefully
           try {
             await openBillingPortal({ organizationId, returnUrl: resolvedReturnUrl });
-          } catch (billingError) {
+          } catch (_billingError) {
             // If billing portal fails, show a different message to avoid confusion
             showError(
               'Billing Portal Unavailable',
@@ -266,7 +268,7 @@ export const usePaymentUpgrade = () => {
           );
           try {
             await openBillingPortal({ organizationId, returnUrl: resolvedReturnUrl });
-          } catch (billingError) {
+          } catch (_billingError) {
             showError(
               'Billing Portal Unavailable',
               'Your subscription is active, but we couldn\'t open the billing portal. Please try again or contact support.'

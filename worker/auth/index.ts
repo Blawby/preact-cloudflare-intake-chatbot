@@ -12,7 +12,6 @@ import {
   applyStripeSubscriptionUpdate,
   clearStripeSubscriptionCache,
 } from "../services/StripeSync.js";
-import { SubscriptionErrorHandler } from "../middleware/subscriptionErrorHandler.js";
 
 // Organization plugin will use default roles for now
 
@@ -443,9 +442,9 @@ export async function getAuth(env: Env, request?: Request) {
               if (request && request.url) {
                 const url = new URL(request.url);
                 if (url.pathname.includes('/subscription/') || url.pathname.includes('/billing/')) {
-                  // For subscription requests, we'll handle the error in the auth route handler
-                  // instead of throwing here, to allow for proper error code mapping
-                  return;
+                  // For subscription requests, re-throw the error so it can be handled by the auth route handler
+                  // to allow for proper error code mapping
+                  throw error;
                 }
               }
               
