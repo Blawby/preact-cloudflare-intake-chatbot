@@ -82,6 +82,9 @@ export async function getAuth(env: Env, request?: Request) {
     // Feature flags for geolocation and IP detection (default to disabled)
     const enableGeolocation = env.ENABLE_AUTH_GEOLOCATION === 'true';
     const enableIpDetection = env.ENABLE_AUTH_IP_DETECTION === 'true';
+    const requireEmailVerification =
+      env.REQUIRE_EMAIL_VERIFICATION === 'true' ||
+      env.REQUIRE_EMAIL_VERIFICATION === true;
 
     // Determine if Stripe subscriptions should be enabled
     const enableStripeSubscriptions =
@@ -453,7 +456,7 @@ export async function getAuth(env: Env, request?: Request) {
           },
           emailAndPassword: {
             enabled: true,
-            requireEmailVerification: env.NODE_ENV === 'production', // Only require verification in production
+            requireEmailVerification,
             sendResetPassword: async ({ user, url }) => {
               try {
                 const emailService = new EmailService(env.RESEND_API_KEY);
