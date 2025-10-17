@@ -58,13 +58,25 @@ jobs:
         echo "Running smoke test on deployed worker..."
         # Wait for deployment to propagate
         sleep 30
+
+        # Normalise base URL from secret so it can include or omit trailing /api
+        API_BASE="${{ secrets.CLOUDFLARE_PUBLIC_URL }}"
+        API_BASE="${API_BASE%/}"
+
+        if [[ "$API_BASE" == */api ]]; then
+          HEALTH_URL="$API_BASE/health"
+          ANALYZE_URL="$API_BASE/analyze"
+        else
+          HEALTH_URL="$API_BASE/api/health"
+          ANALYZE_URL="$API_BASE/api/analyze"
+        fi
         
         # Test health endpoint
-        curl -f "${{ secrets.CLOUDFLARE_PUBLIC_URL }}/api/health"
+        curl -f "$HEALTH_URL"
         
         # Test analyze endpoint with small PDF (if available)
         if [ -f "test-document.pdf" ]; then
-          curl -X POST "${{ secrets.CLOUDFLARE_PUBLIC_URL }}/api/analyze" \
+          curl -X POST "$ANALYZE_URL" \
             -F "file=@test-document.pdf" \
             -F "question=Test analysis" \
             -H "X-Request-ID: smoke-test-$(date +%s)" \
