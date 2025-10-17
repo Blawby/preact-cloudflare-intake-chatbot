@@ -160,6 +160,7 @@ export interface Organization {
   stripeCustomerId?: string | null;
   subscriptionTier?: 'free' | 'plus' | 'business' | 'enterprise' | null;
   seats?: number | null;
+  isPersonal: boolean;
   createdAt: number;
   updatedAt: number;
 }

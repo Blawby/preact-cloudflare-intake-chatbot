@@ -156,7 +156,7 @@ export async function getAuth(env: Env, request?: Request) {
           try {
             const membership = await env.DB.prepare(
               `SELECT role 
-                 FROM member 
+                 FROM members 
                 WHERE organization_id = ? 
                   AND user_id = ?`
             )
@@ -199,11 +199,12 @@ export async function getAuth(env: Env, request?: Request) {
           }
         };
 
-        // Create Stripe client instance
+        // Create Stripe client instance with explicit API version
         let stripeClient: Stripe;
         try {
           stripeClient = new Stripe(stripeSecretKey, {
-            apiVersion: "2024-08-14", // Use stable version instead of preview
+            apiVersion: "2025-08-27.basil",
+            httpClient: Stripe.createFetchHttpClient(),
           });
         } catch (error) {
           console.error("❌ Failed to create Stripe client:", error);
@@ -436,7 +437,18 @@ export async function getAuth(env: Env, request?: Request) {
                 method: request?.method,
                 headers: sanitizedHeaders
               });
-              throw error; // Re-throw to maintain original behavior
+              
+              // Use enhanced subscription error handler for subscription-related requests
+              if (request && request.url) {
+                const url = new URL(request.url);
+                if (url.pathname.includes('/subscription/') || url.pathname.includes('/billing/')) {
+                  // For subscription requests, re-throw the error so it can be handled by the auth route handler
+                  // to allow for proper error code mapping
+                  throw error;
+                }
+              }
+              
+              throw error; // Re-throw to maintain original behavior for non-subscription requests
             }
           },
           emailAndPassword: {
@@ -480,6 +492,25 @@ export async function getAuth(env: Env, request?: Request) {
               clientId: env.GOOGLE_CLIENT_ID || "",
               clientSecret: env.GOOGLE_CLIENT_SECRET || "",
               redirectURI: `${baseUrl}/api/auth/callback/google`,
+              mapProfileToUser: (profile) => {
+                const trimmedProfileName = typeof profile.name === "string" ? profile.name.trim() : "";
+                const derivedFromParts = [
+                  typeof profile.given_name === "string" ? profile.given_name.trim() : "",
+                  typeof profile.family_name === "string" ? profile.family_name.trim() : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")
+                  .trim();
+                const emailLocal =
+                  typeof profile.email === "string" && profile.email.includes("@")
+                    ? profile.email.split("@")[0] ?? ""
+                    : "";
+                const fallbackName = trimmedProfileName || derivedFromParts || emailLocal || "Google User";
+
+                return {
+                  name: fallbackName,
+                };
+              },
             },
           },
           plugins: [
