@@ -397,8 +397,9 @@ export async function getAuth(env: Env, request?: Request) {
           secret: env.BETTER_AUTH_SECRET,
           baseURL: baseUrl,
           trustedOrigins: [
-            env.BETTER_AUTH_URL || "",
-            env.CLOUDFLARE_PUBLIC_URL || "",
+            env.BETTER_AUTH_URL,
+            env.CLOUDFLARE_PUBLIC_URL,
+            "https://ai.blawby.com", // Explicitly add production domain
             "http://localhost:5173",
             "http://localhost:5174",
             "http://localhost:8787",
