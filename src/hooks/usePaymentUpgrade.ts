@@ -6,6 +6,54 @@ import {
 } from '../config/api';
 import { useToastContext } from '../contexts/ToastContext';
 
+// Error codes for subscription operations (matching backend)
+enum SubscriptionErrorCode {
+  SUBSCRIPTION_ALREADY_ACTIVE = 'SUBSCRIPTION_ALREADY_ACTIVE',
+  EMAIL_VERIFICATION_REQUIRED = 'EMAIL_VERIFICATION_REQUIRED',
+  ORGANIZATION_NOT_FOUND = 'ORGANIZATION_NOT_FOUND',
+  INSUFFICIENT_PERMISSIONS = 'INSUFFICIENT_PERMISSIONS',
+  STRIPE_CHECKOUT_FAILED = 'STRIPE_CHECKOUT_FAILED',
+  STRIPE_BILLING_PORTAL_FAILED = 'STRIPE_BILLING_PORTAL_FAILED',
+  STRIPE_CUSTOMER_NOT_FOUND = 'STRIPE_CUSTOMER_NOT_FOUND',
+  STRIPE_SUBSCRIPTION_NOT_FOUND = 'STRIPE_SUBSCRIPTION_NOT_FOUND',
+  INVALID_ORGANIZATION_ID = 'INVALID_ORGANIZATION_ID',
+  INVALID_SEAT_COUNT = 'INVALID_SEAT_COUNT',
+  INVALID_PLAN_TYPE = 'INVALID_PLAN_TYPE',
+  SUBSCRIPTION_SYNC_FAILED = 'SUBSCRIPTION_SYNC_FAILED',
+  INTERNAL_ERROR = 'INTERNAL_ERROR',
+}
+
+// Enhanced API response interface
+interface SubscriptionApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  errorCode?: SubscriptionErrorCode;
+  details?: unknown;
+}
+
+// Error titles for UI display
+const ERROR_TITLES: Record<SubscriptionErrorCode, string> = {
+  [SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE]: 'Subscription Active',
+  [SubscriptionErrorCode.EMAIL_VERIFICATION_REQUIRED]: 'Verify Email',
+  [SubscriptionErrorCode.ORGANIZATION_NOT_FOUND]: 'Organization Not Found',
+  [SubscriptionErrorCode.INSUFFICIENT_PERMISSIONS]: 'Access Denied',
+  [SubscriptionErrorCode.STRIPE_CHECKOUT_FAILED]: 'Upgrade Failed',
+  [SubscriptionErrorCode.STRIPE_BILLING_PORTAL_FAILED]: 'Billing Portal Error',
+  [SubscriptionErrorCode.STRIPE_CUSTOMER_NOT_FOUND]: 'Customer Not Found',
+  [SubscriptionErrorCode.STRIPE_SUBSCRIPTION_NOT_FOUND]: 'Subscription Not Found',
+  [SubscriptionErrorCode.INVALID_ORGANIZATION_ID]: 'Invalid Request',
+  [SubscriptionErrorCode.INVALID_SEAT_COUNT]: 'Invalid Request',
+  [SubscriptionErrorCode.INVALID_PLAN_TYPE]: 'Invalid Request',
+  [SubscriptionErrorCode.SUBSCRIPTION_SYNC_FAILED]: 'Subscription Sync Error',
+  [SubscriptionErrorCode.INTERNAL_ERROR]: 'System Error',
+};
+
+// Helper function to get error title
+function getErrorTitle(errorCode: SubscriptionErrorCode): string {
+  return ERROR_TITLES[errorCode] || 'Error';
+}
+
 export interface SubscriptionUpgradeRequest {
   organizationId: string;
   seats?: number | null;
@@ -54,8 +102,17 @@ export const usePaymentUpgrade = () => {
           }),
         });
 
-        const result = await response.json().catch(() => ({}));
+        const result = await response.json().catch(() => ({})) as SubscriptionApiResponse<{ url: string }>;
         if (!response.ok || !result?.url) {
+          // Handle specific error codes
+          if (result?.errorCode) {
+            throw new Error(JSON.stringify({
+              errorCode: result.errorCode,
+              message: result.error || 'Unable to open billing portal',
+              details: result.details
+            }));
+          }
+          
           const message = result?.error || 'Unable to open billing portal';
           throw new Error(message);
         }
@@ -63,7 +120,23 @@ export const usePaymentUpgrade = () => {
         window.location.href = result.url as string;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unable to open billing portal';
-        showError('Billing Portal Error', message);
+        
+        // Try to parse structured error response
+        let errorCode: SubscriptionErrorCode | null = null;
+        let errorMessage = message;
+        
+        try {
+          const parsedError = JSON.parse(message);
+          if (parsedError.errorCode && Object.values(SubscriptionErrorCode).includes(parsedError.errorCode)) {
+            errorCode = parsedError.errorCode as SubscriptionErrorCode;
+            errorMessage = parsedError.message || message;
+          }
+        } catch {
+          // Not a structured error, use original message
+        }
+
+        const title = errorCode ? getErrorTitle(errorCode) : 'Billing Portal Error';
+        showError(title, errorMessage);
       }
     },
     [showError]
@@ -99,7 +172,7 @@ export const usePaymentUpgrade = () => {
           body: JSON.stringify(requestBody),
         });
 
-        const result = await response.json().catch(() => ({}));
+        const result = await response.json().catch(() => ({})) as SubscriptionApiResponse<{ url: string }>;
 
         if (!response.ok || !result || !result.url) {
           if (import.meta.env.DEV) {
@@ -112,6 +185,16 @@ export const usePaymentUpgrade = () => {
             };
             console.error('❌ Subscription upgrade failed with response:', sanitizedResult);
           }
+          
+          // Handle specific error codes
+          if (result?.errorCode) {
+            throw new Error(JSON.stringify({
+              errorCode: result.errorCode,
+              message: result.error || 'Subscription upgrade failed',
+              details: result.details
+            }));
+          }
+          
           const message = result?.error || 'Unable to initiate Stripe checkout';
           throw new Error(message);
         }
@@ -119,16 +202,76 @@ export const usePaymentUpgrade = () => {
         window.location.href = result.url as string;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Upgrade failed';
-        const normalizedMessage = message.toLowerCase();
+        
+        // Try to parse structured error response
+        let errorCode: SubscriptionErrorCode | null = null;
+        let errorMessage = message;
+        
+        try {
+          const parsedError = JSON.parse(message);
+          if (parsedError.errorCode && Object.values(SubscriptionErrorCode).includes(parsedError.errorCode)) {
+            errorCode = parsedError.errorCode as SubscriptionErrorCode;
+            errorMessage = parsedError.message || message;
+          }
+        } catch {
+          // Not a structured error, fall back to string matching for backward compatibility
+        }
 
-        if (normalizedMessage.includes("already subscribed to this plan")) {
+        // Handle specific error codes with robust logic
+        if (errorCode === SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE) {
           // Treat already-subscribed as a soft success: send the user to the billing portal so they can manage seats.
           setError(null);
           showSuccess(
             'Subscription Active',
             'Your organization already has an active Business subscription. Redirecting to the Stripe billing portal so you can manage it.'
           );
-          await openBillingPortal({ organizationId, returnUrl: resolvedReturnUrl });
+          
+          // Open billing portal and handle any errors gracefully
+          try {
+            await openBillingPortal({ organizationId, returnUrl: resolvedReturnUrl });
+          } catch (billingError) {
+            // If billing portal fails, show a different message to avoid confusion
+            showError(
+              'Billing Portal Unavailable',
+              'Your subscription is active, but we couldn\'t open the billing portal. Please try again or contact support.'
+            );
+          }
+          return;
+        }
+
+        if (errorCode === SubscriptionErrorCode.EMAIL_VERIFICATION_REQUIRED) {
+          setError(errorMessage);
+          showError(
+            'Verify Email',
+            'Please verify your email address before upgrading. Check your inbox for the verification link.'
+          );
+          return;
+        }
+
+        // Handle other specific error codes
+        if (errorCode) {
+          setError(errorMessage);
+          const title = getErrorTitle(errorCode);
+          showError(title, errorMessage);
+          return;
+        }
+
+        // Fallback to original string matching for backward compatibility
+        const normalizedMessage = message.toLowerCase();
+        if (normalizedMessage.includes("already subscribed to this plan")) {
+          setError(null);
+          showSuccess(
+            'Subscription Active',
+            'Your organization already has an active Business subscription. Redirecting to the Stripe billing portal so you can manage it.'
+          );
+          try {
+            await openBillingPortal({ organizationId, returnUrl: resolvedReturnUrl });
+          } catch (billingError) {
+            showError(
+              'Billing Portal Unavailable',
+              'Your subscription is active, but we couldn\'t open the billing portal. Please try again or contact support.'
+            );
+          }
           return;
         }
 
@@ -160,8 +303,17 @@ export const usePaymentUpgrade = () => {
           body: JSON.stringify({ organizationId }),
         });
 
-        const result = await response.json().catch(() => ({}));
+        const result = await response.json().catch(() => ({})) as SubscriptionApiResponse<{ subscription: unknown }>;
         if (!response.ok || result?.success === false) {
+          // Handle specific error codes
+          if (result?.errorCode) {
+            throw new Error(JSON.stringify({
+              errorCode: result.errorCode,
+              message: result.error || 'Failed to refresh subscription status',
+              details: result.details
+            }));
+          }
+          
           const message = result?.error || 'Failed to refresh subscription status';
           throw new Error(message);
         }
@@ -170,7 +322,23 @@ export const usePaymentUpgrade = () => {
         return result?.subscription ?? null;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to refresh subscription status';
-        showError('Subscription Sync Error', message);
+        
+        // Try to parse structured error response
+        let errorCode: SubscriptionErrorCode | null = null;
+        let errorMessage = message;
+        
+        try {
+          const parsedError = JSON.parse(message);
+          if (parsedError.errorCode && Object.values(SubscriptionErrorCode).includes(parsedError.errorCode)) {
+            errorCode = parsedError.errorCode as SubscriptionErrorCode;
+            errorMessage = parsedError.message || message;
+          }
+        } catch {
+          // Not a structured error, use original message
+        }
+
+        const title = errorCode ? getErrorTitle(errorCode) : 'Subscription Sync Error';
+        showError(title, errorMessage);
         return null;
       }
     },

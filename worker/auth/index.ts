@@ -12,6 +12,7 @@ import {
   applyStripeSubscriptionUpdate,
   clearStripeSubscriptionCache,
 } from "../services/StripeSync.js";
+import { SubscriptionErrorHandler } from "../middleware/subscriptionErrorHandler.js";
 
 // Organization plugin will use default roles for now
 
@@ -199,10 +200,13 @@ export async function getAuth(env: Env, request?: Request) {
           }
         };
 
-        // Create Stripe client instance
+        // Create Stripe client instance with explicit API version
         let stripeClient: Stripe;
         try {
-          stripeClient = new Stripe(stripeSecretKey);
+          stripeClient = new Stripe(stripeSecretKey, {
+            apiVersion: "2025-08-27.basil",
+            httpClient: Stripe.createFetchHttpClient(),
+          });
         } catch (error) {
           console.error("❌ Failed to create Stripe client:", error);
           throw error;
@@ -434,7 +438,18 @@ export async function getAuth(env: Env, request?: Request) {
                 method: request?.method,
                 headers: sanitizedHeaders
               });
-              throw error; // Re-throw to maintain original behavior
+              
+              // Use enhanced subscription error handler for subscription-related requests
+              if (request && request.url) {
+                const url = new URL(request.url);
+                if (url.pathname.includes('/subscription/') || url.pathname.includes('/billing/')) {
+                  // For subscription requests, we'll handle the error in the auth route handler
+                  // instead of throwing here, to allow for proper error code mapping
+                  return;
+                }
+              }
+              
+              throw error; // Re-throw to maintain original behavior for non-subscription requests
             }
           },
           emailAndPassword: {
