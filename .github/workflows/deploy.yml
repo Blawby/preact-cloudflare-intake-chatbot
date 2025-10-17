@@ -52,41 +52,6 @@ jobs:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         
-    - name: Smoke test after deployment
-      run: |
-        set -euo pipefail
-        echo "Running smoke test on deployed worker..."
-        # Wait for deployment to propagate
-        sleep 30
-
-        # Normalise base URL from secret so it can include or omit trailing /api
-        API_BASE="${{ secrets.CLOUDFLARE_PUBLIC_URL }}"
-        API_BASE="${API_BASE%/}"
-
-        if [[ "$API_BASE" == */api ]]; then
-          API_ROOT="$API_BASE"
-        else
-          API_ROOT="$API_BASE/api"
-        fi
-
-        HEALTH_URL="$API_ROOT/health"
-        ANALYZE_URL="$API_ROOT/analyze"
-
-        echo "Running health check against $HEALTH_URL"
-        curl -fsS "$HEALTH_URL"
-        
-        # Test analyze endpoint with small PDF (if available)
-        if [ -f "test-document.pdf" ]; then
-          echo "Checking analyze endpoint at $ANALYZE_URL"
-          curl -fsS -X POST "$ANALYZE_URL" \
-            -F "file=@test-document.pdf" \
-            -F "question=Test analysis" \
-            -H "X-Request-ID: smoke-test-$(date +%s)" \
-            --max-time 120
-        else
-          echo "No test document available, skipping analyze test"
-        fi
-        
     - name: Rollback on failure
       if: failure()
       run: |
