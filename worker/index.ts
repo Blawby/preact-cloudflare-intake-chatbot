@@ -86,7 +86,7 @@ async function handleRequestInternal(request: Request, env: Env, _ctx: Execution
       response = await handleActivity(request, env);
     } else if (path.startsWith('/api/files')) {
       response = await handleFiles(request, env);
-    } else if (path === '/api/analyze') {
+    } else if (path === '/api/analyze' || path === '/analyze') {
       response = await handleAnalyze(request, env);
     } else if (path.startsWith('/api/review')) {
       response = await handleReview(request, env);
@@ -100,7 +100,7 @@ async function handleRequestInternal(request: Request, env: Env, _ctx: Execution
       response = await handleDebug(request, env);
     } else if (path.startsWith('/api/status')) {
       response = await handleStatus(request, env);
-    } else if (path === '/api/health') {
+    } else if (path === '/api/health' || path === '/health') {
       response = await handleHealth(request, env);
     } else if (path === '/') {
       response = await handleRoot(request, env);

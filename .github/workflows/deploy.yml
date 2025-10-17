@@ -64,19 +64,21 @@ jobs:
         API_BASE="${API_BASE%/}"
 
         if [[ "$API_BASE" == */api ]]; then
-          HEALTH_URL="$API_BASE/health"
-          ANALYZE_URL="$API_BASE/analyze"
+          API_ROOT="$API_BASE"
         else
-          HEALTH_URL="$API_BASE/api/health"
-          ANALYZE_URL="$API_BASE/api/analyze"
+          API_ROOT="$API_BASE/api"
         fi
-        
-        # Test health endpoint
-        curl -f "$HEALTH_URL"
+
+        HEALTH_URL="$API_ROOT/health"
+        ANALYZE_URL="$API_ROOT/analyze"
+
+        echo "Running health check against $HEALTH_URL"
+        curl -fsS "$HEALTH_URL"
         
         # Test analyze endpoint with small PDF (if available)
         if [ -f "test-document.pdf" ]; then
-          curl -X POST "$ANALYZE_URL" \
+          echo "Checking analyze endpoint at $ANALYZE_URL"
+          curl -fsS -X POST "$ANALYZE_URL" \
             -F "file=@test-document.pdf" \
             -F "question=Test analysis" \
             -H "X-Request-ID: smoke-test-$(date +%s)" \
