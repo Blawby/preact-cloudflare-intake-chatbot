@@ -195,3 +195,7 @@ binding = "PARALEGAL_TASKS"
 [[env.production.r2_buckets]]
 binding = "FILES_BUCKET"
 bucket_name = "blawby-ai-files"
+
+[[env.production.routes]]
+pattern = "ai.blawby.com/api/*"
+zone_name = "blawby.com"
