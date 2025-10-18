@@ -2,17 +2,23 @@ import Stripe from "stripe";
 import type { Env, StripeSubscriptionCache } from "../types.js";
 import { stripeSubscriptionCacheSchema } from "../schemas/validation.js";
 
-const DEFAULT_STRIPE_API_VERSION: Stripe.StripeConfig["apiVersion"] = "2025-08-27.basil";
+const DEFAULT_STRIPE_API_VERSION: Stripe.StripeConfig["apiVersion"] = null;
+
+let cachedStripeClient: Stripe | null = null;
 
 export function getOrCreateStripeClient(env: Env, apiVersion = DEFAULT_STRIPE_API_VERSION): Stripe {
   if (!env.STRIPE_SECRET_KEY) {
     throw new Error("STRIPE_SECRET_KEY is required to initialize the Stripe client");
   }
-
-  return new Stripe(env.STRIPE_SECRET_KEY, {
-    apiVersion,
-    httpClient: Stripe.createFetchHttpClient(),
-  });
+  
+  if (!cachedStripeClient) {
+    cachedStripeClient = new Stripe(env.STRIPE_SECRET_KEY, {
+      apiVersion,
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+  }
+  
+  return cachedStripeClient;
 }
 
 function getOrganizationCacheKey(organizationId: string): string {
@@ -323,11 +329,15 @@ export async function cancelSubscriptionsAndDeleteCustomer(args: {
 
     await subscriptionList.autoPagingEach(async (subscription) => {
       if (subscription.status !== "canceled") {
-        await client.subscriptions.cancel(subscription.id);
+        await client.subscriptions.cancel(subscription.id, {
+          idempotencyKey: `cancel-sub-${subscription.id}-${Date.now()}`
+        });
       }
     });
 
-    await client.customers.del(stripeCustomerId);
+    await client.customers.del(stripeCustomerId, {
+      idempotencyKey: `delete-customer-${stripeCustomerId}-${Date.now()}`
+    });
   } catch (error) {
     throw new Error(
       `Failed to clean up Stripe customer ${stripeCustomerId}: ${

@@ -380,10 +380,16 @@ export class SessionService {
         session.tokenHash = await hashToken(sessionToken);
       }
 
-      await this.touchSession(env, session.id);
-
-      // Update last_active in memory since we just touched it
-      session.lastActive = new Date().toISOString();
+      try {
+        await this.touchSession(env, session.id);
+        
+        // Only update in-memory state after successful DB update
+        session.lastActive = new Date().toISOString();
+      } catch (error) {
+        console.error('[SessionService] Failed to touch session:', error);
+        // Rethrow or return error result; don't update in-memory state
+        throw error;
+      }
 
       return {
         session: session,

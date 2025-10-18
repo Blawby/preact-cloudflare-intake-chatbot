@@ -11,7 +11,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
 import { AuthProvider, useSession } from './contexts/AuthContext';
 import { useOrganizationManagement } from './hooks/useOrganizationManagement';
-import { type SubscriptionTier } from './utils/mockUserData';
+import { type SubscriptionTier } from './types/user';
 import { useMessageHandlingWithContext } from './hooks/useMessageHandling';
 import { useFileUploadWithContext } from './hooks/useFileUpload';
 import { useChatSessionWithContext } from './hooks/useChatSession';

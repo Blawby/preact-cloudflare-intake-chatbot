@@ -2,7 +2,7 @@ import { useState, useMemo } from 'preact/hooks';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
-import { updateUser } from '../../../lib/authClient';
+import { authClient } from '../../../lib/authClient';
 import { useTranslation } from 'react-i18next';
 
 export interface MFAEnrollmentPageProps {
@@ -67,8 +67,8 @@ export const MFAEnrollmentPage = ({
         }, 1000);
       });
       
-      // Update security settings to enable MFA
-      await updateUser({ twoFactorEnabled: true });
+      // Enable MFA using Better Auth twoFactor plugin
+      await authClient.twoFactor.enable({ code: verificationCode });
       
       showSuccess(
         t('settings:security.mfa.toastEnabled.title'),

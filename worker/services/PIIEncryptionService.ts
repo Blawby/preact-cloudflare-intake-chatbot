@@ -456,7 +456,7 @@ export class PIIEncryptionService {
           AND deleted_at IS NULL
       `).bind(now, now).run();
       
-      const count = result.changes || 0;
+      const count = result.meta?.changes ?? 0;
       if (count > 0) {
         console.log(`✅ Soft-deleted ${count} expired PII audit logs`);
       }

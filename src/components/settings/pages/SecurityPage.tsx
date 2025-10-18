@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { Switch } from '../../ui/input/Switch';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
 import { useSession } from '../../../contexts/AuthContext';
-import { updateUser } from '../../../lib/authClient';
+import { updateUser, authClient } from '../../../lib/authClient';
 import Modal from '../../Modal';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
-import type { SecuritySettings, SessionTimeoutOption } from '../../../types/user';
-import { convertSessionTimeoutToSeconds, convertSessionTimeoutToString } from '../../../types/user';
+import type { SecuritySettings } from '../../../types/user';
+import { convertSessionTimeoutToSeconds } from '../../../types/user';
 
 // Runtime validation for session timeout values
 const isValidSessionTimeout = (value: unknown): value is number => {
@@ -125,8 +125,8 @@ export const SecurityPage = ({
     setSettings(updatedSettings);
     
     try {
-      // Update user in database
-      await updateUser({ twoFactorEnabled: false });
+      // Disable MFA using Better Auth twoFactor plugin
+      await authClient.twoFactor.disable();
       
       showSuccess(
         t('settings:security.mfa.disable.toastTitle'),

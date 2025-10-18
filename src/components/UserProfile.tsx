@@ -42,7 +42,7 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   // Derive user data from session and organization
   const user = session?.user ? {
     id: session.user.id,
-    name: session.user.name,
+    name: session.user.name || session.user.email || 'User',  // Default when name is falsy
     email: session.user.email,
     image: session.user.image,
     organizationId: currentOrganization?.id || null,

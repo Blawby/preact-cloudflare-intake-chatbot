@@ -16,7 +16,7 @@ export interface OnboardingData {
     additionalInfo?: string;
   };
   completedAt?: string;
-  skippedSteps: string[];
+  skippedSteps?: string[];
 }
 
 export interface UserProfile {
@@ -359,7 +359,12 @@ function safeParseOnboardingData(value: unknown): OnboardingData | null {
   if (typeof value === 'object' && value !== null) {
     const obj = value as Record<string, unknown>;
     if (obj.personalInfo && obj.useCase && typeof obj.personalInfo === 'object' && typeof obj.useCase === 'object') {
-      return obj as unknown as OnboardingData;
+      const data = obj as unknown as OnboardingData;
+      // Normalize skippedSteps
+      if (!data.skippedSteps || !Array.isArray(data.skippedSteps)) {
+        data.skippedSteps = [];
+      }
+      return data;
     }
   }
   
@@ -377,7 +382,7 @@ function safeParseOnboardingData(value: unknown): OnboardingData | null {
  * @throws Error if required fields are missing
  */
 function validateRequiredFields(rawUser: Record<string, unknown>): void {
-  const requiredFields = ['id', 'name', 'email'] as const;
+  const requiredFields = ['id', 'email'] as const;
   const missingFields: string[] = [];
   
   for (const field of requiredFields) {
@@ -408,7 +413,9 @@ export function transformSessionUser(rawUser: Record<string, unknown>): BetterAu
   const transformedUser: BetterAuthSessionUser = {
     // Required fields (already validated)
     id: rawUser.id as string,
-    name: rawUser.name as string,
+    name: (rawUser.name as string) || 
+          (rawUser.email as string).split('@')[0] || 
+          `User-${rawUser.id}`,
     email: rawUser.email as string,
     
     // Optional primitive fields
@@ -459,7 +466,7 @@ export function transformSessionUser(rawUser: Record<string, unknown>): BetterAu
     twoFactorEnabled: rawUser.twoFactorEnabled as boolean | undefined,
     emailNotifications: rawUser.emailNotifications as boolean | undefined,
     loginAlerts: rawUser.loginAlerts as boolean | undefined,
-    sessionTimeout: rawUser.sessionTimeout as number | undefined,
+    sessionTimeout: convertSessionTimeoutToSeconds(rawUser.sessionTimeout as string | number),
     
     // Links
     selectedDomain: rawUser.selectedDomain as string | null | undefined,

@@ -5,8 +5,7 @@ import { FormItem } from '../../ui/form';
 import Modal from '../../Modal';
 import ConfirmationDialog from '../../ConfirmationDialog';
 import { 
-  EnvelopeIcon,
-  ExclamationTriangleIcon
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
@@ -285,7 +284,7 @@ export const AccountPage = ({
 
   const handleConfirmDelete = async ({ password }: { password?: string } = {}) => {
     try {
-      const { deleteUser, signOut } = await import('../../../lib/authClient');
+      const { deleteUser } = await import('../../../lib/authClient');
       
       if (isOAuthUser) {
         // OAuth users: just call deleteUser, triggers verification email
@@ -302,7 +301,7 @@ export const AccountPage = ({
           throw new Error(passwordRequiredMessage);
         }
         await deleteUser({ password });
-        await signOut();
+        await signOut(); // Use top-level signOut from utils/auth
         setShowDeleteConfirm(false);
         setDeleteVerificationSent(false);
         setPasswordRequiredOverride(null);
@@ -509,8 +508,10 @@ export const AccountPage = ({
       // Update user in database
       await updateUser({ receiveFeedbackEmails: checked });
       
-      const updatedEmailSettings = { ...emailSettings, receiveFeedbackEmails: checked };
-      setEmailSettings(updatedEmailSettings);
+      setEmailSettings(prev => ({
+        ...(prev || {}),  // Safe fallback when prev is null
+        receiveFeedbackEmails: checked
+      }));
     } catch (error) {
       console.error('Failed to update email settings:', error);
       showError(
