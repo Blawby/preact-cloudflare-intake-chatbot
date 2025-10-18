@@ -336,7 +336,62 @@ CREATE TABLE IF NOT EXISTS users (
   organization_id TEXT,
   stripe_customer_id TEXT UNIQUE,
   role TEXT,
-  phone TEXT
+  phone TEXT,
+  
+  -- Profile Information
+  bio TEXT,
+  secondary_phone TEXT,
+  address_street TEXT,
+  address_city TEXT,
+  address_state TEXT,
+  address_zip TEXT,
+  address_country TEXT,
+  preferred_contact_method TEXT,
+  
+  -- App Preferences
+  theme TEXT DEFAULT 'system',
+  accent_color TEXT DEFAULT 'default',
+  font_size TEXT DEFAULT 'medium',
+  language TEXT DEFAULT 'en',
+  spoken_language TEXT DEFAULT 'en',
+  country TEXT DEFAULT 'us',
+  timezone TEXT,
+  date_format TEXT DEFAULT 'MM/DD/YYYY',
+  time_format TEXT DEFAULT '12-hour',
+  
+  -- Chat Preferences
+  auto_save_conversations INTEGER DEFAULT 1,
+  typing_indicators INTEGER DEFAULT 1,
+  
+  -- Notification Settings
+  notification_responses_push INTEGER DEFAULT 1,
+  notification_tasks_push INTEGER DEFAULT 1,
+  notification_tasks_email INTEGER DEFAULT 1,
+  notification_messaging_push INTEGER DEFAULT 1,
+  
+  -- Email Settings
+  receive_feedback_emails INTEGER DEFAULT 0,
+  marketing_emails INTEGER DEFAULT 1,
+  security_alerts INTEGER DEFAULT 1,
+  
+  -- Security Settings
+  two_factor_enabled INTEGER DEFAULT 0,
+  email_notifications INTEGER DEFAULT 1,
+  login_alerts INTEGER DEFAULT 1,
+  session_timeout TEXT DEFAULT '7 days',
+  last_password_change TEXT,
+  
+  -- Links
+  selected_domain TEXT,
+  linkedin_url TEXT,
+  github_url TEXT,
+  
+  -- Onboarding
+  onboarding_completed INTEGER DEFAULT 0,
+  onboarding_data TEXT,
+  
+  -- Better Auth lastLoginMethod plugin
+  last_login_method TEXT
 );
 
 -- Organization members for Better Auth multi-tenancy
@@ -434,7 +489,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 CREATE TABLE IF NOT EXISTS verifications (
   id TEXT PRIMARY KEY,
   identifier TEXT NOT NULL,
-  value TEXT NOT NULL UNIQUE,
+  value TEXT NOT NULL,
   expires_at INTEGER NOT NULL,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
@@ -450,7 +505,6 @@ CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider ON accounts(provider_id, account_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider_user ON accounts(provider_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value);
 CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires_at);
 
 -- Create indexes for organization membership tables

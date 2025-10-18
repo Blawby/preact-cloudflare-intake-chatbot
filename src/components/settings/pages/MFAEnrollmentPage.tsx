@@ -2,7 +2,7 @@ import { useState, useMemo } from 'preact/hooks';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
-import { mockUserDataService } from '../../../utils/mockUserData';
+import { updateUser } from '../../../lib/authClient';
 import { useTranslation } from 'react-i18next';
 
 export interface MFAEnrollmentPageProps {
@@ -68,9 +68,7 @@ export const MFAEnrollmentPage = ({
       });
       
       // Update security settings to enable MFA
-      const currentSettings = mockUserDataService.getSecuritySettings();
-      const updatedSettings = { ...currentSettings, twoFactorEnabled: true };
-      mockUserDataService.setSecuritySettings(updatedSettings);
+      await updateUser({ twoFactorEnabled: true });
       
       showSuccess(
         t('settings:security.mfa.toastEnabled.title'),

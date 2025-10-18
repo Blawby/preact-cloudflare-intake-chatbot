@@ -11,6 +11,61 @@ export const users = sqliteTable("users", {
   stripeCustomerId: text("stripe_customer_id").unique(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  
+  // Profile Information
+  bio: text("bio"),
+  secondaryPhone: text("secondary_phone"),
+  addressStreet: text("address_street"),
+  addressCity: text("address_city"),
+  addressState: text("address_state"),
+  addressZip: text("address_zip"),
+  addressCountry: text("address_country"),
+  preferredContactMethod: text("preferred_contact_method"),
+  
+  // App Preferences
+  theme: text("theme").default("system"),
+  accentColor: text("accent_color").default("default"),
+  fontSize: text("font_size").default("medium"),
+  language: text("language").default("en"),
+  spokenLanguage: text("spoken_language").default("en"),
+  country: text("country").default("us"),
+  timezone: text("timezone"),
+  dateFormat: text("date_format").default("MM/DD/YYYY"),
+  timeFormat: text("time_format").default("12-hour"),
+  
+  // Chat Preferences
+  autoSaveConversations: integer("auto_save_conversations", { mode: "boolean" }).default(true),
+  typingIndicators: integer("typing_indicators", { mode: "boolean" }).default(true),
+  
+  // Notification Settings
+  notificationResponsesPush: integer("notification_responses_push", { mode: "boolean" }).default(true),
+  notificationTasksPush: integer("notification_tasks_push", { mode: "boolean" }).default(true),
+  notificationTasksEmail: integer("notification_tasks_email", { mode: "boolean" }).default(true),
+  notificationMessagingPush: integer("notification_messaging_push", { mode: "boolean" }).default(true),
+  
+  // Email Settings
+  receiveFeedbackEmails: integer("receive_feedback_emails", { mode: "boolean" }).default(false),
+  marketingEmails: integer("marketing_emails", { mode: "boolean" }).default(true),
+  securityAlerts: integer("security_alerts", { mode: "boolean" }).default(true),
+  
+  // Security Settings
+  twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).default(false),
+  emailNotifications: integer("email_notifications", { mode: "boolean" }).default(true),
+  loginAlerts: integer("login_alerts", { mode: "boolean" }).default(true),
+  sessionTimeout: text("session_timeout").default("7 days"),
+  lastPasswordChange: text("last_password_change"),
+  
+  // Links
+  selectedDomain: text("selected_domain"),
+  linkedinUrl: text("linkedin_url"),
+  githubUrl: text("github_url"),
+  
+  // Onboarding
+  onboardingCompleted: integer("onboarding_completed", { mode: "boolean" }).default(false),
+  onboardingData: text("onboarding_data"), // JSON string
+  
+  // Better Auth lastLoginMethod plugin
+  lastLoginMethod: text("last_login_method"), // "google", "email", "credential", etc.
 });
 
 export const sessions = sqliteTable("sessions", {

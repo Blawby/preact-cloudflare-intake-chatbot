@@ -5,11 +5,45 @@ import Modal from './Modal';
 import { Button } from './ui/Button';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Select } from './ui/input/Select';
-import { type SubscriptionTier } from '../utils/mockUserData';
 import { getBusinessPrices } from '../utils/stripe-products';
-import { mockUserDataService, getLanguageForCountry } from '../utils/mockUserData';
+import { useSession } from '../contexts/AuthContext';
+import { updateUser } from '../lib/authClient';
+import type { SubscriptionTier } from '../types/user';
 // import { useToastContext } from '../contexts/ToastContext';
 // import { useTranslation } from 'react-i18next';
+
+// Simple country to language mapping
+const getLanguageForCountry = (country: string): string => {
+  const countryLanguageMap: Record<string, string> = {
+    'us': 'en',
+    'gb': 'en',
+    'ca': 'en',
+    'au': 'en',
+    'nz': 'en',
+    'ie': 'en',
+    'za': 'en',
+    'mx': 'es',
+    'es': 'es',
+    'ar': 'es',
+    'cl': 'es',
+    'co': 'es',
+    'pe': 'es',
+    've': 'es',
+    'fr': 'fr',
+    'ca': 'fr', // Canada can be French too
+    'de': 'de',
+    'at': 'de',
+    'ch': 'de',
+    'jp': 'ja',
+    'vn': 'vi',
+    'cn': 'zh',
+    'tw': 'zh',
+    'hk': 'zh',
+    'sg': 'zh'
+  };
+  
+  return countryLanguageMap[country] || 'en';
+};
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -26,6 +60,7 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
   onUpgrade
 }) => {
   const { navigate } = useNavigation();
+  const { data: session } = useSession();
   const [selectedTab, setSelectedTab] = useState<'personal' | 'business'>('business');
   const [selectedCountry, setSelectedCountry] = useState('vn');
 
@@ -230,19 +265,20 @@ const PricingModal: FunctionComponent<PricingModalProps> = ({
 
   // Load user's current country preference
   useEffect(() => {
-    const preferences = mockUserDataService.getPreferences();
-    setSelectedCountry(preferences.country ?? 'us');
-  }, []);
+    if (session?.user?.country) {
+      setSelectedCountry(session.user.country);
+    }
+  }, [session?.user?.country]);
 
-  const handleCountryChange = (country: string) => {
+  const handleCountryChange = async (country: string) => {
     setSelectedCountry(country);
-    // Get the appropriate language for the selected country
-    const language = getLanguageForCountry(country);
-    // Update user preferences with both country and language
-    mockUserDataService.setPreferences({ 
-      country,
-      language 
-    });
+    
+    try {
+      // Update user preferences with country
+      await updateUser({ country });
+    } catch (error) {
+      console.error('Failed to update country preference:', error);
+    }
   };
 
   // Build pricing plans from real Stripe config

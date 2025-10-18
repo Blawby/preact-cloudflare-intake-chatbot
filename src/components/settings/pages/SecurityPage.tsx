@@ -3,10 +3,12 @@ import { Switch } from '../../ui/input/Switch';
 import { Button } from '../../ui/Button';
 import { useToastContext } from '../../../contexts/ToastContext';
 import { useNavigation } from '../../../utils/navigation';
-import { mockUserDataService, MockSecuritySettings } from '../../../utils/mockUserData';
+import { useSession } from '../../../contexts/AuthContext';
+import { updateUser } from '../../../lib/authClient';
 import Modal from '../../Modal';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
+import type { SecuritySettings } from '../../../types/user';
 
 export interface SecurityPageProps {
   isMobile?: boolean;
@@ -22,8 +24,8 @@ export const SecurityPage = ({
   const { showSuccess, showError } = useToastContext();
   const { navigate } = useNavigation();
   const { t } = useTranslation(['settings', 'common']);
-  const [settings, setSettings] = useState<MockSecuritySettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, isPending } = useSession();
+  const [settings, setSettings] = useState<SecuritySettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showDisableMFAConfirm, setShowDisableMFAConfirm] = useState(false);
@@ -32,45 +34,38 @@ export const SecurityPage = ({
     newPassword: '',
     confirmPassword: ''
   });
-  const isLoadingRef = useRef(false);
 
-  // Load settings from mock data service
-  const loadSettings = useCallback(async () => {
-    // Guard against concurrent calls
-    if (isLoadingRef.current) {
-      return;
-    }
-    
-    try {
-      isLoadingRef.current = true;
-      setLoading(true);
-      setError(null);
-      const securitySettings = mockUserDataService.getSecuritySettings();
-      setSettings(securitySettings);
-    } catch (error) {
-      // Failed to load security settings
-      setError(error instanceof Error ? error.message : t('settings:security.loadError'));
-    } finally {
-      setLoading(false);
-      isLoadingRef.current = false;
-    }
-  }, [t]);
-
+  // Load settings from Better Auth session
   useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+    if (!session?.user) return;
+    
+    const user = session.user;
+    
+    // Convert user data to security settings format
+    const securitySettings: SecuritySettings = {
+      twoFactorEnabled: user.twoFactorEnabled ?? false,
+      emailNotifications: user.emailNotifications ?? true,
+      loginAlerts: user.loginAlerts ?? true,
+      sessionTimeout: (user.sessionTimeout as '1 hour' | '1 day' | '7 days' | '30 days') ?? '7 days',
+      lastPasswordChange: user.lastPasswordChange,
+      connectedAccounts: [] // This would need to be populated from accounts table if needed
+    };
+    
+    setSettings(securitySettings);
+  }, [session?.user]);
 
   // Refresh settings when component regains focus (e.g., returning from MFA enrollment)
   useEffect(() => {
     const handleFocus = () => {
-      loadSettings();
+      // Settings will be refreshed automatically when session updates
+      // No need to manually reload since we're using reactive session data
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [loadSettings]);
+  }, []);
 
-  const handleToggleChange = (key: string, value: boolean) => {
+  const handleToggleChange = async (key: string, value: boolean) => {
     if (!settings) return;
     
     if (key === 'twoFactorEnabled') {
@@ -86,27 +81,52 @@ export const SecurityPage = ({
       const updatedSettings = { ...settings, [key]: value };
       setSettings(updatedSettings);
       
-      // Save to mock data service
-      mockUserDataService.setSecuritySettings(updatedSettings);
-      showSuccess(
-        t('common:notifications.settingsSavedTitle'),
-        t('settings:security.toasts.settingsUpdated')
-      );
+      try {
+        // Update user in database
+        await updateUser({ [key]: value });
+        
+        showSuccess(
+          t('common:notifications.settingsSavedTitle'),
+          t('settings:security.toasts.settingsUpdated')
+        );
+      } catch (error) {
+        console.error('Failed to update security settings:', error);
+        showError(
+          t('common:notifications.errorTitle'),
+          t('common:notifications.settingsSaveError')
+        );
+        
+        // Revert the local state on error
+        setSettings(settings);
+      }
     }
   };
 
-  const handleConfirmDisableMFA = () => {
+  const handleConfirmDisableMFA = async () => {
     if (!settings) return;
     
     const updatedSettings = { ...settings, twoFactorEnabled: false };
     setSettings(updatedSettings);
     
-    // Save to mock data service
-    mockUserDataService.setSecuritySettings(updatedSettings);
-    showSuccess(
-      t('settings:security.mfa.disable.toastTitle'),
-      t('settings:security.mfa.disable.toastBody')
-    );
+    try {
+      // Update user in database
+      await updateUser({ twoFactorEnabled: false });
+      
+      showSuccess(
+        t('settings:security.mfa.disable.toastTitle'),
+        t('settings:security.mfa.disable.toastBody')
+      );
+    } catch (error) {
+      console.error('Failed to disable MFA:', error);
+      showError(
+        t('common:notifications.errorTitle'),
+        t('common:notifications.settingsSaveError')
+      );
+      
+      // Revert the local state on error
+      setSettings(settings);
+    }
+    
     setShowDisableMFAConfirm(false);
   };
 
@@ -183,7 +203,8 @@ export const SecurityPage = ({
     }
   };
 
-  if (loading) {
+  // Show loading state while session is loading
+  if (isPending) {
     return (
       <div className={`h-full flex items-center justify-center ${className}`}>
         <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
@@ -205,7 +226,7 @@ export const SecurityPage = ({
           <Button
             variant="primary"
             size="sm"
-            onClick={loadSettings}
+            onClick={() => window.location.reload()}
           >
             {t('settings:account.retry')}
           </Button>

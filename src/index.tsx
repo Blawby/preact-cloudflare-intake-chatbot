@@ -9,6 +9,7 @@ import AuthPage from './components/AuthPage';
 import { SEOHead } from './components/SEOHead';
 import { ToastProvider } from './contexts/ToastContext';
 import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
+import { AuthProvider, useSession } from './contexts/AuthContext';
 import { useOrganizationManagement } from './hooks/useOrganizationManagement';
 import { type SubscriptionTier } from './utils/mockUserData';
 import { useMessageHandlingWithContext } from './hooks/useMessageHandling';
@@ -25,7 +26,7 @@ import { BusinessWelcomeModal } from './components/onboarding/BusinessWelcomeMod
 import { BusinessSetupModal } from './components/onboarding/BusinessSetupModal';
 import { CartPage } from './components/cart/CartPage';
 import { debounce } from './utils/debounce';
-import { authClient } from './lib/authClient';
+// useSession is now imported from AuthContext above
 import './index.css';
 import { i18n, initI18n } from './i18n';
 
@@ -49,6 +50,9 @@ function MainApp() {
 	// Get current location to detect settings routes
 	const location = useLocation();
 	const { navigate } = useNavigation();
+
+	// Use session from Better Auth
+	const { data: session, isPending: sessionIsPending } = useSession();
 
 	// Use organization context
 	const { organizationId, organizationConfig, organizationNotFound, handleRetryOrganizationConfig } = useOrganization();
@@ -123,6 +127,40 @@ function MainApp() {
 		}
 	}, []);
 
+	// Check if OAuth user needs onboarding (one-time check after auth)
+	useEffect(() => {
+		if (session?.user && !sessionIsPending) {
+			// Only check if this is a fresh authentication (no localStorage flag set)
+			const hasOnboardingFlag = localStorage.getItem('onboardingCompleted');
+			const hasOnboardingCheckFlag = localStorage.getItem('onboardingCheckDone');
+			
+			// If user hasn't completed onboarding and we haven't checked yet
+			if (!hasOnboardingFlag && !hasOnboardingCheckFlag) {
+				const needsOnboarding = session.user.onboardingCompleted === false || 
+										session.user.onboardingCompleted === undefined;
+				
+				if (needsOnboarding) {
+					// Set flag to prevent repeated checks
+					try {
+						localStorage.setItem('onboardingCheckDone', 'true');
+					} catch (error) {
+						// Handle localStorage failures gracefully
+					}
+					
+					// Redirect to auth page with onboarding
+					window.location.href = '/auth?mode=signin&onboarding=true';
+				} else {
+					// User has completed onboarding, set the flag
+					try {
+						localStorage.setItem('onboardingCheckDone', 'true');
+					} catch (error) {
+						// Handle localStorage failures gracefully
+					}
+				}
+			}
+		}
+	}, [session?.user, sessionIsPending]);
+
 	// Check if we should show business setup modal (after tier upgrade)
 	useEffect(() => {
 		try {
@@ -149,7 +187,9 @@ function MainApp() {
 
 	// Handle hash-based routing for pricing modal
 	const [showPricingModal, setShowPricingModal] = useState(false);
-	const [currentUserTier, setCurrentUserTier] = useState<SubscriptionTier>('free');
+	
+	// Derive current user tier from organization
+	const currentUserTier = (currentOrganization?.subscriptionTier || 'free') as SubscriptionTier;
 	
 	useEffect(() => {
 		const handleHashChange = () => {
@@ -168,31 +208,7 @@ function MainApp() {
 		};
 	}, []);
 
-	// Listen for user tier changes
-	useEffect(() => {
-		const handleAuthStateChange = (e: CustomEvent) => {
-			if (e.detail && e.detail.subscriptionTier) {
-				setCurrentUserTier(e.detail.subscriptionTier);
-			} else {
-				// Fallback to 'free' when detail is missing or subscriptionTier is falsy
-				setCurrentUserTier('free');
-			}
-		};
-
-		// Use organization tier directly from organization management
-		const checkUserTier = () => {
-			const orgTier = currentOrganization?.subscriptionTier || 'free';
-			setCurrentUserTier(orgTier as SubscriptionTier);
-		};
-		
-		checkUserTier();
-
-		window.addEventListener('authStateChanged', handleAuthStateChange as EventListener);
-		
-		return () => {
-			window.removeEventListener('authStateChanged', handleAuthStateChange as EventListener);
-		};
-	}, [currentOrganization?.subscriptionTier]);
+	// User tier is now derived directly from organization - no need for custom event listeners
 
 	const isSessionReady = Boolean(sessionId);
 
@@ -464,27 +480,17 @@ function MainApp() {
 				onUpgrade={async (tier) => {
 					// Update user's subscription tier
 					try {
-						const session = await authClient.getSession();
-						if (session?.data?.user) {
+						if (session?.user) {
 							// For now, just update the local state
 							// In a real implementation, this would make an API call to update the user's subscription
-							setCurrentUserTier(tier);
-							
-							// Dispatch event to notify other components
-							window.dispatchEvent(new CustomEvent('authStateChanged', { 
-								detail: { 
-									...session.data.user, 
-									subscriptionTier: tier 
-								} 
-							}));
+							// The tier will be updated through the organization management system
+							console.log('Upgrading to tier:', tier);
 						} else {
-							// User not authenticated, just update local state
-							setCurrentUserTier(tier);
+							// User not authenticated
+							console.warn('User not authenticated for upgrade');
 						}
 					} catch (error) {
 						console.error('Error updating subscription tier:', error);
-						// Still update local state as fallback
-						setCurrentUserTier(tier);
 					}
 					
 					// Always ensure these cleanup operations run
@@ -532,11 +538,13 @@ function MainApp() {
 export function App() {
 	return (
 		<LocationProvider>
-			<OrganizationProvider onError={(error) => console.error('Organization config error:', error)}>
-				<ToastProvider>
-					<AppWithSEO />
-				</ToastProvider>
-			</OrganizationProvider>
+			<AuthProvider>
+				<OrganizationProvider onError={(error) => console.error('Organization config error:', error)}>
+					<ToastProvider>
+						<AppWithSEO />
+					</ToastProvider>
+				</OrganizationProvider>
+			</AuthProvider>
 		</LocationProvider>
 	);
 }

@@ -1,16 +1,19 @@
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
+import { lastLoginMethod } from "better-auth/plugins";
 import { withCloudflare } from "better-auth-cloudflare";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "../types";
 import * as authSchema from "../db/auth.schema";
 import { EmailService } from "../services/EmailService.js";
+import { OrganizationService } from "../services/OrganizationService.js";
 import { handlePostSignup } from "./hooks.js";
 import { stripe as stripePlugin } from "@better-auth/stripe";
 import Stripe from "stripe";
 import {
   applyStripeSubscriptionUpdate,
   clearStripeSubscriptionCache,
+  cancelSubscriptionsAndDeleteCustomer,
 } from "../services/StripeSync.js";
 
 // Organization plugin will use default roles for now
@@ -46,6 +49,64 @@ export const auth = betterAuth({
         "http://127.0.0.1:5174",
         "http://127.0.0.1:8787",
       ],
+      user: {
+        additionalFields: {
+          // Profile Information
+          bio: { type: "string", required: false },
+          secondaryPhone: { type: "string", required: false },
+          addressStreet: { type: "string", required: false },
+          addressCity: { type: "string", required: false },
+          addressState: { type: "string", required: false },
+          addressZip: { type: "string", required: false },
+          addressCountry: { type: "string", required: false },
+          preferredContactMethod: { type: "string", required: false },
+          
+          // App Preferences
+          theme: { type: "string", required: false, defaultValue: "system" },
+          accentColor: { type: "string", required: false, defaultValue: "default" },
+          fontSize: { type: "string", required: false, defaultValue: "medium" },
+          language: { type: "string", required: false, defaultValue: "en" },
+          spokenLanguage: { type: "string", required: false, defaultValue: "en" },
+          country: { type: "string", required: false, defaultValue: "us" },
+          timezone: { type: "string", required: false },
+          dateFormat: { type: "string", required: false, defaultValue: "MM/DD/YYYY" },
+          timeFormat: { type: "string", required: false, defaultValue: "12-hour" },
+          
+          // Chat Preferences
+          autoSaveConversations: { type: "boolean", required: false, defaultValue: true },
+          typingIndicators: { type: "boolean", required: false, defaultValue: true },
+          
+          // Notification Settings (separate boolean fields)
+          notificationResponsesPush: { type: "boolean", required: false, defaultValue: true },
+          notificationTasksPush: { type: "boolean", required: false, defaultValue: true },
+          notificationTasksEmail: { type: "boolean", required: false, defaultValue: true },
+          notificationMessagingPush: { type: "boolean", required: false, defaultValue: true },
+          
+          // Email Settings
+          receiveFeedbackEmails: { type: "boolean", required: false, defaultValue: false },
+          marketingEmails: { type: "boolean", required: false, defaultValue: true },
+          securityAlerts: { type: "boolean", required: false, defaultValue: true },
+          
+          // Security Settings
+          twoFactorEnabled: { type: "boolean", required: false, defaultValue: false },
+          emailNotifications: { type: "boolean", required: false, defaultValue: true },
+          loginAlerts: { type: "boolean", required: false, defaultValue: true },
+          sessionTimeout: { type: "string", required: false, defaultValue: "7 days" },
+          lastPasswordChange: { type: "string", required: false },
+          
+          // Links
+          selectedDomain: { type: "string", required: false },
+          linkedinUrl: { type: "string", required: false },
+          githubUrl: { type: "string", required: false },
+
+          // Auth metadata
+          lastLoginMethod: { type: "string", required: false },
+          
+          // Onboarding
+          onboardingCompleted: { type: "boolean", required: false, defaultValue: false },
+          onboardingData: { type: "string", required: false }, // JSON string
+        }
+      },
       emailAndPassword: {
         enabled: true,
         requireEmailVerification: false,
@@ -59,6 +120,7 @@ export const auth = betterAuth({
       },
       plugins: [
         organization(),
+        lastLoginMethod({ storeInDatabase: true }), // Add this plugin to match runtime config
       ],
     }
   ),
@@ -411,6 +473,130 @@ export async function getAuth(env: Env, request?: Request) {
             "http://127.0.0.1:5174",
             "http://127.0.0.1:8787",
           ].filter(Boolean),
+          user: {
+            deleteUser: {
+              enabled: true,
+              beforeDelete: async (user) => {
+                if (!user?.id) {
+                  console.warn('⚠️ deleteUser.beforeDelete invoked without a user id; skipping organization cleanup.');
+                  return;
+                }
+
+                try {
+                  const personalOrgs = await env.DB.prepare(`
+                    SELECT o.id, o.stripe_customer_id as stripeCustomerId
+                    FROM organizations o
+                    INNER JOIN members m ON m.organization_id = o.id
+                    WHERE m.user_id = ? AND o.is_personal = 1
+                  `)
+                    .bind(user.id)
+                    .all<{ id: string; stripeCustomerId: string | null }>();
+
+                  const organizations = personalOrgs.results ?? [];
+
+                  if (!organizations.length) {
+                    return;
+                  }
+
+                  const organizationService = new OrganizationService(env);
+
+                  for (const org of organizations) {
+                    if (!org || !org.id) {
+                      continue;
+                    }
+
+                    if (org.stripeCustomerId) {
+                      await cancelSubscriptionsAndDeleteCustomer({
+                        env,
+                        stripeCustomerId: org.stripeCustomerId,
+                      });
+                    }
+
+                    await organizationService.deleteOrganization(org.id);
+                  }
+                } catch (error) {
+                  console.error(
+                    `❌ Failed to clean up personal organizations or Stripe data for user ${user.id}:`,
+                    error
+                  );
+                  throw error instanceof Error
+                    ? error
+                    : new Error('Organization cleanup failed during account deletion');
+                }
+              },
+              sendDeleteAccountVerification: async ({ user, url, token }, request) => {
+                try {
+                  const emailService = new EmailService(env.RESEND_API_KEY);
+                  await emailService.send({
+                    from: 'noreply@blawby.com',
+                    to: user.email,
+                    subject: 'Confirm Account Deletion - Blawby AI',
+                    text: `You have requested to delete your account.\n\nClick here to confirm: ${url}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email and your account will remain active.`
+                  });
+                  console.log(`✅ Account deletion verification email sent to ${user.email}`);
+                } catch (error) {
+                  console.error(`❌ Failed to send account deletion email to ${user.email}:`, error);
+                  throw error;
+                }
+              },
+            },
+            additionalFields: {
+              // Profile Information
+              bio: { type: "string", required: false },
+              secondaryPhone: { type: "string", required: false },
+              addressStreet: { type: "string", required: false },
+              addressCity: { type: "string", required: false },
+              addressState: { type: "string", required: false },
+              addressZip: { type: "string", required: false },
+              addressCountry: { type: "string", required: false },
+              preferredContactMethod: { type: "string", required: false },
+              
+              // App Preferences
+              theme: { type: "string", required: false, defaultValue: "system" },
+              accentColor: { type: "string", required: false, defaultValue: "default" },
+              fontSize: { type: "string", required: false, defaultValue: "medium" },
+              language: { type: "string", required: false, defaultValue: "en" },
+              spokenLanguage: { type: "string", required: false, defaultValue: "en" },
+              country: { type: "string", required: false, defaultValue: "us" },
+              timezone: { type: "string", required: false },
+              dateFormat: { type: "string", required: false, defaultValue: "MM/DD/YYYY" },
+              timeFormat: { type: "string", required: false, defaultValue: "12-hour" },
+              
+              // Chat Preferences
+              autoSaveConversations: { type: "boolean", required: false, defaultValue: true },
+              typingIndicators: { type: "boolean", required: false, defaultValue: true },
+              
+              // Notification Settings (separate boolean fields)
+              notificationResponsesPush: { type: "boolean", required: false, defaultValue: true },
+              notificationTasksPush: { type: "boolean", required: false, defaultValue: true },
+              notificationTasksEmail: { type: "boolean", required: false, defaultValue: true },
+              notificationMessagingPush: { type: "boolean", required: false, defaultValue: true },
+              
+              // Email Settings
+              receiveFeedbackEmails: { type: "boolean", required: false, defaultValue: false },
+              marketingEmails: { type: "boolean", required: false, defaultValue: true },
+              securityAlerts: { type: "boolean", required: false, defaultValue: true },
+              
+              // Security Settings
+              twoFactorEnabled: { type: "boolean", required: false, defaultValue: false },
+              emailNotifications: { type: "boolean", required: false, defaultValue: true },
+              loginAlerts: { type: "boolean", required: false, defaultValue: true },
+              sessionTimeout: { type: "string", required: false, defaultValue: "7 days" },
+              lastPasswordChange: { type: "string", required: false },
+              
+              // Links
+              selectedDomain: { type: "string", required: false },
+              linkedinUrl: { type: "string", required: false },
+              githubUrl: { type: "string", required: false },
+
+              // Auth metadata
+              lastLoginMethod: { type: "string", required: false },
+              
+              // Onboarding
+              onboardingCompleted: { type: "boolean", required: false, defaultValue: false },
+              onboardingData: { type: "string", required: false }, // JSON string
+            }
+          },
           advanced: {
             defaultCookieAttributes: {
               sameSite: env.NODE_ENV === 'production' ? "none" : "lax",
@@ -512,9 +698,7 @@ export async function getAuth(env: Env, request?: Request) {
                 const emailVerifiedClaim =
                   typeof profile.email_verified === "boolean"
                     ? profile.email_verified
-                    : typeof profile.emailVerified === "boolean"
-                      ? profile.emailVerified
-                      : true;
+                    : true;
 
                 return {
                   name: fallbackName,
@@ -530,8 +714,17 @@ export async function getAuth(env: Env, request?: Request) {
               trustedProviders: ["google"],
             },
           },
+          session: {
+            expiresIn: 60 * 60 * 24 * 7, // 7 days
+            updateAge: 60 * 60 * 24, // 1 day
+            cookieCache: {
+              enabled: true,
+              maxAge: 300 // 5 minutes - cache session in cookie to avoid DB hits
+            }
+          },
           plugins: [
             organization(),
+            lastLoginMethod({ storeInDatabase: true }), // Track authentication method
             ...(stripeIntegration ? [stripeIntegration] : []),
           ],
           databaseHooks: {

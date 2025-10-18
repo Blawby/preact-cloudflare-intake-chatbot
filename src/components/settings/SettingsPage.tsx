@@ -22,8 +22,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigation } from '../../utils/navigation';
 import { useToastContext } from '../../contexts/ToastContext';
 import { cn } from '../../utils/cn';
-import { mockUserDataService } from '../../utils/mockUserData';
 import { useTranslation } from 'react-i18next';
+import { signOut } from '../../utils/auth';
 
 
 export interface SettingsPageProps {
@@ -65,20 +65,15 @@ export const SettingsPage = ({
   };
 
   const handleSignOut = async () => {
-    // Use the mock data service to properly clear all data
-    mockUserDataService.resetToDefaults();
-    
-    // Note: Auth data is now managed by Better Auth, not localStorage
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: null }));
-    
-    showSuccess(t('settings:navigation.signOut.toastTitle'), t('settings:navigation.signOut.toastBody'));
-    if (onClose) {
-      onClose();
-    }
-    // Refresh the page to update the UI
-    window.location.reload();
+    // Use centralized sign out utility
+    await signOut({
+      onSuccess: () => {
+        showSuccess(t('settings:navigation.signOut.toastTitle'), t('settings:navigation.signOut.toastBody'));
+        if (onClose) {
+          onClose();
+        }
+      }
+    });
   };
 
 

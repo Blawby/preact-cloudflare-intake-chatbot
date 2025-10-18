@@ -39,6 +39,7 @@ export function useChatSession(organizationId: string): ChatSessionState {
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isDisposedRef = useRef(false);
+  const handshakeInProgressRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -144,6 +145,13 @@ export function useChatSession(organizationId: string): ChatSessionState {
       return;
     }
 
+    // Prevent multiple simultaneous handshakes
+    if (handshakeInProgressRef.current) {
+      return;
+    }
+
+    handshakeInProgressRef.current = true;
+
     const storedSessionId = readStoredSessionId();
     const body: Record<string, unknown> = { organizationId };
     if (storedSessionId) {
@@ -197,6 +205,7 @@ export function useChatSession(organizationId: string): ChatSessionState {
       console.warn('Session handshake failed:', handshakeError);
       throw handshakeError;
     } finally {
+      handshakeInProgressRef.current = false;
       if (!isDisposedRef.current) {
         setIsInitializing(false);
       }
@@ -222,7 +231,7 @@ export function useChatSession(organizationId: string): ChatSessionState {
     return () => {
       cancelled = true;
     };
-  }, [organizationId, performHandshake, clearStoredSession]);
+  }, [organizationId]); // Only re-run when organizationId actually changes
 
   return {
     sessionId,

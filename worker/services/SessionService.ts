@@ -382,10 +382,11 @@ export class SessionService {
 
       await this.touchSession(env, session.id);
 
-      const refreshed = await this.getSessionById(env, session.id);
+      // Update last_active in memory since we just touched it
+      session.lastActive = new Date();
 
       return {
-        session: refreshed ?? session,
+        session: session,
         sessionToken,
         cookie,
         isNew: false

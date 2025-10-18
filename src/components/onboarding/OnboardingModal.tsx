@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import Modal from '../Modal';
 import PersonalInfoStep from './PersonalInfoStep';
 import UseCaseStep from './UseCaseStep';
-import { mockUserDataService, OnboardingData } from '../../utils/mockUserData';
+import { updateUser } from '../../lib/authClient';
+import type { OnboardingData } from '../../types/user';
 import { useToastContext } from '../../contexts/ToastContext';
-import { authClient } from '../../lib/authClient';
+import { useSession } from '../../contexts/AuthContext';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ type OnboardingStep = 'personal' | 'useCase';
 const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) => {
   const { t } = useTranslation('common');
   const { showError, showSuccess } = useToastContext();
+  const { data: session } = useSession();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('personal');
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     personalInfo: {
@@ -34,39 +36,16 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
 
   // Load existing user data if available
   useEffect(() => {
-    if (isOpen) {
-      const loadUserData = async () => {
-        try {
-          // Get real user data from Better Auth session
-          const session = await authClient.getSession();
-          if (session?.data?.user?.name) {
-            setOnboardingData(prev => ({
-              ...prev,
-              personalInfo: {
-                ...prev.personalInfo,
-                fullName: session.data.user.name
-              }
-            }));
-          }
-        } catch (error) {
-          // Fallback to mock data if session fails
-          console.warn('Failed to load user session for onboarding:', error);
-          const userProfile = mockUserDataService.getUserProfile();
-          if (userProfile.name) {
-            setOnboardingData(prev => ({
-              ...prev,
-              personalInfo: {
-                ...prev.personalInfo,
-                fullName: userProfile.name
-              }
-            }));
-          }
+    if (isOpen && session?.user?.name) {
+      setOnboardingData(prev => ({
+        ...prev,
+        personalInfo: {
+          ...prev.personalInfo,
+          fullName: session.user.name
         }
-      };
-      
-      loadUserData();
+      }));
     }
-  }, [isOpen]);
+  }, [isOpen, session?.user?.name]);
 
   const handleStepComplete = async (step: OnboardingStep, data: Partial<OnboardingData>) => {
     // Compute merged snapshot locally to avoid stale state
@@ -110,9 +89,9 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
 
     try {
       // Save onboarding data to user preferences (single source of truth)
-      mockUserDataService.setPreferences({
+      await updateUser({
         onboardingCompleted: true,
-        onboardingData: completedData
+        onboardingData: JSON.stringify(completedData)
       });
 
       // Cache the completion status in localStorage for quick access
