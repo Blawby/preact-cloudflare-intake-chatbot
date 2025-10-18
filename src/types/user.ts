@@ -280,6 +280,10 @@ export function toOnboardingData(jsonString: string | null): OnboardingData | nu
     const parsed = JSON.parse(jsonString);
     // Basic validation to ensure it has the expected structure
     if (parsed && typeof parsed === 'object' && parsed.personalInfo && parsed.useCase) {
+      // Normalize skippedSteps to ensure consistency
+      if (!Array.isArray(parsed.skippedSteps)) {
+        parsed.skippedSteps = [];
+      }
       return parsed as OnboardingData;
     }
     return null;
@@ -387,7 +391,7 @@ function validateRequiredFields(rawUser: Record<string, unknown>): void {
   
   for (const field of requiredFields) {
     const value = rawUser[field];
-    if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+    if (value === null || value === undefined || typeof value !== 'string' || value.trim() === '') {
       missingFields.push(field);
     }
   }

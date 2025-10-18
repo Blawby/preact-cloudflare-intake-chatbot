@@ -489,8 +489,7 @@ export const AccountPage = ({
           customDomains: JSON.stringify(links?.customDomains || [])
         });
         
-        const updatedLinks = { ...links, selectedDomain: domain };
-        setLinks(updatedLinks);
+        setLinks(prev => prev ? { ...prev, selectedDomain: domain } : prev);
       } catch (error) {
         console.error('Failed to update domain:', error);
         showError(
@@ -508,10 +507,15 @@ export const AccountPage = ({
       // Update user in database
       await updateUser({ receiveFeedbackEmails: checked });
       
-      setEmailSettings(prev => ({
-        ...(prev || {}),  // Safe fallback when prev is null
-        receiveFeedbackEmails: checked
-      }));
+      setEmailSettings(prev => prev ? { 
+        ...prev, 
+        receiveFeedbackEmails: checked 
+      } : { 
+        email: '', 
+        receiveFeedbackEmails: checked, 
+        marketingEmails: false, 
+        securityAlerts: false 
+      });
     } catch (error) {
       console.error('Failed to update email settings:', error);
       showError(
