@@ -246,9 +246,9 @@ export class PIIEncryptionService {
       const uaData = await this.encryptAuditPII(auditLog.userAgent);
       
       // Calculate retention (7 years from now in milliseconds)
-      // Using 2557.5 days to account for leap years over 7 years (more accurate than 365 * 7)
+      // Using 7 * 365.25 days to account for leap years over 7 years (more accurate than 365 * 7)
       const retentionExpiresAt = auditLog.retentionExpiresAt || 
-        Date.now() + (2557.5 * 24 * 60 * 60 * 1000);
+        Date.now() + (7 * 365.25 * 24 * 60 * 60 * 1000);
       
       // Validate required fields
       if (!auditLog.accessedBy) {
