@@ -14,6 +14,8 @@ export const users = sqliteTable("users", {
   
   // Profile Information
   bio: text("bio"),
+  // TODO: These fields are named *_encrypted but not actually encrypted yet
+  // TODO: Integrate PIIEncryptionService to encrypt/decrypt these fields
   secondaryPhone: text("secondary_phone_encrypted"), // Encrypted PII
   addressStreet: text("address_street_encrypted"), // Encrypted PII
   addressCity: text("address_city_encrypted"), // Encrypted PII
@@ -94,15 +96,16 @@ export const piiAccessAudit = sqliteTable("pii_access_audit", {
   
   piiFields: text("pii_fields").notNull(), // JSON array of accessed fields
   accessReason: text("access_reason"), // Business justification
-  accessedBy: text("accessed_by").notNull().default("system"), // User ID or system identifier
+  accessedBy: text("accessed_by").notNull(), // User ID or system identifier - must be explicitly provided
   
   // Encrypted PII fields with metadata
+  // Key versioning: v1, v2, etc. - see ENCRYPTION_KEY_MANAGEMENT.md for details
   ipAddressEncrypted: text("ip_address_encrypted"), // Encrypted IP address
-  ipAddressKeyVersion: text("ip_address_key_version"), // Encryption key version
+  ipAddressKeyVersion: text("ip_address_key_version"), // Encryption key version (e.g., 'v1')
   ipAddressHash: text("ip_address_hash"), // SHA-256 hash for lookups without decryption
   
   userAgentEncrypted: text("user_agent_encrypted"), // Encrypted user agent
-  userAgentKeyVersion: text("user_agent_key_version"), // Encryption key version
+  userAgentKeyVersion: text("user_agent_key_version"), // Encryption key version (e.g., 'v1')
   userAgentHash: text("user_agent_hash"), // SHA-256 hash for lookups without decryption
   
   // Retention metadata
@@ -112,7 +115,7 @@ export const piiAccessAudit = sqliteTable("pii_access_audit", {
   
   // Consent tracking
   consentId: text("consent_id"), // Reference to consent record
-  legalBasis: text("legal_basis"), // Legal basis for processing (GDPR Article 6)
+  legalBasis: text("legal_basis", { enum: ["consent", "contract", "legal_obligation", "vital_interests", "public_task", "legitimate_interest"] }), // Legal basis for processing (GDPR Article 6)
   consentVersion: text("consent_version"), // Version of consent at time of access
   
   timestamp: integer("timestamp", { mode: "timestamp" }).notNull().default(sql`(strftime('%s', 'now') * 1000)`),

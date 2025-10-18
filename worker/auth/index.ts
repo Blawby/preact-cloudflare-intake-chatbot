@@ -142,6 +142,11 @@ export const auth = betterAuth({
 // Lazy initialization to handle async D1 access
 let authInstance: ReturnType<typeof betterAuth> | null = null;
 
+// TODO: Integrate PIIEncryptionService into Better Auth user update hooks
+// TODO: Add PII field encryption before user updates (secondaryPhone, addressStreet, etc.)
+// TODO: Add PII access audit logging for all user data operations
+// TODO: Implement consent validation before PII processing
+
 export async function getAuth(env: Env, request?: Request) {
   if (!authInstance) {
     // Fail-fast guard for production environment

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { useTranslation } from 'react-i18next';
 import Modal from '../Modal';
 import PersonalInfoStep from './PersonalInfoStep';
@@ -34,10 +34,11 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
     },
     skippedSteps: []
   });
+  const hasLoadedRef = useRef(false);
 
   // Load existing user data if available
   useEffect(() => {
-    if (isOpen && session?.user) {
+    if (isOpen && session?.user && !hasLoadedRef.current) {
       // Load existing onboarding data from session if available
       // Note: session.user.onboardingData comes from database as string, but our type expects OnboardingData | null
       // We need to handle the type mismatch by treating it as the raw database value
@@ -45,9 +46,9 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
       const existingOnboardingData = toOnboardingData(rawOnboardingData);
       
       if (existingOnboardingData) {
-        // If we have existing onboarding data, use it
-        setOnboardingData(existingOnboardingData);
-      } else if (session.user.name && !onboardingData.personalInfo.fullName) {
+        // If we have existing onboarding data, merge it into state
+        setOnboardingData(prev => ({ ...prev, ...existingOnboardingData }));
+      } else if (session.user.name) {
         // Otherwise, pre-fill with user's name if available
         setOnboardingData(prev => ({
           ...prev,
@@ -57,8 +58,13 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
           }
         }));
       }
+      
+      hasLoadedRef.current = true;
+    } else if (!isOpen) {
+      // Reset the ref when modal closes
+      hasLoadedRef.current = false;
     }
-  }, [isOpen, session?.user, onboardingData.personalInfo.fullName]);
+  }, [isOpen, session?.user]);
 
   const handleStepComplete = async (step: OnboardingStep, data: Partial<OnboardingData>) => {
     // Compute merged snapshot locally to avoid stale state

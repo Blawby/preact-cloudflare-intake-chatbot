@@ -180,6 +180,8 @@ export const useUserProfile = (): UseUserProfileReturn => {
 
       // For now, just update the local state
       // TODO: Implement proper profile updates using Better Auth's built-in endpoints
+      // TODO: Integrate PIIEncryptionService to encrypt PII fields (secondaryPhone, addressStreet, etc.)
+      // TODO: Add PII access audit logging via PIIEncryptionService.logPIIAccess()
       setProfile(prev => prev ? { ...prev, ...data } : null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';

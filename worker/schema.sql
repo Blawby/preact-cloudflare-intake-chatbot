@@ -340,6 +340,8 @@ CREATE TABLE IF NOT EXISTS users (
   
   -- Profile Information
   bio TEXT,
+  -- TODO: These fields are named *_encrypted but not actually encrypted yet
+  -- TODO: Integrate PIIEncryptionService to encrypt/decrypt these fields
   secondary_phone_encrypted TEXT, -- Encrypted PII
   address_street_encrypted TEXT, -- Encrypted PII
   address_city_encrypted TEXT, -- Encrypted PII
@@ -422,15 +424,16 @@ CREATE TABLE IF NOT EXISTS pii_access_audit (
   
   pii_fields TEXT NOT NULL, -- JSON array of accessed fields
   access_reason TEXT, -- Business justification
-  accessed_by TEXT NOT NULL DEFAULT 'system', -- User ID or system identifier
+  accessed_by TEXT NOT NULL, -- User ID or system identifier - must be explicitly provided
   
   -- Encrypted PII fields with metadata
+  -- Key versioning: v1, v2, etc. - see ENCRYPTION_KEY_MANAGEMENT.md for details
   ip_address_encrypted TEXT, -- Encrypted IP address
-  ip_address_key_version TEXT, -- Encryption key version
+  ip_address_key_version TEXT, -- Encryption key version (e.g., 'v1')
   ip_address_hash TEXT, -- SHA-256 hash for lookups without decryption
   
   user_agent_encrypted TEXT, -- Encrypted user agent
-  user_agent_key_version TEXT, -- Encryption key version
+  user_agent_key_version TEXT, -- Encryption key version (e.g., 'v1')
   user_agent_hash TEXT, -- SHA-256 hash for lookups without decryption
   
   -- Retention metadata
@@ -440,11 +443,18 @@ CREATE TABLE IF NOT EXISTS pii_access_audit (
   
   -- Consent tracking
   consent_id TEXT, -- Reference to consent record
-  legal_basis TEXT, -- Legal basis for processing (GDPR Article 6)
+  legal_basis TEXT CHECK (legal_basis IN ('consent', 'contract', 'legal_obligation', 
+                                          'vital_interests', 'public_task', 'legitimate_interest')), -- Legal basis for processing (GDPR Article 6)
   consent_version TEXT, -- Version of consent at time of access
   
   timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-  organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE
+  organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Consistency constraints for encrypted fields (all-or-nothing)
+  CHECK ((ip_address_encrypted IS NULL AND ip_address_hash IS NULL AND ip_address_key_version IS NULL) OR
+         (ip_address_encrypted IS NOT NULL AND ip_address_hash IS NOT NULL AND ip_address_key_version IS NOT NULL)),
+  CHECK ((user_agent_encrypted IS NULL AND user_agent_hash IS NULL AND user_agent_key_version IS NULL) OR
+         (user_agent_encrypted IS NOT NULL AND user_agent_hash IS NOT NULL AND user_agent_key_version IS NOT NULL))
 );
 
 CREATE INDEX IF NOT EXISTS pii_audit_user_idx ON pii_access_audit(user_id);

@@ -62,26 +62,7 @@ CREATE INDEX IF NOT EXISTS pii_audit_consent_idx ON pii_access_audit(consent_id)
 CREATE INDEX IF NOT EXISTS pii_audit_ip_hash_idx ON pii_access_audit(ip_address_hash);
 CREATE INDEX IF NOT EXISTS pii_audit_user_agent_hash_idx ON pii_access_audit(user_agent_hash);
 
--- Create a view for backward compatibility (optional)
-CREATE VIEW IF NOT EXISTS pii_access_audit_legacy AS
-SELECT 
-  id,
-  user_id,
-  access_type,
-  pii_fields,
-  access_reason,
-  accessed_by,
-  -- Note: ip_address and user_agent are now encrypted and cannot be directly accessed
-  -- Applications should use the new encrypted fields and decryption methods
-  NULL as ip_address,
-  NULL as user_agent,
-  timestamp,
-  organization_id,
-  retention_expires_at,
-  deleted_at,
-  retention_policy_id,
-  consent_id,
-  legal_basis,
-  consent_version
-FROM pii_access_audit
-WHERE deleted_at IS NULL;
+-- Note: Legacy view removed in v3 migration
+-- Applications should use PIIEncryptionService for accessing encrypted audit data
+-- The pii_access_audit_legacy view was removed due to breaking changes
+-- and potential compliance issues with returning NULL for critical audit fields

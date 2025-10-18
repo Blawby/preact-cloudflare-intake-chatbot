@@ -2,6 +2,11 @@
  * PII Encryption Service
  * Provides encryption/decryption for sensitive PII fields at rest
  * Uses Web Crypto API with AES-GCM for authenticated encryption
+ * 
+ * TODO: This service is currently unused - integrate into user data flows
+ * TODO: Add to Better Auth user update hooks
+ * TODO: Add to user profile update API endpoints
+ * TODO: Add to frontend user profile management
  */
 
 import { Env } from '../types.js';
@@ -241,11 +246,16 @@ export class PIIEncryptionService {
       const uaData = await this.encryptAuditPII(auditLog.userAgent);
       
       // Calculate retention (7 years from now in milliseconds)
+      // Using 2557.5 days to account for leap years over 7 years (more accurate than 365 * 7)
       const retentionExpiresAt = auditLog.retentionExpiresAt || 
-        Date.now() + (7 * 365 * 24 * 60 * 60 * 1000);
+        Date.now() + (2557.5 * 24 * 60 * 60 * 1000);
       
-      // Default values
-      const accessedBy = auditLog.accessedBy || 'system';
+      // Validate required fields
+      if (!auditLog.accessedBy) {
+        throw new Error('accessedBy is required for PII audit logging - cannot use default value');
+      }
+      
+      // Default values for optional fields
       const legalBasis = auditLog.legalBasis || 'legitimate_interest';
       const retentionPolicyId = auditLog.retentionPolicyId || 'default_7_year';
       
@@ -262,7 +272,7 @@ export class PIIEncryptionService {
         auditLog.accessType,
         JSON.stringify(auditLog.piiFields),
         auditLog.accessReason || null,
-        accessedBy,
+        auditLog.accessedBy,
         ipData.encrypted,
         ipData.hash,
         ipData.keyVersion,
@@ -375,6 +385,10 @@ export class PIIEncryptionService {
         case 'data_processing':
           query = 'UPDATE users SET data_processing_consent = ?, pii_consent_date = ? WHERE id = ?';
           break;
+        default: {
+          const exhaustiveCheck: never = consentType;
+          throw new Error(`Unhandled consent type: ${exhaustiveCheck}`);
+        }
       }
       
       await this.env.DB.prepare(query).bind(value, timestamp, userId).run();
