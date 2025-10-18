@@ -5,6 +5,7 @@
  */
 
 import { Env } from '../types.js';
+import { createContentHash } from '../utils/piiSanitizer.js';
 
 export interface PIIField {
   field: string;
@@ -21,6 +22,12 @@ export interface PIIAuditLog {
   ipAddress?: string;
   userAgent?: string;
   organizationId?: string;
+  // New fields for enhanced security and compliance
+  consentId?: string;
+  legalBasis?: string;
+  consentVersion?: string;
+  retentionPolicyId?: string;
+  retentionExpiresAt?: number;
 }
 
 export class PIIEncryptionService {
@@ -32,7 +39,8 @@ export class PIIEncryptionService {
   }
 
   /**
-   * Initialize encryption key from environment
+   * Initialize encryption key from environment using HKDF
+   * Follows Web Crypto API best practices for key derivation
    */
   private async getEncryptionKey(): Promise<CryptoKey> {
     if (this.encryptionKey) {
@@ -44,15 +52,25 @@ export class PIIEncryptionService {
       throw new Error('Encryption key material not found in environment');
     }
 
-    // Derive a consistent key from the secret
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(keyMaterial);
-    
-    // Import as raw key for AES-GCM
-    this.encryptionKey = await crypto.subtle.importKey(
+    // Import base key material for HKDF
+    const baseKey = await crypto.subtle.importKey(
       'raw',
-      keyData.slice(0, 32), // Use first 32 bytes for AES-256
-      { name: 'AES-GCM' },
+      new TextEncoder().encode(keyMaterial),
+      { name: 'HKDF' },
+      false,
+      ['deriveKey']
+    );
+    
+    // Derive encryption key using HKDF (Web Crypto standard)
+    this.encryptionKey = await crypto.subtle.deriveKey(
+      {
+        name: 'HKDF',
+        hash: 'SHA-256',
+        salt: new TextEncoder().encode('pii-encryption-v1'),
+        info: new TextEncoder().encode('audit-log-encryption')
+      },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
       false,
       ['encrypt', 'decrypt']
     );
@@ -88,8 +106,8 @@ export class PIIEncryptionService {
       combined.set(iv);
       combined.set(new Uint8Array(encrypted), iv.length);
       
-      // Return base64 encoded result
-      return btoa(String.fromCharCode(...combined));
+      // Return base64 encoded result using chunk-based encoding to prevent stack overflow
+      return this.arrayBufferToBase64(combined);
     } catch (error) {
       console.error('PII encryption failed:', error);
       throw new Error('Failed to encrypt PII data');
@@ -177,23 +195,85 @@ export class PIIEncryptionService {
   }
 
   /**
-   * Log PII access for audit trail
+   * Convert ArrayBuffer to base64 using chunk-based encoding
+   * Prevents stack overflow for large data (>100KB)
+   */
+  private arrayBufferToBase64(buffer: Uint8Array): string {
+    let binary = '';
+    const chunkSize = 8192; // Process in 8KB chunks
+    for (let i = 0; i < buffer.length; i += chunkSize) {
+      const chunk = buffer.slice(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary);
+  }
+
+  /**
+   * Encrypt and hash audit PII (IP address, user agent)
+   * Returns encrypted value, hash for lookups, and key version
+   */
+  async encryptAuditPII(value: string | null): Promise<{
+    encrypted: string | null;
+    hash: string | null;
+    keyVersion: string;
+  }> {
+    if (!value || value.trim() === '') {
+      return { encrypted: null, hash: null, keyVersion: 'v1' };
+    }
+    
+    const encrypted = await this.encryptPII(value);
+    const hash = await createContentHash(value); // Reuse existing utility
+    
+    return {
+      encrypted,
+      hash,
+      keyVersion: 'v1'
+    };
+  }
+
+  /**
+   * Log PII access for audit trail with encryption and compliance metadata
    */
   async logPIIAccess(auditLog: PIIAuditLog): Promise<void> {
     try {
+      // Encrypt and hash PII fields
+      const ipData = await this.encryptAuditPII(auditLog.ipAddress);
+      const uaData = await this.encryptAuditPII(auditLog.userAgent);
+      
+      // Calculate retention (7 years from now in milliseconds)
+      const retentionExpiresAt = auditLog.retentionExpiresAt || 
+        Date.now() + (7 * 365 * 24 * 60 * 60 * 1000);
+      
+      // Default values
+      const accessedBy = auditLog.accessedBy || 'system';
+      const legalBasis = auditLog.legalBasis || 'legitimate_interest';
+      const retentionPolicyId = auditLog.retentionPolicyId || 'default_7_year';
+      
       await this.env.DB.prepare(`
         INSERT INTO pii_access_audit (
-          user_id, access_type, pii_fields, access_reason, 
-          accessed_by, ip_address, user_agent, organization_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          user_id, access_type, pii_fields, access_reason, accessed_by,
+          ip_address_encrypted, ip_address_hash, ip_address_key_version,
+          user_agent_encrypted, user_agent_hash, user_agent_key_version,
+          retention_expires_at, retention_policy_id, legal_basis,
+          consent_id, consent_version, organization_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         auditLog.userId,
         auditLog.accessType,
         JSON.stringify(auditLog.piiFields),
         auditLog.accessReason || null,
-        auditLog.accessedBy || null,
-        auditLog.ipAddress || null,
-        auditLog.userAgent || null,
+        accessedBy,
+        ipData.encrypted,
+        ipData.hash,
+        ipData.keyVersion,
+        uaData.encrypted,
+        uaData.hash,
+        uaData.keyVersion,
+        retentionExpiresAt,
+        retentionPolicyId,
+        legalBasis,
+        auditLog.consentId || null,
+        auditLog.consentVersion || null,
         auditLog.organizationId || null
       ).run();
     } catch (error) {
@@ -203,7 +283,7 @@ export class PIIEncryptionService {
   }
 
   /**
-   * Get PII access audit logs for a user
+   * Get PII access audit logs for a user with backward compatibility
    */
   async getPIIAccessLogs(
     userId: string, 
@@ -217,17 +297,23 @@ export class PIIEncryptionService {
     accessedBy?: string;
     timestamp: number;
     organizationId?: string;
+    retentionExpiresAt?: number;
+    legalBasis?: string;
   }>> {
     try {
       const result = await this.env.DB.prepare(`
-        SELECT id, access_type, pii_fields, access_reason, 
-               accessed_by, timestamp, organization_id
+        SELECT 
+          id, access_type, pii_fields, access_reason, accessed_by,
+          timestamp, organization_id,
+          ip_address_hash, user_agent_hash,
+          retention_expires_at, consent_id, legal_basis, deleted_at
         FROM pii_access_audit 
         WHERE user_id = ? 
+          AND (deleted_at IS NULL OR deleted_at > ?)
         ORDER BY timestamp DESC 
         LIMIT ? OFFSET ?
-      `).bind(userId, limit, offset).all();
-
+      `).bind(userId, Date.now(), limit, offset).all();
+      
       return result.results?.map(row => ({
         id: row.id as string,
         accessType: row.access_type as string,
@@ -235,7 +321,10 @@ export class PIIEncryptionService {
         accessReason: row.access_reason as string | undefined,
         accessedBy: row.accessed_by as string | undefined,
         timestamp: row.timestamp as number,
-        organizationId: row.organization_id as string | undefined
+        organizationId: row.organization_id as string | undefined,
+        // New fields (may be null if old records)
+        retentionExpiresAt: row.retention_expires_at as number | undefined,
+        legalBasis: row.legal_basis as string | undefined
       })) || [];
     } catch (error) {
       console.error('Failed to get PII access logs:', error);
@@ -261,6 +350,7 @@ export class PIIEncryptionService {
 
   /**
    * Update PII consent for a user
+   * Uses explicit switch statement to prevent SQL injection
    */
   async updatePIIConsent(
     userId: string, 
@@ -268,21 +358,26 @@ export class PIIEncryptionService {
     consentType: 'pii' | 'data_retention' | 'marketing' | 'data_processing' = 'pii'
   ): Promise<void> {
     try {
-      const fieldMap = {
-        pii: 'pii_consent_given',
-        data_retention: 'data_retention_consent',
-        marketing: 'marketing_consent',
-        data_processing: 'data_processing_consent'
-      };
-
-      const field = fieldMap[consentType];
       const timestamp = Date.now();
-
-      await this.env.DB.prepare(`
-        UPDATE users 
-        SET ${field} = ?, pii_consent_date = ?
-        WHERE id = ?
-      `).bind(consent ? 1 : 0, timestamp, userId).run();
+      const value = consent ? 1 : 0;
+      
+      let query: string;
+      switch (consentType) {
+        case 'pii':
+          query = 'UPDATE users SET pii_consent_given = ?, pii_consent_date = ? WHERE id = ?';
+          break;
+        case 'data_retention':
+          query = 'UPDATE users SET data_retention_consent = ?, pii_consent_date = ? WHERE id = ?';
+          break;
+        case 'marketing':
+          query = 'UPDATE users SET marketing_consent = ?, pii_consent_date = ? WHERE id = ?';
+          break;
+        case 'data_processing':
+          query = 'UPDATE users SET data_processing_consent = ?, pii_consent_date = ? WHERE id = ?';
+          break;
+      }
+      
+      await this.env.DB.prepare(query).bind(value, timestamp, userId).run();
     } catch (error) {
       console.error('Failed to update PII consent:', error);
       throw error;
@@ -330,6 +425,31 @@ export class PIIEncryptionService {
     } catch (error) {
       console.error('Failed to get pending deletion requests:', error);
       return [];
+    }
+  }
+
+  /**
+   * Soft-delete expired audit logs based on retention policy
+   * Should be called periodically (e.g., daily cron job)
+   */
+  async cleanupExpiredAuditLogs(): Promise<number> {
+    try {
+      const now = Date.now();
+      const result = await this.env.DB.prepare(`
+        UPDATE pii_access_audit 
+        SET deleted_at = ? 
+        WHERE retention_expires_at < ? 
+          AND deleted_at IS NULL
+      `).bind(now, now).run();
+      
+      const count = result.changes || 0;
+      if (count > 0) {
+        console.log(`✅ Soft-deleted ${count} expired PII audit logs`);
+      }
+      return count;
+    } catch (error) {
+      console.error('Failed to cleanup expired audit logs:', error);
+      return 0;
     }
   }
 }

@@ -412,16 +412,37 @@ CREATE TABLE IF NOT EXISTS users (
   data_deletion_date INTEGER
 );
 
--- PII Access Audit Log
+-- PII Access Audit Log - Enhanced with encryption, retention, and compliance
 CREATE TABLE IF NOT EXISTS pii_access_audit (
   id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  access_type TEXT NOT NULL, -- "read", "update", "delete", "export"
+  
+  -- Access type with enum constraint
+  access_type TEXT NOT NULL CHECK (access_type IN ('read', 'update', 'delete', 'export')),
+  
   pii_fields TEXT NOT NULL, -- JSON array of accessed fields
   access_reason TEXT, -- Business justification
-  accessed_by TEXT, -- User ID or system identifier
-  ip_address TEXT,
-  user_agent TEXT,
+  accessed_by TEXT NOT NULL DEFAULT 'system', -- User ID or system identifier
+  
+  -- Encrypted PII fields with metadata
+  ip_address_encrypted TEXT, -- Encrypted IP address
+  ip_address_key_version TEXT, -- Encryption key version
+  ip_address_hash TEXT, -- SHA-256 hash for lookups without decryption
+  
+  user_agent_encrypted TEXT, -- Encrypted user agent
+  user_agent_key_version TEXT, -- Encryption key version
+  user_agent_hash TEXT, -- SHA-256 hash for lookups without decryption
+  
+  -- Retention metadata
+  retention_expires_at INTEGER, -- When this log should be deleted
+  deleted_at INTEGER, -- Soft deletion timestamp
+  retention_policy_id TEXT, -- Reference to retention policy applied
+  
+  -- Consent tracking
+  consent_id TEXT, -- Reference to consent record
+  legal_basis TEXT, -- Legal basis for processing (GDPR Article 6)
+  consent_version TEXT, -- Version of consent at time of access
+  
   timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
   organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE
 );
@@ -429,6 +450,11 @@ CREATE TABLE IF NOT EXISTS pii_access_audit (
 CREATE INDEX IF NOT EXISTS pii_audit_user_idx ON pii_access_audit(user_id);
 CREATE INDEX IF NOT EXISTS pii_audit_timestamp_idx ON pii_access_audit(timestamp);
 CREATE INDEX IF NOT EXISTS pii_audit_org_idx ON pii_access_audit(organization_id);
+CREATE INDEX IF NOT EXISTS pii_audit_retention_idx ON pii_access_audit(retention_expires_at);
+CREATE INDEX IF NOT EXISTS pii_audit_deleted_idx ON pii_access_audit(deleted_at);
+CREATE INDEX IF NOT EXISTS pii_audit_consent_idx ON pii_access_audit(consent_id);
+CREATE INDEX IF NOT EXISTS pii_audit_ip_hash_idx ON pii_access_audit(ip_address_hash);
+CREATE INDEX IF NOT EXISTS pii_audit_user_agent_hash_idx ON pii_access_audit(user_agent_hash);
 
 -- Organization members for Better Auth multi-tenancy
 CREATE TABLE IF NOT EXISTS members (

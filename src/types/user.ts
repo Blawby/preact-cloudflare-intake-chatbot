@@ -78,11 +78,11 @@ export interface UserProfile {
   
   // Onboarding
   onboardingCompleted?: boolean;
-  onboardingData?: string | null; // JSON string
+  onboardingData?: OnboardingData | null;
   
   // Timestamps
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export interface UserPreferences {
@@ -241,21 +241,84 @@ export interface BetterAuthSessionUser {
   
   // PII Compliance & Consent
   piiConsentGiven?: boolean;
-  piiConsentDate?: number;
+  piiConsentDate?: Date | null;
   dataRetentionConsent?: boolean;
   marketingConsent?: boolean;
   dataProcessingConsent?: boolean;
   
   // Data Retention & Deletion
-  dataRetentionExpiry?: number;
-  lastDataAccess?: number;
+  dataRetentionExpiry?: Date | null;
+  lastDataAccess?: Date | null;
   dataDeletionRequested?: boolean;
-  dataDeletionDate?: number;
+  dataDeletionDate?: Date | null;
   
   onboardingCompleted?: boolean;
-  onboardingData?: string | null;
+  onboardingData?: OnboardingData | null;
   
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+// Helper functions for onboarding data serialization/deserialization
+// These handle the conversion between the database JSON string format and the typed OnboardingData object
+
+/**
+ * Converts a JSON string from the database to an OnboardingData object
+ * @param jsonString - The JSON string from the database (can be null)
+ * @returns The parsed OnboardingData object or null if invalid/empty
+ */
+export function toOnboardingData(jsonString: string | null): OnboardingData | null {
+  if (!jsonString || jsonString.trim() === '') {
+    return null;
+  }
+  
+  try {
+    const parsed = JSON.parse(jsonString);
+    // Basic validation to ensure it has the expected structure
+    if (parsed && typeof parsed === 'object' && parsed.personalInfo && parsed.useCase) {
+      return parsed as OnboardingData;
+    }
+    return null;
+  } catch (error) {
+    // Log error in development for debugging
+    if (import.meta.env?.DEV) {
+      console.warn('Failed to parse onboarding data:', error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Converts an OnboardingData object to a JSON string for database storage
+ * @param data - The OnboardingData object (can be null)
+ * @returns The JSON string for database storage or null if data is null
+ */
+export function fromOnboardingData(data: OnboardingData | null): string | null {
+  if (!data) {
+    return null;
+  }
+  
+  try {
+    return JSON.stringify(data);
+  } catch (error) {
+    // Log error in development for debugging
+    if (import.meta.env?.DEV) {
+      console.warn('Failed to serialize onboarding data:', error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Transforms raw session user data to include properly typed onboarding data
+ * This handles the conversion from database JSON string to typed OnboardingData
+ * @param rawUser - The raw user data from Better Auth session
+ * @returns The transformed user data with properly typed onboarding data
+ */
+export function transformSessionUser(rawUser: Record<string, unknown>): BetterAuthSessionUser {
+  return {
+    ...rawUser,
+    onboardingData: toOnboardingData(rawUser.onboardingData as string | null)
+  } as BetterAuthSessionUser;
 }
 

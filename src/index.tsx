@@ -492,7 +492,7 @@ function MainApp() {
 						const organizationId = currentOrganization?.id;
 						if (!organizationId) {
 							showError('Organization required', 'Create or select an organization before upgrading.');
-							return true;
+							return false;
 						}
 
 						if (tier === 'business') {

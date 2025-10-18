@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS pii_access_audit (
   accessed_by TEXT, -- User ID or system identifier
   ip_address TEXT,
   user_agent TEXT,
+  -- Note: The expression strftime('%s', 'now') * 1000 works in SQLite DEFAULT context
+  -- because SQLite evaluates the entire expression as numeric. In application code,
+  -- strftime returns TEXT and would need explicit CAST. This is correct for DEFAULT clauses.
   timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
   organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE
 );

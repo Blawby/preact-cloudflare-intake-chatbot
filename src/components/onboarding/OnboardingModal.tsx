@@ -5,6 +5,7 @@ import PersonalInfoStep from './PersonalInfoStep';
 import UseCaseStep from './UseCaseStep';
 import { updateUser } from '../../lib/authClient';
 import type { OnboardingData } from '../../types/user';
+import { toOnboardingData, fromOnboardingData } from '../../types/user';
 import { useToastContext } from '../../contexts/ToastContext';
 import { useSession } from '../../contexts/AuthContext';
 
@@ -36,16 +37,28 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
 
   // Load existing user data if available
   useEffect(() => {
-    if (isOpen && session?.user?.name && !onboardingData.personalInfo.fullName) {
-      setOnboardingData(prev => ({
-        ...prev,
-        personalInfo: {
-          ...prev.personalInfo,
-          fullName: session.user.name
-        }
-      }));
+    if (isOpen && session?.user) {
+      // Load existing onboarding data from session if available
+      // Note: session.user.onboardingData comes from database as string, but our type expects OnboardingData | null
+      // We need to handle the type mismatch by treating it as the raw database value
+      const rawOnboardingData = (session.user as Record<string, unknown>).onboardingData as string | null;
+      const existingOnboardingData = toOnboardingData(rawOnboardingData);
+      
+      if (existingOnboardingData) {
+        // If we have existing onboarding data, use it
+        setOnboardingData(existingOnboardingData);
+      } else if (session.user.name && !onboardingData.personalInfo.fullName) {
+        // Otherwise, pre-fill with user's name if available
+        setOnboardingData(prev => ({
+          ...prev,
+          personalInfo: {
+            ...prev.personalInfo,
+            fullName: session.user.name
+          }
+        }));
+      }
     }
-  }, [isOpen, session?.user?.name, onboardingData.personalInfo.fullName]);
+  }, [isOpen, session?.user, onboardingData.personalInfo.fullName]);
 
   const handleStepComplete = async (step: OnboardingStep, data: Partial<OnboardingData>) => {
     // Compute merged snapshot locally to avoid stale state
@@ -91,8 +104,8 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
       // Save onboarding data to user preferences (single source of truth)
       await updateUser({
         onboardingCompleted: true,
-        onboardingData: JSON.stringify(completedData)
-      });
+        onboardingData: fromOnboardingData(completedData)
+      } as Parameters<typeof updateUser>[0]);
 
       // Cache the completion status in localStorage for quick access
       // This is just a cache, not the source of truth

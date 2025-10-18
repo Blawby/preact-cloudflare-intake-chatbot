@@ -84,22 +84,48 @@ export const users = sqliteTable("users", {
   dataDeletionDate: integer("data_deletion_date", { mode: "timestamp" }),
 });
 
-// PII Access Audit Log
+// PII Access Audit Log - Enhanced with encryption, retention, and compliance
 export const piiAccessAudit = sqliteTable("pii_access_audit", {
   id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  accessType: text("access_type").notNull(), // "read", "update", "delete", "export"
+  
+  // Access type with enum constraint
+  accessType: text("access_type", { enum: ["read", "update", "delete", "export"] }).notNull(),
+  
   piiFields: text("pii_fields").notNull(), // JSON array of accessed fields
   accessReason: text("access_reason"), // Business justification
-  accessedBy: text("accessed_by"), // User ID or system identifier
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
+  accessedBy: text("accessed_by").notNull().default("system"), // User ID or system identifier
+  
+  // Encrypted PII fields with metadata
+  ipAddressEncrypted: text("ip_address_encrypted"), // Encrypted IP address
+  ipAddressKeyVersion: text("ip_address_key_version"), // Encryption key version
+  ipAddressHash: text("ip_address_hash"), // SHA-256 hash for lookups without decryption
+  
+  userAgentEncrypted: text("user_agent_encrypted"), // Encrypted user agent
+  userAgentKeyVersion: text("user_agent_key_version"), // Encryption key version
+  userAgentHash: text("user_agent_hash"), // SHA-256 hash for lookups without decryption
+  
+  // Retention metadata
+  retentionExpiresAt: integer("retention_expires_at", { mode: "timestamp" }), // When this log should be deleted
+  deletedAt: integer("deleted_at", { mode: "timestamp" }), // Soft deletion timestamp
+  retentionPolicyId: text("retention_policy_id"), // Reference to retention policy applied
+  
+  // Consent tracking
+  consentId: text("consent_id"), // Reference to consent record
+  legalBasis: text("legal_basis"), // Legal basis for processing (GDPR Article 6)
+  consentVersion: text("consent_version"), // Version of consent at time of access
+  
   timestamp: integer("timestamp", { mode: "timestamp" }).notNull().default(sql`(strftime('%s', 'now') * 1000)`),
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
 }, (table) => ({
   userIdx: index("pii_audit_user_idx").on(table.userId),
   timestampIdx: index("pii_audit_timestamp_idx").on(table.timestamp),
   orgIdx: index("pii_audit_org_idx").on(table.organizationId),
+  retentionIdx: index("pii_audit_retention_idx").on(table.retentionExpiresAt),
+  deletedIdx: index("pii_audit_deleted_idx").on(table.deletedAt),
+  consentIdx: index("pii_audit_consent_idx").on(table.consentId),
+  ipHashIdx: index("pii_audit_ip_hash_idx").on(table.ipAddressHash),
+  userAgentHashIdx: index("pii_audit_user_agent_hash_idx").on(table.userAgentHash),
 }));
 
 export const sessions = sqliteTable("sessions", {

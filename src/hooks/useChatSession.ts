@@ -210,9 +210,10 @@ export function useChatSession(organizationId: string): ChatSessionState {
       // Only clear handshake state if this handshake is still for the current organization
       if (handshakeOrgRef.current?.orgId === organizationId) {
         handshakeOrgRef.current = null;
-      }
-      if (!isDisposedRef.current) {
-        setIsInitializing(false);
+        // Only clear isInitializing if this handshake is still the active one
+        if (!isDisposedRef.current) {
+          setIsInitializing(false);
+        }
       }
     }
     })();
