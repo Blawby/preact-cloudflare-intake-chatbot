@@ -340,19 +340,21 @@ CREATE TABLE IF NOT EXISTS users (
   
   -- Profile Information
   bio TEXT,
-  secondary_phone TEXT,
-  address_street TEXT,
-  address_city TEXT,
-  address_state TEXT,
-  address_zip TEXT,
-  address_country TEXT,
+  secondary_phone_encrypted TEXT, -- Encrypted PII
+  address_street_encrypted TEXT, -- Encrypted PII
+  address_city_encrypted TEXT, -- Encrypted PII
+  address_state_encrypted TEXT, -- Encrypted PII
+  address_zip_encrypted TEXT, -- Encrypted PII
+  address_country_encrypted TEXT, -- Encrypted PII
   preferred_contact_method TEXT,
   
   -- App Preferences
   theme TEXT DEFAULT 'system',
   accent_color TEXT DEFAULT 'default',
   font_size TEXT DEFAULT 'medium',
+  -- Interface language: Controls UI language (en, es, fr, de, etc.)
   language TEXT DEFAULT 'en',
+  -- Spoken language: User's primary spoken language for AI interactions and content generation
   spoken_language TEXT DEFAULT 'en',
   country TEXT DEFAULT 'us',
   timezone TEXT,
@@ -371,28 +373,62 @@ CREATE TABLE IF NOT EXISTS users (
   
   -- Email Settings
   receive_feedback_emails INTEGER DEFAULT 0,
-  marketing_emails INTEGER DEFAULT 1,
+  marketing_emails INTEGER DEFAULT 0,
   security_alerts INTEGER DEFAULT 1,
   
   -- Security Settings
   two_factor_enabled INTEGER DEFAULT 0,
   email_notifications INTEGER DEFAULT 1,
   login_alerts INTEGER DEFAULT 1,
-  session_timeout TEXT DEFAULT '7 days',
-  last_password_change TEXT,
+  -- Session timeout in seconds (604800 = 7 days)
+  session_timeout INTEGER DEFAULT 604800,
+  -- Last password change timestamp (Unix timestamp)
+  last_password_change INTEGER,
   
   -- Links
   selected_domain TEXT,
   linkedin_url TEXT,
   github_url TEXT,
+  custom_domains TEXT, -- JSON string for custom domains array
   
   -- Onboarding
   onboarding_completed INTEGER DEFAULT 0,
   onboarding_data TEXT,
   
   -- Better Auth lastLoginMethod plugin
-  last_login_method TEXT
+  last_login_method TEXT,
+  
+  -- PII Compliance & Consent
+  pii_consent_given INTEGER DEFAULT 0,
+  pii_consent_date INTEGER,
+  data_retention_consent INTEGER DEFAULT 0,
+  marketing_consent INTEGER DEFAULT 0,
+  data_processing_consent INTEGER DEFAULT 0,
+  
+  -- Data Retention & Deletion
+  data_retention_expiry INTEGER,
+  last_data_access INTEGER,
+  data_deletion_requested INTEGER DEFAULT 0,
+  data_deletion_date INTEGER
 );
+
+-- PII Access Audit Log
+CREATE TABLE IF NOT EXISTS pii_access_audit (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  access_type TEXT NOT NULL, -- "read", "update", "delete", "export"
+  pii_fields TEXT NOT NULL, -- JSON array of accessed fields
+  access_reason TEXT, -- Business justification
+  accessed_by TEXT, -- User ID or system identifier
+  ip_address TEXT,
+  user_agent TEXT,
+  timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+  organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS pii_audit_user_idx ON pii_access_audit(user_id);
+CREATE INDEX IF NOT EXISTS pii_audit_timestamp_idx ON pii_access_audit(timestamp);
+CREATE INDEX IF NOT EXISTS pii_audit_org_idx ON pii_access_audit(organization_id);
 
 -- Organization members for Better Auth multi-tenancy
 CREATE TABLE IF NOT EXISTS members (

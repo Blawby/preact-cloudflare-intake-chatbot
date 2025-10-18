@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Modal from './Modal';
 import { Button } from './ui/Button';
+import { handleError } from '../utils/errorHandler';
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -60,7 +61,7 @@ export default function ConfirmationDialog({
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     
-    if (inputValue.trim() !== confirmationValue) {
+    if (inputValue.trim() !== confirmationValue.trim()) {
       setError('Please type the confirmation text exactly as shown.');
       return;
     }
@@ -77,7 +78,10 @@ export default function ConfirmationDialog({
     try {
       await onConfirm({ password: passwordValue });
     } catch (err) {
-      console.error('Confirmation failed:', err);
+      handleError(err, {
+        component: 'ConfirmationDialog',
+        action: 'confirmation-failed'
+      });
       setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -225,7 +229,7 @@ export default function ConfirmationDialog({
             size="sm"
             disabled={
               isLoading ||
-              inputValue.trim() !== confirmationValue ||
+              inputValue.trim() !== confirmationValue.trim() ||
               (requirePassword && !passwordValue)
             }
             className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500 min-w-[80px] disabled:opacity-50 disabled:cursor-not-allowed"

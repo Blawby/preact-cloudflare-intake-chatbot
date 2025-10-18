@@ -68,8 +68,8 @@ export interface UserProfile {
   twoFactorEnabled?: boolean;
   emailNotifications?: boolean;
   loginAlerts?: boolean;
-  sessionTimeout?: string;
-  lastPasswordChange?: string | null;
+  sessionTimeout?: number;
+  lastPasswordChange?: Date | null;
   
   // Links
   selectedDomain?: string | null;
@@ -103,19 +103,7 @@ export interface UserPreferences {
   
   // Onboarding
   onboardingCompleted?: boolean;
-  onboardingData?: {
-    personalInfo: {
-      fullName: string;
-      birthday?: string;
-      agreedToTerms: boolean;
-    };
-    useCase: {
-      primaryUseCase: 'personal' | 'business' | 'research' | 'documents' | 'other';
-      additionalInfo?: string;
-    };
-    completedAt?: string;
-    skippedSteps: string[];
-  };
+  onboardingData?: OnboardingData;
 }
 
 export interface NotificationSettings {
@@ -135,14 +123,51 @@ export interface SecuritySettings {
   twoFactorEnabled: boolean;
   emailNotifications: boolean;
   loginAlerts: boolean;
-  sessionTimeout: '1 hour' | '1 day' | '7 days' | '30 days';
-  lastPasswordChange: string | null;
+  sessionTimeout: number; // Timeout in seconds
+  lastPasswordChange: Date | null;
   connectedAccounts: Array<{
     provider: string;
     email: string;
     connectedAt: string;
   }>;
 }
+
+// Helper functions for session timeout conversion
+export const SESSION_TIMEOUT_OPTIONS = {
+  '1 hour': 3600,      // 1 hour in seconds
+  '1 day': 86400,      // 1 day in seconds  
+  '7 days': 604800,    // 7 days in seconds
+  '30 days': 2592000   // 30 days in seconds
+} as const;
+
+export type SessionTimeoutOption = keyof typeof SESSION_TIMEOUT_OPTIONS;
+
+export const convertSessionTimeoutToSeconds = (timeout: string | number): number => {
+  if (typeof timeout === 'number') {
+    return timeout;
+  }
+  
+  // Handle legacy string values
+  const seconds = SESSION_TIMEOUT_OPTIONS[timeout as SessionTimeoutOption];
+  if (seconds !== undefined) {
+    return seconds;
+  }
+  
+  // Default to 7 days if invalid value
+  return SESSION_TIMEOUT_OPTIONS['7 days'];
+};
+
+export const convertSessionTimeoutToString = (timeout: number): SessionTimeoutOption => {
+  // Find the matching string value
+  for (const [key, value] of Object.entries(SESSION_TIMEOUT_OPTIONS)) {
+    if (value === timeout) {
+      return key as SessionTimeoutOption;
+    }
+  }
+  
+  // Default to 7 days if no match found
+  return '7 days';
+};
 
 export interface UserLinks {
   selectedDomain: string;
@@ -207,11 +232,26 @@ export interface BetterAuthSessionUser {
   twoFactorEnabled?: boolean;
   emailNotifications?: boolean;
   loginAlerts?: boolean;
-  sessionTimeout?: string;
-  lastPasswordChange?: string | null;
+  sessionTimeout?: number;
+  lastPasswordChange?: Date | null;
   selectedDomain?: string | null;
   linkedinUrl?: string | null;
   githubUrl?: string | null;
+  customDomains?: string | null; // JSON string of custom domains array
+  
+  // PII Compliance & Consent
+  piiConsentGiven?: boolean;
+  piiConsentDate?: number;
+  dataRetentionConsent?: boolean;
+  marketingConsent?: boolean;
+  dataProcessingConsent?: boolean;
+  
+  // Data Retention & Deletion
+  dataRetentionExpiry?: number;
+  lastDataAccess?: number;
+  dataDeletionRequested?: boolean;
+  dataDeletionDate?: number;
+  
   onboardingCompleted?: boolean;
   onboardingData?: string | null;
   

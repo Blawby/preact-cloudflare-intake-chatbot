@@ -3,7 +3,7 @@ import { signOut as betterAuthSignOut } from '../lib/authClient';
 /**
  * Centralized sign out utility that handles:
  * 1. Better Auth sign out (revokes session)
- * 2. Clear all localStorage (including onboarding flags)
+ * 2. Remove auth-related localStorage hints (without touching unrelated app data)
  * 3. Optional callback for custom behavior
  */
 export async function signOut(options?: {
@@ -14,18 +14,29 @@ export async function signOut(options?: {
     // 1. Sign out from Better Auth (revokes server session)
     await betterAuthSignOut();
     
-    // 2. Clear all localStorage including our custom flags
+    // 2. Remove auth-related client state
     try {
-      localStorage.clear();
-    } catch (error) {
-      // Fallback: clear specific keys if clear() fails
-      try {
-        localStorage.removeItem('onboardingCompleted');
-        localStorage.removeItem('onboardingCheckDone');
-        // Add other custom keys as needed
-      } catch (removeError) {
-        console.warn('Failed to clear localStorage:', removeError);
+      const authKeys = [
+        'onboardingCompleted',
+        'onboardingCheckDone',
+        'businessSetupPending',
+        'cartPreferences',
+        'cartData',
+      ];
+
+      for (const key of authKeys) {
+        localStorage.removeItem(key);
       }
+
+      // Clean any Better Auth specific markers we may have stored locally
+      const betterAuthKeys = Object.keys(localStorage).filter((key) =>
+        key.startsWith('better-auth') || key.startsWith('__better-auth')
+      );
+      for (const key of betterAuthKeys) {
+        localStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn('Failed to clear auth-related localStorage entries:', error);
     }
     
     // 3. Run success callback if provided
@@ -42,4 +53,3 @@ export async function signOut(options?: {
     throw error;
   }
 }
-

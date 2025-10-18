@@ -85,14 +85,14 @@ export const AccountPage = ({
         selectedDomain: user.selectedDomain || 'Select a domain',
         linkedinUrl: user.linkedinUrl,
         githubUrl: user.githubUrl,
-        customDomains: [] // This would need to be populated from a separate table if needed
+        customDomains: user.customDomains ? JSON.parse(user.customDomains) : [] // Parse JSON string to array
       };
       
       // Convert user data to email settings format
       const emailData: EmailSettings = {
         email: user.email,
         receiveFeedbackEmails: user.receiveFeedbackEmails ?? false,
-        marketingEmails: user.marketingEmails ?? true,
+        marketingEmails: user.marketingEmails ?? false,
         securityAlerts: user.securityAlerts ?? true
       };
       
@@ -391,20 +391,26 @@ export const AccountPage = ({
     const normalized = domainInput.trim().toLowerCase();
     
     try {
-      // Update user in database
-      await updateUser({ selectedDomain: normalized });
+      // Create updated custom domains array
+      const updatedCustomDomains = [
+        ...(links?.customDomains || []),
+        {
+          domain: normalized,
+          verified: false,
+          verifiedAt: null
+        }
+      ];
+      
+      // Update user in database with both selectedDomain and customDomains
+      await updateUser({ 
+        selectedDomain: normalized,
+        customDomains: JSON.stringify(updatedCustomDomains)
+      });
       
       const updatedLinks = {
         ...links,
         selectedDomain: normalized,
-        customDomains: [
-          ...(links?.customDomains || []),
-          {
-            domain: normalized,
-            verified: false,
-            verifiedAt: null
-          }
-        ]
+        customDomains: updatedCustomDomains
       };
       
       setLinks(updatedLinks);
@@ -478,8 +484,11 @@ export const AccountPage = ({
       handleOpenDomainModal();
     } else if (domain !== DOMAIN_SELECT_VALUE) {
       try {
-        // Update user in database
-        await updateUser({ selectedDomain: domain });
+        // Update user in database with current custom domains
+        await updateUser({ 
+          selectedDomain: domain,
+          customDomains: JSON.stringify(links?.customDomains || [])
+        });
         
         const updatedLinks = { ...links, selectedDomain: domain };
         setLinks(updatedLinks);

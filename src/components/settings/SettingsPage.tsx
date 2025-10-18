@@ -37,7 +37,7 @@ export const SettingsPage = ({
   onClose,
   className = ''
 }: SettingsPageProps) => {
-  const { showSuccess } = useToastContext();
+  const { showSuccess, showError } = useToastContext();
   const { navigate } = useNavigation();
   const location = useLocation();
   const { t } = useTranslation(['settings', 'common']);
@@ -65,15 +65,19 @@ export const SettingsPage = ({
   };
 
   const handleSignOut = async () => {
-    // Use centralized sign out utility
-    await signOut({
-      onSuccess: () => {
-        showSuccess(t('settings:navigation.signOut.toastTitle'), t('settings:navigation.signOut.toastBody'));
-        if (onClose) {
-          onClose();
+    try {
+      // Use centralized sign out utility
+      await signOut({
+        onSuccess: () => {
+          showSuccess(t('settings:navigation.signOut.toastTitle'), t('settings:navigation.signOut.toastBody'));
+          if (onClose) {
+            onClose();
+          }
         }
-      }
-    });
+      });
+    } catch (error) {
+      showError(t('settings:navigation.signOut.errorTitle'), t('settings:navigation.signOut.errorBody'));
+    }
   };
 
 

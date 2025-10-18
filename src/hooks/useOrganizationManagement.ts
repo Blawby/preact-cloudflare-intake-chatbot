@@ -425,12 +425,7 @@ export function useOrganizationManagement(): UseOrganizationManagementReturn {
     if (!sessionLoading) {
       refetch();
     }
-  }, [session, sessionLoading]);
-
-  // Initial load
-  useEffect(() => {
-    refetch();
-  }, []);
+  }, [session, sessionLoading, refetch]);
 
   return {
     organizations,

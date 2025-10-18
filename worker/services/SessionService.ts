@@ -383,7 +383,7 @@ export class SessionService {
       await this.touchSession(env, session.id);
 
       // Update last_active in memory since we just touched it
-      session.lastActive = new Date();
+      session.lastActive = new Date().toISOString();
 
       return {
         session: session,

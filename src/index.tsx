@@ -26,6 +26,8 @@ import { BusinessWelcomeModal } from './components/onboarding/BusinessWelcomeMod
 import { BusinessSetupModal } from './components/onboarding/BusinessSetupModal';
 import { CartPage } from './components/cart/CartPage';
 import { debounce } from './utils/debounce';
+import { usePaymentUpgrade } from './hooks/usePaymentUpgrade';
+import { useToastContext } from './contexts/ToastContext';
 // useSession is now imported from AuthContext above
 import './index.css';
 import { i18n, initI18n } from './i18n';
@@ -59,6 +61,8 @@ function MainApp() {
 	
 	// Use organization management for subscription tier
 	const { currentOrganization } = useOrganizationManagement();
+	const { submitUpgrade } = usePaymentUpgrade();
+	const { showError } = useToastContext();
 
 	const {
 		sessionId,
@@ -478,24 +482,48 @@ function MainApp() {
 				}}
 				currentTier={currentUserTier}
 				onUpgrade={async (tier) => {
-					// Update user's subscription tier
+					let shouldNavigateToCart = true;
 					try {
-						if (session?.user) {
-							// For now, just update the local state
-							// In a real implementation, this would make an API call to update the user's subscription
-							// The tier will be updated through the organization management system
-							console.log('Upgrading to tier:', tier);
+						if (!session?.user) {
+							showError('Sign-in required', 'Please sign in before upgrading your plan.');
+							return false;
+						}
+
+						const organizationId = currentOrganization?.id;
+						if (!organizationId) {
+							showError('Organization required', 'Create or select an organization before upgrading.');
+							return true;
+						}
+
+						if (tier === 'business') {
+							await submitUpgrade({ organizationId });
+							shouldNavigateToCart = false;
+						} else if (tier === 'enterprise') {
+							navigate('/enterprise');
+							shouldNavigateToCart = false;
 						} else {
-							// User not authenticated
-							console.warn('User not authenticated for upgrade');
+							try {
+								const existing = localStorage.getItem('cartPreferences');
+								const parsed = existing ? JSON.parse(existing) : {};
+								localStorage.setItem('cartPreferences', JSON.stringify({
+									...parsed,
+									tier,
+								}));
+							} catch (error) {
+								console.warn('Unable to store cart preferences for upgrade:', error);
+							}
 						}
 					} catch (error) {
-						console.error('Error updating subscription tier:', error);
+						console.error('Error initiating subscription upgrade:', error);
+						const message = error instanceof Error ? error.message : 'Unable to start upgrade.';
+						showError('Upgrade failed', message);
+						shouldNavigateToCart = true;
+					} finally {
+						setShowPricingModal(false);
+						window.location.hash = '';
 					}
-					
-					// Always ensure these cleanup operations run
-					setShowPricingModal(false);
-					window.location.hash = '';
+
+					return shouldNavigateToCart;
 				}}
 			/>
 

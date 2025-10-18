@@ -114,11 +114,10 @@ export async function extractOrganizationContext(
   // For anonymous users, try session cookie first
   const sessionToken = SessionService.getSessionTokenFromCookie(request);
   if (sessionToken) {
-    // Check if this is a read-only endpoint that doesn't need session resolution
-    const isReadOnlyEndpoint = request.url.includes('/api/organizations') || 
-                              request.url.includes('/api/activity');
+    // Check if this is a read-only request that doesn't need session resolution
+    const isReadOnlyRequest = request.method === 'GET' || request.method === 'HEAD';
     
-    if (!isReadOnlyEndpoint) {
+    if (!isReadOnlyRequest) {
       // Only resolve session for endpoints that actually need it
       try {
         // Try to resolve session with URL param or default

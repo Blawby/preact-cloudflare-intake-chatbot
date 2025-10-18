@@ -14,19 +14,21 @@ export const users = sqliteTable("users", {
   
   // Profile Information
   bio: text("bio"),
-  secondaryPhone: text("secondary_phone"),
-  addressStreet: text("address_street"),
-  addressCity: text("address_city"),
-  addressState: text("address_state"),
-  addressZip: text("address_zip"),
-  addressCountry: text("address_country"),
+  secondaryPhone: text("secondary_phone_encrypted"), // Encrypted PII
+  addressStreet: text("address_street_encrypted"), // Encrypted PII
+  addressCity: text("address_city_encrypted"), // Encrypted PII
+  addressState: text("address_state_encrypted"), // Encrypted PII
+  addressZip: text("address_zip_encrypted"), // Encrypted PII
+  addressCountry: text("address_country_encrypted"), // Encrypted PII
   preferredContactMethod: text("preferred_contact_method"),
   
   // App Preferences
   theme: text("theme").default("system"),
   accentColor: text("accent_color").default("default"),
   fontSize: text("font_size").default("medium"),
+  // Interface language: Controls UI language (en, es, fr, de, etc.)
   language: text("language").default("en"),
+  // Spoken language: User's primary spoken language for AI interactions and content generation
   spokenLanguage: text("spoken_language").default("en"),
   country: text("country").default("us"),
   timezone: text("timezone"),
@@ -45,20 +47,21 @@ export const users = sqliteTable("users", {
   
   // Email Settings
   receiveFeedbackEmails: integer("receive_feedback_emails", { mode: "boolean" }).default(false),
-  marketingEmails: integer("marketing_emails", { mode: "boolean" }).default(true),
+  marketingEmails: integer("marketing_emails", { mode: "boolean" }).default(false),
   securityAlerts: integer("security_alerts", { mode: "boolean" }).default(true),
   
   // Security Settings
   twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).default(false),
   emailNotifications: integer("email_notifications", { mode: "boolean" }).default(true),
   loginAlerts: integer("login_alerts", { mode: "boolean" }).default(true),
-  sessionTimeout: text("session_timeout").default("7 days"),
-  lastPasswordChange: text("last_password_change"),
+  sessionTimeout: integer("session_timeout").default(604800), // 7 days in seconds
+  lastPasswordChange: integer("last_password_change", { mode: "timestamp" }),
   
   // Links
   selectedDomain: text("selected_domain"),
   linkedinUrl: text("linkedin_url"),
   githubUrl: text("github_url"),
+  customDomains: text("custom_domains"), // JSON string for custom domains array
   
   // Onboarding
   onboardingCompleted: integer("onboarding_completed", { mode: "boolean" }).default(false),
@@ -66,7 +69,38 @@ export const users = sqliteTable("users", {
   
   // Better Auth lastLoginMethod plugin
   lastLoginMethod: text("last_login_method"), // "google", "email", "credential", etc.
+  
+  // PII Compliance & Consent
+  piiConsentGiven: integer("pii_consent_given", { mode: "boolean" }).default(false),
+  piiConsentDate: integer("pii_consent_date", { mode: "timestamp" }),
+  dataRetentionConsent: integer("data_retention_consent", { mode: "boolean" }).default(false),
+  marketingConsent: integer("marketing_consent", { mode: "boolean" }).default(false),
+  dataProcessingConsent: integer("data_processing_consent", { mode: "boolean" }).default(false),
+  
+  // Data Retention & Deletion
+  dataRetentionExpiry: integer("data_retention_expiry", { mode: "timestamp" }),
+  lastDataAccess: integer("last_data_access", { mode: "timestamp" }),
+  dataDeletionRequested: integer("data_deletion_requested", { mode: "boolean" }).default(false),
+  dataDeletionDate: integer("data_deletion_date", { mode: "timestamp" }),
 });
+
+// PII Access Audit Log
+export const piiAccessAudit = sqliteTable("pii_access_audit", {
+  id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accessType: text("access_type").notNull(), // "read", "update", "delete", "export"
+  piiFields: text("pii_fields").notNull(), // JSON array of accessed fields
+  accessReason: text("access_reason"), // Business justification
+  accessedBy: text("accessed_by"), // User ID or system identifier
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  timestamp: integer("timestamp", { mode: "timestamp" }).notNull().default(sql`(strftime('%s', 'now') * 1000)`),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+}, (table) => ({
+  userIdx: index("pii_audit_user_idx").on(table.userId),
+  timestampIdx: index("pii_audit_timestamp_idx").on(table.timestamp),
+  orgIdx: index("pii_audit_org_idx").on(table.organizationId),
+}));
 
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),

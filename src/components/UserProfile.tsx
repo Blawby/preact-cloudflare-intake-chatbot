@@ -32,6 +32,13 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { navigateToAuth, navigate } = useNavigation();
 
+  // Handle session fetch errors
+  useEffect(() => {
+    if (error) {
+      console.error('Failed to load session:', error);
+    }
+  }, [error]);
+
   // Derive user data from session and organization
   const user = session?.user ? {
     id: session.user.id,
@@ -210,6 +217,29 @@ const UserProfile = ({ isCollapsed = false }: UserProfileProps) => {
       <div className={`flex items-center ${isCollapsed ? 'justify-center py-2' : 'gap-3 px-3 py-2'}`}>
         <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
         {!isCollapsed && <div className="w-20 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />}
+      </div>
+    );
+  }
+
+  // Handle session fetch errors
+  if (error) {
+    return (
+      <div className={`p-2 border-t border-gray-200 dark:border-dark-border`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center py-2' : 'gap-3 px-3 py-2'}`}>
+          <div className="w-8 h-8 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center flex-shrink-0">
+            <UserIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
+          </div>
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                Failed to load session
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Please try refreshing the page
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

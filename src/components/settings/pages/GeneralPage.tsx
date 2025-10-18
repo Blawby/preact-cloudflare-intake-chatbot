@@ -84,6 +84,8 @@ export const GeneralPage = ({
   }, [showSuccess, t]);
 
   const handleSettingChange = async (key: string, value: string | boolean) => {
+    const previousValue = settings[key as keyof typeof settings];
+    
     setSettings(prev => {
       const newSettings = { ...prev, [key]: value };
       return newSettings;
@@ -115,13 +117,14 @@ export const GeneralPage = ({
       
       if (key === 'language') {
         void handleLocaleChange(value as string);
-        return;
       }
       
-      showSuccess(
-        t('common:notifications.settingsSavedTitle'),
-        t('common:notifications.settingsSavedBody')
-      );
+      if (key !== 'language') {
+        showSuccess(
+          t('common:notifications.settingsSavedTitle'),
+          t('common:notifications.settingsSavedBody')
+        );
+      }
     } catch (error) {
       console.error('Failed to update user settings:', error);
       showError(
@@ -130,12 +133,7 @@ export const GeneralPage = ({
       );
       
       // Revert the local state on error
-      setSettings(prev => {
-        const revertedSettings = { ...prev };
-        // Revert to previous value - we'd need to track previous values for this
-        // For now, just show error and let user retry
-        return revertedSettings;
-      });
+      setSettings(prev => ({ ...prev, [key]: previousValue }));
     }
   };
 

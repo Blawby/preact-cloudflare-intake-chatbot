@@ -36,7 +36,7 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
 
   // Load existing user data if available
   useEffect(() => {
-    if (isOpen && session?.user?.name) {
+    if (isOpen && session?.user?.name && !onboardingData.personalInfo.fullName) {
       setOnboardingData(prev => ({
         ...prev,
         personalInfo: {
@@ -45,7 +45,7 @@ const OnboardingModal = ({ isOpen, onClose, onComplete }: OnboardingModalProps) 
         }
       }));
     }
-  }, [isOpen, session?.user?.name]);
+  }, [isOpen, session?.user?.name, onboardingData.personalInfo.fullName]);
 
   const handleStepComplete = async (step: OnboardingStep, data: Partial<OnboardingData>) => {
     // Compute merged snapshot locally to avoid stale state

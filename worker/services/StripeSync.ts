@@ -301,6 +301,16 @@ export async function cancelSubscriptionsAndDeleteCustomer(args: {
   stripeCustomerId: string;
 }): Promise<void> {
   const { env, stripeCustomerId } = args;
+  const stripeEnabled =
+    env.ENABLE_STRIPE_SUBSCRIPTIONS === true || env.ENABLE_STRIPE_SUBSCRIPTIONS === 'true';
+
+  if (!stripeEnabled || !env.STRIPE_SECRET_KEY) {
+    console.warn(
+      `Skipping Stripe cleanup for customer ${stripeCustomerId}: Stripe integration disabled or credentials missing.`
+    );
+    return;
+  }
+
   const client = getOrCreateStripeClient(env);
 
   try {

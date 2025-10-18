@@ -8,7 +8,13 @@ import { updateUser } from '../../../lib/authClient';
 import Modal from '../../Modal';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
-import type { SecuritySettings } from '../../../types/user';
+import type { SecuritySettings, SessionTimeoutOption } from '../../../types/user';
+import { convertSessionTimeoutToSeconds, convertSessionTimeoutToString } from '../../../types/user';
+
+// Runtime validation for session timeout values
+const isValidSessionTimeout = (value: unknown): value is number => {
+  return typeof value === 'number' && value > 0;
+};
 
 export interface SecurityPageProps {
   isMobile?: boolean;
@@ -46,7 +52,7 @@ export const SecurityPage = ({
       twoFactorEnabled: user.twoFactorEnabled ?? false,
       emailNotifications: user.emailNotifications ?? true,
       loginAlerts: user.loginAlerts ?? true,
-      sessionTimeout: (user.sessionTimeout as '1 hour' | '1 day' | '7 days' | '30 days') ?? '7 days',
+      sessionTimeout: isValidSessionTimeout(user.sessionTimeout) ? user.sessionTimeout : convertSessionTimeoutToSeconds('7 days'),
       lastPasswordChange: user.lastPasswordChange,
       connectedAccounts: [] // This would need to be populated from accounts table if needed
     };
@@ -104,6 +110,16 @@ export const SecurityPage = ({
 
   const handleConfirmDisableMFA = async () => {
     if (!settings) return;
+    
+    // Check if user session is authenticated
+    if (!session?.user) {
+      showError(
+        t('common:notifications.errorTitle'),
+        t('common:notifications.sessionExpired')
+      );
+      setShowDisableMFAConfirm(false);
+      return;
+    }
     
     const updatedSettings = { ...settings, twoFactorEnabled: false };
     setSettings(updatedSettings);

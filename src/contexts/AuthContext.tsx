@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'preact/compat';
+import { ComponentChildren } from 'preact';
 import { authClient } from '../lib/authClient';
 
 // Export Better Auth's hooks directly as documented
@@ -12,7 +13,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: preact.ComponentChildren }) => {
+export const AuthProvider = ({ children }: { children: ComponentChildren }) => {
   const session = useSession();
   const activeOrg = useActiveOrganization();
 

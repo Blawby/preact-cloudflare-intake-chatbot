@@ -65,7 +65,9 @@ export const auth = betterAuth({
           theme: { type: "string", required: false, defaultValue: "system" },
           accentColor: { type: "string", required: false, defaultValue: "default" },
           fontSize: { type: "string", required: false, defaultValue: "medium" },
+          // Interface language: Controls UI language (en, es, fr, de, etc.)
           language: { type: "string", required: false, defaultValue: "en" },
+          // Spoken language: User's primary spoken language for AI interactions and content generation
           spokenLanguage: { type: "string", required: false, defaultValue: "en" },
           country: { type: "string", required: false, defaultValue: "us" },
           timezone: { type: "string", required: false },
@@ -84,23 +86,34 @@ export const auth = betterAuth({
           
           // Email Settings
           receiveFeedbackEmails: { type: "boolean", required: false, defaultValue: false },
-          marketingEmails: { type: "boolean", required: false, defaultValue: true },
+          marketingEmails: { type: "boolean", required: false, defaultValue: false },
           securityAlerts: { type: "boolean", required: false, defaultValue: true },
           
           // Security Settings
           twoFactorEnabled: { type: "boolean", required: false, defaultValue: false },
           emailNotifications: { type: "boolean", required: false, defaultValue: true },
           loginAlerts: { type: "boolean", required: false, defaultValue: true },
-          sessionTimeout: { type: "string", required: false, defaultValue: "7 days" },
-          lastPasswordChange: { type: "string", required: false },
+          sessionTimeout: { type: "number", required: false, defaultValue: 604800 }, // 7 days in seconds
+          lastPasswordChange: { type: "date", required: false },
           
           // Links
           selectedDomain: { type: "string", required: false },
           linkedinUrl: { type: "string", required: false },
           githubUrl: { type: "string", required: false },
-
-          // Auth metadata
-          lastLoginMethod: { type: "string", required: false },
+          customDomains: { type: "string", required: false },
+          
+          // PII Compliance & Consent
+          piiConsentGiven: { type: "boolean", required: false, defaultValue: false },
+          piiConsentDate: { type: "number", required: false },
+          dataRetentionConsent: { type: "boolean", required: false, defaultValue: false },
+          marketingConsent: { type: "boolean", required: false, defaultValue: false },
+          dataProcessingConsent: { type: "boolean", required: false, defaultValue: false },
+          
+          // Data Retention & Deletion
+          dataRetentionExpiry: { type: "number", required: false },
+          lastDataAccess: { type: "number", required: false },
+          dataDeletionRequested: { type: "boolean", required: false, defaultValue: false },
+          dataDeletionDate: { type: "number", required: false },
           
           // Onboarding
           onboardingCompleted: { type: "boolean", required: false, defaultValue: false },
@@ -483,25 +496,59 @@ export async function getAuth(env: Env, request?: Request) {
                 }
 
                 try {
-                  const personalOrgs = await env.DB.prepare(`
-                    SELECT o.id, o.stripe_customer_id as stripeCustomerId
+                  const ownedOrganizations = await env.DB.prepare(`
+                    SELECT 
+                      o.id,
+                      o.name,
+                      o.is_personal as isPersonal,
+                      o.stripe_customer_id as stripeCustomerId,
+                      (
+                        SELECT COUNT(*)
+                        FROM members m2
+                        WHERE m2.organization_id = o.id
+                          AND m2.role = 'owner'
+                          AND m2.user_id != ?
+                      ) as otherOwnerCount
                     FROM organizations o
                     INNER JOIN members m ON m.organization_id = o.id
-                    WHERE m.user_id = ? AND o.is_personal = 1
+                    WHERE m.user_id = ? AND m.role = 'owner'
                   `)
-                    .bind(user.id)
-                    .all<{ id: string; stripeCustomerId: string | null }>();
+                    .bind(user.id, user.id)
+                    .all<{
+                      id: string;
+                      name: string | null;
+                      isPersonal: number;
+                      stripeCustomerId: string | null;
+                      otherOwnerCount: number;
+                    }>();
 
-                  const organizations = personalOrgs.results ?? [];
-
+                  const organizations = ownedOrganizations.results ?? [];
                   if (!organizations.length) {
+                    return;
+                  }
+
+                  const soleOwnerNonPersonal = organizations.filter(
+                    (org) => !org.isPersonal && (org.otherOwnerCount ?? 0) === 0
+                  );
+
+                  if (soleOwnerNonPersonal.length > 0) {
+                    const names = soleOwnerNonPersonal
+                      .map((org) => org.name || org.id)
+                      .join(', ');
+                    throw new Error(
+                      `You are the sole owner of organization(s): ${names}. Transfer ownership or delete those organizations before deleting your account.`
+                    );
+                  }
+
+                  const personalOrgs = organizations.filter((org) => Boolean(org.isPersonal));
+                  if (!personalOrgs.length) {
                     return;
                   }
 
                   const organizationService = new OrganizationService(env);
 
-                  for (const org of organizations) {
-                    if (!org || !org.id) {
+                  for (const org of personalOrgs) {
+                    if (!org.id) {
                       continue;
                     }
 
@@ -516,7 +563,7 @@ export async function getAuth(env: Env, request?: Request) {
                   }
                 } catch (error) {
                   console.error(
-                    `❌ Failed to clean up personal organizations or Stripe data for user ${user.id}:`,
+                    `❌ Failed to clean up organizations or Stripe data for user ${user.id}:`,
                     error
                   );
                   throw error instanceof Error
@@ -555,7 +602,9 @@ export async function getAuth(env: Env, request?: Request) {
               theme: { type: "string", required: false, defaultValue: "system" },
               accentColor: { type: "string", required: false, defaultValue: "default" },
               fontSize: { type: "string", required: false, defaultValue: "medium" },
+              // Interface language: Controls UI language (en, es, fr, de, etc.)
               language: { type: "string", required: false, defaultValue: "en" },
+              // Spoken language: User's primary spoken language for AI interactions and content generation
               spokenLanguage: { type: "string", required: false, defaultValue: "en" },
               country: { type: "string", required: false, defaultValue: "us" },
               timezone: { type: "string", required: false },
@@ -574,23 +623,34 @@ export async function getAuth(env: Env, request?: Request) {
               
               // Email Settings
               receiveFeedbackEmails: { type: "boolean", required: false, defaultValue: false },
-              marketingEmails: { type: "boolean", required: false, defaultValue: true },
+              marketingEmails: { type: "boolean", required: false, defaultValue: false },
               securityAlerts: { type: "boolean", required: false, defaultValue: true },
               
               // Security Settings
               twoFactorEnabled: { type: "boolean", required: false, defaultValue: false },
               emailNotifications: { type: "boolean", required: false, defaultValue: true },
               loginAlerts: { type: "boolean", required: false, defaultValue: true },
-              sessionTimeout: { type: "string", required: false, defaultValue: "7 days" },
-              lastPasswordChange: { type: "string", required: false },
+              sessionTimeout: { type: "number", required: false, defaultValue: 604800 }, // 7 days in seconds
+              lastPasswordChange: { type: "date", required: false },
               
               // Links
               selectedDomain: { type: "string", required: false },
               linkedinUrl: { type: "string", required: false },
               githubUrl: { type: "string", required: false },
-
-              // Auth metadata
-              lastLoginMethod: { type: "string", required: false },
+              customDomains: { type: "string", required: false },
+              
+              // PII Compliance & Consent
+              piiConsentGiven: { type: "boolean", required: false, defaultValue: false },
+              piiConsentDate: { type: "number", required: false },
+              dataRetentionConsent: { type: "boolean", required: false, defaultValue: false },
+              marketingConsent: { type: "boolean", required: false, defaultValue: false },
+              dataProcessingConsent: { type: "boolean", required: false, defaultValue: false },
+              
+              // Data Retention & Deletion
+              dataRetentionExpiry: { type: "number", required: false },
+              lastDataAccess: { type: "number", required: false },
+              dataDeletionRequested: { type: "boolean", required: false, defaultValue: false },
+              dataDeletionDate: { type: "number", required: false },
               
               // Onboarding
               onboardingCompleted: { type: "boolean", required: false, defaultValue: false },

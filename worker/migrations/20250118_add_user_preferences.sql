@@ -16,7 +16,9 @@ ALTER TABLE users ADD COLUMN preferred_contact_method TEXT;
 ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'system';
 ALTER TABLE users ADD COLUMN accent_color TEXT DEFAULT 'default';
 ALTER TABLE users ADD COLUMN font_size TEXT DEFAULT 'medium';
+-- Interface language: Controls UI language (en, es, fr, de, etc.)
 ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en';
+-- Spoken language: User's primary spoken language for AI interactions and content generation
 ALTER TABLE users ADD COLUMN spoken_language TEXT DEFAULT 'en';
 ALTER TABLE users ADD COLUMN country TEXT DEFAULT 'us';
 ALTER TABLE users ADD COLUMN timezone TEXT;
@@ -35,15 +37,17 @@ ALTER TABLE users ADD COLUMN notification_messaging_push INTEGER DEFAULT 1;
 
 -- Email Settings
 ALTER TABLE users ADD COLUMN receive_feedback_emails INTEGER DEFAULT 0;
-ALTER TABLE users ADD COLUMN marketing_emails INTEGER DEFAULT 1;
+ALTER TABLE users ADD COLUMN marketing_emails INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN security_alerts INTEGER DEFAULT 1;
 
 -- Security Settings
 ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN email_notifications INTEGER DEFAULT 1;
 ALTER TABLE users ADD COLUMN login_alerts INTEGER DEFAULT 1;
-ALTER TABLE users ADD COLUMN session_timeout TEXT DEFAULT '7 days';
-ALTER TABLE users ADD COLUMN last_password_change TEXT;
+-- Session timeout in seconds (604800 = 7 days)
+ALTER TABLE users ADD COLUMN session_timeout INTEGER DEFAULT 604800;
+-- Last password change timestamp (Unix timestamp)
+ALTER TABLE users ADD COLUMN last_password_change INTEGER;
 
 -- Links
 ALTER TABLE users ADD COLUMN selected_domain TEXT;
